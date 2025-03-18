@@ -20,6 +20,9 @@ class TrafficManager():
         self._x_range = config_traffic.get("x_range", [0, 1000]) # set in airfogsim_env.py according to used area map
         self._y_range = config_traffic.get("y_range", [0, 1000]) # set in airfogsim_env.py according to used area map
         self._nonfly_zone_coordinates = config_traffic.get("nonfly_zone_coordinates", [])
+        self._vehicle_speed_range=config_traffic.get("vehicle_speed_range", [[5.55,9.72],[9.72,13.88],[13.88,18.05],[18.05,22.22]])
+        self._vehicle_speed_probability=config_traffic.get("vehicle_speed_probability", [0.75,0.1,0.1,0.05])
+        self._UAV_boundary_threshold=config_traffic.get("UAV_boundary_threshold", [1000,500,1000,1000])
         self._UAV_z_range = config_traffic.get("UAV_z_range", [100, 200])
         self._UAV_speed_range = config_traffic.get("UAV_speed_range", [10, 30])
         self._max_n_UAVs = config_traffic.get("max_n_UAVs", 10)
@@ -73,6 +76,8 @@ class TrafficManager():
         self._initialize_cloudServers()
         self._initialize_UAVs()
 
+        self.veh_speed = {}
+
     def reset(self,new_traci_connection):
         """Reset the traffic manager.
         """
@@ -94,6 +99,17 @@ class TrafficManager():
         self._initialize_RSUs()
         self._initialize_cloudServers()
         self._initialize_UAVs()
+
+    def _getSpeedTypeIdx(self,num):
+        max_idx=len(self._vehicle_speed_probability)-1
+        idx=0
+        sum_p=0
+        for p in self._vehicle_speed_probability:
+            sum_p += p
+            if num<=sum_p:
+                return idx
+            idx+=1
+        return min(idx,max_idx)
 
     def getMapIndexByNodeId(self, node_id):
         # row_idx, col_idx = np.where(self._map_by_grid == node_id)
@@ -221,7 +237,11 @@ class TrafficManager():
         for _ in range(self._max_n_UAVs):
             UAV_id = "UAV_" + str(self._UAV_id_counter)
             self._UAV_id_counter += 1
-            position = (random.uniform(self._x_range[0], self._x_range[1]), random.uniform(self._y_range[0], self._y_range[1]), random.uniform(self._UAV_z_range[0], self._UAV_z_range[1]))
+            left_boundary=self._x_range[0]+self._UAV_boundary_threshold[2]
+            right_boundary=self._x_range[1]-self._UAV_boundary_threshold[3]
+            up_boundary=self._y_range[0]+self._UAV_boundary_threshold[0]
+            down_boundary=self._y_range[1]-self._UAV_boundary_threshold[1]
+            position = (random.uniform(left_boundary, right_boundary), random.uniform(up_boundary, down_boundary), random.uniform(self._UAV_z_range[0], self._UAV_z_range[1]))
             self._UAV_infos[UAV_id] = {"position": position}
             row = int((position[1] - self._y_range[0]) / self._grid_width)
             col = int((position[0] - self._x_range[0]) / self._grid_width)
@@ -370,7 +390,7 @@ class TrafficManager():
             # 根据当前的时隙，从tripinfo中获取当前时隙的车辆信息
             current_time = self._current_time
             # tripinfo是pd.DataFrame，可以直接使用pandas的查询功能,date_timestep在current_time-traffic_interval到current_time之间的车辆
-            vehicle_ids = self._tripinfo[(self._tripinfo['data_timestep']>current_time-self._traffic_interval) & (self._tripinfo['data_timestep']<=current_time)]['vehicle_id'].tolist()
+            vehicle_ids = self._tripinfo[(self._tripinfo['data_timestep']>round(current_time-self._traffic_interval,3)) & (self._tripinfo['data_timestep']<=round(current_time,3))]['vehicle_id'].tolist()
             return vehicle_ids
         
     def getVehicleInfoByIds(self, vehicle_ids):
@@ -388,7 +408,7 @@ class TrafficManager():
             return vehicle_infos
         else:
             # 从pd中批量获取车辆信息
-            cur_time_trip_info = self._tripinfo[(self._tripinfo['data_timestep']>self._current_time-self._traffic_interval) & (self._tripinfo['data_timestep']<=self._current_time)]
+            cur_time_trip_info = self._tripinfo[(self._tripinfo['data_timestep']>round(self._current_time-self._traffic_interval,3)) & (self._tripinfo['data_timestep']<=round(self._current_time,3))]
             pd_vehicle_infos = cur_time_trip_info[cur_time_trip_info['vehicle_id'].isin(vehicle_ids)]
             vehicle_infos = {}
             for idx, vehicle_info in pd_vehicle_infos.iterrows():
@@ -416,19 +436,23 @@ class TrafficManager():
                     self._vehicle_id_counter += 1
                     route_id = self._generateRandomRoute()
                     self._traci_connection.vehicle.add(vehicle_id, route_id)
+                    speed_range_type=self._getSpeedTypeIdx(random.random())
+                    max_speed_min,max_speed_max=self._vehicle_speed_range[speed_range_type]
+                    max_speed=random.uniform(max_speed_min,max_speed_max)
+                    self._traci_connection.vehicle.setSpeed(vehicle_id, max_speed)
+                    traci.vehicle.setSpeedMode(vehicle_id, 00000)
+
             self._traci_connection.simulationStep()
             # vehicles will be updated by sumo. (Vehicles which are out of map will be cleared automatically by sumo)
             vehicle_ids = self.getVehicleIDsList()
         else:
-            self._new_added_vehicle_ids = []  # Clear the list in each step.
             old_vehicle_ids=self._vehicle_infos.keys() if len(self._vehicle_infos)>0 else []
             # 从tripinfo中获取当前时间的车辆信息
             vehicle_ids = self.getVehicleIDsList()
             self._new_added_vehicle_ids=set(vehicle_ids)-set(old_vehicle_ids)
 
-
-        self._current_time = self.updateCurrentTime()
         self._vehicle_infos = self.getVehicleInfoByIds(vehicle_ids)
+        self._current_time = self.updateCurrentTime()
 
         for UAV_id in self._UAV_infos:
             org_position = self._UAV_infos[UAV_id]["position"]

@@ -68,7 +68,7 @@ env = AirFogSimEnv(config, interactive_mode=None)
 algorithm_module.initialize(env,last_episode=last_episode,final=True)
 
 # 5. Create the evaluation module
-evaluation_module = AirFogSimEvaluation(algorithm_tag)
+evaluation_module = AirFogSimEvaluation(env,algorithm_module)
 
 for episode in range(last_episode + 1, max_episode + 1):
     # 启动episode性能监控
@@ -83,7 +83,7 @@ for episode in range(last_episode + 1, max_episode + 1):
         loss=algorithm_module.train(env) # 训练模型
         if loss is not None:
             step_loss.append(loss) # 记录loss
-        evaluation_module.updateAndSaveStepRecords(env, algorithm_module) # 保存一步记录
+        evaluation_module.updateAndSaveStepRecords() # 保存一步记录
 
         acc_reward = evaluation_module.getAccReward()
         avg_reward = evaluation_module.getAvgReward()

@@ -16,9 +16,10 @@ class Net(nn.Module):
         self.dim_actions = dim_args.dim_actions
 
 
-        # 有两个隐含层
+        # 有3个隐含层
         self.fc1 = nn.Linear(self.dim_states, self.dim_hiddens)
         self.fc2 = nn.Linear(self.dim_hiddens, self.dim_hiddens)
+        self.fc3 = nn.Linear(self.dim_hiddens, self.dim_hiddens)
 
         self.fc_value = nn.Linear(self.dim_hiddens, self.dim_value)
         self.fc_advantages = nn.Linear(self.dim_hiddens, self.dim_advantages)
@@ -31,6 +32,7 @@ class Net(nn.Module):
     def forward(self, x):
         x=F.gelu(self.fc1(x))
         x=F.gelu(self.fc2(x))
+        x = F.gelu(self.fc3(x))
 
         V=F.gelu(self.fc_value(x))
         A=F.gelu(self.fc_advantages(x))

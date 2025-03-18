@@ -19,7 +19,7 @@ base_dir="/home/chenjiarui/data/project/crowdsensing"
 
 if cuda_num > 0:
     cuda_list = list(range(cuda_num))
-    TransD3QN_device = f"cuda:{cuda_list[cuda_num-2]}"
+    TransD3QN_device = f"cuda:{cuda_list[cuda_num-1]}"
 else:
     TransD3QN_device = "cpu"
 
@@ -31,9 +31,9 @@ print('cuda_num: ',cuda_num)
 def parseTransD3QNTrainArgs():
     parser = argparse.ArgumentParser(description='TransD3QN train arguments')
     parser.add_argument('--buffer_size', type=int, default=1000)  # 经验池容量
-    parser.add_argument('--learning_rate', type=float, default=5e-4)  # 学习率
+    parser.add_argument('--learning_rate', type=float, default=1e-4)  # 学习率
     parser.add_argument('--gamma', type=float, default=0.96)  # 折扣因子
-    parser.add_argument('--epsilon', type=float, default=0.5)  # 探索系数
+    parser.add_argument('--epsilon', type=float, default=0.9)  # 探索系数
     parser.add_argument('--eps_end', type=float, default=0.01)  # 最低探索系数
     parser.add_argument('--eps_dec', type=float, default=2e-3)  # 探索系数衰减率
     parser.add_argument('--target_update', type=int, default=200)  # 目标网络的参数的更新频率
@@ -51,10 +51,10 @@ def parseTransD3QNDimArgs():
     parser = argparse.ArgumentParser(description='TransD3QN dimension arguments')
     # [id, type, is_mission_node, is_schedulable, x, y, z]
     parser.add_argument('--dim_node', type=int, default=7)  # Dimension of nodes (UAV/Veh/RSU)
-    # [sensor_type, accuracy, return_size, arrival_time, TTL, duration, x, y, z, distance_threshold]
-    parser.add_argument('--dim_mission', type=int, default=10)  # Dimension of mission
-    # [type, accuracy]
-    parser.add_argument('--dim_sensor', type=int, default=2)  # Dimension of sensor
+    # [norm_cur_time,sensor_type, accuracy, return_size, arrival_time, TTL, duration, x, y, z, distance_threshold]
+    parser.add_argument('--dim_mission', type=int, default=11)  # Dimension of mission
+    # [node_id,id,type, accuracy,candidate]
+    parser.add_argument('--dim_sensor', type=int, default=5)  # Dimension of sensor
     parser.add_argument('--max_sensors', type=int, default=6)  # Sensors on each mission node
     parser.add_argument('--m_u', type=int, default=15)  # Maximum UAVs
     parser.add_argument('--m_v', type=int, default=100)  # Maximum vehicles
@@ -62,6 +62,7 @@ def parseTransD3QNDimArgs():
     parser.add_argument('--dim_model', type=int, default=512)  # Embedding feature dimension
     parser.add_argument('--nhead', type=float, default=4)  # Head num
     parser.add_argument('--num_layers', type=float, default=3)  # Transformer encoder layers num
+    parser.add_argument('--dim_actions', type=float, default=20)  # Dimension of hidden layer
     parser.add_argument('--dim_hiddens', type=float, default=512)  # Dimension of hidden layer
     parser.add_argument('--dim_value', type=float, default=128)  # Dimension of value sub layer
     parser.add_argument('--dim_advantages', type=float, default=128)  # Dimension of advantages sub layer
@@ -159,9 +160,14 @@ class TransD3QN_Train_AlgorithmModule(BaseAlgorithmModule):
         Args:
             env (AirFogSimEnv): The environment object.
         """
+        # self.rewardScheduler.setModel(env, 'REWARD',
+        #                               '5 * log(10, 1 + (_mission_deadline-_mission_duration_sum)) * (1 / (1 + exp(-(_mission_deadline-_mission_duration_sum) / (_mission_finish_time - _mission_arrival_time-_mission_duration_sum))) - 1 / (1 + exp(-1)))')
+        # self.rewardScheduler.setModel(env, 'PUNISH', '-1')
+
         self.rewardScheduler.setModel(env, 'REWARD',
-                                      '5 * log(10, 1 + (_mission_deadline-_mission_duration_sum)) * (1 / (1 + exp(-(_mission_deadline-_mission_duration_sum) / (_mission_finish_time - _mission_arrival_time-_mission_duration_sum))) - 1 / (1 + exp(-1)))')
-        self.rewardScheduler.setModel(env, 'PUNISH', '-1')
+                                      '_mission_duration_sum * _mission_accuracy + log( _mission_deadline,2) * (1 / (0.2 + exp(-_mission_deadline / (_mission_finish_time - _mission_arrival_time))) - 1 / (0.2 + exp(-1)))')
+        self.rewardScheduler.setModel(env, 'PUNISH', '- 5*_mission_duration_sum * _mission_accuracy')
+
 
         self.max_simulation_time = env.max_simulation_time
         self.min_position_x, self.max_position_x = self.trafficScheduler.getMapRange(env, 'X')
@@ -197,9 +203,12 @@ class TransD3QN_Train_AlgorithmModule(BaseAlgorithmModule):
         self.last_mission_id = None  # Last allocated mission id,used in next state update
         self.ta_buffer = self.TaskAllocationReplayBuffer()
 
+        self.ta_idx={}
+
     def reset(self, env: AirFogSimEnv):
         self.last_mission_id = None  # Last allocated mission id,used in next state update
         self.ta_buffer.clear()
+        self.ta_idx.clear()
 
     def _encode_node_states(self, node_states, max_node_num, dim_state):
         # UAVs,Vehicles,RSUs
@@ -238,12 +247,13 @@ class TransD3QN_Train_AlgorithmModule(BaseAlgorithmModule):
 
         return np.array(encode_states)
 
-    def _encode_mission_states(self, mission_states, max_mission_num, dim_state):
+    def _encode_mission_states(self, mission_states, max_mission_num,current_time, dim_state):
         # [sensor_type, accuracy, return_size, arrival_time, TTL, duration, x, y, z, distance_threshold]
         # ['U',0.8,50,20,120,5,120.25,262.05,553.25,100]
-        # 选取[sensor_type, accuracy, return_size, arrival_time, TTL, duration, x, y, z, distance_threshold]
+        # 选取[norm_cur_time,sensor_type, accuracy, return_size, arrival_time, TTL, duration, x, y, z, distance_threshold]
 
         encode_states = []
+        norm_cur_time = current_time/self.max_simulation_time
         for mission_state in mission_states:
             sensor_type = mission_state[0]
             accuracy = mission_state[1]
@@ -256,7 +266,7 @@ class TransD3QN_Train_AlgorithmModule(BaseAlgorithmModule):
             position_z = (mission_state[8] - self.min_position_z) / (self.max_position_z - self.min_position_z)  if (self.max_position_z - self.min_position_z) > 0 else 1
             distance_threshold = mission_state[9] / (self.max_position_x - self.min_position_x)
 
-            state = [sensor_type, accuracy, return_size, arrival_time, TTL, duration, position_x, position_y,
+            state = [norm_cur_time,sensor_type, accuracy, return_size, arrival_time, TTL, duration, position_x, position_y,
                      position_z, distance_threshold]
             encode_states.append(state)
 
@@ -268,46 +278,80 @@ class TransD3QN_Train_AlgorithmModule(BaseAlgorithmModule):
 
         return np.array(encode_states)
 
-    def _encode_sensor_states(self, sensor_states, max_sensor_node_num, node_sensor_num, dim_state):
-        # [node_id,node_type,id,type, accuracy,candidate]
-        # [1, 'U', 3, 0.8, True]
-        # 选取[type, accuracy]
+    def _encode_sensor_states(self, sensor_states, max_sensor_node_num, node_sensor_num, dim_state,grouping=True):
+        # [node_id,node_type,id,type, accuracy,candidate,distance]
+        # [1, 'U', 3, 2, 0.8, True,200.32]
+        # 选取[node_id,id,type, accuracy,candidate]
 
         encode_states = []
         encode_mask = []
 
-        # 删除可能超出最大节点数的节点（一般是因为车辆超出）
-        if len(sensor_states) > max_sensor_node_num:
-            to_delete_num = len(sensor_states) - max_sensor_node_num
-            for i in range(len(sensor_states) - 1, -1, -1):
-                if sensor_states[i][0][1] == 'V':
+        if grouping is False:
+            # 删除可能超出最大sensor数的sensor
+            if len(sensor_states) > max_sensor_node_num*node_sensor_num:
+                to_delete_num = len(sensor_states) - max_sensor_node_num*node_sensor_num
+                for i in range(len(sensor_states) - 1, -1, -1):
                     del sensor_states[i]
                     to_delete_num -= 1
-                if to_delete_num == 0:
-                    break
+                    if to_delete_num == 0:
+                        break
 
-        # 1. 删除不需要的属性
-        for node_group in sensor_states:
-            node_state_group = []
-            node_mask_group = []
-            for sensor_state in node_group:
-                processed_state = sensor_state[3:5]  # 去除 node_id
-                node_state_group.append(processed_state)
-                node_mask_group.append(sensor_state[-1])
-            encode_states.append(node_state_group)
-            encode_mask.append(node_mask_group)
+            # 1. 删除不需要的属性
+            for sensor_state in sensor_states:
+                node_id=sensor_state[0]
+                node_type=sensor_state[1]
+                id=sensor_state[2]
+                type=sensor_state[3]
+                accuracy=sensor_state[4]
+                candidate=sensor_state[5]
+                processed_state = [node_id,id,type,accuracy,candidate]
+                encode_states.append(processed_state)
+                encode_mask.append(sensor_state[-2])
 
-        # 2. 补齐长度
-        valid_node_num = len(encode_states)
-        if valid_node_num < max_sensor_node_num:
-            for _ in range(max_sensor_node_num - valid_node_num):
+            # 2. 补齐长度
+            valid_sensor_num = len(encode_states)
+            if valid_sensor_num < max_sensor_node_num*node_sensor_num:
+                for _ in range(max_sensor_node_num*node_sensor_num-valid_sensor_num):
+                    encode_states.append([0 for _ in range(dim_state)])  # 补充零
+                    encode_mask.append(False)  # 补充False
+        else:
+            # 删除可能超出最大节点数的节点（一般是因为车辆超出）
+            if len(sensor_states) > max_sensor_node_num:
+                to_delete_num = len(sensor_states) - max_sensor_node_num
+                for i in range(len(sensor_states) - 1, -1, -1):
+                    if sensor_states[i][0][1] == 'V':
+                        del sensor_states[i]
+                        to_delete_num -= 1
+                    if to_delete_num == 0:
+                        break
+
+            # 1. 删除不需要的属性
+            for node_group in sensor_states:
                 node_state_group = []
                 node_mask_group = []
-                for _ in range(node_sensor_num):
-                    node_state_group.append([0 for _ in range(dim_state)])  # 补充零
-                    node_mask_group.append(False)  # 补充False
+                for sensor_state in node_group:
+                    node_id=sensor_state[0]
+                    node_type=sensor_state[1]
+                    id=sensor_state[2]
+                    type=sensor_state[3]
+                    accuracy=sensor_state[4]
+                    processed_state = [node_id,id,type,accuracy]
+                    node_state_group.append(processed_state)
+                    node_mask_group.append(sensor_state[-2])
                 encode_states.append(node_state_group)
                 encode_mask.append(node_mask_group)
+
+            # 2. 补齐长度
+            valid_node_num = len(encode_states)
+            if valid_node_num < max_sensor_node_num:
+                for _ in range(max_sensor_node_num - valid_node_num):
+                    node_state_group = []
+                    node_mask_group = []
+                    for _ in range(node_sensor_num):
+                        node_state_group.append([0 for _ in range(dim_state)])  # 补充零
+                        node_mask_group.append(False)  # 补充False
+                    encode_states.append(node_state_group)
+                    encode_mask.append(node_mask_group)
 
         return np.array(encode_states), np.array(encode_mask)
 
@@ -369,7 +413,7 @@ class TransD3QN_Train_AlgorithmModule(BaseAlgorithmModule):
             mission_position = mission_profile['mission_routes'][0]
 
             mission_states = self.algorithmScheduler.getMissionStates(env, [mission_profile]) # 默认有多个mission
-            encode_mission_state = self._encode_mission_states(mission_states, 1, self.TransD3QN_dim_args.dim_mission)
+            encode_mission_state = self._encode_mission_states(mission_states, 1,cur_time, self.TransD3QN_dim_args.dim_mission)
             valid_sensor_num, sensor_states = self.algorithmScheduler.getSensorStates(env,
                                                                                       mission_sensor_type,
                                                                                       mission_accuracy,
@@ -377,13 +421,16 @@ class TransD3QN_Train_AlgorithmModule(BaseAlgorithmModule):
                                                                                       mission_position,
                                                                                       self.TA_distance_Veh,
                                                                                       self.TA_distance_UAV,
-                                                                                      self.node_priority)
+                                                                                      self.node_priority,
+                                                                                      grouping=False
+                                                                                      )
             if valid_sensor_num == 0:
                 continue
             encode_sensor_states, encode_mask = self._encode_sensor_states(sensor_states, max_sensor_node_num,
                                                                            self.TransD3QN_dim_args.max_sensors,
-                                                                           self.TransD3QN_dim_args.dim_sensor)
-
+                                                                           self.TransD3QN_dim_args.dim_sensor,
+                                                                           grouping=False)
+            encode_mask = encode_mask[:self.TransD3QN_dim_args.dim_actions]
             is_random, max_q_value, action_index = self.TransD3QN_env.takeAction(encode_node_states,
                                                                                  encode_mission_state,
                                                                                  encode_sensor_states, encode_mask)
@@ -391,15 +438,13 @@ class TransD3QN_Train_AlgorithmModule(BaseAlgorithmModule):
             if action_index is None:
                 continue
             appointed_node_type, appointed_node_id, appointed_sensor_id, appointed_sensor_accuracy = self.algorithmScheduler.getSensorInfoByAction(
-                env, action_index, sensor_states)
+                env, action_index, sensor_states,grouping=False)
             if appointed_node_id is not None and appointed_sensor_id is not None:
+                self.ta_idx[mission_profile['mission_id']] = action_index
+                env.addMissionTaIdx(action_index)
                 env.addAvailableSensorNum(valid_sensor_num)
                 if appointed_node_type == 'U':
-                    route_with_time={
-                        'position':mission_position,
-                        'to_stay_time':mission_profile['mission_duration'][0]
-                    }
-                    self.trafficScheduler.addUAVRoute(env, appointed_node_id, route_with_time)
+                    self.trafficScheduler.addUAVRoute(env, mission_profile['mission_id'],appointed_node_id, mission_profile['mission_routes'][0],mission_profile['mission_duration'][0],mission_profile['mission_arrival_time']+ mission_profile['mission_deadline'])
                 mission_profile['appointed_node_id'] = appointed_node_id
                 mission_profile['appointed_sensor_id'] = appointed_sensor_id
                 mission_profile['appointed_sensor_accuracy'] = appointed_sensor_accuracy

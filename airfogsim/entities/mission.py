@@ -1,4 +1,5 @@
 import numpy as np
+from airfogsim.utils import math_utils
 
 
 
@@ -16,6 +17,7 @@ class Mission:
                 appointed_sensor_id (str): The appointed sensor ID.
                 mission_routes (list): The list of routes.
                 mission_duration (list): The duration of the mission (each value represent the time need to stay at each point).
+                mission_duration_original (list): The original duration of the mission .
                 mission_size (float): The required return size of the mission.
                 mission_sensor_type (str): The sensor type of the mission.
                 mission_accuracy (float): The sensor accuracy needed for the mission.
@@ -35,6 +37,8 @@ class Mission:
         self._mission_task_sets = mission_profile['mission_task_sets']
         self._mission_duration = mission_profile['mission_duration']
         self._mission_duration_sum = sum(self._mission_duration)  # The sum duration time of each point of the mission
+        self._mission_duration_original=mission_profile.get('mission_duration_original',mission_profile['mission_duration'])
+        self._mission_duration_original_sum=sum(self._mission_duration_original)
         self._mission_size = mission_profile['mission_size']
         self._mission_deadline = mission_profile['mission_deadline']
         self._distance_threshold = mission_profile.get('distance_threshold', 100)
@@ -42,6 +46,7 @@ class Mission:
         self._mission_arrival_time = mission_profile['mission_arrival_time']
         self._mission_start_time = mission_profile['mission_start_time']
         self._mission_stayed_time = np.zeros(len(mission_profile['mission_routes']))
+        self._mission_stayed_time_sum=0
         self._last_stayed_time = -np.ones(len(mission_profile['mission_routes']))
         self._sensing_finish_time = 0
         self._mission_finish_time = 0  # The finish time of the mission (to be updated at the finish time, success or fail)
@@ -80,10 +85,11 @@ class Mission:
             if self._mission_stayed_time[i] < self._mission_duration[i]:
                 xyz_2d = xyz[:2]
                 route_2d = self._mission_routes[i][:2]
-                if np.linalg.norm(np.array(xyz_2d) - np.array(route_2d)) < self._distance_threshold:
+                if math_utils.calculate_distance(xyz_2d,route_2d) < self._distance_threshold:
                     self._mission_stayed_time[i] += time_step
                     self._last_stayed_time[i] = current_time
                     step_duration+=time_step
+        self._mission_stayed_time_sum=sum(self._mission_stayed_time)
 
         return step_duration
 
@@ -126,7 +132,7 @@ class Mission:
             flag = True
         for taskset in self._mission_task_sets:
             for task in taskset:
-                if task.isRelatedToNode(node_id):
+                if task.isRelatedToNodeForMission(node_id):
                     flag = True
         return flag
 
@@ -196,6 +202,16 @@ class Mission:
                 already_returned_size=task.getAlreadyReturnedSize()
                 left_size+=required_return_size-already_returned_size
         return left_size
+
+    def getLastSensingTime(self):
+        return max(self._last_stayed_time)
+
+    def getLastReturnTime(self):
+        last_return_time=0
+        for taskset in self._mission_task_sets:
+            for task in taskset:
+                last_return_time=max(task.getLastReturnTime(), last_return_time)
+        return last_return_time
 
 
 

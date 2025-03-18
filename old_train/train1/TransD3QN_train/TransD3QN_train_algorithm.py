@@ -394,11 +394,7 @@ class TransD3QN_Train_AlgorithmModule(BaseAlgorithmModule):
                 env, action_index, sensor_states)
             if appointed_node_id is not None and appointed_sensor_id is not None:
                 if appointed_node_type == 'U':
-                    route_with_time={
-                        'position':mission_position,
-                        'to_stay_time':mission_profile['mission_duration'][0]
-                    }
-                    self.trafficScheduler.addUAVRoute(env, appointed_node_id, route_with_time)
+                    self.trafficScheduler.addUAVRoute(env, mission_profile['mission_id'],appointed_node_id, mission_profile['mission_routes'][0],mission_profile['mission_duration'][0],mission_profile['mission_arrival_time']+ mission_profile['mission_deadline'])
                 mission_profile['appointed_node_id'] = appointed_node_id
                 mission_profile['appointed_sensor_id'] = appointed_sensor_id
                 mission_profile['appointed_sensor_accuracy'] = appointed_sensor_accuracy

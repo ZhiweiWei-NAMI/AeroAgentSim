@@ -43,6 +43,7 @@ class MissionFinalStateEnum(Enum):
     EARLY_FAIL = 1
     SENSING_FAIL = 2
     TRANSMISSION_FAIL = 3
+    FORCE_FAIL=4
 
     @staticmethod
     def getDescByCode(code: int):
@@ -62,6 +63,8 @@ class MissionFinalStateEnum(Enum):
             return "Mission fails due to sensing fail."
         elif code == MissionFinalStateEnum.TRANSMISSION_FAIL.value:
             return "Mission fails due to transmission fail."
+        elif code == MissionFinalStateEnum.FORCE_FAIL.value:
+            return "Mission fails due to force fail."
         else:
             return "Unknown code."
 
@@ -83,5 +86,7 @@ class MissionFinalStateEnum(Enum):
             return "Mission fails due to sensing fail."
         elif code == MissionFinalStateEnum.TRANSMISSION_FAIL:
             return "Mission fails due to transmission fail."
+        elif code == MissionFinalStateEnum.FORCE_FAIL:
+            return "Mission fails due to force fail."
         else:
             return "Unknown code."

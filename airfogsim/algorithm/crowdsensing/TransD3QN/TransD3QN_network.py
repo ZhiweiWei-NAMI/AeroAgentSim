@@ -22,6 +22,7 @@ class Net(nn.Module):
         self.dim_model = dim_args.dim_model  # Embedding feature dimension
         self.nhead=dim_args.nhead
         self.num_layers=dim_args.num_layers
+        self.dim_actions=dim_args.dim_actions
         self.dim_hiddens= dim_args.dim_hiddens
         self.dim_value=dim_args.dim_value
         self.dim_advantages=dim_args.dim_advantages
@@ -48,7 +49,7 @@ class Net(nn.Module):
 
         # 输出Q值与动作优势
         self.value_calculator=nn.Linear(self.dim_value,1)
-        self.advantages_calculator=nn.Linear(self.dim_advantages,self.m2)
+        self.advantages_calculator=nn.Linear(self.dim_advantages,self.dim_actions)
 
 
     def forward(self, node_state, mission_state, sensor_state, sensor_mask):
@@ -67,7 +68,9 @@ class Net(nn.Module):
         sensor_state_emb = self.sensor_embedding(sensor_state)  # [batch_size, m_uv, max_sensors, dim_model]
 
         # Add node embedding to each task [batch_size, m_uv, max_sensors, dim_model]
-        sensor_state_combined = node_state_emb[:, :self.m_uv].unsqueeze(2) + sensor_state_emb
+        # sensor_state_combined = node_state_emb[:, :self.m_uv].unsqueeze(2) + sensor_state_emb
+        sensor_state_combined=sensor_state_emb
+
         # Flatten to [batch_size, m_uv * max_sensors, dim_model]
         sensor_state_sequence = sensor_state_combined.view(batch_size, -1, self.dim_model)
 

@@ -352,22 +352,30 @@ class TaskManager:
         # remove all related tasks in to_return_tasks
         for node_id in list(self._returning_tasks.keys()):
             task_set = self._returning_tasks.get(node_id, [])
-            if node_id == to_remove_node_id:
-                for task_info in task_set.copy():
+            # if node_id == to_remove_node_id:
+            #     for task_info in task_set.copy():
+            #         removed_task_set = self._removed_tasks.get(task_info.getTaskNodeId(), [])
+            #         removed_task_set.append(task_info)
+            #         self._removed_tasks[task_info.getTaskNodeId()] = removed_task_set
+            #         task_set.remove(task_info)
+            #         self._returning_tasks[node_id] = task_set
+            #     del self._returning_tasks[node_id]
+            # else:
+            #     for task_info in task_set.copy():
+            #         if task_info.isRelatedToNode(to_remove_node_id):
+            #             removed_task_set = self._removed_tasks.get(task_info.getTaskNodeId(), [])
+            #             removed_task_set.append(task_info)
+            #             self._removed_tasks[task_info.getTaskNodeId()] = removed_task_set
+            #             task_set.remove(task_info)
+            #             self._returning_tasks[node_id] = task_set
+            for task_info in task_set.copy():
+                if task_info.isRelatedToNodeForMission(to_remove_node_id):
                     removed_task_set = self._removed_tasks.get(task_info.getTaskNodeId(), [])
                     removed_task_set.append(task_info)
                     self._removed_tasks[task_info.getTaskNodeId()] = removed_task_set
                     task_set.remove(task_info)
                     self._returning_tasks[node_id] = task_set
-                del self._returning_tasks[node_id]
-            else:
-                for task_info in task_set.copy():
-                    if task_info.isRelatedToNode(to_remove_node_id):
-                        removed_task_set = self._removed_tasks.get(task_info.getTaskNodeId(), [])
-                        removed_task_set.append(task_info)
-                        self._removed_tasks[task_info.getTaskNodeId()] = removed_task_set
-                        task_set.remove(task_info)
-                        self._returning_tasks[node_id] = task_set
+
         # remove all related tasks in to_generate_tasks
         for task_node_id in list(self._to_generate_task_infos.keys()):
             task_set = self._to_generate_task_infos.get(task_node_id, [])
@@ -685,6 +693,7 @@ class TaskManager:
                         self._out_of_ddl_tasks[task_node_id].append(task_info)
                         self._recently_failed_100_tasks.append(task_info)
                     task_infos.remove(task_info)
+
         # 3. Check the offloading or returning tasks, if the transmission time is out of TTI, then move the task to the failed tasks
         transmitting_tasks = itertools.chain(self._offloading_tasks.items(), self._returning_tasks.items())
         for node_id, task_infos in transmitting_tasks:

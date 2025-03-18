@@ -1,3 +1,4 @@
+import math
 import random
 
 from .airfogsim_scheduler import AirFogSimScheduler
@@ -65,6 +66,9 @@ class BaseAlgorithmModule:
         Args:
             env (AirFogSimEnv): The environment object.
         """
+        V2U_distance_threshold = self.commScheduler.getConfig(env, 'V2U_distance')
+        V2I_distance_threshold = self.commScheduler.getConfig(env, 'V2I_distance')
+        U2I_distance_threshold = self.commScheduler.getConfig(env, 'U2I_distance')
         waiting_to_return_tasks = self.taskScheduler.getWaitingToReturnTaskInfos(env)
         for task_node_id, tasks in waiting_to_return_tasks.items():
             for task in tasks:
@@ -76,42 +80,14 @@ class BaseAlgorithmModule:
                 RSU_num = self.entityScheduler.getNodeNumByType(env, 'I')
 
                 if current_node_type == 'V':
-                    # relay_comm_rate = np.zeros((1, UAV_num, RSU_num))
-                    # direct_comm_rate = np.zeros((1, RSU_num))
-                    # v_idx=self.entityScheduler.getNodeIdxById(env,current_node_id)
-                    # for u_idx in range(UAV_num):
-                    #     for r_idx in range(RSU_num):
-                    #         V2U_rate = self.commScheduler.getSumRateByChannelType(env, v_idx, u_idx, 'V2U')
-                    #         U2I_rate = self.commScheduler.getSumRateByChannelType(env, u_idx, r_idx, 'U2I')
-                    #         avg_rate = V2U_rate * U2I_rate / (V2U_rate + U2I_rate)
-                    #         relay_comm_rate[0][u_idx][r_idx] = avg_rate
-                    # for r_idx in range(RSU_num):
-                    #     V2I_rate = self.commScheduler.getSumRateByChannelType(env, v_idx, r_idx, 'V2I')
-                    #     direct_comm_rate[0][r_idx] = V2I_rate
-                    #
-                    # relay_max_value = np.max(relay_comm_rate)
-                    # relay_max_index = np.unravel_index(np.argmax(relay_comm_rate), relay_comm_rate.shape)
-                    # relay_u_id = self.entityScheduler.getNodeInfoByIndexAndType(env, int(relay_max_index[1]), 'U')['id']
-                    # relay_r_id = self.entityScheduler.getNodeInfoByIndexAndType(env, int(relay_max_index[2]), 'I')['id']
-                    # relay_max_route = [relay_u_id, relay_r_id]
-                    #
-                    # direct_max_value = np.max(direct_comm_rate)
-                    # direct_max_index = np.unravel_index(np.argmax(direct_comm_rate), direct_comm_rate.shape)
-                    # direct_r_id = self.entityScheduler.getNodeInfoByIndexAndType(env, int(direct_max_index[1]), 'I')['id']
-                    # direct_max_route = [direct_r_id]
-                    # print('relay',relay_max_value,relay_max_route)
-                    # print('direct',direct_max_value,direct_max_route)
-
-                    # return_route = relay_max_route if relay_max_value > direct_max_value else direct_max_route
-
                     if UAV_num > 0:
                         V2U_distance = np.zeros((UAV_num))
                         for u_idx in range(UAV_num):
                             u_id = self.entityScheduler.getNodeInfoByIndexAndType(env, u_idx, 'U')['id']
                             distance = self.trafficScheduler.getDistanceBetweenNodesById(env, current_node_id, u_id)
                             V2U_distance[u_idx] = distance
-                        nearest_u_distance = np.max(V2U_distance)
-                        nearest_u_idx = np.unravel_index(np.argmax(V2U_distance), V2U_distance.shape)
+                        nearest_u_distance = np.min(V2U_distance)
+                        nearest_u_idx = np.unravel_index(np.argmin(V2U_distance), V2U_distance.shape)
                         nearest_u_id = self.entityScheduler.getNodeInfoByIndexAndType(env, int(nearest_u_idx[0]), 'U')[
                             'id']
 
@@ -121,16 +97,18 @@ class BaseAlgorithmModule:
                             r_id = self.entityScheduler.getNodeInfoByIndexAndType(env, r_idx, 'I')['id']
                             distance = self.trafficScheduler.getDistanceBetweenNodesById(env, current_node_id, r_id)
                             V2R_distance[r_idx] = distance
-                        nearest_r_distance = np.max(V2R_distance)
-                        nearest_r_idx = np.unravel_index(np.argmax(V2R_distance), V2R_distance.shape)
+                        nearest_r_distance = np.min(V2R_distance)
+                        nearest_r_idx = np.unravel_index(np.argmin(V2R_distance), V2R_distance.shape)
                         nearest_r_id = self.entityScheduler.getNodeInfoByIndexAndType(env, int(nearest_r_idx[0]), 'I')[
                             'id']
 
                     relay_probability = env.mission_manager.getConfig("relay_probability")
-                    if random.random() < relay_probability and UAV_num > 0:
+                    if random.random() < relay_probability and UAV_num > 0 and nearest_u_distance < V2U_distance_threshold:
                         return_route = [nearest_u_id, nearest_r_id]
-                    else:
+                    elif nearest_r_distance < V2I_distance_threshold:
                         return_route = [nearest_r_id]
+                    else:
+                        continue
 
                 elif current_node_type == 'U':
                     U2R_distance = np.zeros((RSU_num))
@@ -138,10 +116,13 @@ class BaseAlgorithmModule:
                         r_id = self.entityScheduler.getNodeInfoByIndexAndType(env, r_idx, 'I')['id']
                         distance = self.trafficScheduler.getDistanceBetweenNodesById(env, current_node_id, r_id)
                         U2R_distance[r_idx] = distance
-                    nearest_r_distance = np.max(U2R_distance)
-                    nearest_r_idx = np.unravel_index(np.argmax(U2R_distance), U2R_distance.shape)
+                    nearest_r_distance = np.min(U2R_distance)
+                    nearest_r_idx = np.unravel_index(np.argmin(U2R_distance), U2R_distance.shape)
                     nearest_r_id = self.entityScheduler.getNodeInfoByIndexAndType(env, int(nearest_r_idx[0]), 'I')['id']
-                    return_route = [nearest_r_id]
+                    if nearest_r_distance < U2I_distance_threshold:
+                        return_route = [nearest_r_id]
+                    else:
+                        continue
                 else:
                     raise TypeError('Node type is invalid')
 
@@ -173,15 +154,22 @@ class BaseAlgorithmModule:
             TA_distance_Veh = self.missionScheduler.getConfig(env, 'TA_distance_Veh')
             TA_distance_UAV = self.missionScheduler.getConfig(env, 'TA_distance_UAV')
 
-            if random.random() < UAV_probability:
-                node_type = 'U'
-                appointed_node_id, appointed_sensor_id, appointed_sensor_accuracy = self.sensorScheduler.getLowestAccurateIdleSensorInRangeOnUAV(
-                    env, mission_sensor_type, mission_accuracy, sensing_position, TA_distance_UAV, excluded_sensor_ids)
+            fixed_node_type=mission_profile.get('fixed_node_type',None)
+            if fixed_node_type is None:
+                if random.random() < UAV_probability:
+                    node_type='U'
+                    TA_distance=TA_distance_UAV
+                else:
+                    node_type = 'V'
+                    TA_distance=TA_distance_Veh
+                mission_profile['fixed_node_type']=node_type
+                mission_profile['fixed_TA_distance']=TA_distance
             else:
-                node_type = 'V'
-                vehicle_infos = self.trafficScheduler.getVehicleInfosInRange(env, sensing_position, TA_distance_Veh)
-                appointed_node_id, appointed_sensor_id, appointed_sensor_accuracy = self.sensorScheduler.getNearestIdleSensorInNodes(
-                    env, mission_sensor_type, mission_accuracy, sensing_position, vehicle_infos, excluded_sensor_ids)
+                node_type = mission_profile['fixed_node_type']
+                TA_distance = mission_profile['fixed_TA_distance']
+            node_infos = self.trafficScheduler.getNodeInfosInRange(env, sensing_position, TA_distance,node_type)
+            appointed_node_id, appointed_sensor_id, appointed_sensor_accuracy = self.sensorScheduler.getNearestIdleSensorInNodes(
+                env, mission_sensor_type, mission_accuracy, sensing_position, node_infos, excluded_sensor_ids)
 
             if appointed_node_id != None and appointed_sensor_id != None:
                 mission_profile['appointed_node_id'] = appointed_node_id
@@ -200,11 +188,7 @@ class BaseAlgorithmModule:
                     task_set.append(new_task)
                     mission_profile['mission_task_sets'].append(task_set)
                 if node_type == 'U':
-                    route_with_time = {
-                        'position': sensing_position,
-                        'to_stay_time': mission_profile['mission_duration'][0]
-                    }
-                    self.trafficScheduler.addUAVRoute(env, appointed_node_id, route_with_time)
+                    self.trafficScheduler.addUAVRoute(env, mission_profile['mission_id'],appointed_node_id, mission_profile['mission_routes'][0],mission_profile['mission_duration'][0],mission_profile['mission_arrival_time']+ mission_profile['mission_deadline'])
                 self.missionScheduler.generateAndAddMission(env, mission_profile)
                 allocate_num += 1
 
@@ -222,15 +206,20 @@ class BaseAlgorithmModule:
             env (AirFogSimEnv): The environment object.
         """
         distance_threshold = self.missionScheduler.getConfig(env, 'distance_threshold')
+        observe_threshold = self.algorithmScheduler.getConfig(env, 'observe_threshold')
         traffic_interval = self.trafficScheduler.getTrafficInterval(env)
         UAVs_info = self.trafficScheduler.getUAVTrafficInfos(env)
         UAVs_mobile_pattern = {}
         for UAV_id, UAV_info in UAVs_info.items():
             current_position = UAV_info['position']
             self.trafficScheduler.updateRoute(env, UAV_id, current_position, distance_threshold, traffic_interval)
-            target_position = self.trafficScheduler.getNextPositionOfUAV(env, UAV_id)
-            # target_position = self.missionScheduler.getNearestMissionPosition(env, UAV_id, current_position)
+            next_mission_position = self.missionScheduler.getNearestMissionPosition(env, UAV_id, current_position)
+            if next_mission_position is None:
+                mission_states = self.algorithmScheduler.getBeforeTransMissionStates(env, current_position,
+                                                                                     observe_threshold)
+                cluster_center = self.algorithmScheduler.getClusterCenter(env, mission_states)
 
+            target_position = next_mission_position if next_mission_position is not None else cluster_center
             if target_position is None:
                 # 在 [0, 2π) 范围内生成一个随机角度（弧度）
                 random_angle = np.random.uniform(0, 2 * np.pi)
@@ -254,7 +243,7 @@ class BaseAlgorithmModule:
 
                 mobility_pattern = {}
                 mobility_pattern['angle'] = angle
-                mobility_pattern['phi'] = phi
+                mobility_pattern['phi'] = 0  # 强制只进行水平飞行
                 UAV_speed_range = self.trafficScheduler.getConfig(env, 'UAV_speed_range')
                 mobility_pattern['speed'] = random.uniform(UAV_speed_range[0], UAV_speed_range[1])
                 UAVs_mobile_pattern[UAV_id] = mobility_pattern
@@ -355,7 +344,17 @@ class BaseAlgorithmModule:
         reward = 0
         punish = 0
         for mission_info in last_step_succ_mission_infos:
+            # print("finish reward")
+            # finish_reward=mission_info['mission_duration_sum'] * mission_info['mission_accuracy']
+            # print(finish_reward)
+            # print("time reward")
+            # time_reward=(math.log(mission_info['mission_deadline'],2) *
+            #              (1 / (0.2 + math.exp(-mission_info['mission_deadline'] / (mission_info['mission_finish_time'] - mission_info['mission_arrival_time']))) - 1 / (
+            #                 0.2 + math.exp(-1))))
+            # print(time_reward)
+
             mission_reward = self.rewardScheduler.getRewardByMission(env, mission_info)
+
             reward += mission_reward
             sum_reward += mission_reward
         for mission_info in last_step_fail_mission_infos:

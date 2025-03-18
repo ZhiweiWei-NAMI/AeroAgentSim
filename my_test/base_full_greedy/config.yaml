@@ -1,0 +1,191 @@
+
+simulation:
+  vehicle_count: 200
+  start_simulation_time: 0 # Swipe to select the range to use the dataset
+  max_simulation_time: 500
+  simulation_interval: 0.1 # in seconds, for transmission, computation, task generation and assignment, etc.
+  traffic_interval: 0.1 # in seconds, for traffic simulation. Remember to set the same value in the SUMO configuration file; otherwise, the simulation will not work properly
+
+
+sumo:
+  sumo_config: "../../sumo_wujiaochang/osm.sumocfg"
+  sumo_osm: "../../sumo_wujiaochang/osm_bbox.osm.xml"
+  sumo_net: "../../sumo_wujiaochang/osm.net.xml"
+  sumo_port: 8813
+  export_tripinfo: True # 如果True，则导出tripinfo.xml文件（很大）
+  tripinfo_output: "../../sumo_wujiaochang/tripinfo_0.1_500s_speedpro_100v.xml"
+
+visualization:
+  icon_path: "../../icon"
+
+traffic:
+  traffic_mode: "SUMO" # "real" or "SUMO"
+  tripinfo: "../../sumo_wujiaochang/tripinfo_0.1_500s_speedpro_100v.csv" # The path to the SUMO tripinfo file
+  start_traffic_time: 0 # Swipe to select the range to use the dataset
+  traffic_interval: 0.1 # in seconds, for traffic simulation. Remember to set the same value in the SUMO configuration file; otherwise, the simulation will not work properly
+  vehicle_speed_range: [[5.55,9.72],[9.72,13.88],[13.88,18.05],[18.05,22.22]] # m/s 20-35 35-50 50-65 65-80km/h
+  vehicle_speed_probability: [0.75,0.1,0.1,0.05]
+  UAV_z_range: [100, 100] # The range of z coordinates for UAVs
+  UAV_speed_range: [20,20] # The speed of UAV (distance unit per timeslot)[10,30]
+  uav_traffic_file: "path/to/uav_traffic_file.csv" # UAV traffic file
+  max_n_vehicles: 200 # Number of vehicles to simulate
+  max_n_UAVs: 10 # Number of UAVs to simulate. UAVs are randomly generated in the simulation area initially
+  max_n_RSUs: 5 # Number of UAVs to simulate. RSU are generated in fixed position in the simulation area initially
+  RSU_positions: [[800, 500, 0], [600, 1200, 0], [2300, 700, 0], [2200, 1800, 0], [1300, 1500, 0]] # List of RSU positions, each RSU is represented by a list of x, y, z coordinates
+  max_n_cloudServers: 1 # Number of cloud servers
+  arrival_lambda: 3 # The rate at which vehicles arrive at the network per second (in Poisson distribution)
+  distance_threshold: 150 # The distance threshold to check if the node is reach target position
+  nonfly_zone_coordinates: [[[1000, 1200], [1200, 1200], [1200, 1000], [1000, 1000]],[[1500, 1700], [1700, 1700], [1700, 1500], [1500, 1500]]] # The non-fly zones in the simulation area, each zone is represented by a list of x1, y1, x2, y2, x3, y3 coordinates
+
+task: # default task profile for all nodes
+  tti_threshold: 0.5 # The threshold of TTI for task offloading
+  hard_ddl: 2 # The hard deadline for tasks, default is 2
+  task_generation_model: "None" # supported model:['Poisson', 'Uniform', 'Normal', 'Exponential', 'None']
+  task_generation_kwargs:
+    lambda: 0.5 # Poission -> lambda; Uniform -> low, high; Normal -> mean, std; Exponential -> beta
+  task_min_cpu: 0.2
+  task_max_cpu: 0.7
+  task_min_size: 0.2
+  task_max_size: 0.7
+  task_min_required_returned_size: 0
+  task_max_required_returned_size: 0
+  task_min_deadline: 1
+  task_max_deadline: 2
+  task_min_priority: 0.5
+  task_max_priority: 1
+  cpu_model: "Uniform" # supported model:['Uniform', 'Normal']
+  cpu_kwargs:
+    low: 0.2
+    high: 0.7
+  size_model: "Uniform" # supported model:['Uniform', 'Normal']
+  size_kwargs:
+    low: 0.2
+    high: 0.7
+  deadline_model: "Uniform" # supported model:['Uniform', 'Normal']
+  deadline_kwargs:
+    low: 0.5
+    high: 1
+  priority_model: "Uniform" # supported model:['Uniform', 'Normal']
+  priority_kwargs:
+    low: 0.5
+    high: 1
+  required_returned_size_model: "Uniform" # supported model:['Uniform', 'Normal']
+  required_returned_size_kwargs:
+    low: 0
+    high: 0
+
+task_profile: # task profile for each node type
+  task_node_gen_poss: 0.5 # The possibility of generating a task node when inializing the node
+  task_node_profiles: [{'type':'UAV', 'max_node_num': 30}, {'type':'vehicle', 'max_node_num': 20}] # The types of task nodes and the maximum number of nodes of each type
+  vehicle: # The profile of vehicles
+    lambda: 0.5
+  uav: # The profile of UAVs
+    lambda: 0.5
+
+fog_profile:
+  vehicle:
+    cpu: 2 # CPU capacity of vehicles
+    memory: 1 # Memory capacity of vehicles
+    storage: 1 # Storage capacity of vehicles
+  uav:
+    cpu: 3 # CPU capacity of UAVs
+    memory: 1 # Memory capacity of UAVs
+    storage: 1 # Storage capacity of UAVs
+  rsu:
+    cpu: 10 # CPU capacity of RSUs
+    memory: 1 # Memory capacity of RSUs
+    storage: 1 # Storage capacity of RSUs
+  cloud:
+    cpu: 100 # CPU capacity of cloud servers
+    memory: 1 # Memory capacity of cloud servers
+    storage: 1 # Storage capacity of cloud servers
+
+state_attribute:
+  log_state: False # Whether to log the state attributes
+  time_window: 3 # The time window for state attributes statistics
+  fog_node_state_attributes: ['position_x', 'position_y', 'position_z', 'speed', 'fog_profile', 'node_type']
+  task_node_state_attributes: ['position_x', 'position_y', 'position_z', 'speed', 'task_profile', 'node_type']
+  task_state_attributes: ['task_node_id', 'task_size', 'task_cpu', 'required_returned_size', 'task_deadline', 'task_priority', 'task_arrival_time', 'task_lifecycle_state']
+
+channel:
+  V2U_distance: 5000
+  V2I_distance: 200
+  U2I_distance: 2000
+  outage_model: 'Rayleigh' # supported model:['Rayleigh'], further implementation can be added in airfogsim/channel_callback/*_callback.py
+  outage_snr_threshold: 10 # The SNR threshold for outage detection
+  V2V:
+    pathloss_model: 'V2V_urban_tr37885'
+    shadowing_model: '3GPP_LogNormal'
+    fastfading_model: 'Rayleigh'
+  V2I:
+    pathloss_model: 'UMa_LOS_tr38901'
+    shadowing_model: '3GPP_LogNormal'
+    fastfading_model: 'Rayleigh'
+  V2U:
+    pathloss_model: 'free_space'
+    shadowing_model: '3GPP_LogNormal'
+    fastfading_model: 'Rayleigh'
+  U2I:
+    pathloss_model: 'free_space'
+    shadowing_model: '3GPP_LogNormal'
+    fastfading_model: 'Rayleigh'
+  U2U:
+    pathloss_model: 'free_space'
+    shadowing_model: '3GPP_LogNormal'
+    fastfading_model: 'Rayleigh'
+  I2I:
+    pathloss_model: 'free_space'
+    shadowing_model: '3GPP_LogNormal'
+    fastfading_model: 'Rayleigh'
+
+sensing:
+  sensors_per_node: 4 # The maximum number of sensors on a node
+  node_type: ['UAV','vehicle']
+  sensor_type_num: 4
+
+mission:
+  UAV_height: 100
+  TTL_range: [40,50] # [60,80]
+  duration_range: [5,10] # [1,3] [5,10] [2,4]
+  mission_size_range: [1,2] # [10,20] [20,40] [30,50]
+  sensor_accuracy_range: [0.1,0.9]
+  boundary_threshold: [1000,500,1000,1000]
+  distance_threshold: 100
+  TA_distance_Veh: 100
+  TA_distance_UAV: 800
+  predictable_seconds: 2
+  relay_probability: 1.0
+  UAV_execution_probability: None
+  UAV_time_discount: 0.5
+  mission_generation_model: "Poisson" # supported model:['Poisson', 'Uniform', 'Normal', 'Exponential']
+  generation_model_args:
+    Poisson:
+      lambda: 0.0
+    Uniform:
+      low: 0
+      high: 1
+    Normal:
+      mean: 0
+      std: 1
+    Exponential:
+      beta: 1
+  mission_position_model: "Junction" # supported model:['Uniform', 'Normal','Junction']
+  position_model_args:
+    Normal:
+      mean: 0.5 # Mean
+      std: 0.2 # Standard Deviation
+      rho: 0 # Related Coefficient
+
+energy:
+  initial_energy_range: [48000,52000]
+  fly_unit_cost: 25
+  hover_unit_cost: 12
+  sensing_unit_cost: 5
+  receive_unit_cost: 1
+  send_unit_cost: 1
+
+algorithm:
+  observe_threshold: 500
+  cluster_eps: 250
+  delay_wait_time: 2
+  max_delay_times: 15

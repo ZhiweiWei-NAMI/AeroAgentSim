@@ -39,6 +39,7 @@ class ReplayBuffer:
         print(f"ReplayBuffer saved to {file_path}")
 
     def load(self, file_path):
-        with open(file_path, 'rb') as f:
-            self.buffer = pickle.load(f)
-        print(f"ReplayBuffer loaded from {file_path}")
+        pass
+        # with open(file_path, 'rb') as f:
+        #     self.buffer = pickle.load(f)
+        # print(f"ReplayBuffer loaded from {file_path}")

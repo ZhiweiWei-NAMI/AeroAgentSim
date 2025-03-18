@@ -1,8 +1,12 @@
 import random
 from collections import deque
+
+from traci import junction
+
 from ..entities.mission import Mission
 from airfogsim.utils import math_utils
 from airfogsim.enum_const import MissionFinalStateEnum
+from airfogsim.utils import node_utils
 
 import numpy as np
 
@@ -12,10 +16,11 @@ class MissionManager:
     """
     SUPPORTED_TASK_GENERATION_MODELS = ['Poisson', 'Uniform', 'Normal', 'Exponential']
 
-    def __init__(self, config_mission, config_sensing,start_simulation_time):
+    def __init__(self, config_mission, config_sensing,sumo_junction_positions,start_simulation_time):
         """The constructor of the MissionManager class.
         """
         self._start_simulation_time=start_simulation_time
+
         self._to_generate_missions_profile = []  # list: item is mission_profile dicts
         self._executing_missions = {}  # key: node_id, value: list of missions
         self._success_missions = {}  # key: node_id, value: list of success missions
@@ -39,13 +44,15 @@ class MissionManager:
         self._generation_model_args = self._config_mission['generation_model_args']
         self._mission_position_model = self._config_mission['mission_position_model']
         self._position_model_args= self._config_mission['position_model_args']
+        self._boundary_threshold=self._config_mission['boundary_threshold']
         self._distance_threshold=self._config_mission['distance_threshold']
         self._TA_distance_Veh = self._config_mission['TA_distance_Veh']
         self._TA_distance_UAV = self._config_mission['TA_distance_UAV']
         self._relay_probability = self._config_mission['relay_probability']
         self._UAV_execution_probability = self._config_mission['UAV_execution_probability']
-
+        self._UAV_time_discount=self._config_mission['UAV_time_discount']
         self._sensor_type_num = config_sensing['sensor_type_num']
+        self._sumo_junction_positions=self._deleteRemotePositions(sumo_junction_positions)
 
         self._last_generation_time=self._start_simulation_time
 
@@ -65,6 +72,16 @@ class MissionManager:
         self._mission_id_counter += 1
         return self._mission_id_counter
 
+    def _deleteRemotePositions(self,position_list):
+        for i in reversed(range(len(position_list))):
+            position = position_list[i]
+            if (position[0]<=(self._x_range[0]+self._boundary_threshold[2]) or
+                position[0]>=(self._x_range[1]-self._boundary_threshold[3]) or
+                position[1]<=(self._y_range[0]+self._boundary_threshold[0]) or
+                position[1]>=(self._y_range[1]-self._boundary_threshold[1]) ):
+                del position_list[i]
+        return position_list
+
     def _generateBasicMissionProfile(self):
         new_mission_profile = {}
         new_mission_profile['mission_id'] = f'Mission_{self.__getNewMissionId()}'
@@ -82,6 +99,15 @@ class MissionManager:
                                                            norm_rho, self._x_range,self._y_range)
             x=(self._x_range[1]-self._x_range[0])*norm_x+self._x_range[0]
             y=(self._y_range[1]-self._y_range[0])*norm_y+self._y_range[0]
+        elif self._mission_position_model=="Junction":
+            junction_idx=random.randint(0,len(self._sumo_junction_positions)-1)
+            base_position=self._sumo_junction_positions[junction_idx]
+            x_min=max(self._x_range[0],base_position[0]-20)
+            x_max=min(self._x_range[1],base_position[0]+20)
+            y_min=max(self._y_range[0],base_position[1]-20)
+            y_max=min(self._y_range[1],base_position[1]+20)
+            x=random.uniform(x_min, x_max)
+            y=random.uniform(y_min, y_max)
 
         new_mission_profile['appointed_node_id'] = None
         new_mission_profile['appointed_sensor_id'] = None
@@ -92,7 +118,8 @@ class MissionManager:
         size_min, size_max = self._mission_size_range
         new_mission_profile['mission_size'] = round(random.uniform(size_min, size_max), 2)
         new_mission_profile['mission_sensor_type'] = 'sensor_type_' + str(random.randint(1, self._sensor_type_num))
-        new_mission_profile['mission_accuracy'] = random.random()  # 随机生成0-1之间的精度
+        acc_min,acc_max=self._sensor_accuracy_range
+        new_mission_profile['mission_accuracy'] =round(random.uniform(acc_min,acc_max), 2)  # 随机生成0-1之间的精度
         new_mission_profile['mission_start_time'] = None
         new_mission_profile['mission_deadline'] = random.randint(self._TTL_range[0],self._TTL_range[1]) # TTL
         new_mission_profile[
@@ -162,6 +189,15 @@ class MissionManager:
         Returns:
             Mission: A new mission object.
         """
+        appointed_node_id=mission_profile['appointed_node_id']
+        mission_profile['mission_duration_original'] = mission_profile['mission_duration'].copy()
+        if appointed_node_id is not None:
+            node_type=node_utils.getNodeTypeById(appointed_node_id)
+            # ratio=mission_profile['mission_accuracy']/mission_profile['appointed_sensor_accuracy']
+            # mission_profile['mission_duration'] = [duration * ratio for duration in
+            #                                        mission_profile['mission_duration']]
+            if node_type =='U':
+                mission_profile['mission_duration'] = [duration * self._UAV_time_discount for duration in mission_profile['mission_duration']]
         return Mission(mission_profile)
 
     def addMission(self, mission, sensor_manager):
@@ -344,12 +380,14 @@ class MissionManager:
         """
         return len(self._to_generate_missions_profile)
 
-    def getExecutingMissionNum(self):
+    def getExecutingMissionNum(self,node_id=None):
         """Get the executing missions total number.
 
         Returns:
             int: The total count of executing missions.
         """
+        if node_id is not None:
+            return len(self._executing_missions.get(node_id, []))
         executing_count = 0
         for node_id in self._executing_missions:
             executing_count += len(self._executing_missions[node_id])
@@ -432,7 +470,7 @@ class MissionManager:
         self._to_generate_missions_profile = [profile for profile in self._to_generate_missions_profile if
                                               profile['mission_id'] not in mission_profile_ids]
 
-    def failExecutingMissionsByNodeId(self, to_fail_node_id,current_time):
+    def failExecutingMissionsByNodeId(self, to_fail_node_id,current_time,simulation_interval):
         """Set fail missions
 
         Args:
@@ -447,9 +485,22 @@ class MissionManager:
             mission_set = self._executing_missions.get(node_id)
             if node_id == to_fail_node_id:
                 for mission in mission_set.copy():
+                    if mission.isRelatedToNode(node_id) is False:
+                        continue
                     mission.setMissionFinishTime(current_time)
+                    if mission.isSensingFinished():
+                        if current_time-mission.getLastReturnTime()<simulation_interval*2:
+                            mission.setMissionFinalStateCode(MissionFinalStateEnum.FORCE_FAIL)
+                        else:
+                            mission.setMissionFinalStateCode(MissionFinalStateEnum.TRANSMISSION_FAIL)
+                    else:
+                        if current_time-mission.getLastSensingTime()<simulation_interval*2:
+                            mission.setMissionFinalStateCode(MissionFinalStateEnum.FORCE_FAIL)
+                        else:
+                            mission.setMissionFinalStateCode(MissionFinalStateEnum.SENSING_FAIL)
                     failed_mission_set = self._failed_missions.get(mission.getAppointedNodeId(), [])
                     failed_mission_set.append(mission)
+                    self._recently_fail_100_missions.append(mission)
                     self._failed_missions[mission.getAppointedNodeId()] = failed_mission_set
                     mission_set.remove(mission)
                     self._executing_missions[node_id] = mission_set
@@ -460,28 +511,34 @@ class MissionManager:
                         mission.setMissionFinishTime(current_time)
                         failed_mission_set = self._failed_missions.get(mission.getAppointedNodeId(), [])
                         failed_mission_set.append(mission)
+                        self._recently_fail_100_missions.append(mission)
                         self._failed_missions[mission.getAppointedNodeId()] = failed_mission_set
                         mission_set.remove(mission)
                         self._executing_missions[node_id] = mission_set
     def failNewMission(self,mission,current_time):
         mission.setMissionFinishTime(current_time)
+        if mission.isSensingFinished():
+            mission.setMissionFinalStateCode(MissionFinalStateEnum.TRANSMISSION_FAIL)
+        else:
+            mission.setMissionFinalStateCode(MissionFinalStateEnum.SENSING_FAIL)
         self._failed_missions[mission.getAppointedNodeId()] = self._failed_missions.get(mission.getAppointedNodeId(), [])
         self._failed_missions[mission.getAppointedNodeId()].append(mission)
+        self._recently_fail_100_missions.append(mission)
 
-    def getExecutingMissions(self,node_id=None):
+    def getExecutingMissions(self,node_id=None,node_type=None):
         """Get executing missions
 
         Args:
 
         Returns:
-            list: Executing missions list.
+            dict: Executing missions dict.
 
         Examples:
             mission_manager.getExecutingMissions()
             mission_manager.getExecutingMissions('UAV_0')
         """
-        if node_id is None:
-            missions=self._executing_missions.copy()
+        if node_id is  None:
+            missions=self._executing_missions
         else:
             missions = self._executing_missions.get(node_id, [])
         return missions

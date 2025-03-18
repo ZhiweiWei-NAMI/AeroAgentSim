@@ -3,7 +3,11 @@ import math
 
 import os
 import sys
+from collections import Counter
+
 import matplotlib.pyplot as plt
+import numpy as np
+
 from airfogsim.enum_const import MissionFinalStateEnum
 
 
@@ -74,6 +78,8 @@ class AirFogSimEvaluation:
         self.sum_success_reward = 0
         self.avg_reward = 0
         self.avg_success_reward = 0
+
+        self.UAV_rewards={}
 
         # 5.ratio
         # 5.1 completion ratio
@@ -247,9 +253,24 @@ class AirFogSimEvaluation:
         early_failed_missions_num = self.env.mission_manager.getEarlyFailedMissionNum()
         sum_over_missions = success_missions_num + failed_missions_num + early_failed_missions_num
 
+        # print("test")
+        # print("to_generate_missions_num", to_generate_missions_num)
+        # print("executing_missions_num", executing_missions_num)
+        # print("success_missions_num", success_missions_num)
+        # print("failed_missions_num", failed_missions_num)
+        # print("early_failed_missions_num", early_failed_missions_num)
+        # print("sum_over_missions", sum_over_missions)
+
         last_step_succ_mission_infos = self.algorithm_module.missionScheduler.getLastStepSuccMissionInfos(self.env)
         last_step_fail_mission_infos = self.algorithm_module.missionScheduler.getLastStepFailMissionInfos(self.env)
         last_step_early_fail_mission_infos = self.algorithm_module.missionScheduler.getLastStepEarlyFailMissionInfos(self.env)
+
+        # print("last_step_succ_mission_infos", len(last_step_succ_mission_infos))
+        # print("last_step_fail_mission_infos", len(last_step_fail_mission_infos))
+        # print("last_step_early_fail_mission_infos", len(last_step_early_fail_mission_infos))
+
+        # if failed_missions_num>0:
+        #     raise False
 
         # 1.仿真时间
         self.simulation_time = self.env.simulation_time
@@ -316,6 +337,8 @@ class AirFogSimEvaluation:
         self.avg_reward = float(self.sum_reward / self.finish_mission_num) if self.finish_mission_num != 0 else 0
         self.avg_success_reward = float(self.sum_success_reward / self.success_missions_num) if self.success_missions_num != 0 else 0
 
+        self.UAV_rewards=self.env.getUAVRewards()
+
         # 5.ratio
         # 5.1 completion ratio (all)
         self.completion_ratio = self.env.mission_manager.getMissionCompletionRatio()[0]  # return: (ratio, mission_num)
@@ -324,9 +347,13 @@ class AirFogSimEvaluation:
             duration = mission_info['mission_duration_sum']
             finish_time = mission_info['mission_finish_time']
             arrival_time = mission_info['mission_arrival_time']
+            duration_original_sum=mission_info['mission_duration_original_sum']
+            mission_duration_sum=mission_info['mission_duration_sum']
 
-            weight = math.log(10, 1 + TTL - duration)
-            ratio = (TTL - duration) / (finish_time - arrival_time - duration)
+            # weight = math.log(1 + TTL - duration,10)
+            weight=1
+            # ratio = (TTL - duration) / (finish_time - arrival_time - duration)
+            ratio=duration_original_sum/mission_duration_sum
 
             self.sum_weight += weight
             self.sum_weighted_acceleration_ratio += weight * ratio
@@ -504,7 +531,7 @@ class AirFogSimEvaluation:
 
 
     def drawAndResetStepRecord(self, episode):
-        path_to_save = self.base_path + f'episode_{episode}/'
+        path_to_save = self.base_path + f'episode/episode_{episode}/'
         if not os.path.exists(path_to_save):
             os.makedirs(path_to_save)
 
@@ -598,34 +625,42 @@ class AirFogSimEvaluation:
         # 失败类型分类统计-UAV
         x_indices = list(range(1, self.step_num + 1))
         plt.figure(clear=True)
-        plt.plot(x_indices, self.step_fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.SENSING_FAIL.value], color='red')
-        plt.plot(x_indices, self.step_fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.TRANSMISSION_FAIL.value], color='orange')
+        plt.plot(x_indices, self.step_fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.FORCE_FAIL.value],label='Force', color='red')
+        plt.plot(x_indices, self.step_fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.SENSING_FAIL.value],label='Sense', color='deepskyblue')
+        plt.plot(x_indices, self.step_fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.TRANSMISSION_FAIL.value],label='Trans', color='orange')
         plt.title('Fail on Different Stage UAV')
         plt.xlabel('Step')
         plt.ylabel('The Number of Missions')
         plt.grid(True, which='both', linestyle='--', linewidth=0.1, alpha=0.7)
+        plt.legend()
         plt.savefig(path_to_save + 'FailOnDifferentStage_UAV.png')
         plt.close()
 
         # 失败类型分类统计-Veh
         x_indices = list(range(1, self.step_num + 1))
         plt.figure(clear=True)
-        plt.plot(x_indices, self.step_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.SENSING_FAIL.value], color='red')
-        plt.plot(x_indices, self.step_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.TRANSMISSION_FAIL.value], color='orange')
+        plt.plot(x_indices, self.step_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.FORCE_FAIL.value],label='Force', color='red')
+        plt.plot(x_indices, self.step_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.SENSING_FAIL.value],label='Sense', color='deepskyblue')
+        plt.plot(x_indices, self.step_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.TRANSMISSION_FAIL.value],label='Trans', color='orange')
         plt.title('Fail on Different Stage Vehicle')
         plt.xlabel('Step')
         plt.ylabel('The Number of Missions')
         plt.grid(True, which='both', linestyle='--', linewidth=0.1, alpha=0.7)
+        plt.legend()
         plt.savefig(path_to_save + 'FailOnDifferentStage_Veh.png')
         plt.close()
 
         # mission分配时可用sensor数量
-        x_indices = list(range(1, len(self.available_sensor_num_list)+1))
+        count_data = Counter(self.available_sensor_num_list)
+        # 获取数字和它们的出现次数
+        numbers = list(count_data.keys())  # 数字
+        counts = list(count_data.values())  # 每个数字出现的次数
+        # 创建条形图
         plt.figure(clear=True)
-        plt.plot(x_indices, self.available_sensor_num_list, color='green')
+        plt.bar(numbers, counts)
         plt.title('Available Sensor Num')
-        plt.xlabel('Mission')
-        plt.ylabel('The Number of Sensors')
+        plt.xlabel('Num')
+        plt.ylabel('Frequency')
         plt.grid(True, which='both', linestyle='--', linewidth=0.1, alpha=0.7)
         plt.savefig(path_to_save + 'AvailableSensorNum.png')
         plt.close()
@@ -637,9 +672,9 @@ class AirFogSimEvaluation:
         max_y = self.env.config['traffic']['y_range'][1]
         for i, (UAV_id, positions) in enumerate(self.UAV_positions.items()):
             plt.figure(clear=True)
-            plt.gca().invert_yaxis()
             plt.xlim(min_x, max_x)
             plt.ylim(min_y, max_y)
+            plt.gca().invert_yaxis()
             row = int(i / 5)
             col = int(i % 5)
             UAV_positions_x = [position[0] for position in positions]
@@ -648,20 +683,24 @@ class AirFogSimEvaluation:
             UAV_mission_positions_x = [position[0] for position in mission_positions]
             UAV_mission_positions_y = [position[1] for position in mission_positions]
             # 画出轨迹
-            plt.plot(UAV_positions_x, UAV_positions_y, color='blue', linestyle='-', linewidth=2, zorder=1,
+            plt.plot(UAV_positions_x, UAV_positions_y, color='blue', linestyle='-', linewidth=0.2, zorder=1,
                      label='Trajectory')
             # 画出轨迹的各个点：
-            # 中间的点为蓝色（如果有）
-            if len(UAV_positions_x) > 2:
-                plt.scatter(UAV_positions_x[1:-1], UAV_positions_y[1:-1], color='blue', s=2, zorder=2,
-                            label='Trajectory Intermediate')
-            # 第一个点为绿色
-            plt.scatter(UAV_positions_x[0], UAV_positions_y[0], color='green', s=20, zorder=2, label='Trajectory Start')
-            # 最后一个点为红色
-            plt.scatter(UAV_positions_x[-1], UAV_positions_y[-1], color='red', s=20, zorder=2, label='Trajectory End')
+            # # 中间的点为蓝色（如果有）
+            # if len(UAV_positions_x) > 2:
+            #     plt.scatter(UAV_positions_x[1:-1], UAV_positions_y[1:-1], color='blue', s=2, zorder=2,
+            #                 label='Trajectory Intermediate')
+
+            alphas = np.linspace(0.5, 1, len(mission_positions), dtype=float)  # 从 0.1（更透明）到 1（更不透明）
             # 画mission位置，设置 zorder 高于轨迹，保证不会被覆盖
-            plt.scatter(UAV_mission_positions_x, UAV_mission_positions_y, color='orange', s=20, zorder=3,
-                        label='Scatter Points')
+            for i in range(len(UAV_mission_positions_x)):
+                plt.scatter(UAV_mission_positions_x[i], UAV_mission_positions_y[i],
+                            color='orange', s=100, alpha=float(alphas[i]), zorder=3)
+            # 第一个点为绿色
+            plt.scatter(UAV_positions_x[0], UAV_positions_y[0], color='limegreen', s=20, zorder=4, label='Trajectory Start')
+            # 最后一个点为红色
+            plt.scatter(UAV_positions_x[-1], UAV_positions_y[-1], color='red', s=20, zorder=4, label='Trajectory End')
+
             # 设置横纵轴等
             plt.xlabel('X')
             plt.ylabel('Y')
@@ -924,27 +963,31 @@ class AirFogSimEvaluation:
 
         # 失败类型分类统计-UAV
         plt.figure(clear=True)
-        plt.plot(x_indices, self.episode_fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.SENSING_FAIL.value],
+        plt.plot(x_indices, self.episode_fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.FORCE_FAIL.value],label='Force',
                  color='red')
-        plt.plot(x_indices, self.episode_fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.TRANSMISSION_FAIL.value],
+        plt.plot(x_indices, self.episode_fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.SENSING_FAIL.value],label='Sense',
+                 color='deepskyblue')
+        plt.plot(x_indices, self.episode_fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.TRANSMISSION_FAIL.value],label='Trans',
                  color='orange')
         plt.title('Fail on Different Stage UAV')
         plt.xlabel('Step')
         plt.ylabel('The Number of Missions')
         plt.grid(True, which='both', linestyle='--', linewidth=0.1, alpha=0.7)
+        plt.legend()
         plt.savefig(path_to_save + 'Fail_On_Different_Stage_UAV.png')
         plt.close()
 
         # 失败类型分类统计-Veh
         plt.figure(clear=True)
-        plt.plot(x_indices, self.episode_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.SENSING_FAIL.value],
-                 color='red')
-        plt.plot(x_indices, self.episode_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.TRANSMISSION_FAIL.value],
+        plt.plot(x_indices, self.episode_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.FORCE_FAIL.value],label='Force', color='red')
+        plt.plot(x_indices, self.episode_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.SENSING_FAIL.value],label='Sense', color='deepskyblue')
+        plt.plot(x_indices, self.episode_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.TRANSMISSION_FAIL.value],label='Trans',
                  color='orange')
         plt.title('Fail on Different Stage Vehicle')
         plt.xlabel('Step')
         plt.ylabel('The Number of Missions')
         plt.grid(True, which='both', linestyle='--', linewidth=0.1, alpha=0.7)
+        plt.legend()
         plt.savefig(path_to_save + 'Fail_On_Different_Stage_Veh.png')
         plt.close()
 
@@ -1057,7 +1100,7 @@ class AirFogSimEvaluation:
 
 
     def stepRecordToFile(self, episode):
-        folder_dir=self.base_path + f"episode_{episode}/"
+        folder_dir=self.base_path + f"episode/episode_{episode}/"
         if not os.path.exists(folder_dir):
             os.makedirs(folder_dir)
         file_dir=folder_dir+f"evaluation.json"
@@ -1132,9 +1175,9 @@ class AirFogSimEvaluation:
 
     def drawStepRecordsByFile(self, episode):
         # json文件路径
-        file_path = self.base_path + f"episode_{episode}/evaluation.json"
+        file_path = self.base_path + f"episode/episode_{episode}/evaluation.json"
         # 保存路径
-        path_to_save = self.base_path + f'episode_{episode}/'
+        path_to_save = self.base_path + f'episode/episode_{episode}/'
 
         if not os.path.exists(path_to_save):
             os.makedirs(path_to_save)
@@ -1292,8 +1335,10 @@ class AirFogSimEvaluation:
         # 失败类型分类统计-UAV
         x_indices = list(range(1, step_num + 1))
         plt.figure(clear=True)
+        plt.plot(x_indices, step_fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.FORCE_FAIL.value],
+                 label='Force',color='red')
         plt.plot(x_indices, step_fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.SENSING_FAIL.value],
-                 label='Sense',color='red')
+                 label='Sense',color='deepskyblue')
         plt.plot(x_indices, step_fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.TRANSMISSION_FAIL.value],
                  label='Trans',color='orange')
         plt.title('Fail on Different Stage UAV')
@@ -1307,8 +1352,8 @@ class AirFogSimEvaluation:
         # 失败类型分类统计-Veh
         x_indices = list(range(1, step_num + 1))
         plt.figure(clear=True)
-        plt.plot(x_indices, step_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.SENSING_FAIL.value],
-                 label='Sense',color='red')
+        plt.plot(x_indices, step_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.FORCE_FAIL.value],label='Force', color='red')
+        plt.plot(x_indices, step_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.SENSING_FAIL.value],label='Sense', color='deepskyblue')
         plt.plot(x_indices, step_fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.TRANSMISSION_FAIL.value],
                  label='Trans',color='orange')
         plt.title('Fail on Different Stage Vehicle')
@@ -1320,20 +1365,29 @@ class AirFogSimEvaluation:
         plt.close()
 
         # mission分配时可用sensor数量
-        x_indices = list(range(1, len(available_sensor_num_list) + 1))
+        count_data = Counter(self.available_sensor_num_list)
+        # 获取数字和它们的出现次数
+        numbers = list(count_data.keys())  # 数字
+        counts = list(count_data.values())  # 每个数字出现的次数
+        # 创建条形图
         plt.figure(clear=True)
-        plt.plot(x_indices, self.available_sensor_num_list,label='Num', color='green')
+        plt.bar(numbers, counts)
         plt.title('Available Sensor Num')
-        plt.xlabel('Mission')
-        plt.ylabel('The Number of Sensors')
+        plt.xlabel('Num')
+        plt.ylabel('Frequency')
         plt.grid(True, which='both', linestyle='--', linewidth=0.1, alpha=0.7)
-        plt.legend()
         plt.savefig(path_to_save + 'Available_Sensor_Num.png')
         plt.close()
 
         # UAV轨迹与mission位置
+        min_x = self.env.config['traffic']['x_range'][0]
+        max_x = self.env.config['traffic']['x_range'][1]
+        min_y = self.env.config['traffic']['y_range'][0]
+        max_y = self.env.config['traffic']['y_range'][1]
         for i, (UAV_id, positions) in enumerate(UAV_positions.items()):
             plt.figure(clear=True)
+            plt.xlim(min_x, max_x)
+            plt.ylim(min_y, max_y)
             plt.gca().invert_yaxis()
             row=int(i/5)
             col=int(i%5)
@@ -1343,18 +1397,21 @@ class AirFogSimEvaluation:
             UAV_mission_positions_x=[position[0] for position in mission_positions]
             UAV_mission_positions_y = [position[1] for position in mission_positions]
             # 画出轨迹
-            plt.plot(UAV_positions_x, UAV_positions_y, color='blue', linestyle='-', linewidth=2, zorder=1, label='Trajectory')
+            plt.plot(UAV_positions_x, UAV_positions_y, color='blue', linestyle='-', linewidth=0.2, zorder=1, label='Trajectory')
             # 画出轨迹的各个点：
             # 中间的点为蓝色（如果有）
-            if len(UAV_positions_x) > 2:
-                plt.scatter(UAV_positions_x[1:-1], UAV_positions_y[1:-1], color='blue', s=2, zorder=2, label='Trajectory Intermediate')
-            # 第一个点为绿色
-            plt.scatter(UAV_positions_x[0], UAV_positions_y[0], color='green', s=20, zorder=2, label='Trajectory Start')
-            # 最后一个点为红色
-            plt.scatter(UAV_positions_x[-1], UAV_positions_y[-1], color='red', s=20, zorder=2, label='Trajectory End')
+            # if len(UAV_positions_x) > 2:
+            #     plt.scatter(UAV_positions_x[1:-1], UAV_positions_y[1:-1], color='blue', s=2, zorder=2, label='Trajectory Intermediate')
 
+            alphas = np.linspace(0.5, 1, len(mission_positions), dtype=float)  # 从 0.1（更透明）到 1（更不透明）
             # 画mission位置，设置 zorder 高于轨迹，保证不会被覆盖
-            plt.scatter(UAV_mission_positions_x, UAV_mission_positions_y, color='orange', s=20, zorder=3, label='Scatter Points')
+            for i in range(len(UAV_mission_positions_x)):
+                plt.scatter(UAV_mission_positions_x[i], UAV_mission_positions_y[i],
+                            color='orange', s=100, alpha=float(alphas[i]), zorder=3)            # 第一个点为绿色
+            plt.scatter(UAV_positions_x[0], UAV_positions_y[0], color='limegreen', s=20, zorder=4, label='Trajectory Start')
+            # 最后一个点为红色
+            plt.scatter(UAV_positions_x[-1], UAV_positions_y[-1], color='red', s=20, zorder=4, label='Trajectory End')
+
             # 设置横纵轴等
             plt.xlabel('X')
             plt.ylabel('Y')
@@ -1648,7 +1705,7 @@ class AirFogSimEvaluation:
 
         # 绘图
         # 过程监控
-        plt.figure()
+        plt.figure(clear=True)
         plt.plot(episode_nums, to_generate_missions_num, label='To generate', color='gray')
         plt.plot(episode_nums, executing_missions_num, label='Executing', color='deepskyblue')
         plt.plot(episode_nums, success_missions_num, label='Success', color='limegreen')
@@ -1690,28 +1747,32 @@ class AirFogSimEvaluation:
 
         # 失败类型分类统计-UAV
         plt.figure(clear=True)
+        plt.plot(episode_nums, fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.FORCE_FAIL.value],
+                 label='Force',color='red')
         plt.plot(episode_nums, fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.SENSING_FAIL.value],
-                 color='red')
+                 label='Sense',color='deepskyblue')
         plt.plot(episode_nums, fail_differ_type_mission_num_on_UAV[MissionFinalStateEnum.TRANSMISSION_FAIL.value],
-                 color='orange')
+                 label='Trans',color='orange')
         plt.title('Fail on Different Stage UAV')
         plt.xlabel('Step')
         plt.ylabel('The Number of Missions')
         plt.grid(True, which='both', linestyle='--', linewidth=0.1, alpha=0.7)
+        plt.legend()
         plt.savefig(save_dir + 'Fail_On_Different_Stage_UAV.png')
         plt.close()
 
         # 失败类型分类统计-Veh
         x_indices = list(range(1, step_num + 1))
         plt.figure(clear=True)
-        plt.plot(episode_nums, fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.SENSING_FAIL.value],
-                 color='red')
-        plt.plot(episode_nums, fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.TRANSMISSION_FAIL.value],
+        plt.plot(episode_nums, fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.FORCE_FAIL.value],label='Force', color='red')
+        plt.plot(episode_nums, fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.SENSING_FAIL.value],label='Sense', color='deepskyblue')
+        plt.plot(episode_nums, fail_differ_type_mission_num_on_vehicle[MissionFinalStateEnum.TRANSMISSION_FAIL.value],label='Trans',
                  color='orange')
         plt.title('Fail on Different Stage Vehicle')
         plt.xlabel('Step')
         plt.ylabel('The Number of Missions')
         plt.grid(True, which='both', linestyle='--', linewidth=0.1, alpha=0.7)
+        plt.legend()
         plt.savefig(save_dir + 'Fail_On_Different_Stage_Veh.png')
         plt.close()
 
@@ -1726,7 +1787,7 @@ class AirFogSimEvaluation:
         plt.close()
 
         # 信道速率指标
-        plt.figure()
+        plt.figure(clear=True)
         plt.plot(episode_nums, avg_trans_rate, label='Avg', color='deepskyblue')
         plt.plot(episode_nums, avg_V2U_trans_rate, label='V2U', color='limegreen')
         plt.plot(episode_nums, avg_V2I_trans_rate, label='V2I', color='red')
@@ -1740,7 +1801,7 @@ class AirFogSimEvaluation:
         plt.close()
 
         # reward
-        plt.figure()
+        plt.figure(clear=True)
         plt.plot(episode_nums, avg_reward, label='Avg', color='orange')
         plt.plot(episode_nums, avg_success_reward, label='Suc', color='limegreen')
         plt.title('Reward')
@@ -1752,7 +1813,7 @@ class AirFogSimEvaluation:
         plt.close()
 
         # completion ratio
-        plt.figure()
+        plt.figure(clear=True)
         plt.plot(episode_nums, completion_ratio, label='Sum', color='limegreen')
         plt.plot(episode_nums, completion_ratio_on_vehicle, label='Vehicle', color='orange')
         plt.plot(episode_nums, completion_ratio_on_UAV, label='UAV', color='deepskyblue')
@@ -1765,7 +1826,7 @@ class AirFogSimEvaluation:
         plt.close()
 
         # acceleration ratio
-        plt.figure()
+        plt.figure(clear=True)
         plt.plot(episode_nums, weighted_acceleration_ratio, label='Weighted Acc', color='orange')
         plt.plot(episode_nums, acceleration_ratio, label='Not Weighted Acc', color='limegreen')
         plt.title('Acceleration Ratio')
@@ -1777,7 +1838,7 @@ class AirFogSimEvaluation:
         plt.close()
 
         # optimization objectives
-        plt.figure()
+        plt.figure(clear=True)
         plt.plot(episode_nums, avg_floating_time, label='Floating', color='orange')
         plt.plot(episode_nums, avg_executing_time, label='Executing', color='limegreen')
         plt.title('Time')
@@ -1819,10 +1880,10 @@ class AirFogSimEvaluation:
 
     def __getNodeTypeById(self, node_id):
         node_id = node_id.capitalize()
-        assert node_id[0] in ['V', 'I', 'U', 'C'], f'Invalid node type of {node_id}'
+        assert node_id[0] in ['V', 'R', 'U', 'C'], f'Invalid node type of {node_id}'
         if node_id[0] == 'V':
             return 'V'
-        elif node_id[0] == 'I':
+        elif node_id[0] == 'R':
             return 'I'
         elif node_id[0] == 'U':
             return 'U'
@@ -1839,3 +1900,11 @@ class AirFogSimEvaluation:
 
     def getCompletionRatio(self):
         return self.completion_ratio
+
+    def getUAVAccReward(self,UAV_idx):
+        UAV_id=self.env.traffic_manager.completeStrId(UAV_idx,"U")
+        return sum(self.UAV_rewards[UAV_id])
+
+    def getUAVAvgReward(self,UAV_idx):
+        UAV_id=self.env.traffic_manager.completeStrId(UAV_idx,"U")
+        return sum(self.UAV_rewards[UAV_id])/len(self.UAV_rewards[UAV_id])

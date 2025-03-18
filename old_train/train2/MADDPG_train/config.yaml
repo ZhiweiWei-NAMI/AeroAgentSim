@@ -140,10 +140,10 @@ sensing:
 
 mission:
   UAV_height: 100
-  TTL_range: [50,70]
+  TTL_range: [80,100]
   duration_range: [5,10] # [5,10] [2,4]
   mission_size_range: [30,50] # [10,20]
-  sensor_accuracy_range: [0,1]
+  sensor_accuracy_range: [0.1,0.9]
   distance_threshold: 150
   TA_distance_Veh: 150
   TA_distance_UAV: 600

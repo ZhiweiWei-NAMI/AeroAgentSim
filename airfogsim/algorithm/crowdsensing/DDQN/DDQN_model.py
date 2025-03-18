@@ -88,7 +88,7 @@ class Double_DQN:
         # 对每个样本找到最大 Q 值对应的动作的索引
         max_q_value, max_action_index = torch.max(q_values, dim=-1)
         # 如果小于贪婪系数就取最大值reward最大的动作
-        if np.random.random() < self.epsilon:
+        if random.random() < self.epsilon:
             is_random = False
             # 获取reward最大值对应的动作索引
             # action = masked_q_values.argmax().item()

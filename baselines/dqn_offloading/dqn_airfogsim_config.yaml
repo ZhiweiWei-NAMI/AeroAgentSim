@@ -140,7 +140,7 @@ mission:
   TTL_range: [100,200]
   duration_range: [5,10]
   mission_size_range: [10,20]
-  sensor_accuracy_range: [0,1]
+  sensor_accuracy_range: [0.1,0.9]
   distance_threshold: 150
   predictable_seconds: 2
   mission_generation_model: "Poisson" # supported model:['Poisson', 'Uniform', 'Normal', 'Exponential']

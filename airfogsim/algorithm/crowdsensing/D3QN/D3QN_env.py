@@ -6,25 +6,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from .D3QN_model import D3QN
 
-# self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-# # 输入层神经元数量（状态空间大小）
-# self.dim_states = dim_states
-# # 输出层神经元数量（动作空间大小）
-# self.dim_actions = dim_actions
-#
-# # 超参数
-# self.buffer_size = 500  # 经验池容量
-# self.lr = 2e-3  # 学习率
-# self.gamma = 0.9  # 折扣因子
-# self.epsilon = 0.9  # 探索系数
-# self.eps_end = 0.01  # 最低探索系数
-# self.eps_dec = 5e-7  # 探索系数衰减率
-# self.target_update = 200  # 目标网络的参数的更新频率
-# self.batch_size = 32  # 每次训练选取的经验数量
-# self.dim_hidden = 128  # 隐含层神经元个数
-# self.train_min_size = 200  # 经验池超过200后再训练(train_min_size>batch_size)
-# self.tau = 0.995  # 目标网络软更新平滑因子（策略网络权重）
-# self.smooth_factor = 0.995  # 最大q值平滑因子（旧值权重）
+
 class D3QN_Env:
 
     def __init__(self, dim_args, train_args):
@@ -58,8 +40,8 @@ class D3QN_Env:
         loss=self.agent.update()
         return loss
 
-    def saveModel(self,episode,final=False):
-        self.agent.save_models(episode,self.model_base_dir,final)
+    def saveModel(self,episode,final=False,succ_ratio=0):
+        self.agent.save_models(episode,self.model_base_dir,final,succ_ratio)
 
     def loadModel(self,episode,final=False):
         self.agent.load_models(episode,self.model_base_dir,final)

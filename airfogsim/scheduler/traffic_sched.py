@@ -1,10 +1,12 @@
+import random
+
 from shapely.geometry import LineString, Point
 import copy
 
 import numpy as np
 
 from .base_sched import BaseScheduler
-
+from airfogsim.utils import math_utils
 
 class TrafficScheduler(BaseScheduler):
     @staticmethod
@@ -42,20 +44,26 @@ class TrafficScheduler(BaseScheduler):
         env.uav_mobility_patterns = organized_patterns
 
     @staticmethod
-    def getVehicleInfosInRange(env, target_position, distance_threshold):
-        vehicle_infos = env.traffic_manager.getVehicleTrafficInfos()
-        candidate_vehicle_infos = {}
-        vehicle_ids_list = list(vehicle_infos.keys())
-        vehicle_positions = [vehicle_infos[vehicle_id]['position'] for vehicle_id in vehicle_ids_list]
-        if len(vehicle_positions) == 0:
+    def getNodeInfosInRange(env, target_position, distance_threshold,node_type):
+        if node_type == 'U':
+            node_infos=env.traffic_manager.getUAVTrafficInfos()
+        elif node_type == 'V':
+            node_infos = env.traffic_manager.getVehicleTrafficInfos()
+        else:
+            return None
+        candidate_node_infos = {}
+        node_ids_list = list(node_infos.keys())
+        node_positions = [node_infos[node_id]['position'] for node_id in node_ids_list]
+        if len(node_positions) == 0:
             return {}
-        vehicle_positions = np.asarray(vehicle_positions)
-        distances = np.linalg.norm(vehicle_positions - np.asarray(target_position),axis=1)
-        selected_vehicle_ids = np.where(distances <= distance_threshold)[0]
-        for idx in selected_vehicle_ids:
-            vehicle_id = vehicle_ids_list[idx]
-            candidate_vehicle_infos[vehicle_id] = vehicle_infos[vehicle_id]
-        return candidate_vehicle_infos
+        node_positions = np.asarray(node_positions)
+        distances = np.linalg.norm(node_positions - np.asarray(target_position),axis=1)
+        selected_node_ids = np.where(distances <= distance_threshold)[0]
+        for idx in selected_node_ids:
+            node_id = node_ids_list[idx]
+            candidate_node_infos[node_id] = node_infos[node_id]
+
+        return candidate_node_infos
 
     # @staticmethod
     # def setUAVSpeedAndDirectionByNodeId(env, node_id: str, speed: float, angle: float, phi: float):
@@ -120,33 +128,75 @@ class TrafficScheduler(BaseScheduler):
         return mobility_pattern
 
     @staticmethod
-    def getNextPositionOfUAV(env, UAV_id):
+    def getNextPositionOfUAV(env, UAV_id,is_random=False):
         route = env.uav_routes.get(UAV_id, [])
         if len(route) == 0:
             return None
+        if is_random:
+            new_idx = random.randint(0, len(route) - 1)
         else:
-            return copy.deepcopy(route[0]['position'])
+            new_idx = 0
+        env.setUAVNextMissionIdx(UAV_id, new_idx)
+        return copy.deepcopy(route[new_idx]['position'])
+
+        # current_idx=env.getUAVNextMissionIdx(UAV_id)
+        # if current_idx is None:
+        #     if is_random:
+        #         new_idx=random.randint(0, len(route) - 1)
+        #     else:
+        #         new_idx=0
+        #     env.setUAVNextMissionIdx(UAV_id, new_idx)
+        #     return copy.deepcopy(route[new_idx]['position'])
+        # else:
+        #     return copy.deepcopy(route[current_idx]['position'])
 
     @staticmethod
-    def addUAVRoute(env, UAV_id, pos_with_time):
+    def addUAVRoute(env,mission_id, UAV_id, position,time,ddl):
         route = env.uav_routes.get(UAV_id, [])
-        route.append(pos_with_time)
+        route.append({ 'mission_id':mission_id,'position': position, 'to_stay_time': time,'ddl':ddl})
         env.uav_routes[UAV_id] = route
 
     @staticmethod
     def updateRoute(env, UAV_id, current_position, distance_threshold, stay_time):
+        current_time=env.traffic_manager.getCurrentTime()
         route = env.uav_routes.get(UAV_id, [])
-        # assert len(route) > 0, f"Route length of {UAV_id} should larger than 0."
-        if len(route) == 0:
-            return
 
-        target_position = route[0]['position']
-        distance = np.linalg.norm(np.asarray(current_position) - np.asarray(target_position))
-        if distance < distance_threshold:
-            route[0]['to_stay_time'] = max(route[0]['to_stay_time'] - stay_time, 0)
-            if route[0]['to_stay_time'] <= 0:
-                del route[0]
-            env.uav_routes[UAV_id] = route
+        route_idx=env.getUAVNextMissionIdx(UAV_id)
+        if route_idx is not None:
+            next_mission_id=route[route_idx]['mission_id']
+        else:
+            next_mission_id=None
+
+        route = [poi for poi in route if poi['ddl'] > current_time] # 删除超过ddl的mission
+        current_position_2d=current_position[:2]
+
+        to_delete_idx = []
+        for idx, poi in enumerate(route):
+            target_position = poi['position']
+            target_position_2d=target_position[:2]
+            distance = math_utils.calculate_distance(current_position_2d,target_position_2d)
+            if distance < distance_threshold:
+                poi['to_stay_time'] = max(poi['to_stay_time'] - stay_time, 0)
+                if poi['to_stay_time'] <= 0:
+                    to_delete_idx.append(idx)
+        # 删除索引处的记录（反向删除）
+        for idx in sorted(to_delete_idx, reverse=True):
+            del route[idx]
+        env.uav_routes[UAV_id] = route
+
+        # 更新idx
+        route_idx = None
+        for idx, poi in enumerate(route):
+            if poi['mission_id'] == next_mission_id:
+                route_idx=idx
+                break
+        if route_idx is None:
+            env.clearUAVNextMissionIdx(UAV_id)
+            return
+        else:
+            env.setUAVNextMissionIdx(UAV_id, route_idx)
+
+
 
     @staticmethod
     def getNearestRSUById(env, node_id):
@@ -158,6 +208,18 @@ class TrafficScheduler(BaseScheduler):
             return rsu_ids[0]
         distances = np.linalg.norm(np.asarray(rsu_positions) - np.asarray(node_position),axis=1)
         nearest_idx = np.argmin(distances)
+        return rsu_ids[nearest_idx]
+
+    @staticmethod
+    def getFarthestRSUById(env, node_id):
+        rsu_infos = env.traffic_manager.getRSUInfos()
+        rsu_ids = list(rsu_infos.keys())
+        rsu_positions = [rsu_infos[rsu_id]['position'] for rsu_id in rsu_ids]
+        node_position = env.traffic_manager.getNodePositionById(node_id)
+        if node_position is None:
+            return rsu_ids[0]
+        distances = np.linalg.norm(np.asarray(rsu_positions) - np.asarray(node_position),axis=1)
+        nearest_idx = np.argmax(distances)
         return rsu_ids[nearest_idx]
 
     @staticmethod

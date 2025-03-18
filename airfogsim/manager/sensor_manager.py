@@ -1,3 +1,4 @@
+import math
 import random
 from ..entities.sensor import Sensor
 
@@ -7,7 +8,8 @@ class SensorManager:
     """
     NODE_TYPE = ['vehicle', 'UAV']
     STATE = ['idle', 'busy', 'unavailable']
-    ACCURACY_RANGE = [0.5, 0.6, 0.7, 0.8, 0.9, 1.00]
+    ACCURACY_RANGE_VEH = [0.30, 0.40, 0.50, 0.60, 0.70, 0.80]
+    ACCURACY_RANGE_UAV = [0.75, 0.80, 0.85, 0.90, 0.95, 1.00]
 
     def __init__(self, config_sensing, traffic_manager):
         assert set(config_sensing['node_type']).issubset(
@@ -44,11 +46,24 @@ class SensorManager:
             self._initializeSensorsForNode(vehicle_id)
 
     def _initializeSensorsForNode(self, node_id):
+        if node_id in self._idle_sensors.keys():
+            return
         self._idle_sensors[node_id] = self._idle_sensors.get(node_id, [])
-        assert len(self._idle_sensors[node_id]) == 0
+
+        node_type=self.__getNodeTypeById(node_id)
+        if node_type == 'U':
+            ACCURACY_RANGE=SensorManager.ACCURACY_RANGE_UAV
+        elif node_type == 'V':
+            ACCURACY_RANGE=SensorManager.ACCURACY_RANGE_VEH
+        else:
+            raise Exception('Unknown node type')
+        group_num = math.floor(self._sensors_per_node/self._sensor_type_num)
         for idx in range(self._sensors_per_node):
-            new_sensor_type = 'sensor_type_' + str(random.randint(1, self._sensor_type_num))
-            new_sensor_accuracy = random.choice(SensorManager.ACCURACY_RANGE)  # 随机生成0-1之间的离散精度
+            if idx<self._sensors_per_node*group_num:
+                new_sensor_type = 'sensor_type_' + str(idx%self._sensor_type_num+1)
+            else:
+                new_sensor_type = 'sensor_type_' + str(random.randint(1, self._sensor_type_num))
+            new_sensor_accuracy = random.choice(ACCURACY_RANGE)  # 随机生成0-1之间的离散精度
             new_sensor_id = 'sensor_' + str(self.__getNewSensorId())
             new_sensor = Sensor(new_sensor_id, new_sensor_type, new_sensor_accuracy, node_id)
             self._idle_sensors[node_id].append(new_sensor)
@@ -93,7 +108,7 @@ class SensorManager:
     def _removeSensor(self, sensors_dict, node_id, sensor_id):
         assert node_id in sensors_dict
         sensors_dict[node_id] = [sensor for sensor in sensors_dict[node_id] if sensor.getSensorId() != sensor_id]
-        # 删除多余的键
+        # # 删除多余的键
         if len(sensors_dict[node_id])==0:
             del sensors_dict[node_id]
 
@@ -197,15 +212,9 @@ class SensorManager:
             target_sensors_dict = sensors_dict
         else:
             for node_id, sensors in sensors_dict.items():
-                # target_sensors_dict[node_id] = []
-                # for sensor in sensors:
-                #     if sensor.getSensorType() == type:
-                #         target_sensors_dict[node_id].append(sensor)
-                # if len(target_sensors_dict[node_id]) == 0:
-                #     target_sensors_dict.pop(node_id)
 
                 # 用列表推导式快速筛选符合条件的传感器
-                filtered_sensors = [sensor for sensor in sensors if sensor.getSensorType() == type]
+                filtered_sensors = [sensor for sensor in sensors if sensor._sensor_type== type]
                 # 如果有匹配的传感器，才添加到 target_sensors_dict
                 if filtered_sensors:
                     target_sensors_dict[node_id] = filtered_sensors
@@ -289,3 +298,17 @@ class SensorManager:
 
     def getConfig(self, name):
         return self._config_sensing.get(name, None)
+
+    def __getNodeTypeById(self, node_id):
+        node_id = node_id.capitalize()
+        assert node_id[0] in ['V', 'R', 'U', 'C'], f'Invalid node type of {node_id}'
+        if node_id[0] == 'V':
+            return 'V'
+        elif node_id[0] == 'R':
+            return 'I'
+        elif node_id[0] == 'U':
+            return 'U'
+        elif node_id[0] == 'C':
+            return 'C'
+        else:
+            return None

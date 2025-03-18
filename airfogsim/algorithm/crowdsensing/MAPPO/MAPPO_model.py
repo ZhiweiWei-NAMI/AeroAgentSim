@@ -40,9 +40,11 @@ class MAPPO:
         self.dim_obs = dim_args.dim_observation
         self.dim_act = dim_args.dim_action
 
-
         # 训练超参数
         self.lr = train_args.learning_rate
+        self.var = [train_args.var for i in range(self.n_agents)]
+        self.var_min = train_args.var_end
+        self.var_dec = train_args.var_dec
         self.gamma = train_args.gamma
         self.gae_lambda = train_args.gae_lambda
         self.epsilon = train_args.epsilon
@@ -50,7 +52,7 @@ class MAPPO:
         self.device = train_args.device
 
         # 实例化策略网络*n
-        self.actors = [Actor(self.dim_obs, self.dim_hiddens) for i in range(self.n_agents)]
+        self.actors = [Actor(self.dim_obs,self.dim_act, self.dim_hiddens) for i in range(self.n_agents)]
         self.old_actors = deepcopy(self.actors) # 旧行为策略
         # 实例化价值网络*n
         self.critics = [Critic(self.n_agents, self.dim_obs, self.dim_act, self.dim_hiddens) for i in range(self.n_agents)]
@@ -85,12 +87,26 @@ class MAPPO:
         with torch.no_grad():
             for i in range(self.n_agents):
                 state = agents_state[i, :].detach()
-                mu,sigma = self.old_actors[i](state.unsqueeze(0))
-                mu=mu.squeeze(0) # 压缩batch维度
-                sigma=sigma.squeeze(0) # 压缩batch维度
-                dis = torch.distributions.normal.Normal(mu, sigma)
-                action = dis.sample()
-                action= torch.clamp(action,0,1) # action裁剪到normalization范围
+                # mu,sigma = self.old_actors[i](state.unsqueeze(0))
+                # mu=mu.squeeze(0) # 压缩batch维度
+                # sigma=sigma.squeeze(0) # 压缩batch维度
+                # dis = torch.distributions.normal.Normal(mu, sigma)
+                # action = dis.sample()
+                # action= torch.clamp(action,0,1) # action裁剪到normalization范围
+
+                state = agents_state[i, :].detach()
+                action_probabilities = self.old_actors[i](state.unsqueeze(0))
+
+                distribution = torch.distributions.Categorical(action_probabilities)
+                action = distribution.sample().item()
+
+
+                print("action_probabilities")
+                print(action_probabilities)
+                # print('is_random')
+                # print(is_random)
+                print('action')
+                print(action)
                 actions.append(action)
         self.steps_done += 1
 
@@ -99,35 +115,36 @@ class MAPPO:
     def update(self):
         c_loss = [[] for _ in range(self.n_agents)]
         a_loss = [[] for _ in range(self.n_agents)]
-        for _ in range(self.epoch):
-            for agent_idx in range(self.n_agents):
-                # 同一时间的全局state,action,next_state,reward
-                states, actions, rewards, next_states= self.memory[agent_idx].get_all()
-                # 转换为 PyTorch 张量
-                # numpy[batch_size,n_agents, state_dim]-->Tensor[batch_size,n_agents, state_dim]
-                states = torch.tensor(states, dtype=torch.float).to(self.device)
-                # numpy[batch_size, action_dim]-->Tensor[batch_size, action_dim]
-                actions = torch.tensor(actions, dtype=torch.float).to(self.device)
-                # numpy[batch_size]-->Tensor[batch_size,1]
-                rewards = torch.tensor(rewards, dtype=torch.float).unsqueeze(1).to(self.device)
-                # numpy[batch_size, n_agents, state_dim]-->Tensor[batch_size, n_agents, state_dim]
-                next_states = torch.tensor(next_states, dtype=torch.float).to(self.device)
 
-                whole_states = states.view(states.shape[0], -1)
-                whole_next_states = states.view(next_states.shape[0], -1)
-                with torch.no_grad():
-                    td_targets = rewards+self.old_critics[agent_idx](whole_next_states)
-                    mu,sigma = self.old_actors[agent_idx](states[:,agent_idx,:])
-                    old_dis = torch.distributions.normal.Normal(mu, sigma)
-                    log_prob_old = old_dis.log_prob(actions)
-                    td_errors = rewards + self.gamma * self.critics[agent_idx](whole_next_states)  - self.critics[agent_idx](whole_states)
-                    adv=compute_advantage(self.gamma, self.gae_lambda, td_errors,self.device)
+        for agent_idx in range(self.n_agents):
+            # 同一时间的全局state,action,next_state,reward
+            states, actions, rewards, next_states= self.memory[agent_idx].get_all()
+            # 转换为 PyTorch 张量
+            # numpy[batch_size,n_agents, state_dim]-->Tensor[batch_size,n_agents, state_dim]
+            states = torch.tensor(states, dtype=torch.float).to(self.device)
+            # numpy[batch_size, action_dim]-->Tensor[batch_size, action_dim]
+            actions = torch.tensor(actions, dtype=torch.long).to(self.device)
+            # numpy[batch_size]-->Tensor[batch_size,1]
+            rewards = torch.tensor(rewards, dtype=torch.float).unsqueeze(1).to(self.device)
+            # numpy[batch_size, n_agents, state_dim]-->Tensor[batch_size, n_agents, state_dim]
+            next_states = torch.tensor(next_states, dtype=torch.float).to(self.device)
 
-                # 1.更新actor
-                mu, sigma = self.actors[agent_idx](states[:,agent_idx,:])
-                new_dis = torch.distributions.normal.Normal(mu, sigma)
-                log_prob_new = new_dis.log_prob(actions)
-                ratio = torch.exp(log_prob_new - log_prob_old)
+            whole_states = states.view(states.shape[0], -1)
+            whole_next_states = states.view(next_states.shape[0], -1)
+            with torch.no_grad():
+                td_targets = rewards + self.gamma * self.old_critics[agent_idx](whole_next_states)
+                td_errors = td_targets - self.old_critics[agent_idx](whole_states)
+                adv = compute_advantage(self.gamma, self.gae_lambda, td_errors, self.device)
+                old_action_probabilities = self.old_actors[agent_idx](states[:, agent_idx, :])  # softmax 输出的概率
+                old_dis = torch.distributions.Categorical(old_action_probabilities)  # Categorical分布
+                log_prob_old = old_dis.log_prob(actions)  # 获取旧策略下的动作log概率
+
+            for _ in range(self.epoch):
+                # 更新actor
+                new_action_probabilities = self.actors[agent_idx](states[:, agent_idx, :])  # softmax 输出的概率
+                new_dis = torch.distributions.Categorical(new_action_probabilities)  # Categorical分布
+                log_prob_new = new_dis.log_prob(actions)  # 获取新策略下的动作log概率
+                ratio = torch.exp(log_prob_new - log_prob_old)  # 计算新旧策略的概率比
                 L1 = ratio * adv
                 L2 = torch.clamp(ratio, 1 - self.epsilon, 1 + self.epsilon) * adv
                 loss_actor = -torch.min(L1, L2).mean()
@@ -137,7 +154,7 @@ class MAPPO:
 
                 # 2.更新critic，next_state估值使用旧价值网络
                 q_values = self.critics[agent_idx](whole_states)
-                loss_critic = F.mse_loss(q_values,td_targets.detach())
+                loss_critic = F.mse_loss(q_values, td_targets.detach()).mean()
                 self.critic_optimizer[agent_idx].zero_grad()
                 loss_critic.backward()
                 self.critic_optimizer[agent_idx].step()
@@ -145,10 +162,9 @@ class MAPPO:
                 a_loss[agent_idx].append(loss_actor.detach().item())
                 c_loss[agent_idx].append(loss_critic.detach().item())
 
-        for i in range(self.n_agents):
-            hard_update(self.critics[i], self.old_critics[i])
-            hard_update(self.actors[i], self.old_actors[i])
-            self.memory[i].clear()
+            hard_update(self.critics[agent_idx], self.old_critics[agent_idx])
+            hard_update(self.actors[agent_idx], self.old_actors[agent_idx])
+            self.memory[agent_idx].clear()
 
         return a_loss,c_loss
 

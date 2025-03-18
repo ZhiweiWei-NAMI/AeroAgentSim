@@ -19,6 +19,7 @@ import traci
 import numpy as np
 import time
 from .utils.tk_utils import parse_location_info
+from .utils import math_utils
 
 
 class AirFogSimEnv():
@@ -89,7 +90,7 @@ class AirFogSimEnv():
         # ----------------decisions, managed by schedulers----------------
         self.vehicle_mobility_patterns = {}  # dict, key是vehicle_id, value是mobility pattern={speed}
         self.uav_mobility_patterns = {}  # dict, key是uav_id, value是mobility pattern={angle, phi, speed}
-        self.uav_routes = {}  # dict, key是uav_id,value是route -> [{position: [x,y,z]},{to_stay_time: time}],...]
+        self.uav_routes = {}  # dict, key是uav_id,value是route -> [{mission_id: id}, {position: [x,y,z]},{to_stay_time: time}],...]
         self.new_missions = []  # missions list
         self.activated_offloading_tasks_with_RB_Nos = {}  # dict, key是task_id, value 是RB的list
         self.alloc_cpu_callback = None  # function, 用于分配CPU资源的回调函数,输入为_computing_tasks (dict), simulation_interval (float), current_time (float)
@@ -97,6 +98,9 @@ class AirFogSimEnv():
         self.revenue_and_punishment_for_tasks = {}  # dict, key是task_id, value是{node_id, amount}
         self.update_AI_models = {}  # dict, key是node_id, value是{"model_name": AI model}
         self.task_return_routes = {}  # dict, key是task_id, value是route=[node_id_1,node_id_2,...]
+
+        # ----------------enduring decisions, managed by schedulers----------------
+        self.UAV_next_mission_idx = {}
 
         # ----------------indicators, used by evaluation----------------
         self.channel = {'time': 0, 'data_size': 0}
@@ -117,10 +121,16 @@ class AirFogSimEnv():
         self.UAV_positions={uav_id:[] for uav_id in uav_ids }
         self.UAV_mission_positions={uav_id:[] for uav_id in uav_ids }
 
+        self.UAV_rewards={}
+        self.mission_ta_idx=[]
+
         # ----------------temporary records in each traffic simulation step----------------
         self.UAV_energy_consumption = self._generateUAVDict()
         self.UAV_sensing_data = self._generateUAVDict()
         self.UAV_trans_data = self._generateUAVDict()
+        self.UAV_missions=self._generateUAVDict()
+        self.UAV_last_positions=self._generateUAVDict()
+        self.old_traffic_info={}
 
     def _generateUAVDict(self):
         uav_dict = {}
@@ -143,7 +153,8 @@ class AirFogSimEnv():
                                                 n_Veh=self.traffic_manager.getNumberOfVehicles(),
                                                 RSU_positions=self.traffic_manager.getRSUPositions(),
                                                 simulation_interval=self.simulation_interval)
-        self.mission_manager = MissionManager(config['mission'], config['sensing'],self.start_simulation_time)
+        sumo_junction_positions=self.traffic_manager.getAllJunctionPositions()
+        self.mission_manager = MissionManager(config['mission'], config['sensing'],sumo_junction_positions,self.start_simulation_time)
         self.sensor_manager = SensorManager(config['sensing'], self.traffic_manager)
         self.blockchain_manager = BlockchainManager(self.RSUs)
         UAV_keys=self.traffic_manager.getUAVTrafficInfos().keys()
@@ -282,6 +293,8 @@ class AirFogSimEnv():
         self.UAV_energy_consumption = self._generateUAVDict()
         self.UAV_sensing_data = self._generateUAVDict()
         self.UAV_trans_data = self._generateUAVDict()
+        self.UAV_missions = self._generateUAVDict()
+        self.UAV_last_positions = self._generateUAVDict()
 
     def _updateStateInfo(self):
         """Update the state information for the entities.
@@ -337,6 +350,10 @@ class AirFogSimEnv():
             self.mission_manager.addMission(mission, self.sensor_manager)
 
         self.new_missions = []
+        old_missions=self.mission_manager.getExecutingMissions()
+        self.UAV_missions = {node_id: missions for node_id, missions in old_missions.items() if
+                    self._getNodeTypeById(node_id) == 'U'}
+
         step_duration_dict = self.mission_manager.updateMissions(self.simulation_interval, self.simulation_time,
                                                                  self._getNodeById, self.sensor_manager,
                                                                  self.task_manager)
@@ -767,7 +784,7 @@ class AirFogSimEnv():
         Returns:
             float: The distance between two nodes.
         """
-        return np.linalg.norm(np.array(node1.getPosition()) - np.array(node2.getPosition()))
+        return math_utils.calculate_distance(node1.getPosition(),node2.getPosition())
 
     def getDistanceBetweenNodesById(self, node_id_1, node_id_2):
         """Get the distance between two nodes by node id.
@@ -806,6 +823,12 @@ class AirFogSimEnv():
     def _updateTraffics(self):
         """Update the vehicle traffics.
         """
+        old_vehicle_traffic_infos = self.traffic_manager.getVehicleTrafficInfos()
+        old_uav_traffic_infos = self.traffic_manager.getUAVTrafficInfos()
+        self.old_traffic_info={}
+        self.old_traffic_info.update(old_vehicle_traffic_infos)
+        self.old_traffic_info.update(old_uav_traffic_infos)
+
         self.traffic_manager.updateVehicleMobilityPatterns(self.vehicle_mobility_patterns)
         self.traffic_manager.updateUAVMobilityPatterns(self.uav_mobility_patterns)
         self.traffic_manager.stepSimulation()
@@ -832,6 +855,7 @@ class AirFogSimEnv():
             x=float(uav_traffic_info['position'][0])
             y=float(uav_traffic_info['position'][1])
             self.UAV_positions[uav_id].append([x,y])
+            self.UAV_last_positions[uav_id]=[x,y]
             if uav_id not in self.UAVs:
                 self.UAVs[uav_id] = UAV(uav_id, uav_traffic_info['position'], uav_traffic_info['speed'],
                                         uav_traffic_info['acceleration'], uav_traffic_info['angle'],
@@ -844,7 +868,7 @@ class AirFogSimEnv():
                     self.task_node_ids.append(uav_id)
             self.UAVs[uav_id].update(uav_traffic_info, self.simulation_time)
 
-        to_delete_vehicle_ids = list(set(existing_vehicle_ids) - set(certain_vehicle_ids))
+        to_delete_vehicle_ids = list(set( existing_vehicle_ids) - set(certain_vehicle_ids))
         removed_veh_indexes = []
         for vehicle_id in to_delete_vehicle_ids.copy():
             vehicle_index = self._removeVehicle(vehicle_id)
@@ -874,7 +898,7 @@ class AirFogSimEnv():
             self.task_node_ids.remove(vehicle_id)
         if vehicle_id in self.vehicles:
             self.task_manager.removeTasksByNodeId(vehicle_id)
-            self.mission_manager.failExecutingMissionsByNodeId(vehicle_id, self.simulation_time)
+            self.mission_manager.failExecutingMissionsByNodeId(vehicle_id, self.simulation_time,self.simulation_interval)
             self.sensor_manager.disableByNodeId(vehicle_id)
             vehicle_index = self.vehicle_ids_as_index.index(vehicle_id)
             del self.vehicle_ids_as_index[vehicle_index]
@@ -964,3 +988,46 @@ class AirFogSimEnv():
 
     def getUAVMissionPositions(self):
         return self.UAV_mission_positions
+
+    def addUAVReward(self,UAV_id,reward):
+        rewards=self.UAV_rewards.get(UAV_id,[])
+        rewards.append(reward)
+        self.UAV_rewards[UAV_id] = rewards
+
+    def getUAVRewards(self,UAV_id=None):
+        if UAV_id is None:
+            return self.UAV_rewards
+        else:
+            return self.UAV_rewards.get(UAV_id,[])
+
+    def getUAVNextMissionIdx(self,UAV_id):
+        return self.UAV_next_mission_idx.get(UAV_id,None)
+
+    def setUAVNextMissionIdx(self,UAV_id,idx):
+        self.UAV_next_mission_idx[UAV_id] = idx
+
+    def clearUAVNextMissionIdx(self,UAV_id):
+        self.UAV_next_mission_idx[UAV_id] = None
+
+    def addMissionTaIdx(self,idx):
+        self.mission_ta_idx.append(idx)
+
+    def getMissionTaIdx(self):
+        return self.mission_ta_idx
+
+    def getUAVmissions(self):
+        return self.UAV_missions
+
+    def getUAVLastPositions(self):
+        return self.UAV_last_positions
+
+    def getOldTrafficInfo(self):
+        return self.old_traffic_info
+
+    def getNewTrafficInfo(self):
+        traffic_info={}
+        uav_traffic_info=self.traffic_manager.getUAVTrafficInfos()
+        vehicle_traffic_info=self.traffic_manager.getVehicleTrafficInfos()
+        traffic_info.update(uav_traffic_info)
+        traffic_info.update(vehicle_traffic_info)
+        return traffic_info

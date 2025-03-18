@@ -1,4 +1,7 @@
+import copy
+
 import numpy as np
+from jinja2.nodes import NodeType
 
 from .base_sched import BaseScheduler
 
@@ -45,7 +48,7 @@ class MissionScheduler(BaseScheduler):
         last_step = env.simulation_time - env.traffic_interval
         mission_info_list = []
         for mission in recently_done_100_missions:
-            if mission.isFinished() and mission.getMissionFinishTime() >= last_step:
+            if mission.isFinished() and round(mission.getMissionFinishTime(),3) >= round(last_step,3):
                 mission_info_list.append(mission.to_dict())
         return mission_info_list
 
@@ -63,7 +66,7 @@ class MissionScheduler(BaseScheduler):
         last_step = env.simulation_time - env.traffic_interval
         mission_info_list = []
         for mission in recently_fail_100_missions:
-            if mission.getMissionFinishTime() >= last_step:
+            if round(mission.getMissionFinishTime(),3) >= round(last_step,3):
                 mission_info_list.append(mission.to_dict())
         return mission_info_list
 
@@ -81,7 +84,7 @@ class MissionScheduler(BaseScheduler):
         last_step = env.simulation_time - env.traffic_interval
         mission_info_list = []
         for mission in recently_early_fail_100_missions:
-            if mission.getMissionFinishTime() >= last_step:
+            if round(mission.getMissionFinishTime(),3) >= round(last_step,3):
                 mission_info_list.append(mission.to_dict())
         return mission_info_list
 
@@ -95,23 +98,107 @@ class MissionScheduler(BaseScheduler):
         Returns:
             list: The position of mission's for sensing ([x,y]).
         """
-        executing_missions=env.mission_manager.getExecutingMissions()
-        mission_list=executing_missions.get(node_id,[])
-        if len(mission_list)==0:
-            return None
-        position_list = []
-        for mission in mission_list:
-            routes=mission.getRoutes()
-            for route_xyz in routes:
-                position_list.append(route_xyz)
+        node_type=env._getNodeTypeById(node_id)
+        if node_type == "U":
+            route = env.uav_routes.get(node_id, [])
+            if len(route) == 0:
+                return None
+            current_idx = env.getUAVNextMissionIdx(node_id)
+            if current_idx is not None:
+                return copy.deepcopy(route[current_idx]['position'])
 
-        # Find the nearest position in position_list to the given position
-        position_array = np.array(position_list)
-        position = np.array(position)
-        distances = np.linalg.norm(position_array - position)  # Calculate distances
-        nearest_index = np.argmin(distances)  # Find the index of the nearest position
+            position_list = []
+            for poi in route:
+                position_list.append(poi['position'])
 
-        return position_list[nearest_index]  # Return the nearest position as a list
+            position_array = np.array(position_list)
+            position = np.array(position)
+            distances = np.linalg.norm(position_array - position,axis=1)  # Calculate distances
+            new_idx = np.argmin(distances)  # Find the index of the nearest position
+            env.setUAVNextMissionIdx(node_id, new_idx)
+            return copy.deepcopy(route[new_idx]['position'])
+
+            # if current_idx is None:
+            #     position_list = []
+            #     for poi in route:
+            #         position_list.append(poi['position'])
+            #
+            #     position_array = np.array(position_list)
+            #     position = np.array(position)
+            #     distances = np.linalg.norm(position_array - position,axis=1)  # Calculate distances
+            #     new_idx = np.argmin(distances)  # Find the index of the nearest position
+            #     env.setUAVNextMissionIdx(node_id, new_idx)
+            #
+            #     return copy.deepcopy(route[new_idx]['position'])
+            # else:
+            #     return copy.deepcopy(route[current_idx]['position'])
+        else:
+            executing_missions=env.mission_manager.getExecutingMissions()
+            mission_list=executing_missions.get(node_id,[])
+            if len(mission_list)==0:
+                return None
+            position_list = []
+            for mission in mission_list:
+                routes=mission.getRoutes()
+                for route_xyz in routes:
+                    position_list.append(route_xyz)
+
+            # Find the nearest position in position_list to the given position
+            position_array = np.array(position_list)
+            position = np.array(position)
+            distances = np.linalg.norm(position_array - position,axis=1)  # Calculate distances
+            nearest_index = np.argmin(distances)  # Find the index of the nearest position
+
+            return position_list[nearest_index]  # Return the nearest position as a list
+
+    @staticmethod
+    def getFarthestMissionPosition(env,node_id,position):
+        """Get the nearest position for sensing.
+
+        Args:
+            env (AirFogSimEnv): The AirFogSim environment.
+
+        Returns:
+            list: The position of mission's for sensing ([x,y]).
+        """
+        node_type=env._getNodeTypeById(node_id)
+        if node_type == "U":
+            route = env.uav_routes.get(node_id, [])
+            if len(route) == 0:
+                return None
+            current_idx = env.getUAVNextMissionIdx(node_id)
+            if current_idx is None:
+                position_list = []
+                for poi in route:
+                    position_list.append(poi['position'])
+
+                position_array = np.array(position_list)
+                position = np.array(position)
+                distances = np.linalg.norm(position_array - position,axis=1)  # Calculate distances
+                new_idx = np.argmax(distances)  # Find the index of the nearest position
+                env.setUAVNextMissionIdx(node_id, new_idx)
+
+                return copy.deepcopy(route[new_idx]['position'])
+            else:
+                return copy.deepcopy(route[current_idx]['position'])
+        else:
+            executing_missions=env.mission_manager.getExecutingMissions()
+            mission_list=executing_missions.get(node_id,[])
+            if len(mission_list)==0:
+                return None
+            position_list = []
+            for mission in mission_list:
+                routes=mission.getRoutes()
+                for route_xyz in routes:
+                    position_list.append(route_xyz)
+
+            # Find the nearest position in position_list to the given position
+            position_array = np.array(position_list)
+            position = np.array(position)
+            distances = np.linalg.norm(position_array - position,axis=1)  # Calculate distances
+            nearest_index = np.argmax(distances)  # Find the index of the nearest position
+
+            return position_list[nearest_index]  # Return the nearest position as a list
 
     @staticmethod
     def setMissionEvaluationIndicators(env,generate_num,allocate_num):
@@ -125,6 +212,13 @@ class MissionScheduler(BaseScheduler):
             profile=mission.to_dict()
             mission_profiles.append(profile)
         return mission_profiles
+
+    @staticmethod
+    def getExecutingMissions(env,node_id,node_type=None):
+        missions=env.mission_manager.getExecutingMissions(node_id)
+        if node_type is not None:
+            missions = {node_id: missions for node_id,missions in missions.items() if env._getNodeTypeById(node_id) == node_type}
+        return missions
 
 
 

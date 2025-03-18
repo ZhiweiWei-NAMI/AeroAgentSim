@@ -1,4 +1,6 @@
+import json
 import os
+import pickle
 
 import torch
 from torch import nn
@@ -19,6 +21,24 @@ def hard_update(target, source):
     for target_param, source_param in zip(target.parameters(),source.parameters()):
         target_param.data.copy_(source_param.data)
 
+
+class MinLRScheduler(torch.optim.lr_scheduler.LRScheduler):
+    def __init__(self, optimizer, min_lr=1e-5, step_size=100, gamma=0.99, last_epoch=-1):
+        self.min_lr = min_lr
+        self.step_size = step_size
+        self.gamma = gamma
+        super(MinLRScheduler, self).__init__(optimizer, last_epoch)
+
+    def get_lr(self):
+        # 获取当前学习率
+        lr = self.base_lrs[0]
+
+        # 计算当前调度器下的学习率
+        new_lr = lr * (self.gamma ** (self.last_epoch // self.step_size))
+
+        # 限制最小学习率
+        return [max(new_lr, self.min_lr)] # 返回的是一个列表
+
 # ----------------------------------- #
 # 模型构建
 # ----------------------------------- #
@@ -27,6 +47,9 @@ class D3QN:
     def __init__(self, dim_args, train_args):
         # 训练超参数
         self.lr = train_args.learning_rate
+        self.lr_min=train_args.learning_rate_min
+        self.lr_gamma = train_args.learning_rate_gamma
+        self.step_size = train_args.step_size
         self.gamma = train_args.gamma
         self.epsilon = train_args.epsilon
         self.eps_min = train_args.eps_end
@@ -39,6 +62,8 @@ class D3QN:
         self.device = train_args.device
         # 记录迭代次数
         self.steps_done = 0
+        # 记录完成率
+        self.best_succ_ratio=0
 
         # 实例化训练网络
         self.q_net = Net(dim_args)
@@ -48,8 +73,10 @@ class D3QN:
         self.target_q_net.to(self.device)
 
         # 优化器，更新训练网络的参数
+        # self.optimizer = torch.optim.SGD(params=self.q_net.parameters(), lr=self.lr)
         self.optimizer = torch.optim.Adam(params=self.q_net.parameters(), lr=self.lr)
-
+        # self.scheduler=torch.optim.lr_scheduler.StepLR(self.optimizer,step_size=250, gamma=0.99)
+        # self.scheduler = MinLRScheduler(optimizer=self.optimizer,min_lr=self.lr_min, step_size=self.step_size, gamma=self.lr_gamma)
         # 经验池
         self.memory = ReplayBuffer(buffer_size=self.buffer_size, train_min_size=self.train_min_size)
 
@@ -79,12 +106,12 @@ class D3QN:
             q_values = self.q_net(state)
 
         # 非法动作置为最小值
-        # masked_q_values = torch.where(mask, q_values, torch.tensor(float('-inf')))
-        q_values.copy_(torch.where(mask, q_values, torch.tensor(float('-inf'))))
+        # q_values.copy_(torch.where(mask, q_values, torch.tensor(float('-inf'))))
+        q_values[~mask] = float('-inf')
         # 对每个样本找到最大 Q 值对应的动作的索引
         max_q_value, max_action_index = torch.max(q_values, dim=-1)
-        # 如果小于贪婪系数就取最大值reward最大的动作
-        if np.random.random() < self.epsilon:
+        # 如果大于贪婪系数就取最大值reward最大的动作
+        if random.random() > self.epsilon:
             is_random = False
             # 获取reward最大值对应的动作索引
             # action = masked_q_values.argmax().item()
@@ -103,11 +130,20 @@ class D3QN:
             else:
                 action = valid_action_indices[torch.randint(0, len(valid_action_indices), (1,))].item()
 
+        print("epsilon")
+        print(self.epsilon)
+        print('is_random')
+        print(is_random)
+        print('q_values')
+        print(q_values)
+        print('action')
+        print(action)
+
         return is_random, max_q_value, action
 
     def decrement_epsilon(self):
         if self.epsilon > self.eps_min:
-            self.epsilon = self.epsilon - self.eps_dec
+            self.epsilon = self.epsilon * self.eps_dec
         else:
             self.epsilon = self.eps_min
 
@@ -143,7 +179,7 @@ class D3QN:
         with torch.no_grad():
             next_q_values = self.q_net.forward(next_states)
             # next_masked_q_values = torch.where(next_masks, next_q_values, torch.tensor(float('-inf')))
-            next_q_values.copy_(torch.where(next_masks, next_q_values, torch.tensor(float('-inf'))))
+            next_q_values[~next_masks] = float('-inf')
             # [batch_size] -> [batch_size,index_size(1)]
             max_next_actions = torch.argmax(next_q_values, dim=1).unsqueeze(-1)
             next_q_targets = self.target_q_net.forward(next_states)
@@ -158,17 +194,23 @@ class D3QN:
         dqn_loss.backward()
         # 更新训练网络的参数
         self.optimizer.step()
+        # 更新学习率
+        # self.scheduler.step()
 
         # 更新目标网络参数
         if self.steps_done % self.target_update == 0 and self.steps_done > 0:
             soft_update(self.target_q_net, self.q_net, self.tau)
-        self.decrement_epsilon()
+        # if self.steps_done % self.target_update == 0 and self.steps_done > 0:
+        #     hard_update(self.target_q_net, self.q_net)
+
         # 迭代计数+1
         self.steps_done += 1
+        if self.steps_done % 10 == 0:
+            self.decrement_epsilon()
 
         return dqn_loss.detach().item()
 
-    def save_models(self, episode,base_dir,final):
+    def save_models(self, episode,base_dir,final,succ_ratio):
         if final is True:
             file_dir = f"{base_dir}/final"
         else:
@@ -195,6 +237,33 @@ class D3QN:
         print(f'Saving {model_type} episode_{episode} D3QN memory successfully!')
         logging.info(f'Saving {model_type} episode_{episode} D3QN memory successfully!')
 
+        if succ_ratio>self.best_succ_ratio:
+            self.best_succ_ratio=succ_ratio
+            best_dir=f"{base_dir}/best"
+            if not os.path.exists(best_dir):
+                os.makedirs(best_dir)
+            self.q_net.save_model(best_dir + f'/D3QN_Q_net.pth')
+            self.target_q_net.save_model(best_dir + f'/D3QN_Q_target.pth')
+            data={
+                'episode': episode,
+                'best_succ_ratio': self.best_succ_ratio,
+            }
+            with open(best_dir + f'/params.json', 'w') as f:
+                json.dump(data, f, indent=4)  # indent=4 美化 JSON 格式
+
+        params={
+            'epsilon': self.epsilon,
+            # 'lr_last_epoch': self.scheduler.last_epoch,
+            'steps_done': self.steps_done,
+        }
+        print(f'params: {params}')
+        with open(file_dir+f'/params.json', 'w') as f:
+            json.dump(params, f, indent=4)  # indent=4 美化 JSON 格式
+        print(f'Saving {model_type} episode_{episode} params successfully!')
+        logging.info(f'Saving {model_type} episode_{episode} params successfully!')
+
+
+
     def load_models(self, episode,base_dir,final):
         if final is True:
             file_dir = f"{base_dir}/final"
@@ -220,7 +289,21 @@ class D3QN:
         print(f'Loading {model_type} episode_{episode} D3QN memory successfully!')
         logging.info(f'Loading {model_type} episode_{episode} D3QN memory successfully!')
 
+        best_dir = f"{base_dir}/best"
+        with open(best_dir + f'/params.json', "r") as f:
+            data = json.load(f)
+            self.best_succ_ratio = data['best_succ_ratio']
 
-
+        with open(file_dir+f'/params.json', 'r') as f:
+            params=json.load(f)
+            print(f'params: {params}')
+            epsilon=params['epsilon']
+            # lr_last_epoch=params['lr_last_epoch']
+            steps_done=params['steps_done']
+            self.epsilon=epsilon
+            self.steps_done=steps_done
+            # self.scheduler=MinLRScheduler(optimizer=self.optimizer,min_lr=self.lr_min, step_size=self.step_size, gamma=self.lr_gamma,last_epoch=lr_last_epoch)
+        print(f'Loading {model_type} episode_{episode} params successfully!')
+        logging.info(f'Loading {model_type} episode_{episode} params successfully!')
 
 

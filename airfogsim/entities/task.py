@@ -291,11 +291,13 @@ class Task:
         isReturning = self.isReturning()
         self._transmitted_size += trans_data
         if isReturning:
-            self._last_return_time = current_time
-            self._last_transmission_time = current_time
+            if trans_data>0:
+                self._last_return_time = current_time
+                self._last_transmission_time = current_time
             require_transmit_size = self._required_returned_size
         else:
-            self._last_transmission_time = current_time
+            if trans_data>0:
+                self._last_transmission_time = current_time
             require_transmit_size = self._task_size
         if fast_return:
             require_transmit_size = 0
@@ -586,5 +588,25 @@ class Task:
         if node_id in self._to_offload_route:
             flag = True
         if node_id in self._to_return_route:
+            flag = True
+        return flag
+
+    def isRelatedToNodeForMission(self, node_id):
+        """Check if the task is related to the node for mission.
+
+        Args:
+            node_id (str): The ID of the node.
+
+        Returns:
+            bool: True if the task is related to the node, False otherwise.
+        """
+        flag = False
+        if self._task_node_id == node_id:
+            flag = True
+        if self.getCurrentNodeId() == node_id:
+            flag = True
+        if node_id in self._to_offload_route and node_id not in self._routes:
+            flag = True
+        if node_id in self._to_return_route and node_id not in self._routes:
             flag = True
         return flag

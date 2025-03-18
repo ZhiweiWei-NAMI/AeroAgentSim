@@ -127,11 +127,7 @@ class GreedyAlgorithmModule(BaseAlgorithmModule):
                     task_set.append(new_task)
                     mission_profile['mission_task_sets'].append(task_set)
                 if node_type=='U':
-                    route_with_time={
-                        'position':sensing_position,
-                        'to_stay_time':mission_profile['mission_duration'][0]
-                    }
-                    self.trafficScheduler.addUAVRoute(env, appointed_node_id, route_with_time)
+                    self.trafficScheduler.addUAVRoute(env, mission_profile['mission_id'],appointed_node_id, mission_profile['mission_routes'][0],mission_profile['mission_duration'][0],mission_profile['mission_arrival_time']+ mission_profile['mission_deadline'])
                 self.missionScheduler.generateAndAddMission(env, mission_profile)
                 allocate_num+=1
 
@@ -243,7 +239,7 @@ class GreedyAlgorithmModule(BaseAlgorithmModule):
 
                 mobility_pattern = {}
                 mobility_pattern['angle'] = angle
-                mobility_pattern['phi'] = phi
+                mobility_pattern['phi'] = 0 # 强制只进行水平飞行
                 UAV_speed_range = self.trafficScheduler.getConfig(env, 'UAV_speed_range')
                 mobility_pattern['speed'] = random.uniform(UAV_speed_range[0], UAV_speed_range[1])
                 UAVs_mobile_pattern[UAV_id] = mobility_pattern

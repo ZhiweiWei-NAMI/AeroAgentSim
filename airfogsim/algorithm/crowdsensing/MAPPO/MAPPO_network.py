@@ -14,16 +14,14 @@ class Critic(nn.Module):
 
         self.fc1 = nn.Linear(obs_dim, dim_hidden)
         self.fc2 = nn.Linear(dim_hidden, dim_hidden)
-        self.fc3 = nn.Linear(dim_hidden, dim_hidden)
-        self.fc4 = nn.Linear(dim_hidden, 1)
+        self.fc3 = nn.Linear(dim_hidden, 1)
 
     # obs: batch_size * obs_dim
     # acts: batch_size * act_dim
     def forward(self, obs):
         x = F.gelu(self.fc1(obs))
         x = F.gelu(self.fc2(x))
-        x = F.gelu(self.fc3(x))
-        x = self.fc4(x)
+        x = self.fc3(x)
         return x
 
     def save_model(self, file_dir):
@@ -34,20 +32,18 @@ class Critic(nn.Module):
 
 
 class Actor(nn.Module):
-    def __init__(self, dim_observation, dim_hiddens):
+    def __init__(self, dim_observation, dim_action,dim_hiddens):
         super(Actor, self).__init__()
         self.fc1 = nn.Linear(dim_observation, dim_hiddens)
         self.fc2 = nn.Linear(dim_hiddens, dim_hiddens)
-        self.fc_mu = nn.Linear(dim_hiddens, 1)
-        self.fc_sigma = nn.Linear(dim_hiddens, 1)
+        self.fc3 = nn.Linear(dim_hiddens, dim_action)
 
 
     def forward(self, obs):
         x = F.gelu(self.fc1(obs))
         x = F.gelu(self.fc2(x))
-        mu = F.sigmoid(self.fc_mu(x))
-        sigma = F.softplus(self.fc_sigma(x))+ 0.001
-        return mu, sigma
+        x = F.softmax(self.fc3(x), dim=-1)
+        return x
 
     def save_model(self, file_path):
         torch.save(self.state_dict(), file_path, _use_new_zipfile_serialization=False)

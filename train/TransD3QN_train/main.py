@@ -1,6 +1,9 @@
 import sys
 import os
 import faulthandler
+from collections import Counter
+
+from matplotlib import pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 from airfogsim import AirFogSimEnv, AirFogSimEvaluation
 from train.TransD3QN_train.TransD3QN_train_algorithm import TransD3QN_Train_AlgorithmModule
@@ -37,7 +40,7 @@ def load_config(path):
         return config
 
 
-last_episode = 0
+last_episode = 2
 max_episode = 400
 checkpoint = 50
 
@@ -90,6 +93,25 @@ for episode in range(last_episode + 1, max_episode + 1):
         print(f'Loss: {loss}')
         print()
 
+    ta_list=env.getMissionTaIdx()
+    # 统计每个数字的出现次数
+    count_data = Counter(ta_list)
+    # 获取数字和它们的出现次数
+    numbers = list(count_data.keys())  # 数字
+    counts = list(count_data.values())  # 每个数字出现的次数
+    path_to_save=f'./evaluation/episode/episode_{episode}'
+    if not os.path.exists(path_to_save):
+        os.makedirs(path_to_save)
+    # 创建条形图
+    plt.figure(clear=True)
+    plt.bar(numbers, counts)
+    # 添加标题和标签
+    plt.title('Frequency of Numbers')
+    plt.xlabel('Number')
+    plt.ylabel('Frequency')
+    # 保存为图片
+    plt.savefig(f'{path_to_save}/frequency_bar_chart.png')
+
     algorithm_module.saveModel(episode, final=True)  # 保存模型
     if episode % checkpoint == 0:
         algorithm_module.saveModel(episode, final=False)
@@ -99,9 +121,11 @@ for episode in range(last_episode + 1, max_episode + 1):
 
     # 记录训练效果
     if episode > 1 and len(step_loss)>0:
+        acc_reward = evaluation_module.getAccReward()
         avg_reward = evaluation_module.getAvgReward()
         succ_ratio = evaluation_module.getCompletionRatio()
         avg_loss = sum(step_loss) / len(step_loss)
+        writer.add_scalar("acc_reward", acc_reward, episode)
         writer.add_scalar("avg_reward", avg_reward, episode)
         writer.add_scalar("succ_ratio", succ_ratio, episode)
         writer.add_scalar("loss", avg_loss, episode)
@@ -111,6 +135,7 @@ for episode in range(last_episode + 1, max_episode + 1):
     algorithm_module.reset(env)
     print(f"episode: {episode} finished")
     print()
+
     # 结束性能监控并打印报告
     episode_profiler.stop()
     episode_profiler.print()

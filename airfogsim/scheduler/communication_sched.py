@@ -47,4 +47,7 @@ class CommunicationScheduler(BaseScheduler):
         comm_rate=env.channel_manager.getRateByChannelType( transmitter_idx, receiver_idx, channel_type)
         return np.sum(comm_rate)
 
+    @staticmethod
+    def getConfig(env,name):
+        return env.channel_manager.getConfig(name)
 

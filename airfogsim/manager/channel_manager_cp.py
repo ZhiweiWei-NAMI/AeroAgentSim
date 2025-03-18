@@ -585,3 +585,6 @@ class ChannelManagerCP:
         send_size=self._last_timeslot_send.get(node_id,0)
         receive_size=self._last_timeslot_receive.get(node_id,0)
         return send_size, receive_size
+
+    def getConfig(self,name):
+        return self._config_channel.get(name,None)

@@ -218,7 +218,7 @@ class GreedyAlgorithmModule(BaseAlgorithmModule):
 
                 mobility_pattern = {}
                 mobility_pattern['angle'] = angle
-                mobility_pattern['phi'] = phi
+                mobility_pattern['phi'] = 0 # 强制只进行水平飞行
                 UAV_speed_range = self.trafficScheduler.getConfig(env, 'UAV_speed_range')
                 mobility_pattern['speed'] = random.uniform(UAV_speed_range[0], UAV_speed_range[1])
                 UAVs_mobile_pattern[UAV_id] = mobility_pattern

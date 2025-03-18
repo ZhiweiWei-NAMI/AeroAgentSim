@@ -1,6 +1,9 @@
+import json
 import os
+import pickle
 
 import torch
+from pyinstrument import Profiler
 from torch import nn
 from torch.nn import functional as F
 import numpy as np
@@ -19,6 +22,8 @@ def hard_update(target, source):
     for target_param, source_param in zip(target.parameters(),source.parameters()):
         target_param.data.copy_(source_param.data)
 
+# 定义episode性能监控
+episode_profiler= Profiler()
 # ----------------------------------- #
 # 模型构建
 # ----------------------------------- #
@@ -39,6 +44,8 @@ class TransD3QN:
         self.device = torch.device(train_args.device)
         # 记录迭代次数
         self.steps_done = 0
+        # 记录完成率
+        self.best_succ_ratio=0
 
         # 实例化训练网络
         self.q_net = Net(dim_args)
@@ -49,8 +56,6 @@ class TransD3QN:
 
         # 优化器，更新训练网络的参数
         self.optimizer = torch.optim.Adam(params=self.q_net.parameters(), lr=self.lr)
-        # 损失函数
-        self.criterion = torch.nn.MSELoss()
 
         # 经验池
         self.memory = ReplayBuffer(buffer_size=self.buffer_size, train_min_size=self.train_min_size)
@@ -84,11 +89,12 @@ class TransD3QN:
         flatten_mask=sensor_mask.flatten()
         flatten_q_values=q_values.flatten()
         # masked_q_values = torch.where(flatten_mask, flatten_q_values, torch.tensor(float('-inf')))
-        flatten_q_values.copy_(torch.where(flatten_mask, flatten_q_values, torch.tensor(float('-inf'))))
+        # flatten_q_values.copy_(torch.where(flatten_mask, flatten_q_values, torch.tensor(float('-inf'))))
+        flatten_q_values[~flatten_mask] = float('-inf')
         # 对每个样本找到最大 Q 值对应的动作的索引
         max_q_value, max_action_index = torch.max(flatten_q_values, dim=-1)
-        # 如果小于贪婪系数就取最大值reward最大的动作
-        if np.random.random() < self.epsilon:
+        # 如果大于贪婪系数就取最大值reward最大的动作
+        if random.random() > self.epsilon:
             is_random = False
             # 获取reward最大值对应的动作索引
             # action = masked_q_values.argmax().item()
@@ -99,17 +105,27 @@ class TransD3QN:
         # 如果大于贪婪系数就随机探索
         else:
             is_random = True
+            # 选出可行动作的index并随机选择一个动作
             valid_action_indices = torch.nonzero(flatten_mask, as_tuple=False).squeeze(1)
             if valid_action_indices.numel() == 0:
                 action = None
             else:
                 action = valid_action_indices[torch.randint(0, len(valid_action_indices), (1,))].item()
 
+        print("epsilon")
+        print(self.epsilon)
+        print('is_random')
+        print(is_random)
+        print('q_values')
+        print(q_values)
+        print('action')
+        print(action)
+        self.decrement_epsilon()
         return is_random, max_q_value, action
 
     def decrement_epsilon(self):
         if self.epsilon > self.eps_min:
-            self.epsilon = self.epsilon - self.eps_dec
+            self.epsilon = self.epsilon * self.eps_dec
         else:
             self.epsilon = self.eps_min
 
@@ -163,7 +179,8 @@ class TransD3QN:
         with torch.no_grad():
             next_q_values = self.q_net.forward(next_node_states,next_mission_states,next_sensor_states,next_sensor_masks)
             # next_masked_q_values = torch.where(flatten_next_masks, next_q_values, torch.tensor(float('-inf')))
-            next_q_values.copy_(torch.where(flatten_next_masks, next_q_values, torch.tensor(float('-inf'))))
+            # next_q_values.copy_(torch.where(flatten_next_masks, next_q_values, torch.tensor(float('-inf'))))
+            next_q_values[~flatten_next_masks] = float('-inf')
             # [batch_size] -> [batch_size,index_size(1)]
             max_next_actions = torch.argmax(next_q_values, dim=1).unsqueeze(-1)
             next_q_targets = self.target_q_net.forward(next_node_states,next_mission_states,next_sensor_states,next_sensor_masks)
@@ -183,13 +200,13 @@ class TransD3QN:
         # 更新目标网络参数
         if self.steps_done % self.target_update == 0 and self.steps_done>0:
             soft_update(self.target_q_net,self.q_net,self.tau)
-        self.decrement_epsilon()
+
         # 迭代计数+1
         self.steps_done += 1
 
         return dqn_loss.detach().item()
 
-    def save_models(self, episode,base_dir,final):
+    def save_models(self, episode,base_dir,final,succ_ratio):
         if final is True:
             file_dir = f"{base_dir}/final"
         else:
@@ -216,6 +233,31 @@ class TransD3QN:
         print(f'Saving {model_type} episode_{episode} TransD3QN memory successfully!')
         logging.info(f'Saving {model_type} episode_{episode} TransD3QN memory successfully!')
 
+        if succ_ratio>self.best_succ_ratio:
+            self.best_succ_ratio=succ_ratio
+            best_dir=f"{base_dir}/best"
+            if not os.path.exists(best_dir):
+                os.makedirs(best_dir)
+            self.q_net.save_model(best_dir + f'/TransD3QN_Q_net.pth')
+            self.target_q_net.save_model(best_dir + f'/TransD3QN_Q_target.pth')
+            data={
+                'episode': episode,
+                'best_succ_ratio': self.best_succ_ratio,
+            }
+            with open(best_dir + f'/params.json', 'w') as f:
+                json.dump(data, f, indent=4)  # indent=4 美化 JSON 格式
+
+        params={
+            'epsilon': self.epsilon,
+            # 'lr_last_epoch': self.scheduler.last_epoch,
+            'steps_done': self.steps_done,
+        }
+        print(f'params: {params}')
+        with open(file_dir+f'/params.json', 'w') as f:
+            json.dump(params, f, indent=4)  # indent=4 美化 JSON 格式
+        print(f'Saving {model_type} episode_{episode} params successfully!')
+        logging.info(f'Saving {model_type} episode_{episode} params successfully!')
+
     def load_models(self, episode,base_dir,final):
         if final is True:
             file_dir = f"{base_dir}/final"
@@ -240,3 +282,20 @@ class TransD3QN:
         self.memory.load(file_dir+f'/TransD3QN_memory.pkl')
         print(f'Loading {model_type} episode_{episode} TransD3QN memory successfully!')
         logging.info(f'Loading {model_type} episode_{episode} TransD3QN memory successfully!')
+
+        best_dir = f"{base_dir}/best"
+        with open(best_dir + f'/params.json', "r") as f:
+            data = json.load(f)
+            self.best_succ_ratio = data['best_succ_ratio']
+
+        with open(file_dir+f'/params.json', 'r') as f:
+            params=json.load(f)
+            print(f'params: {params}')
+            epsilon=params['epsilon']
+            # lr_last_epoch=params['lr_last_epoch']
+            steps_done=params['steps_done']
+            self.epsilon=epsilon
+            self.steps_done=steps_done
+            # self.scheduler=MinLRScheduler(optimizer=self.optimizer,min_lr=self.lr_min, step_size=self.step_size, gamma=self.lr_gamma,last_epoch=lr_last_epoch)
+        print(f'Loading {model_type} episode_{episode} params successfully!')
+        logging.info(f'Loading {model_type} episode_{episode} params successfully!')

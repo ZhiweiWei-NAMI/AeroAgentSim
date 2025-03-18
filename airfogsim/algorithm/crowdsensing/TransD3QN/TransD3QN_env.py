@@ -53,8 +53,8 @@ class TransD3QN_Env:
         return self.max_q_value_list.copy()
 
 
-    def saveModel(self,episode,final=False):
-        self.agent.save_models(episode,self.model_base_dir,final)
+    def saveModel(self,episode,final=False,succ_ratio=0):
+        self.agent.save_models(episode,self.model_base_dir,final,succ_ratio)
 
     def loadModel(self,episode,final=False):
         self.agent.load_models(episode,self.model_base_dir,final)

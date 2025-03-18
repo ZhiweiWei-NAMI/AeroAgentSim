@@ -12,7 +12,7 @@ class RewardScheduler(BaseScheduler):
     REWARD_SYMOBOLS = None
     PUNISH_SYMOBOLS=None
     ACCEPTED_SYMBOLS = ['energy', 'task_deadline', 'task_delay', 'task_priority',
-                        '_mission_duration_sum','_mission_arrival_time','_mission_start_time','_mission_deadline','_mission_finish_time'] # mission_duration is an array
+                        '_mission_duration_sum','_mission_duration_original_sum','_mission_stayed_time_sum','_mission_accuracy','_mission_arrival_time','_mission_start_time','_mission_deadline','_mission_finish_time'] # mission_duration is an array
 
     @staticmethod
     def setModel(env, model_type, expression):

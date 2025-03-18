@@ -89,7 +89,7 @@ class MADDPG:
                 action = torch.clamp(action, 0, 1)  # 限制动作范围在[0,1]
                 actions.append(action)
                 if self.var[i] > self.var_end:
-                    self.var[i] *= self.var_dec # 噪声衰减
+                    self.var[i] -= self.var_dec # 噪声衰减
         self.steps_done += 1
 
 
