@@ -1,0 +1,22 @@
+Metadata-Version: 2.4
+Name: airfogsim
+Version: 0.1.0
+Summary: Low Altitude Space Simulation System
+Author-email: Zhiwei Wei <2311769@tongji.edu.cn>
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: simpy
+Requires-Dist: sqlalchemy
+Requires-Dist: numpy
+Requires-Dist: flask
+Requires-Dist: flask-cors
+Requires-Dist: gunicorn
+Requires-Dist: pyjwt
+Requires-Dist: bcrypt
+Requires-Dist: pint
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Dynamic: license-file

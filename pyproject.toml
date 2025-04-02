@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "airfogsim"
+version = "0.1.0"
+description = "Low Altitude Space Simulation System"
+readme = "README.md"
+authors = [
+    {name = "Zhiwei Wei", email = "2311769@tongji.edu.cn"}
+]
+requires-python = ">=3.8"
+dependencies = [
+    "simpy",
+    "sqlalchemy",
+    "numpy",
+    "flask",
+    "flask-cors",
+    "gunicorn", # 仅用于生产环境
+    "pyjwt",
+    "bcrypt",
+    "pint"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "flake8",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["airfogsim"]

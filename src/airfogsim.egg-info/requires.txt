@@ -1,0 +1,14 @@
+simpy
+sqlalchemy
+numpy
+flask
+flask-cors
+gunicorn
+pyjwt
+bcrypt
+pint
+
+[dev]
+pytest
+black
+flake8

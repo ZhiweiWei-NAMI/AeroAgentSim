@@ -1,0 +1,17 @@
+.logo {
+    height: 32px; /* 通常和 Header 高度一致，或者根据需要设置 */
+    display: flex;
+    align-items: center; /* 垂直居中 */
+    justify-content: center; /* 水平居中 (如果需要的话) */
+    overflow: hidden; /* 防止文本溢出 */
+  }
+
+.site-layout-background {
+  background: #fff;
+}
+
+.status-card,
+.control-card,
+.events-card {
+  height: 100%;
+}

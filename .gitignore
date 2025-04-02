@@ -1,0 +1,13 @@
+# --- Databases ---
+# Ignore all files ending with .db anywhere in the project
+*.db
+
+# --- Compressed Archives ---
+# Ignore all tar.gz files anywhere in the project
+*.tar.gz
+
+# --- Python specific ---
+# Ignore Python bytecode cache directories and contents
+__pycache__/
+.clinerules
+frontend/node_modules/

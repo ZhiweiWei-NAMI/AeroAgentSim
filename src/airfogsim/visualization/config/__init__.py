@@ -1,0 +1,22 @@
+"""
+配置包初始化文件
+"""
+
+from .default_environment import (
+    DEFAULT_AIRSPACE,
+    DEFAULT_FREQUENCY,
+    DEFAULT_LANDING_SPOT
+)
+
+from .templates import (
+    DEFAULT_WORKFLOW_TEMPLATES,
+    DEFAULT_AGENT_TEMPLATES
+)
+
+__all__ = [
+    'DEFAULT_AIRSPACE',
+    'DEFAULT_FREQUENCY',
+    'DEFAULT_LANDING_SPOT',
+    'DEFAULT_WORKFLOW_TEMPLATES',
+    'DEFAULT_AGENT_TEMPLATES'
+]
