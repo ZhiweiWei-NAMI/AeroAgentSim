@@ -253,13 +253,6 @@ airfogsim-project/
 
 本项目采用MIT许可证 - 详情请参阅[LICENSE](LICENSE)文件。
 
-## 联系方式
-
-如有任何问题或建议，请通过以下方式联系我们：
-
-- 项目维护者：[您的姓名](mailto:your.email@example.com)
-- 项目主页：[GitHub仓库](https://github.com/yourusername/airfogsim)
-
 ---
 
 **AirFogSim** - 为空中雾计算研究提供强大的仿真工具
