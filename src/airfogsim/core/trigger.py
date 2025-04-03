@@ -1,3 +1,18 @@
+"""
+AirFogSim触发器(Trigger)核心模块
+
+该模块实现了仿真系统中的触发器机制，用于在特定条件满足时执行相应的操作。
+触发器是工作流和自动化任务的核心组件，支持多种触发方式和组合条件。主要内容包括：
+1. Trigger基类：定义触发器的通用属性和行为
+2. EventTrigger：基于事件的触发器，监听特定事件并在满足条件时触发
+3. StateTrigger：基于代理状态的触发器，监听状态变化并在满足条件时触发
+4. TimeTrigger：基于时间的触发器，在特定时间点或间隔触发
+5. CompositeTrigger：组合触发器，将多个触发器组合成复杂的触发条件
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 from airfogsim.core.enums import TriggerOperator, TriggerType
 from typing import Dict, Any, Optional, Callable, List, Union, Tuple
 import simpy

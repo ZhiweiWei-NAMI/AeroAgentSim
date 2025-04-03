@@ -1,3 +1,18 @@
+"""
+AirFogSim事件(Event)核心模块
+
+该模块实现了仿真系统的事件处理机制，基于发布-订阅模式设计，
+允许系统中的不同组件（代理、任务、资源等）之间进行松耦合通信。
+主要内容包括：
+1. EventSubscription：事件订阅类，包含订阅信息和过滤功能
+2. EventRegistry：事件注册表，管理所有事件和订阅关系
+3. 支持特定事件和通配符订阅
+4. 异步事件通知和回调执行
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 from collections import defaultdict
 from typing import Dict, List, Tuple
 import warnings

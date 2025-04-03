@@ -1,3 +1,18 @@
+"""
+AirFogSim枚举(Enums)核心模块
+
+该模块定义了仿真系统中使用的各种枚举类型，包括任务状态、工作流状态、
+代理状态、资源状态等。模块还提供了可JSON序列化的枚举基类和辅助工具，
+使枚举值可以方便地在系统内部传递和持久化。主要内容包括：
+1. JSONSerializableEnum：可序列化的枚举基类
+2. 各种状态枚举：TaskStatus, WorkflowStatus, AgentStatus等
+3. 资源相关枚举：ResourceType, AllocationStatus等
+4. 触发器相关枚举：TriggerType, TriggerOperator等
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 import json
 from enum import Enum, auto
 from json import JSONEncoder
@@ -49,14 +64,6 @@ class JSONSerializableEnum(Enum):
         
         # 如果无法恢复，抛出异常
         raise ValueError(f"无法从{data}恢复{cls.__name__}枚举值")
-
-class TaskProofType(JSONSerializableEnum):
-    """任务证明类型枚举"""
-    POSITION = "POSITION"
-    IMAGE = "IMAGE"
-    DATA = "DATA"
-    MATERIAL = "MATERIAL"
-    GENERIC = "GENERIC"
 
 class TaskStatus(JSONSerializableEnum):
     """任务状态枚举"""

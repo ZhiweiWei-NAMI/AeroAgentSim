@@ -1,3 +1,17 @@
+"""
+AirFogSim组件(Component)核心模块
+
+该模块定义了代理(Agent)的组件基类，组件是代理功能的实际执行者。
+每个组件负责特定类型的任务执行，并管理任务所需的资源。核心功能包括：
+1. 任务执行：包装和管理任务的完整生命周期
+2. 资源管理：分配和释放任务所需的资源
+3. 事件处理：触发与任务执行相关的事件
+4. 性能监控：计算和更新组件的性能指标
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 from airfogsim.core.enums import TaskStatus
 import warnings
 from typing import List, Dict, Any, Optional, Tuple
@@ -11,7 +25,7 @@ class Component:
     MONITORED_STATES = []  # 子类应当重写此属性，定义组件关心的代理状态
     
     def __init__(self, env, agent, name: Optional[str] = None,
-                 supported_events: List[str] = []):
+                 supported_events: List[str] = [], properties=None):
         self.name = name or self.__class__.__name__
         self.env = env
         self.agent = agent
@@ -20,14 +34,28 @@ class Component:
         from airfogsim.core import Task
         self.active_tasks: Dict[str, Task] = {}  # task_id -> Task对象
         self.task_processes: Dict[str, simpy.Process] = {} # task_id -> SimPy进程（包装器）
-        self.task_resource_allocations: Dict[str, List[Tuple]] = {} # task_id -> 资源分配信息列表
-        
+        self.properties = properties or {} # 组件属性
+
         # 状态监听器的唯一ID
         self.state_listener_id = f'{self.agent_id}_{self.name}_state_listener'
 
         self._register_component_events()
         if not self.PRODUCED_METRICS or not all(isinstance(m, str) for m in self.PRODUCED_METRICS):
             warnings.warn(f"组件 {self.name} 没有定义PRODUCED_METRICS或格式不正确。")
+
+        # 把produced_metrics 以 self.current_metrics的形式保存
+        self.current_metrics = {metric: None for metric in self.PRODUCED_METRICS}
+        self._validate_agent_states()
+
+    def _validate_agent_states(self):
+        """验证代理状态是否符合要求。"""
+        # 判断是否都在self.MONITORED_STATES中
+        agent_states = self.agent.get_state_templates()
+        tmp_states = self.MONITORED_STATES.copy()
+        # 移除tmp_states中带.的state
+        tmp_states = [state for state in tmp_states if '.' not in state]
+        if not all(state in agent_states for state in tmp_states):
+            raise ValueError(f"组件 {self.name} 监控的状态 {tmp_states} 不符合要求，必须包含在代理的状态中")
 
     def _register_component_events(self):
         """向Agent注册组件的标准和特定事件。"""
@@ -81,24 +109,26 @@ class Component:
             'result': task.result
         })
         return task.result # 返回失败字典
+    
+    def _validate_metrics(self, metrics: Dict[str, Any]):
+        """验证性能指标是否符合要求。"""
+        # 判断是否都在self.current_metrics中
+        if not all(metric in self.current_metrics for metric in metrics):
+            raise ValueError(f"性能指标 {metrics} 不符合要求，必须包含 {self.current_metrics}")
 
     def _execute_task_wrapper(self, task):
         """包装资源获取、任务执行和清理。"""
         task_id = task.id
-        resource_allocations = []
         
         try:
             # 1. 触发任务开始事件
             self.trigger_event('task_started', {'task_id': task_id, 'task_name': task.name, 'time': self.env.now})
-
-            # 2. 获取资源需求并分配资源 - 由子类实现
-            resource_allocations = self._allocate_task_resources(task)
-            
-            # 保存分配信息
-            self.task_resource_allocations[task_id] = resource_allocations
-            
+           
             # 3. 计算初始指标
             initial_metrics = self._calculate_performance_metrics()
+            self._validate_metrics(initial_metrics)
+            self.current_metrics.update(initial_metrics)
+
             # 向组件的监听器提供初始指标
             self.trigger_event('metric_changed', initial_metrics)
 
@@ -160,13 +190,9 @@ class Component:
             # 取消状态监听 - 使用正确的EventRegistry方法
             self.env.event_registry.unsubscribe(self.agent_id, 'state_changed', self.state_listener_id)
             
-            # 释放资源 - 由子类实现的方法
-            self._release_task_resources(task_id, resource_allocations)
-
             # 清理组件状态
             if task_id in self.active_tasks: del self.active_tasks[task_id]
             if task_id in self.task_processes: del self.task_processes[task_id]
-            if task_id in self.task_resource_allocations: del self.task_resource_allocations[task_id]
 
 
     def _on_agent_state_changed(self, event_data):
@@ -188,36 +214,16 @@ class Component:
         if not self.MONITORED_STATES or key in self.MONITORED_STATES:
             # 重新计算性能指标并触发事件
             current_metrics = self._calculate_performance_metrics()
+            self._validate_metrics(current_metrics)
+            # 判断current_metrics和self.current_metrics是否相同
+            if all(
+                current_metrics.get(metric) == self.current_metrics.get(metric)
+                for metric in self.PRODUCED_METRICS
+            ):
+                return
+            # 更新当前指标
+            self.current_metrics.update(current_metrics)
             self.trigger_event('metric_changed', current_metrics)
-
-    def _allocate_task_resources(self, task) -> List[Tuple]:
-        """
-        为任务分配所需资源。
-        返回格式为 [(resource_type, allocation_id), ...] 的列表
-        子类应该实现此方法来处理特定的资源分配逻辑
-        """
-        # 默认实现 - 获取资源需求但不做任何分配
-        required_resources = self.get_resource_requirements(task)
-        # 如果子类没有实现特定的分配逻辑，返回空列表
-        return []
-    
-    def _release_task_resources(self, task_id: str, allocations: List[Tuple]):
-        """
-        释放任务使用的资源。
-        子类应该实现此方法来处理特定的资源释放逻辑
-        
-        Args:
-            task_id: 任务ID
-            allocations: 由_allocate_task_resources返回的资源分配列表
-        """
-        # 默认实现 - 不做任何操作
-        pass
-
-    # --- 子类需要实现的方法 ---
-    def get_resource_requirements(self, task) -> List[Dict]:
-        """返回任务所需资源规格的字典列表。"""
-        # 示例: return [{'type': 'airspace', 'airspace_id': 'main_airspace'}]
-        raise NotImplementedError("子类必须实现get_resource_requirements")
     
     def _calculate_performance_metrics(self) -> Dict[str, Any]:
         """基于当前代理状态和已分配资源计算组件指标。"""

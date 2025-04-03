@@ -36,25 +36,6 @@ def setup_charging_workflow(env, drone, battery_threshold=50):
 # 创建环境
 env = Environment(visual_interval=10)
 
-# 创建和注册空域资源
-# 创建一个覆盖整个飞行区域的大型空域
-main_airspace_id = env.airspace_manager.create_airspace(
-    x_range=(0, 1000),
-    y_range=(0, 1000),
-    altitude_range=(0, 500),
-    max_capacity=10,
-    attributes={'name': '主飞行区域', 'weather': 'clear'}
-)
-
-# 创建一个限制区域（可能是禁飞区或特殊管制区）
-restricted_airspace_id = env.airspace_manager.create_airspace(
-    x_range=(400, 600),
-    y_range=(400, 600),
-    altitude_range=(0, 300),
-    max_capacity=2,
-    attributes={'name': '限制区域', 'restricted': True, 'weather': 'clear'}
-)
-
 # 创建和注册频率资源
 # 创建控制通信频率资源
 control_freq_id = env.frequency_manager.create_frequency(
@@ -115,9 +96,11 @@ client = OpenAI(
 drone = env.create_agent(
     DroneAgent, 
     "drone1", 
-    initial_position=(10, 10, 0),  # 从home_landing位置起飞
-    initial_battery=50,
-    llm_client=None  # 传入OpenAI客户端
+    properties={
+        'position':(10, 10, 0),  # 从home_landing位置起飞
+        'battery_level':50,
+        'llm_client':None
+    }
 )
 
 # 创建MoveToComponent和CPUComponent

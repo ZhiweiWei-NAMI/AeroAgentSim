@@ -1,3 +1,17 @@
+"""
+AirFogSim数据统计和可视化模块
+
+该模块提供无人机仿真系统的数据分析和可视化功能，包括：
+1. 无人机状态和轨迹数据分析
+2. 电量消耗率计算
+3. 飞行距离和时间统计
+4. 时间序列数据生成
+5. 工作流执行情况分析
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 import logging
 from typing import Dict, Any, List, Tuple, Optional
 import json
@@ -8,6 +22,20 @@ import statistics
 logger = logging.getLogger(__name__)
 
 class StatsService:
+    """
+    统计服务类，负责处理无人机仿真数据的分析和可视化
+    
+    主要功能：
+    - 无人机状态统计 (calculate_drone_statistics)
+    - 电池消耗率计算 (calculate_battery_consumption_rate)
+    - 轨迹距离计算 (calculate_distance_traveled)
+    - 时间序列数据生成 (generate_time_series_data)
+    - 工作流状态分析 (calculate_workflow_statistics)
+    
+    使用示例：
+        stats_service = StatsService()
+        drone_stats = stats_service.calculate_drone_statistics(drone_history)
+    """
     """统计服务，提供数据分析和统计功能"""
     
     @staticmethod

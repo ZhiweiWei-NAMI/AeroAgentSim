@@ -210,7 +210,6 @@ class TaskManager:
                    component_name: str,
                    task_name: str,
                    workflow_id: Optional[str] = None,
-                   proof_id: Optional[str] = None,
                    target_state: Optional[Dict] = None,
                    properties: Optional[Dict] = None) -> Optional[Task]:
         """
@@ -222,7 +221,6 @@ class TaskManager:
             component_name: 组件名称
             task_name: 任务名称
             workflow_id: 工作流ID（可选）
-            proof_id: 证明ID（可选）
             target_state: 目标状态（可选）
             properties: 任务属性（可选）
             
@@ -248,7 +246,6 @@ class TaskManager:
                 component_name=component_name,
                 task_name=task_name,
                 workflow_id=workflow_id,
-                proof_id=proof_id,
                 target_state=target_state,
                 properties=properties
             )

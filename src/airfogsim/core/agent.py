@@ -1,3 +1,17 @@
+"""
+AirFogSim代理(Agent)核心模块
+
+该模块定义了仿真系统中代理(Agent)的基础类和相关功能。代理是仿真中的主要实体，
+可以执行任务、管理状态、与其他代理交互，并通过组件扩展功能。核心功能包括：
+1. 状态管理：通过StateTemplate和AgentMeta实现状态定义、验证和继承
+2. 组件管理：代理可以添加多个组件，并与组件交互
+3. 事件处理：注册、触发和订阅事件系统
+4. 任务执行：执行和监控任务的生命周期
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 from airfogsim.core.enums import TaskStatus
 from typing import Dict, List, Any, Optional, Type
 import uuid
@@ -105,8 +119,11 @@ class Agent(metaclass=AgentMeta):
         self.state: Dict[str, Any] = {}
         self.llm_client = properties.get('llm_client', None)
         
-        from airfogsim.core import Component, TaskProof
+        from airfogsim.core import Component
         self.components: Dict[str, Component] = {}
+        
+        # 管理代理拥有的外部对象（如充电站、着陆点等）
+        self.possessing_objects: Dict[str, Any] = {}
 
         self._initialization_level = type(self)
 
@@ -116,16 +133,9 @@ class Agent(metaclass=AgentMeta):
 
         if not hasattr(self.env, 'event_registry'): raise RuntimeError("Environment missing EventRegistry.")
         if not hasattr(self.env, 'workflow_manager'): warnings.warn("Environment missing WorkflowManager.")
-        # Task proof management
-        self.task_proofs: Dict[str, TaskProof] = {} 
 
         # Standard Agent Events
         self.register_event('state_changed')
-        self.register_event('task_started')   # Agent initiated a task
-        self.register_event('task_finished')  # Agent observed task finish (comp/fail/canc)
-        self.register_event('proof_created')
-        self.register_event('proof_updated') 
-        self.register_event('proof_transferred')
         
 
         # Agent's core behavior process
@@ -170,9 +180,104 @@ class Agent(metaclass=AgentMeta):
         return getattr(cls, '_all_state_templates', {})
     def get_current_states(self):
         return dict(self.state)
-    def get_state(self, key, default=None): return self.state.get(key, default)
+        
+    def _get_attribute(self, obj, attr, default=None):
+        """
+        统一获取对象属性或字典键的辅助方法
+        
+        Args:
+            obj: 对象或字典
+            attr: 属性或键名
+            default: 如果属性/键不存在，返回的默认值
+            
+        Returns:
+            属性/键值或默认值
+        """
+        # 如果是字典，尝试使用键访问
+        if isinstance(obj, dict) and attr in obj:
+            return obj[attr]
+        # 如果是对象，尝试使用属性访问
+        elif hasattr(obj, attr):
+            return getattr(obj, attr)
+        # 都不适用，返回默认值
+        return default
+        
+    def _has_attribute(self, obj, attr):
+        """
+        统一检查对象属性或字典键是否存在的辅助方法
+        
+        Args:
+            obj: 对象或字典
+            attr: 属性或键名
+            
+        Returns:
+            布尔值，表示属性/键是否存在
+        """
+        return (isinstance(obj, dict) and attr in obj) or hasattr(obj, attr)
+    
+    def get_state(self, key, default=None):
+        """
+        获取状态值，支持复合状态访问（如 'charging_station.status'）
+        
+        Args:
+            key: 状态键，可以是简单键或复合键（用点分隔）
+            default: 如果状态不存在，返回的默认值
+            
+        Returns:
+            状态值或默认值
+        """
+        # 检查是否是复合键（包含点）
+        if '.' in key:
+            parts = key.split('.')
+            obj_name = parts[0]
+            attr_name = '.'.join(parts[1:])  # 支持多级属性
+            
+            # 检查是否是代理拥有的对象
+            if obj_name in self.possessing_objects:
+                obj = self.possessing_objects[obj_name]
+                # 递归获取嵌套属性
+                try:
+                    for part in attr_name.split('.'):
+                        obj = self._get_attribute(obj, part)
+                        if obj is None:
+                            return default
+                    return obj
+                except Exception as e:
+                    print(f"获取对象 {obj_name} 的属性 {attr_name} 时出错: {e}")
+                    return default
+            return default
+        # 普通状态键
+        return self.state.get(key, default)
+        
     def set_state(self, key, value): return self.update_state(key, value)
-    def has_state(self, key): return key in self.state
+    
+    def has_state(self, key):
+        """
+        检查状态是否存在，支持复合状态
+        
+        Args:
+            key: 状态键，可以是简单键或复合键（用点分隔）
+            
+        Returns:
+            布尔值，表示状态是否存在
+        """
+        if '.' in key:
+            parts = key.split('.')
+            obj_name = parts[0]
+            attr_name = '.'.join(parts[1:])
+            
+            if obj_name in self.possessing_objects:
+                obj = self.possessing_objects[obj_name]
+                try:
+                    for part in attr_name.split('.'):
+                        if not self._has_attribute(obj, part):
+                            return False
+                        obj = self._get_attribute(obj, part)
+                    return True
+                except:
+                    return False
+        
+        return key in self.state
     def update_states(self, state_dict):
         for key, value in state_dict.items(): self.update_state(key, value)
     def update_state(self, key, value):
@@ -200,9 +305,12 @@ class Agent(metaclass=AgentMeta):
     def add_component(self, component):
         self.components[component.name] = component
         component.agent = self; component.agent_id = self.id
+        tmp = self.get_state_templates()
         # 检查component.MONITORED_STATES是否在自身的template
         for state_key in component.MONITORED_STATES:
-            if state_key not in self.get_state_templates():
+            if '.' in state_key:
+                continue # 跳过复合状态
+            if state_key not in tmp:
                 warnings.warn(f"Agent {self.id} missing required state template for component: {state_key}")
         return self
     
@@ -347,7 +455,7 @@ class Agent(metaclass=AgentMeta):
     from .task import Task
     def execute_task(self, component_name: str, task_name: str, task_class: str, 
                     target_state: Optional[Dict] = None, properties: Optional[Dict] = None,
-                    workflow_id: Optional[str] = None, proof_id: Optional[str] = None):
+                    workflow_id: Optional[str] = None):
         """
         Creates and executes a task using a specified component.
         Non-blocking - returns task object immediately.
@@ -366,8 +474,7 @@ class Agent(metaclass=AgentMeta):
 
         # Create the task instance
         task = self.task_manager.create_task(task_class, self, component_name, 
-                                             task_name, workflow_id, 
-                                             proof_id=proof_id, target_state=target_state,
+                                             task_name, workflow_id, target_state=target_state,
                                              properties=properties)
         task_id = task.id
         
@@ -447,3 +554,104 @@ class Agent(metaclass=AgentMeta):
 
              # Return the final result obtained from the component execution
              return final_result
+             
+   # --- Possessing Objects Management ---
+    def add_possessing_object(self, object_name: str, obj: Any) -> bool:
+        """
+        添加代理拥有的对象，并监听其状态变化事件
+        
+        Args:
+            object_name: 对象名称，用于在复合状态中引用
+            obj: 对象实例
+            
+        Returns:
+            是否成功添加
+        """
+        if object_name in self.possessing_objects:
+            # 如果已存在，先移除旧对象及其监听器
+            self.remove_possessing_object(object_name)
+            print(f"警告: 代理 {self.id} 已拥有名为 {object_name} 的对象，将被覆盖")
+        
+        # 存储对象
+        self.possessing_objects[object_name] = obj
+        
+        # 创建监听器ID
+        listener_id = f"{self.id}_{object_name}_state_listener"
+        
+        # 定义状态变化回调函数
+        def on_object_state_changed(event_data):
+            # 将对象状态变化转发为代理的状态变化事件
+            if isinstance(event_data, dict):
+                event_data['object_name'] = object_name  # 添加对象名称以便识别
+                event_data['key'] = f"{object_name}.{event_data['key']}"  # 更新键名
+                self.trigger_event('state_changed', event_data)
+        
+        if self._has_attribute(obj, 'id'):
+            try:
+                obj_id = self._get_attribute(obj, 'id')
+                self.subscribe(obj_id, 'state_changed', on_object_state_changed, listener_id)
+                print(f"代理 {self.id} 成功订阅对象 {object_name} (ID: {obj_id}) 的状态变化事件")
+            except Exception as e:
+                print(f"订阅对象 {object_name} 状态变化事件失败: {e}")
+
+        self.trigger_event('possessing_object_added', {
+            'object_name': object_name,
+            'object_id': self._get_attribute(obj, 'id'),
+            'time': self.env.now
+        })
+        
+        return True
+   
+    def remove_possessing_object(self, object_name: str) -> bool:
+        """
+        移除代理拥有的对象，并取消相关事件订阅
+        
+        Args:
+            object_name: 对象名称
+            
+        Returns:
+            是否成功移除
+        """
+        if object_name in self.possessing_objects:
+            obj = self.possessing_objects[object_name]
+            
+            # 取消对象状态变化的监听
+            if self._has_attribute(obj, 'id'):
+                listener_id = f"{self.id}_{object_name}_state_listener"
+                try:
+                    obj_id = self._get_attribute(obj, 'id')
+                    self.unsubscribe(obj_id, 'state_changed', listener_id)
+                    print(f"代理 {self.id} 已取消订阅对象 {object_name} (ID: {obj_id}) 的状态变化事件")
+                except Exception as e:
+                    print(f"取消订阅对象 {object_name} 状态变化事件失败: {e}")
+            
+            # 从字典中移除对象
+            del self.possessing_objects[object_name]
+            self.trigger_event('possessing_object_removed', {
+                'object_name': object_name,
+                'object_id': self._get_attribute(obj, 'id', None),
+                'time': self.env.now
+            })
+            return True
+        return False
+   
+    def get_possessing_object(self, object_name: str) -> Optional[Any]:
+       """
+       获取代理拥有的对象
+       
+       Args:
+           object_name: 对象名称
+           
+       Returns:
+           对象实例，如果不存在则返回None
+       """
+       return self.possessing_objects.get(object_name)
+   
+    def get_possessing_object_names(self) -> List[str]:
+       """
+       获取代理拥有的所有对象名称
+       
+       Returns:
+           对象名称列表
+       """
+       return list(self.possessing_objects.keys())

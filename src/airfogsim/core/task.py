@@ -1,97 +1,23 @@
+"""
+AirFogSim任务(Task)核心模块
+
+该模块定义了仿真系统中的任务类。任务是代理通过组件执行的具体动作，
+可以改变代理的状态和拥有的对象。主要内容包括：
+1. Task类：任务基类，定义了任务的生命周期、执行逻辑和状态管理
+2. 任务状态管理：包括进度跟踪、完成、失败和取消等状态转换
+3. 代理对象操作：任务可以在完成、失败或取消时操作代理拥有的对象
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 import uuid
 from airfogsim.core.enums import TaskStatus
-from typing import Dict, Optional, List, Type
+from typing import Dict, Optional, List, Type, Any
 import simpy
 from abc import ABC, abstractmethod
-from .enums import TaskProofType
-# TaskProof class to add
-class TaskProof:
-    def __init__(self, env, workflow_id: str, proof_id: str, owner,
-                 data: Dict = None, handover_workflow_class=None):
-        self.id = proof_id or f"proof_{uuid.uuid4().hex}"
-        self.env = env
-        self.workflow_id = workflow_id
-        self.data = data or {}
-        self.creation_time = None
-        self.last_updated = None
-        self.owner = owner
-        self.owner_id = owner.id  # Current agent ID that owns this proof
-        self.updated_history: List[Dict] = []  # Log of updates
-        self.handover_workflow_class = handover_workflow_class
-        self.type = TaskProofType.GENERIC
-        
-    def update(self, data: Dict, agent_id):
-        self.data.update(data)
-        self.last_updated = self.env.now
-        self.updated_history.append({'time': self.last_updated, 'data': data, 'agent_id': agent_id})
-        return self
-        
-    def handover(self, target_agent):
-        """Called when proof is transferred between agents"""
-        if not self.handover_workflow_class:
-            self.owner = target_agent
-            self.owner_id = target_agent.id
-            return self
-        
-        # 创建工作流（所有用于handover的workflow，必须要能识别target_agent作为自身的属性）
-        workflow = self.env.create_workflow(self.handover_workflow_class, name=f"proof_handover_{self.id}",
-                                            owner=self.owner_id, properties={'target_agent': target_agent})
-        
-        if not hasattr(workflow, 'target_agent'):
-            raise ValueError(f"Handover workflow {self.handover_workflow_class.__name__} must have 'target_agent' property.")
 
-        # 创建一个SimPy事件来等待工作流完成
-        workflow_complete = self.env.event()
-        
-        # 订阅工作流状态变更事件
-        def on_workflow_status_changed(event_value):
-            new_status = event_value.get('new_status')
-            if new_status in ('completed', 'failed', 'canceled'):
-                # 终止状态 - 触发我们的完成事件
-                details = event_value.get('event_details', {})
-                workflow_complete.succeed({
-                    'status': new_status, 
-                    'details': details,
-                    'time': event_value.get('time', self.env.now)
-                })
-        
-        # 注册监听器
-        listener_id = f"handover_{self.id}_{self.env.now}"
-        self.env.event_registry.subscribe(
-            workflow.id, 'status_changed', listener_id, on_workflow_status_changed
-        )
-        
-        # 启动工作流
-        workflow.start()
-        
-        # 等待工作流达到终止状态
-        try:
-            result = yield workflow_complete
-            
-            # 取消订阅避免内存泄漏
-            self.env.event_registry.unsubscribe(workflow.id, 'status_changed', listener_id)
-            
-            # 根据结果决定是否转移所有权
-            if result['status'] == 'completed':
-                self.env.event_registry.trigger_event(self.workflow_id, 'proof_handover', {
-                    'proof_id': self.id,
-                    'source_agent_id': self.owner_id,
-                    'target_agent_id': target_agent.id,
-                    'time': self.env.now
-                })
-                self.owner_id = target_agent.id
-            else:
-                print(f"时间 {self.env.now}: Proof {self.id} handover failed: {result.get('details', {}).get('reason', 'unknown reason')}")
-        
-        except Exception as e:
-            print(f"时间 {self.env.now}: Error during proof handover: {e}")
-            # 确保取消订阅
-            self.env.event_registry.unsubscribe(workflow.id, 'status_changed', listener_id)
-            
-        return self
-    
 class Task:
-    PROOF_CLASS = None  # Proof type for tasks
     NECESSARY_METRICS = [] # Metrics required for task execution
     PRODUCED_STATES = [] # States produced by task execution
     # **************************
@@ -99,7 +25,6 @@ class Task:
     """Represents a specific action performed by a component, initiated by an agent."""
     def __init__(self, env, agent, component_name: str, task_name: str,
                  workflow_id: Optional[str] = None, # ID of the workflow this task belongs to
-                 proof_id: Optional[str] = None, # ID for the expected proof outcome
                  target_state: Optional[Dict] = None, # Optional: Describe desired outcome
                  properties: Optional[Dict] = None): # Generic properties (e.g., duration, demand)
         self.id = 'task_'+str(uuid.uuid4())
@@ -108,7 +33,6 @@ class Task:
         self.agent = agent
         self.component_name = component_name
         self.workflow_id = workflow_id # Link to the workflow this task belongs to
-        self.proof_id = proof_id # Link to the proof this task affects/creates
         self.target_state = target_state or {}
         self.properties = properties or {}
 
@@ -126,8 +50,6 @@ class Task:
         self.current_metrics: Dict = {} # Performance metrics from component
         self.last_update_time: Optional[float] = None
         self.progress: float = 0.0
-        self.proof: Optional[TaskProof] = None
-        self._proof_handover_workflow_class = None # Class to use for proof handover，这个是由子类定义的，不可外部更改，并且需要把proof从agent到target存储好
 
         # 判断self的class的PRODUCE_STATES是否为空
         if not self.PRODUCED_STATES or not all(isinstance(state, str) for state in self.PRODUCED_STATES):
@@ -143,46 +65,12 @@ class Task:
         if not self.NECESSARY_METRICS or not all(isinstance(metric, str) for metric in self.NECESSARY_METRICS):
             raise ValueError("Task subclass must define NECESSARY_METRICS as a list of metric names.")
 
-    def handover_proof(self, target_task):
-        """移交当前任务的证明到目标任务
-    
-        Args:
-            target_task: 目标任务，将接收证明
-        """
-        if not self.proof:
-            print(f"时间 {self.env.now}: 任务 {self.id} 没有证明可以移交")
-            return False
-    
-        # 将证明转移到目标任务的代理
-        target_agent = target_task.agent
-        yield self.env.process(self.proof.handover(target_agent))
-        
-        # 更新目标任务的证明引用
-        target_task.proof = self.proof
-        self.proof = None  # 清除当前任务的证明引用
-        return True
+        # 判断task的PRODUCED_STATES是否和agent的component的MONITORED_STATES有重叠，如果有，则会导致循环触发事件
+        # 这里的self.agent.get_component是一个字典，key是component_name，value是component对象
+        component = self.agent.get_component(component_name)
+        if not component:
+            raise ValueError(f"Agent {self.agent_id} does not have component '{component_name}'")
 
-    @classmethod
-    def get_proof_class(cls):
-        """Return the type of proof this task produces (if any)"""
-        return getattr(cls, 'PROOF_CLASS', None)
-    
-    def create_proof(self, data: Dict = None):
-        """Create a proof for this task"""
-        if not self.get_proof_class() or not self.workflow_id:
-            return None
-            
-        self.proof = self.get_proof_class()(
-            env=self.env,
-            owner=self.agent,
-            workflow_id=self.workflow_id,            
-            proof_id=self.proof_id,
-            data=data or {},
-            handover_workflow_class=self._proof_handover_workflow_class
-        )
-        self.proof.owner_id = self.agent_id
-        return self.proof
-    
     # --- Task Logic (to be run by component) ---
     def execute(self, env, initial_metrics: Dict):
         """
@@ -205,7 +93,7 @@ class Task:
                      break
 
                 # Wait for time passage OR metric update event from the *component*
-                completion_timeout = env.timeout(remaining_time)
+                completion_timeout = env.timeout(remaining_time + 1e-9) # Epsilon for float comparison
                 # Listen for metric changes specific to this component instance
                 metric_change_event = self.event_registry.get_event(self.agent_id, f'{self.component_name}.metric_changed')
                 visual_update_event = self.event_registry.get_event(env.id, 'visual_update')
@@ -227,7 +115,6 @@ class Task:
 
                 # Update internal state/progress based on elapsed time and current metrics
                 self._update_task_state(self.current_metrics)
-                self._trigger_workflow_events()
                 self.last_update_time = current_time
 
                 # Trigger component state change (visuals or internal logic)                
@@ -262,22 +149,6 @@ class Task:
     # --- Abstract/Helper Methods for Task Logic ---
     def _update_task_state(self, performance_metrics: Dict):
         """Update task progress and internal state. Called within execute loop."""
-        # **Subclasses should implement specific progress logic here**
-        # Example: Simple time-based progress
-        # elapsed_time = self.env.now - self.last_update_time
-        # for metric in self.NECESSARY_METRICS:
-        #     if metric not in performance_metrics:
-        #         self.fail(f"Missing required metric '{metric}' for task execution.")
-        #         return
-        # total_time = self.estimate_total_time(performance_metrics)
-        # if total_time > 0:
-        #      increment = elapsed_time / total_time
-        #      self.progress = min(1.0, self.progress + increment)
-        # elif elapsed_time > 0: # If total time is 0 or less, complete instantly
-        #     self.progress = 1.0
-        raise NotImplementedError("Subclasses must implement this method.")
-
-    def _trigger_workflow_events(self):
         raise NotImplementedError("Subclasses must implement this method.")
 
     def estimate_remaining_time(self, performance_metrics) -> float:
@@ -288,7 +159,7 @@ class Task:
         current_state = {
             'task_id': self.id,
             'task_name': self.name,
-            'status': self.status.name,
+            'task_status': self.status.name,
             'progress': self.progress,
             # Add other relevant state parts
         }
@@ -303,6 +174,31 @@ class Task:
     def _get_task_specific_state_repr(self) -> Dict:
         """Return a dictionary with task-specific state details. Subclasses override."""
         raise NotImplementedError("Subclasses must implement this method.")
+    
+    # --- Possessing Object Management Methods ---
+    def _possessing_object_on_complete(self):
+        """
+        处理任务完成时对代理拥有对象的操作。
+        子类应该覆盖此方法以实现特定的对象操作逻辑。
+        默认实现不执行任何操作。
+        """
+        pass
+    
+    def _possessing_object_on_fail(self):
+        """
+        处理任务失败时对代理拥有对象的操作。
+        子类应该覆盖此方法以实现特定的对象操作逻辑。
+        默认实现不执行任何操作。
+        """
+        pass
+    
+    def _possessing_object_on_cancel(self):
+        """
+        处理任务取消时对代理拥有对象的操作。
+        子类应该覆盖此方法以实现特定的对象操作逻辑。
+        默认实现不执行任何操作。
+        """
+        pass
 
     # --- Status Update Methods ---
     def complete(self):
@@ -312,13 +208,11 @@ class Task:
         self.progress = 1.0
         self.result = {"status": "completed", "time": self.end_time}
         # print(f"时间 {timestamp}: Task {self.id} ({self.name}) completed.")
-        # Create proof if applicable
-        if self.get_proof_class() and self.workflow_id and not self.proof:
-            self.create_proof(self._get_current_task_state_repr())
-        elif self.proof:
-            self.proof.update(self._get_current_task_state_repr(), self.agent_id)
+        
+        # 调用对象操作方法
+        self._possessing_object_on_complete()
+        
         self._update_task_state(self.current_metrics) # Ensure final state update
-        self._trigger_workflow_events()
         
     def fail(self, reason: str):
         if self.status == TaskStatus.FAILED: return
@@ -327,11 +221,17 @@ class Task:
         self.failure_reason = reason
         self.result = {"status": "failed", "reason": reason, "time": self.end_time}
         # print(f"时间 {timestamp}: Task {self.id} ({self.name}) failed: {reason}")
+        
+        # 调用对象操作方法
+        self._possessing_object_on_fail()
 
     def cancel(self, reason: str, timestamp: float):
-         if self.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELED): return
-         self.status = TaskStatus.CANCELED
-         self.end_time = timestamp
-         self.failure_reason = reason # Use failure_reason for cancel reason too?
-         self.result = {"status": "canceled", "reason": reason, "time": self.end_time}
-         # print(f"时间 {timestamp}: Task {self.id} ({self.name}) canceled: {reason}")
+        if self.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELED): return
+        self.status = TaskStatus.CANCELED
+        self.end_time = timestamp
+        self.failure_reason = reason # Use failure_reason for cancel reason too?
+        self.result = {"status": "canceled", "reason": reason, "time": self.end_time}
+        # print(f"时间 {timestamp}: Task {self.id} ({self.name}) canceled: {reason}")
+        
+        # 调用对象操作方法
+        self._possessing_object_on_cancel()

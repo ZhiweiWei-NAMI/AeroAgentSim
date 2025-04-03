@@ -1,3 +1,16 @@
+"""
+AirFogSim工具(Utils)核心模块
+
+该模块提供了仿真系统中使用的各种实用工具函数和类，主要用于处理
+空间位置、距离计算和物理量表示等通用功能。主要内容包括：
+1. 距离计算函数：计算二维和三维空间中的欧几里得距离
+2. Location类：表示三维空间中的位置，带有单位和距离计算功能
+3. Speed类：表示速度，包含大小和方向
+4. 物理单位处理：使用pint库实现带单位的物理量计算
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
 
 import math
 from typing import Tuple

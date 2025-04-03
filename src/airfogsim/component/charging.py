@@ -1,16 +1,24 @@
-from airfogsim.core.component import Component
-from typing import List, Dict, Any, Optional, Tuple
 import math
+from airfogsim.core.component import Component
+from typing import List, Dict, Any, Optional
 
 class ChargingComponent(Component):
-    """负责管理电池充电的组件"""
-    PRODUCED_METRICS = ['charging_rate', 'time_to_full', 'energy_level']
-    MONITORED_STATES = ['battery_level', 'battery_capacity', 'position']  # 监控这些代理状态的变化
+    """
+    充电组件，用于管理电池充电过程和充电站资源请求。
+    
+    性能指标：
+    - charging_rate: 充电速率（%/小时）
+    - time_to_full: 充满所需时间（小时）
+    - energy_level: 当前电量水平（%）
+    - request_processing_time: 充电站资源请求处理时间（秒）
+    """
+    PRODUCED_METRICS = ['charging_rate', 'request_processing_time']
+    MONITORED_STATES = ['battery_capacity', 'position', 'charging_station.status', 
+                        'charging_station.power_level']  # 监控这些代理状态的变化
     
     def __init__(self, env, agent, name: Optional[str] = None,
-                 charging_factor: float = 1.0,
-                 charging_efficiency: float = 0.85,
-                 supported_events: List[str] = ['charging_started', 'charging_completed']):
+                 supported_events: List[str] = ['charging_started', 'charging_completed'],
+                 properties: Optional[Dict] = None):
         """
         初始化充电组件
         
@@ -18,155 +26,59 @@ class ChargingComponent(Component):
             env: 仿真环境
             agent: 所属代理
             name: 组件名称
-            charging_factor: 充电速度因子
-            charging_efficiency: 充电效率（输入能量转化为电池电量的比率）
             supported_events: 支持的额外事件
+            properties: 组件属性，包含charging_factor和charging_efficiency
         """
-        super().__init__(env, agent, name or "Charging", supported_events)
+        super().__init__(env, agent, name or "Charging", supported_events, properties)
         
-        self.charging_factor = charging_factor
-        self.charging_efficiency = charging_efficiency
+        self.charging_factor = self.properties.get('charging_factor', 1.0)  # 默认充电速度因子为1.0
+        self.charging_efficiency = self.properties.get('charging_efficiency', 0.85)  # 默认充电效率为0.85
         
-        # 确保agent有电池状态
-        if not self.agent.has_state('battery_level'):
-            self.agent.set_state('battery_level', 100.0)  # 默认满电
-            
-        if not self.agent.has_state('battery_capacity'):
-            self.agent.set_state('battery_capacity', 5000.0)  # 默认容量，单位mAh
-    
-    def get_resource_requirements(self, task) -> List[Dict]:
-        """
-        根据任务确定所需的着陆区和充电资源
-        """
-        charging_task_type = task.properties.get('charging_type', 'normal')
-        
-        # 获取当前位置
-        current_position = self.agent.get_state('position', (0, 0, 0))
-        
-        # 确保位置是三维的
-        if current_position and len(current_position) == 2:
-            current_position = (current_position[0], current_position[1], 0)
-            
-        # 查找当前位置附近的着陆区
-        nearby_landing_spots = self.env.landing_manager.find_nearest_landing_spot(
-            x=current_position[0], y=current_position[1], altitude=current_position[2],
-            require_charging=True
-        )
-        
-        if nearby_landing_spots:
-            # 选择第一个有充电能力的着陆区
-            landing_id = nearby_landing_spots.id
-            
-            # 创建资源请求
-            resource_spec = {
-                'type': 'landing',
-                'landing_id': landing_id,
-                'purpose': 'charging',
-                'priority': task.properties.get('priority', 'normal')
-            }
-            
-            return [resource_spec]
-        
-        # 如果找不到合适的着陆区，返回空列表
-        return []
-    
-    def _allocate_task_resources(self, task) -> List[Tuple]:
-        """
-        为充电任务分配着陆区资源
-        返回格式为 [(resource_type, allocation_id), ...] 的列表
-        """
-        resource_allocations = []
-        required_resources = self.get_resource_requirements(task)
-        
-        for resource_req in required_resources:
-            if resource_req['type'] == 'landing':
-                landing_id = resource_req.get('landing_id')
-                if landing_id:
-                    # 分配着陆区资源 - 不传递额外属性
-                    allocation_id, resource_id = self.env.landing_manager.allocate_resource(
-                        self.agent_id, requirements={
-                            'landing_id': landing_id
-                        }
-                    )
-                    
-                    if allocation_id:
-                        resource_allocations.append(('landing', allocation_id))
-                        
-                        # 触发充电开始事件
-                        self.trigger_event('charging_started', {
-                            'landing_id': landing_id,
-                            'time': self.env.now,
-                            'battery_level': self.agent.get_state('battery_level', 0.0)
-                        })
-        
-        return resource_allocations
-    
-    def _release_task_resources(self, task_id: str, allocations: List[Tuple]):
-        """
-        释放充电任务使用的着陆区资源
-        """
-        # 触发充电完成事件
-        battery_level = self.agent.get_state('battery_level', 0.0)
-        self.trigger_event('charging_completed', {
-            'time': self.env.now,
-            'battery_level': battery_level
-        })
-        
-        # 释放资源
-        for res_type, allocation_id in allocations:
-            if res_type == 'landing':
-                self.env.landing_manager.release_allocation(allocation_id)
-    
+
     def _calculate_performance_metrics(self) -> Dict[str, Any]:
-        """计算基于当前代理状态和资源分配的性能指标"""
-        # 获取当前的电池电量和容量
-        battery_level = self.agent.get_state('battery_level', 0.0)  # 百分比
+        """计算基于当前代理状态的性能指标"""
+        # 获取当前的电池容量和代理状态
         battery_capacity = self.agent.get_state('battery_capacity', 5000.0)  # mAh
+        agent_status = self.agent.get_state('status', 'idle')
         
-        # 初始化充电率为0（未充电状态）
+        # 初始化指标
         charging_rate = 0.0
-        time_to_full = float('inf')
+        request_processing_time = float('inf')  # 默认值表示无法处理
         
-        # 检查是否有有效的着陆区分配
-        landing_allocation = None
-        for task_id, allocations in self.task_resource_allocations.items():
-            for res_type, alloc_id in allocations:
-                if res_type == 'landing':
-                    landing_allocation = self.env.landing_manager.get_allocation(alloc_id)
-                    if landing_allocation:
-                        break
-            if landing_allocation:
-                break
-        
-        if landing_allocation:
-            # 获取着陆区资源
-            landing_id = landing_allocation.get('resource_id')
-            landing_spot = self.env.landing_manager.get_landing_spot(landing_id)
-            
-            if landing_spot and landing_spot.has_charging:
-                # 获取充电功率
-                charging_power = landing_spot.attributes.get('charging_power', 100.0)
+        # 检查代理是否有充电站对象
+        charging_station = self.agent.get_possessing_object('charging_station')
+        if charging_station:
+            # 获取充电站的请求处理时间，如果不在申请中，则会添加一个申请到队列，并且返回默认的等待时间,确保在申请中;
+            # 如果申请成功已经分配,则返回0
+            if self.env.landing_manager.request_resource(charging_station.id, self.agent):
+                assert charging_station.is_allocated(self.agent_id), "充电站资源分配失败"
+                request_processing_time = 0.0  # 申请成功，处理时间为0
+                # 获取充电站的状态
+                charging_station_power = charging_station.get_attribute('power_level', 'normal')
                 
-                # 计算充电率 (% / 小时)
-                # 充电功率 * 充电效率 / 电池容量 * 100%
-                # 假设充电功率单位为W，电池容量为mAh，电压为标准的3.7V
-                voltage = 3.7  # 锂电池标准电压
-                capacity_wh = battery_capacity * voltage / 1000  # 转换mAh到Wh
-                
-                # 每小时充电百分比 = (充电功率 * 充电效率 / 电池容量Wh) * 100%
-                charging_rate = (charging_power * self.charging_efficiency / capacity_wh) * 100.0
-                
-                # 应用充电因子
-                charging_rate *= self.charging_factor
-                
-                # 计算充满所需时间（小时）
-                if charging_rate > 0:
-                    time_to_full = (100.0 - battery_level) / charging_rate
-                else:
-                    time_to_full = float('inf')
+                # 只有在充电状态下且充电站可用时才计算充电率
+                if agent_status == 'charging':
+                    # 基础充电功率 (W)，根据充电站电源水平调整
+                    base_charging_power = 100.0
+                    
+                    if charging_station_power == 'high':
+                        base_charging_power = 150.0
+                    elif charging_station_power == 'low':
+                        base_charging_power = 50.0
+                    
+                    # 计算充电率 (% / 小时)
+                    # 充电功率 * 充电效率 / 电池容量 * 100%
+                    # 假设充电功率单位为W，电池容量为mAh，电压为标准的3.7V
+                    voltage = 3.7  # 锂电池标准电压
+                    capacity_wh = battery_capacity * voltage / 1000  # 转换mAh到Wh
+                    
+                    # 每小时充电百分比 = (充电功率 * 充电效率 / 电池容量Wh) * 100%
+                    charging_rate = (base_charging_power * self.charging_efficiency / capacity_wh) * 100.0
+                    
+                    # 应用充电因子
+                    charging_rate *= self.charging_factor
         
         return {
             'charging_rate': charging_rate,  # %/小时
-            'time_to_full': time_to_full,    # 小时
-            'energy_level': battery_level    # %
+            'request_processing_time': request_processing_time  # 秒
         }

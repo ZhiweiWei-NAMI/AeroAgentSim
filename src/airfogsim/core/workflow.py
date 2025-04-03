@@ -1,3 +1,20 @@
+"""
+AirFogSim工作流(Workflow)核心模块
+
+该模块定义了仿真系统中的工作流框架，工作流是代理执行的一系列任务的集合，
+通过状态机实现状态转换和任务调度。主要内容包括：
+1. Workflow类：工作流基类，定义了工作流的生命周期和状态管理
+2. WorkflowStatusMachine类：工作流状态机，基于各种触发器实现状态转换
+3. WorkflowPropertyTemplate类：工作流属性模板，用于验证和管理属性
+4. WorkflowMeta元类：处理属性模板和状态转换任务的继承
+
+工作流系统支持基于事件、状态、时间和组合条件的触发机制，实现了复杂的
+自动化任务调度和状态转换。
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 from airfogsim.core.enums import WorkflowStatus, TaskStatus, TriggerOperator, TriggerType
 from airfogsim.core.trigger import StateTrigger, EventTrigger, TimeTrigger, CompositeTrigger, Trigger
 from collections import defaultdict, deque
@@ -108,10 +125,9 @@ class WorkflowStatusMachine:
         
     def add_transition(self, state, next_status: str, 
                       agent_state: Optional[Dict] = None,
-                      proof_state: Optional[Dict] = None,
                       time_trigger: Optional[Dict] = None,
                       event_trigger: Optional[Dict] = None,
-                      trigger: Optional[Trigger] = None):
+                      trigger: Optional[Trigger] = None, callback: Optional[Callable] = None):
         """
         添加状态转换，支持多种触发方式
         
@@ -119,10 +135,10 @@ class WorkflowStatusMachine:
             state: 起始状态(字符串或状态列表)
             next_status: 目标状态
             agent_state: 代理状态触发配置 {agent_id, state_key, operator, target_value}
-            proof_state: 证明状态触发配置 {proof_id, value_key, operator, target_value}
             time_trigger: 时间触发配置 {trigger_time, interval, cron_expr}
             event_trigger: 事件触发配置 {source_id, event_name, value_key, operator, target_value}
             trigger: 自定义触发器（优先级最高）
+            callback: 触发器回调函数（可选）
         """
         # 创建触发器
         if trigger:
@@ -145,25 +161,6 @@ class WorkflowStatusMachine:
                 operator=operator,
                 target_value=target_value,
                 name=f"wf_{self.workflow.id}_agent_{state}_{next_status}"
-            )
-        elif proof_state:
-            # 创建证明状态触发器（基于事件）
-            proof_id = proof_state.get('proof_id')
-            value_key = proof_state.get('value_key')
-            operator = proof_state.get('operator')
-            target_value = proof_state.get('target_value')
-            
-            if not proof_id:
-                raise ValueError("proof_state 必须包含 proof_id")
-                
-            t = EventTrigger(
-                self.env,
-                source_id=proof_id,
-                event_name='proof_updated',
-                value_key=value_key,
-                operator=operator,
-                target_value=target_value,
-                name=f"wf_{self.workflow.id}_proof_{state}_{next_status}"
             )
         elif time_trigger:
             # 创建时间触发器
@@ -201,6 +198,9 @@ class WorkflowStatusMachine:
         else:
             raise ValueError("必须提供至少一种触发方式")
             
+        # 设置回调
+        if callback:
+            t.add_callback(callback)
         # 添加转换
         transition = (t, next_status)
         if state == "*":
@@ -346,64 +346,6 @@ class WorkflowStatusMachine:
         """获取当前状态"""
         return self.current_status
         
-    def analyze_offloadability(self, target_state: str = None) -> Dict[str, Any]:
-        """
-        分析工作流是否可以卸载到其他代理
-        
-        Args:
-            target_state: 目标状态，如果为None则分析所有状态
-            
-        Returns:
-            Dict: 包含可卸载性分析结果
-        """
-        result = {
-            'offloadable': False,
-            'states': [],
-            'transitions': []
-        }
-        
-        # 获取要分析的状态
-        states_to_analyze = [target_state] if target_state else list(self.state_transitions.keys())
-        
-        # 收集所有基于证明的转换
-        offloadable_states = []
-        offloadable_transitions = []
-        
-        for state in states_to_analyze:
-            if state not in self.state_transitions:
-                continue
-                
-            state_offloadable = True
-            state_transitions = []
-            
-            for trigger, next_status in self.state_transitions[state]:
-                # 检查触发器类型
-                if trigger.type == TriggerType.EVENT and hasattr(trigger, 'event_name') and trigger.event_name == 'proof_updated':
-                    # 基于证明的转换是可卸载的
-                    transition_info = {
-                        'from_state': state,
-                        'to_state': next_status,
-                        'trigger_type': 'proof',
-                        'proof_id': trigger.source_id
-                    }
-                    state_transitions.append(transition_info)
-                else:
-                    # 其他类型的转换不可卸载
-                    state_offloadable = False
-                    break
-            
-            if state_offloadable and state_transitions:
-                offloadable_states.append(state)
-                offloadable_transitions.extend(state_transitions)
-        
-        # 如果有可卸载的状态，则工作流可卸载
-        if offloadable_states:
-            result['offloadable'] = True
-            result['states'] = offloadable_states
-            result['transitions'] = offloadable_transitions
-            
-        return result
-
 
 
 class Workflow(metaclass=WorkflowMeta):
@@ -431,13 +373,12 @@ class Workflow(metaclass=WorkflowMeta):
         """获取工作流类型的描述"""
         return cls.__doc__ or f"{cls.__name__} 工作流"
     
-    def __init__(self, env, name: str, owner: Optional['Agent'], timeout: Optional[float] = None, proof_id = None,
+    def __init__(self, env, name: str, owner: Optional['Agent'], timeout: Optional[float] = None, 
                  event_names = [], initial_status='idle', callback: Optional[Callable] = None, properties: Optional[Dict] = None):
         self.id = f'workflow'+str(uuid.uuid4())
         self.env = env
         self.name = name
         self.owner = owner
-        self.proof_id = proof_id
 
         self.status: WorkflowStatus = WorkflowStatus.PENDING
         self.start_time: Optional[float] = None
@@ -547,7 +488,7 @@ class Workflow(metaclass=WorkflowMeta):
     def _setup_transitions(self):
         """
         **Must be implemented by subclasses.**
-        Defines SM transitions using triggers for agent states, proof states,
+        Defines SM transitions using triggers for agent states,
         time events, or custom events.
         """
         raise NotImplementedError("Subclasses must implement _setup_transitions()")
@@ -661,10 +602,6 @@ class Workflow(metaclass=WorkflowMeta):
                     self.owner.id, 'workflow_assigned',
                     {'workflow_id': self.id, 'agent_id': self.owner.id, 'time': timestamp}
                 )
-        
-    def analyze_offloadability(self, target_state: str = None) -> Dict[str, Any]:
-        """分析工作流是否可以卸载到其他代理"""
-        return self.status_machine.analyze_offloadability(target_state)
         
     def reset(self):
         """重置工作流状态，包括状态机"""

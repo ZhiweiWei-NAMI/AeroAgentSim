@@ -1,7 +1,23 @@
+"""
+AirFogSim充电工作流模块
+
+该模块定义了无人机充电工作流及其元类，实现了无人机电池电量监控和充电过程管理。
+主要功能包括：
+1. 电池电量监控和阈值触发
+2. 充电站资源请求和分配
+3. 充电站寻找和导航
+4. 充电过程管理
+5. 状态机转换和事件触发
+6. 动态任务生成
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 from airfogsim.core import Workflow, WorkflowStatus, WorkflowMeta
 from airfogsim.core.enums import TriggerOperator
 import uuid
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Dict
 
 class ChargingWorkflowMeta(WorkflowMeta):
     """充电工作流元类"""
@@ -10,9 +26,6 @@ class ChargingWorkflowMeta(WorkflowMeta):
         cls = super().__new__(mcs, name, bases, attrs)
         
         # 注册充电工作流专用的属性模板
-        mcs.register_template(cls, 'charging_station', (tuple, list), True,
-                            lambda pos: len(pos) == 3 and all(isinstance(x, (int, float)) for x in pos),
-                            "充电站的3D位置坐标 (x, y, z)")
         mcs.register_template(cls, 'battery_threshold', (float, int), True,
                             lambda lvl: 0 <= lvl <= 100,
                             "触发充电的电池电量阈值 (0-100)")
@@ -26,44 +39,45 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
     """
     充电工作流，监控代理的电池电量并在电量低时引导代理前往充电站充电。
     通过监听代理的 battery_level 状态来触发充电行为。
+    
+    工作流状态流转：
+    monitoring_battery -> requesting_charger -> seeking_charger -> charging -> completed -> monitoring_battery
     """
     
     @classmethod
     def get_description(cls):
         """获取工作流类型的描述"""
         return "充电工作流 - 监控无人机电池电量并在需要时引导其前往充电站充电"
-    def __init__(self, env, name, owner, timeout=None, proof_id=None, 
+    
+    def __init__(self, env, name, owner, timeout=None, 
                  event_names=[], initial_status='idle', callback=None, properties=None):
-        # 充电站位置
-        self.charging_station = properties.get('charging_station', [0, 0, 0])
         # 电池电量阈值
         self.battery_threshold = properties.get('battery_threshold', 50)  # 默认50%
         # 充电目标电量
         self.target_charge_level = properties.get('target_charge_level', 90)  # 默认90%
         
         # 工作流的事件
-        event_names = ['charging_needed', 'charging_started', 'charging_completed']
+        event_names = ['charging_station_requested', 'charging_started', 'charging_completed']
         
         super().__init__(
             env=env,
             name=name,
             owner=owner,
             timeout=timeout,
-            proof_id=proof_id or f"charging_proof_{uuid.uuid4().hex}",
             event_names=event_names,
             initial_status=initial_status,
             callback=callback,
             properties=properties or {}
         )
+
+        self.charging_station_id = None
         
-    def get_details(self):
+    def get_details(self) -> Dict:
         """获取工作流详细信息"""
         details = super().get_details()
-        details['charging_station'] = self.charging_station
         details['battery_threshold'] = self.battery_threshold
         details['target_charge_level'] = self.target_charge_level
-        details['proof_id'] = self.proof_id
-        details['description'] = f"Monitor battery level and trigger charging when below {self.battery_threshold}%"
+        details['description'] = f"监控电池电量，在低于 {self.battery_threshold}% 时触发充电"
         return details
         
     def get_current_suggested_task(self):
@@ -82,21 +96,33 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
         current_state = self.status_machine.state
         
         # 根据当前状态生成对应的任务
-        if current_state == 'seeking_charger':
+        if current_state == 'requesting_charger':
+            # 创建请求充电站的任务
+            return {
+                'component': 'Charging',
+                'task_class': 'RequestChargingStationTask',
+                'task_name': '请求充电站',
+                'workflow_id': self.id,
+                'target_state': {},
+                'properties': {
+                    'charging_station_id': self.env.landing_manager.find_nearest_landing_spot(
+                        x=self.owner.get_state('position')[0],
+                        y=self.owner.get_state('position')[1],
+                        require_charging=True
+                    ).id,
+                }
+            }
+        elif current_state == 'seeking_charger':
             # 创建移动到充电站的任务
             return {
                 'component': 'MoveTo',
                 'task_class': 'MoveToTask',
                 'task_name': '移动到充电站',
                 'workflow_id': self.id,
-                'proof_id': self.proof_id,
-                'target_state': {'position': self.charging_station},
-                'properties': {
-                    'movement_type': 'direct',
-                    'target_position': self.charging_station,
-                    'priority': 'high'  # 电量低，高优先级
-                }
+                'target_state': {'position': self.env.landing_manager.get_landing_spot(self.charging_station_id).location},
+                'properties': {}
             }
+            
         elif current_state == 'charging':
             # 创建充电任务
             return {
@@ -104,12 +130,9 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
                 'task_class': 'ChargingTask',
                 'task_name': '电池充电',
                 'workflow_id': self.id,
-                'proof_id': self.proof_id,
                 'target_state': {'battery_level': self.target_charge_level},
                 'properties': {
-                    'charging_type': 'normal',
-                    'current_battery_level': self.owner.get_state('battery_level'),
-                    'priority': 'normal'
+                    'charging_efficiency': 0.95,  # 充电效率
                 }
             }
             
@@ -120,10 +143,10 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
         # 工作流启动时，进入监控电量状态
         self.status_machine.set_start_transition('monitoring_battery')
         
-        # 添加从监控到寻找充电站的转换
+        # 添加从监控到请求充电站的转换
         self.status_machine.add_transition(
             'monitoring_battery',
-            'seeking_charger',
+            'requesting_charger',
             agent_state={
                 'agent_id': self.owner.id,
                 'state_key': 'battery_level',
@@ -132,18 +155,34 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
             }
         )
         
+        # 添加从请求充电站到寻找充电站的转换
+        self.status_machine.add_transition(
+            'requesting_charger',
+            'seeking_charger',
+            event_trigger={
+                'source_id': self.owner.id,
+                'event_name': 'possessing_object_added',
+                'value_key': 'object_name',
+                'operator': TriggerOperator.EQUALS,
+                'target_value': 'charging_station'
+            },
+            callback=lambda context: setattr(
+                self, 'charging_station_id', context['event_value']['object_id']
+            )
+        )
+        
         # 添加从寻找充电站到充电状态的转换
         self.status_machine.add_transition(
             'seeking_charger',
             'charging',
-            event_trigger={
-                'source_id': self.proof_id,
-                'event_name': 'proof_updated',
-                'value_key': 'data.position',
+            # state_changed
+            agent_state={
+                'agent_id': self.owner.id,
+                'state_key': 'position',
                 'operator': TriggerOperator.CUSTOM,
-                'target_value': lambda position, station=self.charging_station: 
-                    all([abs(position[i] - station[i]) < 1e-6 for i in range(3)]) if position else False
-            }
+                'target_value': lambda pos: self.env.landing_manager.get_landing_spot(
+                    self.charging_station_id).is_within_range(pos[0], pos[1], pos[2])
+            },
         )
         
         # 添加从充电到完成的转换
@@ -188,20 +227,21 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
         # 监控状态回调
         def on_monitoring(context):
             print(f"时间 {self.env.now}: 开始监控 {self.owner.id} 的电池电量")
-            
-        # 寻找充电站回调
-        def on_seeking_charger(context):
-            print(f"时间 {self.env.now}: {self.owner.id} 电量低于 {self.battery_threshold}%，开始寻找充电站")
+        
+        # 请求充电站回调
+        def on_requesting_charger(context):
+            print(f"时间 {self.env.now}: {self.owner.id} 电量低于 {self.battery_threshold}%，开始请求充电站")
             # 触发充电需求事件
             self.env.event_registry.trigger_event(
-                self.id, 'charging_needed',
+                self.id, 'charging_station_requested',
                 {
                     'agent_id': self.owner.id,
                     'battery_level': self.owner.get_state('battery_level'),
-                    'charging_station': self.charging_station,
+                    'charging_station_id': self.charging_station_id,
                     'time': self.env.now
                 }
             )
+            
             
         # 充电中回调
         def on_charging_started(context):
@@ -235,8 +275,8 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
         # 为状态添加回调
         for state, trans_list in transitions.items():
             for trigger, next_state in trans_list:
-                if state == 'monitoring_battery' and next_state == 'seeking_charger':
-                    trigger.add_callback(on_seeking_charger)
+                if state == 'monitoring_battery' and next_state == 'requesting_charger':
+                    trigger.add_callback(on_requesting_charger)
                 elif state == 'seeking_charger' and next_state == 'charging':
                     trigger.add_callback(on_charging_started)
                 elif state == 'charging' and next_state == 'completed':
@@ -249,7 +289,6 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
 def create_charging_workflow(env, agent, charging_station=None, battery_threshold=50, target_charge_level=90):
     """创建充电工作流"""
     from airfogsim.core.trigger import StateTrigger
-    proof_id = f"charging_{uuid.uuid4().hex}"
     
     # 如果未指定充电站，使用默认位置
     if charging_station is None:
@@ -259,11 +298,11 @@ def create_charging_workflow(env, agent, charging_station=None, battery_threshol
         ChargingWorkflow,
         name=f"Charging of {agent.id}",
         owner=agent,
-        proof_id=proof_id,
         properties={
             'charging_station': charging_station,
             'battery_threshold': battery_threshold,
-            'target_charge_level': target_charge_level
+            'target_charge_level': target_charge_level,
+            'charging_station_id': f"charging_station_{uuid.uuid4().hex[:8]}"
         },
         # 使用电池电量触发器作为启动条件
         start_trigger=StateTrigger(

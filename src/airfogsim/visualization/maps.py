@@ -1,3 +1,17 @@
+"""
+AirFogSim地图可视化模块
+
+该模块提供无人机仿真系统的地图可视化功能，包括：
+1. 无人机位置格式化显示
+2. 轨迹点数据处理和展示
+3. 轨迹统计计算（距离、速度、高度等）
+4. 热力图数据生成
+5. 地图标记和弹出窗口格式化
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 import logging
 from typing import Dict, Any, List, Tuple, Optional
 import json
@@ -6,6 +20,20 @@ import math
 logger = logging.getLogger(__name__)
 
 class MapService:
+    """
+    地图服务类，负责处理地图可视化相关数据格式化
+    
+    主要功能：
+    - 格式化无人机位置数据 (format_drone_positions_for_map)
+    - 处理轨迹点数据 (format_trajectory_for_map)
+    - 计算轨迹统计信息 (calculate_trajectory_stats)
+    - 生成热力图数据 (generate_heatmap_data)
+    - 格式化智能体位置数据 (format_agent_positions_for_map)
+    
+    使用示例：
+        map_service = MapService()
+        formatted_drones = map_service.format_drone_positions_for_map(drones)
+    """
     """地图服务，提供地图可视化相关功能"""
     
     @staticmethod

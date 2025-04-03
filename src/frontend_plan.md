@@ -142,7 +142,8 @@ GET  /api/simulation/status        # 获取仿真状态
 POST /api/simulation/start         # 启动仿真
 POST /api/simulation/pause         # 暂停仿真
 POST /api/simulation/stop          # 停止仿真
-POST /api/simulation/configure     # 配置仿真参数
+POST /api/
+     # 配置仿真参数
 
 GET  /api/agents                   # 获取所有代理
 POST /api/agents                   # 创建代理

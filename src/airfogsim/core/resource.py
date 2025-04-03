@@ -1,8 +1,20 @@
-# core/resource.py
+"""
+AirFogSim资源(Resource)核心模块
+
+该模块定义了仿真系统中资源的基础类和管理机制。资源是系统中被代理使用的
+各种实体，如空域、频率、着陆点等。模块采用泛型设计，支持不同类型的资源
+管理。主要内容包括：
+1. Resource类：基本资源类，定义资源的通用属性和状态
+2. ResourceManager类：资源管理器基类，负责资源的注册、分配和释放
+3. 资源分配机制：包括分配查找、记录和释放
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
 
 import uuid
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Generic, TypeVar, Callable, Tuple
+from typing import Dict, List, Optional, Generic, TypeVar, Callable, Tuple, Any
 
 class Resource:
     """基本资源类"""
@@ -12,6 +24,10 @@ class Resource:
         self.attributes = attributes or {}
         self.status = "available"  # available, allocated, maintenance
         self.current_allocations = set()  # 当前活跃分配ID集合
+
+    def get_attribute(self, key: str, default) -> Optional[Any]:
+        """获取资源属性"""
+        return self.attributes.get(key, default)
 
 
 # 资源类型泛型
@@ -32,7 +48,7 @@ class ResourceManager(Generic[R]):
         
         # 分配记录
         self.allocations: Dict[str, Dict] = {}
-        self.resource_allocations: Dict[str, List[str]] = {}
+        self.resource_allocations: Dict[str, Dict[str]] = {}
         self.user_allocations: Dict[str, List[str]] = {}
         
         # 环境引用(用于时间等)
@@ -50,7 +66,7 @@ class ResourceManager(Generic[R]):
             
         # 添加资源
         self.resources[resource.id] = resource
-        self.resource_allocations[resource.id] = []
+        self.resource_allocations[resource.id] = {}
         
         return True
         
@@ -62,7 +78,7 @@ class ResourceManager(Generic[R]):
             
         # 检查资源是否有活跃分配
         active_allocations = [
-            a_id for a_id in self.resource_allocations.get(resource_id, [])
+            a_id for a_id in self.resource_allocations.get(resource_id, {})
             if self.allocations[a_id]['status'] == 'active'
         ]
         

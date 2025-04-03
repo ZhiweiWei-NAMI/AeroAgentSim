@@ -1,15 +1,27 @@
+"""
+AirFogSim计算任务模块
+
+该模块定义了无人机计算任务的实现，负责模拟无人机执行计算工作负载的过程。
+主要功能包括：
+1. 模拟计算过程和资源消耗
+2. 计算处理速度和完成时间
+3. 生成计算证明
+4. 动态更新计算负载
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 from airfogsim.core.task import Task
 from typing import Dict
-from .proof.computation import ComputationProof
 
 class ComputeTask(Task):
     """执行计算任务"""
-    PROOF_CLASS = ComputationProof
     NECESSARY_METRICS = ['processing_speed']
     PRODUCED_STATES = ['computation_load']
     
     def __init__(self, env, agent, component_name, task_name,
-                 workflow_id=None, proof_id=None, 
+                 workflow_id=None, 
                  target_state=None, properties=None):
         """
         初始化计算任务
@@ -20,7 +32,6 @@ class ComputeTask(Task):
             component_name: 组件名称
             task_name: 任务名称
             workflow_id: 工作流ID
-            proof_id: 证明ID
             target_state: 目标状态
             properties: 任务属性
         """
@@ -30,7 +41,7 @@ class ComputeTask(Task):
         
         # 调用父类初始化
         super().__init__(env, agent, component_name, task_name, 
-                         workflow_id, proof_id, target_state, properties)
+                         workflow_id, target_state, properties)
         
         # 任务特定属性
         self.computation_size = properties.get('computation_size', 1000)
@@ -41,7 +52,6 @@ class ComputeTask(Task):
         self.computation_result = None
         self.processing_progress = 0.0
         self.computation_load = 0.0
-        self._proof_handover_workflow_class = None
     
     def estimate_total_time(self, performance_metrics: Dict) -> float:
         """估计完成任务所需的总时间"""

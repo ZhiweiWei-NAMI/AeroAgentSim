@@ -1,4 +1,16 @@
-# airfogsim/agent/__init__.py
+"""
+AirFogSim代理(Agent)模块初始化文件
+
+该模块负责动态导入和注册所有代理类，使它们可以在仿真系统中使用。
+主要功能包括：
+1. 自动发现和导入所有Agent子类
+2. 将代理类添加到全局命名空间
+3. 提供获取所有代理类和描述的函数
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 import importlib
 import pkgutil
 import inspect

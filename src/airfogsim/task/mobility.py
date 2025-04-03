@@ -1,19 +1,30 @@
+"""
+AirFogSim移动任务模块
+
+该模块定义了无人机移动任务的实现，负责模拟无人机在三维空间中的移动过程。
+主要功能包括：
+1. 计算移动路径和距离
+2. 模拟位置更新和方向控制
+3. 生成位置证明
+4. 模拟电池消耗
+5. 处理位置相关的事件
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 from airfogsim.core.task import Task
 from airfogsim.core.enums import TaskStatus
 import math
-from airfogsim.core.task import Task
-from .proof.location import LocationProof
 from typing import Dict
 
 class MoveToTask(Task):
     """移动到指定目标位置的任务"""
-    PROOF_CLASS = LocationProof
     NECESSARY_METRICS = ['speed'] # 需要从属于component的PRODUCED_METRICS
     PRODUCED_STATES = ['position', 'direction', 'distance_traveled', 'altitude', 'battery_level'] # 需要在agent的模板之内
     
     def __init__(self, env, agent, component_name, task_name,
-                 workflow_id=None, proof_id=None, 
-                 target_state=None, properties=None):
+                 workflow_id=None, target_state=None, properties=None):
         """
         初始化移动任务
         
@@ -23,7 +34,6 @@ class MoveToTask(Task):
             component_name: 组件名称
             task_name: 任务名称
             workflow_id: 工作流ID
-            proof_id: 证明ID
             target_state: 目标状态，必须包含'position'
             properties: 任务属性，必须包含'current_position'
         """
@@ -33,16 +43,10 @@ class MoveToTask(Task):
         
         # 调用父类初始化
         super().__init__(env, agent, component_name, task_name, 
-                         workflow_id, proof_id, target_state, properties)
+                         workflow_id, target_state, properties)
         
         # 任务特定属性
         self.target_position = target_state.get('position')
-        if not self.target_position:
-            # 尝试从属性中获取目标位置
-            self.target_position = properties.get('target_position')
-            if self.target_position:
-                # 如果目标位置在属性中，确保也在目标状态中
-                self.target_state['position'] = self.target_position
                 
         # 确保目标位置是三维的
         if self.target_position and len(self.target_position) == 2:
@@ -53,11 +57,10 @@ class MoveToTask(Task):
         # 所有task_specific状态必须由自身统一维护，并且不能轻易调用agent.update state
         self.distance_traveled = 0  # 行进距离
         self.direction = (0, 0, 0)  # 当前方向向量（三维）
-        self.current_position = properties.get('current_position')
+        self.current_position = agent.get_state('position', (0, 0, 0))  # 默认为(0, 0, 0)
         self.start_position = self.current_position
         self.total_distance = 0     # 起始位置到目标的直线距离
         self.battery_level = agent.get_state('battery_level', 100)  # 默认为满电量
-        self._proof_handover_workflow_class = None
                 
         # 计算初始的总距离和方向
         self._calculate_distance_and_direction()
@@ -134,6 +137,17 @@ class MoveToTask(Task):
             else:
                 # 正常更新位置
                 self.current_position = (new_x, new_y, new_z)
+            
+            # 更新代理的位置状态，这将触发环境中的碰撞检测
+            self.agent.set_state('position', self.current_position)
+            
+            # 检查是否有碰撞风险
+            if hasattr(self.env, 'airspace_manager'):
+                nearby_agents = self.env.airspace_manager.get_nearby_agents(self.agent.id, 10.0)  # 10米范围内的代理
+                if nearby_agents:
+                    # 如果有附近的代理，记录日志
+                    agent_count = len(nearby_agents)
+                    print(f"时间 {self.env.now}: {self.agent.id} 附近有 {agent_count} 个代理")
         
         # 更新进度
         if self.total_distance > 0:
@@ -183,27 +197,4 @@ class MoveToTask(Task):
             'altitude': self.current_position[2] if self.current_position else 0,
             'battery_level': self.battery_level
         }
-    
-    def _trigger_workflow_events(self):
-        """触发工作流相关事件"""
-        # 当任务进度更新时，更新proof并触发事件
-        if self.proof and self.progress > 0:
-            # 更新证明
-            proof_data = {'position': self.current_position}
-            self.proof.update(proof_data, self.agent_id)
-            
-            # 直接通过环境的事件注册表触发proof_updated事件
-            # 这确保了事件源是proof_id而不是agent_id
-            if self.env and self.proof_id:
-                self.env.event_registry.trigger_event(
-                    self.proof_id,  # 使用proof_id作为事件源
-                    'proof_updated',
-                    {
-                        'proof_id': self.proof_id,
-                        'data': proof_data,  # 包含位置信息
-                        'workflow_id': self.workflow_id,
-                        'agent_id': self.agent_id,
-                        'time': self.env.now
-                    }
-                )
             

@@ -1,3 +1,20 @@
+"""
+AirFogSim环境(Environment)核心模块
+
+该模块定义了仿真系统的核心环境类，继承自SimPy的Environment类。
+环境是整个仿真系统的容器，负责协调各种管理器、代理和资源的运行。
+主要功能包括：
+1. 管理仿真时间和事件流
+2. 管理各种资源（空域、频率、着陆点等）
+3. 注册和管理代理(Agent)
+4. 创建和管理工作流(Workflow)
+5. 创建和管理触发器(Trigger)
+6. 提供数据存储和可视化更新
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 import concurrent.futures
 from threading import Barrier
 from .agent import Agent
@@ -26,9 +43,6 @@ class Environment(simpy.Environment):
         self.airspace_manager = AirspaceManager(self)
         self.frequency_manager = FrequencyManager(self)
         self.landing_manager = LandingManager(self)
-        
-        # 保留旧的resource_manager引用以兼容旧代码
-        self.resource_manager = self.airspace_manager
         
         self.workflow_manager = WorkflowManager(self)
         self.trigger_manager = TriggerManager(self)
@@ -60,7 +74,48 @@ class Environment(simpy.Environment):
 
     def register_agent(self, agent: 'Agent'):
         self.agents[agent.id] = agent
+        
+        # 如果代理有位置信息，注 
+        if hasattr(self, 'airspace_manager') and hasattr(agent, 'state'):
+            position = agent.get_state('position')
+            if position:
+                # 确保位置是三维的
+                if len(position) == 2:
+                    position = (position[0], position[1], 0)
+                self.airspace_manager.register_agent(agent.id, position)
+                
+                # 订阅代理的状态变化事件，以便在位置变化时更新空域管理器
+                self.event_registry.subscribe(
+                    agent.id,
+                    'state_changed',
+                    f"{agent.id}_position_tracker",
+                    self._handle_agent_position_change
+                ).add_source_filter(lambda event_data: 'position'==event_data.get('key', {}))
+        
         return agent
+    
+    def _handle_agent_position_change(self, event_data):
+        """
+        处理代理位置变化事件，更新空域管理器中的代理位置事件数据，包含key, old_value, new_value和time
+        """
+        if not event_data or 'key' not in event_data or event_data['key'] != 'position':
+            return
+            
+        agent_id = event_data.get('source_id')
+        if not agent_id:
+            return
+            
+        position = event_data.get('new_value')
+        if not position:
+            return
+            
+        # 确保位置是三维的
+        if len(position) == 2:
+            position = (position[0], position[1], 0)
+            
+        # 更新空域管理器中的代理位置
+        if hasattr(self, 'airspace_manager'):
+            self.airspace_manager.update_agent_position(agent_id, position)
 
     def get_agent(self, agent_id):
         return self.agents.get(agent_id)

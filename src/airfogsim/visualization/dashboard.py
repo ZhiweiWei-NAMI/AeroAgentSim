@@ -1,3 +1,17 @@
+"""
+AirFogSim仪表盘可视化模块
+
+该模块提供仿真系统的仪表盘数据聚合和可视化功能，包括：
+1. 无人机状态统计和电池电量分析
+2. 工作流执行情况统计
+3. 智能体组件分布统计
+4. 系统事件监控
+5. 各类数据聚合和图表生成
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 import logging
 from typing import Dict, Any, List
 from .data_service import SimulationDataService
@@ -5,6 +19,22 @@ from .data_service import SimulationDataService
 logger = logging.getLogger(__name__)
 
 class DashboardService:
+    """
+    仪表盘服务类，负责聚合和分析仿真数据，为前端仪表盘提供可视化数据
+    
+    主要功能：
+    - 获取系统概览数据 (get_dashboard_summary)
+    - 无人机状态和电池分析 (get_drone_statistics)
+    - 工作流执行统计 (get_workflow_statistics)
+    - 智能体组件分布 (get_agent_statistics)
+    - 最近事件监控 (get_recent_events)
+    - 各类数据分布统计
+    
+    使用示例：
+        data_service = SimulationDataService(env)
+        dashboard = DashboardService(data_service)
+        summary = dashboard.get_dashboard_summary()
+    """
     """仪表盘服务，提供数据聚合和分析功能"""
     
     def __init__(self, data_service: SimulationDataService):

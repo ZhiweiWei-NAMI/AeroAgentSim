@@ -1,3 +1,18 @@
+"""
+AirFogSim无人机代理模块
+
+该模块定义了无人机代理类及其元类，实现了智能无人机的行为和状态管理。
+主要功能包括：
+1. 无人机状态模板定义和管理
+2. 智能任务规划和执行
+3. 电池管理和充电逻辑
+4. LLM集成的决策支持
+5. 工作流监控和管理
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 from airfogsim.core.agent import Agent, AgentMeta
 from airfogsim.core import Workflow, WorkflowStatus
 from airfogsim.workflow.inspection import InspectionWorkflow
@@ -23,10 +38,8 @@ class DroneAgentMeta(AgentMeta):
                             lambda lvl: 0 <= lvl <= 100,
                             "无人机电池电量百分比 (0-100)")
         mcs.register_template(cls, 'status', str, True,
-                            lambda s: s in ['idle', 'flying', 'landing', 'charging', 'error'],
+                            lambda s: s in ['idle', 'flying', 'landing', 'charging', 'error', 'waiting_to_charge'],
                             "无人机当前状态")
-        mcs.register_template(cls, 'payload', dict, False, None,
-                            "无人机携带的负载信息")
         mcs.register_template(cls, 'direction', tuple, False,
                             lambda pos: len(pos) == 3 and all(isinstance(x, (int, float)) for x in pos),
                             "无人机的方向向量 (dx, dy, dz)")
@@ -39,6 +52,9 @@ class DroneAgentMeta(AgentMeta):
         # battery_capacity
         mcs.register_template(cls, 'battery_capacity', float, False, None,
                             "无人机电池容量 (mAh)")
+        # charge_cycles
+        mcs.register_template(cls, 'charge_cycles', int, False, None,
+                            "无人机充电周期")
         return cls
 
 class DroneAgent(Agent, metaclass=DroneAgentMeta):
@@ -53,11 +69,11 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
         super().__init__(env, agent_name, properties)
         self.id = agent_id or f"drone_{id(self)}"
         self.initialize_states(
+            level_class=DroneAgent,
             position=properties.get('position', [0, 0, 0]),
             battery_level=properties.get('battery_level', 100.0),
             status='idle',
             speed=0.0,
-            payload={}
         )
         # 订阅环境的视觉更新事件
         self.env.event_registry.subscribe(
@@ -99,7 +115,7 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
     
     def _validate_task_format(self, task):
         """验证任务格式是否正确"""
-        required_fields = ['component', 'task_name', 'workflow_id', 'proof_id','target_state','task_class','properties']
+        required_fields = ['component', 'task_name', 'workflow_id', 'target_state','task_class','properties']
         return all(field in task for field in required_fields)
 
     def _analyze_workflow_with_llm(self, workflow):
@@ -126,7 +142,6 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
                 "task_class": "TaskClassName", 
                 "task_name": "Human readable task name",
                 "workflow_id": "{workflow.id}",
-                "proof_id": "{workflow.proof_id}",
                 "target_state": {{"position": [x, y, z]}},  # Target drone state
                 "properties": {{
                 "key1": "value1", 
@@ -153,7 +168,6 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
             tasks = self._parse_llm_response(response_text)
             for task in tasks:
                 task['workflow_id'] = workflow.id
-                task['proof_id'] = workflow.proof_id
             return tasks
         except Exception as e:
             print(f"LLM分析失败: {str(e)}")
@@ -210,8 +224,6 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
             suggested_task = charging_workflow.get_current_suggested_task()
             if suggested_task:
                 # 如果有建议任务，补充当前位置等动态属性
-                if 'properties' in suggested_task and 'target_position' in suggested_task['properties']:
-                    suggested_task['properties']['current_position'] = self.get_state('position')
                 tasks_to_execute.append(suggested_task)
             
             # 如果当前在充电，更新无人机状态
@@ -223,9 +235,6 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
                 # 使用统一的方法获取建议任务
                 suggested_task = workflow.get_current_suggested_task()
                 if suggested_task:
-                    # 补充当前位置等动态属性
-                    if 'properties' in suggested_task and 'target_position' in suggested_task['properties']:
-                        suggested_task['properties']['current_position'] = self.get_state('position')
                     tasks_to_execute.append(suggested_task)
         
         # 执行规划的任务
@@ -237,9 +246,6 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
         if not tasks_to_execute:
             return
             
-        # 如果有任务要执行，更新状态（除非已经在充电中）
-        if self.get_state('status') != 'charging':
-            self.update_state('status', 'flying')
             
         # 执行每个任务
         for task_info in tasks_to_execute:
@@ -247,7 +253,6 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
             task_class = task_info['task_class']
             task_name = task_info['task_name']
             workflow_id = task_info['workflow_id']
-            proof_id = task_info.get('proof_id')
             target_state = task_info['target_state']
             properties = task_info['properties']
             
@@ -267,7 +272,6 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
                     task_name,
                     task_class=task_class,
                     workflow_id=workflow_id,
-                    proof_id=proof_id,
                     target_state=target_state,
                     properties=properties
                 )
@@ -279,7 +283,7 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
             # 只取消正在运行的非充电任务
             if (task_info['status'] == 'running' and 
                 not (task_info['component'] == 'Charging' or 
-                    (task_info['component'] == 'MoveTo' and 'charging' in task_info['task_name'].lower()))):
+                    (task_info['component'] == 'MoveTo' and '充电' in task_info['task_name'].lower()))):
                 tasks_to_cancel.append(task_id)
                 
         for task_id in tasks_to_cancel:

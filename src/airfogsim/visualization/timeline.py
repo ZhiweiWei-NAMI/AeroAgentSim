@@ -1,3 +1,17 @@
+"""
+AirFogSim时间线可视化模块
+
+该模块提供无人机仿真系统的事件时间线可视化功能，包括：
+1. 事件数据格式化处理
+2. 时间线显示优化
+3. 事件分类和分组
+4. 事件统计和分析
+5. 时间范围过滤
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+
 import logging
 from typing import Dict, Any, List, Tuple, Optional
 import json
@@ -6,6 +20,20 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 class TimelineService:
+    """
+    时间线服务类，负责处理事件时间线可视化和分析
+    
+    主要功能：
+    - 事件数据格式化 (format_events_for_timeline)
+    - 事件标题和描述生成 (_get_event_title, _get_event_description)
+    - 事件图标和颜色映射 (_get_event_icon_and_color)
+    - 事件分组 (group_events_by_source, group_events_by_type)
+    - 事件统计分析 (generate_event_statistics)
+    
+    使用示例：
+        timeline_service = TimelineService()
+        formatted_events = timeline_service.format_events_for_timeline(events)
+    """
     """时间线服务，提供事件时间线相关功能"""
     
     @staticmethod
@@ -74,12 +102,6 @@ class TimelineService:
             return f"{source_id} 任务完成"
         elif event_type == 'task_failed':
             return f"{source_id} 任务失败"
-        elif event_type == 'proof_created':
-            return f"{source_id} 创建证明"
-        elif event_type == 'proof_updated':
-            return f"{source_id} 更新证明"
-        elif event_type == 'proof_transferred':
-            return f"{source_id} 转移证明"
         elif 'charging' in event_type:
             return f"{source_id} 充电事件"
         elif 'moving' in event_type or 'position' in event_type:
@@ -123,17 +145,6 @@ class TimelineService:
             reason = event_data.get('reason', '未知')
             return f"任务失败: {task_name} (ID: {task_id}), 原因: {reason}"
         
-        elif event_type == 'proof_created' or event_type == 'proof_updated':
-            proof_id = event_data.get('proof_id', '未知')
-            proof_data = event_data.get('data', {})
-            return f"证明 ID: {proof_id}, 数据: {proof_data}"
-        
-        elif event_type == 'proof_transferred':
-            proof_id = event_data.get('proof_id', '未知')
-            from_agent = event_data.get('from_agent', '未知')
-            to_agent = event_data.get('to_agent', '未知')
-            return f"证明 ID: {proof_id} 从 {from_agent} 转移到 {to_agent}"
-        
         else:
             # 通用格式：将事件数据转换为字符串
             return str(event_data)
@@ -151,9 +162,6 @@ class TimelineService:
             'task_started': ('play-circle', '#1890ff'),  # 蓝色
             'task_completed': ('check-circle', '#52c41a'),  # 绿色
             'task_failed': ('close-circle', '#f5222d'),  # 红色
-            'proof_created': ('file-add', '#722ed1'),  # 紫色
-            'proof_updated': ('edit', '#722ed1'),  # 紫色
-            'proof_transferred': ('swap', '#faad14'),  # 黄色
         }
         
         # 处理包含特定关键词的事件类型

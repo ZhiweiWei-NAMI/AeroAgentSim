@@ -2,6 +2,7 @@
 
 from airfogsim.core.resource import Resource
 
+
 class LandingResource(Resource):
     """
     着陆区资源类
@@ -40,6 +41,50 @@ class LandingResource(Resource):
         # 着陆区状态
         self.occupied_slots = 0
         self.condition = "normal"  # normal, damaged, maintenance
+
+    def allocate(self, agent_id: str) -> bool:
+        """
+        分配资源给无人机
+        
+        Args:
+            agent_id: 无人机ID
+            
+        Returns:
+            分配是否成功
+        """
+        if self.has_capacity() and not self.is_allocated(agent_id):
+            self.current_allocations.add(agent_id)
+            self.occupied_slots += 1
+            return True
+        return False
+    
+    def release(self, agent_id: str) -> bool:
+        """
+        释放资源
+        
+        Args:
+            agent_id: 无人机ID
+            
+        Returns:
+            释放是否成功
+        """
+        if agent_id in self.current_allocations:
+            self.current_allocations.remove(agent_id)
+            self.occupied_slots -= 1
+            return True
+        return False
+
+    def is_allocated(self, agent_id: str) -> bool:
+        """
+        检查无人机是否已分配到该着陆区
+        
+        Args:
+            agent_id: 无人机ID
+            
+        Returns:
+            是否已分配
+        """
+        return agent_id in self.current_allocations
         
     def has_capacity(self) -> bool:
         """检查是否还有容量接收新的无人机"""
@@ -108,3 +153,4 @@ class LandingResource(Resource):
         
         # 从属性中获取数据传输速率，如果未指定则使用默认值
         return self.attributes.get('data_transfer_rate', 10.0)
+    
