@@ -116,18 +116,20 @@ class WorkflowStatusMachine:
         self.env = workflow.env
         self.current_status = initial_status
         self.start_status = initial_status
-        self.state_transitions: Dict[str, List[Tuple[Trigger, str]]] = defaultdict(list)
-        self.terminal_status = {'completed', 'failed', 'canceled'} 
+        self.state_transitions: Dict[str, List[Tuple[Trigger, str, Optional[str]]]] = defaultdict(list)
+        self.terminal_status = {'completed', 'failed', 'canceled'}
         self.process: Optional[simpy.Process] = None
-        self.wildcard_transitions: List[Tuple[Trigger, str]] = []
+        self.wildcard_transitions: List[Tuple[Trigger, str, Optional[str]]] = []
         self.active_triggers: Dict[str, Trigger] = {}  # trigger_id -> Trigger
         self._monitor_process_active = False
         
-    def add_transition(self, state, next_status: str, 
-                      agent_state: Optional[Dict] = None,
-                      time_trigger: Optional[Dict] = None,
-                      event_trigger: Optional[Dict] = None,
-                      trigger: Optional[Trigger] = None, callback: Optional[Callable] = None):
+    def add_transition(self, state, next_status: str,
+                       agent_state: Optional[Dict] = None,
+                       time_trigger: Optional[Dict] = None,
+                       event_trigger: Optional[Dict] = None,
+                       trigger: Optional[Trigger] = None,
+                       callback: Optional[Callable] = None,
+                       description: Optional[str] = None):
         """
         添加状态转换，支持多种触发方式
         
@@ -139,6 +141,7 @@ class WorkflowStatusMachine:
             event_trigger: 事件触发配置 {source_id, event_name, value_key, operator, target_value}
             trigger: 自定义触发器（优先级最高）
             callback: 触发器回调函数（可选）
+            description: 状态转换的描述信息（可选）
         """
         # 创建触发器
         if trigger:
@@ -202,7 +205,7 @@ class WorkflowStatusMachine:
         if callback:
             t.add_callback(callback)
         # 添加转换
-        transition = (t, next_status)
+        transition = (t, next_status, description)
         if state == "*":
             self.wildcard_transitions.append(transition)
         elif isinstance(state, str):
@@ -295,12 +298,20 @@ class WorkflowStatusMachine:
         if self.is_in_terminal_status():
             return False
             
+        # 查找该触发器对应的转换描述
+        description = None
+        for t, ns, desc in self._get_current_transitions():
+            if t.id == trigger.id and ns == next_status:
+                description = desc
+                break
+            
         # 执行状态变更
         details = {
             'trigger_id': trigger.id,
             'trigger_name': trigger.name,
             'trigger_type': trigger.type.value,
-            'context': context
+            'context': context,
+            'description': description
         }
         changed = self._change_status(next_status, details)
         
@@ -603,6 +614,123 @@ class Workflow(metaclass=WorkflowMeta):
                     {'workflow_id': self.id, 'agent_id': self.owner.id, 'time': timestamp}
                 )
         
+    def to_uml_activity_diagram(self) -> str:
+        """
+        将工作流表示为UML活动图（PlantUML格式）
+        
+        Returns:
+            str: PlantUML格式的活动图描述
+        """
+        # 使用PlantUML语法创建活动图
+        diagram = ["@startuml", f"title {self.name} Workflow"]
+        
+        # 添加起始节点
+        diagram.append(f"start")
+        start_state = self.status_machine.start_status
+        diagram.append(f":{start_state};")
+        
+        # 记录已处理的状态，避免重复
+        processed_states = set()
+        processed_states.add(start_state)
+        
+        # 添加所有状态转换
+        for state, transitions in self.status_machine.state_transitions.items():
+            for trigger, next_state, description in transitions:
+                # 根据触发器类型创建不同样式的连接
+                trigger_type = trigger.type.name if hasattr(trigger, 'type') else "UNKNOWN"
+                
+                # 创建转换描述
+                if description:
+                    transition_label = f"{description}\\n[{trigger_type}]"
+                else:
+                    transition_label = f"[{trigger_type}]"
+                
+                if state not in processed_states:
+                    diagram.append(f":{state};")
+                    processed_states.add(state)
+                
+                diagram.append(f"-> {transition_label} :{next_state};")
+                
+                # 如果是终止状态，添加结束节点
+                if next_state in self.status_machine.terminal_status:
+                    if next_state not in processed_states:
+                        diagram.append(f":{next_state};")
+                        processed_states.add(next_state)
+                    diagram.append("stop")
+        
+        # 对于通配符转换，单独处理
+        if self.status_machine.wildcard_transitions:
+            diagram.append("\nnote right: 通配符转换（适用于所有状态）")
+            for trigger, next_state, description in self.status_machine.wildcard_transitions:
+                trigger_type = trigger.type.name if hasattr(trigger, 'type') else "UNKNOWN"
+                if description:
+                    transition_label = f"{description}\\n[{trigger_type}]"
+                else:
+                    transition_label = f"[{trigger_type}]"
+                    
+                diagram.append(f"-> {transition_label} :{next_state};")
+                
+                if next_state in self.status_machine.terminal_status and next_state not in processed_states:
+                    diagram.append(f":{next_state};")
+                    processed_states.add(next_state)
+                    diagram.append("stop")
+        
+        diagram.append("@enduml")
+        return "\n".join(diagram)
+        
+    def to_mermaid_diagram(self) -> str:
+        """
+        将工作流表示为Mermaid流程图格式
+        
+        Returns:
+            str: Mermaid格式的流程图描述
+        """
+        # 使用Mermaid语法创建流程图
+        diagram = ["```mermaid", "stateDiagram-v2"]
+        
+        # 添加起始状态
+        start_state = self.status_machine.start_status
+        diagram.append(f"    [*] --> {start_state}")
+        
+        # 添加所有状态转换
+        for state, transitions in self.status_machine.state_transitions.items():
+            for trigger, next_state, description in transitions:
+                # 根据触发器类型创建不同样式的连接
+                trigger_type = trigger.type.name if hasattr(trigger, 'type') else "UNKNOWN"
+                
+                # 创建转换描述
+                if description:
+                    transition_label = f"{description} [{trigger_type}]"
+                else:
+                    transition_label = f"[{trigger_type}]"
+                
+                diagram.append(f"    {state} --> {next_state}: {transition_label}")
+                
+                # 如果是终止状态，添加到结束节点的连接
+                if next_state in self.status_machine.terminal_status:
+                    diagram.append(f"    {next_state} --> [*]")
+        
+        # 对于通配符转换，单独处理
+        if self.status_machine.wildcard_transitions:
+            diagram.append("    %% 通配符转换（适用于所有状态）")
+            for trigger, next_state, description in self.status_machine.wildcard_transitions:
+                trigger_type = trigger.type.name if hasattr(trigger, 'type') else "UNKNOWN"
+                if description:
+                    transition_label = f"{description} [{trigger_type}]"
+                else:
+                    transition_label = f"[{trigger_type}]"
+                    
+                # 由于通配符适用于所有状态，这里表示为特殊转换
+                diagram.append(f"    note right of [*]: 通配符转换 - 所有状态 --> {next_state}")
+                diagram.append(f"    Note: {transition_label}")
+                
+                # 如果是终止状态，添加到结束节点的连接
+                if next_state in self.status_machine.terminal_status:
+                    diagram.append(f"    {next_state} --> [*]")
+        
+        diagram.append("```")
+        return "\n".join(diagram)
+    
     def reset(self):
         """重置工作流状态，包括状态机"""
         old_status = self.status

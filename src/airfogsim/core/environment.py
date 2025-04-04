@@ -26,6 +26,7 @@ from airfogsim.manager.frequency import FrequencyManager
 from airfogsim.manager.landing import LandingManager
 from airfogsim.manager.workflow import WorkflowManager
 from airfogsim.manager.trigger import TriggerManager
+from airfogsim.manager.payload import PayloadManager
 from airfogsim.manager.task_manager import TaskManager
 from .event import EventRegistry
 from typing import Dict, Optional, Type, Tuple, Union, List, Callable, Any
@@ -47,6 +48,7 @@ class Environment(simpy.Environment):
         self.workflow_manager = WorkflowManager(self)
         self.trigger_manager = TriggerManager(self)
         self.task_manager = TaskManager(self)
+        self.payload_manager = PayloadManager(self)
         self.agents: Dict[str, 'Agent'] = {}
         self.data = {}
 

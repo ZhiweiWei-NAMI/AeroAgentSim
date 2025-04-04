@@ -72,7 +72,8 @@ class WorkflowManager:
                 
         self.env.event_registry.trigger_event(
             self.manager_id, 'workflow_registered', 
-            {'workflow_id': workflow.id, 'workflow_name': workflow.name, 'time': self.env.now}
+            {'workflow_id': workflow.id, 'workflow_name': workflow.name, 'workflow_class': workflow.__class__.__name__,
+             'time': self.env.now}
         )
         return workflow
 

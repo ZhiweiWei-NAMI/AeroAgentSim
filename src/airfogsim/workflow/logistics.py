@@ -37,6 +37,14 @@ class LogisticsWorkflowMeta(WorkflowMeta):
                           lambda payloads: all(isinstance(p, dict) and 'id' in p for p in payloads),
                           "货物列表，每个货物为字典，包含id和其他属性")
         
+        mcs.register_template(cls, 'source_agent_id', str, True,
+                          lambda agent_id: isinstance(agent_id, str),
+                          "源代理ID，负责提供货物的代理")
+        
+        mcs.register_template(cls, 'target_agent_id', str, True,
+                          lambda agent_id: isinstance(agent_id, str),
+                          "目标代理ID，负责接收货物的代理")
+        
         return cls
 
 class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
@@ -60,6 +68,10 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
         self.delivery_location = properties.get('delivery_location', [0, 0, 0])
         # 货物列表
         self.payloads = properties.get('payloads', [])
+        # 源代理ID
+        self.source_agent_id = properties.get('source_agent_id')
+        # 目标代理ID
+        self.target_agent_id = properties.get('target_agent_id')
         
         # 工作流的事件
         event_names = ['pickup_started', 'pickup_completed', 'transport_started', 
@@ -85,7 +97,9 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
         details['pickup_location'] = self.pickup_location
         details['delivery_location'] = self.delivery_location
         details['payloads'] = self.payloads
-        details['description'] = f"物流工作流 - 从{self.pickup_location}取件，交付到{self.delivery_location}"
+        details['source_agent_id'] = self.source_agent_id
+        details['target_agent_id'] = self.target_agent_id
+        details['description'] = f"物流工作流 - 从{self.source_agent_id}取件，交付到{self.target_agent_id}"
         return details
     
     def _is_at_pickup_location(self, position):
@@ -149,7 +163,8 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
                     'target_state': {},
                     'properties': {
                         'payload_id': self.current_payload_id or self.payloads[0]['id'],
-                        'pickup_location': self.pickup_location
+                        'pickup_location': self.pickup_location,
+                        'source_agent_id': self.source_agent_id
                     }
                 }
         elif current_state == 'transporting':
@@ -176,7 +191,8 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
                 'target_state': {},
                 'properties': {
                     'payload_id': self.current_payload_id,
-                    'delivery_location': self.delivery_location
+                    'delivery_location': self.delivery_location,
+                    'target_agent_id': self.target_agent_id
                 }
             }
             
@@ -187,7 +203,7 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
         # 工作流启动时，进入取件状态
         self.status_machine.set_start_transition('picking_up')
         
-        # 添加从取件到运输的转换
+        # 添加从取件到运输的转换 - 使用payload_id作为key
         self.status_machine.add_transition(
             'picking_up',
             'transporting',
@@ -195,11 +211,11 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
                 'source_id': self.owner.id,
                 'event_name': 'possessing_object_added',
                 'value_key': 'object_name',
-                'operator': TriggerOperator.EQUALS,
-                'target_value': 'payload'
+                'operator': TriggerOperator.CUSTOM,
+                'target_value': lambda obj_name: obj_name in [p['id'] for p in self.payloads]
             },
             callback=lambda context: setattr(
-                self, 'current_payload_id', context['event_value']['object_id']
+                self, 'current_payload_id', context['event_value']['object_name']
             )
         )
         
@@ -215,16 +231,16 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
             }
         )
         
-        # 添加从交付到完成的转换
+        # 添加从交付到完成的转换 - 使用payload_id作为key
         self.status_machine.add_transition(
             'delivering',
             'completed',
             event_trigger={
                 'source_id': self.owner.id,
                 'event_name': 'possessing_object_removed',
-                'value_key': 'object_id',
+                'value_key': 'object_name',
                 'operator': TriggerOperator.CUSTOM,
-                'target_value': lambda val: val == self.current_payload_id
+                'target_value': lambda obj_name: obj_name == self.current_payload_id
             }
         )
         
@@ -330,8 +346,22 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
 
 
 # 使用示例
-def create_logistics_workflow(env, agent, pickup_location, delivery_location, payloads):
-    """创建物流工作流"""
+def create_logistics_workflow(env, agent, pickup_location, delivery_location, payloads, source_agent_id, target_agent_id):
+    """
+    创建物流工作流
+    
+    Args:
+        env: 仿真环境
+        agent: 执行物流任务的代理
+        pickup_location: 取件位置坐标
+        delivery_location: 交付位置坐标
+        payloads: 货物列表
+        source_agent_id: 源代理ID，提供货物的代理
+        target_agent_id: 目标代理ID，接收货物的代理
+        
+    Returns:
+        LogisticsWorkflow: 创建的物流工作流
+    """
     from airfogsim.core.trigger import TimeTrigger
     
     # 确保每个payload都有唯一ID
@@ -346,9 +376,11 @@ def create_logistics_workflow(env, agent, pickup_location, delivery_location, pa
         properties={
             'pickup_location': pickup_location,
             'delivery_location': delivery_location,
-            'payloads': payloads
+            'payloads': payloads,
+            'source_agent_id': source_agent_id,
+            'target_agent_id': target_agent_id
         },
-        start_trigger=TimeTrigger(env, interval=10),  # 10秒后启动
+        start_trigger=TimeTrigger(env, trigger_time=10+env.now),  # 10秒后启动
         max_starts=1  # 只启动一次
     )
     

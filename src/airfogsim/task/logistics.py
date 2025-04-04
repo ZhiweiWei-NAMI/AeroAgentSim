@@ -50,6 +50,7 @@ class PickupTask(Task):
         # 任务特定属性
         self.payload_id = properties.get('payload_id')
         self.pickup_location = properties.get('pickup_location', [0, 0, 0])
+        self.source_agent_id = properties.get('source_agent_id')  # 添加源代理ID
         self.processing_time = 0
         
         # 检查代理是否已经在取件位置附近
@@ -99,21 +100,40 @@ class PickupTask(Task):
             'status': 'picking_up' if self.progress < 1.0 else 'pickup_completed',
             'carrying_payload': self.progress >= 1.0
         }
-    
     def _possessing_object_on_complete(self):
         """
-        任务完成时，将货物添加到代理的possessing_objects中
+        任务完成时，将货物从源代理转移到当前代理的possessing_objects中
         """
-        # 创建货物对象
-        payload_info = {
-            'id': self.payload_id,
-            'pickup_time': self.env.now,
-            'pickup_location': self.pickup_location
-        }
+        # 必须指定源代理，且源代理必须存在
+        if not self.source_agent_id:
+            print(f"时间 {self.env.now}: 代理 {self.agent_id} 取件失败，未指定源代理")
+            self.fail("未指定源代理")
+            return
+            
+        # 获取源代理
+        source_agent = self.env.agents.get(self.source_agent_id)
+        if not source_agent:
+            print(f"时间 {self.env.now}: 代理 {self.agent_id} 无法从 {self.source_agent_id} 取件，源代理不存在")
+            self.fail("源代理不存在")
+            return
+            
+        # 从源代理获取货物信息
+        payload_info = source_agent.get_possessing_object(self.payload_id)
+        if not payload_info:
+            print(f"时间 {self.env.now}: 代理 {self.agent_id} 无法从 {self.source_agent_id} 取件 {self.payload_id}，未找到货物")
+            self.fail("源代理没有指定的货物")
+            return
+            
+        # 从源代理移除货物
+        source_agent.remove_possessing_object(self.payload_id)
         
-        # 将货物添加到代理的possessing_objects中
-        self.agent.add_possessing_object('payload', payload_info)
-        print(f"时间 {self.env.now}: 代理 {self.agent_id} 成功取件 {self.payload_id} 于位置 {self.pickup_location}")
+        # 更新取件时间和位置
+        payload_info['pickup_time'] = self.env.now
+        payload_info['pickup_location'] = self.pickup_location
+        
+        # 将货物添加到当前代理的possessing_objects中
+        self.agent.add_possessing_object(self.payload_id, payload_info)
+        print(f"时间 {self.env.now}: 代理 {self.agent_id} 成功从 {self.source_agent_id} 取件 {self.payload_id} 于位置 {self.pickup_location}")
     
     def _possessing_object_on_fail(self):
         """
@@ -162,6 +182,7 @@ class HandoverTask(Task):
         # 任务特定属性
         self.payload_id = properties.get('payload_id')
         self.delivery_location = properties.get('delivery_location', [0, 0, 0])
+        self.target_agent_id = properties.get('target_agent_id')  # 添加目标代理ID
         self.processing_time = 0
         
         # 检查代理是否已经在交付位置附近
@@ -181,7 +202,7 @@ class HandoverTask(Task):
     
     def _has_payload(self):
         """检查代理是否携带指定货物"""
-        payload = self.agent.get_possessing_object('payload')
+        payload = self.agent.get_possessing_object(self.payload_id)
         return payload is not None and payload.get('id') == self.payload_id
     
     def estimate_remaining_time(self, performance_metrics: Dict) -> float:
@@ -221,29 +242,47 @@ class HandoverTask(Task):
     
     def _possessing_object_on_complete(self):
         """
-        任务完成时，从代理的possessing_objects中移除货物
+        任务完成时，将货物从当前代理转移到目标代理
         """
-        # 获取货物信息
-        payload = self.agent.get_possessing_object('payload')
-        if payload and payload.get('id') == self.payload_id:
-            # 记录交付信息
-            delivery_info = {
-                'id': self.payload_id,
-                'pickup_time': payload.get('pickup_time'),
-                'pickup_location': payload.get('pickup_location'),
-                'delivery_time': self.env.now,
-                'delivery_location': self.delivery_location
-            }
+        # 必须指定目标代理，且目标代理必须存在
+        if not self.target_agent_id:
+            print(f"时间 {self.env.now}: 代理 {self.agent_id} 交付失败，未指定目标代理")
+            self.fail("未指定目标代理")
+            return
             
-            # 从代理的possessing_objects中移除货物
-            self.agent.remove_possessing_object('payload')
-            print(f"时间 {self.env.now}: 代理 {self.agent_id} 成功交付货物 {self.payload_id} 于位置 {self.delivery_location}")
+        # 获取目标代理
+        target_agent = self.env.agents.get(self.target_agent_id)
+        if not target_agent:
+            print(f"时间 {self.env.now}: 代理 {self.agent_id} 无法交付货物给 {self.target_agent_id}，目标代理不存在")
+            self.fail("目标代理不存在")
+            return
             
-            # 可以在这里添加交付记录到环境或其他地方
-            if hasattr(self.env, 'delivery_records'):
-                self.env.delivery_records.append(delivery_info)
-        else:
+        # 获取货物信息，直接使用payload_id作为key
+        payload = self.agent.get_possessing_object(self.payload_id)
+        if not payload:
             print(f"时间 {self.env.now}: 代理 {self.agent_id} 无法交付货物 {self.payload_id}，未找到货物信息")
+            self.fail("未找到货物信息")
+            return
+            
+        # 记录交付信息
+        delivery_info = {
+            'id': self.payload_id,
+            'pickup_time': payload.get('pickup_time'),
+            'pickup_location': payload.get('pickup_location'),
+            'delivery_time': self.env.now,
+            'delivery_location': self.delivery_location
+        }
+        
+        # 从当前代理的possessing_objects中移除货物
+        self.agent.remove_possessing_object(self.payload_id)
+        
+        # 将货物转移给目标代理
+        target_agent.add_possessing_object(self.payload_id, payload)
+        print(f"时间 {self.env.now}: 代理 {self.agent_id} 成功交付货物 {self.payload_id} 给 {target_agent.id} 于位置 {self.delivery_location}")
+        
+        # 可以在这里添加交付记录到环境或其他地方
+        if hasattr(self.env, 'payload_manager'):
+            self.env.payload_manager.add_payload_record(self.payload_id, delivery_info)
     
     def _possessing_object_on_fail(self):
         """

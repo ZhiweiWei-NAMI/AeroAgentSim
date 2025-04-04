@@ -145,18 +145,21 @@ class InspectionWorkflow(Workflow, metaclass=InspectionWorkflowMeta):
             else:
                 next_state = 'completed'
             
-            # 添加转换：使用事件触发器监听 proof_updated 事件
+            # 添加转换：使用代理状态触发器监听位置变化
+            transition_desc = f"当无人机到达巡检点{i+1}时，{'进入下一个巡检点' if i+1 < len(self.inspection_points) else '完成巡检任务'}"
+            
             self.status_machine.add_transition(
-                current_state, 
+                current_state,
                 next_state,
                 agent_state={
                     'agent_id': self.owner.id,
                     'state_key': 'position',
                     'operator': TriggerOperator.CUSTOM,
-                    'target_value': lambda position, point=point: 
+                    'target_value': lambda position, point=point:
                         all([abs(position[i] - point[i]) < 1e-6 for i in range(3)]) if position else False
                 },
                 callback=lambda event_data: on_waypoint_reached(i),
+                description=transition_desc
             )
             
         
