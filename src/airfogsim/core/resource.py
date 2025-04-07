@@ -214,7 +214,7 @@ class ResourceManager(Generic[R]):
     #----------------------------------------------------
     
     def find_resources(self, requirements: Dict) -> List[R]:
-        raise NotImplementedError("find_resources method must be implemented in subclass")
+        pass
 
     def get_user_allocations(self, user_id: str) -> List[Dict]:
         """获取用户的所有分配"""

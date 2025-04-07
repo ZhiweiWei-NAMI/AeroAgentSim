@@ -3,7 +3,9 @@
 from typing import List, Dict, Optional, Tuple
 from airfogsim.core.resource import ResourceManager
 from airfogsim.resource.landing import LandingResource
+from airfogsim.manager.airspace import AirspaceManager
 from queue import PriorityQueue
+import math
 
 class LandingManager(ResourceManager[LandingResource]):
     """
@@ -12,11 +14,14 @@ class LandingManager(ResourceManager[LandingResource]):
     管理、分配和查询着陆区资源
     """
     
-    def __init__(self, env=None):
+    def __init__(self, env):
         super().__init__(env)
         # 存储资源分配信息：{resource_id: {agent_id: (agent, listener_id)}}
         # 存储资源请求队列
         self.request_queues = PriorityQueue()
+        
+        # 空域管理器引用，用于高效的空间查询
+        self.airspace_manager = env.airspace_manager
 
     def find_resource_by_id(self, resource_id: str) -> Optional[LandingResource]:
         """
@@ -48,51 +53,57 @@ class LandingManager(ResourceManager[LandingResource]):
         """
         suitable_resources = []
         
-        for resource_id, resource in self.resources.items():
-            # 检查资源状态
-            if hasattr(resource, 'status') and resource.status != 'available':
-                continue
-                
-            # 检查容量要求
-            if not resource.has_capacity():
-                continue
-                
-            # 检查位置和距离要求
-            if 'x_pos' in requirements and 'y_pos' in requirements:
-                x = requirements['x_pos']
-                y = requirements['y_pos']
-                
-                # 计算到着陆区的距离
-                landing_x, landing_y = resource.location[0], resource.location[1]
-                distance = ((x - landing_x) ** 2 + (y - landing_y) ** 2) ** 0.5
-                
-                # 如果指定了最大距离，检查是否在范围内
-                if 'max_distance' in requirements:
-                    max_distance = requirements['max_distance']
-                    if distance > max_distance:
+        # 如果有空域管理器且有位置要求，使用空间查询
+        if 'x_pos' in requirements and 'y_pos' in requirements:
+            x = requirements['x_pos']
+            y = requirements['y_pos']
+            z = requirements.get('z_pos', 0)  # 默认高度为0
+            
+            # 查询范围
+            max_distance = requirements.get('max_distance', 1000.0)  # 默认搜索半径
+            
+            # 使用八叉树查询指定范围内的所有对象
+            position = (x, y, z)
+            nearby_objects = self.airspace_manager.get_nearby_objects(position=position, radius=max_distance)
+            
+            # 过滤出着陆点（ID以landing_开头）
+            landing_ids = [
+                obj_id
+                for obj_id in nearby_objects.keys()
+                if obj_id.startswith('landing_')
+            ]
+            
+            # 检查每个着陆点是否符合其他要求
+            for landing_id in landing_ids:
+                if landing_id in self.resources:
+                    resource = self.resources[landing_id]
+                    
+                    # 检查资源状态
+                    if hasattr(resource, 'status') and resource.status != 'available':
                         continue
-            
-            # 检查充电功能需求
-            if requirements.get('require_charging', False):
-                if not resource.has_charging:
-                    continue
-            
-            # 检查数据传输功能需求
-            if requirements.get('require_data_transfer', False):
-                if not resource.has_data_transfer:
-                    continue
-            
-            # 检查半径需求
-            if 'min_radius' in requirements:
-                if resource.radius < requirements['min_radius']:
-                    continue
-            
-            # 检查着陆区状态
-            if resource.condition != 'normal':
-                continue
-                
-            suitable_resources.append(resource)
-        
+                        
+                    # 检查容量要求
+                    if not resource.has_capacity():
+                        continue
+                    
+                    # 检查充电功能需求
+                    if requirements.get('require_charging', False) and not resource.has_charging:
+                        continue
+                    
+                    # 检查数据传输功能需求
+                    if requirements.get('require_data_transfer', False) and not resource.has_data_transfer:
+                        continue
+                    
+                    # 检查半径需求
+                    if 'min_radius' in requirements and resource.radius < requirements['min_radius']:
+                        continue
+                    
+                    # 检查着陆区状态
+                    if resource.condition != 'normal':
+                        continue
+                        
+                    suitable_resources.append(resource)
+
         return suitable_resources
     
     def get_landing_spot(self, resource_id: str) -> Optional[LandingResource]:
@@ -107,7 +118,7 @@ class LandingManager(ResourceManager[LandingResource]):
         """
         return self.resources.get(resource_id)
 
-    def find_nearest_landing_spot(self, x: float, y: float, altitude: float = 0,
+    def find_nearest_landing_spot(self, x: float, y: float, altitude: float = 0, max_distance=1000,
                                  require_charging: bool = False) -> Optional[LandingResource]:
         """
         查找最近的着陆点
@@ -121,31 +132,52 @@ class LandingManager(ResourceManager[LandingResource]):
         Returns:
             最近的符合要求的着陆点，如果没有符合要求的则返回None
         """
-        nearest_spot = None
-        min_distance = float('inf')
+        # 如果有空域管理器，使用八叉树查找最近的着陆点
+        # 获取周围所有对象
+        nearby_objects = self.airspace_manager.get_nearby_objects(
+            position=(x, y, altitude),
+            radius=max_distance,  # 默认搜索半径
+        )
         
-        for resource_id, resource in self.resources.items():
-            # 检查资源状态和容量
-            if (hasattr(resource, 'status') and resource.status != 'available') or not resource.has_capacity():
-                continue
+        # 过滤出着陆点
+        landing_candidates = []
+        for obj_id, position in nearby_objects.items():
+            # 检查是否是着陆点（ID以landing_开头）
+            if obj_id.startswith('landing_'):
+                # 提取真实的资源ID
+                resource_id = obj_id
                 
-            # 检查充电需求
-            if require_charging and not resource.has_charging:
-                continue
-                
-            # 检查着陆区状态
-            if resource.condition != 'normal':
-                continue
-                
-            # 计算距离
-            landing_x, landing_y = resource.location[0], resource.location[1]
-            distance = ((x - landing_x) ** 2 + (y - landing_y) ** 2) ** 0.5
+                # 检查资源是否存在
+                if resource_id in self.resources:
+                    resource = self.resources[resource_id]
+                    
+                    # 检查资源状态和容量
+                    if (hasattr(resource, 'status') and resource.status != 'available') or not resource.has_capacity():
+                        continue
+                        
+                    # 检查充电需求
+                    if require_charging and not resource.has_charging:
+                        continue
+                        
+                    # 检查着陆区状态
+                    if resource.condition != 'normal':
+                        continue
+                        
+                    distance = math.sqrt(
+                        (position[0] - x) ** 2 +
+                        (position[1] - y) ** 2 +
+                        (position[2] - altitude) ** 2
+                    )
+                    # 添加到候选列表
+                    landing_candidates.append((resource, distance))
+        
+        # 按距离排序并返回最近的
+        if landing_candidates:
+            landing_candidates.sort(key=lambda x: x[1])
+            return landing_candidates[0][0]
             
-            if distance < min_distance:
-                min_distance = distance
-                nearest_spot = resource
-        
-        return nearest_spot
+        return None
+
     
     def update_landing_conditions(self, condition_map: Dict[str, str] = None) -> None:
         """
@@ -167,9 +199,10 @@ class LandingManager(ResourceManager[LandingResource]):
         Returns:
             具备充电功能的着陆区列表
         """
+        # 获取所有着陆点
         charging_spots = []
-        
         for resource_id, resource in self.resources.items():
+            resource = self.resources[resource_id]
             if resource.has_charging:
                 charging_spots.append(resource)
                 
@@ -182,9 +215,9 @@ class LandingManager(ResourceManager[LandingResource]):
         Returns:
             具备数据传输功能的着陆区列表
         """
+        # 获取所有着陆点
         data_spots = []
-        
-        for resource_id, resource in self.resources.items():
+        for resource_id, resource in self.resources.items():                    
             if resource.has_data_transfer:
                 data_spots.append(resource)
                 
@@ -339,6 +372,49 @@ class LandingManager(ResourceManager[LandingResource]):
         # 将未处理的请求重新加入队列
         for request in pending_requests:
             self.request_queues.put(request)
+    
+    def register_resource(self, resource: LandingResource) -> bool:
+        """
+        注册着陆区资源到管理器，并在空域管理器中注册位置
+        
+        Args:
+            resource: 着陆区资源对象
+            
+        Returns:
+            注册是否成功
+        """
+        # 调用父类的注册方法
+        if not super().register_resource(resource):
+            return False
+            
+        # 如果有空域管理器，则在空域中注册着陆点位置
+        if self.airspace_manager:
+            # 确保位置是三维坐标
+            location = resource.location
+            if len(location) == 2:
+                location = (location[0], location[1], 0)
+                
+            # 在空域管理器中注册着陆点位置，使用landing_前缀区分代理
+            self.airspace_manager.register_landing(resource.id, location)
+            
+        return True
+        
+    def unregister_resource(self, resource_id: str) -> bool:
+        """
+        从管理器移除资源，并从空域管理器中移除位置
+        
+        Args:
+            resource_id: 资源ID
+            
+        Returns:
+            移除是否成功
+        """
+        # 如果有空域管理器，先从空域中移除着陆点位置
+        if self.airspace_manager and resource_id in self.resources:
+            self.airspace_manager.remove_landing(resource_id)
+            
+        # 调用父类的移除方法
+        return super().unregister_resource(resource_id)
     
     def create_landing_spot(self,
                            location: tuple,

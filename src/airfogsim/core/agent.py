@@ -13,7 +13,7 @@ AirFogSim代理(Agent)核心模块
 """
 
 from airfogsim.core.enums import TaskStatus
-from typing import Dict, List, Any, Optional, Type
+from typing import Dict, List, Any, Optional, Type, get_origin, get_args
 import uuid
 import warnings
 import simpy
@@ -42,8 +42,21 @@ class StateTemplate:
     def validate(self, value):
         """验证值是否符合模板要求"""
         # 类型检查
-        if self.value_type is not None and not isinstance(value, self.value_type):
-            return False, f"值类型应为 {self.value_type.__name__}，而非 {type(value).__name__}"
+        if self.value_type is not None:
+            origin_type = get_origin(self.value_type)
+            if origin_type is not None:  # 处理泛型类型
+                if not isinstance(value, origin_type):
+                    return False, f"值类型应为 {origin_type.__name__}，而非 {type(value).__name__}"
+                
+                # 检查泛型参数类型（如果列表不为空）
+                type_args = get_args(self.value_type)
+                if type_args and isinstance(value, (list, tuple)) and len(value) > 0:
+                    for item in value:
+                        if not isinstance(item, type_args[0]):
+                            return False, f"列表元素类型应为 {type_args[0].__name__}，而非 {type(item).__name__}"
+            else:  # 普通类型检查
+                if not isinstance(value, self.value_type):
+                    return False, f"值类型应为 {self.value_type.__name__}，而非 {type(value).__name__}"
         
         # 使用自定义验证器
         if self.validator is not None:
@@ -111,7 +124,7 @@ class Agent(metaclass=AgentMeta):
         return cls.__doc__ or f"{cls.__name__} 代理"
 
     def __init__(self, env, agent_name: str, properties: Optional[Dict] = None):
-        self.id = 'agent_' + str(uuid.uuid4())
+        self.id = 'agent_' + str(uuid.uuid4().hex[:8])
         self.name = agent_name
         self.env = env
         self.task_manager = env.task_manager
@@ -172,6 +185,8 @@ class Agent(metaclass=AgentMeta):
             for workflow in all_workflows:
                 if (workflow.owner and workflow.owner.id == self.id and 
                     workflow.status == WorkflowStatus.RUNNING):
+                    active_workflows.append(workflow)
+                elif hasattr(workflow, 'executor_agent_id') and workflow.executor_agent_id == self.id:
                     active_workflows.append(workflow)
         
         return active_workflows
@@ -316,7 +331,8 @@ class Agent(metaclass=AgentMeta):
     
     from airfogsim.core.component import Component
     def get_component(self, component_name: str) -> Optional[Component]:
-        return self.components.get(component_name)    
+        component_name_lower = component_name
+        return self.components.get(component_name_lower)
     def get_components(self):
         return list(self.components.values())    
     def get_component_names(self) -> List[str]:
@@ -432,9 +448,11 @@ class Agent(metaclass=AgentMeta):
         return self.env.event_registry.get_event(self.id, event_name)
     def trigger_event(self, event_name, value=None):
         # print(f"DEBUG Agent {self.id} trigger: {event_name}")
+        value = value or {}
+        value['agent_id'] = self.id
         return self.env.event_registry.trigger_event(self.id, event_name, value)
     def subscribe(self, source_id, event_name, callback, listener_id=None): # Simplified subscribe
-        sid = listener_id or f"agent_{self.id}_sub_{uuid.uuid4().hex[:6]}"
+        sid = listener_id or f"agent_{self.id}_sub_{uuid.uuid4().hex[:4]}"
         return self.env.event_registry.subscribe(source_id, event_name, sid, callback)
     def unsubscribe(self, source_id, event_name, listener_id):
         return self.env.event_registry.unsubscribe(source_id, event_name, listener_id)
@@ -455,7 +473,7 @@ class Agent(metaclass=AgentMeta):
     from .task import Task
     def execute_task(self, component_name: str, task_name: str, task_class: str, 
                     target_state: Optional[Dict] = None, properties: Optional[Dict] = None,
-                    workflow_id: Optional[str] = None):
+                    workflow_id: Optional[str] = None, task_id: Optional[str] = None) -> Optional[Task]:
         """
         Creates and executes a task using a specified component.
         Non-blocking - returns task object immediately.
@@ -475,7 +493,7 @@ class Agent(metaclass=AgentMeta):
         # Create the task instance
         task = self.task_manager.create_task(task_class, self, component_name, 
                                              task_name, workflow_id, target_state=target_state,
-                                             properties=properties)
+                                             properties=properties, task_id=task_id)
         task_id = task.id
         
         self.trigger_event('task_started', {'task_id': task_id, 'task_name': task_name, 'time': self.env.now})
@@ -590,13 +608,14 @@ class Agent(metaclass=AgentMeta):
             try:
                 obj_id = self._get_attribute(obj, 'id')
                 self.subscribe(obj_id, 'state_changed', on_object_state_changed, listener_id)
-                print(f"代理 {self.id} 成功订阅对象 {object_name} (ID: {obj_id}) 的状态变化事件")
+                # print(f"代理 {self.id} 成功订阅对象 {object_name} (ID: {obj_id}) 的状态变化事件")
             except Exception as e:
                 print(f"订阅对象 {object_name} 状态变化事件失败: {e}")
 
         self.trigger_event('possessing_object_added', {
             'object_name': object_name,
             'object_id': self._get_attribute(obj, 'id'),
+            'agent_id': self.id,
             'time': self.env.now
         })
         
@@ -621,7 +640,7 @@ class Agent(metaclass=AgentMeta):
                 try:
                     obj_id = self._get_attribute(obj, 'id')
                     self.unsubscribe(obj_id, 'state_changed', listener_id)
-                    print(f"代理 {self.id} 已取消订阅对象 {object_name} (ID: {obj_id}) 的状态变化事件")
+                    # print(f"代理 {self.id} 已取消订阅对象 {object_name} (ID: {obj_id}) 的状态变化事件")
                 except Exception as e:
                     print(f"取消订阅对象 {object_name} 状态变化事件失败: {e}")
             
@@ -630,6 +649,7 @@ class Agent(metaclass=AgentMeta):
             self.trigger_event('possessing_object_removed', {
                 'object_name': object_name,
                 'object_id': self._get_attribute(obj, 'id', None),
+                'agent_id': self.id,
                 'time': self.env.now
             })
             return True
@@ -655,3 +675,113 @@ class Agent(metaclass=AgentMeta):
            对象名称列表
        """
        return list(self.possessing_objects.keys())
+       
+    # --- 合约管理接口 ---
+    def create_contract(self, task_info, target_agent_ids, reward, penalty=0,
+                       deadline=None, description=''):
+        """
+        创建任务卸载合约
+        
+        Args:
+            task_info: 任务信息字典，必须包含id字段
+            target_agent_ids: 目标代理ID列表
+            reward: 完成任务的奖励
+            penalty: 未完成任务的惩罚
+            deadline: 截止时间，默认为当前时间+30分钟
+            description: 任务描述
+            
+        Returns:
+            str: 合约ID，如果创建失败则返回None
+        """
+        # 检查环境中是否有合约管理器
+        if not hasattr(self.env, 'contract_manager'):
+            print(f"时间 {self.env.now}: 代理 {self.id} 无法创建合约，环境中没有合约管理器")
+            return None
+        
+        # 检查任务信息是否有效
+        if not task_info or 'id' not in task_info:
+            print(f"时间 {self.env.now}: 代理 {self.id} 无法创建合约，任务信息无效")
+            return None
+        
+        # 设置默认截止时间
+        if deadline is None:
+            deadline = self.env.now + 30*60  # 默认30分钟后截止
+        
+        # 创建合约
+        contract_id = self.env.contract_manager.create_contract(
+            issuer_agent_id=self.id,
+            task_info=task_info,
+            reward=reward,
+            penalty=penalty,
+            deadline=deadline,
+            appointed_agent_ids=target_agent_ids,
+            description=description
+        )
+        
+        if contract_id:
+            print(f"时间 {self.env.now}: 代理 {self.id} 创建合约 {contract_id} 针对任务 {task_info['id']}")
+        
+        return contract_id
+    
+    def accept_contract(self, contract_id):
+        """
+        接受合约
+        
+        Args:
+            contract_id: 合约ID
+            
+        Returns:
+            bool: 是否成功接受合约
+        """
+        # 检查环境中是否有合约管理器
+        if not hasattr(self.env, 'contract_manager'):
+            print(f"时间 {self.env.now}: 代理 {self.id} 无法接受合约，环境中没有合约管理器")
+            return False
+        
+        # 接受合约
+        result = self.env.contract_manager.accept_contract(contract_id, self.id)
+        
+        if result:
+            print(f"时间 {self.env.now}: 代理 {self.id} 接受合约 {contract_id}")
+        
+        return result
+    
+    def get_available_contracts(self):
+        """
+        获取可接受的合约列表
+        
+        Returns:
+            list: 可接受的合约列表
+        """
+        # 检查环境中是否有合约管理器
+        if not hasattr(self.env, 'contract_manager'):
+            return []
+        
+        # 获取所有待处理的合约
+        pending_contracts = self.env.contract_manager.get_pending_contracts()
+        
+        # 筛选出当前代理可以接受的合约
+        available_contracts = []
+        for contract in pending_contracts:
+            if self.id in contract['appointed_agent_ids']:
+                available_contracts.append(contract)
+        
+        return available_contracts
+    
+    def get_agent_contracts(self, role=None, status=None):
+        """
+        获取代理相关的合约
+        
+        Args:
+            role: 角色，'issuer'或'executor'
+            status: 合约状态
+            
+        Returns:
+            list: 合约列表
+        """
+        # 检查环境中是否有合约管理器
+        if not hasattr(self.env, 'contract_manager'):
+            return []
+        
+        # 获取代理相关的合约
+        return self.env.contract_manager.get_agent_contracts(self.id, role, status)

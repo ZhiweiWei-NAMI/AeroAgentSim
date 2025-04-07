@@ -252,7 +252,17 @@ class WorkflowStatusMachine:
                 self._deactivate_all_triggers()
                 
                 # 激活当前状态的触发器
-                for trigger, next_status in transitions:
+                for transition in transitions:
+                    # 解包转换元组，可能是二元组或三元组
+                    if len(transition) == 2:
+                        trigger, next_status = transition
+                        description = None
+                    elif len(transition) == 3:
+                        trigger, next_status, description = transition
+                    else:
+                        raise ValueError("Invalid transition format")
+                        continue
+                        
                     trigger_id = trigger.id
                     if trigger_id not in self.active_triggers:
                         # 设置触发器回调
@@ -386,7 +396,7 @@ class Workflow(metaclass=WorkflowMeta):
     
     def __init__(self, env, name: str, owner: Optional['Agent'], timeout: Optional[float] = None, 
                  event_names = [], initial_status='idle', callback: Optional[Callable] = None, properties: Optional[Dict] = None):
-        self.id = f'workflow'+str(uuid.uuid4())
+        self.id = f'workflow_'+str(uuid.uuid4().hex[:8])
         self.env = env
         self.name = name
         self.owner = owner

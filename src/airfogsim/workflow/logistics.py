@@ -336,7 +336,7 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
         
         # 为状态添加回调
         for state, trans_list in transitions.items():
-            for trigger, next_state in trans_list:
+            for trigger, next_state, desc in trans_list:
                 if state == 'picking_up' and next_state == 'transporting':
                     trigger.add_callback(on_transport_started)
                 elif state == 'transporting' and next_state == 'delivering':
@@ -380,7 +380,7 @@ def create_logistics_workflow(env, agent, pickup_location, delivery_location, pa
             'source_agent_id': source_agent_id,
             'target_agent_id': target_agent_id
         },
-        start_trigger=TimeTrigger(env, trigger_time=10+env.now),  # 10秒后启动
+        start_trigger=TimeTrigger(env, trigger_time=1+env.now, name='延迟启动派送工作流'),  # 1秒后启动
         max_starts=1  # 只启动一次
     )
     

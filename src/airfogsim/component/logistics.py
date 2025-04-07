@@ -28,11 +28,14 @@ class LogisticsComponent(Component):
     
     # 组件关心的代理状态
     MONITORED_STATES = [
-        'position',       # 位置
-        'battery_level',  # 电池电量
-        'carrying_payload',  # 是否携带货物
-        'payload_weight',    # 货物重量
-        'status'             # 代理状态
+        'position',              # 位置
+        'battery_level',         # 电池电量
+        'payload_ids',           # 无人机当前携带的货物ID
+        'current_payload_weight', # 无人机当前负载重量 (kg)
+        'max_payload_weight',    # 无人机最大负载重量 (kg)
+        'current_payload_volume', # 无人机当前负载容积 (m³)
+        'max_payload_volume',    # 无人机最大负载容积 (m³)
+        'status'                 # 代理状态
     ]
     
     def __init__(self, env, agent, name="Logistics", 
@@ -55,8 +58,7 @@ class LogisticsComponent(Component):
         if supported_events is None:
             supported_events = [
                 'pickup_started', 'pickup_completed',
-                'handover_started', 'handover_completed',
-                'payload_added', 'payload_removed'
+                'handover_started', 'handover_completed'
             ]
         
         # 设置默认属性
@@ -72,50 +74,7 @@ class LogisticsComponent(Component):
         self.max_payload_dimensions = properties.get('max_payload_dimensions', [0.5, 0.5, 0.5])  # 最大货物尺寸（m）
         
         # 当前处理的货物信息
-        self.current_payload = None
-        
-        # 订阅代理的possessing_object事件
-        self.env.event_registry.subscribe(
-            self.agent_id, 
-            'possessing_object_added', 
-            f"{self.name}_payload_added", 
-            self._on_payload_added
-        )
-        
-        self.env.event_registry.subscribe(
-            self.agent_id, 
-            'possessing_object_removed', 
-            f"{self.name}_payload_removed", 
-            self._on_payload_removed
-        )
-    
-    def _on_payload_added(self, event_data):
-        """当代理添加货物时的回调"""
-        if event_data.get('object_type') == 'payload':
-            payload_id = event_data.get('object_id')
-            payload = self.agent.get_possessing_object('payload', payload_id)
-            
-            if payload:
-                self.current_payload = payload
-                # 触发组件的payload_added事件
-                self.trigger_event('payload_added', {
-                    'payload_id': payload_id,
-                    'payload_info': payload,
-                    'time': self.env.now
-                })
-    
-    def _on_payload_removed(self, event_data):
-        """当代理移除货物时的回调"""
-        if event_data.get('object_type') == 'payload':
-            payload_id = event_data.get('object_id')
-            
-            # 触发组件的payload_removed事件
-            self.trigger_event('payload_removed', {
-                'payload_id': payload_id,
-                'time': self.env.now
-            })
-            
-            self.current_payload = None
+        self.current_payload = None    
     
     def _calculate_performance_metrics(self) -> Dict[str, Any]:
         """
@@ -141,11 +100,13 @@ class LogisticsComponent(Component):
         
         # 考虑货物重量对性能的影响
         weight_factor = 1.0
-        if self.agent.get_state('carrying_payload', False):
-            payload_weight = self.agent.get_state('payload_weight')
-            if payload_weight:
+        payload_ids = self.agent.get_state('payload_ids', [])
+        if payload_ids:  # 检查是否携带货物
+            current_payload_weight = self.agent.get_state('current_payload_weight', 0.0)
+            max_payload_weight = self.agent.get_state('max_payload_weight', self.max_payload_weight)
+            if current_payload_weight > 0:
                 # 货物越重，处理时间越长
-                weight_factor = 1.0 + (payload_weight / self.max_payload_weight) * 0.5
+                weight_factor = 1.0 + (current_payload_weight / max_payload_weight) * 0.5
         
         # 计算最终性能指标
         metrics['pickup_processing_time'] = base_pickup_time / battery_factor
@@ -171,15 +132,51 @@ class LogisticsComponent(Component):
         if task.__class__.__name__ not in ['PickupTask', 'HandoverTask']:
             return False
         
-        # 对于取件任务，检查代理是否已经携带货物
-        if task.__class__.__name__ == 'PickupTask' and self.agent.get_state('carrying_payload', False):
-            task.fail("代理已经携带货物，无法执行取件任务")
-            return False
+        # 对于取件任务，检查代理是否有足够的负载能力
+        if task.__class__.__name__ == 'PickupTask':
+            # 获取当前负载重量和最大负载重量
+            current_weight = self.agent.get_state('current_payload_weight', 0.0)
+            max_weight = self.agent.get_state('max_payload_weight', self.max_payload_weight)
+            
+            # 获取当前负载容积和最大负载容积
+            current_volume = self.agent.get_state('current_payload_volume', 0.0)
+            max_volume = self.agent.get_state('max_payload_volume', 0.125)  # 默认0.125立方米
+            
+            # 获取任务中的货物信息
+            payload_id = task.properties.get('payload_id')
+            payload_weight = 0.0
+            payload_volume = 0.0
+            
+            # 尝试从环境的payload_manager获取货物信息
+            if hasattr(self.env, 'payload_manager') and payload_id:
+                payload = self.env.payload_manager.get_payload(payload_id)
+                if payload:
+                    payload_weight = payload.get('weight', 0.0)
+                    
+                    # 计算货物体积
+                    if 'dimensions' in payload:
+                        dimensions = payload['dimensions']
+                        if len(dimensions) == 3:
+                            payload_volume = dimensions[0] * dimensions[1] * dimensions[2]
+            
+            # 检查是否超过最大负载重量
+            if current_weight + payload_weight > max_weight:
+                task.fail(f"代理负载重量不足，当前:{current_weight}kg，需要:{payload_weight}kg，最大:{max_weight}kg")
+                return False
+            
+            # 检查是否超过最大负载容积
+            if current_volume + payload_volume > max_volume:
+                task.fail(f"代理负载容积不足，当前:{current_volume}m³，需要:{payload_volume}m³，最大:{max_volume}m³")
+                return False
         
         # 对于交付任务，检查代理是否携带货物
-        if task.__class__.__name__ == 'HandoverTask' and not self.agent.get_state('carrying_payload', False):
-            task.fail("代理没有携带货物，无法执行交付任务")
-            return False
+        if task.__class__.__name__ == 'HandoverTask':
+            payload_id = task.properties.get('payload_id')
+            payload_ids = self.agent.get_state('payload_ids', [])
+            
+            if not payload_ids or (payload_id and payload_id not in payload_ids):
+                task.fail("代理没有携带指定货物，无法执行交付任务")
+                return False
         
         return True
     

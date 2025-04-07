@@ -252,8 +252,8 @@ class OrderExecutionWorkflow(Workflow, metaclass=OrderExecutionWorkflowMeta):
                 'source_id': self.id,
                 'event_name': 'order_failed',
                 'value_key': 'reason',
-                'operator': TriggerOperator.EXISTS,
-                'target_value': None
+                'operator': TriggerOperator.CUSTOM,
+                'target_value': lambda value: value is not None
             }
         )
         
@@ -308,7 +308,18 @@ class OrderExecutionWorkflow(Workflow, metaclass=OrderExecutionWorkflowMeta):
         
         # 为状态添加回调
         for state, trans_list in transitions.items():
-            for trigger, next_state in trans_list:
+            for transition in trans_list:
+                # 解包转换元组，可能是二元组或三元组
+                if len(transition) == 2:
+                    trigger, next_state = transition
+                    description = None
+                elif len(transition) == 3:
+                    trigger, next_state, description = transition
+                else:
+                    raise ValueError("Invalid transition format")
+                    continue
+                
+                # 添加回调
                 if state == 'creating_payload' and next_state == 'assigning_drone':
                     trigger.add_callback(on_payload_created)
                 elif state == 'assigning_drone' and next_state == 'in_delivery':
@@ -318,7 +329,7 @@ class OrderExecutionWorkflow(Workflow, metaclass=OrderExecutionWorkflowMeta):
 
 
 # 使用示例
-def create_order_execution_workflow(env, station, payload_properties, delivery_location, target_agent_id=None):
+def create_order_execution_workflow(env, station, payload_properties, delivery_location, target_agent_id, start_trigger=None):
     """
     创建订单执行工作流
     
@@ -328,6 +339,7 @@ def create_order_execution_workflow(env, station, payload_properties, delivery_l
         payload_properties: 物品属性
         delivery_location: 交付位置坐标
         target_agent_id: 目标代理ID，如果为None则不指定目标代理
+        start_trigger: 工作流启动触发器，默认为None
         
     Returns:
         OrderExecutionWorkflow: 创建的订单执行工作流
@@ -348,7 +360,7 @@ def create_order_execution_workflow(env, station, payload_properties, delivery_l
         name=f"Order of {station.id}",
         owner=station,
         properties=properties,
-        start_trigger=TimeTrigger(env, interval=5),  # 5秒后启动
+        start_trigger=TimeTrigger(env, interval=5) if start_trigger is None else start_trigger,
         max_starts=1  # 只启动一次
     )
     

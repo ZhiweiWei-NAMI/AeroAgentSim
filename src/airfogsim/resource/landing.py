@@ -30,7 +30,7 @@ class LandingResource(Resource):
             attributes: 其他属性
         """
         super().__init__(resource_id, attributes)
-        
+        assert resource_id.startswith("landing_"), "资源ID必须以'landing_'开头"
         # 着陆区基本参数
         self.location = location if len(location) >= 2 else (*location, 0)
         self.radius = radius

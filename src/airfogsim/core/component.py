@@ -77,8 +77,13 @@ class Component:
         return self.agent.trigger_event(full_event_name, event_value)
 
     def can_execute(self, task) -> bool:
-        """检查组件名称是否匹配。"""
+        """检查组件名称是否匹配"""
         return task.component_name == self.name
+    
+    def is_available(self) -> bool:
+        """检查组件是否可用"""
+        # 这里可以添加更多的可用性检查逻辑
+        return len(self.active_tasks) < 1
 
     def execute_task(self, task) -> simpy.Process:
         """
@@ -124,12 +129,12 @@ class Component:
             # 1. 触发任务开始事件
             self.trigger_event('task_started', {'task_id': task_id, 'task_name': task.name, 'time': self.env.now})
            
-            # 3. 计算初始指标
+            # 2. 计算初始指标
             initial_metrics = self._calculate_performance_metrics()
             self._validate_metrics(initial_metrics)
             self.current_metrics.update(initial_metrics)
 
-            # 向组件的监听器提供初始指标
+            # 3. 向组件的监听器提供初始指标
             self.trigger_event('metric_changed', initial_metrics)
 
             # 4. 注册状态变化监听器

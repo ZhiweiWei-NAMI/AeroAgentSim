@@ -13,16 +13,16 @@ AirFogSim无人机代理模块
 @email: 2311769@tongji.edu.cn
 """
 
-from airfogsim.core.agent import Agent, AgentMeta
+from airfogsim.agent.terminal import TerminalAgent, TerminalAgentMeta
 from airfogsim.core import Workflow, WorkflowStatus
 from airfogsim.workflow.inspection import InspectionWorkflow
 from airfogsim.workflow.charging import ChargingWorkflow
 from airfogsim.task.mobility import MoveToTask
-from airfogsim.task.compute import ComputeTask
+from airfogsim.task.compute import FileComputeTask
 from airfogsim.task.charging import ChargingTask
 from airfogsim.core.enums import TaskStatus
 
-class DroneAgentMeta(AgentMeta):
+class DroneAgentMeta(TerminalAgentMeta):
     """无人机代理元类"""
     
     def __new__(mcs, name, bases, attrs):
@@ -57,7 +57,7 @@ class DroneAgentMeta(AgentMeta):
                             "无人机充电周期")
         return cls
 
-class DroneAgent(Agent, metaclass=DroneAgentMeta):
+class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):
     """无人机代理，能够执行智能任务规划"""
     
     @classmethod
@@ -67,20 +67,13 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
     
     def __init__(self, env, agent_name: str, properties=None, agent_id=None):
         super().__init__(env, agent_name, properties)
-        self.id = agent_id or f"drone_{id(self)}"
+        self.id = agent_id or f"agent_{id(self)}"
         self.initialize_states(
             level_class=DroneAgent,
             position=properties.get('position', [0, 0, 0]),
             battery_level=properties.get('battery_level', 100.0),
             status='idle',
             speed=0.0,
-        )
-        # 订阅环境的视觉更新事件
-        self.env.event_registry.subscribe(
-            self.env.id,
-            'visual_update',
-            self.id,
-            self._on_visual_update
         )
 
     def _on_visual_update(self, event_data):
@@ -245,8 +238,7 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
         """执行已规划的任务"""
         if not tasks_to_execute:
             return
-            
-            
+                        
         # 执行每个任务
         for task_info in tasks_to_execute:
             component_name = task_info['component']
@@ -255,6 +247,7 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
             workflow_id = task_info['workflow_id']
             target_state = task_info['target_state']
             properties = task_info['properties']
+            task_id = task_info.get('id', None)
             
             # 检查是否已有相同任务在执行中
             already_executing = False
@@ -265,15 +258,18 @@ class DroneAgent(Agent, metaclass=DroneAgentMeta):
                     task['task'].workflow_id == workflow_id):
                     already_executing = True
                     break
-                    
-            if not already_executing:
+            
+            component = self.get_component(component_name)
+
+            if not already_executing and component.is_available():
                 self.execute_task(
                     component_name, 
                     task_name,
                     task_class=task_class,
                     workflow_id=workflow_id,
                     target_state=target_state,
-                    properties=properties
+                    properties=properties,
+                    task_id = task_id
                 )
 
     def _cancel_non_charging_tasks(self):

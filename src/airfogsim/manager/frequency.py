@@ -1,6 +1,7 @@
 # manager/frequency.py
 
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Set
+import numpy as np
 from airfogsim.core.resource import ResourceManager
 from airfogsim.resource.frequency import FrequencyResource
 
@@ -8,171 +9,481 @@ class FrequencyManager(ResourceManager[FrequencyResource]):
     """
     频率资源管理器
     
-    管理、分配和查询无线通信频率资源
+    管理预定义的、离散的、固定带宽的频率资源块
     """
-    
-    def __init__(self, env=None):
-        super().__init__(env)
-        
-    def find_resources(self, requirements: Dict) -> List[FrequencyResource]:
+    def __init__(self, env=None, total_bandwidth: float = 100.0, block_bandwidth: float = 5.0, 
+                 start_frequency: float = 2400.0, power_limit: float = 100.0):
         """
-        查找符合要求的频率资源
+        初始化频率资源管理器
         
         Args:
-            requirements: 资源需求，可能包含如下字段：
-                - min_frequency: 最小频率 (MHz)
-                - max_frequency: 最大频率 (MHz)
-                - min_bandwidth: 最小带宽 (MHz)
-                - max_noise_level: 最大可接受噪声水平 (dB)
-                - min_power: 最小需要的功率 (mW)
-                
-        Returns:
-            符合要求的资源列表
-        """
-        suitable_resources = []
-        
-        for resource_id, resource in self.resources.items():
-            # 检查资源状态
-            if hasattr(resource, 'status') and resource.status != 'available':
-                continue
-                
-            # 检查频率范围
-            if 'min_frequency' in requirements:
-                if resource.frequency_range[0] < requirements['min_frequency']:
-                    continue
-                    
-            if 'max_frequency' in requirements:
-                if resource.frequency_range[1] > requirements['max_frequency']:
-                    continue
-            
-            # 检查带宽要求
-            if 'min_bandwidth' in requirements:
-                if resource.bandwidth < requirements['min_bandwidth']:
-                    continue
-            
-            # 检查噪声水平
-            if 'max_noise_level' in requirements:
-                if resource.noise_level > requirements['max_noise_level']:
-                    continue
-            
-            # 检查功率要求
-            if 'min_power' in requirements:
-                if resource.power_limit < requirements['min_power']:
-                    continue
-            
-            # 检查是否有足够容量
-            if not resource.has_capacity():
-                continue
-                
-            suitable_resources.append(resource)
-        
-        return suitable_resources
-    
-    def check_interference(self, resource_id1: str, resource_id2: str) -> float:
-        """
-        检查两个频率资源之间的干扰水平
-        
-        Args:
-            resource_id1: 第一个频率资源ID
-            resource_id2: 第二个频率资源ID
-            
-        Returns:
-            干扰水平 (0.0-1.0)，如果资源不存在则返回-1
-        """
-        if resource_id1 not in self.resources or resource_id2 not in self.resources:
-            return -1
-            
-        resource1 = self.resources[resource_id1]
-        resource2 = self.resources[resource_id2]
-        
-        # 检查是否有频率重叠
-        freq1_min, freq1_max = resource1.frequency_range
-        freq2_min, freq2_max = resource2.frequency_range
-        
-        # 如果没有重叠，干扰为0
-        if freq1_max < freq2_min or freq2_max < freq1_min:
-            return 0.0
-            
-        # 计算重叠部分
-        overlap_min = max(freq1_min, freq2_min)
-        overlap_max = min(freq1_max, freq2_max)
-        overlap_size = overlap_max - overlap_min
-        
-        # 计算重叠比例
-        r1_size = freq1_max - freq1_min
-        r2_size = freq2_max - freq2_min
-        overlap_ratio = overlap_size / min(r1_size, r2_size)
-        
-        return overlap_ratio
-    
-    def update_channel_conditions(self, noise_map: Dict[str, float] = None, 
-                                 interference_map: Dict[str, float] = None) -> None:
-        """
-        批量更新信道状态
-        
-        Args:
-            noise_map: 资源ID到噪声水平的映射
-            interference_map: 资源ID到干扰水平的映射
-        """
-        noise_map = noise_map or {}
-        interference_map = interference_map or {}
-        
-        for resource_id, resource in self.resources.items():
-            noise_level = noise_map.get(resource_id, resource.noise_level)
-            interference = interference_map.get(resource_id, resource.interference)
-            
-            resource.update_channel_condition(noise_level, interference)
-            resource.update_utilization()
-    
-    def create_frequency(self, 
-                        frequency_range: tuple,
-                        bandwidth: float,
-                        max_users: int = 5,
-                        power_limit: float = 100.0,
-                        attributes: dict = None) -> str:
-        """
-        创建并注册新的频率资源
-        
-        Args:
-            frequency_range: 频率范围 (MHz)
-            bandwidth: 带宽 (MHz)
-            max_users: 最大用户数
+            env: 仿真环境
+            total_bandwidth: 总带宽 (MHz)
+            block_bandwidth: 每个资源块的带宽 (MHz)
+            start_frequency: 起始频率 (MHz)
             power_limit: 功率限制 (mW)
-            attributes: 附加属性
+        """
+        super().__init__(env)
+        self.id = "frequency_manager"
+        # 订阅环境的visual_update事件，用于更新频率资源的干扰情况
+        if env and hasattr(env, 'event_registry'):
+            env.event_registry.subscribe(env.id, 'visual_update', self.id, self._on_visual_update)
+        
+        # 初始化离散频率资源块
+        self._initialize_resource_blocks(total_bandwidth, block_bandwidth, start_frequency, power_limit)
+        
+        # 代理位置信息缓存，用于计算信道状态
+        # 格式: {agent_id: (x, y, z)}
+        self.agent_positions = {}
+        
+        # 发射功率信息，用于计算信道状态
+        # 格式: {agent_id: power_mw}
+        self.transmit_powers = {}
+        
+    def _initialize_resource_blocks(self, total_bandwidth: float, block_bandwidth: float, 
+                                    start_frequency: float, power_limit: float) -> None:
+        """
+        初始化离散频率资源块
+        
+        Args:
+            total_bandwidth: 总带宽 (MHz)
+            block_bandwidth: 每个资源块的带宽 (MHz)
+            start_frequency: 起始频率 (MHz)
+            power_limit: 功率限制 (mW)
+        """
+        # 计算资源块数量
+        num_blocks = int(total_bandwidth / block_bandwidth)
+        
+        # 创建资源块
+        for i in range(num_blocks):
+            center_frequency = start_frequency + (i + 0.5) * block_bandwidth
+            resource_id = f"freq_block_{i+1}"
+            
+            # 创建频率资源块
+            resource = FrequencyResource(
+                resource_id=resource_id,
+                center_frequency=center_frequency,
+                bandwidth=block_bandwidth,
+                max_users=5,  # 每个资源块可以分配给多个链路
+                power_limit=power_limit
+            )
+            
+            # 注册资源
+            self.register_resource(resource)
+    
+    def request_resource(self, source_id: str, target_id: str, power_db: float = 20.0, requirements: Dict = None) -> List[str]:
+        """
+        请求分配可用的频率资源块用于源和目标代理之间的通信
+        
+        Args:
+            source_id: 源代理ID
+            target_id: 目标代理ID
+            power_db: 发射功率(dBm)
+            requirements: 资源需求（可选），可能包含如下字段：
+                - min_bandwidth: 最小带宽 (MHz)
+                - preferred_frequency: 优先分配的频率范围 (MHz)
+                - required_blocks: 需要的资源块数量 (默认为1)
+                
+        Returns:
+            分配的资源块ID列表，如果没有可用资源则返回空列表
+        """
+        requirements = requirements or {}
+                
+        # 找到所有可用的资源块
+        available_resources = []
+        for resource_id, resource in self.resources.items():
+            # 检查资源块状态
+            if resource.status != "available":
+                continue
+                                
+            available_resources.append(resource)
+        
+        if not available_resources:
+            return None
+            
+        # 应用筛选条件
+        filtered_resources = available_resources
+        
+        # 按优先频率范围排序
+        if 'preferred_frequency' in requirements and filtered_resources:
+            preferred_freq = requirements['preferred_frequency']
+            filtered_resources.sort(
+                key=lambda r: abs(r.center_frequency - preferred_freq)
+            )
+        
+        # 计算所需的总带宽
+        required_bandwidth = requirements.get('min_bandwidth', 0)
+        
+        
+        # 如果没有可用资源，返回空列表
+        if not filtered_resources:
+            return []
+        
+        # 选择足够多的资源块，使总带宽满足要求
+        selected_resources = []
+        total_bandwidth = 0
+        
+        # 首先尝试选择足够的资源块以满足带宽要求
+        for resource in filtered_resources:
+            if total_bandwidth >= required_bandwidth:
+                break
+                
+            selected_resources.append(resource)
+            total_bandwidth += resource.bandwidth
+        
+        # 如果无法满足带宽要求，返回空列表
+        if total_bandwidth < required_bandwidth:
+            return []
+        
+        # 分配资源块
+        allocated_resource_ids = []
+        
+        for resource in selected_resources:
+            # 分配资源块
+            if resource.assign_to(source_id, target_id, power_db):
+                # 记录分配
+                allocation_id = f"alloc_{source_id}_{target_id}_{resource.id}"
+                
+                # 更新分配记录
+                allocation_info = {
+                    'id': allocation_id,
+                    'resource_id': resource.id,
+                    'source_id': source_id,
+                    'target_id': target_id,
+                    'requirements': requirements,
+                    'start_time': self.env.now,
+                    'status': 'active'
+                }
+                
+                self.allocations[allocation_id] = allocation_info
+                
+                # 更新索引
+                if resource.id not in self.resource_allocations:
+                    self.resource_allocations[resource.id] = {}
+                self.resource_allocations[resource.id][allocation_id] = True
+                
+                if source_id not in self.user_allocations:
+                    self.user_allocations[source_id] = []
+                self.user_allocations[source_id].append(allocation_id)
+                
+                # 添加到已分配资源ID列表
+                allocated_resource_ids.append(resource.id)
+            else:
+                # 如果分配失败，释放已分配的资源
+                for res_id in allocated_resource_ids:
+                    res = self.resources.get(res_id)
+                    if res:
+                        res.release(source_id, target_id)
+                return []
+        
+        return allocated_resource_ids
+    
+    def release_resource(self, source_id: str, target_id: str, resource_ids: List[str]=None) -> bool:
+        """
+        释放源和目标代理之间的频率资源块
+        
+        Args:
+            source_id: 源代理ID
+            target_id: 目标代理ID
+            resource_id: 资源块ID列表
             
         Returns:
-            创建的资源ID，如果创建失败则返回None
+            是否释放成功
         """
-        # 生成资源ID
-        resource_id = f"freq_{len(self.resources) + 1}"
         
-        # 创建新资源
-        frequency = FrequencyResource(
-            resource_id=resource_id,
-            frequency_range=frequency_range,
-            bandwidth=bandwidth,
-            max_users=max_users,
-            power_limit=power_limit,
-            attributes=attributes
-        )
+        # 如果未指定资源块ID，查找链路使用的所有资源块
+        if resource_ids is None:
+            resources_to_check = list(self.resources.keys())
+        else:
+            resources_to_check = resource_ids
         
-        # 注册资源
-        if self.register_resource(frequency):
-            return resource_id
+        success = True
         
-        return None
+        # 遍历所有源目标对
     
-    def get_frequency_utilization(self) -> Dict[str, float]:
+        for res_id in resources_to_check:
+            if res_id not in self.resources:
+                continue
+                
+            resource = self.resources[res_id]
+            
+            # 检查链路是否分配了该资源块
+            if (source_id, target_id) not in resource.assigned_to:
+                continue
+                
+            # 释放资源
+            if resource.release(source_id, target_id):
+                # 更新分配记录
+                for allocation_id in list(self.resource_allocations.get(res_id, {}).keys()):
+                    if allocation_id in self.allocations:
+                        alloc = self.allocations[allocation_id]
+                        if alloc.get('source_id') == source_id and alloc.get('target_id') == target_id:
+                            alloc['status'] = 'released'
+                            alloc['end_time'] = self.env.now
+                
+            else:
+                success = False
+                    
+        
+        return success
+            
+    def _on_visual_update(self, event_data=None):
         """
-        获取所有频率资源的使用率
+        处理周期性更新事件，计算信道状态数据
+        """
+        # 更新所有活跃链路的信道状态
+        self.update_channel_conditions()
+    
+    def update_channel_conditions(self) -> None:
+        """
+        更新所有活跃链路的信道状态
+        
+        计算每个活动链路的SINR，考虑同频干扰
+        """
+        # 确保环境存在
+        if not self.env or not hasattr(self.env, 'airspace_manager'):
+            return
+            
+        # 遍历所有资源块
+        for resource_id, resource in self.resources.items():
+            if not resource.assigned_to:  # 跳过未分配的资源块
+                continue
+                
+            
+            # 对每个资源块计算已分配用户pair之间的干扰和接收sinr
+            self._calculate_in_block_sinr(resource)
+            
+    
+    def _calculate_path_loss(self, tx_position: Tuple[float, float, float], 
+                            rx_position: Tuple[float, float, float]) -> float:
+        """
+        计算路径损耗
+        
+        使用简化的自由空间路径损耗模型
+        
+        Args:
+            tx_position: 发射端位置 (x, y, z)，单位为米
+            rx_position: 接收端位置 (x, y, z)，单位为米
+            
+        Returns:
+            路径损耗 (dB)
+        """
+        # 计算距离
+        dx = tx_position[0] - rx_position[0]
+        dy = tx_position[1] - rx_position[1]
+        dz = tx_position[2] - rx_position[2]
+        distance = np.sqrt(dx**2 + dy**2 + dz**2)
+        
+        # 避免距离为0
+        distance = max(distance, 1.0)
+        
+        # 自由空间路径损耗模型 (dB)
+        # PL = 20*log10(d) + 20*log10(f) - 27.55
+        # 这里假设频率为2.4GHz
+        path_loss = 20 * np.log10(distance) + 20 * np.log10(2400) - 27.55
+        
+        return path_loss
+    
+    def _calculate_fast_fading(self) -> float:
+        """
+        计算快速衰落
+        
+        使用简化的瑞利衰落模型
         
         Returns:
-            资源ID到使用率的映射
+            快速衰落 (dB)
         """
-        utilization_map = {}
+        # 简化的瑞利衰落模型
+        # 生成两个高斯随机变量
+        x = np.random.normal(0, 1)
+        y = np.random.normal(0, 1)
+        
+        # 计算瑞利分布的随机变量
+        rayleigh = np.sqrt(x**2 + y**2)
+        
+        # 转换为dB
+        fading_db = 20 * np.log10(rayleigh)
+        
+        return fading_db
+    
+    def _calculate_in_block_sinr(self, resource: FrequencyResource) -> None:
+        """
+        计算资源块内部各链路的SINR，使用矩阵运算提高效率
+        
+        Args:
+            resource: 频率资源块
+        """
+        # 确保环境存在
+        if not self.env or not hasattr(self.env, 'airspace_manager'):
+            return
+            
+        # 获取airspace_manager
+        airspace_manager = self.env.airspace_manager
+        
+        # 如果资源块未分配给任何链路，直接返回
+        if not resource.assigned_to:
+            return
+            
+        # 预处理：获取资源块内所有链路的位置和功率信息
+        link_info = []
+        link_ids = []
+        
+        for (source_id, target_id), power_db in resource.assigned_to.items():
+            # 从airspace_manager获取位置信息
+            source_position = airspace_manager.get_agent_position(source_id)
+            target_position = airspace_manager.get_agent_position(target_id)
+            
+            # 如果没有位置信息，跳过
+            if not source_position or not target_position:
+                continue
+                
+            link_ids.append((source_id, target_id))
+            link_info.append({
+                'source_position': source_position,
+                'target_position': target_position,
+                'power_db': power_db
+            })
+        
+        if not link_info:
+            return
+            
+        num_links = len(link_info)
+        
+        # 构建位置和功率矩阵
+        source_positions = np.zeros((num_links, 3))
+        target_positions = np.zeros((num_links, 3))
+        power_db_values = np.zeros(num_links)
+        
+        for i in range(num_links):
+            source_positions[i] = link_info[i]['source_position']
+            target_positions[i] = link_info[i]['target_position']
+            power_db_values[i] = link_info[i]['power_db']
+        
+        # 1. 计算直接链路的路径损耗矩阵 (num_links,)
+        direct_path_losses = np.zeros(num_links)
+        for i in range(num_links):
+            direct_path_losses[i] = self._calculate_path_loss(
+                source_positions[i], target_positions[i]
+            )
+        
+        # 2. 计算快速衰落
+        fast_fadings = np.array([self._calculate_fast_fading() for _ in range(num_links)])
+        
+        # 3. 计算接收信号功率 (dBm)
+        rx_power_dbm = power_db_values - direct_path_losses + fast_fadings
+        
+        # 4. 计算干扰矩阵 (所有发射机到所有接收机的路径损耗)
+        # 创建 (num_links x num_links) 干扰矩阵
+        interference_path_losses = np.zeros((num_links, num_links))
+        
+        for i in range(num_links):  # 接收机索引
+            for j in range(num_links):  # 发射机索引
+                if i != j:  # 跳过自身链路
+                    interference_path_losses[i, j] = self._calculate_path_loss(
+                        source_positions[j], target_positions[i]
+                    )
+        
+        # 5. 将功率从dBm转换为mW
+        power_mw = 10 ** (power_db_values / 10)
+        
+        # 6. 计算线性域中的路径损耗因子
+        path_loss_factors = 10 ** (-interference_path_losses / 10)
+        
+        # 7. 计算每个链路的干扰功率（mW）
+        # 对角线设为0，不计算自干扰
+        np.fill_diagonal(path_loss_factors, 0)
+        
+        # 计算干扰功率 (mW)：power_mw * path_loss_factors，矩阵乘法
+        interference_mw_matrix = np.outer(power_mw, np.ones(num_links)) * path_loss_factors
+        interference_mw_sum = np.sum(interference_mw_matrix, axis=1)  # 按行求和
+        
+        # 8. 计算噪声功率 (dBm)
+        noise_dbm = self._calculate_thermal_noise(resource.bandwidth)
+        noise_mw = 10 ** (noise_dbm / 10)
+        
+        # 9. 计算干扰功率 (dBm)并处理无干扰情况
+        has_interference = interference_mw_sum > 0
+        interference_dbm = np.full(num_links, -float('inf'))
+        interference_dbm[has_interference] = 10 * np.log10(interference_mw_sum[has_interference])
+        
+        # 10. 计算SINR (dB)
+        sinr = np.zeros(num_links)
+        
+        # 对有干扰的链路
+        has_interference_mask = interference_dbm > -float('inf')
+        if np.any(has_interference_mask):
+            # 干扰加噪声功率 (线性域相加)
+            interference_noise_mw = 10 ** (interference_dbm[has_interference_mask] / 10) + noise_mw
+            interference_noise_dbm = 10 * np.log10(interference_noise_mw)
+            sinr[has_interference_mask] = rx_power_dbm[has_interference_mask] - interference_noise_dbm
+        
+        # 对无干扰的链路
+        no_interference_mask = ~has_interference_mask
+        if np.any(no_interference_mask):
+            # 无干扰，仅考虑噪声
+            sinr[no_interference_mask] = rx_power_dbm[no_interference_mask] - noise_dbm
+        
+        # 11. 更新每个链路的信道状态
+        for i in range(num_links):
+            resource.update_channel_condition(
+                noise_level=noise_dbm,
+                interference=interference_dbm[i],
+                sinr=sinr[i]
+            )
+    
+    def _calculate_thermal_noise(self, bandwidth_mhz: float) -> float:
+        """
+        计算热噪声功率
+        
+        Args:
+            bandwidth_mhz: 带宽 (MHz)
+            
+        Returns:
+            噪声功率 (dBm)
+        """
+        # 玻尔兹曼常数 (J/K)
+        k = 1.38e-23
+        
+        # 温度 (K)，假设室温
+        T = 290
+        
+        # 带宽 (Hz)
+        B = bandwidth_mhz * 1e6
+        
+        # 热噪声功率 (W)
+        N = k * T * B
+        
+        # 转换为mW
+        N_mw = N * 1000
+        
+        # 转换为dBm
+        N_dbm = 10 * np.log10(N_mw)
+        
+        return N_dbm
+    def get_resources(self, resource_ids:List[str])->List[FrequencyResource]:
+        resources = []
+        for resource_id in resource_ids:
+            resources.append(self.resources[resource_id])
+        return resources
+
+    def get_resource_status(self) -> Dict[str, Dict]:
+        """
+        获取所有资源块的状态
+        
+        Returns:
+            资源块状态字典，键为资源ID，值为状态信息
+        """
+        status = {}
         
         for resource_id, resource in self.resources.items():
-            resource.update_utilization()
-            utilization_map[resource_id] = resource.utilization
+            status[resource_id] = {
+                'center_frequency': resource.center_frequency,
+                'bandwidth': resource.bandwidth,
+                'status': resource.status,
+                'assigned_to': resource.assigned_to.copy() if resource.assigned_to else [],
+                'sinr': resource.sinr,
+                'noise_level': resource.noise_level,
+                'interference': resource.interference
+            }
             
-        return utilization_map
+        return status

@@ -20,7 +20,7 @@ from threading import Barrier
 from .agent import Agent
 from .workflow import Workflow
 import simpy
-from airfogsim.core.resource import ResourceManager
+from airfogsim.manager.file_manager import FileManager
 from airfogsim.manager.airspace import AirspaceManager
 from airfogsim.manager.frequency import FrequencyManager
 from airfogsim.manager.landing import LandingManager
@@ -28,6 +28,7 @@ from airfogsim.manager.workflow import WorkflowManager
 from airfogsim.manager.trigger import TriggerManager
 from airfogsim.manager.payload import PayloadManager
 from airfogsim.manager.task_manager import TaskManager
+from airfogsim.manager.contract import ContractManager
 from .event import EventRegistry
 from typing import Dict, Optional, Type, Tuple, Union, List, Callable, Any
 import airfogsim.task as airfogsim_task
@@ -44,20 +45,27 @@ class Environment(simpy.Environment):
         self.airspace_manager = AirspaceManager(self)
         self.frequency_manager = FrequencyManager(self)
         self.landing_manager = LandingManager(self)
+        self.file_manager = FileManager(self)
         
         self.workflow_manager = WorkflowManager(self)
         self.trigger_manager = TriggerManager(self)
         self.task_manager = TaskManager(self)
         self.payload_manager = PayloadManager(self)
+        self.contract_manager = ContractManager(self)
         self.agents: Dict[str, 'Agent'] = {}
         self.data = {}
 
-        self.visual_interval = visual_interval # s
+        self.visual_interval = float(visual_interval) if visual_interval is not None else 0 # s
         if self.visual_interval > 0:
              self.event_registry.register_event(self.id, 'visual_update')
              # Run loop only if interval > 0
              self.process(self._visual_update_loop(self.visual_interval))
         self._register_tasks(kwargs.get('task_classes', []))
+
+    @property
+    def now(self):
+        # 精度为:.3
+        return round(super().now, 3)
             
     def _register_tasks(self, task_classes):
         if not task_classes:
@@ -94,7 +102,7 @@ class Environment(simpy.Environment):
                     self._handle_agent_position_change
                 ).add_source_filter(lambda event_data: 'position'==event_data.get('key', {}))
         
-        return agent
+        return self
     
     def _handle_agent_position_change(self, event_data):
         """
@@ -117,7 +125,7 @@ class Environment(simpy.Environment):
             
         # 更新空域管理器中的代理位置
         if hasattr(self, 'airspace_manager'):
-            self.airspace_manager.update_agent_position(agent_id, position)
+            self.airspace_manager.update_object_position(position, agent_id=agent_id)
 
     def get_agent(self, agent_id):
         return self.agents.get(agent_id)

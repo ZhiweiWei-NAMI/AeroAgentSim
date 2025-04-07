@@ -23,7 +23,7 @@ class PickupTask(Task):
     该任务负责模拟代理在指定位置取件的过程，成功后将货物添加到代理的possessing_objects中。
     """
     NECESSARY_METRICS = ['pickup_processing_time']
-    PRODUCED_STATES = ['status', 'carrying_payload']
+    PRODUCED_STATES = ['status', 'payload_ids', 'current_payload_weight', 'current_payload_volume']
     
     def __init__(self, env, agent, component_name, task_name,
                  workflow_id=None, target_state=None, properties=None):
@@ -96,9 +96,43 @@ class PickupTask(Task):
     
     def _get_task_specific_state_repr(self) -> Dict:
         """返回任务特定状态的表示"""
+        # 获取当前payload_ids列表
+        current_payload_ids = self.agent.get_state('payload_ids', [])
+        
+        # 如果任务完成，则添加当前payload_id
+        if self.progress >= 1.0 and self.payload_id not in current_payload_ids:
+            current_payload_ids = current_payload_ids + [self.payload_id]
+        
+        # 获取货物信息以更新重量和容积
+        payload_info = None
+        if hasattr(self.env, 'payload_manager') and self.payload_id:
+            payload_info = self.env.payload_manager.get_payload(self.payload_id)
+        
+        # 计算新的重量和容积
+        payload_weight = 0.0
+        payload_volume = 0.0
+        
+        if payload_info and self.progress >= 1.0:
+            payload_weight = payload_info.get('weight', 0.0)
+            if 'dimensions' in payload_info:
+                dimensions = payload_info['dimensions']
+                if len(dimensions) == 3:
+                    payload_volume = dimensions[0] * dimensions[1] * dimensions[2]
+        
+        # 当前重量和容积
+        current_weight = self.agent.get_state('current_payload_weight', 0.0)
+        current_volume = self.agent.get_state('current_payload_volume', 0.0)
+        
+        # 如果任务完成，则添加新的重量和容积
+        if self.progress >= 1.0:
+            current_weight += payload_weight
+            current_volume += payload_volume
+        
         return {
             'status': 'picking_up' if self.progress < 1.0 else 'pickup_completed',
-            'carrying_payload': self.progress >= 1.0
+            'payload_ids': current_payload_ids,
+            'current_payload_weight': current_weight,
+            'current_payload_volume': current_volume
         }
     def _possessing_object_on_complete(self):
         """
@@ -133,13 +167,17 @@ class PickupTask(Task):
         
         # 将货物添加到当前代理的possessing_objects中
         self.agent.add_possessing_object(self.payload_id, payload_info)
-        print(f"时间 {self.env.now}: 代理 {self.agent_id} 成功从 {self.source_agent_id} 取件 {self.payload_id} 于位置 {self.pickup_location}")
+        
+        # 使用payload_manager标记货物已被取件
+        if hasattr(self.env, 'payload_manager'):
+            self.env.payload_manager.mark_payload_picked(self.payload_id, self.agent_id, self.agent.get_state('position'))
     
     def _possessing_object_on_fail(self):
         """
         任务失败时的处理
         """
-        print(f"时间 {self.env.now}: 代理 {self.agent_id} 取件失败: {self.failure_reason}")
+        # print(f"时间 {self.env.now}: 代理 {self.agent_id} 取件失败: {self.failure_reason}")
+        pass
     
     def _possessing_object_on_cancel(self):
         """
@@ -155,7 +193,7 @@ class HandoverTask(Task):
     该任务负责模拟代理在指定位置交付货物的过程，成功后将货物从代理的possessing_objects中移除。
     """
     NECESSARY_METRICS = ['handover_processing_time']
-    PRODUCED_STATES = ['status', 'carrying_payload']
+    PRODUCED_STATES = ['status', 'payload_ids', 'current_payload_weight', 'current_payload_volume']
     
     def __init__(self, env, agent, component_name, task_name,
                  workflow_id=None, target_state=None, properties=None):
@@ -235,9 +273,43 @@ class HandoverTask(Task):
     
     def _get_task_specific_state_repr(self) -> Dict:
         """返回任务特定状态的表示"""
+        # 获取当前payload_ids列表
+        current_payload_ids = self.agent.get_state('payload_ids', [])
+        
+        # 如果任务完成，则从列表中移除当前payload_id
+        if self.progress >= 1.0 and self.payload_id in current_payload_ids:
+            current_payload_ids = [pid for pid in current_payload_ids if pid != self.payload_id]
+        
+        # 获取货物信息以更新重量和容积
+        payload_info = None
+        if self.has_payload:
+            payload_info = self.agent.get_possessing_object(self.payload_id)
+        
+        # 计算需要减去的重量和容积
+        payload_weight = 0.0
+        payload_volume = 0.0
+        
+        if payload_info and self.progress >= 1.0:
+            payload_weight = payload_info.get('weight', 0.0)
+            if 'dimensions' in payload_info:
+                dimensions = payload_info['dimensions']
+                if len(dimensions) == 3:
+                    payload_volume = dimensions[0] * dimensions[1] * dimensions[2]
+        
+        # 当前重量和容积
+        current_weight = self.agent.get_state('current_payload_weight', 0.0)
+        current_volume = self.agent.get_state('current_payload_volume', 0.0)
+        
+        # 如果任务完成，则减去移除的重量和容积
+        if self.progress >= 1.0:
+            current_weight = max(0.0, current_weight - payload_weight)
+            current_volume = max(0.0, current_volume - payload_volume)
+        
         return {
             'status': 'delivering' if self.progress < 1.0 else 'delivery_completed',
-            'carrying_payload': self.progress < 1.0 and self.has_payload
+            'payload_ids': current_payload_ids,
+            'current_payload_weight': current_weight,
+            'current_payload_volume': current_volume
         }
     
     def _possessing_object_on_complete(self):
@@ -264,25 +336,15 @@ class HandoverTask(Task):
             self.fail("未找到货物信息")
             return
             
-        # 记录交付信息
-        delivery_info = {
-            'id': self.payload_id,
-            'pickup_time': payload.get('pickup_time'),
-            'pickup_location': payload.get('pickup_location'),
-            'delivery_time': self.env.now,
-            'delivery_location': self.delivery_location
-        }
         
         # 从当前代理的possessing_objects中移除货物
         self.agent.remove_possessing_object(self.payload_id)
         
         # 将货物转移给目标代理
         target_agent.add_possessing_object(self.payload_id, payload)
-        print(f"时间 {self.env.now}: 代理 {self.agent_id} 成功交付货物 {self.payload_id} 给 {target_agent.id} 于位置 {self.delivery_location}")
-        
-        # 可以在这里添加交付记录到环境或其他地方
         if hasattr(self.env, 'payload_manager'):
-            self.env.payload_manager.add_payload_record(self.payload_id, delivery_info)
+            self.env.payload_manager.mark_payload_delivered(self.payload_id, self.agent_id, self.agent.get_state('position'))
+        
     
     def _possessing_object_on_fail(self):
         """

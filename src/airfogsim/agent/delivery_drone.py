@@ -21,17 +21,21 @@ class DeliveryDroneAgentMeta(DroneAgentMeta):
     
     def __new__(mcs, name, bases, attrs):
         cls = super().__new__(mcs, name, bases, attrs)
-        
         # 注册物流无人机专用的状态模板
-        mcs.register_template(cls, 'carrying_payload', bool, True, None,
-                            "无人机是否携带货物")
-        mcs.register_template(cls, 'payload_id', str, False, None,
+        mcs.register_template(cls, 'payload_ids', List[str], False, None,
                             "无人机当前携带的货物ID")
-        mcs.register_template(cls, 'payload_weight', (float, int), False, None,
-                            "无人机当前携带的货物重量 (kg)")
-        mcs.register_template(cls, 'payload_dimensions', (tuple, list), False, 
-                            lambda dims: len(dims) == 3 and all(isinstance(d, (int, float)) for d in dims),
-                            "无人机当前携带的货物尺寸 (长, 宽, 高)")
+        
+        # 负载重量状态
+        mcs.register_template(cls, 'current_payload_weight', (float, int), True, None,
+                            "无人机当前负载重量 (kg)")
+        mcs.register_template(cls, 'max_payload_weight', (float, int), True, None,
+                            "无人机最大负载重量 (kg)")
+        
+        # 负载容积状态
+        mcs.register_template(cls, 'current_payload_volume', (float, int), True, None,
+                            "无人机当前负载容积 (m³)")
+        mcs.register_template(cls, 'max_payload_volume', (float, int), True, None,
+                            "无人机最大负载容积 (m³)")
         
         # 扩展状态列表，直接定义新的验证函数
         extended_states = ['idle', 'flying', 'landing', 'charging', 'error', 'waiting_to_charge',
@@ -58,10 +62,14 @@ class DeliveryDroneAgent(DroneAgent, metaclass=DeliveryDroneAgentMeta):
     
     def __init__(self, env, agent_name: str, properties=None, agent_id=None):
         super().__init__(env, agent_name, properties, agent_id)
-        self.id = agent_id or f"delivery_drone_{id(self)}"
+        self.id = agent_id or f"agent_delivery_drone_{id(self)}"
         
         # 初始化物流相关状态
-        self.update_state('carrying_payload', False)
+        self.update_state('payload_ids', [])
+        self.update_state('current_payload_weight', 0.0)
+        self.update_state('max_payload_weight', properties.get('max_payload_weight', 5.0))
+        self.update_state('current_payload_volume', 0.0)
+        self.update_state('max_payload_volume', properties.get('max_payload_volume', 0.125))  # 默认0.125立方米
         
         # 订阅物流相关事件
         self.env.event_registry.subscribe(
@@ -80,42 +88,85 @@ class DeliveryDroneAgent(DroneAgent, metaclass=DeliveryDroneAgentMeta):
     
     def _on_payload_added(self, event_data):
         """响应货物添加事件"""
-        if event_data.get('object_type') == 'payload':
+        if event_data.get('object_name').startswith('payload_'):
             payload_id = event_data.get('object_id')
-            payload = self.get_possessing_object('payload', payload_id)
+            payload = self.get_possessing_object(payload_id)
             
             if payload:
-                # 更新携带货物状态
-                self.update_state('carrying_payload', True)
-                self.update_state('payload_id', payload_id)
+                # 更新payload_ids状态
+                self.update_state('payload_ids', self.get_state('payload_ids', []) + [payload_id])
+                properties = payload.get('properties', {})
+                # 更新负载重量
+                payload_weight = properties.get('weight', 0.0)
+                current_weight = self.get_state('current_payload_weight', 0.0)
+                self.update_state('current_payload_weight', current_weight + payload_weight)
                 
-                # 如果有货物重量信息，更新重量状态
-                if 'weight' in payload:
-                    self.update_state('payload_weight', payload['weight'])
+                # 计算并更新负载容积
+                payload_volume = 0.0
+                if 'dimensions' in properties:
+                    # 假设dimensions是[长, 宽, 高]格式，单位为米
+                    dimensions = properties['dimensions']
+                    if len(dimensions) == 3:
+                        payload_volume = dimensions[0] * dimensions[1] * dimensions[2]
                 
-                # 如果有货物尺寸信息，更新尺寸状态
-                if 'dimensions' in payload:
-                    self.update_state('payload_dimensions', payload['dimensions'])
+                current_volume = self.get_state('current_payload_volume', 0.0)
+                self.update_state('current_payload_volume', current_volume + payload_volume)
                 
                 # 更新状态为运输中
                 self.update_state('status', 'transporting')
                 
-                print(f"时间 {self.env.now}: {self.id} 开始携带货物 {payload_id}")
+                print(f"时间 {self.env.now}: {self.id} 开始携带货物 {payload_id}, 当前货物ids: {self.get_state('payload_ids')}")
+                print(f"\t\t {self.id} 当前负载重量: {self.get_state('current_payload_weight')}kg, 负载容积: {self.get_state('current_payload_volume')}m³")
     
     def _on_payload_removed(self, event_data):
         """响应货物移除事件"""
-        if event_data.get('object_type') == 'payload':
-            # 更新携带货物状态
-            self.update_state('carrying_payload', False)
-            self.update_state('payload_id', None)
-            self.update_state('payload_weight', None)
-            self.update_state('payload_dimensions', None)
+        if event_data.get('object_name').startswith('payload_'):
+            payload_id = event_data.get('object_id')
+            
+            # 在移除前获取货物信息，用于更新重量和容积
+            payload = None
+            for pid in self.get_state('payload_ids', []):
+                if pid == payload_id:
+                    # 尝试从环境的payload_manager获取货物信息
+                    if hasattr(self.env, 'payload_manager'):
+                        payload = self.env.payload_manager.get_payload(payload_id)
+                    break
+            
+            # 更新payload_ids状态
+            self.update_state('payload_ids',
+                              [pid for pid in self.get_state('payload_ids') if pid != payload_id])
+            
+            # 更新负载重量和容积
+            if payload:
+                properties = payload.get('properties', {})
+                # 减去货物重量
+                payload_weight = properties.get('weight', 0.0)
+                current_weight = self.get_state('current_payload_weight', 0.0)
+                new_weight = max(0.0, current_weight - payload_weight)
+                self.update_state('current_payload_weight', new_weight)
+                
+                # 减去货物容积
+                payload_volume = 0.0
+                if 'dimensions' in properties:
+                    dimensions = properties['dimensions']
+                    if len(dimensions) == 3:
+                        payload_volume = dimensions[0] * dimensions[1] * dimensions[2]
+                
+                current_volume = self.get_state('current_payload_volume', 0.0)
+                new_volume = max(0.0, current_volume - payload_volume)
+                self.update_state('current_payload_volume', new_volume)
+            
+            # 如果没有剩余货物，将重量和容积设为0
+            if not self.get_state('payload_ids'):
+                self.update_state('current_payload_weight', 0.0)
+                self.update_state('current_payload_volume', 0.0)
             
             # 如果当前状态是delivering，更新为idle
             if self.get_state('status') == 'delivering':
                 self.update_state('status', 'idle')
                 
-            print(f"时间 {self.env.now}: {self.id} 不再携带货物 {event_data.get('object_id')}")
+            print(f"时间 {self.env.now}: {self.id} 不再携带货物 {payload_id}")
+            print(f"\t\t {self.id} 当前负载重量: {self.get_state('current_payload_weight')}kg, 负载容积: {self.get_state('current_payload_volume')}m³")
     
     def _plan_and_execute_tasks(self):
         """重写任务规划和执行方法，优先处理物流工作流"""
@@ -197,11 +248,23 @@ class DeliveryDroneAgent(DroneAgent, metaclass=DeliveryDroneAgentMeta):
         details = super().get_details()
         
         # 添加物流相关信息
-        if self.get_state('carrying_payload'):
+        payload_ids = self.get_state('payload_ids', [])
+        if payload_ids:
+            # 获取所有携带的货物信息
+            payloads = []
+            for payload_id in payload_ids:
+                payload = self.get_possessing_object(payload_id)
+                if payload:
+                    payloads.append(payload)
+            
             details['payload_info'] = {
-                'id': self.get_state('payload_id'),
-                'weight': self.get_state('payload_weight'),
-                'dimensions': self.get_state('payload_dimensions')
+                'ids': payload_ids,
+                'count': len(payload_ids),
+                'payloads': payloads,
+                'current_weight': self.get_state('current_payload_weight', 0.0),
+                'max_weight': self.get_state('max_payload_weight', 5.0),
+                'current_volume': self.get_state('current_payload_volume', 0.0),
+                'max_volume': self.get_state('max_payload_volume', 0.125)
             }
         
         # 添加物流工作流信息

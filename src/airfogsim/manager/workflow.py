@@ -9,7 +9,7 @@ class WorkflowManager:
     def __init__(self, env):
         self.env = env
         self.workflows: Dict[str, 'Workflow'] = {}
-        self.manager_id = f"workflow_manager_{id(self)}"
+        self.id = f"workflow_manager_{id(self)}"
         self.workflow_triggers: Dict[str, List] = defaultdict(list)
         self._register_manager_events()
         self._subscribe_to_manager_events()
@@ -18,15 +18,15 @@ class WorkflowManager:
         return list(self.workflows.values())
 
     def _register_manager_events(self):
-        self.env.event_registry.register_event(self.manager_id, 'workflow_registered')
-        self.env.event_registry.register_event(self.manager_id, 'workflow_started')
-        self.env.event_registry.register_event(self.manager_id, 'workflow_completed')
-        self.env.event_registry.register_event(self.manager_id, 'workflow_failed')
-        self.env.event_registry.register_event(self.manager_id, 'workflow_canceled')
+        self.env.event_registry.register_event(self.id, 'workflow_registered')
+        self.env.event_registry.register_event(self.id, 'workflow_started')
+        self.env.event_registry.register_event(self.id, 'workflow_completed')
+        self.env.event_registry.register_event(self.id, 'workflow_failed')
+        self.env.event_registry.register_event(self.id, 'workflow_canceled')
 
 
     def _subscribe_to_manager_events(self):
-        self.env.event_registry.subscribe(self.manager_id, 'workflow_registered', self.manager_id,
+        self.env.event_registry.subscribe(self.id, 'workflow_registered', self.id,
                                              lambda ev: print(f"时间 {self.env.now}: WMgr: Registered Workflow {ev.get('workflow_id')}"))
 
     def register_workflow(self, workflow: 'Workflow',
@@ -71,7 +71,7 @@ class WorkflowManager:
                 warnings.warn(f"Invalid start_trigger format for workflow {workflow.id}")
                 
         self.env.event_registry.trigger_event(
-            self.manager_id, 'workflow_registered', 
+            self.id, 'workflow_registered', 
             {'workflow_id': workflow.id, 'workflow_name': workflow.name, 'workflow_class': workflow.__class__.__name__,
              'time': self.env.now}
         )
@@ -95,7 +95,7 @@ class WorkflowManager:
     def _subscribe_manager_to_workflow(self, workflow: 'Workflow'):
         try:
             self.env.event_registry.subscribe(
-                workflow.id, 'workflow_status_changed', self.manager_id,
+                workflow.id, 'workflow_status_changed', self.id,
                 lambda ev, w_id=workflow.id: self._handle_workflow_status_change(w_id, ev)
             )
         except Exception as e:
@@ -118,16 +118,29 @@ class WorkflowManager:
         if new_status_str == WorkflowStatus.RUNNING.name:
             # 当工作流开始运行时，触发manager的工作流开始事件
             self.env.event_registry.trigger_event(
-                self.manager_id, 'workflow_started',
+                self.id, 'workflow_started',
                 {'workflow_id': workflow_id, 'time': timestamp}
             )
+            print(f"时间 {self.env.now}: WorkflowManager: 工作流 {workflow_id} 已开始运行")
             
         elif new_status_str in (WorkflowStatus.COMPLETED.name, WorkflowStatus.FAILED.name, WorkflowStatus.CANCELED.name):
             # 当工作流结束时，触发manager的相应事件
             event_name = f"workflow_{new_status_str.lower()}"
+            event_data = {
+                'workflow_id': workflow_id,
+                'reason': reason,
+                'time': timestamp
+            }
+            
+            # 打印日志
+            print(f"时间 {self.env.now}: WorkflowManager: 工作流 {workflow_id} 状态变为 {new_status_str}，触发事件 {event_name}")
+            print(f"  - 事件数据: {event_data}")
+            
+            # 触发事件
             self.env.event_registry.trigger_event(
-                self.manager_id, event_name,
-                {'workflow_id': workflow_id, 'reason': reason, 'time': timestamp}
+                self.id,
+                event_name,
+                event_data
             )
             
             # 判断是否仍能触发
@@ -196,7 +209,7 @@ class WorkflowManager:
             
             # 触发管理器取消事件
             self.env.event_registry.trigger_event(
-                self.manager_id, 'workflow_canceled',
+                self.id, 'workflow_canceled',
                 {'workflow_id': workflow_id, 'reason': reason, 'time': self.env.now}
             )
             

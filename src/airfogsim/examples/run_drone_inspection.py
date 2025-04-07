@@ -36,25 +36,6 @@ def setup_charging_workflow(env, drone, battery_threshold=50):
 # 创建环境
 env = Environment(visual_interval=10)
 
-# 创建和注册频率资源
-# 创建控制通信频率资源
-control_freq_id = env.frequency_manager.create_frequency(
-    frequency_range=(2400, 2500),  # MHz
-    bandwidth=20,  # MHz
-    max_users=8,
-    power_limit=50.0,  # mW
-    attributes={'purpose': '控制通信', 'protocol': 'IEEE 802.11'}
-)
-
-# 创建数据传输频率资源
-data_freq_id = env.frequency_manager.create_frequency(
-    frequency_range=(5700, 5800),  # MHz
-    bandwidth=40,  # MHz
-    max_users=5,
-    power_limit=100.0,  # mW
-    attributes={'purpose': '数据传输', 'protocol': 'IEEE 802.11ac'}
-)
-
 # 创建和注册着陆区资源
 # 创建起飞/降落点
 home_landing_id = env.landing_manager.create_landing_spot(
@@ -140,6 +121,6 @@ workflow = create_inspection_workflow(env, drone, waypoints)
 workflow.start()
 
 # 运行模拟
-env.run(until=20000)
+env.run(until=1000)
 
 # 不再需要手动释放资源，组件会在任务完成时自动释放

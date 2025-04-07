@@ -211,7 +211,9 @@ class TaskManager:
                    task_name: str,
                    workflow_id: Optional[str] = None,
                    target_state: Optional[Dict] = None,
-                   properties: Optional[Dict] = None) -> Optional[Task]:
+                   properties: Optional[Dict] = None,
+                   task_id: Optional[str] = None) -> Optional[Task]:
+                   
         """
         创建任务实例
         
@@ -223,6 +225,7 @@ class TaskManager:
             workflow_id: 工作流ID（可选）
             target_state: 目标状态（可选）
             properties: 任务属性（可选）
+            task_id: 任务ID（可选）
             
         Returns:
             创建的任务实例或None（如果创建失败）
@@ -249,6 +252,8 @@ class TaskManager:
                 target_state=target_state,
                 properties=properties
             )
+            if task_id:
+                task.id = task_id
             
             # 触发任务选择事件
             self.env.event_registry.trigger_event(self.id, 'task_selected', {

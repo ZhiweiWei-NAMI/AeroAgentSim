@@ -27,7 +27,7 @@ class Task:
                  workflow_id: Optional[str] = None, # ID of the workflow this task belongs to
                  target_state: Optional[Dict] = None, # Optional: Describe desired outcome
                  properties: Optional[Dict] = None): # Generic properties (e.g., duration, demand)
-        self.id = 'task_'+str(uuid.uuid4())
+        self.id = 'task_'+str(uuid.uuid4().hex[:8])
         self.name = task_name
         self.agent_id = agent.id
         self.agent = agent

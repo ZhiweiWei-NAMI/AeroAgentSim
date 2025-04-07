@@ -274,7 +274,18 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
         
         # 为状态添加回调
         for state, trans_list in transitions.items():
-            for trigger, next_state in trans_list:
+            for transition in trans_list:
+                # 解包转换元组，可能是二元组或三元组
+                if len(transition) == 2:
+                    trigger, next_state = transition
+                    description = None
+                elif len(transition) == 3:
+                    trigger, next_state, description = transition
+                else:
+                    raise ValueError("Invalid transition format")
+                    continue
+                
+                # 添加回调
                 if state == 'monitoring_battery' and next_state == 'requesting_charger':
                     trigger.add_callback(on_requesting_charger)
                 elif state == 'seeking_charger' and next_state == 'charging':
@@ -310,7 +321,8 @@ def create_charging_workflow(env, agent, charging_station=None, battery_threshol
             agent_id=agent.id, 
             state_key='battery_level', 
             operator=TriggerOperator.LESS_THAN, 
-            target_value=battery_threshold
+            target_value=battery_threshold,
+            name='battery_level_trigger',
         ),
         max_starts=None  # 允许无限次触发
     )

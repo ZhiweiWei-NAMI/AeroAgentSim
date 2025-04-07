@@ -141,13 +141,6 @@ class MoveToTask(Task):
             # 更新代理的位置状态，这将触发环境中的碰撞检测
             self.agent.set_state('position', self.current_position)
             
-            # 检查是否有碰撞风险
-            if hasattr(self.env, 'airspace_manager'):
-                nearby_agents = self.env.airspace_manager.get_nearby_agents(self.agent.id, 10.0)  # 10米范围内的代理
-                if nearby_agents:
-                    # 如果有附近的代理，记录日志
-                    agent_count = len(nearby_agents)
-                    print(f"时间 {self.env.now}: {self.agent.id} 附近有 {agent_count} 个代理")
         
         # 更新进度
         if self.total_distance > 0:

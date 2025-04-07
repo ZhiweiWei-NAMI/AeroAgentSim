@@ -78,9 +78,6 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
             service_radius=properties.get('service_radius', 50.0),
             registered_logistics_drones=properties.get('registered_logistics_drones', []),
             payload_generation_model=properties.get('payload_generation_model', {
-                'interval_mean': 300,  # 平均300秒生成一个物品
-                'interval_std': 60,    # 标准差60秒
-                'destinations': [],    # 目的地列表，为空时随机生成
                 'properties': {}       # 物品属性模板
             })
         )
@@ -96,6 +93,37 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         if hasattr(env, 'airspace_manager'):
             env.airspace_manager.register_agent(self.id, self.get_state('position'))
         
+        # 监听自身add_possessing_object事件,如果是"payloyad_"开头,对应修改current_storage
+        self.subscribe(self.id, 'possessing_object_added', self._on_add_possessing_object, listener_id=f'{self.id}_add_possessing_object')
+        self.subscribe(self.id, 'possessing_object_removed', self._on_remove_possessing_object, listener_id=f'{self.id}_remove_possessing_object')
+
+    def _on_add_possessing_object(self, event_value: Dict[str, Any]):
+        """
+        处理添加物品事件
+        
+        Args:
+            event_value: 事件值，包含物品ID和属性
+        """
+        payload_id = event_value.get('object_id')
+        if payload_id and payload_id.startswith('payload_'):
+            # 增加当前存储量
+            current_storage = self.get_state('current_storage')
+            self.update_state('current_storage', current_storage + 1)
+            print(f"时间 {self.env.now}: 快递站 {self.id} 当前存储量增加到 {current_storage + 1}")
+
+    def _on_remove_possessing_object(self, event_value: Dict[str, Any]):
+        """
+        处理移除物品事件
+        
+        Args:
+            event_value: 事件值，包含物品ID和属性
+        """
+        payload_id = event_value.get('object_id')
+        if payload_id and payload_id.startswith('payload_'):
+            # 减少当前存储量
+            current_storage = self.get_state('current_storage')
+            self.update_state('current_storage', max(0, current_storage - 1))
+            print(f"时间 {self.env.now}: 快递站 {self.id} 当前存储量减少到 {max(0, current_storage - 1)}")
     
     @classmethod
     def get_description(cls):
@@ -185,7 +213,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         # 实际应用中可以根据无人机的状态、位置等因素进行更智能的选择
         return random.choice(available_drones)
     
-    def create_payload(self, payload_properties: Dict) -> Dict:
+    def create_payload(self, payload_properties: Dict, source_agent_id, target_agent_id) -> Dict:
         """
         创建物品
         
@@ -203,25 +231,17 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
             print(f"时间 {self.env.now}: 快递站 {self.id} 存储空间已满，无法创建物品")
             return None
         
-        # 生成物品ID
-        payload_id = f"payload_{uuid.uuid4().hex[:8]}"
-        
         # 创建物品信息
         payload_info = {
-            'id': payload_id,
-            'properties': payload_properties,
-            'creation_time': self.env.now,
-            'status': 'created'
+            'properties': payload_properties
         }
+        # 生成物品ID
+        payload_id = self.env.payload_manager.create_payload(source_agent_id, target_agent_id, payload_info)
+        payload_info = self.env.payload_manager.get_payload(payload_id)
         
         # 将物品添加到代理的possessing_objects中;由于物品ID是唯一的，所以可以直接使用
         self.add_possessing_object(payload_id, payload_info)
-        
-        # 更新快递站的当前存储量
-        self.update_state('current_storage', current_storage + 1)
-        
-        print(f"时间 {self.env.now}: 快递站 {self.id} 创建物品 {payload_id}")
-        
+                
         # 触发物品生成事件
         self.trigger_event('payload_generated', {
             'payload_id': payload_id,
@@ -278,62 +298,11 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         )
         
         if workflow:
-            print(f"时间 {self.env.now}: 快递站 {self.id} 为无人机 {drone_id} 创建物流工作流 {workflow.id}")
+            # print(f"时间 {self.env.now}: 快递站 {self.id} 为无人机 {drone_id} 创建物流工作流 {workflow.id}")
             return workflow.id
         
         return None
-    
-    def create_order(self, delivery_location: Tuple[float, float, float],
-                    payload_properties: Optional[Dict] = None,
-                    target_agent_id: Optional[str] = None) -> Optional[str]:
-        """
-        创建订单并启动订单执行工作流
         
-        Args:
-            delivery_location: 交付位置坐标
-            payload_properties: 物品属性
-            target_agent_id: 目标代理ID，如果为None则尝试根据位置查找
-            
-        Returns:
-            str: 订单工作流ID，如果创建失败则返回None
-        """
-        from airfogsim.workflow.order_execution import create_order_execution_workflow
-        
-        # 合并默认物品属性和指定的物品属性
-        default_properties = self.get_state('payload_generation_model').get('properties', {})
-        payload_properties = {**default_properties, **(payload_properties or {})}
-        
-        # 如果没有指定目标代理ID，尝试根据位置查找
-        if not target_agent_id:
-            nearest_agents = self.env.airspace_manager.get_k_nearest_agents(
-                self.id, k=1
-            )
-            if nearest_agents:
-                target_agent_id = nearest_agents[0].id
-        
-        # 创建订单执行工作流
-        workflow = create_order_execution_workflow(
-            self.env,
-            self,
-            payload_properties,
-            delivery_location,
-            target_agent_id
-        )
-        
-        if workflow:
-            # 触发订单创建事件
-            self.trigger_event('order_created', {
-                'workflow_id': workflow.id,
-                'delivery_location': delivery_location,
-                'payload_properties': payload_properties,
-                'time': self.env.now
-            })
-            
-            print(f"时间 {self.env.now}: 快递站 {self.id} 创建订单 {workflow.id}，交付位置: {delivery_location}")
-            return workflow.id
-        
-        return None
-    
     def _generate_random_destination(self) -> Tuple[float, float, float]:
         """
         生成随机目的地坐标
@@ -360,7 +329,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         """
         # 创建物品
         payload_properties = workflow.payload_properties
-        payload_info = self.create_payload(payload_properties)
+        payload_info = self.create_payload(payload_properties, self.id, workflow.target_agent_id)
         
         # 确保生成的payload_info满足order workflow的监听条件
         if payload_info:
@@ -405,7 +374,9 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
                 active_workflows = self._get_active_workflows()
                 
                 # 处理每个活跃工作流
-                for workflow in active_workflows:
+                for workflow_item in active_workflows:
+                    workflow = workflow_item
+                        
                     # 只处理订单执行工作流
                     if workflow.__class__.__name__ == 'OrderExecutionWorkflow':
                         # 根据工作流状态执行对应的处理逻辑

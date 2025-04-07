@@ -2,7 +2,7 @@
 
 from typing import List, Dict, Optional, Tuple, Set
 import math
-
+import uuid
 class OctreeNode:
     """
     八叉树节点，用于高效维护和查询三维空间中的代理位置
@@ -301,12 +301,31 @@ class OctreeNode:
         return not (x_max1 < x_min2 or x_max2 < x_min1 or
                    y_max1 < y_min2 or y_max2 < y_min1 or
                    z_max1 < z_min2 or z_max2 < z_min1)
+    
+    def calculate_distance_between_ids(self, id1: str, id2: str) -> Optional[float]:
+        """
+        计算两个代理之间的距离
+        
+        Args:
+            id1: 第一个代理ID
+            id2: 第二个代理ID
+            
+        Returns:
+            两个代理之间的距离，如果任意一个代理不存在则返回None
+        """
+        if id1 not in self.agents or id2 not in self.agents:
+            return None
+            
+        x1, y1, z1 = self.agents[id1]
+        x2, y2, z2 = self.agents[id2]
+        
+        return math.sqrt((x1 - x2)**2 + (y1 - y2)**2 + (z1 - z2)**2)
 
 class AirspaceManager:
     """
     空域管理器
     
-    负责维护代理位置和进行碰撞检测
+    负责维护代理位置、着陆点位置、障碍物位置和进行碰撞检测
     """
     
     def __init__(self, env=None, boundary: Tuple[float, float, float, float, float, float] = (0, 0, 0, 10000, 10000, 5000)):
@@ -317,30 +336,111 @@ class AirspaceManager:
             env: 仿真环境
             boundary: 整体空域边界 (x_min, y_min, z_min, x_max, y_max, z_max)
         """
+        self.id = f"airspace_manager_{uuid.uuid4().hex[:8]}"
         self.env = env
         self.octree = OctreeNode(boundary)
         self.agent_positions = {}  # 存储所有代理的当前位置
+        self.landing_positions = {}  # 存储所有着陆点的位置
+        self.obstacle_positions = {}  # 存储所有障碍物的位置
         self.collision_threshold = 5.0  # 碰撞检测阈值（米）
         self.collision_events = {}  # 记录已经触发的碰撞事件，避免重复触发
+        self.event_registry = env.event_registry
+        
+        # 通过event_registry监听所有agent state_changed事件
+        if env and hasattr(env, 'event_registry'):
+            self.event_registry.subscribe(
+                "*",  # 使用通配符监听所有代理
+                "state_changed",
+                f"{self.id}_position_monitor",
+                self._on_state_changed
+            )
     
-    def update_agent_position(self, agent_id: str, position: Tuple[float, float, float]) -> None:
+    
+    
+    def get_distance_between_objects(self, obj_id1, obj_id2) -> Optional[float]:
+        """
+        获取两个代理之间的距离
+        
+        Args:
+            agent_id1: 第一个代理ID
+            agent_id2: 第二个代理ID
+            
+        Returns:
+            两个代理之间的距离，如果任意一个代理不存在则返回None
+        """
+        self.octree.calculate_distance_between_ids(obj_id1, obj_id2)
+
+    def update_object_position(self, position: Tuple[float, float, float],
+                        agent_id: str=None, 
+                        landing_id: str=None,
+                        obstacle_id: str=None) -> None:
         """
         更新代理位置
         
         Args:
-            agent_id: 代理ID
-            position: 新位置 (x, y, z)
+            position: 新位置 (x, y, z) 
+            agent_id: 代理ID (可选)
+            landing_id: 着陆点ID (可选)
+            obstacle_id: 障碍物ID (可选)
         """
         x, y, z = position
-        
+        # 确保只有一个ID被提供
+        if not (agent_id or landing_id or obstacle_id):
+            raise ValueError("至少提供一个ID: agent_id, landing_id或obstacle_id")
+        if len([i for i in [agent_id, landing_id, obstacle_id] if i]) > 1:
+            raise ValueError("只能提供一个ID: agent_id, landing_id或obstacle_id")
+        anyway_id = agent_id or landing_id or obstacle_id
+
         # 更新八叉树
-        self.octree.update(agent_id, x, y, z)
+        self.octree.update(anyway_id, x, y, z)
         
-        # 更新位置字典
-        self.agent_positions[agent_id] = position
+        anyway_positions = None
+        if agent_id:
+            anyway_positions = self.agent_positions
+        elif landing_id:
+            anyway_positions = self.landing_positions
+        elif obstacle_id:
+            anyway_positions = self.obstacle_positions
+        anyway_positions[anyway_id] = position
         
         # 检测潜在碰撞
-        self._check_potential_collisions(agent_id, position)
+        self._check_potential_collisions(anyway_id, position)
+    
+    def register_object(self, position: Tuple[float, float, float],
+                      agent_id: str=None,
+                      landing_id: str=None,
+                      obstacle_id: str=None) -> None:
+        """
+        注册新对象（代理、着陆点或障碍物）
+        
+        Args:
+            position: 初始位置 (x, y, z)
+            agent_id: 代理ID (可选)
+            landing_id: 着陆点ID (可选)
+            obstacle_id: 障碍物ID (可选)
+        """
+        # 确保只有一个ID被提供
+        if not (agent_id or landing_id or obstacle_id):
+            raise ValueError("至少提供一个ID: agent_id, landing_id或obstacle_id")
+        if len([i for i in [agent_id, landing_id, obstacle_id] if i]) > 1:
+            raise ValueError("只能提供一个ID: agent_id, landing_id或obstacle_id")
+        
+        anyway_id = agent_id or landing_id or obstacle_id
+        x, y, z = position
+        
+        # 添加到八叉树
+        self.octree.insert(anyway_id, x, y, z)
+        
+        # 添加到相应的位置字典
+        if agent_id:
+            self.agent_positions[agent_id] = position
+        elif landing_id:
+            self.landing_positions[landing_id] = position
+        elif obstacle_id:
+            self.obstacle_positions[obstacle_id] = position
+        
+        # 检测潜在碰撞
+        self._check_potential_collisions(anyway_id, position)
     
     def register_agent(self, agent_id: str, position: Tuple[float, float, float]) -> None:
         """
@@ -350,16 +450,64 @@ class AirspaceManager:
             agent_id: 代理ID
             position: 初始位置 (x, y, z)
         """
-        x, y, z = position
+        self.register_object(position, agent_id=agent_id)
+    
+    def register_landing(self, landing_id: str, position: Tuple[float, float, float]) -> None:
+        """
+        注册新着陆点
         
-        # 添加到八叉树
-        self.octree.insert(agent_id, x, y, z)
+        Args:
+            landing_id: 着陆点ID
+            position: 初始位置 (x, y, z)
+        """
+        self.register_object(position, landing_id=landing_id)
+    
+    def register_obstacle(self, obstacle_id: str, position: Tuple[float, float, float]) -> None:
+        """
+        注册新障碍物
         
-        # 添加到位置字典
-        self.agent_positions[agent_id] = position
+        Args:
+            obstacle_id: 障碍物ID
+            position: 初始位置 (x, y, z)
+        """
+        self.register_object(position, obstacle_id=obstacle_id)
+    
+    def remove_object(self, agent_id: str=None, landing_id: str=None, obstacle_id: str=None) -> None:
+        """
+        移除对象（代理、着陆点或障碍物）
         
-        # 检测潜在碰撞
-        self._check_potential_collisions(agent_id, position)
+        Args:
+            agent_id: 代理ID (可选)
+            landing_id: 着陆点ID (可选)
+            obstacle_id: 障碍物ID (可选)
+        """
+        # 确保只有一个ID被提供
+        if not (agent_id or landing_id or obstacle_id):
+            raise ValueError("至少提供一个ID: agent_id, landing_id或obstacle_id")
+        if len([i for i in [agent_id, landing_id, obstacle_id] if i]) > 1:
+            raise ValueError("只能提供一个ID: agent_id, landing_id或obstacle_id")
+        
+        anyway_id = agent_id or landing_id or obstacle_id
+        
+        # 从八叉树中移除
+        self.octree.remove(anyway_id)
+        
+        # 从相应的位置字典中移除
+        if agent_id and agent_id in self.agent_positions:
+            del self.agent_positions[agent_id]
+        elif landing_id and landing_id in self.landing_positions:
+            del self.landing_positions[landing_id]
+        elif obstacle_id and obstacle_id in self.obstacle_positions:
+            del self.obstacle_positions[obstacle_id]
+            
+        # 清理相关的碰撞事件记录
+        collision_keys_to_remove = []
+        for key in self.collision_events:
+            if anyway_id in key:
+                collision_keys_to_remove.append(key)
+                
+        for key in collision_keys_to_remove:
+            del self.collision_events[key]
     
     def remove_agent(self, agent_id: str) -> None:
         """
@@ -368,21 +516,25 @@ class AirspaceManager:
         Args:
             agent_id: 代理ID
         """
-        # 从八叉树中移除
-        self.octree.remove(agent_id)
+        self.remove_object(agent_id=agent_id)
+    
+    def remove_landing(self, landing_id: str) -> None:
+        """
+        移除着陆点
         
-        # 从位置字典中移除
-        if agent_id in self.agent_positions:
-            del self.agent_positions[agent_id]
-            
-        # 清理相关的碰撞事件记录
-        collision_keys_to_remove = []
-        for key in self.collision_events:
-            if agent_id in key:
-                collision_keys_to_remove.append(key)
-                
-        for key in collision_keys_to_remove:
-            del self.collision_events[key]
+        Args:
+            landing_id: 着陆点ID
+        """
+        self.remove_object(landing_id=landing_id)
+    
+    def remove_obstacle(self, obstacle_id: str) -> None:
+        """
+        移除障碍物
+        
+        Args:
+            obstacle_id: 障碍物ID
+        """
+        self.remove_object(obstacle_id=obstacle_id)
     
     def get_agent_position(self, agent_id: str) -> Optional[Tuple[float, float, float]]:
         """
@@ -396,51 +548,21 @@ class AirspaceManager:
         """
         return self.agent_positions.get(agent_id)
     
-    def get_nearby_agents(self, agent_id: str, radius: float = 100.0) -> Dict[str, Tuple[float, float, float]]:
+    def get_nearby_objects(self, position: Tuple[float, float, float], radius: float = 100.0) -> Dict[str, Tuple[float, float, float]]:
         """
-        获取指定代理附近的其他代理
-        
+        查询指定位置附近的所有对象
+
         Args:
-            agent_id: 代理ID
-            radius: 搜索半径（米）
-            
+            position: 查询位置 (x, y, z)
+            radius: 查询半径
+
         Returns:
-            附近代理的ID到位置的映射
+            附近对象的ID到位置的映射
         """
-        if agent_id not in self.agent_positions:
-            return {}
-            
-        x, y, z = self.agent_positions[agent_id]
-        nearby_agents = self.octree.query_sphere(x, y, z, radius)
-        
-        # 移除查询代理自身
-        if agent_id in nearby_agents:
-            del nearby_agents[agent_id]
-            
-        return nearby_agents
-    
-    def get_k_nearest_agents(self, agent_id: str, k: int = 5) -> List[Tuple[str, Tuple[float, float, float], float]]:
-        """
-        获取距离指定代理最近的k个其他代理
-        
-        Args:
-            agent_id: 代理ID
-            k: 返回的最近邻数量
-            
-        Returns:
-            最近的k个代理，格式为 [(agent_id, position, distance), ...]
-        """
-        if agent_id not in self.agent_positions:
-            return []
-            
-        x, y, z = self.agent_positions[agent_id]
-        nearest_neighbors = self.octree.get_nearest_neighbors(x, y, z, k + 1)  # +1 是因为可能包含自身
-        
-        # 移除查询代理自身
-        nearest_neighbors = [n for n in nearest_neighbors if n[0] != agent_id]
-        
-        # 返回前k个
-        return nearest_neighbors[:k]
+        x, y, z = position
+        nearby_objects = self.octree.query_sphere(x, y, z, radius)
+                    
+        return nearby_objects
     
     def check_collision(self, agent_id1: str, agent_id2: str) -> bool:
         """
@@ -465,13 +587,13 @@ class AirspaceManager:
         # 如果距离小于阈值，则认为有碰撞风险
         return distance < self.collision_threshold
     
-    def _check_potential_collisions(self, agent_id: str, position: Tuple[float, float, float]) -> None:
+    def _check_potential_collisions(self, anyway_id: str, position: Tuple[float, float, float]) -> None:
         """
-        检查代理与周围其他代理的潜在碰撞
+        检查活动物体与周围其他代理的潜在碰撞
         
         Args:
-            agent_id: 代理ID
-            position: 代理位置
+            anyway_id: 任意活动的物体ID (代理/landing/障碍物)
+            position: 位置
         """
         if not self.env:
             return
@@ -479,21 +601,21 @@ class AirspaceManager:
         x, y, z = position
         
         # 查询附近的代理
-        nearby_agents = self.octree.query_sphere(x, y, z, self.collision_threshold * 2)
+        nearby_objects = self.octree.query_sphere(x, y, z, self.collision_threshold * 2)
         
         # 移除查询代理自身
-        if agent_id in nearby_agents:
-            del nearby_agents[agent_id]
+        if anyway_id in nearby_objects:
+            del nearby_objects[anyway_id]
             
         # 检查每个附近代理是否有碰撞风险
-        for other_id, (other_x, other_y, other_z) in nearby_agents.items():
+        for other_id, (other_x, other_y, other_z) in nearby_objects.items():
             # 计算三维距离
             distance = math.sqrt((x - other_x)**2 + (y - other_y)**2 + (z - other_z)**2)
             
             # 如果距离小于阈值，触发碰撞事件
             if distance < self.collision_threshold:
                 # 创建一个唯一的碰撞事件ID，确保相同的两个代理只触发一次
-                collision_id = tuple(sorted([agent_id, other_id]))
+                collision_id = tuple(sorted([anyway_id, other_id]))
                 
                 # 如果这个碰撞事件已经触发过，跳过
                 if collision_id in self.collision_events:
@@ -503,12 +625,12 @@ class AirspaceManager:
                 self.collision_events[collision_id] = self.env.now
                 
                 # 触发碰撞事件
-                self.env.event_registry.trigger_event(
-                    agent_id,
+                self.event_registry.trigger_event(
+                    anyway_id,
                     'collision_risk',
                     {
-                        'agent_id': agent_id,
-                        'other_agent_id': other_id,
+                        'source_id': anyway_id,
+                        'other_id': other_id,
                         'distance': distance,
                         'time': self.env.now,
                         'position': position,
@@ -517,12 +639,12 @@ class AirspaceManager:
                 )
                 
                 # 同时为另一个代理触发事件
-                self.env.event_registry.trigger_event(
+                self.event_registry.trigger_event(
                     other_id,
                     'collision_risk',
                     {
-                        'agent_id': other_id,
-                        'other_agent_id': agent_id,
+                        'source_id': other_id,
+                        'other_id': anyway_id,
                         'distance': distance,
                         'time': self.env.now,
                         'position': (other_x, other_y, other_z),
@@ -542,10 +664,10 @@ class AirspaceManager:
         if collision_id in self.collision_events:
             del self.collision_events[collision_id]
     
-    def get_agents_in_volume(self, x_min: float, y_min: float, z_min: float, 
+    def get_objects_in_volume(self, x_min: float, y_min: float, z_min: float, 
                            x_max: float, y_max: float, z_max: float) -> Dict[str, Tuple[float, float, float]]:
         """
-        获取指定体积内的所有代理
+        获取指定体积内的所有物体,种类会以id的前缀来区分
         
         Args:
             x_min: 体积最小X坐标
@@ -556,9 +678,36 @@ class AirspaceManager:
             z_max: 体积最大Z坐标
             
         Returns:
-            体积内代理的ID到位置的映射
+            体积内物体的ID到位置的映射
         """
         return self.octree.query_range((x_min, y_min, z_min, x_max, y_max, z_max))
+    
+    def _on_state_changed(self, event_data):
+        """
+        处理代理状态变化事件
+        
+        Args:
+            event含代理ID,landing ID, obstacle ID、状态名称和新值
+        """
+        if not event_data or ('agent_id' not in event_data and 
+                              'landing_id' not in event_data and 
+                              'obstacle_id' not in event_data):
+            return
+            
+        agent_id = event_data.get('agent_id')
+        landing_id = event_data.get('landing_id')
+        obstacle_id = event_data.get('obstacle_id')
+        key = event_data.get('key')
+        new_value = event_data.get('new_value')
+        
+        # 只关注position状态变化
+        if key == 'position' and new_value:
+            # 确保位置是有效的三维坐标
+            if isinstance(new_value, (list, tuple)) and len(new_value) == 3:
+                # 更新代理位置
+                self.update_object_position(new_value, agent_id=agent_id,
+                                     landing_id=landing_id,
+                                     obstacle_id=obstacle_id)
     
     def get_all_agents(self) -> Dict[str, Tuple[float, float, float]]:
         """
@@ -568,3 +717,13 @@ class AirspaceManager:
             所有代理的ID到位置的映射
         """
         return self.agent_positions.copy()
+        
+    def get_all_landings(self) -> Dict[str, Tuple[float, float, float]]:
+        """
+        获取所有着陆点的位置
+        
+        Returns:
+            所有着陆点的ID到位置的映射
+        """
+        # 过滤出所有以landing_开头的对象
+        return self.landing_positions.copy()

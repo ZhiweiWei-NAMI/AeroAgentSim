@@ -21,6 +21,16 @@ def get_enum_name_by_value(enum_class, value):
     enum_dict = {enum_constant.value: enum_constant.name for enum_constant in enum_class}
     return enum_dict.get(value)
 
+
+
+class ContractStatus(Enum):
+    """合约状态枚举"""
+    PENDING = 'con_pending'    # 合约已创建但尚未被接受
+    ACTIVE = 'con_active'     # 合约已被接受，正在执行
+    COMPLETED = 'con_completed'  # 合约已成功完成
+    FAILED = 'con_failed'     # 合约执行失败
+    CANCELED = 'con_canceled'   # 合约被取消
+
 class EnumJSONEncoder(JSONEncoder):
     """用于序列化枚举类型的JSON编码器"""
     def default(self, obj):
