@@ -13,6 +13,7 @@ AirFogSim资源(Resource)核心模块
 """
 
 import uuid
+from .enums import ResourceStatus, AllocationStatus # 导入 AllocationStatus
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Generic, TypeVar, Callable, Tuple, Any
 
@@ -22,13 +23,27 @@ class Resource:
     def __init__(self, resource_id: str, attributes: Dict = None):
         self.id = resource_id
         self.attributes = attributes or {}
-        self.status = "available"  # available, allocated, maintenance
+        self.status = ResourceStatus.AVAILABLE  # available, allocated, maintenance
         self.current_allocations = set()  # 当前活跃分配ID集合
 
     def get_attribute(self, key: str, default) -> Optional[Any]:
         """获取资源属性"""
         return self.attributes.get(key, default)
 
+    def set_status(self, new_status: str):
+        """
+        直接设置资源的状态。
+        警告：谨慎使用，这可能会绕过管理器的状态逻辑。
+        主要用于外部事件（如天气）强制更新状态。
+        """
+        # TODO: Consider adding validation against ResourceStatus enum if available
+        old_status = self.status
+        if old_status != new_status:
+            self.status = new_status
+            # Optionally trigger a status change event here if needed globally
+            # print(f"DEBUG Resource {self.id} status set to {new_status} (was {old_status})")
+            return True
+        return False
 
 # 资源类型泛型
 R = TypeVar('R')
@@ -79,7 +94,7 @@ class ResourceManager(Generic[R]):
         # 检查资源是否有活跃分配
         active_allocations = [
             a_id for a_id in self.resource_allocations.get(resource_id, {})
-            if self.allocations[a_id]['status'] == 'active'
+            if self.allocations[a_id]['status'] == AllocationStatus.ACTIVE
         ]
         
         if active_allocations:
@@ -134,7 +149,7 @@ class ResourceManager(Generic[R]):
         resource_id = resource.id
         
         # 检查资源是否可以分配
-        if hasattr(resource, 'status') and resource.status != 'available':
+        if hasattr(resource, 'status') and resource.status != ResourceStatus.AVAILABLE:
             return None, None
             
         # 创建分配
@@ -147,7 +162,7 @@ class ResourceManager(Generic[R]):
             'user_id': user_id,
             'requirements': requirements,
             'start_time': self._get_current_time(),
-            'status': 'active'
+            'status': AllocationStatus.ACTIVE
         }
         
         self.allocations[allocation_id] = allocation_info
@@ -158,7 +173,7 @@ class ResourceManager(Generic[R]):
         
         # 更新资源状态
         if hasattr(resource, 'status'):
-            resource.status = 'allocated'
+            resource.status = ResourceStatus.FULLY_ALLOCATED # 使用枚举
             
         # 记录分配到资源
         if hasattr(resource, 'current_allocations'):
@@ -175,7 +190,7 @@ class ResourceManager(Generic[R]):
         allocation = self.allocations[allocation_id]
         
         # 检查分配是否已释放
-        if allocation['status'] != 'active':
+        if allocation['status'] != AllocationStatus.ACTIVE:
             return False
             
         resource_id = allocation['resource_id']
@@ -190,13 +205,13 @@ class ResourceManager(Generic[R]):
         if hasattr(resource, 'status'):
             # 检查是否还有其他活跃分配
             other_active = any(
-                self.allocations[a_id]['status'] == 'active' 
+                self.allocations[a_id]['status'] == AllocationStatus.ACTIVE
                 for a_id in self.resource_allocations[resource_id]
                 if a_id != allocation_id
             )
             
             if not other_active:
-                resource.status = 'available'
+                resource.status = ResourceStatus.AVAILABLE
                 
         # 从资源的分配记录中移除
         if hasattr(resource, 'current_allocations'):
@@ -204,7 +219,7 @@ class ResourceManager(Generic[R]):
                 resource.current_allocations.remove(allocation_id)
                 
         # 更新分配状态
-        allocation['status'] = 'released'
+        allocation['status'] = AllocationStatus.RELEASED
         allocation['end_time'] = self._get_current_time()
         
         return True

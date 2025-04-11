@@ -1,0 +1,51 @@
+# Git files
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Python cache and virtual environment files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.idea/
+.vscode/
+
+# Node.js modules (don't copy from root if any exist)
+node_modules/
+
+# Frontend directory (backend build doesn't need it)
+frontend/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+*.egg
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+
+# Secrets / Configs (if not managed by env_file)
+# .env # Uncomment if you don't use env_file and copy .env in Dockerfile
+
+# Test reports
+htmlcov/
+.pytest_cache/
+.coverage

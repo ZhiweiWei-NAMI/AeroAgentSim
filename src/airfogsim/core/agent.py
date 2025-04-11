@@ -12,6 +12,7 @@ AirFogSim代理(Agent)核心模块
 @email: 2311769@tongji.edu.cn
 """
 
+import functools # Added for partial
 from airfogsim.core.enums import TaskStatus
 from typing import Dict, List, Any, Optional, Type, get_origin, get_args
 import uuid
@@ -113,10 +114,16 @@ class AgentMeta(type):
         return template
     
 class Agent(metaclass=AgentMeta):
+    # Register standard agent states here using the decorator-like pattern
+    # (or ensure they are registered in base classes if using inheritance heavily)
+    # Example: Agent.register_state_template('status', value_type=AgentStatus, required=True)
+    # Agent.register_state_template('position', value_type=List[float], required=False)
+
     @classmethod
     def register_state_template(cls, key, **kwargs):
+        """Registers a state template for this Agent class."""
         AgentMeta.register_template(cls, key, **kwargs)
-        return cls
+        return cls # Return cls to allow chaining if needed
         
     @classmethod
     def get_description(cls):
@@ -157,9 +164,16 @@ class Agent(metaclass=AgentMeta):
     # --- State Management (Mostly Unchanged) ---
     def initialize_states(self, level_class=None, **states):
         target_class = level_class or self._initialization_level
-        for key, value in states.items(): self.update_state(key, value)
+        # Set provided states first
+        for key, value in states.items():
+            self.update_state(key, value) # Use update_state for validation and event triggering
+
+        # Ensure default for external_force if still not set
+        if 'external_force' not in self.state:
+             self.state['external_force'] = [0.0, 0.0, 0.0]
+
         self._validate_required_templates(target_class)
-        return self        
+        return self
     def _validate_required_templates(self, cls): # Simplified validation
         templates = cls.get_state_templates()
         missing = [k for k,t in templates.items() if t.required and k not in self.state]
@@ -457,7 +471,36 @@ class Agent(metaclass=AgentMeta):
     def unsubscribe(self, source_id, event_name, listener_id):
         return self.env.event_registry.unsubscribe(source_id, event_name, listener_id)
     def unsubscribe_all(self): # Convenience method
+         # Note: This might need adjustment if listener IDs aren't based on self.id
          return self.env.event_registry.unsubscribe_all(self.id)
+
+    def _setup_data_provider_subscriptions(self):
+        """Sets up subscriptions to events from registered DataProviders."""
+        # Import locally if needed to break cycles, or ensure WeatherDataProvider is imported at top
+        from airfogsim.dataprovider.weather import WeatherDataProvider # Assuming weather.py exists
+
+        weather_provider = self.env.get_data_provider('weather')
+        if weather_provider and isinstance(weather_provider, WeatherDataProvider):
+            try:
+                # Use functools.partial to bind 'self' (the agent instance) to the callback
+                bound_callback = functools.partial(weather_provider.on_weather_changed, self)
+                listener_id = f"{self.id}_weather_listener" # Unique listener ID
+                self.env.event_registry.subscribe(
+                    event_name=WeatherDataProvider.EVENT_WEATHER_CHANGED, # Use constant from provider
+                    callback=bound_callback,
+                    listener_id=listener_id,
+                    # No source_id filter needed, listen to all weather changes
+                )
+                # print(f"DEBUG Agent {self.id} subscribed to {WeatherDataProvider.EVENT_WEATHER_CHANGED}")
+            except Exception as e:
+                print(f"ERROR Agent {self.id} failed to subscribe to WeatherChanged: {e}")
+
+        # Add subscriptions for other data providers (e.g., traffic, accident) here
+        # traffic_provider = self.env.get_data_provider('traffic')
+        # if traffic_provider and isinstance(traffic_provider, TrafficDataProvider):
+        #     bound_callback = functools.partial(traffic_provider.on_traffic_changed, self)
+        #     listener_id = f"{self.id}_traffic_listener"
+        #     self.env.event_registry.subscribe(...)
 
     # --- Core Agent Logic ---
     def live(self):
@@ -484,7 +527,7 @@ class Agent(metaclass=AgentMeta):
             print(f"时间 {self.env.now}: Agent {self.id} cannot execute '{task_name}': {reason}")
             result = {"status": "failed", "reason": reason, "time": self.env.now}
             # Trigger agent's task finished event even if component not found
-            self.trigger_event('task_finished', {
+            self.trigger_event('task_completed', {
                 'task_name': task_name, # No task ID created
                 'status': TaskStatus.FAILED.name, 'result': result, 'time': self.env.now
             })
@@ -558,7 +601,7 @@ class Agent(metaclass=AgentMeta):
         finally:
              # print(f"时间 {self.env.now}: Agent {self.id} finished monitoring task {task_id}. Final status: {final_status.name}")
              # Trigger Agent's own event about task completion
-             self.trigger_event('task_finished', {
+             self.trigger_event('task_completed', {
                   'task_id': task_id,
                   'task_name': task.name,
                   'status': final_status.name,

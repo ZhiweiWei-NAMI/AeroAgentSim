@@ -1,0 +1,21 @@
+@startuml
+title Inspection of agent_140539347411552 Workflow
+start
+:inspecting_point_1;
+-> 当无人机到达巡检点1时，进入下一个巡检点\n[STATE] :inspecting_point_2;
+:inspecting_point_2;
+-> 当无人机到达巡检点2时，进入下一个巡检点\n[STATE] :inspecting_point_3;
+:inspecting_point_3;
+-> 当无人机到达巡检点3时，进入下一个巡检点\n[STATE] :inspecting_point_4;
+:inspecting_point_4;
+-> 当无人机到达巡检点4时，进入下一个巡检点\n[STATE] :inspecting_point_5;
+:inspecting_point_5;
+-> 当无人机到达巡检点5时，完成巡检任务\n[STATE] :completed;
+:completed;
+stop
+
+note right: 通配符转换（适用于所有状态）
+-> [EVENT] :failed;
+:failed;
+stop
+@enduml

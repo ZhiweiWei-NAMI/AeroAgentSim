@@ -9,7 +9,8 @@ import {
   PlayCircleOutlined,
   AimOutlined,
   DashboardOutlined,
-  TeamOutlined
+  TeamOutlined,
+  GlobalOutlined
 } from '@ant-design/icons';
 
 // 导入页面组件
@@ -19,6 +20,7 @@ import DroneHistory from './pages/DroneHistory';
 import WorkflowConfig from './pages/WorkflowConfig';
 import AgentConfig from './pages/AgentConfig';
 import SimulationControl from './pages/SimulationControl';
+import Simulation3DMapView from './pages/Simulation3DMapView';
 
 // 导入样式
 import './App.css';
@@ -44,6 +46,7 @@ function App() {
     '/workflows': '工作流配置',
     '/agents': '智能体配置',
     '/simulation': '仿真控制',
+    '/3dmap': '3D地图视图',
   };
   
   // 动态路径的面包屑映射
@@ -145,6 +148,10 @@ function App() {
               <Link to="/simulation">仿真控制</Link>
             </Menu.Item>
             
+            <Menu.Item key="/3dmap" icon={<GlobalOutlined />}>
+              <Link to="/3dmap">3D地图视图</Link>
+            </Menu.Item>
+            
             <Menu.Item key="/settings" icon={<SettingOutlined />}>
               <Link to="/settings">系统设置</Link>
             </Menu.Item>
@@ -172,6 +179,7 @@ function App() {
                 <Route path="/workflows" element={<WorkflowConfig />} />
                 <Route path="/agents" element={<AgentConfig />} />
                 <Route path="/simulation" element={<SimulationControl />} />
+                <Route path="/3dmap" element={<Simulation3DMapView />} />
                 <Route path="/settings" element={<div>系统设置页面</div>} />
               </Routes>
             </div>

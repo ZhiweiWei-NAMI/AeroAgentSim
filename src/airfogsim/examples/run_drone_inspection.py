@@ -117,7 +117,7 @@ workflow = create_inspection_workflow(env, drone, waypoints)
 # 这是因为我们重构了Component基类，使其在_execute_task_wrapper方法中
 # 调用子类的_allocate_task_resources和_release_task_resources方法
 
-# 开始工作流
+# 直接开始工作流，理论上需要用workflow_manager来管理
 workflow.start()
 
 # 运行模拟

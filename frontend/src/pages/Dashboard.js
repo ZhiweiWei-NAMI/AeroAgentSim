@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Statistic, Table, Timeline, Badge, Spin, Alert } from 'antd';
-import { 
-  RocketOutlined, 
-  ThunderboltOutlined, 
-  ClockCircleOutlined, 
+import { Row, Col, Card, Statistic, Table, Timeline, Badge, Spin, Alert, Button } from 'antd';
+import {
+  RocketOutlined,
+  ThunderboltOutlined,
+  ClockCircleOutlined,
   AimOutlined,
-  TeamOutlined
+  TeamOutlined,
+  GlobalOutlined
 } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
 import { droneApi, workflowApi, agentApi, connectWebSocket } from '../services/api';
 
 const Dashboard = () => {
@@ -324,6 +326,30 @@ const Dashboard = () => {
                 暂无智能体
               </div>
             )}
+          </Card>
+        </Col>
+      </Row>
+      {/* 3D地图视图入口 */}
+      <Row gutter={16} style={{ marginTop: 16 }}>
+        <Col span={24}>
+          <Card
+            title={
+              <span>
+                <GlobalOutlined /> 3D地图视图
+              </span>
+            }
+            extra={<Link to="/3dmap">查看详情</Link>}
+          >
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <p style={{ fontSize: '16px', marginBottom: '20px' }}>
+                在3D地图视图中可以查看无人机、车辆位置和气象信息的实时状态
+              </p>
+              <Link to="/3dmap">
+                <Button type="primary" icon={<GlobalOutlined />} size="large">
+                  打开3D地图视图
+                </Button>
+              </Link>
+            </div>
           </Card>
         </Col>
       </Row>

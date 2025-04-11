@@ -19,11 +19,12 @@ from airfogsim.workflow.order_execution import create_order_execution_workflow
 from airfogsim.workflow.charging import create_charging_workflow
 from airfogsim.core.trigger import TimeTrigger
 import random
+from tqdm import tqdm
 
 def run_logistics_simulation():
     """运行物流工作流示例"""
     # 创建仿真环境
-    env = Environment()
+    env = Environment(visual_interval=100)
     
     # 创建两个快递站
     station1 = DeliveryStation(
@@ -77,31 +78,24 @@ def run_logistics_simulation():
     # 三个快递站之间互相配送
     env.register_agent(station1).register_agent(station2).register_agent(station3)
 
-    #创建两个物流无人机
-    drone1 = DeliveryDroneAgent(
-        env,
-        "物流无人机1",
-        properties={
-            'position': [0, 0, 10],  # 初始位置
-            'battery_level': 90.0,   # 初始电量
-            'max_payload_weight':5.0
-        },
-    )
-    
-    drone2 = DeliveryDroneAgent(
-        env,
-        "物流无人机2",
-        properties={
-            'position': [0, 0, 10],  # 初始位置
-            'battery_level': 95.0,   # 初始电量
-            'max_payload_weight':10.0
-        },
-    )
-    
-    env.register_agent(drone1).register_agent(drone2)
+    drones = []
+
+    for i in tqdm(range(100), desc="创建无人机", unit="无人机"):
+        drone_i = DeliveryDroneAgent(
+            env,
+            f"物流无人机{i+1}",
+            properties={
+                'position': [0, 0, 10],  # 初始位置
+                'battery_level': 90.0-random.random()*30,   # 初始电量
+                'max_payload_weight':5.0
+            },
+        )
+        drones.append(drone_i)
+
+        env.register_agent(drone_i)
 
     # 为无人机添加组件
-    for drone in [drone1, drone2]:
+    for drone in drones:
         # 添加移动组件
         drone.add_component(
             MoveToComponent(
@@ -151,10 +145,8 @@ def run_logistics_simulation():
     # 定义各站点之间的配送关系
     delivery_pairs = [
         (station1, station3),  # 中心快递站 -> 分拣快递站
-        (station1, station3),  # 中心快递站 -> 居民快递站
         (station2, station3),  # 分拣快递站 -> 居民快递站
-        (station2, station3),  # 分拣快递站 -> 居民快递站
-    ]
+    ] * 200  # 重复100次以生成200个订单
     
     # 为每个配送关系创建订单执行工作流
     for i, (source_station, target_station) in enumerate(delivery_pairs):
@@ -171,14 +163,14 @@ def run_logistics_simulation():
             payload_properties,
             target_station.get_state('position'),
             target_station.id,  # 指定目标代理ID为目标快递站
-            start_trigger = TimeTrigger(env, name=f'第{i}个订单到达',interval=50+i*20),  # 每50分钟触发一次
+            start_trigger = TimeTrigger(env, name=f'第{i}个订单到达',interval=50+i*10),  # 每10分钟触发一次
         )
         
         order_workflows.append(order_workflow)
         print(f"创建订单工作流 {order_workflow.id}，从{source_station.id}到{target_station.id}，交付位置: {target_station.get_state('position')}")
     
     # 为无人机创建充电工作流（作为备用）
-    for drone in [drone1, drone2]:
+    for drone in drones:
         charging_workflow = create_charging_workflow(
             env,
             drone,
@@ -187,7 +179,7 @@ def run_logistics_simulation():
         )
     
     # 设置仿真结束时间
-    end_time = 1000  # 仿真1000分钟
+    end_time = 2000  # 仿真1000分钟
     
     # 运行仿真
     print(f"开始物流仿真...")
@@ -205,7 +197,7 @@ def run_logistics_simulation():
         print(f"注册的无人机数量: {len(station.get_state('registered_logistics_drones'))}")
     
     # 打印无人机状态
-    for i, drone in enumerate([drone1, drone2]):
+    for i, drone in enumerate(drones[:5]):
         print(f"\n无人机{i+1} ({drone.id}) 最终状态:")
         print(f"位置: {drone.get_state('position')}")
         print(f"电量: {drone.get_state('battery_level'):.1f}%")
@@ -239,7 +231,7 @@ def run_logistics_simulation():
         properties = payload_info.get('properties', {})
         print(f"  货物属性: {properties}")
 
-    return env, [station1, station2, station3], [drone1, drone2], order_workflows
+    return env, [station1, station2, station3], drones, order_workflows
 
 
 if __name__ == "__main__":

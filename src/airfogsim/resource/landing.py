@@ -1,7 +1,7 @@
 # resource/landing.py
 
 from airfogsim.core.resource import Resource
-
+from airfogsim.core.enums import ResourceStatus # 导入枚举
 
 class LandingResource(Resource):
     """
@@ -122,11 +122,11 @@ class LandingResource(Resource):
         
         # 如果状态变为不可用，则更新资源状态
         if condition in ['damaged', 'maintenance']:
-            self.status = "maintenance"
+            self.status = ResourceStatus.MAINTENANCE # 使用枚举
         else:
             # 如果没有分配且状态正常，则为可用
             if not self.current_allocations:
-                self.status = "available"
+                self.status = ResourceStatus.AVAILABLE # 使用枚举
     
     def get_charging_power(self) -> float:
         """

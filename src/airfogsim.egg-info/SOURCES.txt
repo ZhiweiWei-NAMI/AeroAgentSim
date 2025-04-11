@@ -6,11 +6,9 @@ src/airfogsim.egg-info/SOURCES.txt
 src/airfogsim.egg-info/dependency_links.txt
 src/airfogsim.egg-info/requires.txt
 src/airfogsim.egg-info/top_level.txt
-src/airfogsim/api/__init__.py
 src/airfogsim/core/__init__.py
 src/airfogsim/core/environment.py
 src/airfogsim/db/__init__.py
-src/airfogsim/examples/run_drone_delivery_simulation.py
 src/airfogsim/visualization/__init__.py
 src/airfogsim/visualization/dashboard.py
 src/airfogsim/visualization/maps.py

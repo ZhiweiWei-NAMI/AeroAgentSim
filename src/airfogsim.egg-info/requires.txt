@@ -1,14 +1,18 @@
 simpy
-sqlalchemy
 numpy
-flask
-flask-cors
-gunicorn
-pyjwt
-bcrypt
 pint
+python-dotenv
+gunicorn
+requests
+pandas
+openai
+tqdm
+fastapi
+pydantic
+uvicorn[standard]
 
 [dev]
 pytest
 black
 flake8
+pip-tools

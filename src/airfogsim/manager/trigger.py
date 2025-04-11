@@ -17,11 +17,13 @@ class TriggerManager:
         self.env.event_registry.register_event(self.manager_id, 'trigger_deactivated')
         self.env.event_registry.register_event(self.manager_id, 'trigger_fired')
         
-    def create_event_trigger(self, source_id: str, event_name: str, 
-                            condition_func: Optional[Callable[[Any], bool]] = None,
-                            name: Optional[str] = None) -> EventTrigger:
+    def create_event_trigger(self, source_id: str, event_name: str,
+                           value_key: Optional[str] = None,
+                           operator: Optional[TriggerOperator] = None,
+                           target_value: Any = None,
+                           name: Optional[str] = None) -> EventTrigger:
         """创建基于事件的触发器"""
-        trigger = EventTrigger(self.env, source_id, event_name, condition_func, name)
+        trigger = EventTrigger(self.env, source_id, event_name, value_key, operator, target_value, name)
         self.triggers[trigger.id] = trigger
         self.env.event_registry.trigger_event(self.manager_id, 'trigger_created', {
             'trigger_id': trigger.id,
@@ -31,12 +33,12 @@ class TriggerManager:
         })
         return trigger
         
-    def create_state_trigger(self, agent_id: str, state_key: str, 
-                            condition_func: Callable[[Any], bool],
-                            check_interval: float = 1.0,
-                            name: Optional[str] = None) -> StateTrigger:
+    def create_state_trigger(self, agent_id: str, state_key: str,
+                           operator: TriggerOperator = TriggerOperator.EQUALS,
+                           target_value: Any = None,
+                           name: Optional[str] = None) -> StateTrigger:
         """创建基于状态的触发器"""
-        trigger = StateTrigger(self.env, agent_id, state_key, condition_func, check_interval, name)
+        trigger = StateTrigger(self.env, agent_id, state_key, operator, target_value, name)
         self.triggers[trigger.id] = trigger
         self.env.event_registry.trigger_event(self.manager_id, 'trigger_created', {
             'trigger_id': trigger.id,

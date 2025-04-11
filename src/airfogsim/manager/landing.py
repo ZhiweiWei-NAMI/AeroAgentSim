@@ -1,12 +1,18 @@
 # manager/landing.py
 
-from typing import List, Dict, Optional, Tuple
+import functools # Added for partial
+from typing import List, Dict, Optional, Tuple, Any
 from airfogsim.core.resource import ResourceManager
 from airfogsim.resource.landing import LandingResource
 from airfogsim.manager.airspace import AirspaceManager
+from airfogsim.core.enums import ResourceStatus # Added
 from queue import PriorityQueue
 import math
+import logging # Added
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 class LandingManager(ResourceManager[LandingResource]):
     """
     着陆区资源管理器
@@ -22,6 +28,9 @@ class LandingManager(ResourceManager[LandingResource]):
         
         # 空域管理器引用，用于高效的空间查询
         self.airspace_manager = env.airspace_manager
+
+        # Setup subscriptions to DataProvider events
+        self._setup_data_provider_subscriptions()
 
     def find_resource_by_id(self, resource_id: str) -> Optional[LandingResource]:
         """
@@ -79,7 +88,7 @@ class LandingManager(ResourceManager[LandingResource]):
                     resource = self.resources[landing_id]
                     
                     # 检查资源状态
-                    if hasattr(resource, 'status') and resource.status != 'available':
+                    if hasattr(resource, 'status') and resource.status != ResourceStatus.AVAILABLE: # 使用枚举
                         continue
                         
                     # 检查容量要求
@@ -152,7 +161,7 @@ class LandingManager(ResourceManager[LandingResource]):
                     resource = self.resources[resource_id]
                     
                     # 检查资源状态和容量
-                    if (hasattr(resource, 'status') and resource.status != 'available') or not resource.has_capacity():
+                    if (hasattr(resource, 'status') and resource.status != ResourceStatus.AVAILABLE) or not resource.has_capacity(): # 使用枚举
                         continue
                         
                     # 检查充电需求
@@ -456,3 +465,94 @@ class LandingManager(ResourceManager[LandingResource]):
             return resource_id
         
         return None
+
+    def _setup_data_provider_subscriptions(self):
+        """Sets up subscriptions to events from registered DataProviders."""
+        try:
+            # Import locally if needed, or ensure it's imported at the top
+            from airfogsim.dataprovider.weather import WeatherDataProvider
+
+            weather_provider = self.env.get_data_provider('weather')
+            if weather_provider and isinstance(weather_provider, WeatherDataProvider):
+                # Use functools.partial to bind 'self' (the manager instance) to the callback
+                bound_callback = functools.partial(weather_provider.on_weather_changed, self)
+                listener_id = f"{self.__class__.__name__}_weather_listener" # Unique listener ID
+                self.env.event_registry.subscribe(
+                    event_name=WeatherDataProvider.EVENT_WEATHER_CHANGED,
+                    callback=bound_callback,
+                    listener_id=listener_id,
+                )
+                logger.info(f"{self.__class__.__name__} subscribed to {WeatherDataProvider.EVENT_WEATHER_CHANGED}")
+
+            # Add subscriptions for other relevant data providers here
+        except ImportError:
+            logger.warning("WeatherDataProvider not found, cannot subscribe to weather events.")
+        except Exception as e:
+            logger.error(f"Error setting up DataProvider subscriptions for {self.__class__.__name__}: {e}")
+
+
+    def update_resource_status_by_region(self, region_data: Any, new_status: ResourceStatus, condition_data: Dict[str, Any]):
+        """
+        Updates the status of landing resources within a specified region based on external conditions (e.g., weather).
+
+        Args:
+            region_data: Data defining the affected region (e.g., polygon, zone ID).
+                         Interpretation depends on implementation of _is_resource_in_region.
+            new_status (ResourceStatus): The new status to potentially set (e.g., UNAVAILABLE_WEATHER, AVAILABLE).
+            condition_data (Dict[str, Any]): The full event data that triggered the update, for context.
+        """
+        updated_count = 0
+        for resource_id, resource in self.resources.items():
+            if self._is_resource_in_region(resource, region_data):
+                current_status = resource.status
+                status_changed = False
+
+                if new_status == ResourceStatus.UNAVAILABLE_WEATHER:
+                    # Directly set to unavailable due to weather
+                    if current_status != ResourceStatus.UNAVAILABLE_WEATHER.value:
+                        resource.set_status(ResourceStatus.UNAVAILABLE_WEATHER.value)
+                        status_changed = True
+                        logger.info(f"Landing resource {resource_id} status set to UNAVAILABLE_WEATHER at time {self.env.now}")
+
+                elif new_status == ResourceStatus.AVAILABLE:
+                    # Try to set back to available only if previously unavailable due to weather
+                    # and other conditions are met (normal condition, no allocations).
+                    if current_status == ResourceStatus.UNAVAILABLE_WEATHER.value:
+                        if resource.condition == "normal" and not resource.current_allocations:
+                            resource.set_status(ResourceStatus.AVAILABLE.value)
+                            status_changed = True
+                            logger.info(f"Landing resource {resource_id} status set back to AVAILABLE from weather at time {self.env.now}")
+                        # else:
+                            # logger.debug(f"Landing resource {resource_id} weather cleared, but condition ({resource.condition}) or allocations ({len(resource.current_allocations)}) prevent setting AVAILABLE.")
+                # else: Handle other potential statuses if needed
+
+                if status_changed:
+                    updated_count += 1
+                    # Optionally trigger an event specific to this manager about the resource status change
+                    # self.env.event_registry.publish(...)
+
+        if updated_count > 0:
+            logger.info(f"Updated status for {updated_count} landing resources in region due to external condition at time {self.env.now}")
+
+
+    def _is_resource_in_region(self, resource: LandingResource, region_data: Any) -> bool:
+        """
+        Placeholder: Checks if a landing resource is within the specified region.
+        Needs actual implementation based on how regions are defined (polygons, zones, etc.).
+        """
+        # TODO: Implement actual region checking logic.
+        # Example using simple bounding box if region_data is like {'min_x': ..., 'max_x': ...}
+        # if isinstance(region_data, dict) and 'min_x' in region_data:
+        #     loc = resource.location
+        #     return (region_data['min_x'] <= loc[0] <= region_data['max_x'] and
+        #             region_data['min_y'] <= loc[1] <= region_data['max_y'])
+
+        # Example using AirspaceManager if region_data is a center point and radius
+        # if isinstance(region_data, dict) and 'center' in region_data and 'radius' in region_data:
+        #     dist_sq = (resource.location[0] - region_data['center'][0])**2 + \
+        #               (resource.location[1] - region_data['center'][1])**2 + \
+        #               (resource.location[2] - region_data['center'][2])**2
+        #     return dist_sq <= region_data['radius']**2
+
+        # Simplified default: Assume affects all resources if region_data is not None
+        return region_data is not None

@@ -15,8 +15,9 @@ AirFogSim环境(Environment)核心模块
 @email: 2311769@tongji.edu.cn
 """
 
-import concurrent.futures
-from threading import Barrier
+# -*- coding: utf-8 -*-
+from __future__ import annotations # For forward type hints like 'DataProvider'
+
 from .agent import Agent
 from .workflow import Workflow
 import simpy
@@ -29,8 +30,10 @@ from airfogsim.manager.trigger import TriggerManager
 from airfogsim.manager.payload import PayloadManager
 from airfogsim.manager.task_manager import TaskManager
 from airfogsim.manager.contract import ContractManager
+from airfogsim.core.enums import TriggerOperator
 from .event import EventRegistry
 from typing import Dict, Optional, Type, Tuple, Union, List, Callable, Any
+from airfogsim.dataprovider.base import DataProvider # Import DataProvider
 import airfogsim.task as airfogsim_task
 
 class Environment(simpy.Environment):
@@ -39,8 +42,11 @@ class Environment(simpy.Environment):
         super().__init__(initial_time=initial_time)
         self.id = f"env_{id(self)}"
         self.event_registry = EventRegistry(self, logger)
-        self.logger = logger
         
+        # 初始化数据提供者存储
+        self.data_providers: Dict[str, 'DataProvider'] = {} # Define before managers
+        self.data = {} # Keep existing generic data store if needed
+
         # 初始化各种资源管理器
         self.airspace_manager = AirspaceManager(self)
         self.frequency_manager = FrequencyManager(self)
@@ -53,7 +59,6 @@ class Environment(simpy.Environment):
         self.payload_manager = PayloadManager(self)
         self.contract_manager = ContractManager(self)
         self.agents: Dict[str, 'Agent'] = {}
-        self.data = {}
 
         self.visual_interval = float(visual_interval) if visual_interval is not None else 0 # s
         if self.visual_interval > 0:
@@ -133,6 +138,31 @@ class Environment(simpy.Environment):
     def get_all_agents(self):
         return list(self.agents.values()) # Return list of agent objects
 
+    def add_data_provider(self, key: str, provider: 'DataProvider'):
+        """
+        Registers a DataProvider instance with the environment.
+
+        Args:
+            key (str): A unique key to identify the provider (e.g., 'weather', 'traffic').
+            provider (DataProvider): The DataProvider instance to register.
+        """
+        if key in self.data_providers:
+            print(f"DataProvider with key '{key}' already exists. Overwriting.")
+        self.data_providers[key] = provider
+        print(f"DataProvider '{key}' ({provider.__class__.__name__}) registered.")
+
+    def get_data_provider(self, key: str) -> Optional['DataProvider']:
+        """
+        Retrieves a registered DataProvider instance by its key.
+
+        Args:
+            key (str): The key of the DataProvider to retrieve.
+
+        Returns:
+            Optional[DataProvider]: The DataProvider instance, or None if not found.
+        """
+        return self.data_providers.get(key)
+
     def store_data(self, key, value):
         self.data[key] = value
 
@@ -158,16 +188,18 @@ class Environment(simpy.Environment):
         return agent
          
     # 触发器相关方法
-    def create_event_trigger(self, source_id: str, event_name: str, 
-                           condition_func: Optional[Callable[[Any], bool]] = None,
-                           name: Optional[str] = None):
-        return self.trigger_manager.create_event_trigger(source_id, event_name, condition_func, name)
+    def create_event_trigger(self, source_id: str, event_name: str,
+                            value_key: Optional[str] = None,
+                            operator: Optional[TriggerOperator] = None,
+                            target_value: Any = None,
+                            name: Optional[str] = None):
+        return self.trigger_manager.create_event_trigger(source_id, event_name, value_key, operator, target_value, name)
         
-    def create_state_trigger(self, agent_id: str, state_key: str, 
-                           condition_func: Callable[[Any], bool],
-                           check_interval: float = 1.0,
-                           name: Optional[str] = None):
-        return self.trigger_manager.create_state_trigger(agent_id, state_key, condition_func, check_interval, name)
+    def create_state_trigger(self, agent_id: str, state_key: str,
+                            operator: TriggerOperator = TriggerOperator.EQUALS,
+                            target_value: Any = None,
+                            name: Optional[str] = None):
+        return self.trigger_manager.create_state_trigger(agent_id, state_key, operator, target_value, name)
         
     def create_time_trigger(self, trigger_time: Optional[float] = None,
                           interval: Optional[float] = None,

@@ -1,10 +1,16 @@
 # manager/frequency.py
 
-from typing import List, Dict, Optional, Tuple, Set
+import functools # Added for partial
+from typing import List, Dict, Optional, Tuple, Set, Any # Added Any
 import numpy as np
 from airfogsim.core.resource import ResourceManager
+from airfogsim.core.enums import ResourceStatus, AllocationStatus # 导入枚举
 from airfogsim.resource.frequency import FrequencyResource
+import logging # Added
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 class FrequencyManager(ResourceManager[FrequencyResource]):
     """
     频率资源管理器
@@ -39,6 +45,9 @@ class FrequencyManager(ResourceManager[FrequencyResource]):
         # 发射功率信息，用于计算信道状态
         # 格式: {agent_id: power_mw}
         self.transmit_powers = {}
+
+        # Setup subscriptions to DataProvider events
+        self._setup_data_provider_subscriptions()
         
     def _initialize_resource_blocks(self, total_bandwidth: float, block_bandwidth: float, 
                                     start_frequency: float, power_limit: float) -> None:
@@ -93,7 +102,7 @@ class FrequencyManager(ResourceManager[FrequencyResource]):
         available_resources = []
         for resource_id, resource in self.resources.items():
             # 检查资源块状态
-            if resource.status != "available":
+            if resource.status != ResourceStatus.AVAILABLE: # 使用枚举
                 continue
                                 
             available_resources.append(resource)
@@ -152,7 +161,7 @@ class FrequencyManager(ResourceManager[FrequencyResource]):
                     'target_id': target_id,
                     'requirements': requirements,
                     'start_time': self.env.now,
-                    'status': 'active'
+                    'status': AllocationStatus.ACTIVE # 使用枚举
                 }
                 
                 self.allocations[allocation_id] = allocation_info
@@ -218,7 +227,7 @@ class FrequencyManager(ResourceManager[FrequencyResource]):
                     if allocation_id in self.allocations:
                         alloc = self.allocations[allocation_id]
                         if alloc.get('source_id') == source_id and alloc.get('target_id') == target_id:
-                            alloc['status'] = 'released'
+                            alloc['status'] = AllocationStatus.RELEASED # 使用枚举
                             alloc['end_time'] = self.env.now
                 
             else:
@@ -485,5 +494,44 @@ class FrequencyManager(ResourceManager[FrequencyResource]):
                 'noise_level': resource.noise_level,
                 'interference': resource.interference
             }
-            
+
         return status
+
+    def _setup_data_provider_subscriptions(self):
+        """Sets up subscriptions to events from registered DataProviders."""
+        try:
+            # Import locally if needed, or ensure it's imported at the top
+            from airfogsim.dataprovider.weather import WeatherDataProvider
+
+            weather_provider = self.env.get_data_provider('weather')
+            if weather_provider and isinstance(weather_provider, WeatherDataProvider):
+                # Use functools.partial to bind 'self' (the manager instance) to the callback
+                bound_callback = functools.partial(weather_provider.on_weather_changed, self)
+                listener_id = f"{self.__class__.__name__}_weather_listener" # Unique listener ID
+                self.env.event_registry.subscribe(
+                    event_name=WeatherDataProvider.EVENT_WEATHER_CHANGED,
+                    callback=bound_callback,
+                    listener_id=listener_id,
+                )
+                logger.info(f"{self.__class__.__name__} subscribed to {WeatherDataProvider.EVENT_WEATHER_CHANGED}")
+
+            # Add subscriptions for other relevant data providers here
+        except ImportError:
+            logger.warning("WeatherDataProvider not found, cannot subscribe to weather events.")
+        except Exception as e:
+            logger.error(f"Error setting up DataProvider subscriptions for {self.__class__.__name__}: {e}")
+
+    def update_pathloss_parameters(self, event_data: Dict[str, Any]):
+        """
+        Placeholder method called by WeatherDataProvider callback.
+        Updates path loss model parameters based on weather conditions.
+
+        Args:
+            event_data (Dict[str, Any]): The weather event data.
+        """
+        # TODO: Implement logic to adjust path loss calculation based on weather
+        # e.g., consider rain attenuation based on event_data['precipitation_rate']
+        precipitation_rate = event_data.get('precipitation_rate', 0)
+        if precipitation_rate > 0:
+             logger.info(f"FrequencyManager received weather update (precipitation: {precipitation_rate} mm/hr). Path loss parameters might need adjustment (Not implemented yet).")
+        # Example: self.path_loss_model.update_rain_attenuation(precipitation_rate)

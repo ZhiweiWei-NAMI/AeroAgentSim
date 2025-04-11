@@ -13,14 +13,17 @@ authors = [
 requires-python = ">=3.8"
 dependencies = [
     "simpy",
-    "sqlalchemy",
     "numpy",
-    "flask",
-    "flask-cors",
-    "gunicorn", # 仅用于生产环境
-    "pyjwt",
-    "bcrypt",
-    "pint"
+    "pint",
+    "python-dotenv",
+    "gunicorn", # 用于生产 Docker
+    "requests",
+    "pandas",
+    "openai",
+    "tqdm",
+    "fastapi",
+    "pydantic",
+    "uvicorn[standard]" # 添加 uvicorn, [standard] 包含性能优化库
 ]
 
 [project.optional-dependencies]
@@ -28,6 +31,7 @@ dev = [
     "pytest",
     "black",
     "flake8",
+    "pip-tools"
 ]
 
 [tool.setuptools]

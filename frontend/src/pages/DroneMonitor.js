@@ -373,13 +373,12 @@ const DroneMonitor = () => {
         
         {/* 地图 */}
         <Col span={16}>
-          <Card title="无人机位置与轨迹" style={{ height: '600px' }}>
-            <div style={{ height: '100%', width: '100%' }}>
-              <MapContainer 
-                center={mapCenter} 
-                zoom={mapZoom} 
+          <Card title="无人机位置与轨迹" style={{ height: '600px' }} bodyStyle={{ height: '100%', padding: 0 }}>
+              <MapContainer
+                center={mapCenter}
+                zoom={mapZoom}
                 style={{ height: '100%', width: '100%' }}
-                whenCreated={map => { mapRef.current = map; }}
+                ref={mapRef}
               >
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -389,35 +388,38 @@ const DroneMonitor = () => {
                 {/* 显示无人机当前位置 */}
                 {selectedDrone && selectedDrone.position && (
                   (() => {
-                    const position = Array.isArray(selectedDrone.position) 
-                      ? selectedDrone.position 
+                    const position = Array.isArray(selectedDrone.position)
+                      ? selectedDrone.position
                       : JSON.parse(selectedDrone.position);
-                    return (
-                      <Marker position={[position[1], position[0]]}>
-                        <Popup>
-                          <div>
-                            <strong>{selectedDrone.id}</strong><br />
-                            状态: {selectedDrone.status}<br />
-                            电池: {selectedDrone.battery_level ? `${selectedDrone.battery_level.toFixed(1)}%` : 'N/A'}<br />
-                            高度: {position[2].toFixed(1)} m
-                          </div>
-                        </Popup>
-                      </Marker>
-                    );
+                    // 添加检查确保 position 是有效数组且长度足够
+                    if (Array.isArray(position) && position.length >= 2) {
+                      return (
+                        <Marker position={[position[1], position[0]]}>
+                          <Popup>
+                            <div>
+                              <strong>{selectedDrone.id}</strong><br />
+                              状态: {selectedDrone.status}<br />
+                              电池: {selectedDrone.battery_level ? `${selectedDrone.battery_level.toFixed(1)}%` : 'N/A'}<br />
+                              高度: {position.length > 2 ? position[2].toFixed(1) : 'N/A'} m
+                            </div>
+                          </Popup>
+                        </Marker>
+                      );
+                    }
+                    return null; // 如果位置数据无效，则不渲染 Marker
                   })()
                 )}
                 
                 {/* 显示轨迹 */}
                 {showTrajectory && trajectory.length > 0 && (
-                  <Polyline 
-                    positions={trajectory}
+                  <Polyline
+                    positions={trajectory} // 确保 trajectory 中的每个点也是 [lat, lon] 格式
                     color="blue"
                     weight={3}
                     opacity={0.7}
                   />
                 )}
               </MapContainer>
-            </div>
           </Card>
         </Col>
       </Row>

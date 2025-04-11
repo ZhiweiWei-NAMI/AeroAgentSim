@@ -9,7 +9,7 @@ import simpy
 from airfogsim.core.environment import Environment
 from airfogsim.agent.drone import DroneAgent
 from airfogsim.component.charging import ChargingComponent
-from airfogsim.core.enums import WorkflowStatus
+from airfogsim.core.enums import WorkflowStatus, TriggerOperator
 from airfogsim.manager.workflow import Workflow
 from airfogsim.core.utils import calculate_distance
 
@@ -24,7 +24,7 @@ def run_trigger_example():
     })
     
     # 添加组件
-    drone.add_component(ChargingComponent(env, drone, name="charging", charging_factor=1.2))
+    drone.add_component(ChargingComponent(env, drone, name="charging", properties={"charging_factor": 1.2}))
 
     # 初始化状态
     drone.initialize_states(
@@ -45,8 +45,8 @@ def run_trigger_example():
     battery_low_trigger = env.create_state_trigger(
         agent_id=drone.id,
         state_key="battery_level",
-        condition_func=lambda value: value < 20,  # 电池电量低于20%时触发
-        check_interval=1.0,  # 每1秒检查一次
+        operator=TriggerOperator.LESS_THAN,
+        target_value=20,  # 电池电量低于20%时触发
         name="电池电量低触发器"
     )
     
@@ -77,43 +77,76 @@ def run_trigger_example():
             agent_id = self.owner.id
             
             sm.set_start_transition('moving_to_pickup')
+            # 创建事件触发器
+            location_change_trigger = self.env.create_event_trigger(
+                source_id=agent_id,
+                event_name='state_changed',
+                value_key='key',
+                operator=TriggerOperator.EQUALS,
+                target_value='location',
+                name="位置变更到提货点触发器"
+            )
+            # 添加回调来检查位置
+            location_change_trigger.add_callback(lambda ctx: self._check_pickup_location(ctx))
             
+            # 添加状态转换
             sm.add_transition(
                 state='moving_to_pickup',
-                source_id=agent_id,
-                event_name='state_changed',
                 next_status='picking_up_package',
-                condition_func=lambda ev: (
-                    ev.get('key') == 'location' and
-                    self._is_at_location(ev.get('new_value'), self.pickup_location)
-                )
+                trigger=location_change_trigger
             )
             
+            # 创建任务完成触发器
+            pickup_complete_trigger = self.env.create_event_trigger(
+                source_id=agent_id,
+                event_name='task_completed',
+                value_key='task.name',
+                operator=TriggerOperator.EQUALS,
+                target_value='pickup_task',
+                name="提货任务完成触发器"
+            )
+            
+            # 添加状态转换
             sm.add_transition(
                 state='picking_up_package',
-                source_id=agent_id,
-                event_name='task_completed',
                 next_status='moving_to_delivery',
-                condition_func=lambda ev: ev.get('task', {}).get('name') == 'pickup_task'
+                trigger=pickup_complete_trigger
             )
             
-            sm.add_transition(
-                state='moving_to_delivery',
+            # 创建事件触发器
+            delivery_location_trigger = self.env.create_event_trigger(
                 source_id=agent_id,
                 event_name='state_changed',
+                value_key='key',
+                operator=TriggerOperator.EQUALS,
+                target_value='location',
+                name="位置变更到交付点触发器"
+            )
+            # 添加回调来检查位置
+            delivery_location_trigger.add_callback(lambda ctx: self._check_delivery_location(ctx))
+            
+            # 添加状态转换
+            sm.add_transition(
+                state='moving_to_delivery',
                 next_status='delivering_package',
-                condition_func=lambda ev: (
-                    ev.get('key') == 'location' and
-                    self._is_at_location(ev.get('new_value'), self.delivery_location)
-                )
+                trigger=delivery_location_trigger
             )
             
-            sm.add_transition(
-                state='delivering_package',
+            # 创建任务完成触发器
+            delivery_complete_trigger = self.env.create_event_trigger(
                 source_id=agent_id,
                 event_name='task_completed',
+                value_key='task.name',
+                operator=TriggerOperator.EQUALS,
+                target_value='delivery_task',
+                name="交付任务完成触发器"
+            )
+            
+            # 添加状态转换
+            sm.add_transition(
+                state='delivering_package',
                 next_status='completed',
-                condition_func=lambda ev: ev.get('task', {}).get('name') == 'delivery_task'
+                trigger=delivery_complete_trigger
             )
         
         def _is_at_location(self, current_location, target_location):
@@ -121,6 +154,20 @@ def run_trigger_example():
                 return False
             distance = calculate_distance(current_location, target_location)
             return distance < 1.0
+            
+        def _check_pickup_location(self, context):
+            """检查是否到达提货点"""
+            if context.get('key') != 'location':
+                return False
+            current_location = context.get('new_value')
+            return self._is_at_location(current_location, self.pickup_location)
+            
+        def _check_delivery_location(self, context):
+            """检查是否到达交付点"""
+            if context.get('key') != 'location':
+                return False
+            current_location = context.get('new_value')
+            return self._is_at_location(current_location, self.delivery_location)
     
     # 创建工作流并使用触发器启动
     delivery_workflow = env.create_workflow(

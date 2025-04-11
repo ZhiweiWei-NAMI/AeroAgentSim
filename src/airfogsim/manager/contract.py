@@ -62,15 +62,15 @@ class ContractManager:
             
         # 订阅工作流管理器事件
         self.env.event_registry.subscribe(
-            self.env.workflow_manager.id, 'workflow_completed',
+            self.env.workflow_manager.manager_id, 'workflow_completed',
             self.manager_id, self._handle_workflow_completed
         )
         self.env.event_registry.subscribe(
-            self.env.workflow_manager.id, 'workflow_failed',
+            self.env.workflow_manager.manager_id, 'workflow_failed',
             self.manager_id, self._handle_workflow_failed
         )
         self.env.event_registry.subscribe(
-            self.env.workflow_manager.id, 'workflow_canceled',
+            self.env.workflow_manager.manager_id, 'workflow_canceled',
             self.manager_id, self._handle_workflow_canceled
         )
     

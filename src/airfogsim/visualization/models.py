@@ -10,6 +10,13 @@ class DroneState(BaseModel):
     speed: Optional[float] = 0.0
     timestamp: Optional[str] = None
 
+class VehicleState(BaseModel):
+    id: str
+    position: List[float]
+    type: str
+    speed: float = 0.0
+    angle: float = 0.0
+    timestamp: Optional[str] = None
 class WorkflowConfig(BaseModel):
     name: str
     type: str

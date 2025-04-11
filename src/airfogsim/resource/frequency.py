@@ -1,7 +1,7 @@
 # resource/frequency.py
 
 from airfogsim.core.resource import Resource
-
+from airfogsim.core.enums import ResourceStatus # 导入枚举
 class FrequencyResource(Resource):
     """
     频率资源块类
@@ -63,9 +63,9 @@ class FrequencyResource(Resource):
     
     def _check_available(self):
         if len(self.assigned_to)<self.max_users:
-            self.status = 'available'
+            self.status = ResourceStatus.AVAILABLE # 使用枚举
         else:
-            self.status = 'allocated'
+            self.status = ResourceStatus.FULLY_ALLOCATED # 使用枚举
 
     def release(self, source_id: str, target_id:str) -> bool:
         """
@@ -101,8 +101,8 @@ class FrequencyResource(Resource):
         
         # 根据信道状况可能影响可用性
         if self.sinr < 0 or self.noise_level > -70.0:
-            self.status = "maintenance"  # 暂时不可用
+            self.status = ResourceStatus.MAINTENANCE # 使用枚举
         else:
             # 如果没有分配，则设为可用
-            if self.status == 'maintenance':
-                self.status = "available"
+            if self.status == ResourceStatus.MAINTENANCE: # 使用枚举
+                self.status = ResourceStatus.AVAILABLE # 使用枚举

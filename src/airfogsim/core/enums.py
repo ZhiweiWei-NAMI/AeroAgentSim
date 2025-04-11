@@ -108,6 +108,7 @@ class ResourceStatus(JSONSerializableEnum):
     FULLY_ALLOCATED = "FULLY_ALLOCATED"
     MAINTENANCE = "MAINTENANCE"
     UNAVAILABLE = "UNAVAILABLE"
+    UNAVAILABLE_WEATHER = "UNAVAILABLE_WEATHER" # Added for weather impact
 
 class UnitStatus(JSONSerializableEnum):
     AVAILABLE = "AVAILABLE"

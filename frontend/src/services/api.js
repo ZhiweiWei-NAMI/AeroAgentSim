@@ -182,6 +182,43 @@ const agentApi = {
   }
 };
 
+// 车辆API
+const vehicleApi = {
+  // 获取所有车辆位置信息
+  getAllVehicles: async () => {
+    try {
+      // 尝试从后端获取数据
+      const response = await apiClient.get('/vehicles');
+      // 对获取的数据进行处理，交换 position 的 y 和 z 坐标
+      const processedData = response.data.map(vehicle => {
+        if (vehicle.position && vehicle.position.length === 3) {
+          const [x, y, z] = vehicle.position;
+          // vehicle.angle是度数,要转为PI
+          vehicle.angle = (vehicle.angle / 180) * Math.PI;
+          return { ...vehicle, position: [x, z, y] }; // 交换 y 和 z
+        }
+        return vehicle; // 如果 position 不符合预期，则返回原始数据
+      });
+      return processedData;
+    } catch (error) {
+      console.warn('获取车辆列表失败:', error.message);
+      // 不再返回模拟数据，而是返回空数组
+      return [];
+    }
+  },
+  
+  // 获取特定车辆信息
+  getVehicle: async (vehicleId) => {
+    try {
+      const response = await apiClient.get(`/vehicles/${vehicleId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`获取车辆(ID: ${vehicleId})信息失败:`, error);
+      throw error;
+    }
+  }
+};
+
 // 仿真控制API
 const simulationApi = {
   // 启动仿真
@@ -301,12 +338,35 @@ const sendWebSocketMessage = (socket, type, command, data = {}) => {
   return false;
 };
 
+// 地图配置状态管理
+let mapConfig = {
+  center: [39.9042, 116.4074], // 默认北京中心
+  radius: 1.0, // 默认1公里半径
+  loadBuildings: false // 默认不加载建筑物
+};
+
+// 地图API
+const mapApi = {
+  // 获取当前地图配置
+  getMapConfig: () => {
+    return { ...mapConfig };
+  },
+  
+  // 更新地图配置
+  updateMapConfig: (config) => {
+    mapConfig = { ...mapConfig, ...config };
+    return mapConfig;
+  }
+};
+
 // 导出所有API
 export {
   droneApi,
   workflowApi,
   agentApi,
   simulationApi,
+  mapApi,
+  vehicleApi,
   connectWebSocket,
   sendWebSocketMessage
 };

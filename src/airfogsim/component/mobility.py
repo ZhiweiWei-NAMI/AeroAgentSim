@@ -12,7 +12,7 @@ class MoveToComponent(Component):
     - direction: 移动方向
     """
     PRODUCED_METRICS = ['speed', 'energy_consumption', 'direction']  # 移除position
-    MONITORED_STATES = ['battery_level', 'status'] # 监控的状态
+    MONITORED_STATES = ['battery_level', 'status', 'external_force'] # 监控的状态
     
     def __init__(self, env, agent, name: Optional[str] = None,
                  supported_events: List[str] = ['speed_changed'], properties: Optional[Dict] = None):
@@ -36,6 +36,14 @@ class MoveToComponent(Component):
         position = self.agent.get_state('position', (0, 0, 0))
         battery_level = self.agent.get_state('battery_level', 100.0)
         agent_status = self.agent.get_state('status', 'idle')
+        # Ensure external_force is a list/tuple of 3 numbers
+        raw_external_force = self.agent.get_state('external_force', [0.0, 0.0, 0.0])
+        if not (isinstance(raw_external_force, (list, tuple)) and len(raw_external_force) == 3):
+            external_force = [0.0, 0.0, 0.0] # Default to zero vector if invalid
+        else:
+            external_force = list(raw_external_force) # Ensure it's a list
+
+        # 计算速度和能量消耗
         
         # 基础速度取决于电池电量
         base_speed = 15.0  # 默认15米/秒
@@ -50,10 +58,26 @@ class MoveToComponent(Component):
             base_speed = 0.0
         
         # 应用速度因子
-        speed = base_speed * self.speed_factor
-        
-        # 计算能量消耗
-        energy_consumption = speed * self.energy_factor
+        adjusted_speed = base_speed * self.speed_factor
+
+        # --- 考虑外部力的影响 (简化模型) ---
+        # 假设外部力主要影响能量消耗，并可能轻微影响速度
+        # Calculate magnitude of external force (simplified, assumes force vector components)
+        force_magnitude = math.sqrt(sum(f**2 for f in external_force))
+
+        # Example: Increase energy consumption based on force magnitude
+        # Need a scaling factor based on agent's mass, drag, etc.
+        force_energy_penalty = force_magnitude * 0.05 * self.energy_factor # Example penalty factor (adjust 0.05 as needed)
+        energy_consumption = (adjusted_speed * self.energy_factor) + force_energy_penalty
+
+        # Example: Slightly reduce speed if force is significant (e.g., headwind)
+        # This is highly simplified. Real model needs force direction relative to movement direction.
+        speed_reduction_factor = max(0.1, 1.0 - force_magnitude * 0.01) # Example reduction (ensure speed doesn't go below 10%)
+        speed = adjusted_speed * speed_reduction_factor
+
+        # Ensure non-negative values
+        speed = max(0.0, speed)
+        energy_consumption = max(0.0, energy_consumption)
         
         # 计算方向（如果可能）
         direction = 'unknown'

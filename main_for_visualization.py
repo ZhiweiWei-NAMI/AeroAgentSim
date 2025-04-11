@@ -15,10 +15,14 @@ import signal
 import argparse
 from pathlib import Path
 
+from dotenv import load_dotenv # 新增导入
+
+# 加载 .env 文件中的环境变量 (如果存在) - 移到全局作用域
+load_dotenv()
 # 获取项目根目录
 ROOT_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = ROOT_DIR / "frontend"
-BACKEND_MODULE = "src.airfogsim.visualization.api:app"
+BACKEND_MODULE = "src.airfogsim.visualization:app"
 
 # 全局进程变量
 frontend_process = None
@@ -157,7 +161,7 @@ def main():
     """主函数"""
     parser = argparse.ArgumentParser(description="启动AirFogSim可视化系统")
     parser.add_argument("--backend-port", type=int, default=8002, help="后端服务端口")
-    parser.add_argument("--frontend-port", type=int, default=3000, help="前端服务端口")
+    parser.add_argument("--frontend-port", type=int, default=3001, help="前端服务端口")
     parser.add_argument("--no-browser", action="store_true", help="不自动打开浏览器")
     parser.add_argument("--no-reload", action="store_true", help="禁用后端自动重载")
     

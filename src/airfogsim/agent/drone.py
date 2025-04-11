@@ -55,6 +55,11 @@ class DroneAgentMeta(TerminalAgentMeta):
         # charge_cycles
         mcs.register_template(cls, 'charge_cycles', int, False, None,
                             "无人机充电周期")
+        # external_force
+        mcs.register_template(cls, 'external_force', (tuple, list), False, 
+                              lambda v: len(v) == 3 and all(isinstance(i, (int, float)) for i in v),
+                            "无人机受外力影响的3D向量 (fx, fy, fz)")
+        
         return cls
 
 class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):

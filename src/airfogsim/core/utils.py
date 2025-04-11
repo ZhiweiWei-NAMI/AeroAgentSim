@@ -13,17 +13,18 @@ AirFogSim工具(Utils)核心模块
 """
 
 import math
-from typing import Tuple
+from typing import Tuple, Optional
 from pint import UnitRegistry
+import math
 
 ureg = UnitRegistry()
 Q_ = ureg.Quantity
 
-def calculate_distance(loc1: Tuple[float, float], loc2: Tuple[float, float]) -> float:
+def calculate_distance(loc1: Tuple[float, float, float], loc2: Tuple[float, float, float]) -> float:
     """计算两个位置之间的欧几里得距离"""
-    x1, y1 = loc1
-    x2, y2 = loc2
-    return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+    x1, y1, z1 = loc1
+    x2, y2, z2 = loc2
+    return math.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)
 
 class Location:
     def __init__(self, x: float, y: float, z: float = 0):
@@ -58,3 +59,152 @@ if __name__ == '__main__':
 
     speed = Speed(10, (1, 0, 0))
     print(speed)  # 10.00 meter / second (1, 0, 0)
+
+def convert_coordinates(source_pos: Tuple[float, float, float],
+                        conversion_config: dict = None) -> Tuple[float, float, float]:
+    """
+    将源坐标系统中的位置转换为仿真坐标系统中的位置。
+    
+    Args:
+        source_pos: 源坐标系统中的位置，格式为 (x, y, z)
+        conversion_config: 转换配置字典，可能包含以下键：
+            - 'type': 转换类型，可以是 'none'（无转换）或 'offset_scale'（偏移和缩放）
+            - 'offset_x', 'offset_y', 'offset_z': 各轴的偏移量
+            - 'scale': 统一缩放因子
+            
+    Returns:
+        转换后的坐标，格式为 (x, y, z)
+    """
+    if not conversion_config:
+        return source_pos
+
+    conv_type = conversion_config.get('type', 'none')
+    
+    if conv_type == 'offset_scale':
+        offset_x = float(conversion_config.get('offset_x', 0.0))
+        offset_y = float(conversion_config.get('offset_y', 0.0))
+        offset_z = float(conversion_config.get('offset_z', 0.0))
+        scale = float(conversion_config.get('scale', 1.0))
+        
+        x = (source_pos[0] + offset_x) * scale
+        y = (source_pos[1] + offset_y) * scale
+        z = (source_pos[2] + offset_z) * scale
+        
+        return (x, y, z)
+    elif conv_type == 'none':
+        return source_pos
+    else:
+        # 记录警告但不抛出异常
+        import logging
+        logging.getLogger(__name__).warning(f"不支持的坐标转换类型: {conv_type}，使用 'none'")
+        return source_pos
+    
+# 地球半径（米）
+EARTH_RADIUS = 6371000.0
+
+def latlon_to_local(lat: float, lon: float, alt: float = 0.0,
+                   ref_lat: Optional[float] = None, ref_lon: Optional[float] = None,
+                   ref_alt: float = 0.0) -> Tuple[float, float, float]:
+    """
+    将经纬度坐标转换为以参考点为原点的局部坐标系（米）。
+    使用局部切平面近似（ENU - 东北上坐标系）。
+    
+    Args:
+        lat: 纬度（度）
+        lon: 经度（度）
+        alt: 高度（米，相对于海平面），默认为0
+        ref_lat: 参考点纬度（度），如果为None则使用lat作为参考
+        ref_lon: 参考点经度（度），如果为None则使用lon作为参考
+        ref_alt: 参考点高度（米），默认为0
+        
+    Returns:
+        局部坐标 (x, y, z)，其中:
+        x: 东向距离（米）
+        y: 北向距离（米）
+        z: 上向距离（米）
+    """
+    # 如果没有提供参考点，则使用输入点作为参考（结果将是原点）
+    if ref_lat is None:
+        ref_lat = lat
+    if ref_lon is None:
+        ref_lon = lon
+        
+    # 转换为弧度
+    lat_rad = math.radians(lat)
+    lon_rad = math.radians(lon)
+    ref_lat_rad = math.radians(ref_lat)
+    ref_lon_rad = math.radians(ref_lon)
+    
+    # 计算坐标差异
+    d_lat = lat_rad - ref_lat_rad
+    d_lon = lon_rad - ref_lon_rad
+    
+    # 使用局部切平面近似计算
+    # 北向距离（y轴）
+    y = EARTH_RADIUS * d_lat
+    
+    # 东向距离（x轴）- 考虑纬度影响
+    x = EARTH_RADIUS * d_lon * math.cos(ref_lat_rad)
+    
+    # 高度差（z轴）
+    z = alt - ref_alt
+    
+    return (x, y, z)
+
+def local_to_latlon(x: float, y: float, z: float = 0.0,
+                   ref_lat: float = 0.0, ref_lon: float = 0.0,
+                   ref_alt: float = 0.0) -> Tuple[float, float, float]:
+    """
+    将局部坐标系（米）转换为经纬度坐标。
+    使用局部切平面近似（ENU - 东北上坐标系）的逆变换。
+    
+    Args:
+        x: 东向距离（米）
+        y: 北向距离（米）
+        z: 上向距离（米），默认为0
+        ref_lat: 参考点纬度（度）
+        ref_lon: 参考点经度（度）
+        ref_alt: 参考点高度（米），默认为0
+        
+    Returns:
+        (纬度, 经度, 高度) 元组，其中:
+        纬度: 度
+        经度: 度
+        高度: 米（相对于海平面）
+    """
+    # 转换为弧度
+    ref_lat_rad = math.radians(ref_lat)
+    
+    # 计算纬度差异（弧度）
+    d_lat = y / EARTH_RADIUS
+    
+    # 计算经度差异（弧度），考虑纬度影响
+    d_lon = x / (EARTH_RADIUS * math.cos(ref_lat_rad))
+    
+    # 计算结果经纬度（弧度）
+    lat_rad = ref_lat_rad + d_lat
+    lon_rad = math.radians(ref_lon) + d_lon
+    
+    # 转换回度
+    lat = math.degrees(lat_rad)
+    lon = math.degrees(lon_rad)
+    
+    # 计算高度
+    alt = z + ref_alt
+    
+    return (lat, lon, alt)
+
+def utm_zone_for_lon(lon: float) -> int:
+    """
+    根据经度确定UTM区域编号。
+    
+    Args:
+        lon: 经度（度）
+        
+    Returns:
+        UTM区域编号（1-60）
+    """
+    # 标准UTM区域计算（经度范围从-180到180）
+    # 区域1从经度-180°开始
+    return int((lon + 180) / 6) + 1
+        

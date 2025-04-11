@@ -1,256 +1,240 @@
-# Trigger System Guide
+# AirFogSim Trigger System Guide
 
-The AirFogSim trigger system provides a flexible way to respond to events and state changes in the simulation. This guide explains how to use the trigger system effectively.
+The AirFogSim trigger system provides a flexible way to react to various conditions and events within the simulation. Triggers are fundamental components for driving `WorkflowStatusMachine` transitions and automating agent behavior. This guide explains how to define and use different types of triggers.
 
-## Trigger Types
+## 1. Core Concepts
 
-AirFogSim supports several types of triggers:
+*   **Trigger:** An object that monitors a specific condition (event occurrence, state change, time passage) and executes registered callback functions when the condition is met.
+*   **Activation/Deactivation:** Triggers must be `activate()`d to start monitoring. They can be `deactivate()`d to stop monitoring. Triggers automatically deactivate after firing once to prevent immediate re-triggering within the same simulation step, unless they are part of a `CompositeTrigger` or designed for periodic firing (like interval-based `TimeTrigger`). Workflows typically reactivate necessary triggers when entering a new state.
+*   **Callbacks:** Functions added via `add_callback()` that are executed when the trigger fires. Callbacks receive a context dictionary with details about the trigger event.
+*   **Context:** The dictionary passed to callbacks, containing information like `trigger_id`, `trigger_name`, `trigger_type`, `time`, and type-specific details (e.g., `event_value`, `new_state`).
 
-1. **Event Triggers**: Respond to specific events emitted by simulation entities
-2. **State Triggers**: Monitor agent state changes
-3. **Time Triggers**: Activate at specific times or intervals
-4. **Composite Triggers**: Combine multiple triggers with logical operators
+## 2. Trigger Types
 
-## Basic Usage
+AirFogSim provides several built-in trigger types:
 
-### Creating a Simple Event Trigger
+### 2.1 `EventTrigger`
+
+*   **Purpose:** Reacts to specific named events published via the `env.event_registry`.
+*   **Key Parameters:**
+    *   `source_id` (str): The ID of the entity expected to publish the event.
+    *   `event_name` (str): The name of the event to listen for.
+    *   `value_key` (Optional[str]): A dot-separated path to extract a specific value from the event data dictionary (e.g., `'data.position'`). If `None`, the entire event data dictionary is used for comparison.
+    *   `operator` (Optional[TriggerOperator]): The comparison operator to use (e.g., `EQUALS`, `LESS_THAN`, `CONTAINS`, `CUSTOM`). If `None`, the trigger fires whenever the event occurs, regardless of its value.
+    *   `target_value` (Any): The value to compare the extracted event data against. If `operator` is `CUSTOM`, this should be a callable function `(value) -> bool`.
+*   **Context Keys:** `source_id`, `event_name`, `event_value`, `value_key`, `operator`, `target_value`.
+
+**Example:** Trigger when `drone_1` emits `task_completed` and the `result.status` key in the event data equals `'SUCCESS'`.
 
 ```python
 from airfogsim.core.trigger import EventTrigger
 from airfogsim.core.enums import TriggerOperator
 
-# Create a trigger that activates when a drone's battery level drops below 20%
-trigger = EventTrigger(
-    env,                          # Simulation environment
-    source_id="drone_1",          # Entity emitting the event
-    event_name="state_changed",   # Event to monitor
-    value_key="battery_level",    # Key to check in the event data
-    operator=TriggerOperator.LESS_THAN,  # Comparison operator
-    target_value=20,              # Value to compare against
-    name="low_battery_trigger"    # Optional name for the trigger
-)
-
-# Add a callback function to execute when the trigger activates
-trigger.add_callback(lambda ctx: print(f"Low battery alert: {ctx['event_value']}%"))
-
-# Activate the trigger
-trigger.activate()
-```
-
-### Creating a Time Trigger
-
-```python
-from airfogsim.core.trigger import TimeTrigger
-
-# Create a trigger that activates every 10 simulation time units
-trigger = TimeTrigger(
+task_success_trigger = EventTrigger(
     env,
-    interval=10,
-    name="periodic_trigger"
+    source_id="drone_1",
+    event_name="task_completed",
+    value_key="result.status", # Check nested key
+    operator=TriggerOperator.EQUALS,
+    target_value="SUCCESS",
+    name="drone1_task_success"
 )
 
-# Add a callback
-trigger.add_callback(lambda ctx: print(f"Time: {env.now} - Periodic event triggered"))
+def on_task_success(context):
+    print(f"Time {context['time']}: Drone 1 task succeeded! Event data: {context['event_value']}")
 
-# Activate the trigger
-trigger.activate()
+task_success_trigger.add_callback(on_task_success)
+task_success_trigger.activate()
 ```
 
-### Creating a State Trigger
+### 2.2 `StateTrigger`
+
+*   **Purpose:** Monitors changes in a specific state variable of an `Agent`.
+*   **Key Parameters:**
+    *   `agent_id` (str): The ID of the agent whose state is being monitored.
+    *   `state_key` (str): The name of the state variable to monitor (must exist in the agent's state templates).
+    *   `operator` (TriggerOperator): The comparison operator.
+    *   `target_value` (Any): The value to compare the state against. If `operator` is `CUSTOM`, this should be a callable function `(value) -> bool`.
+*   **Behavior:** Listens for the agent's `state_changed` event. When the specified `state_key` changes, it compares the *new* value against the `target_value` using the `operator`.
+*   **Context Keys:** `agent_id`, `state_key`, `old_value`, `new_value`, `operator`, `target_value`.
+
+**Example:** Trigger when `drone_1`'s `battery_level` drops below 20.
 
 ```python
 from airfogsim.core.trigger import StateTrigger
 from airfogsim.core.enums import TriggerOperator
 
-# Create a trigger that activates when an agent's position changes
-trigger = StateTrigger(
+low_battery_trigger = StateTrigger(
     env,
     agent_id="drone_1",
-    state_key="position",
-    operator=TriggerOperator.NOT_EQUALS,
-    target_value=None,  # Will trigger on any position change
-    name="position_change_trigger"
+    state_key="battery_level",
+    operator=TriggerOperator.LESS_THAN,
+    target_value=20,
+    name="drone1_low_battery"
 )
 
-# Add a callback
-trigger.add_callback(lambda ctx: print(f"Position changed to: {ctx['new_value']}"))
+def on_low_battery(context):
+    print(f"Time {context['time']}: Drone 1 low battery alert! Level: {context['new_value']:.1f}%")
 
-# Activate the trigger
-trigger.activate()
+low_battery_trigger.add_callback(on_low_battery)
+low_battery_trigger.activate()
 ```
 
-### Creating a Composite Trigger
+### 2.3 `TimeTrigger`
+
+*   **Purpose:** Activates based on simulation time.
+*   **Key Parameters (Choose One):**
+    *   `trigger_time` (float): Activates once at the specified absolute simulation time.
+    *   `interval` (float): Activates repeatedly at the specified interval after activation.
+    *   `cron_expr` (str): *Currently simplified:* Interpreted as an interval for repeated triggering (intended for future full cron support).
+*   **Context Keys:** `trigger_mode` ('one_time', 'interval', 'cron').
+
+**Example:** Trigger every 60 simulation time units.
 
 ```python
-from airfogsim.core.trigger import CompositeTrigger, EventTrigger, StateTrigger
-from airfogsim.core.enums import TriggerOperator
+from airfogsim.core.trigger import TimeTrigger
 
-# Create individual triggers
-battery_trigger = EventTrigger(
-    env, "drone_1", "state_changed", "battery_level", 
-    TriggerOperator.LESS_THAN, 10
-)
-
-position_trigger = StateTrigger(
-    env, "drone_1", "position", 
-    TriggerOperator.EQUALS, [0, 0, 0]
-)
-
-# Combine triggers with AND operator (both conditions must be met)
-composite = CompositeTrigger(
+periodic_trigger = TimeTrigger(
     env,
-    triggers=[battery_trigger, position_trigger],
-    operator=TriggerOperator.AND,
-    name="low_battery_at_home_trigger"
+    interval=60,
+    name="hourly_check"
 )
 
-# Add a callback
-composite.add_callback(lambda ctx: print("Drone is at home with low battery"))
+def periodic_check(context):
+    print(f"Time {context['time']}: Performing periodic check.")
 
-# Activate the composite trigger
-composite.activate()
+periodic_trigger.add_callback(periodic_check)
+periodic_trigger.activate()
 ```
 
-## Trigger Operators
+### 2.4 `CompositeTrigger`
 
-The following operators are available for comparing values:
+*   **Purpose:** Combines multiple triggers using logical AND or OR.
+*   **Key Parameters:**
+    *   `triggers` (List[Trigger]): A list of trigger instances to combine.
+    *   `operator` (TriggerOperator.AND | TriggerOperator.OR): The logical operator to combine the triggers.
+*   **Behavior:**
+    *   **AND:** Fires only when *all* sub-triggers have fired since the last composite trigger activation or reset.
+    *   **OR:** Fires when *any* of the sub-triggers fire.
+*   **Activation/Deactivation:** Activating/deactivating the composite trigger also activates/deactivates all its sub-triggers.
+*   **State Reset:** After the composite trigger fires, the internal states of which sub-triggers have fired are reset.
+*   **Context Keys:**
+    *   **AND:** `subtriggers` (Dict[str, bool] showing which sub-triggers fired).
+    *   **OR:** `subtrigger_id` (ID of the sub-trigger that fired), `subtrigger_context` (context from the sub-trigger).
 
-- `TriggerOperator.EQUALS`: Equal to
-- `TriggerOperator.NOT_EQUALS`: Not equal to
-- `TriggerOperator.GREATER_THAN`: Greater than
-- `TriggerOperator.LESS_THAN`: Less than
-- `TriggerOperator.GREATER_EQUAL`: Greater than or equal to
-- `TriggerOperator.LESS_EQUAL`: Less than or equal to
-- `TriggerOperator.CONTAINS`: Contains (for collections)
-- `TriggerOperator.NOT_CONTAINS`: Does not contain (for collections)
-- `TriggerOperator.AND`: Logical AND (for composite triggers)
-- `TriggerOperator.OR`: Logical OR (for composite triggers)
-- `TriggerOperator.CUSTOM`: Custom function (advanced usage)
-
-## Using Triggers in Workflows
-
-Workflows in AirFogSim use triggers to manage state transitions. Here's an example of setting up a workflow with triggers:
+**Example:** Trigger if `drone_1` has low battery (`StateTrigger`) AND a specific `task_failed` event occurs (`EventTrigger`).
 
 ```python
-from airfogsim.core import Workflow
+from airfogsim.core.trigger import CompositeTrigger, StateTrigger, EventTrigger
 from airfogsim.core.enums import TriggerOperator
 
-class MyWorkflow(Workflow):
-    def _setup_transitions(self):
-        # Set initial state
-        self.status_machine.set_start_transition('waiting')
-        
-        # Add a transition based on agent state
-        self.status_machine.add_transition(
-            'waiting',           # Current state
-            'moving',            # Next state
-            agent_state={        # Agent state trigger configuration
-                'agent_id': self.owner.id,
-                'state_key': 'is_moving',
-                'operator': TriggerOperator.EQUALS,
-                'target_value': True
-            }
-        )
-        
-        # Add a transition based on time
-        self.status_machine.add_transition(
-            'moving',
-            'timeout',
-            time_trigger={
-                'interval': 60  # Transition after 60 time units
-            }
-        )
-        
-        # Add a transition based on event
-        self.status_machine.add_transition(
-            'moving',
-            'completed',
-            event_trigger={
-                'source_id': self.owner.id,
-                'event_name': 'arrived',
-                'value_key': 'location',
-                'operator': TriggerOperator.EQUALS,
-                'target_value': 'destination'
-            }
-        )
-```
-
-## Advanced Usage
-
-### Custom Operators
-
-For complex conditions, you can use the `CUSTOM` operator with a custom function:
-
-```python
-from airfogsim.core.trigger import EventTrigger
-from airfogsim.core.enums import TriggerOperator
-
-# Create a trigger with a custom condition function
-trigger = EventTrigger(
+# Assumes low_battery_trigger is defined as above
+task_fail_trigger = EventTrigger(
     env,
     source_id="drone_1",
-    event_name="position_updated",
-    value_key="position",
-    operator=TriggerOperator.CUSTOM,
-    target_value=lambda pos: pos[0]**2 + pos[1]**2 < 100  # Activate when within a circle of radius 10
+    event_name="task_failed",
+    name="drone1_task_fail"
 )
+
+critical_condition_trigger = CompositeTrigger(
+    env,
+    triggers=[low_battery_trigger, task_fail_trigger],
+    operator=TriggerOperator.AND,
+    name="drone1_critical_condition"
+)
+
+def on_critical_condition(context):
+    print(f"Time {context['time']}: CRITICAL - Drone 1 has low battery AND a task failed!")
+    # context['subtriggers'] will show both triggers as True
+
+critical_condition_trigger.add_callback(on_critical_condition)
+critical_condition_trigger.activate()
 ```
 
-### Workflow Offloadability Analysis
+## 3. Trigger Operators
 
-The trigger system enables workflows to analyze whether they can be offloaded to other agents:
+The following operators (`airfogsim.core.enums.TriggerOperator`) are available for `EventTrigger` and `StateTrigger`:
 
-```python
-# Check if a workflow can be offloaded
-offload_analysis = workflow.analyze_offloadability()
+*   `EQUALS`: Equal to (`==`)
+*   `NOT_EQUALS`: Not equal to (`!=`)
+*   `GREATER_THAN`: Greater than (`>`)
+*   `LESS_THAN`: Less than (`<`)
+*   `GREATER_EQUAL`: Greater than or equal to (`>=`)
+*   `LESS_EQUAL`: Less than or equal to (`<=`)
+*   `CONTAINS`: Checks if `target_value` is in the event/state value (e.g., `item in list`).
+*   `NOT_CONTAINS`: Checks if `target_value` is not in the event/state value.
+*   `CUSTOM`: Uses a custom function provided as `target_value`. The function receives the extracted value and should return `True` or `False`.
+*   `AND` / `OR`: Used only for `CompositeTrigger`.
 
-if offload_analysis['offloadable']:
-    print(f"Workflow can be offloaded. Offloadable states: {offload_analysis['states']}")
-else:
-    print("Workflow cannot be offloaded")
-```
+## 4. Using Triggers in Workflows
 
-## Best Practices
-
-1. **Use descriptive names**: Give your triggers meaningful names to make debugging easier
-2. **Deactivate unused triggers**: Call `trigger.deactivate()` when a trigger is no longer needed
-3. **Keep callbacks lightweight**: Trigger callbacks should be fast and avoid blocking operations
-4. **Use composite triggers**: For complex conditions, use composite triggers instead of complex custom functions
-5. **Handle exceptions in callbacks**: Wrap callback code in try-except blocks to prevent crashes
-
-## Example: Inspection Workflow
-
-Here's a complete example of an inspection workflow using the trigger system:
+The primary use case for triggers is defining transitions within a `WorkflowStatusMachine`. The `add_transition` method simplifies trigger creation:
 
 ```python
 from airfogsim.core import Workflow
-from airfogsim.core.enums import TriggerOperator
+from airfogsim.core.enums import TriggerOperator, WorkflowStatus
 
-class InspectionWorkflow(Workflow):
+class MyWorkflow(Workflow):
+    # ... (init, property templates etc.)
+
     def _setup_transitions(self):
-        # Set initial state
-        self.status_machine.set_start_transition('inspecting_point_1')
-        
-        # For each inspection point
-        for i, point in enumerate(self.inspection_points):
-            current_state = f'inspecting_point_{i+1}'
-            
-            # Determine next state
-            if i+1 < len(self.inspection_points):
-                next_state = f'inspecting_point_{i+2}'
-            else:
-                next_state = 'completed'
-            
-            # Add transition using event trigger
-            self.status_machine.add_transition(
-                current_state, 
-                next_state,
-                event_trigger={
-                    'source_id': self.proof_id,
-                    'event_name': 'proof_updated',
-                    'value_key': 'data.position',
-                    'operator': TriggerOperator.CUSTOM,
-                    'target_value': lambda position, point=point: 
-                        all([abs(position[i] - point[i]) < 1e-6 for i in range(3)])
-                }
-            )
+        sm = self.status_machine
+        agent_id = self.owner.id
+
+        sm.set_start_transition('waiting_for_task')
+
+        # Transition based on agent state change
+        sm.add_transition(
+            state='waiting_for_task',
+            next_status='processing',
+            agent_state={ # Creates a StateTrigger internally
+                'agent_id': agent_id,
+                'state_key': 'current_task_status',
+                'operator': TriggerOperator.EQUALS,
+                'target_value': 'RECEIVED'
+            },
+            description="Agent received the task"
+        )
+
+        # Transition based on a specific event
+        sm.add_transition(
+            state='processing',
+            next_status='completed',
+            event_trigger={ # Creates an EventTrigger internally
+                'source_id': agent_id,
+                'event_name': 'processing_finished',
+                'value_key': 'result_code', # Check event data
+                'operator': TriggerOperator.EQUALS,
+                'target_value': 0 # Success code
+            },
+            description="Processing finished successfully"
+        )
+
+        # Transition based on time (timeout)
+        sm.add_transition(
+            state='processing',
+            next_status='failed',
+            time_trigger={ # Creates a TimeTrigger internally
+                'interval': 120 # Fail if processing takes longer than 120s
+            },
+            description="Processing timed out"
+        )
+
+        # Transition using a pre-defined trigger instance
+        # custom_trigger = SomeCustomTrigger(...)
+        # sm.add_transition(
+        #     state='some_state',
+        #     next_status='other_state',
+        #     trigger=custom_trigger,
+        #     description="Custom condition met"
+        # )
+```
+
+## 5. Best Practices
+
+1.  **Descriptive Names:** Give triggers meaningful names for easier debugging.
+2.  **Specific Conditions:** Use `value_key` and appropriate `operator`s for `EventTrigger` and `StateTrigger` to avoid triggering on irrelevant changes.
+3.  **Use `CUSTOM` Sparingly:** Prefer built-in operators for clarity. Use `CUSTOM` for complex logic that cannot be expressed otherwise. Ensure custom functions are robust.
+4.  **Manage Activation:** Ensure triggers are activated when needed (e.g., when a workflow enters a state) and deactivated when no longer relevant (often handled automatically by the workflow state machine).
+5.  **Lightweight Callbacks:** Keep trigger callbacks fast and non-blocking. Complex actions should typically be initiated by the agent or workflow based on the state change triggered by the callback.
+6.  **Composite Triggers:** Use `CompositeTrigger` for complex AND/OR conditions instead of nesting logic deeply within callbacks or custom functions.
