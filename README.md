@@ -6,7 +6,6 @@
 
 AirFogSim是一个基于SimPy构建的离散事件仿真框架，旨在模拟涉及自治代理（如无人机）、动态资源、任务执行和面向目标的工作流的复杂系统。该框架特别适用于研究空中雾计算场景、无人机协同作业、智能交通系统等领域的仿真与优化。
 
-
 ## 📋 项目概述
 
 AirFogSim提供了一个全面的仿真环境，用于：
@@ -17,6 +16,20 @@ AirFogSim提供了一个全面的仿真环境，用于：
 - 可视化仿真过程和结果分析
 
 该框架采用模块化设计，支持高度自定义的仿真场景，并提供直观的可视化界面，便于研究人员和开发者进行实验和分析。
+
+如果您在研究中使用了AirFogSim，请引用我们的论文：
+
+```bibtex
+@misc{wei2024airfogsimlightweightmodularsimulator,
+      title={AirFogSim: A Light-Weight and Modular Simulator for UAV-Integrated Vehicular Fog Computing}, 
+      author={Zhiwei Wei and Chenran Huang and Bing Li and Yiting Zhao and Xiang Cheng and Liuqing Yang and Rongqing Zhang},
+      year={2024},
+      eprint={2409.02518},
+      archivePrefix={arXiv},
+      primaryClass={cs.NI},
+      url={https://arxiv.org/abs/2409.02518}, 
+}
+```
 
 ## ✨ 核心特性
 
