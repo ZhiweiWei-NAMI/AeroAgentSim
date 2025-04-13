@@ -6,6 +6,8 @@ from airfogsim.manager.landing import LandingManager
 from airfogsim.manager.workflow import WorkflowManager
 from airfogsim.manager.trigger import TriggerManager
 from airfogsim.manager.task_manager import TaskManager
+from airfogsim.manager.component_manager import ComponentManager
+from airfogsim.manager.agent_manager import AgentManager
 
 __all__ = [
     'AirspaceManager',
@@ -13,5 +15,7 @@ __all__ = [
     'LandingManager',
     'WorkflowManager',
     'TriggerManager',
-    'TaskManager'
+    'TaskManager',
+    'ComponentManager',
+    'AgentManager'
 ]

@@ -45,18 +45,18 @@ class JSONSerializableEnum(Enum):
     """
     def __str__(self):
         return self.name
-    
+
     def to_json(self):
         """返回可JSON序列化的表示"""
         return {
             "name": self.name,
             "value": self.value
         }
-    
+
     def __json__(self):
         """支持json.dumps直接序列化"""
         return self.to_json()
-    
+
     @classmethod
     def from_json(cls, data):
         if isinstance(data, dict):
@@ -71,7 +71,7 @@ class JSONSerializableEnum(Enum):
         elif isinstance(data, int):
             # 如果是整数，尝试作为值恢复
             return cls(data)
-        
+
         # 如果无法恢复，抛出异常
         raise ValueError(f"无法从{data}恢复{cls.__name__}枚举值")
 
@@ -149,6 +149,48 @@ class TriggerOperator(JSONSerializableEnum):
     CONTAINS = "contains"  # 触发器的结果包含
     NOT_CONTAINS = "not_contains"  # 触发器的结果不包含
     CUSTOM = "custom"  # 自定义函数
+
+class TaskPriority(JSONSerializableEnum):
+    """任务优先级枚举
+
+    定义了任务的优先级级别，从低到高依次为：LOW、NORMAL、HIGH、CRITICAL。
+    用于在资源竞争时决定任务的执行顺序和抢占策略。
+    """
+    LOW = 0
+    NORMAL = 1
+    HIGH = 2
+    CRITICAL = 3
+
+    @classmethod
+    def from_string(cls, priority_str):
+        """从字符串转换为优先级枚举"""
+        priority_map = {
+            'low': cls.LOW,
+            'normal': cls.NORMAL,
+            'high': cls.HIGH,
+            'critical': cls.CRITICAL
+        }
+        return priority_map.get(priority_str.lower(), cls.NORMAL)
+
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value < other.value
+        return NotImplemented
+
+    def __gt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value > other.value
+        return NotImplemented
+
+    def __le__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value <= other.value
+        return NotImplemented
+
+    def __ge__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value >= other.value
+        return NotImplemented
 
 class AllocationStatus(JSONSerializableEnum):
     """资源分配状态枚举，典型的预留工作流程是：

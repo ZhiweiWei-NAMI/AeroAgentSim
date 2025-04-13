@@ -12,7 +12,7 @@
 4.  **响应事件:** 通过发布-订阅事件系统响应环境或自身内部状态的变化。
 5.  **管理拥有的对象:** 持有对其他模拟对象（如充电站、着陆点）的引用并访问它们的状态。
 6.  **与合约交互:** (可选) 通过 `ContractManager` 创建、接受和管理任务卸载合约。
-7.  **定义行为:** 在 `live()` 方法中实现核心决策逻辑。
+7.  **定义行为:** 通过重写钩子方法（如 `_process_custom_logic`）来实现核心决策逻辑，而不是直接重写 `live()` 方法。
 
 基础 `Agent` 类为这些功能提供了基础结构和机制。子类通过添加专门的状态、组件、拥有的对象和行为逻辑来定义特定的 Agent 类型（如 `DroneAgent`、`GroundStationAgent` 等）。
 
@@ -196,10 +196,11 @@
             self.update_state('status', 'idle')
     ```
 
-3.  **实现 `live()`:**
-    *   子类**必须**实现此方法。
-    *   它将 Agent 的核心行为循环定义为一个 SimPy 进程（它必须至少包含一个 `yield`）。
-    *   在 `live()` 内部，Agent 根据其当前 `self.state`、传入事件、分配的工作流 (`self._get_active_workflows()`)、拥有对象的状态 (`self.get_state('object.state')`) 或其他内部逻辑来决定做什么。
+3.  **实现钩子方法:**
+    *   子类应该重写钩子方法（如 `_process_custom_logic`）而不是直接重写 `live()` 方法。
+    *   `live()` 方法已经在基类中实现，它处理事件监听和任务调度的通用逻辑。
+    *   在 `_process_custom_logic()` 内部，Agent 根据其当前 `self.state`、分配的工作流 (`self._get_active_workflows()`)、拥有对象的状态 (`self.get_state('object.state')`) 或其他内部逻辑来决定做什么。
+    *   其他可重写的钩子方法包括 `_before_event_wait()` 和 `_check_agent_status()`。
     *   常见模式:
         *   等待一段时间: `yield self.env.timeout(duration)`
         *   等待事件: `yield self.get_event('some_event_name')` 或 `yield some_simpy_event`
@@ -213,68 +214,77 @@
     class MyAgent(Agent, metaclass=MyAgentMeta):
         # ... __init__ ...
 
-        def live(self):
-            print(f"时间 {self.env.now}: {self.name} 开始生命周期。")
-            yield self.env.timeout(1) # 初始延迟
+        def _process_custom_logic(self):
+            """执行代理特定的逻辑"""
+            current_status = self.get_state('status', 'idle')
+            active_workflows = self._get_active_workflows() # 检查分配的目标
 
-            while True:
-                current_status = self.get_state('status', 'idle')
-                active_workflows = self._get_active_workflows() # 检查分配的目标
+            if active_workflows:
+                # 示例：优先处理工作流任务
+                workflow = active_workflows[0] # 简化：处理第一个活动工作流
+                print(f"时间 {self.env.now}: {self.name} 正在处理工作流 {workflow.id} (状态: {workflow.status_machine.state})")
+                # --- 在此处添加工作流驱动的逻辑 ---
+                # 例如，如果 workflow.status_machine.state == 'needs_movement':
+                #    target = workflow.get_details().get('target_location')
+                #    self.execute_task('MobilitySystem', 'Move', 'MoveToTask', properties={'target_position': target})
+                #    self.update_state('status', 'moving_for_workflow')
 
-                if active_workflows:
-                    # 示例：优先处理工作流任务
-                    workflow = active_workflows[0] # 简化：处理第一个活动工作流
-                    print(f"时间 {self.env.now}: {self.name} 正在处理工作流 {workflow.id} (状态: {workflow.status_machine.current_status})")
-                    # --- 在此处添加工作流驱动的逻辑 ---
-                    # 例如，如果 workflow.status_machine.current_status == 'needs_movement':
-                    #    target = workflow.get_details().get('target_location')
-                    #    self.execute_task('MobilitySystem', 'Move', 'MoveToTask', properties={'target_position': target})
-                    #    self.update_state('status', 'moving_for_workflow')
+            elif current_status == 'needs_action':
+                print(f"时间 {self.env.now}: {self.name} 决定执行一个动作。")
+                # 示例：使用 'MobilitySystem' 组件执行任务
+                move_task = self.execute_task(
+                    component_name='MobilitySystem',
+                    task_name='Move to Target',
+                    task_class='MoveToTask', # 使用字符串名称
+                    properties={'target_position': (10, 20, 5)},
+                    target_state={'position': (10, 20, 5)} # 任务的预期最终状态
+                )
 
-                    yield self.env.timeout(1) # 定期检查工作流状态
-
-                elif current_status == 'needs_action':
-                    print(f"时间 {self.env.now}: {self.name} 决定执行一个动作。")
-                    # 示例：使用 'MobilitySystem' 组件执行任务
-                    move_task = self.execute_task(
-                        component_name='MobilitySystem',
-                        task_name='Move to Target',
-                        task_class='MoveToTask', # 使用字符串名称
-                        properties={'target_position': (10, 20, 5)},
-                        target_state={'position': (10, 20, 5)} # 任务的预期最终状态
-                    )
-
-                    if move_task:
-                        print(f"时间 {self.env.now}: {self.name} 启动了移动任务 {move_task.id}。继续...")
-                        self.update_state('status', 'moving')
-                        # 通过事件或轮询 self.managed_tasks 等待任务完成
-                        # 示例：等待特定的 task_completed 事件
-                        task_completed_event = self.env.event_registry.get_event(self.id, 'task_completed')
-                        # 需要一种方法在回调或事件数据中过滤特定的任务 ID
-                        yield task_completed_event # 简化的等待 - 实际实现需要过滤
-                        print(f"时间 {self.env.now}: {self.name} 检测到任务完成。")
-                        self.update_state('status', 'idle') # 任务完成后重置状态
-                    else:
-                        print(f"时间 {self.env.now}: {self.name} 启动移动任务失败。")
-                        self.update_state('status', 'error')
-                        yield self.env.timeout(5)
-
-                elif current_status == 'idle':
-                    print(f"时间 {self.env.now}: {self.name} 处于空闲状态。等待中。")
-                    # 等待外部触发器或超时
-                    event_trigger = self.get_event('start_mission') # 示例自定义事件
-                    yield event_trigger | self.env.timeout(10)
-
-                    if event_trigger.triggered:
-                        print(f"时间 {self.env.now}: {self.name} 收到 start_mission 事件！")
-                        self.update_state('status', 'needs_action')
-                    else:
-                        print(f"时间 {self.env.now}: {self.name} 等待超时。")
-                        # 决定超时后做什么
-
+                if move_task:
+                    print(f"时间 {self.env.now}: {self.name} 启动了移动任务 {move_task.id}。")
+                    self.update_state('status', 'moving')
                 else:
-                     # 处理其他状态 ('moving', 'error', 'moving_for_workflow' 等)
-                     yield self.env.timeout(1) # 通用等待
+                    print(f"时间 {self.env.now}: {self.name} 启动移动任务失败。")
+                    self.update_state('status', 'error')
+
+            elif current_status == 'idle':
+                print(f"时间 {self.env.now}: {self.name} 处于空闲状态。")
+                # 可以在这里决定是否需要执行某些操作
+
+        def register_event_listeners(self):
+            """注册事件监听器"""
+            # 获取基类注册的事件监听器
+            listeners = super().register_event_listeners()
+
+            # 添加自定义事件监听器
+            listeners.extend([
+                {
+                    'source_id': '*',  # 监听所有源
+                    'event_name': 'start_mission',  # 监听特定事件
+                    'callback': self._on_start_mission  # 回调函数
+                },
+                {
+                    'source_id': self.id,
+                    'event_name': 'task_completed',
+                    'callback': self._on_task_completed
+                }
+            ])
+
+            return listeners
+
+        def _on_start_mission(self, event_data):
+            """响应开始任务事件"""
+            print(f"时间 {self.env.now}: {self.name} 收到 start_mission 事件！")
+            self.update_state('status', 'needs_action')
+
+        def _on_task_completed(self, event_data):
+            """响应任务完成事件"""
+            task_id = event_data.get('task_id')
+            print(f"时间 {self.env.now}: {self.name} 检测到任务 {task_id} 完成。")
+
+            # 如果当前状态是 'moving'，则重置为 'idle'
+            if self.get_state('status') == 'moving':
+                self.update_state('status', 'idle')
     ```
 
 ### 4. LLM 集成 (示例: `DroneAgent`)
@@ -289,7 +299,7 @@
     *   所需的输出格式（例如，任务规范的 JSON 数组）。
 3.  **LLM 调用:** 该方法调用 LLM API（例如 `self.llm_client.chat.completions.create(...)`）。
 4.  **响应解析:** 一个方法从 LLM 的响应中提取并验证结构化的任务信息（例如 JSON）。它确保任务具有必需的字段（`component_name`, `task_name`, `task_class`, `properties` 等）。
-5.  **集成到 `live()`:** `live()` 方法调用 LLM 分析函数。如果 LLM 提供有效的任务，Agent 将继续使用 `self.execute_task` 执行它们。如果 LLM 不可用或失败，Agent 可能会回退到更简单的预编程逻辑。
+5.  **集成到 `_process_custom_logic()`:** `_process_custom_logic()` 方法调用 LLM 分析函数。如果 LLM 提供有效的任务，Agent 将继续使用 `self.execute_task` 执行它们。如果 LLM 不可用或失败，Agent 可能会回退到更简单的预编程逻辑。
 
 这种模式允许 Agent 利用复杂的规划能力，同时保持核心的模拟结构。
 

@@ -1,6 +1,7 @@
 # --- Databases ---
 # Ignore all files ending with .db anywhere in the project
 *.db
+paper_code/
 
 # --- Compressed Archives ---
 # Ignore all tar.gz files anywhere in the project
@@ -28,6 +29,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+latex/
 
 # --- Virtual Environment ---
 venv/

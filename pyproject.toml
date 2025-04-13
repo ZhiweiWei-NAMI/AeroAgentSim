@@ -22,6 +22,7 @@ dependencies = [
     "openai",
     "tqdm",
     "fastapi",
+    "tabulate",
     "pydantic",
     "uvicorn[standard]" # 添加 uvicorn, [standard] 包含性能优化库
 ]

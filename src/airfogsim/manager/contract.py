@@ -623,5 +623,5 @@ class ContractManager:
                     workflow_id = self.contract_workflows[contract_id]
                     if hasattr(self.env, 'workflow_manager'):
                         workflow = self.env.workflow_manager.get_workflow(workflow_id)
-                        if workflow and workflow.status == WorkflowStatus.RUNNING:
+                        if workflow and workflow.is_active():
                             self.env.workflow_manager.cancel_workflow(workflow_id, reason="合约超时")

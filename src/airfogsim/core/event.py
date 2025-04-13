@@ -78,22 +78,22 @@ class EventRegistry:
         if event_name not in self.events[source_id]:
             # print(f"DEBUG Registry: Auto-registering {source_id}/{event_name} on get")
             return self.register_event(source_id, event_name)
-        
+
         # 检查事件是否已被触发，如果是则创建新事件
         event = self.events[source_id][event_name]
         if event.triggered:
             # print(f"DEBUG Registry: Event {source_id}/{event_name} already triggered, creating new one")
             return self.register_event(source_id, event_name)
-        
+
         return event
 
     def subscribe(self, source_id, event_name, listener_id, callback=None):
         if not callable(callback):
             raise ValueError("Callback must be callable")
-        
+
         # 处理通配符订阅
-        is_wildcard = source_id == "*"
-        
+        is_wildcard = source_id == "*" or event_name == "*"
+
         subscription_key = (source_id, event_name)
         # print(f"DEBUG Registry: Subscribing '{listener_id}' to {source_id}/{event_name}")
 
@@ -109,14 +109,14 @@ class EventRegistry:
         # 对于非通配符订阅，确保事件存在
         if not is_wildcard:
             self.register_event(source_id, event_name)
-            
+
         return subscription # Return the subscription object itself
 
     def unsubscribe(self, source_id, event_name, listener_id):
         subscription_key = (source_id, event_name)
         # print(f"DEBUG Registry: Unsubscribing '{listener_id}' from {source_id}/{event_name}")
         removed = False
-        
+
         # 检查常规订阅
         if subscription_key in self.subscriptions:
             if listener_id in self.subscriptions[subscription_key]:
@@ -125,9 +125,9 @@ class EventRegistry:
                 if not self.subscriptions[subscription_key]:
                     del self.subscriptions[subscription_key]
                 removed = True
-        
+
         # 检查通配符订阅
-        if source_id == "*" and subscription_key in self.wildcard_subscriptions:
+        if (source_id == "*" or event_name == "*") and subscription_key in self.wildcard_subscriptions:
             if listener_id in self.wildcard_subscriptions[subscription_key]:
                 del self.wildcard_subscriptions[subscription_key][listener_id]
                 # Clean up dict if empty
@@ -164,10 +164,10 @@ class EventRegistry:
     def trigger_event(self, source_id, event_name, event_value=None):
         # 获取当前事件
         current_event = self.get_event(source_id, event_name)
-        
+
         # 通知所有匹配的订阅者
         notified_count = 0
-        
+
         # 如果有logger，记录事件，但是不记录visual_update事件
         if self.logger and not (self._is_env(source_id) and event_name == "visual_update"):
             try:
@@ -183,27 +183,45 @@ class EventRegistry:
                 self.logger(event_data)
             except Exception as e:
                 print(f"Error logging event {source_id}/{event_name}: {str(e)}")
-        
+
         # 1. 通知特定源订阅者
         subscription_key = (source_id, event_name)
         if subscription_key in self.subscriptions:
             notified_count += self._notify_subscribers(self.subscriptions[subscription_key], event_value)
-        
+
         # 2. 通知通配符订阅者
+        # 先通知特定事件的通配符订阅者
         wildcard_key = ("*", event_name)
         if wildcard_key in self.wildcard_subscriptions:
             notified_count += self._notify_subscribers(self.wildcard_subscriptions[wildcard_key], event_value)
 
+        # 通知特定源的所有事件的订阅者
+        source_wildcard_key = (source_id, "*")
+        if source_wildcard_key in self.wildcard_subscriptions:
+            # 构造包含事件名称的事件值
+            enhanced_event_value = event_value.copy() if isinstance(event_value, dict) else {}
+            enhanced_event_value['event_name'] = event_name
+            notified_count += self._notify_subscribers(self.wildcard_subscriptions[source_wildcard_key], enhanced_event_value)
+
+        # 再通知全通配符订阅者
+        all_wildcard_key = ("*", "*")
+        if all_wildcard_key in self.wildcard_subscriptions:
+            # 构造包含源和事件名称的事件值
+            enhanced_event_value = event_value.copy() if isinstance(event_value, dict) else {}
+            enhanced_event_value['source_id'] = source_id
+            enhanced_event_value['event_name'] = event_name
+            notified_count += self._notify_subscribers(self.wildcard_subscriptions[all_wildcard_key], enhanced_event_value)
+
         # 让当前事件成功完成
         if not current_event.triggered:
             current_event.succeed(event_value)
-            
+
         # 在触发后立即创建一个新的事件替换旧事件
         self.events[source_id][event_name] = self.env.event()
-        
+
         # print(f"DEBUG Registry: Notified {notified_count} listeners for {source_id}/{event_name}")
         return notified_count > 0
-    
+
     def _notify_subscribers(self, subscribers_dict, event_value):
         """通知给定的订阅者集合"""
         notified_count = 0

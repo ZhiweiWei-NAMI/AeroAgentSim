@@ -21,13 +21,13 @@ AirFogSim提供了一个全面的仿真环境，用于：
 
 ```bibtex
 @misc{wei2024airfogsimlightweightmodularsimulator,
-      title={AirFogSim: A Light-Weight and Modular Simulator for UAV-Integrated Vehicular Fog Computing}, 
+      title={AirFogSim: A Light-Weight and Modular Simulator for UAV-Integrated Vehicular Fog Computing},
       author={Zhiwei Wei and Chenran Huang and Bing Li and Yiting Zhao and Xiang Cheng and Liuqing Yang and Rongqing Zhang},
       year={2024},
       eprint={2409.02518},
       archivePrefix={arXiv},
       primaryClass={cs.NI},
-      url={https://arxiv.org/abs/2409.02518}, 
+      url={https://arxiv.org/abs/2409.02518},
 }
 ```
 
@@ -234,17 +234,24 @@ from airfogsim.core.environment import Environment
 from airfogsim.agent import DroneAgent
 from airfogsim.component import MoveToComponent, ChargingComponent
 from airfogsim.workflow.inspection import create_inspection_workflow
+from airfogsim.helper import check_all_classes, find_compatible_components
 
 # 创建环境
 env = Environment()
 
+# 检查系统中的类
+check_all_classes(env)
+
 # 创建无人机代理
 drone = env.create_agent(
-    DroneAgent, 
-    "drone1", 
+    DroneAgent,
+    "drone1",
     initial_position=(10, 10, 0),
     initial_battery=100
 )
+
+# 查找合适的组件
+find_compatible_components(env, drone, ['speed'])
 
 # 添加组件
 move_component = MoveToComponent(env, drone)
@@ -268,6 +275,19 @@ workflow.start()
 
 # 运行仿真
 env.run(until=1000)
+```
+
+### 使用类检查工具
+
+```bash
+# 显示所有类
+python -m airfogsim.helper.class_finder --all
+
+# 查找支持特定状态的代理类
+python -m airfogsim.helper.class_finder --find-agent position,battery_level
+
+# 查找产生特定指标的组件类
+python -m airfogsim.helper.class_finder --find-component speed,processing_power
 ```
 
 ### 启动可视化界面
@@ -340,6 +360,7 @@ airfogsim-project/
 │       ├── docs/             # 文档
 │       ├── event/            # 事件处理
 │       ├── examples/         # 示例代码
+│       ├── helper/           # 开发辅助工具
 │       ├── manager/          # 各类管理器
 │       ├── resource/         # 资源实现
 │       ├── task/             # 任务实现
@@ -358,6 +379,7 @@ airfogsim-project/
 - [任务指南](src/airfogsim/docs/cn/task_guide_cn.md)
 - [触发器指南](src/airfogsim/docs/cn/trigger_guide_cn.md)
 - [工作流指南](src/airfogsim/docs/cn/workflow_cn.md)
+- [开发辅助工具](src/airfogsim/helper/README.md)
 
 ## 🤝 贡献指南
 
@@ -368,13 +390,26 @@ airfogsim-project/
 - 完善文档和示例
 - 分享使用案例和应用场景
 
+### 开发新类的最佳实践
+
+在开发新的代理、组件、任务或工作流类之前，建议先使用helper模块的类检查工具查看系统中是否已有符合需求的类，避免重复创建。
+
+```bash
+# 检查系统中的所有类
+python -m airfogsim.helper.class_finder --all
+
+# 查找支持特定状态的代理类
+python -m airfogsim.helper.class_finder --find-agent position,battery_level
+```
+
 请遵循以下步骤：
 
 1. Fork仓库
 2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add some amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建Pull Request
+3. 使用helper模块检查现有类
+4. 提交更改 (`git commit -m 'Add some amazing feature'`)
+5. 推送到分支 (`git push origin feature/amazing-feature`)
+6. 创建Pull Request
 
 ## 📄 许可证
 

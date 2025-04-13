@@ -12,7 +12,7 @@ AirFogSim任务(Task)核心模块
 """
 
 import uuid
-from airfogsim.core.enums import TaskStatus
+from airfogsim.core.enums import TaskStatus, TaskPriority
 from typing import Dict, Optional, List, Type, Any
 import simpy
 from abc import ABC, abstractmethod
@@ -36,6 +36,11 @@ class Task:
         self.target_state = target_state or {}
         self.properties = properties or {}
 
+        # 任务优先级和抢占属性
+        priority_str = self.properties.get('priority', 'normal')
+        self.priority = TaskPriority.from_string(priority_str) if hasattr(TaskPriority, 'from_string') else TaskPriority.NORMAL
+        self.preemptive = self.properties.get('preemptive', False)
+        self.preemption_count = 0  # 记录任务被抢占的次数
 
         self.status: TaskStatus = TaskStatus.PENDING
         self.start_time: Optional[float] = None
@@ -54,7 +59,7 @@ class Task:
         # 判断self的class的PRODUCE_STATES是否为空
         if not self.PRODUCED_STATES or not all(isinstance(state, str) for state in self.PRODUCED_STATES):
             raise ValueError("Task subclass must define PRODUCED_STATES as a list of state names.")
-        
+
         templates = agent.get_state_templates()
         template_keys = list(templates.keys())
         # 确认self的PRODUCED_STATES都在agent的state_templates中
@@ -110,15 +115,15 @@ class Task:
                         self.current_metrics.update(new_metrics)
                     else:
                         print(f"时间 {current_time}: Task {self.id} received invalid metrics: {new_metrics}")
-                    # Re-fetch event for next wait  
+                    # Re-fetch event for next wait
                     metric_change_event = self.event_registry.get_event(self.agent_id, f'{self.component_name}.metric_changed')
 
                 # Update internal state/progress based on elapsed time and current metrics
                 self._update_task_state(self.current_metrics)
                 self.last_update_time = current_time
 
-                # Trigger component state change (visuals or internal logic)                
-                self.event_registry.trigger_event(self.id, 'state_changed', 
+                # Trigger component state change (visuals or internal logic)
+                self.event_registry.trigger_event(self.id, 'state_changed',
                                                   self._get_current_task_state_repr())
                 self.agent.update_states(self._get_task_specific_state_repr())
 
@@ -174,7 +179,44 @@ class Task:
     def _get_task_specific_state_repr(self) -> Dict:
         """Return a dictionary with task-specific state details. Subclasses override."""
         raise NotImplementedError("Subclasses must implement this method.")
-    
+
+    # --- Priority and Preemption Methods ---
+    def can_preempt(self, other_task) -> bool:
+        """
+        检查当前任务是否可以抢占另一个任务
+
+        Args:
+            other_task: 另一个任务
+
+        Returns:
+            bool: 如果当前任务可以抢占另一个任务，则返回True
+        """
+        # 如果当前任务不可抢占，则返回False
+        if not self.preemptive:
+            return False
+
+        # 如果当前任务优先级高于另一个任务，则可以抢占
+        return self.priority.value > other_task.priority.value
+
+    def on_preempted(self):
+        """当任务被抢占时调用"""
+        self.preemption_count += 1
+        print(f"时间 {self.env.now}: 任务 {self.id} ({self.name}) 被抢占，已被抢占 {self.preemption_count} 次")
+
+    def get_priority_info(self) -> Dict:
+        """
+        获取任务优先级信息
+
+        Returns:
+            Dict: 包含优先级和抢占信息的字典
+        """
+        return {
+            'priority': self.priority.name,
+            'priority_value': self.priority.value,
+            'preemptive': self.preemptive,
+            'preemption_count': self.preemption_count
+        }
+
     # --- Possessing Object Management Methods ---
     def _possessing_object_on_complete(self):
         """
@@ -183,7 +225,7 @@ class Task:
         默认实现不执行任何操作。
         """
         pass
-    
+
     def _possessing_object_on_fail(self):
         """
         处理任务失败时对代理拥有对象的操作。
@@ -191,7 +233,7 @@ class Task:
         默认实现不执行任何操作。
         """
         pass
-    
+
     def _possessing_object_on_cancel(self):
         """
         处理任务取消时对代理拥有对象的操作。
@@ -208,12 +250,12 @@ class Task:
         self.progress = 1.0
         self.result = {"status": "completed", "time": self.end_time}
         # print(f"时间 {timestamp}: Task {self.id} ({self.name}) completed.")
-        
+
         # 调用对象操作方法
         self._possessing_object_on_complete()
-        
+
         self._update_task_state(self.current_metrics) # Ensure final state update
-        
+
     def fail(self, reason: str):
         if self.status == TaskStatus.FAILED: return
         self.status = TaskStatus.FAILED
@@ -221,7 +263,7 @@ class Task:
         self.failure_reason = reason
         self.result = {"status": "failed", "reason": reason, "time": self.end_time}
         # print(f"时间 {timestamp}: Task {self.id} ({self.name}) failed: {reason}")
-        
+
         # 调用对象操作方法
         self._possessing_object_on_fail()
 
@@ -232,6 +274,6 @@ class Task:
         self.failure_reason = reason # Use failure_reason for cancel reason too?
         self.result = {"status": "canceled", "reason": reason, "time": self.end_time}
         # print(f"时间 {timestamp}: Task {self.id} ({self.name}) canceled: {reason}")
-        
+
         # 调用对象操作方法
         self._possessing_object_on_cancel()

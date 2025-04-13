@@ -19,6 +19,7 @@
 - **run_multi_task_contract.py**: 演示如何创建和执行包含多个任务的合约工作流。
 - **run_drone_inspection.py**: 展示无人机巡检路径规划和自动充电工作流。
 - **run_logistics_simulation.py**: 物流工作流示例，模拟快递站和无人机配送过程。
+- **priority_task_demo.py**: 演示任务优先级和抢占机制，展示不同优先级任务的调度和抢占过程。
 
 ## 交通仿真集成
 
@@ -58,10 +59,10 @@ class TestDroneAgent(unittest.TestCase):
     def setUp(self):
         self.env = Environment()
         self.drone = DroneAgent(self.env, "test_drone", {"position": (0, 0, 0)})
-        
+
     def test_drone_movement(self):
         # 测试代码...
         self.assertEqual(self.drone.get_state("position"), (10, 10, 10))
-        
+
 if __name__ == "__main__":
     unittest.main()

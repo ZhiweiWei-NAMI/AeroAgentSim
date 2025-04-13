@@ -12,7 +12,7 @@ The `Agent` class represents an active, decision-making entity within the simula
 4.  **Reacting to Events:** Responding to changes in the environment or their own internal state via a publish-subscribe event system.
 5.  **Managing Possessed Objects:** Holding references to other simulation objects (like charging stations, landing spots) and accessing their states.
 6.  **Interacting with Contracts:** (Optional) Creating, accepting, and managing task offloading contracts via the `ContractManager`.
-7.  **Defining Behavior:** Implementing the core decision-making logic within the `live()` method.
+7.  **Defining Behavior:** Implementing the core decision-making logic by overriding hook methods (like `_process_custom_logic`) rather than directly overriding the `live()` method.
 
 The base `Agent` class provides the foundational structure and mechanisms for these capabilities. Subclasses define specific agent types (like `DroneAgent`, `GroundStationAgent`, etc.) by adding specialized states, components, possessed objects, and behavior logic.
 
@@ -196,10 +196,11 @@ Follow these steps to create your own agent type:
             self.update_state('status', 'idle')
     ```
 
-3.  **Implement `live()`:**
-    *   This method **must** be implemented by subclasses.
-    *   It defines the agent's core behavior loop as a SimPy process (it must contain at least one `yield`).
-    *   Inside `live()`, the agent decides what to do based on its current `self.state`, incoming events, assigned workflows (`self._get_active_workflows()`), possessed object states (`self.get_state('object.state')`), or other internal logic.
+3.  **Implement Hook Methods:**
+    *   Subclasses should override hook methods (like `_process_custom_logic`) rather than directly overriding the `live()` method.
+    *   The `live()` method is already implemented in the base class and handles the common logic for event listening and task scheduling.
+    *   Inside `_process_custom_logic()`, the agent decides what to do based on its current `self.state`, assigned workflows (`self._get_active_workflows()`), possessed object states (`self.get_state('object.state')`), or other internal logic.
+    *   Other overridable hook methods include `_before_event_wait()` and `_check_agent_status()`.
     *   Common patterns:
         *   Wait for a duration: `yield self.env.timeout(duration)`
         *   Wait for an event: `yield self.get_event('some_event_name')` or `yield some_simpy_event`
@@ -213,68 +214,77 @@ Follow these steps to create your own agent type:
     class MyAgent(Agent, metaclass=MyAgentMeta):
         # ... __init__ ...
 
-        def live(self):
-            print(f"Time {self.env.now}: {self.name} starting life.")
-            yield self.env.timeout(1) # Initial delay
+        def _process_custom_logic(self):
+            """Execute agent-specific logic"""
+            current_status = self.get_state('status', 'idle')
+            active_workflows = self._get_active_workflows() # Check for assigned goals
 
-            while True:
-                current_status = self.get_state('status', 'idle')
-                active_workflows = self._get_active_workflows() # Check for assigned goals
+            if active_workflows:
+                # Example: Prioritize workflow tasks
+                workflow = active_workflows[0] # Simplistic: handle first active workflow
+                print(f"Time {self.env.now}: {self.name} working on workflow {workflow.id} (state: {workflow.status_machine.state})")
+                # --- Add workflow-driven logic here ---
+                # e.g., if workflow.status_machine.state == 'needs_movement':
+                #    target = workflow.get_details().get('target_location')
+                #    self.execute_task('MobilitySystem', 'Move', 'MoveToTask', properties={'target_position': target})
+                #    self.update_state('status', 'moving_for_workflow')
 
-                if active_workflows:
-                    # Example: Prioritize workflow tasks
-                    workflow = active_workflows[0] # Simplistic: handle first active workflow
-                    print(f"Time {self.env.now}: {self.name} working on workflow {workflow.id} (state: {workflow.status_machine.current_status})")
-                    # --- Add workflow-driven logic here ---
-                    # e.g., if workflow.status_machine.current_status == 'needs_movement':
-                    #    target = workflow.get_details().get('target_location')
-                    #    self.execute_task('MobilitySystem', 'Move', 'MoveToTask', properties={'target_position': target})
-                    #    self.update_state('status', 'moving_for_workflow')
+            elif current_status == 'needs_action':
+                print(f"Time {self.env.now}: {self.name} deciding to perform an action.")
+                # Example: Execute a task using the 'MobilitySystem' component
+                move_task = self.execute_task(
+                    component_name='MobilitySystem',
+                    task_name='Move to Target',
+                    task_class='MoveToTask', # Use string name
+                    properties={'target_position': (10, 20, 5)},
+                    target_state={'position': (10, 20, 5)} # Expected final state for task
+                )
 
-                    yield self.env.timeout(1) # Check workflow status periodically
-
-                elif current_status == 'needs_action':
-                    print(f"Time {self.env.now}: {self.name} deciding to perform an action.")
-                    # Example: Execute a task using the 'MobilitySystem' component
-                    move_task = self.execute_task(
-                        component_name='MobilitySystem',
-                        task_name='Move to Target',
-                        task_class='MoveToTask', # Use string name
-                        properties={'target_position': (10, 20, 5)},
-                        target_state={'position': (10, 20, 5)} # Expected final state for task
-                    )
-
-                    if move_task:
-                        print(f"Time {self.env.now}: {self.name} initiated move task {move_task.id}. Continuing...")
-                        self.update_state('status', 'moving')
-                        # Wait for task completion via event or polling self.managed_tasks
-                        # Example: Wait for the specific task_completed event
-                        task_completed_event = self.env.event_registry.get_event(self.id, 'task_completed')
-                        # Need a way to filter for the specific task ID in the callback or event data
-                        yield task_completed_event # Simplified wait - real implementation needs filtering
-                        print(f"Time {self.env.now}: {self.name} detected task finished.")
-                        self.update_state('status', 'idle') # Reset status after task
-                    else:
-                        print(f"Time {self.env.now}: {self.name} failed to initiate move task.")
-                        self.update_state('status', 'error')
-                        yield self.env.timeout(5)
-
-                elif current_status == 'idle':
-                    print(f"Time {self.env.now}: {self.name} is idle. Waiting for something.")
-                    # Wait for an external trigger or a timeout
-                    event_trigger = self.get_event('start_mission') # Example custom event
-                    yield event_trigger | self.env.timeout(10)
-
-                    if event_trigger.triggered:
-                        print(f"Time {self.env.now}: {self.name} received start_mission event!")
-                        self.update_state('status', 'needs_action')
-                    else:
-                        print(f"Time {self.env.now}: {self.name} timed out waiting.")
-                        # Decide what to do on timeout
-
+                if move_task:
+                    print(f"Time {self.env.now}: {self.name} initiated move task {move_task.id}.")
+                    self.update_state('status', 'moving')
                 else:
-                     # Handle other statuses ('moving', 'error', 'moving_for_workflow', etc.)
-                     yield self.env.timeout(1) # Generic wait
+                    print(f"Time {self.env.now}: {self.name} failed to initiate move task.")
+                    self.update_state('status', 'error')
+
+            elif current_status == 'idle':
+                print(f"Time {self.env.now}: {self.name} is idle.")
+                # Can decide here if any actions need to be taken
+
+        def register_event_listeners(self):
+            """Register event listeners"""
+            # Get listeners registered by the base class
+            listeners = super().register_event_listeners()
+
+            # Add custom event listeners
+            listeners.extend([
+                {
+                    'source_id': '*',  # Listen to all sources
+                    'event_name': 'start_mission',  # Listen for specific event
+                    'callback': self._on_start_mission  # Callback function
+                },
+                {
+                    'source_id': self.id,
+                    'event_name': 'task_completed',
+                    'callback': self._on_task_completed
+                }
+            ])
+
+            return listeners
+
+        def _on_start_mission(self, event_data):
+            """Respond to start mission event"""
+            print(f"Time {self.env.now}: {self.name} received start_mission event!")
+            self.update_state('status', 'needs_action')
+
+        def _on_task_completed(self, event_data):
+            """Respond to task completion event"""
+            task_id = event_data.get('task_id')
+            print(f"Time {self.env.now}: {self.name} detected task {task_id} finished.")
+
+            # If current status is 'moving', reset to 'idle'
+            if self.get_state('status') == 'moving':
+                self.update_state('status', 'idle')
     ```
 
 ### 4. LLM Integration (Example: `DroneAgent`)
@@ -289,7 +299,7 @@ The `Agent` class itself is agnostic to Large Language Models (LLMs), but subcla
     *   The desired output format (e.g., JSON array of task specifications).
 3.  **LLM Call:** The method calls the LLM API (e.g., `self.llm_client.chat.completions.create(...)`).
 4.  **Response Parsing:** A method extracts and validates the structured task information (e.g., JSON) from the LLM's response. It ensures the tasks have the required fields (`component_name`, `task_name`, `task_class`, `properties`, etc.).
-5.  **Integration into `live()`:** The `live()` method calls the LLM analysis function. If the LLM provides valid tasks, the agent proceeds to execute them using `self.execute_task`. If the LLM is unavailable or fails, the agent might fall back to simpler, pre-programmed logic.
+5.  **Integration into `_process_custom_logic()`:** The `_process_custom_logic()` method calls the LLM analysis function. If the LLM provides valid tasks, the agent proceeds to execute them using `self.execute_task`. If the LLM is unavailable or fails, the agent might fall back to simpler, pre-programmed logic.
 
 This pattern allows agents to leverage sophisticated planning capabilities while maintaining a core simulation structure.
 
@@ -298,12 +308,12 @@ This pattern allows agents to leverage sophisticated planning capabilities while
 *   **Inherit from `Agent`:** It provides the core structure.
 *   **Define States:** Use `StateTemplate` via a metaclass or decorators for clarity and validation. Initialize all required states in `__init__`.
 *   **Implement `__init__`:** Call `super().__init__`, initialize states (`initialize_states`), add components (`add_component`), and potentially possessed objects (`add_possessing_object`).
-*   **Implement `live()`:** This is the heart of your agent's behavior. Use `yield` for time passage or event waiting. Structure logic based on state, events, and workflows.
+*   **Implement Hook Methods:** Override the `_process_custom_logic()` method to implement agent-specific logic rather than overriding the `live()` method. Other overridable hook methods include `_before_event_wait()` and `_check_agent_status()`.
 *   **Use `execute_task`:** Initiate actions via components using the string name of the `task_class`. Remember it's non-blocking. Handle the returned `Task` object or `None`.
 *   **Leverage Events:** Use `trigger_event` and `subscribe` for communication and reaction. The `task_completed` event is crucial for reacting to completed actions initiated by the agent. Subscribe to component or possessed object events as needed.
 *   **Components do the Work:** Agents decide *what* and *when*, Components define *how*.
 *   **Possessed Objects:** Use `add_possessing_object` to link agents to resources/locations and access their state via composite keys (`get_state`).
-*   **Keep `live()` Manageable:** Break down complex logic into helper methods. Handle different agent statuses and workflow states clearly.
-*   **Error Handling:** Check return values of `execute_task`. Handle potential exceptions in `live()` and callbacks.
+*   **Keep Code Manageable:** Break down complex logic into helper methods. Handle different agent statuses and workflow states clearly.
+*   **Error Handling:** Check return values of `execute_task`. Handle potential exceptions in `_process_custom_logic()` and callbacks.
 
 By following these guidelines, you can effectively create diverse and capable agents within the AirFogSim framework. Refer to the `Agent` source code and specific agent examples (like `DroneAgent`) for concrete implementation details.

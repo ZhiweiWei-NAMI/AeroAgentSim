@@ -27,11 +27,11 @@ from abc import abstractmethod, ABC
 
 class WorkflowPropertyTemplate:
     """工作流属性模板定义"""
-    
+
     def __init__(self, key, value_type=None, required=False, validator=None, description=None):
         """
         定义工作流属性的模板
-        
+
         参数:
             key: 属性键名
             value_type: 值的类型(如int, float, str等)，None表示任意类型
@@ -44,13 +44,13 @@ class WorkflowPropertyTemplate:
         self.required = required
         self.validator = validator
         self.description = description
-    
+
     def validate(self, value):
         """验证值是否符合模板要求"""
         # 类型检查
         if self.value_type is not None and not isinstance(value, self.value_type):
             return False, f"值类型应为 {self.value_type.__name__}，而非 {type(value).__name__}"
-        
+
         # 使用自定义验证器
         if self.validator is not None:
             try:
@@ -58,56 +58,56 @@ class WorkflowPropertyTemplate:
                     return False, f"值 '{value}' 未通过自定义验证"
             except Exception as e:
                 return False, f"验证时发生错误: {str(e)}"
-        
+
         return True, None
 
 class WorkflowMeta(type):
     """Workflow元类，用于处理属性模板和状态转换任务继承"""
-    
+
     def __new__(mcs, name, bases, attrs):
         # 确保每个类都有自己独立的模板字典和状态转换任务字典
         # 不要直接从父类继承引用
         attrs['_own_property_templates'] = {}
         attrs['_own_transition_tasks'] = {}
-        
+
         # 创建类
         cls = super().__new__(mcs, name, bases, attrs)
-        
+
         # 初始化聚合的模板字典和状态转换任务字典
         cls._all_property_templates = {}
         cls._all_transition_tasks = {}
-        
+
         # 收集所有父类的模板和状态转换任务
         for base in bases:
             if hasattr(base, '_all_property_templates'):
                 cls._all_property_templates.update(base._all_property_templates)
             if hasattr(base, '_all_transition_tasks'):
                 cls._all_transition_tasks.update(base._all_transition_tasks)
-        
+
         return cls
-    
+
     @classmethod
     def register_template(mcs, cls, key, value_type=None, required=False, validator=None, description=None):
         """注册属性模板到指定类"""
-        
+
         # 确保类有自己的模板存储
         if not hasattr(cls, '_own_property_templates'):
             cls._own_property_templates = {}
-        
+
         # 创建模板
         template = WorkflowPropertyTemplate(key, value_type, required, validator, description)
-        
+
         # 存储到当前类自己的模板中
         cls._own_property_templates[key] = template
-        
+
         # 同时更新聚合的模板集合
         if not hasattr(cls, '_all_property_templates'):
             cls._all_property_templates = {}
-            
+
         cls._all_property_templates[key] = template
-        
+
         return template
-        
+
 
 class WorkflowStatusMachine:
     """Drives state transitions based on external events and triggers."""
@@ -122,7 +122,7 @@ class WorkflowStatusMachine:
         self.wildcard_transitions: List[Tuple[Trigger, str, Optional[str]]] = []
         self.active_triggers: Dict[str, Trigger] = {}  # trigger_id -> Trigger
         self._monitor_process_active = False
-        
+
     def add_transition(self, state, next_status: str,
                        agent_state: Optional[Dict] = None,
                        time_trigger: Optional[Dict] = None,
@@ -132,7 +132,7 @@ class WorkflowStatusMachine:
                        description: Optional[str] = None):
         """
         添加状态转换，支持多种触发方式
-        
+
         Args:
             state: 起始状态(字符串或状态列表)
             next_status: 目标状态
@@ -153,10 +153,10 @@ class WorkflowStatusMachine:
             state_key = agent_state.get('state_key')
             operator = agent_state.get('operator', TriggerOperator.EQUALS)
             target_value = agent_state.get('target_value')
-            
+
             if not agent_id or not state_key:
                 raise ValueError("agent_state 必须包含 agent_id 和 state_key")
-                
+
             t = StateTrigger(
                 self.env,
                 agent_id=agent_id,
@@ -170,7 +170,7 @@ class WorkflowStatusMachine:
             trigger_time = time_trigger.get('trigger_time')
             interval = time_trigger.get('interval')
             cron_expr = time_trigger.get('cron_expr')
-            
+
             t = TimeTrigger(
                 self.env,
                 trigger_time=trigger_time,
@@ -185,10 +185,10 @@ class WorkflowStatusMachine:
             value_key = event_trigger.get('value_key')
             operator = event_trigger.get('operator')
             target_value = event_trigger.get('target_value')
-            
+
             if not source_id or not event_name:
                 raise ValueError("event_trigger 必须包含 source_id 和 event_name")
-                
+
             t = EventTrigger(
                 self.env,
                 source_id=source_id,
@@ -200,7 +200,7 @@ class WorkflowStatusMachine:
             )
         else:
             raise ValueError("必须提供至少一种触发方式")
-            
+
         # 设置回调
         if callback:
             t.add_callback(callback)
@@ -213,7 +213,7 @@ class WorkflowStatusMachine:
         elif isinstance(state, (list, tuple)):
             for s in state:
                 self.state_transitions[s].append(transition)
-                
+
         return self
 
     def set_start_transition(self, start_status: str):
@@ -239,7 +239,7 @@ class WorkflowStatusMachine:
 
     def _monitor_events(self):
         try:
-            while not self.is_in_terminal_status():                    
+            while not self.is_in_terminal_status():
                 transitions = self._get_current_transitions()
 
                 if not transitions:
@@ -250,7 +250,7 @@ class WorkflowStatusMachine:
 
                 # 停用所有活动的触发器
                 self._deactivate_all_triggers()
-                
+
                 # 激活当前状态的触发器
                 for transition in transitions:
                     # 解包转换元组，可能是二元组或三元组
@@ -262,7 +262,7 @@ class WorkflowStatusMachine:
                     else:
                         raise ValueError("Invalid transition format")
                         continue
-                        
+
                     trigger_id = trigger.id
                     if trigger_id not in self.active_triggers:
                         # 设置触发器回调
@@ -273,7 +273,7 @@ class WorkflowStatusMachine:
                         trigger.activate()
                         # 记录活动的触发器
                         self.active_triggers[trigger_id] = trigger
-                
+
                 if not self.active_triggers:
                     if not self.is_in_terminal_status():
                         print(f"时间 {self.env.now}: 工作流 {self.workflow.id} 状态机在状态 {self.current_status} 没有可激活的触发器，标记为失败。")
@@ -307,14 +307,14 @@ class WorkflowStatusMachine:
         # 检查当前状态是否仍然有效
         if self.is_in_terminal_status():
             return False
-            
+
         # 查找该触发器对应的转换描述
         description = None
         for t, ns, desc in self._get_current_transitions():
             if t.id == trigger.id and ns == next_status:
                 description = desc
                 break
-            
+
         # 执行状态变更
         details = {
             'trigger_id': trigger.id,
@@ -324,11 +324,11 @@ class WorkflowStatusMachine:
             'description': description
         }
         changed = self._change_status(next_status, details)
-        
+
         # 如果状态已变更，中断监控进程以处理新状态
         if changed and self.process and self.process.is_alive:
             self.process.interrupt({'reason': 'State changed by trigger', 'next_status': next_status})
-            
+
         return changed
 
     def _deactivate_all_triggers(self):
@@ -366,35 +366,35 @@ class WorkflowStatusMachine:
     def state(self):
         """获取当前状态"""
         return self.current_status
-        
+
 
 
 class Workflow(metaclass=WorkflowMeta):
     """Represents a process/goal tracked by a state machine based on Agent state."""
     from .agent import Agent
-    
+
     @classmethod
     def register_property_template(cls, key, **kwargs):
         """注册工作流属性模板"""
         WorkflowMeta.register_template(cls, key, **kwargs)
         return cls
-    
+
     @classmethod
     def get_property_templates(cls):
         """获取所有属性模板"""
         return getattr(cls, '_all_property_templates', {})
-    
+
     @classmethod
     def get_transition_tasks(cls):
         """获取所有状态转换任务"""
         return getattr(cls, '_all_transition_tasks', {})
-    
+
     @classmethod
     def get_description(cls):
         """获取工作流类型的描述"""
         return cls.__doc__ or f"{cls.__name__} 工作流"
-    
-    def __init__(self, env, name: str, owner: Optional['Agent'], timeout: Optional[float] = None, 
+
+    def __init__(self, env, name: str, owner: Optional['Agent'], timeout: Optional[float] = None,
                  event_names = [], initial_status='idle', callback: Optional[Callable] = None, properties: Optional[Dict] = None):
         self.id = f'workflow_'+str(uuid.uuid4().hex[:8])
         self.env = env
@@ -408,7 +408,7 @@ class Workflow(metaclass=WorkflowMeta):
 
         self.callback = callback
         self.properties = properties or {} # Store workflow-specific goals, locations etc.
-        
+
         # 验证属性是否符合模板要求
         self._validate_properties()
 
@@ -420,11 +420,11 @@ class Workflow(metaclass=WorkflowMeta):
         if timeout:
             self.env.process(self._timeout_monitor(timeout))
         self._setup_transitions()
-    
+
     def _validate_properties(self):
         """验证属性是否符合模板要求"""
         templates = self.get_property_templates()
-        
+
         # 检查必需属性
         for key, template in templates.items():
             if template.required and key not in self.properties:
@@ -441,7 +441,7 @@ class Workflow(metaclass=WorkflowMeta):
                     warnings.warn(error_msg)
                     if self.properties.get('strict_property_validation', False):
                         raise ValueError(error_msg)
-    
+
     def get_details(self):
         """获取工作流详细信息，子类应该重写此方法提供更多详细信息"""
         return {
@@ -454,30 +454,34 @@ class Workflow(metaclass=WorkflowMeta):
             'end_time': self.end_time,
             'completion_reason': self.completion_reason
         }
-        
+
+    def is_active(self):
+        """检查工作流是否处于活动状态"""
+        return self.status == WorkflowStatus.RUNNING
+
     def get_current_suggested_task(self) -> Optional[Dict]:
         """
         获取当前状态下建议执行的任务
-        
+
         根据当前状态机状态和可能的转换，返回预先定义的任务信息。
         这个方法可以被代理用来自动规划任务，而不需要复杂的决策逻辑。
-        
+
         返回:
             Dict: 任务信息字典，包含组件名称、任务类、任务名称等信息
             None: 如果没有找到匹配的任务
         """
         return None
-    
+
     def _timeout_monitor(self, timeout_sec):
         """监控工作流超时。如果工作流在指定时间内未完成，则将其标记为失败。"""
         try:
             # 等待超时时间
             yield self.env.timeout(timeout_sec)
-            
+
             # 检查工作流当前状态
             if self.status not in (WorkflowStatus.COMPLETED, WorkflowStatus.FAILED, WorkflowStatus.CANCELED):
                 print(f"时间 {self.env.now}: 工作流 {self.id} ({self.name}) 超时 ({timeout_sec}秒)")
-                
+
                 # 构建超时详情
                 timeout_details = {
                     'reason': f'timeout after {timeout_sec} seconds',
@@ -485,19 +489,19 @@ class Workflow(metaclass=WorkflowMeta):
                     'timeout_value': timeout_sec,
                     'time': self.env.now
                 }
-                
+
                 # 触发状态更改事件
                 self._trigger_status_changed(
                     self.status_machine.state,  # 当前SM状态
-                    'failed',                  # 新SM状态 
+                    'failed',                  # 新SM状态
                     timeout_details,           # 事件详情
                     self.env.now               # 时间戳
                 )
-                
+
                 # 如果状态机进程仍在运行，中断它
                 if self.sm_process and self.sm_process.is_alive:
                     self.sm_process.interrupt({'action': 'fail', 'reason': f'Timeout after {timeout_sec} seconds'})
-        
+
         except simpy.Interrupt:
             # 如果超时监控器被中断（例如工作流提前结束），则静默退出
             pass
@@ -517,12 +521,12 @@ class Workflow(metaclass=WorkflowMeta):
     def start(self) -> Optional[simpy.Process]:
         """Starts the workflow's state machine (if PENDING). Called by WM."""
         if self.status != WorkflowStatus.PENDING: return None
-        
+
         # 更新状态，但不触发状态机的状态变更事件
         old_status = self.status
         self.start_time = self.env.now
         self.status = WorkflowStatus.RUNNING
-        
+
         # 触发工作流状态变更事件
         self.env.event_registry.trigger_event(self.id, 'workflow_status_changed', {
             'workflow_id': self.id,
@@ -532,7 +536,7 @@ class Workflow(metaclass=WorkflowMeta):
             'event_details': None,
             'time': self.start_time
         })
-        
+
         # 启动状态机
         sm_proc = self.status_machine.start()
         if not sm_proc:
@@ -541,7 +545,7 @@ class Workflow(metaclass=WorkflowMeta):
             self.status = WorkflowStatus.FAILED
             self.completion_reason = "State machine failed to start"
             self.end_time = self.env.now
-            
+
             # 触发工作流状态变更事件
             self.env.event_registry.trigger_event(self.id, 'workflow_status_changed', {
                 'workflow_id': self.id,
@@ -552,23 +556,24 @@ class Workflow(metaclass=WorkflowMeta):
                 'time': self.env.now
             })
             return None
-            
+
         self.sm_process = sm_proc
-        
+
         # 通知所有者工作流已启动
         if self.owner:
             self.env.event_registry.trigger_event(
                 self.owner.id, 'workflow_assigned',
                 {'workflow_id': self.id, 'agent_id': self.owner.id, 'time': self.start_time}
             )
-            
+
         return sm_proc
 
     def _trigger_status_changed(self, old_sm_status: str, new_sm_status: str, event_details: Optional[Dict], timestamp: float):
         """Internal: Called by SM to trigger workflow's state machine status_changed event."""
         # 先根据状态机的状态更新工作流的状态
+        if old_sm_status == new_sm_status: return
         self.update_status_from_state_machine(new_sm_status, event_details, timestamp)
-        
+
         # 触发状态机状态变更事件
         self.env.event_registry.trigger_event(self.id, 'sm_status_changed', {
             'workflow_id': self.id,
@@ -577,15 +582,15 @@ class Workflow(metaclass=WorkflowMeta):
             'event_details': event_details,
             'time': timestamp
         })
-    
+
     def update_status_from_state_machine(self, new_sm_state: str, event_details: Optional[Dict] = None, timestamp: Optional[float] = None):
         """根据状态机状态更新工作流状态"""
         if timestamp is None:
             timestamp = self.env.now
-            
+
         old_status = self.status
         new_status = self.status
-        
+
         # 根据状态机状态确定工作流状态
         if new_sm_state == 'completed':
             new_status = WorkflowStatus.COMPLETED
@@ -602,12 +607,12 @@ class Workflow(metaclass=WorkflowMeta):
         elif self.status == WorkflowStatus.PENDING and new_sm_state not in ('idle', 'pending'):
             new_status = WorkflowStatus.RUNNING
             self.start_time = self.start_time or timestamp
-                
+
         # 如果状态有变化，触发工作流状态变更事件
         if new_status != old_status:
             self.status = new_status
             print(f"时间 {timestamp}: Workflow {self.id}: Status changed {old_status.name} -> {new_status.name} (SM: {new_sm_state})")
-            
+
             self.env.event_registry.trigger_event(self.id, 'workflow_status_changed', {
                 'workflow_id': self.id,
                 'old_status': old_status.name,
@@ -616,58 +621,58 @@ class Workflow(metaclass=WorkflowMeta):
                 'event_details': event_details,
                 'time': timestamp
             })
-            
+
             # 如果工作流刚开始运行，通知所有者
             if new_status == WorkflowStatus.RUNNING and self.owner:
                 self.env.event_registry.trigger_event(
                     self.owner.id, 'workflow_assigned',
                     {'workflow_id': self.id, 'agent_id': self.owner.id, 'time': timestamp}
                 )
-        
+
     def to_uml_activity_diagram(self) -> str:
         """
         将工作流表示为UML活动图（PlantUML格式）
-        
+
         Returns:
             str: PlantUML格式的活动图描述
         """
         # 使用PlantUML语法创建活动图
         diagram = ["@startuml", f"title {self.name} Workflow"]
-        
+
         # 添加起始节点
         diagram.append(f"start")
         start_state = self.status_machine.start_status
         diagram.append(f":{start_state};")
-        
+
         # 记录已处理的状态，避免重复
         processed_states = set()
         processed_states.add(start_state)
-        
+
         # 添加所有状态转换
         for state, transitions in self.status_machine.state_transitions.items():
             for trigger, next_state, description in transitions:
                 # 根据触发器类型创建不同样式的连接
                 trigger_type = trigger.type.name if hasattr(trigger, 'type') else "UNKNOWN"
-                
+
                 # 创建转换描述
                 if description:
                     transition_label = f"{description}\\n[{trigger_type}]"
                 else:
                     transition_label = f"[{trigger_type}]"
-                
+
                 if state not in processed_states:
                     diagram.append(f":{state};")
                     processed_states.add(state)
-                
+
                 diagram.append(f"-> {transition_label} :{next_state};")
-                
+
                 # 如果是终止状态，添加结束节点
                 if next_state in self.status_machine.terminal_status:
                     if next_state not in processed_states:
                         diagram.append(f":{next_state};")
                         processed_states.add(next_state)
                     diagram.append("stop")
-        
+
         # 对于通配符转换，单独处理
         if self.status_machine.wildcard_transitions:
             diagram.append("\nnote right: 通配符转换（适用于所有状态）")
@@ -677,49 +682,49 @@ class Workflow(metaclass=WorkflowMeta):
                     transition_label = f"{description}\\n[{trigger_type}]"
                 else:
                     transition_label = f"[{trigger_type}]"
-                    
+
                 diagram.append(f"-> {transition_label} :{next_state};")
-                
+
                 if next_state in self.status_machine.terminal_status and next_state not in processed_states:
                     diagram.append(f":{next_state};")
                     processed_states.add(next_state)
                     diagram.append("stop")
-        
+
         diagram.append("@enduml")
         return "\n".join(diagram)
-        
+
     def to_mermaid_diagram(self) -> str:
         """
         将工作流表示为Mermaid流程图格式
-        
+
         Returns:
             str: Mermaid格式的流程图描述
         """
         # 使用Mermaid语法创建流程图
         diagram = ["```mermaid", "stateDiagram-v2"]
-        
+
         # 添加起始状态
         start_state = self.status_machine.start_status
         diagram.append(f"    [*] --> {start_state}")
-        
+
         # 添加所有状态转换
         for state, transitions in self.status_machine.state_transitions.items():
             for trigger, next_state, description in transitions:
                 # 根据触发器类型创建不同样式的连接
                 trigger_type = trigger.type.name if hasattr(trigger, 'type') else "UNKNOWN"
-                
+
                 # 创建转换描述
                 if description:
                     transition_label = f"{description} [{trigger_type}]"
                 else:
                     transition_label = f"[{trigger_type}]"
-                
+
                 diagram.append(f"    {state} --> {next_state}: {transition_label}")
-                
+
                 # 如果是终止状态，添加到结束节点的连接
                 if next_state in self.status_machine.terminal_status:
                     diagram.append(f"    {next_state} --> [*]")
-        
+
         # 对于通配符转换，单独处理
         if self.status_machine.wildcard_transitions:
             diagram.append("    %% 通配符转换（适用于所有状态）")
@@ -729,38 +734,38 @@ class Workflow(metaclass=WorkflowMeta):
                     transition_label = f"{description} [{trigger_type}]"
                 else:
                     transition_label = f"[{trigger_type}]"
-                    
+
                 # 由于通配符适用于所有状态，这里表示为特殊转换
                 diagram.append(f"    note right of [*]: 通配符转换 - 所有状态 --> {next_state}")
                 diagram.append(f"    Note: {transition_label}")
-                
+
                 # 如果是终止状态，添加到结束节点的连接
                 if next_state in self.status_machine.terminal_status:
                     diagram.append(f"    {next_state} --> [*]")
-        
+
         diagram.append("```")
         return "\n".join(diagram)
-    
+
     def reset(self):
         """重置工作流状态，包括状态机"""
         old_status = self.status
-        
+
         # 停止当前的状态机进程
         if self.sm_process and self.sm_process.is_alive:
             self.sm_process.interrupt({'action': 'cancel', 'reason': 'workflow_reset'})
         self.sm_process = None
-        
+
         # 重置工作流状态
         self.status = WorkflowStatus.PENDING
         self.start_time = None
         self.end_time = None
         self.completion_reason = None
-        
+
         # 重置状态机
         initial_status = self.status_machine.start_status
         self.status_machine = WorkflowStatusMachine(self, initial_status)
         self._setup_transitions()  # 重新设置转换规则
-        
+
         # 触发工作流状态变更事件
         self.env.event_registry.trigger_event(self.id, 'workflow_status_changed', {
             'workflow_id': self.id,
@@ -770,6 +775,6 @@ class Workflow(metaclass=WorkflowMeta):
             'event_details': {'reason': 'workflow_reset'},
             'time': self.env.now
         })
-        
+
         print(f"时间 {self.env.now}: Workflow {self.id} has been reset to PENDING state")
         return self

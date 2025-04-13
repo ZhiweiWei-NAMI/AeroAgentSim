@@ -79,17 +79,10 @@ class WorkflowManager:
 
     def _handle_advanced_trigger(self, workflow_id: str, context: Dict[str, Any]):
         """处理高级触发器的回调"""
-        workflow = self.workflows.get(workflow_id)
-        if not workflow: 
-            return
-            
-        if workflow.status != WorkflowStatus.PENDING: 
-            return
             
         print(f"时间 {self.env.now}: WMgr: Advanced trigger fired for workflow {workflow_id}")
         print(f"  Trigger: {context.get('trigger_name')} ({context.get('trigger_type')})")
-        started_process = workflow.start()
-        if not started_process:
+        if not self.start_workflow(workflow_id):
             print(f"WMgr: Failed to start workflow {workflow_id}")
 
     def start_workflow(self, workflow_id: str):
@@ -240,11 +233,8 @@ class WorkflowManager:
     def get_workflow(self, workflow_id): 
         return self.workflows.get(workflow_id)
         
-    def get_agent_workflows(self, agent): 
-        return [w for w in self.workflows.values() if agent in w.participants]
-        
-    def get_agent_owned_workflows(self, agent): 
-        return [w for w in self.workflows.values() if w.owner == agent]
+    def get_agent_workflows(self, agent_id): 
+        return [w for w in self.workflows.values() if w.owner.id == agent_id]
         
     def add_workflow_trigger(self, workflow_id: str, trigger):
         """为工作流添加额外的触发器（不用于启动）"""
