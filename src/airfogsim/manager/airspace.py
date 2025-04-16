@@ -406,6 +406,27 @@ class AirspaceManager:
         # 检测潜在碰撞
         self._check_potential_collisions(anyway_id, position)
     
+    def get_object_position(self, agent_id: str=None, landing_id: str=None, obstacle_id: str=None) -> Optional[Tuple[float, float, float]]:
+        """
+        获取代理当前位置
+        
+        Args:
+            agent_id: 代理ID (可选)
+            landing_id: 着陆点ID (可选)
+            obstacle_id: 障碍物ID (可选)
+            
+        Returns:
+            代理位置 (x, y, z)，如果代理不存在则返回None
+        """
+        if agent_id:
+            return self.agent_positions.get(agent_id)
+        elif landing_id:
+            return self.landing_positions.get(landing_id)
+        elif obstacle_id:
+            return self.obstacle_positions.get(obstacle_id)
+        else:
+            raise ValueError("至少提供一个ID: agent_id, landing_id或obstacle_id")
+
     def register_object(self, position: Tuple[float, float, float],
                       agent_id: str=None,
                       landing_id: str=None,

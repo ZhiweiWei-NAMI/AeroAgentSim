@@ -193,7 +193,10 @@ class StatsAnalyzer:
             last_point = sorted_data[-1]
 
             time_diff = last_point['timestamp'] - first_point['timestamp']
-            battery_diff = first_point['battery_level'] - last_point['battery_level']
+            battery_diff = 0
+            # 不算充电
+            for i in range(1, len(sorted_data)):
+                battery_diff += max(sorted_data[i]['battery_level'] - sorted_data[i-1]['battery_level'], 0)
 
             # 避免除以零
             if time_diff <= 0:

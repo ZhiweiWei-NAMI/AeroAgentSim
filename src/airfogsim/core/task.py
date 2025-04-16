@@ -77,6 +77,18 @@ class Task:
             raise ValueError(f"Agent {self.agent_id} does not have component '{component_name}'")
 
     # --- Task Logic (to be run by component) ---
+    def _on_metric_changed(self, event_data):
+        """
+        处理组件的metric_changed事件
+
+        Args:
+            event_data: 事件数据，包含新的性能指标
+        """
+        if isinstance(event_data, dict):
+            self.current_metrics.update(event_data)
+        else:
+            print(f"时间 {self.env.now}: Task {self.id} received invalid metrics: {event_data}")
+
     def execute(self, env, initial_metrics: Dict):
         """
         Core task execution logic. Should be a generator function (SimPy process).
@@ -86,6 +98,15 @@ class Task:
         self.last_update_time = env.now
         self.start_time = env.now
         self.status = TaskStatus.RUNNING
+
+        # 订阅组件的metric_changed事件
+        metric_listener_id = f"{self.id}_metric_listener"
+        self.event_registry.subscribe(
+            source_id=self.agent_id,
+            event_name=f'{self.component_name}.metric_changed',
+            listener_id=metric_listener_id,
+            callback=self._on_metric_changed
+        )
 
         try:
             # --- Main Execution Loop ---
@@ -97,26 +118,14 @@ class Task:
                      self.progress = 1.0 # Force completion if time is negligible
                      break
 
-                # Wait for time passage OR metric update event from the *component*
+                # Wait for time passage
                 completion_timeout = env.timeout(remaining_time + 1e-9) # Epsilon for float comparison
-                # Listen for metric changes specific to this component instance
-                metric_change_event = self.event_registry.get_event(self.agent_id, f'{self.component_name}.metric_changed')
                 visual_update_event = self.event_registry.get_event(env.id, 'visual_update')
 
-                # Wait for the first event
-                triggered = yield env.any_of([completion_timeout, metric_change_event, visual_update_event])
+                # Wait for the timeout or visual update event
+                yield env.any_of([completion_timeout, visual_update_event])
 
                 current_time = env.now
-
-                if metric_change_event in triggered:
-                    new_metrics = triggered[metric_change_event]
-                    # print(f"DEBUG Task {self.id} received metrics: {new_metrics}")
-                    if isinstance(new_metrics, dict):
-                        self.current_metrics.update(new_metrics)
-                    else:
-                        print(f"时间 {current_time}: Task {self.id} received invalid metrics: {new_metrics}")
-                    # Re-fetch event for next wait
-                    metric_change_event = self.event_registry.get_event(self.agent_id, f'{self.component_name}.metric_changed')
 
                 # Update internal state/progress based on elapsed time and current metrics
                 self._update_task_state(self.current_metrics)
@@ -138,16 +147,27 @@ class Task:
                  # Should not happen if logic is correct
                  self.fail("Execution loop finished unexpectedly before completion.")
 
+            # 取消订阅metric_changed事件
+            self._unsubscribe_metric_changed()
+
             return self.result # Return final result dict
 
         except simpy.Interrupt as i:
             print(f"时间 {env.now}: Task {self.id} ({self.name}) interrupted: {i.cause}")
             self.fail(f"Interrupted: {i.cause}")
+
+            # 取消订阅metric_changed事件
+            self._unsubscribe_metric_changed()
+
             return self.result
         except Exception as e:
             print(f"时间 {env.now}: Task {self.id} ({self.name}) execution error: {str(e)}")
             import traceback; traceback.print_exc()
             self.fail(f"Execution error: {str(e)}")
+
+            # 取消订阅metric_changed事件
+            self._unsubscribe_metric_changed()
+
             return self.result
 
 
@@ -241,6 +261,20 @@ class Task:
         默认实现不执行任何操作。
         """
         pass
+
+    def _unsubscribe_metric_changed(self):
+        """
+        取消订阅metric_changed事件
+        """
+        metric_listener_id = f"{self.id}_metric_listener"
+        try:
+            self.event_registry.unsubscribe(
+                source_id=self.agent_id,
+                event_name=f'{self.component_name}.metric_changed',
+                listener_id=metric_listener_id
+            )
+        except Exception as unsubscribe_error:
+            print(f"时间 {self.env.now}: 取消订阅失败: {unsubscribe_error}")
 
     # --- Status Update Methods ---
     def complete(self):

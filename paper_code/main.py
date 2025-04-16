@@ -26,7 +26,7 @@ def main():
     # 解析命令行参数
     parser = argparse.ArgumentParser(description='AirFogSim多工作流基准测试示例')
     parser.add_argument('--num-drones', type=int, default=50, help='无人机数量')
-    parser.add_argument('--duration', type=int, default=1000, help='仿真时长（秒），默认1小时')
+    parser.add_argument('--duration', type=int, default=3600, help='仿真时长（秒），默认1小时')
     parser.add_argument('--visual-interval', type=int, default=10, help='可视化更新间隔（秒），默认10秒')
     parser.add_argument('--output-dir', type=str, default='./stats_data', help='输出目录')
     parser.add_argument('--random-seed', type=int, default=42, help='随机种子')
@@ -137,7 +137,7 @@ def setup_station_workflow_generation(env, workflow_generator, agents, scenario,
             # 为每个无人机创建充电工作流
             charging_workflow = workflow_generator.create_charging_workflow(
                 agent=drone,
-                battery_threshold=30.0,  # 电量低于30%时触发充电
+                battery_threshold=50.0,  # 电量低于30%时触发充电
                 target_charge_level=90.0  # 充电目标电量
             )
             charging_workflows.append(charging_workflow)

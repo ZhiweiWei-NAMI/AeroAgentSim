@@ -13,7 +13,7 @@ class ChargingComponent(Component):
     - request_processing_time: 充电站资源请求处理时间（秒）
     """
     PRODUCED_METRICS = ['charging_rate', 'request_processing_time']
-    MONITORED_STATES = ['battery_capacity', 'position', 'charging_station.status', 
+    MONITORED_STATES = ['battery_capacity', 'position', 'charging_station.status', 'status',
                         'charging_station.power_level']  # 监控这些代理状态的变化
     
     def __init__(self, env, agent, name: Optional[str] = None,
@@ -40,7 +40,6 @@ class ChargingComponent(Component):
         # 获取当前的电池容量和代理状态
         battery_capacity = self.agent.get_state('battery_capacity', 5000.0)  # mAh
         agent_status = self.agent.get_state('status', 'idle')
-        
         # 初始化指标
         charging_rate = 0.0
         request_processing_time = float('inf')  # 默认值表示无法处理
@@ -50,21 +49,13 @@ class ChargingComponent(Component):
         if charging_station:
             # 获取充电站的请求处理时间，如果不在申请中，则会添加一个申请到队列，并且返回默认的等待时间,确保在申请中;
             # 如果申请成功已经分配,则返回0
-            if self.env.landing_manager.request_resource(charging_station.id, self.agent):
-                assert charging_station.is_allocated(self.agent_id), "充电站资源分配失败"
+            if not self.env.landing_manager.is_allocated_to(charging_station.id, self.agent.id):
+                self.env.landing_manager.request_resource(charging_station.id, self.agent)
+            else:
                 request_processing_time = 0.0  # 申请成功，处理时间为0
-                # 获取充电站的状态
-                charging_station_power = charging_station.get_attribute('power_level', 'normal')
-                
-                # 只有在充电状态下且充电站可用时才计算充电率
                 if agent_status == 'charging':
                     # 基础充电功率 (W)，根据充电站电源水平调整
-                    base_charging_power = 100.0
-                    
-                    if charging_station_power == 'high':
-                        base_charging_power = 150.0
-                    elif charging_station_power == 'low':
-                        base_charging_power = 50.0
+                    base_charging_power = charging_station.get_attribute('charging_power', 100)
                     
                     # 计算充电率 (% / 小时)
                     # 充电功率 * 充电效率 / 电池容量 * 100%

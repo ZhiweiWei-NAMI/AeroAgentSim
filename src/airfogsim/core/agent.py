@@ -597,7 +597,7 @@ class Agent(metaclass=AgentMeta):
         # 将任务添加到队列
         for task_info in tasks_to_execute:
             # 检查是否已经有相同的任务在队列中或正在执行
-            if not self._is_task_in_queue(task_info) and not self._is_task_being_executed(task_info):
+            if not (self._is_task_in_queue(task_info) or self._is_task_being_executed(task_info)):
                 self.add_task_to_queue(
                     component_name=task_info['component'],
                     task_name=task_info['task_name'],
@@ -629,10 +629,6 @@ class Agent(metaclass=AgentMeta):
             bool: 如果已经有相同的任务正在执行，则返回True，否则返回False
         """
         for _, managed_task in self.managed_tasks.items():
-            # 只检查正在运行的任务
-            if managed_task['status'] != 'running':
-                continue
-
             # 检查关键属性是否相同
             if (managed_task['component'] == task_info['component'] and
                 managed_task['task_name'] == task_info['task_name'] and
@@ -680,7 +676,7 @@ class Agent(metaclass=AgentMeta):
         # 添加优先级和抢占属性
         if priority is not None:
             properties['priority'] = priority.name.lower() if hasattr(priority, 'name') else priority
-        properties['preemptive'] = preemptive
+        properties['preemptive'] = properties.get('preemptive', preemptive)
 
         # 创建任务信息
         task_info = {
@@ -761,7 +757,14 @@ class Agent(metaclass=AgentMeta):
             return
         # 获取任务队列中与正在执行的任务同属于同一工作流的任务        
         workflow_id = self.task_queue[0]['workflow_id']
-        if len(self.managed_tasks) > 0:
+        # 先判断是否有preemptive任务，如果有，先执行
+        is_preemptive = False
+        for task_info in self.task_queue:
+            if task_info['properties'].get('preemptive', False):
+                workflow_id = task_info['workflow_id']
+                is_preemptive = True
+                break
+        if len(self.managed_tasks) > 0 and not is_preemptive:
             workflow_id = list(self.managed_tasks.values())[0]['task'].workflow_id
         workflow_task_queue = [task for task in self.task_queue if task['workflow_id'] == workflow_id]
         # 遍历任务队列（已按优先级排序）

@@ -139,46 +139,33 @@ class LandingManager(ResourceManager[LandingResource]):
             require_charging: 是否需要充电功能
 
         Returns:
-            最近的符合要求的着陆点，如果没有符合要求的则返回None
+            最近的符合要求的available着陆点，如果没有符合要求的则返回None
         """
-        # 如果有空域管理器，使用八叉树查找最近的着陆点
-        # 获取周围所有对象
-        nearby_objects = self.airspace_manager.get_nearby_objects(
-            position=(x, y, altitude),
-            radius=max_distance,  # 默认搜索半径
-        )
-
         # 过滤出着陆点
         landing_candidates = []
-        for obj_id, position in nearby_objects.items():
-            # 检查是否是着陆点（ID以landing_开头）
-            if obj_id.startswith('landing_'):
-                # 提取真实的资源ID
-                resource_id = obj_id
+        for obj_id, resource in self.resources.items():
+            resource_id = obj_id
+            resource = self.resources[resource_id]
 
-                # 检查资源是否存在
-                if resource_id in self.resources:
-                    resource = self.resources[resource_id]
+            # 检查资源状态和容量
+            if (hasattr(resource, 'status') and resource.status != ResourceStatus.AVAILABLE) or not resource.has_capacity(): # 使用枚举
+                continue
 
-                    # 检查资源状态和容量
-                    if (hasattr(resource, 'status') and resource.status != ResourceStatus.AVAILABLE) or not resource.has_capacity(): # 使用枚举
-                        continue
+            # 检查充电需求
+            if require_charging and not resource.has_charging:
+                continue
 
-                    # 检查充电需求
-                    if require_charging and not resource.has_charging:
-                        continue
-
-                    # 检查着陆区状态
-                    if resource.condition != 'normal':
-                        continue
-
-                    distance = math.sqrt(
-                        (position[0] - x) ** 2 +
-                        (position[1] - y) ** 2 +
-                        (position[2] - altitude) ** 2
-                    )
-                    # 添加到候选列表
-                    landing_candidates.append((resource, distance))
+            # 检查着陆区状态
+            if resource.condition != 'normal':
+                continue
+            position = self.env.airspace_manager.get_object_position(landing_id=resource_id)
+            distance = math.sqrt(
+                (position[0] - x) ** 2 +
+                (position[1] - y) ** 2 +
+                (position[2] - altitude) ** 2
+            )
+            # 添加到候选列表
+            landing_candidates.append((resource, distance))
 
         # 按距离排序并返回最近的
         if landing_candidates:
@@ -251,7 +238,7 @@ class LandingManager(ResourceManager[LandingResource]):
             return False
 
         # 检查代理是否已经分配了此资源
-        if resource_id in self.resource_allocations and agent.id in self.resource_allocations[resource_id]:
+        if self.is_allocated_to(resource_id, agent.id):
             print(f"时间 {self.env.now}: 代理 {agent.id} 已经分配了资源 {resource_id}")
             return True
 
@@ -259,12 +246,40 @@ class LandingManager(ResourceManager[LandingResource]):
         if resource.has_capacity():
             # 立即分配资源
             return self.allocate_resource(resource_id, agent)
-        else:
+        elif not self.is_requesting(resource_id, agent.id):
             # 加入请求队列
             request_time = self.env.now
             self.request_queues.put((priority, request_time, resource_id, agent.id, agent))
             print(f"时间 {self.env.now}: 代理 {agent.id} 请求资源 {resource_id} 已加入队列，优先级 {priority}")
             return False
+        else:
+            return False
+        
+    def is_allocated_to(self, resource_id: str, agent_id: str) -> bool:
+        """
+        检查资源是否已分配给指定代理
+
+        Args:
+            resource_id: 资源ID
+            agent_id: 代理ID
+
+        Returns:
+            bool: 是否已分配
+        """
+        return resource_id in self.resource_allocations and agent_id in self.resource_allocations[resource_id]
+        
+    def is_requesting(self, resource_id: str, agent_id: str) -> bool:
+        """
+        检查代理是否正在请求资源
+
+        Args:
+            resource_id: 资源ID
+            agent_id: 代理ID
+
+        Returns:
+            bool: 是否正在请求
+        """
+        return any(agent_id == agent_id for _, _, _, agent_id, _ in self.request_queues.queue)
 
     def allocate_resource(self, resource_id: str, agent) -> bool:
         """
