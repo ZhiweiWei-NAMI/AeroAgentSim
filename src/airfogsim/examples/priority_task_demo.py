@@ -84,9 +84,6 @@ def run_priority_task_demo():
     # 创建无人机
     drone = create_drone(env)
 
-    # 启动无人机进程
-    env.process(drone.live())
-
     # 安排任务添加
     def add_low_priority_task():
         print(f"\n时间 {env.now}: 添加低优先级移动任务")

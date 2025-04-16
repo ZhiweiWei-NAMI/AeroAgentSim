@@ -234,14 +234,13 @@ class EventRegistry:
                 if subscription.match_filters(event_value):
                     if subscription.callback:
                         # 调度回调执行
-                        self.env.process(self._run_callback(subscription.callback, event_value, listener_id))
+                        self._run_callback(subscription.callback, event_value, listener_id)
                         notified_count += 1
         return notified_count
 
     def _run_callback(self, callback, value, listener_id):
         """Helper process to run subscriber callback asynchronously."""
         try:
-            yield self.env.timeout(0) # Minimal delay to allow trigger to complete
             callback(value) # Direct call might be okay if callbacks are fast/non-blocking
         except Exception as e:
             print(f"时间 {self.env.now}: Error in subscriber callback for '{listener_id}': {e}")

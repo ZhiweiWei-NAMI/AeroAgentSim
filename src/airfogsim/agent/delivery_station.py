@@ -81,21 +81,9 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
                 'properties': {}       # 物品属性模板
             })
         )
-
-        # 注册事件
-        self.register_event('payload_generated')
-        self.register_event('payload_received')
-        self.register_event('drone_registered')
-        self.register_event('drone_unregistered')
-        self.register_event('order_created')
-
         # 注册到空间管理器
         if hasattr(env, 'airspace_manager'):
             env.airspace_manager.register_agent(self.id, self.get_state('position'))
-
-        # 监听自身add_possessing_object事件,如果是"payloyad_"开头,对应修改current_storage
-        self.subscribe(self.id, 'possessing_object_added', self._on_add_possessing_object, listener_id=f'{self.id}_add_possessing_object')
-        self.subscribe(self.id, 'possessing_object_removed', self._on_remove_possessing_object, listener_id=f'{self.id}_remove_possessing_object')
 
     def _on_add_possessing_object(self, event_value: Dict[str, Any]):
         """
@@ -109,7 +97,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
             # 增加当前存储量
             current_storage = self.get_state('current_storage')
             self.update_state('current_storage', current_storage + 1)
-            print(f"时间 {self.env.now}: 快递站 {self.id} 当前存储量增加到 {current_storage + 1}")
+            print(f"时间 {self.env.now}: 快递站 {self.id} 当前存储量增加到 {current_storage + 1}, 物品ID: {payload_id}")
 
     def _on_remove_possessing_object(self, event_value: Dict[str, Any]):
         """
@@ -242,13 +230,6 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         # 将物品添加到代理的possessing_objects中;由于物品ID是唯一的，所以可以直接使用
         self.add_possessing_object(payload_id, payload_info)
 
-        # 触发物品生成事件
-        self.trigger_event('payload_generated', {
-            'payload_id': payload_id,
-            'properties': payload_properties,
-            'time': self.env.now
-        })
-
         return payload_info
 
     def create_logistics_workflow(self, drone_id: str, payload_id: str, delivery_location: Tuple[float, float, float], target_agent_id: Optional[str]) -> Optional[str]:
@@ -302,24 +283,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
             return workflow.id
 
         return None
-
-    def _generate_random_destination(self) -> Tuple[float, float, float]:
-        """
-        生成随机目的地坐标
-
-        Returns:
-            Tuple[float, float, float]: 随机坐标
-        """
-        station_pos = self.get_state('position')
-        service_radius = self.get_state('service_radius')
-
-        # 在服务半径内随机生成坐标
-        x = station_pos[0] + random.uniform(-service_radius, service_radius)
-        y = station_pos[1] + random.uniform(-service_radius, service_radius)
-        z = max(0, station_pos[2] + random.uniform(-10, 10))  # 高度不应过低
-
-        return (x, y, z)
-
+    
     def _handle_creating_payload_state(self, workflow):
         """
         处理创建物品状态
@@ -370,12 +334,12 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         # 添加快递站特有的事件监听器
         listeners.extend([
             {
-                'source_id': '*',
+                'source_id': self.id,
                 'event_name': 'possessing_object_added',
                 'callback': self._on_add_possessing_object
             },
             {
-                'source_id': '*',
+                'source_id': self.id,
                 'event_name': 'possessing_object_removed',
                 'callback': self._on_remove_possessing_object
             }

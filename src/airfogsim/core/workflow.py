@@ -372,6 +372,7 @@ class WorkflowStatusMachine:
 class Workflow(metaclass=WorkflowMeta):
     """Represents a process/goal tracked by a state machine based on Agent state."""
     from .agent import Agent
+    from .enums import TaskPriority
 
     @classmethod
     def register_property_template(cls, key, **kwargs):
@@ -408,6 +409,12 @@ class Workflow(metaclass=WorkflowMeta):
 
         self.callback = callback
         self.properties = properties or {} # Store workflow-specific goals, locations etc.
+
+        # 注册任务优先级和抢占属性模板
+        self.__class__.register_property_template('task_priority', value_type=None, required=False,
+                                               description="任务优先级，可以是TaskPriority枚举或字符串")
+        self.__class__.register_property_template('task_preemptive', value_type=bool, required=False,
+                                               description="任务是否可抢占其他任务")
 
         # 验证属性是否符合模板要求
         self._validate_properties()
@@ -465,12 +472,48 @@ class Workflow(metaclass=WorkflowMeta):
 
         根据当前状态机状态和可能的转换，返回预先定义的任务信息。
         这个方法可以被代理用来自动规划任务，而不需要复杂的决策逻辑。
+        任务会继承工作流的优先级和抢占属性。
 
         返回:
             Dict: 任务信息字典，包含组件名称、任务类、任务名称等信息
             None: 如果没有找到匹配的任务
         """
+        # 基类返回None，子类应该重写此方法
         return None
+
+    def _add_priority_to_task(self, task_dict: Dict) -> Dict:
+        """
+        向任务字典添加优先级和抢占属性
+
+        Args:
+            task_dict: 任务信息字典
+
+        Returns:
+            Dict: 添加了优先级和抢占属性的任务信息字典
+        """
+        if task_dict is None:
+            return None
+
+        # 确保properties字段存在
+        if 'properties' not in task_dict:
+            task_dict['properties'] = {}
+
+        # 如果任务字典中没有指定优先级，则使用工作流的优先级
+        if 'priority' not in task_dict['properties']:
+            # 获取工作流的优先级属性
+            from airfogsim.core.enums import TaskPriority
+            priority_value = self.properties.get('task_priority', TaskPriority.NORMAL)
+            # 如果是枚举对象，转换为字符串
+            if isinstance(priority_value, TaskPriority):
+                priority_value = priority_value.name.lower()
+            task_dict['properties']['priority'] = priority_value
+
+        # 如果任务字典中没有指定抢占属性，则使用工作流的抢占属性
+        if 'preemptive' not in task_dict['properties']:
+            preemptive = self.properties.get('task_preemptive', False)
+            task_dict['properties']['preemptive'] = preemptive
+
+        return task_dict
 
     def _timeout_monitor(self, timeout_sec):
         """监控工作流超时。如果工作流在指定时间内未完成，则将其标记为失败。"""

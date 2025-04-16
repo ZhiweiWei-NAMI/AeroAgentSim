@@ -180,7 +180,6 @@ class Agent(metaclass=AgentMeta):
         # Standard Agent Events
         self.register_event('state_changed')
 
-
         # Agent's core behavior process
         self.agent_process = self.env.process(self.live())
 
@@ -482,33 +481,6 @@ class Agent(metaclass=AgentMeta):
          # Note: This might need adjustment if listener IDs aren't based on self.id
          return self.env.event_registry.unsubscribe_all(self.id)
 
-    def _setup_data_provider_subscriptions(self):
-        """Sets up subscriptions to events from registered DataProviders."""
-        # Import locally if needed to break cycles, or ensure WeatherDataProvider is imported at top
-        from airfogsim.dataprovider.weather import WeatherDataProvider # Assuming weather.py exists
-
-        weather_provider = self.env.get_data_provider('weather')
-        if weather_provider and isinstance(weather_provider, WeatherDataProvider):
-            try:
-                # Use functools.partial to bind 'self' (the agent instance) to the callback
-                bound_callback = functools.partial(weather_provider.on_weather_changed, self)
-                listener_id = f"{self.id}_weather_listener" # Unique listener ID
-                self.env.event_registry.subscribe(
-                    event_name=WeatherDataProvider.EVENT_WEATHER_CHANGED, # Use constant from provider
-                    callback=bound_callback,
-                    listener_id=listener_id,
-                    # No source_id filter needed, listen to all weather changes
-                )
-                # print(f"DEBUG Agent {self.id} subscribed to {WeatherDataProvider.EVENT_WEATHER_CHANGED}")
-            except Exception as e:
-                print(f"ERROR Agent {self.id} failed to subscribe to WeatherChanged: {e}")
-
-        # Add subscriptions for other data providers (e.g., traffic, accident) here
-        # traffic_provider = self.env.get_data_provider('traffic')
-        # if traffic_provider and isinstance(traffic_provider, TrafficDataProvider):
-        #     bound_callback = functools.partial(traffic_provider.on_traffic_changed, self)
-        #     listener_id = f"{self.id}_traffic_listener"
-        #     self.env.event_registry.subscribe(...)
 
     # --- Event Handling ---
     def register_event_listeners(self):
@@ -624,8 +596,8 @@ class Agent(metaclass=AgentMeta):
 
         # 将任务添加到队列
         for task_info in tasks_to_execute:
-            # 检查是否已经有相同的任务在队列中
-            if not self._is_task_in_queue(task_info):
+            # 检查是否已经有相同的任务在队列中或正在执行
+            if not self._is_task_in_queue(task_info) and not self._is_task_being_executed(task_info):
                 self.add_task_to_queue(
                     component_name=task_info['component'],
                     task_name=task_info['task_name'],
@@ -643,6 +615,28 @@ class Agent(metaclass=AgentMeta):
                 queued_task['task_class'] == task_info['task_class'] and
                 queued_task['workflow_id'] == task_info.get('workflow_id')):
                 # 可以根据需要添加更多的属性比较
+                return True
+        return False
+
+    def _is_task_being_executed(self, task_info):
+        """
+        检查是否已经有相同的任务正在执行
+
+        Args:
+            task_info: 任务信息字典
+
+        Returns:
+            bool: 如果已经有相同的任务正在执行，则返回True，否则返回False
+        """
+        for _, managed_task in self.managed_tasks.items():
+            # 只检查正在运行的任务
+            if managed_task['status'] != 'running':
+                continue
+
+            # 检查关键属性是否相同
+            if (managed_task['component'] == task_info['component'] and
+                managed_task['task_name'] == task_info['task_name'] and
+                managed_task.get('task').workflow_id == task_info.get('workflow_id')):
                 return True
         return False
 
@@ -708,53 +702,86 @@ class Agent(metaclass=AgentMeta):
         print(f"时间 {self.env.now}: 代理 {self.id} 添加任务 '{task_name}' 到队列")
 
     def _sort_task_queue(self):
-        """按优先级排序任务队列"""
-        # 先创建任务实例以获取优先级
-        temp_tasks = []
-        for task_info in self.task_queue:
-            # 创建任务实例，但不执行
-            task = self.task_manager.create_task(
-                task_info['task_class'],
-                self,
-                task_info['component_name'],
-                task_info['task_name'],
-                task_info['workflow_id'],
-                target_state=task_info['target_state'],
-                properties=task_info['properties']
-            )
-            # 将任务实例和任务信息一起保存
-            temp_tasks.append((task, task_info))
+        """
+        按优先级和工作流开始时间排序任务队列
 
-        # 按优先级排序
-        temp_tasks.sort(key=lambda x: x[0].priority.value, reverse=True)
+        排序规则：
+        1. 首先按任务优先级排序（高优先级在前）
+        2. 在优先级相同的情况下，按工作流开始时间排序（先开始的工作流先执行）
+        """
+        from airfogsim.core.enums import TaskPriority
+
+        # 如果队列为空，直接返回
+        if not self.task_queue:
+            return
+
+        # 获取工作流开始时间的字典
+        workflow_start_times = {}
+        if hasattr(self.env, 'workflow_manager'):
+            for workflow_id, workflow in self.env.workflow_manager.workflows.items():
+                workflow_start_times[workflow_id] = workflow.start_time or float('inf')
+
+        # 为每个任务计算优先级和工作流开始时间
+        task_sort_info = []
+        for task_info in self.task_queue:
+            # 获取任务优先级
+            priority_str = task_info.get('properties', {}).get('priority', 'normal')
+
+            # 将优先级字符串转换为数值
+            priority_value = 0  # 默认优先级为0（最低）
+            if isinstance(priority_str, str):
+                # 使用TaskPriority的from_string方法转换
+                priority_enum = TaskPriority.from_string(priority_str)
+                priority_value = priority_enum.value
+            elif isinstance(priority_str, TaskPriority):
+                # 如果已经是枚举对象，直接获取值
+                priority_value = priority_str.value
+            elif isinstance(priority_str, int):
+                # 如果是整数，直接使用
+                priority_value = priority_str
+
+            # 获取工作流开始时间
+            workflow_id = task_info.get('workflow_id')
+            workflow_start_time = workflow_start_times.get(workflow_id, task_info.get('added_time', float('inf')))
+
+            # 将任务信息、优先级和工作流开始时间一起保存
+            task_sort_info.append((task_info, priority_value, workflow_start_time, workflow_id))
+
+        # 按优先级和工作流开始时间排序
+        # 先按优先级排序（高优先级在前），然后按工作流开始时间排序（先开始的在前），最后按工作流ID排序
+        task_sort_info.sort(key=lambda x: (-x[1], x[2], x[3]))
 
         # 更新任务队列
-        self.task_queue = [task_info for _, task_info in temp_tasks]
+        self.task_queue = [task_info for task_info, _, _, _ in task_sort_info]
 
     def _process_task_queue(self):
         """处理任务队列"""
         # 如果没有任务，直接返回
         if not self.task_queue:
             return
-
+        # 获取任务队列中与正在执行的任务同属于同一工作流的任务        
+        workflow_id = self.task_queue[0]['workflow_id']
+        if len(self.managed_tasks) > 0:
+            workflow_id = list(self.managed_tasks.values())[0]['task'].workflow_id
+        workflow_task_queue = [task for task in self.task_queue if task['workflow_id'] == workflow_id]
         # 遍历任务队列（已按优先级排序）
         i = 0
-        while i < len(self.task_queue):
-            task_info = self.task_queue[i]
+        while i < len(workflow_task_queue):
+            task_info = workflow_task_queue[i]
             component_name = task_info['component_name']
             component = self.get_component(component_name)
 
             # 如果组件不存在，移除任务
             if not component:
                 print(f"\n时间 {self.env.now}: 组件 {component_name} 不存在，移除任务 {task_info['task_name']}")
-                self.task_queue.pop(i)
+                workflow_task_queue.pop(i)
                 continue
 
             # 检查组件是否可用
             if component.is_available():
                 # 组件可用，执行任务
                 self._execute_queued_task(task_info)
-                self.task_queue.pop(i)
+                workflow_task_queue.pop(i)
             else:
                 # 组件不可用，检查是否可以抢占
                 preemptive = task_info['properties'].get('preemptive', False)
@@ -762,13 +789,16 @@ class Agent(metaclass=AgentMeta):
                     # 尝试抢占
                     if self._try_preempt_task(task_info):
                         # 抢占成功，移除任务
-                        self.task_queue.pop(i)
+                        workflow_task_queue.pop(i)
                     else:
                         # 抢占失败，检查下一个任务
                         i += 1
                 else:
                     # 不可抢占，检查下一个任务
                     i += 1
+
+        self.task_queue = [task for task in self.task_queue if task not in workflow_task_queue]
+        self._sort_task_queue()
 
     def _execute_queued_task(self, task_info):
         """执行队列中的任务"""

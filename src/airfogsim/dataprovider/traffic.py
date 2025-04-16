@@ -5,7 +5,7 @@ import simpy
 from typing import TYPE_CHECKING, Dict, Any, Optional, List, Tuple, Set
 import time
 
-from .base import DataProvider
+from ..core.dataprovider import DataProvider
 
 # Type hinting
 if TYPE_CHECKING:

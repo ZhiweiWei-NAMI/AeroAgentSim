@@ -21,7 +21,7 @@ class BenchmarkDataCollector:
     负责收集仿真数据，包括代理状态、工作流状态和事件数据，并将其导出为基准测试数据集。
     """
     
-    def __init__(self, env, output_dir="./benchmark_data"):
+    def __init__(self, env, output_dir="./benchmark_data", **kwargs):
         """
         初始化基准测试数据收集器
         
@@ -36,7 +36,7 @@ class BenchmarkDataCollector:
         os.makedirs(output_dir, exist_ok=True)
         
         # 创建子收集器
-        self.agent_collector = AgentStateCollector(env)
+        self.agent_collector = AgentStateCollector(env, config=kwargs.get('agent_collector_config'))
         self.workflow_collector = WorkflowStateCollector(env)
         self.event_collector = EventCollector(env)
         

@@ -4,7 +4,7 @@ import functools
 import logging
 from typing import TYPE_CHECKING, Dict, Any, Optional
 
-from .base import DataProvider
+from ..core.dataprovider import DataProvider
 
 # Type hinting
 if TYPE_CHECKING:

@@ -35,7 +35,7 @@ from airfogsim.manager.agent_manager import AgentManager
 from airfogsim.core.enums import TriggerOperator
 from .event import EventRegistry
 from typing import Dict, Optional, Type, Tuple, Union, List, Any
-from airfogsim.dataprovider.base import DataProvider # Import DataProvider
+from airfogsim.core.dataprovider import DataProvider # Import DataProvider
 import airfogsim.task as airfogsim_task
 import airfogsim.agent as airfogsim_agent
 import airfogsim.component as airfogsim_component

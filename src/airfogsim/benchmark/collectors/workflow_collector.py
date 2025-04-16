@@ -41,7 +41,7 @@ class WorkflowStateCollector:
             self.env.event_registry.subscribe(
                 manager_id,
                 'workflow_registered',
-                'benchmark_workflow_registered_collector',
+                f'benchmark_workflow_registered_collector_{self.start_time}',
                 self._on_workflow_registered
             )
 
@@ -49,7 +49,7 @@ class WorkflowStateCollector:
             self.env.event_registry.subscribe(
                 manager_id,
                 'workflow_started',
-                'benchmark_workflow_started_collector',
+                f'benchmark_workflow_registered_collector_{self.start_time}',
                 self._on_workflow_started
             )
 
@@ -57,7 +57,7 @@ class WorkflowStateCollector:
             self.env.event_registry.subscribe(
                 manager_id,
                 'workflow_completed',
-                'benchmark_workflow_completed_collector',
+                f'benchmark_workflow_registered_collector_{self.start_time}',
                 self._on_workflow_completed
             )
 
@@ -65,7 +65,7 @@ class WorkflowStateCollector:
             self.env.event_registry.subscribe(
                 manager_id,
                 'workflow_failed',
-                'benchmark_workflow_failed_collector',
+                f'benchmark_workflow_registered_collector_{self.start_time}',
                 self._on_workflow_failed
             )
 
@@ -73,7 +73,7 @@ class WorkflowStateCollector:
             self.env.event_registry.subscribe(
                 manager_id,
                 'workflow_canceled',
-                'benchmark_workflow_canceled_collector',
+                f'benchmark_workflow_registered_collector_{self.start_time}',
                 self._on_workflow_canceled
             )
 
@@ -81,7 +81,7 @@ class WorkflowStateCollector:
         self.env.event_registry.subscribe(
             '*',
             'sm_status_changed',
-            'benchmark_workflow_sm_state_collector',
+            f'benchmark_workflow_registered_collector_{self.start_time}',
             self._on_sm_status_changed
         )
 
@@ -89,7 +89,7 @@ class WorkflowStateCollector:
         self.env.event_registry.subscribe(
             '*',
             'workflow_created',
-            'benchmark_workflow_created_collector',
+            f'benchmark_workflow_registered_collector_{self.start_time}',
             self._on_workflow_created
         )
 

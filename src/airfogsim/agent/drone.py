@@ -104,29 +104,18 @@ class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):
                 self.update_state('status', 'idle')
             return
 
-        charging_workflow = None
-        charging_needed = False
-
-        # 首先检查是否有充电工作流, 且是否需要优先处理
+        # 检查是否有充电工作流
         for workflow in active_workflows:
             if isinstance(workflow, ChargingWorkflow):
-                charging_workflow = workflow
-                # 如果是在seeking_charger或charging状态，则优先处理充电
-                if workflow.status_machine.state in ['seeking_charger', 'charging']:
-                    charging_needed = True
+                # 如果当前在充电，更新无人机状态
+                if workflow.status_machine.state == 'charging':
+                    self.update_state('status', 'charging')
                 break
-
-        # 如果需要优先处理充电
-        if charging_needed and charging_workflow:
-            # 取消所有非充电任务
-            self._cancel_non_charging_tasks()
-
-            # 如果当前在充电，更新无人机状态
-            if charging_workflow.status_machine.state == 'charging':
-                self.update_state('status', 'charging')
 
         # 无人机特定的逻辑，如使用LLM进行任务规划等
         # 这里可以添加更多无人机特有的功能
+
+
 
     def _check_battery_level(self):
         """检查电池电量并决定是否需要终止当前任务"""

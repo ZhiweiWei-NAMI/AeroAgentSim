@@ -38,7 +38,7 @@ class DeliveryDroneAgentMeta(DroneAgentMeta):
                             "无人机最大负载容积 (m³)")
 
         # 扩展状态列表，直接定义新的验证函数
-        extended_states = ['idle', 'flying', 'landing', 'charging', 'error', 'waiting_to_charge',
+        extended_states = ['idle', 'flying', 'landing', 'charging', 'error', 'waiting_to_charge', 'active',
                           'picking_up', 'delivering', 'transporting','delivery_completed','pickup_completed']
 
         # 创建新的验证函数
@@ -204,8 +204,6 @@ class DeliveryDroneAgent(DroneAgent, metaclass=DeliveryDroneAgentMeta):
 
         # 如果需要优先处理充电
         if charging_needed and charging_workflow:
-            # 取消所有非充电任务
-            self._cancel_non_charging_tasks()
 
             # 如果当前在充电，更新无人机状态
             if charging_workflow.status_machine.state == 'charging':

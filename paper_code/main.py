@@ -18,17 +18,16 @@ import time
 from environment_setup import setup_environment
 from agent_factory import create_agents
 from workflow_manager import WorkflowGenerator
-from weather_integration import WeatherIntegration
+from airfogsim.dataprovider.weather_integration import WeatherIntegration
 from airfogsim.statistics import StatsCollector, StatsAnalyzer, StatsVisualizer
-from airfogsim.benchmark import BenchmarkDataCollector
 
 def main():
     """主函数"""
     # 解析命令行参数
     parser = argparse.ArgumentParser(description='AirFogSim多工作流基准测试示例')
-    parser.add_argument('--num-drones', type=int, default=500, help='无人机数量')
-    parser.add_argument('--duration', type=int, default=3600, help='仿真时长（秒），默认1小时')
-    parser.add_argument('--visual-interval', type=int, default=60, help='可视化更新间隔（秒），默认60秒')
+    parser.add_argument('--num-drones', type=int, default=50, help='无人机数量')
+    parser.add_argument('--duration', type=int, default=1000, help='仿真时长（秒），默认1小时')
+    parser.add_argument('--visual-interval', type=int, default=10, help='可视化更新间隔（秒），默认10秒')
     parser.add_argument('--output-dir', type=str, default='./stats_data', help='输出目录')
     parser.add_argument('--random-seed', type=int, default=42, help='随机种子')
     parser.add_argument('--scenario', type=str, default='mixed', choices=['inspection', 'delivery', 'charging', 'mixed'],
@@ -54,11 +53,10 @@ def main():
 
     # 创建统计数据收集器
     if args.collect_stats:
-        stats_collector = StatsCollector(env, output_dir=args.output_dir)
+        stats_collector = StatsCollector(env, output_dir=args.output_dir,
+                                         agent_collector_config={'listen_visual_update': True})
         print(f"统计数据收集器已创建，输出目录: {args.output_dir}")
 
-        # 创建基准测试数据收集器
-        benchmark_collector = BenchmarkDataCollector(env, output_dir=args.output_dir)
 
     # 设置基于站点的工作流生成
     setup_station_workflow_generation(env, workflow_generator, agents, args.scenario, args.station_interval)
@@ -73,8 +71,6 @@ def main():
 
     # 导出统计数据
     if args.collect_stats:
-        # 导出基准测试数据
-        benchmark_collector.export_data()
 
         # 导出统计数据
         output_files = stats_collector.export_data()
@@ -124,15 +120,10 @@ def setup_station_workflow_generation(env, workflow_generator, agents, scenario,
     # 不需要导入模块，因为我们使用工作流生成器的方法
 
     # 根据场景类型设置工作流生成
-    if scenario == 'inspection' or scenario == 'mixed':
-        # 设置巡检工作流生成
-        inspection_station = inspection_stations[0]
-        workflow_generator.setup_station_workflow_generation(
-            station=inspection_station,
-            interval=interval,
-            workflow_type='inspection'
-        )
-        print(f"时间 {env.now}: 已设置巡检工作流生成，间隔: {interval} 秒")
+    if not (scenario == 'inspection' or scenario == 'mixed'):
+        # 巡检是通过agent发布的，所以如果不需要巡检，则设置inspection_generation_interval为inf
+        for station in inspection_stations:
+            station.update_state('inspection_generation_interval', float('inf'))
 
     if scenario == 'delivery' or scenario == 'mixed':
         # 使用工作流生成器创建站点之间的快递工作流

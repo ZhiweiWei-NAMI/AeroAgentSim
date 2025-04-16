@@ -38,7 +38,7 @@ class EventCollector:
         self.env.event_registry.subscribe(
             '*',
             '*',
-            'benchmark_event_collector',
+            f'benchmark_event_collector_{self.start_time}',
             self._on_event
         )
 

@@ -70,6 +70,7 @@ class InspectionWorkflow(Workflow, metaclass=InspectionWorkflowMeta):
         获取当前状态下建议执行的任务
 
         根据当前状态机状态和巡检点，动态生成任务信息。
+        任务会继承工作流的优先级和抢占属性。
 
         返回:
             Dict: 任务信息字典
@@ -79,6 +80,7 @@ class InspectionWorkflow(Workflow, metaclass=InspectionWorkflowMeta):
             return None
 
         current_state = self.status_machine.state
+        task_dict = None
 
         # 检查是否是巡检点状态
         if current_state.startswith('inspecting_point_'):
@@ -92,7 +94,7 @@ class InspectionWorkflow(Workflow, metaclass=InspectionWorkflowMeta):
                     target_position = self.inspection_points[point_index]
 
                     # 创建移动任务
-                    return {
+                    task_dict = {
                         'component': 'MoveTo',
                         'task_class': 'MoveToTask',
                         'task_name': f'移动到巡检点 {point_index + 1}',
@@ -100,14 +102,14 @@ class InspectionWorkflow(Workflow, metaclass=InspectionWorkflowMeta):
                         'target_state': {'position': target_position},
                         'properties': {
                             'movement_type': 'path_following',
-                            'target_position': target_position,
-                            'priority': 'normal'
+                            'target_position': target_position
                         }
                     }
             except (ValueError, IndexError):
                 pass
 
-        return None
+        # 添加优先级和抢占属性
+        return self._add_priority_to_task(task_dict)
 
     def _setup_transitions(self):
         """设置状态机转换规则"""
@@ -177,15 +179,35 @@ class InspectionWorkflow(Workflow, metaclass=InspectionWorkflowMeta):
 
 
 # 使用示例
-def create_inspection_workflow(env, agent, inspection_points):
-    """创建巡检工作流"""
+def create_inspection_workflow(env, agent, inspection_points, task_priority=None, task_preemptive=False):
+    """
+    创建巡检工作流
+
+    Args:
+        env: 价格环境
+        agent: 执行巡检的代理
+        inspection_points: 巡检点列表
+        task_priority: 任务优先级，可以是TaskPriority枚举或字符串
+        task_preemptive: 任务是否可抢占
+
+    Returns:
+        创建的巡检工作流
+    """
     from airfogsim.core.trigger import TimeTrigger
+    from airfogsim.core.enums import TaskPriority
+
+    # 如果没有指定优先级，使用默认值
+    if task_priority is None:
+        task_priority = TaskPriority.NORMAL
+
     workflow = env.create_workflow(
         InspectionWorkflow,
         name=f"Inspection of {agent.id}",
         owner=agent,
         properties={
-            'inspection_points': inspection_points
+            'inspection_points': inspection_points,
+            'task_priority': task_priority,
+            'task_preemptive': task_preemptive
         },
         start_trigger=TimeTrigger(env, interval=100),
         max_starts=3

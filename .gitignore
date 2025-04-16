@@ -2,6 +2,8 @@
 # Ignore all files ending with .db anywhere in the project
 *.db
 paper_code/
+benchmark_data/
+stats_data/
 
 # --- Compressed Archives ---
 # Ignore all tar.gz files anywhere in the project

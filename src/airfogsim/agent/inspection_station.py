@@ -41,7 +41,7 @@ class InspectionStationMeta(AgentMeta):
                           None,
                           "巡检区域列表，每个区域包含多个巡检点")
 
-        mcs.register_template(cls, 'inspection_generation_interval', int, True,
+        mcs.register_template(cls, 'inspection_generation_interval', (int, float), True,
                           lambda interval: interval > 0,
                           "巡检任务生成间隔（秒）")
 
@@ -338,13 +338,13 @@ class InspectionStation(Agent, metaclass=InspectionStationMeta):
 
     def _process_custom_logic(self):
         """执行巡检站特定的逻辑"""
+        # 调用父类的处理逻辑
+        super()._process_custom_logic()
+
         # 如果还没有启动定期生成巡检任务的进程，则启动它
         if not hasattr(self, '_inspection_process_started') or not self._inspection_process_started:
             self.env.process(self._periodic_inspection_task())
             self._inspection_process_started = True
-
-        # 调用父类的处理逻辑
-        super()._process_custom_logic()
 
     def _periodic_inspection_task(self):
         """定期生成巡检任务"""

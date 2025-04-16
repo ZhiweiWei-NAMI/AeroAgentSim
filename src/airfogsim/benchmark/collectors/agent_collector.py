@@ -15,18 +15,36 @@ class AgentStateCollector:
     代理状态收集器
 
     负责收集代理的状态数据，包括位置、电量等。
+
+    可以配置是否监听visual_update事件，如果开启，将在每次visual_update事件触发时
+    收集所有代理的完整状态。否则，只收集状态变化事件触发的状态变化。
     """
 
-    def __init__(self, env):
+    def __init__(self, env, config=None):
         """
         初始化代理状态收集器
 
         Args:
             env: 仿真环境
+            config: 配置参数，可包含以下字段：
+                - listen_visual_update: 是否监听visual_update事件，默认为False
+                - debug: 是否输出调试信息，默认为False
         """
         self.env = env
         self.agent_states = {}  # 存储代理状态数据，格式：{agent_id: [{timestamp, position, ...}, ...]}
         self.start_time = time.time()
+
+        # 默认配置
+        self.default_config = {
+            'listen_visual_update': False,  # 默认不监听visual_update事件
+            'debug': False  # 是否输出调试信息
+        }
+
+        # 合并配置
+        self.config = config or {}
+        self.config = {**self.default_config, **self.config}
+
+        print(f"AgentStateCollector初始化，配置: {self.config}")
 
         # 订阅事件
         self._subscribe_events()
@@ -38,9 +56,85 @@ class AgentStateCollector:
         self.env.event_registry.subscribe(
             '*',
             'state_changed',
-            'benchmark_agent_state_collector',
+            f'benchmark_agent_state_collector_{self.start_time}',
             self._on_agent_state_changed
         )
+
+        # 订阅possessing_object_added和possessing_object_removed
+        self.env.event_registry.subscribe(
+            '*',
+            'possessing_object_added',
+            f'benchmark_agent_state_collector_{self.start_time}',
+            lambda event_data:  self._on_agent_possessing_object_changed(event_data, event_type='added')
+        )
+        self.env.event_registry.subscribe(
+            '*',
+            'possessing_object_removed',
+            f'benchmark_agent_state_collector_{self.start_time}',
+            lambda event_data:  self._on_agent_possessing_object_changed(event_data, event_type='removed')
+        )
+
+        # 如果配置了监听visual_update事件，则订阅该事件
+        if self.config['listen_visual_update']:
+            print(f"AgentStateCollector订阅visual_update事件")
+            self.env.event_registry.subscribe(
+                self.env.id,
+                'visual_update',
+                f'benchmark_agent_visual_update_{self.start_time}',
+                self._on_visual_update
+            )
+    def _on_agent_possessing_object_changed(self, event_data, event_type):
+        """
+        处理代理状态变化事件
+
+        Args:
+            event_data: 事件数据
+            event_type: 事件类型，added或removed
+        """
+        # {
+        #     'object_name': object_name,
+        #     'object_id': self._get_attribute(obj, 'id', None),
+        #     'agent_id': self.id,
+        #     'time': self.env.now
+        # }
+        source_id = event_data.get('agent_id')
+        if not source_id or not source_id.startswith('agent_'):
+            return
+        
+        # 获取代理
+        agent = self.env.agents.get(source_id)
+        if not agent:
+            return
+        
+        # 获取状态变化信息
+        key = 'possessing_object'
+        current_value = agent.get_possessing_object_names()
+        current_value.sort()
+        if event_type == 'added':
+            old_value = current_value.copy()
+            old_value.remove(event_data.get('object_name'))
+            new_value = current_value
+        elif event_type == 'removed':
+            old_value = current_value
+            new_value = current_value.copy()
+            old_value.append(event_data.get('object_name'))
+        else:
+            return
+        
+        # 初始化代理状态存储
+        if source_id not in self.agent_states:
+            self.agent_states[source_id] = []
+
+        self.agent_states[source_id].append({
+            'timestamp': self.env.now,
+            'real_time': time.time() - self.start_time,
+            'agent_id': source_id,
+            'agent_type': agent.__class__.__name__,
+            'state_key': key,
+            'old_value': old_value,
+            'new_value': new_value
+        })
+
 
     def _on_agent_state_changed(self, event_data):
         """
@@ -78,6 +172,19 @@ class AgentStateCollector:
             'new_value': new_value
         })
 
+    def _on_visual_update(self, event_data):
+        """
+        处理visual_update事件
+
+        Args:
+            event_data: 事件数据，包含当前仿真时间
+        """
+        # 当收到visual_update事件时，采集所有代理的当前状态
+        sim_time = event_data.get('time', self.env.now)
+        if self.config.get('debug', False):
+            print(f"Visual update at time {sim_time}, collecting all agent states")
+        self._collect_all_agent_states()
+
     def _collect_all_agent_states(self):
         """采集所有代理的当前状态"""
         for agent_id, agent in self.env.agents.items():
@@ -97,6 +204,11 @@ class AgentStateCollector:
             # 添加代理的所有状态
             for key, value in agent.state.items():
                 state_data[key] = value
+
+            objs = agent.get_possessing_object_names()
+            objs.sort()
+            # 记录possessing_object
+            state_data['possessing_object'] = objs
 
             # 记录状态
             self.agent_states[agent_id].append(state_data)
@@ -141,9 +253,23 @@ class AgentStateCollector:
 
             for agent_id, states in self.agent_states.items():
                 for state in states:
+                    full_state = state.get("full_state", False)
+                    if full_state:
+                        position = state.get("position", None)
+                        if (isinstance(position, list) or isinstance(position, tuple)) and len(position) >= 3:
+                            writer.writerow([
+                                state["timestamp"],
+                                agent_id,
+                                state["agent_type"],
+                                position[0],
+                                position[1],
+                                position[2]
+                            ])
+                        continue
+
                     if state["state_key"] == "position" and state["new_value"] is not None:
                         position = state["new_value"]
-                        if isinstance(position, list) and len(position) >= 3:
+                        if (isinstance(position, list) or isinstance(position, tuple)) and len(position) >= 3:
                             writer.writerow([
                                 state["timestamp"],
                                 agent_id,
@@ -161,6 +287,18 @@ class AgentStateCollector:
 
             for agent_id, states in self.agent_states.items():
                 for state in states:
+                    full_state = state.get("full_state", False)
+                    if full_state:
+                        battery_level = state.get("battery_level", None)
+                        if battery_level is not None:
+                            writer.writerow([
+                                state["timestamp"],
+                                agent_id,
+                                state["agent_type"],
+                                battery_level
+                            ])
+                        continue
+
                     if state["state_key"] == "battery_level" and state["new_value"] is not None:
                         battery_level = state["new_value"]
 
@@ -179,6 +317,18 @@ class AgentStateCollector:
 
             for agent_id, states in self.agent_states.items():
                 for state in states:
+                    full_state = state.get("full_state", False)
+                    if full_state:
+                        status = state.get("status", None)
+                        if status is not None:
+                            writer.writerow([
+                                state["timestamp"],
+                                agent_id,
+                                state["agent_type"],
+                                status
+                            ])
+                        continue
+
                     if state["state_key"] == "status" and state["new_value"] is not None:
                         status = state["new_value"]
 
@@ -197,6 +347,18 @@ class AgentStateCollector:
 
             for agent_id, states in self.agent_states.items():
                 for state in states:
+                    full_state = state.get("full_state", False)
+                    if full_state:
+                        possessing_object = state.get("possessing_object", None)
+                        if possessing_object is not None:
+                            writer.writerow([
+                                state["timestamp"],
+                                agent_id,
+                                state["agent_type"],
+                                possessing_object
+                            ])
+                        continue
+
                     if state["state_key"] == "possessing_object" and state["new_value"] is not None:
                         possessing_object = state["new_value"]
 

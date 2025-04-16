@@ -7,7 +7,7 @@ import simpy
 from typing import TYPE_CHECKING, Dict, Any, Optional, List, Tuple
 import time # For potential API refresh logic
 
-from .base import DataProvider
+from ..core.dataprovider import DataProvider
 from airfogsim.core.enums import ResourceStatus
 # Import the adapter
 from .api_adapters.openweathermap_adapter import fetch_and_convert_weather_data
