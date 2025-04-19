@@ -4,6 +4,7 @@
 paper_code/
 benchmark_data/
 stats_data/
+paper.*
 
 # --- Compressed Archives ---
 # Ignore all tar.gz files anywhere in the project
@@ -65,3 +66,13 @@ frontend/yarn-error.log*
 # --- Custom ---
 .clinerules
 dev_plan/
+
+# --- Paper related ---
+paper.md
+paper.bib
+paper_refs.txt
+bib_refs.txt
+airfogsim_paper.pdf
+large_scale_image_transfer_results.png
+file_renaming_plan.txt
+package-lock.json
