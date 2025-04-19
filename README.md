@@ -1,23 +1,26 @@
-# AirFogSim: 空中雾计算仿真框架
+# AirFogSim: Benchmarking Collaborative Intelligence for Low-Altitude Vehicular Fog Computing
 
 <div align="center">
   <img src="src/airfogsim/docs/img/logo.png" alt="AirFogSim Logo" width="300">
 </div>
 
-AirFogSim是一个基于SimPy构建的离散事件仿真框架，旨在模拟涉及自治代理（如无人机）、动态资源、任务执行和面向目标的工作流的复杂系统。该框架特别适用于研究空中雾计算场景、无人机协同作业、智能交通系统等领域的仿真与优化。
+AirFogSim is a discrete-event simulation framework built on SimPy, designed for benchmarking collaborative intelligence in UAV-integrated fog computing environments. It provides a comprehensive platform for modeling complex interactions between heterogeneous aerial and terrestrial nodes, with a focus on realistic communication, computation, energy, and mobility modeling.
 
-## 📋 项目概述
+[中文版本](README_CN.md)
 
-AirFogSim提供了一个全面的仿真环境，用于：
+## 📋 Project Overview
 
-- 模拟无人机等自治代理在复杂环境中的行为
-- 研究资源分配和任务调度策略
-- 评估不同工作流和协议的性能
-- 可视化仿真过程和结果分析
+AirFogSim offers a comprehensive simulation environment for:
 
-该框架采用模块化设计，支持高度自定义的仿真场景，并提供直观的可视化界面，便于研究人员和开发者进行实验和分析。
+- Simulating autonomous agents (like UAVs) in complex environments
+- Researching resource allocation and task offloading strategies
+- Evaluating collaborative intelligence in low-altitude vehicular fog computing
+- Benchmarking different workflows and protocols
+- Visualizing simulation processes and analyzing results
 
-如果您在研究中使用了AirFogSim，请引用我们的论文：
+The framework employs a modular design, supporting highly customizable simulation scenarios, and provides an intuitive visualization interface for researchers and developers.
+
+If you use AirFogSim in your research, please cite our paper:
 
 ```bibtex
 @misc{wei2024airfogsimlightweightmodularsimulator,
@@ -31,129 +34,151 @@ AirFogSim提供了一个全面的仿真环境，用于：
 }
 ```
 
-## 🔄 分支信息
+## ✨ Core Features
 
-本项目有两个主要分支：
+- **High-Performance Event-Driven Simulation Core:** Optimized event-driven simulation engine achieving sub-O(n log n) computational complexity for critical operations, enabling efficient simulation of large-scale scenarios.
 
-- **main分支**：这是旧版本的AirFogSim，更加强调计算方面的轻量化，并且是以step驱动的仿真框架。
-- **low_altitude_sim分支**（当前默认分支）：这是最新版本的AirFogSim，采用event驱动的方式，提供更高效的仿真性能和更灵活的事件处理机制。
+- **Workflow-Based Task Composition Framework:** Flexible and modular workflow-driven task model that explicitly captures task dependencies, resource constraints, and collaborative interactions among heterogeneous nodes.
 
-我们推荐使用当前的默认分支（low_altitude_sim）进行开发和研究，因为它提供了更多功能和更好的性能。
+- **Standards-Compliant Realistic Modeling:** Comprehensive models grounded in established standards, including 3GPP-compliant communication channel models, empirically validated energy consumption profiles, and physics-based mobility patterns.
 
-## ✨ 核心特性
+- **Agent-Centric Autonomy:** Agents (like UAVs) as primary actors with internal state, capable of autonomous decision-making based on their state, assigned workflows, and environmental perception.
 
-- **以代理为中心的自治系统**：代理（如无人机）作为主要行动者，拥有内部状态，能够自主决策
-- **事件驱动的交互模型**：组件间通过事件注册中心进行通信和同步
-- **关注点分离**：清晰划分Agent、Component、Task、Workflow、Resource等核心概念
-- **模块化与可扩展性**：通过子类化核心组件轻松扩展功能
-- **实时可视化**：集成的前端界面，支持实时监控和数据分析
-- **与LLM集成**：支持通过大型语言模型进行任务规划和决策
+- **Component-Based Capabilities:** Clear separation of concerns with components encapsulating specific functionalities (mobility, computation, sensing) and managing task execution environments.
 
-## 🏗️ 系统架构
+- **Trigger-Based Reactivity:** Flexible mechanism for reacting to various conditions (events, state changes, time), driving workflow state machine transitions and enabling automated responses.
 
-AirFogSim由以下核心组件构成：
+- **Managed Resources:** Simulation resources (landing spots, CPU, airspace, spectrum) managed by dedicated manager classes handling registration, allocation, contention, and dynamic attribute changes.
 
-### 1. 仿真环境 (Environment)
+- **Real-time Visualization:** Integrated frontend interface supporting real-time monitoring and data analysis.
 
-基于SimPy的离散事件调度器，包含：
-- 事件注册中心（EventRegistry）：用于组件间通信
-- 空域管理器（AirspaceManager）：八叉树管理位置和碰撞信息
-- 着陆点管理器（LandingManager）：管理着陆点和充电站
-- 频谱资源管理器（SpectrumManager）：管理频谱资源
-- 合同管理器（ContractManager）：管理合同和交易进行
-- 工作流管理器（WorkflowManager）：管理工作流的生命周期
-- 任务管理器（TaskManager）：管理任务的创建
-- 数据提供器（DataProvider）：提供实时数据和统计信息，包括天气、交通流等
+- **LLM Integration:** Support for task planning and decision-making through large language models.
 
-### 2. 代理 (Agent)
+## 🏗️ System Architecture
 
-自治的决策实体，如无人机、地面站等，具有：
-- 内部状态管理
-- 决策逻辑
-- 组件所有权
-- 任务发起能力
+AirFogSim is built around an event-driven Agent-Based Modeling (ABM) architecture that enables efficient simulation of complex interactions between heterogeneous agents. The platform extends the SimPy discrete-event simulation library, providing specialized components for UAV-integrated fog computing scenarios.
 
-### 3. 组件 (Component)
+### Backend Architecture
 
-抽象特定能力（如移动、计算、充电等），负责：
-- 任务执行环境
-- 资源交互
-- 性能指标计算
+The backend architecture of AirFogSim is designed with a focus on modularity, extensibility, and performance. It consists of several key components:
 
-### 4. 任务 (Task)
+#### 1. Simulation Environment (Environment)
 
-封装具体行动的逻辑，定义：
-- 执行过程
-- 状态产出
-- 指标消耗
+The central hub of the simulation, extending SimPy's Environment for discrete-event scheduling:
+- **Event Registry (EventRegistry):** Central bus for publishing and subscribing to named events across all simulation entities, enabling decoupled communication.
+- **Airspace Manager (AirspaceManager):** Octree-based spatial management for position and collision information.
+- **Landing Manager (LandingManager):** Management of landing spots and charging stations.
+- **Frequency Manager (FrequencyManager):** Management of spectrum resources with 3GPP-compliant channel models.
+- **Contract Manager (ContractManager):** Management of contracts and transactions.
+- **Workflow Manager (WorkflowManager):** Management of workflow lifecycles.
+- **Task Manager (TaskManager):** Management of task creation and execution.
+- **Data Provider (DataProvider):** Provision of real-time data and statistics, including weather and traffic flow.
 
-### 5. 工作流 (Workflow)
+#### 2. Agent (Agent)
 
-代表高级目标或过程，作为：
-- 基于事件的监控器
-- 状态机
-- 协调器
+Autonomous decision-making entities like UAVs and ground stations:
+- **State Management:** Maintains internal state with type validation through metaclass-based state templates.
+- **Decision Logic:** SimPy process defining the agent's behavior loop, perceiving state, workflows, and events to decide which tasks to execute.
+- **Component Ownership:** Owns components representing its capabilities (mobility, sensing, computation).
+- **Task Initiation:** Initiates tasks by delegating execution to appropriate components.
+- **Event Handling:** Triggers and subscribes to events for state changes, task lifecycle, and object possession.
 
+#### 3. Component (Component)
 
-## 📊 可视化系统
+Abstracts specific capabilities (mobility, computation, charging) and provides the execution environment for tasks:
+- **Task Execution:** Manages task lifecycle, resource acquisition, metrics calculation, and cleanup.
+- **Resource Interaction:** Defines resource requirements and requests resources from appropriate managers.
+- **Metrics Calculation:** Calculates performance metrics based on resource attributes and agent state.
+- **Event Emission:** Triggers namespaced events for task status and metric changes.
 
-AirFogSim集成了一个完整的可视化系统，包括：
+#### 4. Task (Task)
 
-- **仪表盘**：显示仿真状态、代理信息和系统事件
-- **无人机监控**：实时追踪无人机位置、状态和轨迹
-- **工作流配置**：配置和监控工作流执行
-- **数据分析**：资源使用情况和性能指标分析
+Encapsulates the logic for specific actions, defining how work is performed:
+- **Execution Logic:** SimPy generator consuming performance metrics provided by components.
+- **Metric Consumption:** Declares necessary metrics required from executing components.
+- **State Production:** Updates agent state based on task logic and progress.
+- **Lifecycle Management:** Manages task status (PENDING, RUNNING, COMPLETED, FAILED, CANCELED).
+
+#### 5. Workflow (Workflow) & State Machine (WorkflowStatusMachine)
+
+Represents higher-level goals or processes, acting as a monitor and coordinator:
+- **State Machine:** Contains a WorkflowStatusMachine instance managing internal states and transitions.
+- **Trigger-Driven Transitions:** Uses triggers to define rules based on agent state, events, or time.
+- **Context/Guidance:** Provides workflow context and suggests next tasks for agents based on current state.
+
+#### 6. Trigger (Trigger)
+
+Monitors specific simulation conditions and executes callbacks when met:
+- **Condition Monitoring:** Checks for event occurrences, agent state changes, or time passage.
+- **Activation/Deactivation:** Can be activated to monitor and deactivated to stop.
+- **Types:** EventTrigger, StateTrigger, TimeTrigger, and CompositeTrigger for different monitoring needs.
+
+#### 7. Resource Layer (Resource & ResourceManager)
+
+Models entities that are utilized or consumed:
+- **Resource Base Class:** Defines common properties like id, attributes, and status.
+- **ResourceManager Base Class:** Generic base for managing resources of specific types.
+- **Specific Managers:** Implement resource-specific logic for finding, allocation, release, and modeling contention.
+
+### Visualization System
+
+AirFogSim integrates a complete visualization system, including:
+
+- **Dashboard:** Displays simulation status, agent information, and system events
+- **UAV Monitoring:** Real-time tracking of UAV positions, states, and trajectories
+- **Workflow Configuration:** Configuration and monitoring of workflow execution
+- **Data Analysis:** Resource usage and performance metrics analysis
 
 <div align="center">
-  <img src="src/airfogsim/docs/img/状态监控.png" alt="状态监控界面" width="800">
-  <p><em>状态监控界面 - 实时跟踪无人机位置和状态</em></p>
+  <img src="src/airfogsim/docs/img/状态监控.png" alt="Status Monitoring Interface" width="800">
+  <p><em>Status Monitoring Interface - Real-time tracking of UAV positions and states</em></p>
 </div>
 
-可视化系统采用前后端分离架构：
-- 前端：基于React的Web应用
+The visualization system employs a client-server architecture:
+- **Frontend:** React-based web application
   <div align="center">
-    <img src="src/airfogsim/docs/img/前端.png" alt="前端界面" width="600">
-    <p><em>前端界面 - 用户交互与数据可视化</em></p>
+    <img src="src/airfogsim/docs/img/前端.png" alt="Frontend Interface" width="600">
+    <p><em>Frontend Interface - User interaction and data visualization</em></p>
   </div>
-- 前端：基于SUMO的3D交通仿真可视化
+- **Frontend:** SUMO-based 3D traffic simulation visualization
   <div align="center">
-    <img src="src/airfogsim/docs/img/前端2.png" alt="前端界面" width="600">
-    <p><em>前端界面 - 3D交通仿真可视化</em></p>
+    <img src="src/airfogsim/docs/img/前端2.png" alt="Frontend Interface" width="600">
+    <p><em>Frontend Interface - 3D traffic simulation visualization</em></p>
   </div>
-- 后端：FastAPI服务，与仿真引擎集成
+- **Backend:** FastAPI service integrated with the simulation engine
   <div align="center">
-    <img src="src/airfogsim/docs/img/后端.png" alt="后端架构" width="600">
-    <p><em>后端架构 - 数据处理与仿真引擎集成</em></p>
+    <img src="src/airfogsim/docs/img/后端.png" alt="Backend Architecture" width="600">
+    <p><em>Backend Architecture - Data processing and simulation engine integration</em></p>
   </div>
-- 通信：通过WebSocket实现实时数据传输
+- **Communication:** Real-time data transmission via WebSocket
 
-## 🚀 安装指南
+## 🚀 Installation Guide
 
-### 前提条件
+### Prerequisites
 
 - Python 3.8+
 - Node.js 14+
 - npm 6+
 
-### 安装步骤
+### Installation Steps
 
-1. 克隆仓库
+1. Clone the repository
 
 ```bash
 git clone https://github.com/ZhiweiWei-NAMI/AirFogSim.git
 cd AirFogSim
 ```
 
-2. 安装Python依赖
+2. Install Python dependencies
 
 ```bash
 python -m venv airfogsim_venv
-source airfogsim_venv/bin/activate && echo "虚拟环境已激活"
+source airfogsim_venv/bin/activate  # On Windows: airfogsim_venv\Scripts\activate
 pip install -r requirements.txt
-pip install -e .  # 以开发模式安装
+pip install -e .  # Install in development mode
 ```
 
-3. 安装前端依赖
+3. Install frontend dependencies
 
 ```bash
 cd frontend
@@ -161,41 +186,34 @@ npm install
 cd ..
 ```
 
-4. 启动可视化系统
+4. Start the visualization system
 
 ```bash
 python main_for_visualization.py
 ```
 
-这将启动后端API服务和前端开发服务器，并自动在浏览器中打开可视化界面。
-
-5. 测试运行脚本（可选）
-
-```bash
-python -m unittest discover -s src/airfogsim/tests
-```
+This will start the backend API service and frontend development server, and automatically open the visualization interface in your browser.
 
 
-### 使用 Docker 运行 (未完善)
+### Running with Docker (Work in Progress)
 
-这是推荐的运行方式，可以确保环境一致性并简化部署。
+This is the recommended way to run, ensuring environment consistency and simplifying deployment.
 
-**前提条件:**
+**Prerequisites:**
 
 - Docker ([https://www.docker.com/get-started](https://www.docker.com/get-started))
 - Docker Compose ([https://docs.docker.com/compose/install/](https://docs.docker.com/compose/install/))
 
-**运行步骤:**
+**Steps:**
 
-1.  **克隆仓库 (如果尚未完成):**
+1.  **Clone the repository (if not already done):**
    ```bash
-   # 替换为你的仓库 URL
    git clone https://github.com/ZhiweiWei-NAMI/AirFogSim.git
    cd AirFogSim
    ```
 
-2.  **构建前端静态文件:**
-   > **注意:** 当前 Docker Compose 配置依赖于在主机上预先构建的前端文件。
+2.  **Build frontend static files:**
+   > **Note:** The current Docker Compose configuration depends on pre-built frontend files on the host.
    ```bash
    cd frontend
    npm install
@@ -203,31 +221,31 @@ python -m unittest discover -s src/airfogsim/tests
    cd ..
    ```
 
-3.  **构建并启动 Docker 服务:**
+3.  **Build and start Docker services:**
    ```bash
    docker-compose build
    docker-compose up -d
    ```
-   这将构建后端镜像，并启动后端和 Nginx 服务。
+   This will build the backend image and start the backend and Nginx services.
 
-4.  **访问应用:**
-   在浏览器中打开 `http://localhost`。
+4.  **Access the application:**
+   Open `http://localhost` in your browser.
 
-5.  **查看日志:**
+5.  **View logs:**
    ```bash
-   docker-compose logs -f  # 查看所有服务日志
-   docker-compose logs -f backend # 查看后端日志
-   docker-compose logs -f nginx   # 查看 Nginx 日志
+   docker-compose logs -f  # View all service logs
+   docker-compose logs -f backend # View backend logs
+   docker-compose logs -f nginx   # View Nginx logs
    ```
 
-6.  **停止服务:**
+6.  **Stop services:**
    ```bash
    docker-compose down
    ```
 
-## 📝 使用示例
+## 📝 Usage Examples
 
-### 基本仿真示例
+### Basic Simulation Example
 
 ```python
 from airfogsim.core.environment import Environment
@@ -236,13 +254,13 @@ from airfogsim.component import MoveToComponent, ChargingComponent
 from airfogsim.workflow.inspection import create_inspection_workflow
 from airfogsim.helper import check_all_classes, find_compatible_components
 
-# 创建环境
+# Create environment
 env = Environment()
 
-# 检查系统中的类
+# Check system classes
 check_all_classes(env)
 
-# 创建无人机代理
+# Create drone agent
 drone = env.create_agent(
     DroneAgent,
     "drone1",
@@ -250,171 +268,175 @@ drone = env.create_agent(
     initial_battery=100
 )
 
-# 查找合适的组件
+# Find suitable components
 find_compatible_components(env, drone, ['speed'])
 
-# 添加组件
+# Add components
 move_component = MoveToComponent(env, drone)
 charging_component = ChargingComponent(env, drone)
 drone.add_component(move_component)
 drone.add_component(charging_component)
 
-# 创建巡检工作流
+# Create inspection workflow
 waypoints = [
-    (10, 10, 100),    # 起飞
-    (400, 400, 150),  # 中间点
-    (800, 800, 150),  # 目的地
-    (800, 800, 0),    # 降落
-    (800, 800, 100),  # 起飞返回
-    (10, 10, 0)       # 返回起点
+    (10, 10, 100),    # Take off
+    (400, 400, 150),  # Midpoint
+    (800, 800, 150),  # Destination
+    (800, 800, 0),    # Land
+    (800, 800, 100),  # Take off for return
+    (10, 10, 0)       # Return to start
 ]
 workflow = create_inspection_workflow(env, drone, waypoints)
 
-# 启动工作流
+# Start workflow
 workflow.start()
 
-# 运行仿真
+# Run simulation
 env.run(until=1000)
 ```
 
-### 使用类检查工具
+### Using Class Checker Tools
 
 ```bash
-# 显示所有类
+# Show all classes
 python -m airfogsim.helper.class_finder --all
 
-# 查找支持特定状态的代理类
+# Find agent classes supporting specific states
 python -m airfogsim.helper.class_finder --find-agent position,battery_level
 
-# 查找产生特定指标的组件类
+# Find component classes producing specific metrics
 python -m airfogsim.helper.class_finder --find-component speed,processing_power
 ```
 
-### 启动可视化界面
+### Starting the Visualization Interface
 
 ```bash
 python main_for_visualization.py --backend-port 8002 --frontend-port 3000
 ```
 
-## 🧪 示例程序与自动测试
+## 🧪 Examples and Automated Testing
 
-AirFogSim提供了丰富的示例程序，展示框架的各种功能和使用场景。这些示例位于`src/airfogsim/examples`目录下：
+AirFogSim provides a rich set of example programs demonstrating various features and use cases. These examples are located in the `src/airfogsim/examples` directory:
 
-### 主要示例程序
+### Main Examples
 
-- **触发器系统示例**: `trigger_example.py` - 展示如何使用不同类型的触发器创建和管理工作流
-- **工作流图表生成**: `workflow_diagram_demo.py` - 演示如何将工作流状态机转换为可视化图表
-- **图像处理工作流**: `run_image_processing.py` - 展示环境图像感知处理的完整工作流
-- **多任务合约示例**: `run_multi_task_contract.py` - 演示合约工作流如何管理多个任务
-- **无人机巡检示例**: `run_drone_inspection.py` - 展示无人机巡检路径规划和自动充电功能
-- **天气数据集成**: `demo_weather_provider_api.py` - 演示如何集成实时天气数据到仿真中
+- **Basic Trigger System**: `example_trigger_basic.py` - Shows how to use different types of triggers to create and manage workflows
+- **Workflow Diagram Generation**: `example_workflow_diagram.py` - Demonstrates how to convert workflow state machines to visual diagrams
+- **Image Processing Workflow**: `example_workflow_image_processing.py` - Shows a complete workflow for environmental image sensing and processing
+- **Multi-Task Contract**: `example_workflow_contract.py` - Demonstrates how contract workflows manage multiple tasks
+- **Drone Inspection**: `example_workflow_inspection.py` - Shows drone inspection path planning and automatic charging
+- **Weather Data Integration**: `example_weather_provider.py` - Demonstrates integration of real-time weather data into simulations
+- **Benchmark Multi-Workflow**: `example_benchmark_multi_workflow.py` - JOSS paper benchmark example with inspection, logistics, and charging workflows
 
-### 一键测试示例
+### One-Click Testing
 
-我们提供了一个自动测试脚本，可以轻松运行和验证所有示例：
+We provide an automated testing script to easily run and verify all examples:
 
 ```bash
-# 列出所有可用的示例
+# List all available examples
 cd src/airfogsim/examples
 python test_examples.py --list
 
-# 运行特定示例
-python test_examples.py --run workflow_diagram_demo trigger_example
+# Run specific examples
+python test_examples.py --run example_workflow_diagram example_trigger_basic
 
-# 运行所有示例
+# Run all examples
 python test_examples.py
 ```
 
-示例测试脚本会自动检查必要的依赖条件（如API密钥），并提供详细的测试结果报告。这使得新用户可以快速了解框架的功能，开发者也能方便地验证不同模块的正确性。
+The example testing script automatically checks necessary dependencies (like API keys) and provides detailed test result reports. This allows new users to quickly understand the framework's capabilities and developers to easily verify different modules.
 
-## 📁 项目结构
+## 📁 Project Structure
 
 ```
 airfogsim-project/
-├── .dockerignore             # Docker 构建忽略文件 (后端)
-├── .env                      # 后端环境变量 (本地, 不提交到 Git)
-├── Dockerfile                # 后端 Dockerfile
-├── docker-compose.yml        # Docker Compose 编排文件
-├── frontend/                 # 前端可视化界面
-│   ├── .dockerignore         # Docker 构建忽略文件 (前端)
-│   ├── .env                  # 前端环境变量 (本地, 不提交到 Git)
-│   ├── Dockerfile            # 前端 Dockerfile
-│   ├── build/                # 前端构建产物 (本地生成)
-│   ├── node_modules/         # (本地, 不提交到 Git)
+├── .dockerignore             # Docker build ignore file (backend)
+├── .env                      # Backend environment variables (local, not committed to Git)
+├── Dockerfile                # Backend Dockerfile
+├── docker-compose.yml        # Docker Compose orchestration file
+├── frontend/                 # Frontend visualization interface
+│   ├── .dockerignore         # Docker build ignore file (frontend)
+│   ├── .env                  # Frontend environment variables (local, not committed to Git)
+│   ├── Dockerfile            # Frontend Dockerfile
+│   ├── build/                # Frontend build artifacts (locally generated)
+│   ├── node_modules/         # (local, not committed to Git)
 │   ├── package.json
-│   ├── public/               # 静态资源
-│   └── src/                  # 前端源代码
-│       ├── pages/            # 页面组件
-│       └── services/         # API服务
-├── LICENSE                   # 项目许可证
-├── main_for_visualization.py # 可视化系统启动脚本 (本地开发用)
-├── nginx.conf                # Nginx 配置文件
-├── pyproject.toml            # Python 项目配置文件 (含依赖)
-├── README.md                 # 本文档
-├── requirements.txt          # Python 锁定依赖 (由 pip-compile 生成)
-├── src/                      # 后端源代码
-│   └── airfogsim/            # 核心仿真框架
-│       ├── agent/            # 代理实现
-│       ├── component/        # 组件实现
-│       ├── core/             # 核心类和接口
-│       ├── docs/             # 文档
-│       ├── event/            # 事件处理
-│       ├── examples/         # 示例代码
-│       ├── helper/           # 开发辅助工具
-│       ├── manager/          # 各类管理器
-│       ├── resource/         # 资源实现
-│       ├── task/             # 任务实现
-│       ├── visualization/    # 可视化相关 (FastAPI 应用)
-│       └── workflow/         # 工作流实现
-└── ... (其他配置文件、测试文件等)
+│   ├── public/               # Static assets
+│   └── src/                  # Frontend source code
+│       ├── pages/            # Page components
+│       └── services/         # API services
+├── LICENSE                   # Project license
+├── main_for_visualization.py # Visualization system startup script (for local development)
+├── nginx.conf                # Nginx configuration file
+├── pyproject.toml            # Python project configuration file (including dependencies)
+├── README.md                 # This document
+├── requirements.txt          # Python locked dependencies (generated by pip-compile)
+├── src/                      # Backend source code
+│   └── airfogsim/            # Core simulation framework
+│       ├── agent/            # Agent implementations
+│       ├── component/        # Component implementations
+│       ├── core/             # Core classes and interfaces
+│       ├── docs/             # Documentation
+│       ├── event/            # Event handling
+│       ├── examples/         # Example code
+│       ├── helper/           # Development helper tools
+│       ├── manager/          # Various managers
+│       ├── resource/         # Resource implementations
+│       ├── task/             # Task implementations
+│       ├── visualization/    # Visualization-related (FastAPI application)
+│       └── workflow/         # Workflow implementations
+└── ... (other configuration files, test files, etc.)
 ```
 
-## 📚 文档
+## 📚 Documentation
 
-详细的文档可在以下位置找到：
+Detailed documentation can be found at:
 
-- [系统架构](src/airfogsim/docs/cn/architecture_cn.md)
-- [代理指南](src/airfogsim/docs/cn/agent_guide_cn.md)
-- [组件指南](src/airfogsim/docs/cn/component_guide_cn.md)
-- [任务指南](src/airfogsim/docs/cn/task_guide_cn.md)
-- [触发器指南](src/airfogsim/docs/cn/trigger_guide_cn.md)
-- [工作流指南](src/airfogsim/docs/cn/workflow_cn.md)
-- [开发辅助工具](src/airfogsim/helper/README.md)
+- [System Architecture](src/airfogsim/docs/en/architecture.md)
+- [Agent Guide](src/airfogsim/docs/en/agent_guide.md)
+- [Component Guide](src/airfogsim/docs/en/component_guide.md)
+- [Task Guide](src/airfogsim/docs/en/task_guide.md)
+- [Trigger Guide](src/airfogsim/docs/en/trigger_guide.md)
+- [Workflow Guide](src/airfogsim/docs/en/workflow_guide.md)
+- [Resource Management Guide](src/airfogsim/docs/en/resource_manager_guide.md)
+- [Data Provider Guide](src/airfogsim/docs/en/dataprovider_guide.md)
+- [Development Helper Tools](src/airfogsim/helper/README.md)
+- [Examples](src/airfogsim/examples/README.md)
 
-## 🤝 贡献指南
+## 🤝 Contribution Guidelines
 
-我们欢迎各种形式的贡献，包括但不限于：
+We welcome contributions of all kinds, including but not limited to:
 
-- 报告问题和提出建议
-- 提交代码改进和新功能
-- 完善文档和示例
-- 分享使用案例和应用场景
+- Reporting issues and suggesting improvements
+- Submitting code improvements and new features
+- Improving documentation and examples
+- Sharing use cases and application scenarios
 
-### 开发新类的最佳实践
+### Best Practices for Developing New Classes
 
-在开发新的代理、组件、任务或工作流类之前，建议先使用helper模块的类检查工具查看系统中是否已有符合需求的类，避免重复创建。
+Before developing new agent, component, task, or workflow classes, we recommend using the helper module's class checker tools to see if there are already classes that meet your requirements, avoiding duplicate creation.
 
 ```bash
-# 检查系统中的所有类
+# Check all classes in the system
 python -m airfogsim.helper.class_finder --all
 
-# 查找支持特定状态的代理类
+# Find agent classes supporting specific states
 python -m airfogsim.helper.class_finder --find-agent position,battery_level
 ```
 
-请遵循以下步骤：
+Please follow these steps:
 
-1. Fork仓库
-2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
-3. 使用helper模块检查现有类
-4. 提交更改 (`git commit -m 'Add some amazing feature'`)
-5. 推送到分支 (`git push origin feature/amazing-feature`)
-6. 创建Pull Request
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Use the helper module to check existing classes
+4. Commit your changes (`git commit -m 'Add some amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Create a Pull Request
 
-## 📄 许可证
+## 📄 License
 
-本项目采用MIT许可证 - 详情请参阅[LICENSE](LICENSE)文件。
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-**AirFogSim** - 为空中雾计算研究提供强大的仿真工具
+**AirFogSim** - Powerful simulation tools for low-altitude vehicular fog computing research

@@ -1,13 +1,20 @@
-## AirFogSim Workflow & State Machine Developer Documentation
+## AirFogSim Workflow-Agent-Task Framework Documentation
 
-This document explains the `Workflow` and `WorkflowStatusMachine` classes in AirFogSim, guiding developers on how to implement custom workflow logic based on simulation events, particularly Agent state changes and Task outcomes.
+This document explains the Workflow-Agent-Task framework in AirFogSim, focusing on the `Workflow` and `WorkflowStatusMachine` classes and how they enable modeling complex mission scenarios through the composition of reusable components.
 
 ### 1. Overview
 
-Workflows in AirFogSim represent higher-level goals, processes, or sequences of actions that an `Agent` might undertake. They are driven by a dedicated state machine (`WorkflowStatusMachine`) that reacts to events occurring within the simulation.
+At the heart of AirFogSim is the workflow-agent-task framework, which enables the modeling of complex mission scenarios through the composition of reusable components. While Tasks represent atomic execution units, Workflows define higher-level processes, objectives, or sequences of operations.
 
-*   **`Workflow`:** The main object representing the goal. It holds overall status (Pending, Running, Completed, etc.), references the owner `Agent`, and contains workflow-specific properties or goals defined via `WorkflowPropertyTemplate`. It defines *what* the goal is and manages its overall lifecycle.
-*   **`WorkflowStatusMachine`:** The engine contained within a `Workflow`. It manages the internal states of the workflow's progression (e.g., `moving_to_target`, `processing_data`). It listens for specific events (using various `Trigger` types) and transitions between internal states based on predefined rules. It defines *how* the workflow progresses internally based on events.
+*   **`Workflow`:** The main object representing a higher-level goal or process. It holds overall status (Pending, Running, Completed, etc.), references the owner `Agent`, and contains workflow-specific properties or goals defined via `WorkflowPropertyTemplate`. It defines *what* the goal is and manages its overall lifecycle.
+
+*   **`WorkflowStatusMachine`:** Each Workflow instance encapsulates a dedicated state machine, represented by the WorkflowStatusMachine class. This state machine manages the workflow's progression through various stages (e.g., 'idle', 'picking_up', 'transporting'). It listens for specific events (using various `Trigger` types) and transitions between internal states based on predefined rules. It defines *how* the workflow progresses internally based on events.
+
+*   **`Agent`:** Autonomous decision-making entities that own components, execute tasks, and participate in workflows. Agents maintain internal state and make decisions based on their state, assigned workflows, and environmental perception.
+
+*   **`Task`:** Atomic execution units that encapsulate the logic for specific actions. Tasks define how work is performed, what resources are needed, what metrics are consumed, and what agent states are produced.
+
+**Key Concept:** A critical aspect of this model is that state transitions are not predetermined sequences but are dynamically driven by simulation Triggers. These triggers actively monitor the simulation environment for specific conditions to be met before allowing a transition from one state to the next.
 
 **Relationship:** A `Workflow` object *has a* `WorkflowStatusMachine`. The `Workflow`'s overall status (e.g., `WorkflowStatus.RUNNING`) is managed by the `Workflow` itself (often triggered by the state machine), while the `WorkflowStatusMachine` manages the detailed internal progression by reacting to fine-grained simulation events.
 
@@ -57,7 +64,7 @@ This class represents the overall workflow goal and orchestrates the `WorkflowSt
 *   **Property Templates (`WorkflowPropertyTemplate`, `register_property_template`, `get_property_templates`):** Define the expected structure, types, and validation rules for the `properties` dictionary passed during workflow initialization. Ensures consistency and provides documentation. Use the `@classmethod register_property_template` decorator or `WorkflowMeta.register_template` for definition.
 *   **Overall Status (`self.status`):** Tracks the high-level status using the `WorkflowStatus` enum (`PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELED`).
 *   **State Machine (`self.status_machine`):** Holds the instance of `WorkflowStatusMachine` that drives internal progress.
-*   **Initialization (`__init__`):** Sets up ID, name, owner, optional timeout. Validates provided `properties` against registered templates (`_validate_properties`). Creates the `WorkflowStatusMachine`. Calls the abstract `_setup_transitions`. Registers workflow-level events (like `sm_status_changed`, `workflow_status_changed`).
+*   **Initialization (`__init__`):** Sets up ID, name, owner, optional timeout. Validates provided `properties` against registered templates (`_validate_properties`). Creates the `WorkflowStatusMachine` with the specified `initial_status` (default is 'idle'). Calls the abstract `_setup_transitions`. Automatically registers workflow-level events ('sm_status_changed', 'workflow_status_changed'). Also automatically registers property templates for 'task_priority' and 'task_preemptive'.
 *   **Transitions Setup (`_setup_transitions`) - Abstract Method:**
     *   **This is the primary method subclasses MUST implement.**
     *   Inside this method, you define the workflow's logic by adding transitions to `self.status_machine`.
@@ -72,13 +79,21 @@ This class represents the overall workflow goal and orchestrates the `WorkflowSt
     *   This method first updates the workflow's overall status (`self.status`) based on the state machine's new state using `update_status_from_state_machine`.
     *   It then triggers the `sm_status_changed` event to notify about the state machine's internal status change. This event includes the old and new internal SM states and details about the triggering event.
 *   **Status Management (`update_status_from_state_machine`):**
-    *   Automatically maps state machine states (like `'completed'`, `'failed'`, `'canceled'`) to the corresponding `WorkflowStatus` enum values.
-    *   Updates `self.status`, `self.end_time`, and `self.completion_reason`.
+    *   Automatically maps state machine states to the corresponding `WorkflowStatus` enum values:
+        * State machine state `'completed'` → `WorkflowStatus.COMPLETED`
+        * State machine state `'failed'` → `WorkflowStatus.FAILED`
+        * State machine state `'canceled'` → `WorkflowStatus.CANCELED`
+        * Other states generally maintain the current workflow status
+    *   Updates `self.status`, `self.end_time`, and `self.completion_reason` when a terminal state is reached.
+    *   The `completion_reason` is set based on the event details or a default message based on the state machine state.
     *   When the workflow's overall status changes, it triggers the `workflow_status_changed` event to notify external listeners (like `WorkflowManager`).
+    *   If the workflow status changes to `RUNNING` and an owner is specified, it also triggers a 'workflow_assigned' event on the owner agent to notify it about the assignment.
 *   **Reset Functionality (`reset`):**
     *   Resets the workflow to its initial `PENDING` state.
-    *   Stops the current state machine process and creates a new `WorkflowStatusMachine` instance.
-    *   Re-establishes all transitions by calling `_setup_transitions`.
+    *   Stops the current state machine process and creates a new `WorkflowStatusMachine` instance with the original initial status.
+    *   Re-establishes all transitions by calling `_setup_transitions` again to set up the state machine logic.
+    *   Clears start_time, end_time, and completion_reason.
+    *   Triggers a 'workflow_status_changed' event with the reason 'workflow_reset'.
     *   Allows workflows to be restarted after completion or failure.
 *   **Timeout (`_timeout_monitor`):** An optional process that automatically fails the workflow if it doesn't reach a terminal state machine state within the specified duration.
 *   **Details (`get_details`):** Subclasses should override this to provide specific information about the workflow's parameters or current goal context (useful for LLM planning or UI display).
@@ -99,8 +114,8 @@ This class represents the overall workflow goal and orchestrates the `WorkflowSt
     *   Store any specific properties needed for this workflow type (e.g., target locations, data IDs) usually accessed from the validated `self.properties` dictionary.
     ```python
     class InspectionWorkflow(Workflow): # Assuming metaclass handles templates
-        def __init__(self, env, name, owner, **kwargs):
-            super().__init__(env, name, owner, **kwargs)
+        def __init__(self, env, name, owner, initial_status='waiting', **kwargs):
+            super().__init__(env, name, owner, initial_status=initial_status, **kwargs)
             # Properties are validated by the metaclass/base init
             self.inspection_points = self.properties.get('inspection_points', [])
             self.current_point_index = 0
@@ -223,15 +238,37 @@ This class represents the overall workflow goal and orchestrates the `WorkflowSt
 *   Use `properties` validated by `WorkflowPropertyTemplate` for workflow-specific parameters.
 *   Implement `get_details` and `get_current_suggested_task` for better integration with agent decision-making (especially LLMs) and monitoring.
 *   The `WorkflowStatusMachine`'s internal state (`current_status`) is distinct from the `Workflow`'s overall status (`status`). The workflow updates its status based on the state machine's progression.
-*   Listen to `workflow_status_changed` (for overall status) or `sm_status_changed` (for internal SM state changes) events for monitoring.
+*   Listen to `workflow_status_changed` (for overall status) or `sm_status_changed` (for internal SM state changes) events for monitoring. These events are automatically registered during workflow initialization.
 *   The `reset()` method allows workflows to be reused or restarted.
 *   Keep transition logic clear and focused. Use callbacks for actions directly related to the trigger activation, but complex logic should ideally be handled by the Agent based on the new state or suggested task.
+*   The workflow automatically registers property templates for 'task_priority' and 'task_preemptive' which are used to control task execution behavior when tasks are suggested by the workflow.
 
 ### 5. Diagram Generation
 
-Workflows can be visualized using PlantUML or Mermaid diagrams:
+Workflows can be visualized using PlantUML or Mermaid diagrams to help understand and debug the workflow logic:
 
 *   `workflow.to_uml_activity_diagram()`: Generates a PlantUML activity diagram string.
-*   `workflow.to_mermaid_diagram()`: Generates a Mermaid state diagram string.
+    * The diagram shows all states and transitions defined in the workflow's state machine.
+    * Terminal states (completed, failed, canceled) are represented with stop nodes.
+    * Transitions are labeled with their descriptions and trigger types.
+    * Wildcard transitions (those that apply to any state) are shown separately with a note.
 
-These diagrams help in understanding and debugging the workflow logic.
+*   `workflow.to_mermaid_diagram()`: Generates a Mermaid state diagram string.
+    * Similar to the UML diagram but in Mermaid syntax for integration with Markdown documents.
+    * Shows states, transitions, and includes notes for wildcard transitions.
+    * Terminal states are connected to the end node.
+
+Example usage:
+```python
+# Generate and save a UML diagram
+uml_diagram = workflow.to_uml_activity_diagram()
+with open('workflow_diagram.puml', 'w') as f:
+    f.write(uml_diagram)
+
+# Generate and save a Mermaid diagram
+mermaid_diagram = workflow.to_mermaid_diagram()
+with open('workflow_diagram.md', 'w') as f:
+    f.write(mermaid_diagram)
+```
+
+These diagrams are particularly useful for complex workflows with many states and transitions, as they provide a visual representation of the workflow's logic.

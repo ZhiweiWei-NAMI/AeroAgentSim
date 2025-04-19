@@ -1,54 +1,61 @@
-# AirFogSim 示例程序
+# AirFogSim Example Programs
 
-本目录包含多个AirFogSim框架的示例程序，展示了不同功能的使用方法。以下是各示例的简要介绍：
+This directory contains multiple example programs for the AirFogSim framework, demonstrating the usage of different features. Below is a brief introduction to each example:
 
-## 基础功能示例
+## Basic Function Examples
 
-- **trigger_example.py**: 展示如何使用AirFogSim的触发器系统创建和管理工作流，包括基于事件、状态和时间的触发器。
-- **workflow_diagram_demo.py**: 演示如何将工作流状态机转换为可视化图表（PlantUML和Mermaid格式）。
-- **test_workflow_diagram.py**: 提供工作流图表生成的另一个示例，直接输出到控制台。
+-   **example_trigger_basic.py**: Demonstrates how to use AirFogSim's trigger system to create and manage workflows, including event-based, state-based, and time-based triggers.
+-   **example_workflow_diagram.py**: Shows how to convert workflow state machines into visual diagrams (PlantUML and Mermaid formats).
+-   **test_workflow_diagram.py**: Provides another example of workflow diagram generation, directly outputting to the console.
 
-## 传感器和数据处理
+## Sensors and Data Processing
 
-- **demo_openweathermap_adapter.py**: 演示如何使用OpenWeatherMap API获取实时天气数据并转换为仿真系统格式。
-- **demo_weather_provider_api.py**: 在仿真环境中集成WeatherDataProvider，并订阅天气变化事件。
-- **run_image_processing.py**: 展示环境图像感知处理工作流，包括感知和数据处理阶段。
+-   **example_weather_openweathermap.py**: Demonstrates how to use the OpenWeatherMap API to fetch real-time weather data and convert it into the simulation system's format.
+-   **example_weather_provider.py**: Integrates the WeatherDataProvider within the simulation environment and subscribes to weather change events.
+-   **example_workflow_image_processing.py**: Shows an environmental image perception processing workflow, including perception and data processing stages.
 
-## 无人机任务和合约
+## Drone Tasks and Contracts
 
-- **run_multi_task_contract.py**: 演示如何创建和执行包含多个任务的合约工作流。
-- **run_drone_inspection.py**: 展示无人机巡检路径规划和自动充电工作流。
-- **run_logistics_simulation.py**: 物流工作流示例，模拟快递站和无人机配送过程。
-- **priority_task_demo.py**: 演示任务优先级和抢占机制，展示不同优先级任务的调度和抢占过程。
+-   **example_workflow_contract.py**: Demonstrates how to create and execute contract workflows containing multiple tasks.
+-   **example_workflow_inspection.py**: Shows a drone inspection path planning and automatic charging workflow.
+-   **example_workflow_logistics.py**: Logistics workflow example, simulating courier stations and drone delivery processes.
+-   **example_task_priority.py**: Demonstrates task priority and preemption mechanisms, showing the scheduling and preemption process for tasks with different priorities.
+-   **example_task_duplicate_check.py**: Demonstrates the task duplicate check mechanism.
+-   **example_task_queue_sort.py**: Demonstrates the task queue sorting mechanism.
+-   **example_workflow_priority.py**: Demonstrates the workflow priority mechanism.
 
-## 交通仿真集成
+## Traffic Simulation Integration
 
-- **run_traffic_simulation.py**: 演示SUMO交通仿真器与AirFogSim集成（需要SUMO安装和配置）。
+-   **example_simulation_traffic.py**: Demonstrates the integration of the SUMO traffic simulator with AirFogSim (requires SUMO installation and configuration).
 
-## 运行要求
+## Benchmark Examples
 
-部分示例需要额外设置：
+-   **example_benchmark_multi_workflow.py**: JOSS paper multi-workflow benchmark example, containing a comprehensive scenario with inspection, logistics, and charging workflows.
 
-1. 天气相关示例需要设置OpenWeatherMap API密钥：
-   ```bash
-   export OPENWEATHERMAP_API_KEY='your_api_key'
-   ```
+## Running Requirements
 
-2. 交通仿真示例需要安装SUMO并配置相关文件。
+Some examples require additional setup:
 
-## 一键测试
+1.  Weather-related examples require setting the OpenWeatherMap API key:
+    ```bash
+    export OPENWEATHERMAP_API_KEY='your_api_key'
+    ```
 
-您可以使用`test_examples.py`脚本快速测试多个示例：
+2.  The traffic simulation example requires SUMO installation and configuration of related files.
+
+## One-Click Testing
+
+You can use the `test_examples.py` script to quickly test multiple examples:
 
 ```bash
-python test_examples.py          # 测试所有示例
-python test_examples.py --list   # 列出所有可用测试
-python test_examples.py --run workflow_diagram_demo trigger_example  # 测试指定示例
+python test_examples.py          # Test all examples
+python test_examples.py --list   # List all available tests
+python test_examples.py --run example_workflow_diagram example_trigger_basic  # Test specific examples
 ```
 
-## 单元测试
+## Unit Testing
 
-如果您想在自己的代码库中编写AirFogSim组件的测试，建议使用Python的`unittest`或`pytest`框架。例如：
+If you want to write tests for AirFogSim components in your own codebase, it is recommended to use Python's `unittest` or `pytest` frameworks. For example:
 
 ```python
 import unittest
@@ -61,8 +68,14 @@ class TestDroneAgent(unittest.TestCase):
         self.drone = DroneAgent(self.env, "test_drone", {"position": (0, 0, 0)})
 
     def test_drone_movement(self):
-        # 测试代码...
-        self.assertEqual(self.drone.get_state("position"), (10, 10, 10))
+        # Test code...
+        # Example assertion (adjust according to actual test logic)
+        # Assuming some action moves the drone to (10, 10, 10)
+        # self.drone.move_to((10, 10, 10)) # Example action
+        # self.env.run(until=some_time)    # Example simulation step
+        # self.assertEqual(self.drone.get_state("position"), (10, 10, 10))
+        pass # Replace with actual test logic and assertions
 
 if __name__ == "__main__":
     unittest.main()
+```

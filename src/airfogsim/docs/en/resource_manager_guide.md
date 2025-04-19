@@ -1,26 +1,26 @@
 # AirFogSim Resource Management Guide
 
-This document explains the resource management system in AirFogSim, focusing on the `Resource` base class, the generic `ResourceManager` base class, and specific implementations like `LandingResource` and `LandingManager`.
+This document explains the resource management system in AirFogSim, focusing on the `Resource` base class, the generic `ResourceManager<R>` base class, and specific implementations like `LandingResource` and `LandingManager`.
 
 ## 1. Core Concepts
 
-*   **Resource:** Represents any entity within the simulation that can be utilized or consumed by agents or components. Examples include physical locations (landing spots), communication channels (frequency bands), computational power, etc. Each resource typically has an ID, attributes, and a status (e.g., available, allocated).
-*   **ResourceManager:** A dedicated manager responsible for a specific *type* of resource. Its duties include:
-    *   Registering and unregistering individual resource instances.
-    *   Finding resources based on specific requirements.
-    *   Allocating available resources to requesting agents/components.
-    *   Releasing resources when they are no longer needed.
-    *   Tracking the allocation status of each resource.
+*   **Resource:** Represents any limited shared asset within the simulation that can be utilized or consumed by agents or components. Examples include physical resources like airspace, landing spots, and spectrum. Each resource maintains a unique ID, a dictionary of specific attributes, an operational status, and tracks its current allocations.
+
+*   **ResourceManager:** A dedicated manager responsible for a specific *type* of resource. The core of the framework is the generic `ResourceManager<R>` base class, designed to manage a collection of resources of a specific type R. Its primary responsibilities include:
+    *   Resource lifecycle management (registration, unregistration, updates)
+    *   Allocation management (finding, allocating, releasing resources)
+    *   State tracking (monitoring resource status and allocations)
+    *   Contention handling (queuing, priority-based allocation, preemption)
 
 ## 2. Base Classes
 
 ### 2.1 `Resource` (`airfogsim.core.resource.Resource`)
 
-*   **Purpose:** The fundamental base class for all resource types.
+*   **Purpose:** The fundamental base class for all resource types, serving as the basic representation for any individual resource instance.
 *   **Key Attributes:**
     *   `id` (str): A unique identifier for the resource instance.
     *   `attributes` (Dict): A dictionary holding various properties of the resource (e.g., capacity, speed, power). Accessed via `get_attribute(key, default)`.
-    *   `status` (str): The current operational status (e.g., "available", "allocated", "maintenance").
+    *   `status` (ResourceStatus): The current operational status (e.g., `ResourceStatus.AVAILABLE`, `ResourceStatus.FULLY_ALLOCATED`, `ResourceStatus.MAINTENANCE`).
     *   `current_allocations` (Set[str]): A set containing the IDs of the current active allocations using this resource. (Note: Specific resource implementations might track allocations differently, e.g., `LandingResource` uses `occupied_slots` and `current_allocations` stores agent IDs).
 
 ### 2.2 `ResourceManager<R>` (`airfogsim.core.resource.ResourceManager`)
@@ -38,9 +38,26 @@ This document explains the resource management system in AirFogSim, focusing on 
         *   `release_allocation(allocation_id: str)`: Releases a specific allocation. *Note: Subclasses often provide more specific release methods based on resource and user IDs.*
         *   `get_user_allocations(user_id: str)` / `get_resource_allocations(resource_id: str)` / `get_allocation(allocation_id: str)`: Methods to query allocation information.
 
-## 3. Example: Landing Resources
+## 3. Specific Resource Managers
 
-### 3.1 `LandingResource` (`airfogsim.resource.landing.LandingResource`)
+AirFogSim provides several specialized resource managers for different types of resources:
+
+### 3.1 `LandingManager` (`airfogsim.manager.landing.LandingManager`)
+
+Manages landing spots and charging stations, handling resource allocation for landing, takeoff, and charging operations.
+
+### 3.2 `FrequencyManager` (`airfogsim.manager.frequency.FrequencyManager`)
+
+Manages spectrum resources with 3GPP-compliant channel models, handling frequency allocation, interference modeling, and signal quality calculations.
+
+### 3.3 `AirspaceManager` (`airfogsim.manager.airspace.AirspaceManager`)
+
+Manages spatial queries and airspace resource allocation/deconfliction using an octree-based spatial index for efficient collision detection and proximity queries.
+
+
+## 4. Example: Landing Resources
+
+### 4.1 `LandingResource` (`airfogsim.resource.landing.LandingResource`)
 
 *   **Inherits from:** `Resource`.
 *   **Represents:** A physical landing spot for drones.
@@ -61,7 +78,7 @@ This document explains the resource management system in AirFogSim, focusing on 
     *   `update_condition(condition)`: Updates the operational condition.
     *   `get_charging_power()` / `get_data_transfer_rate()`: Get capability values (if available).
 
-### 3.2 `LandingManager` (`airfogsim.manager.landing.LandingManager`)
+### 4.2 `LandingManager` (`airfogsim.manager.landing.LandingManager`)
 
 *   **Inherits from:** `ResourceManager[LandingResource]`.
 *   **Manages:** Instances of `LandingResource`.
@@ -75,7 +92,27 @@ This document explains the resource management system in AirFogSim, focusing on 
     *   **`_process_request_queue()`:** Iterates through waiting requests and allocates resources if they become available.
     *   **`create_landing_spot(...)`:** Helper method to easily create and register a new `LandingResource`.
 
-## 4. Usage Pattern
+## 5. Resource Allocation Process
+
+The resource allocation process in AirFogSim follows these steps:
+
+1. Components identify resource requirements for tasks via `get_resource_requirements(task)`
+2. Components request resources from the appropriate manager (e.g., `env.landing_manager.request_resource(...)`)
+3. Managers find suitable resources based on requirements and current availability
+4. Managers allocate resources and notify components
+5. Components calculate performance metrics based on allocated resources
+6. Upon task completion, components release resources back to managers
+
+## 6. Contention Handling
+
+Resource managers implement various strategies for handling resource contention:
+
+- **Queuing:** Requests for busy resources are placed in priority queues
+- **Priority-based allocation:** Higher-priority requests can be served before lower-priority ones
+- **Preemption:** Critical tasks can interrupt and take resources from lower-priority tasks
+- **Load balancing:** Distributing requests across multiple similar resources
+
+## 7. Usage Pattern
 
 1.  **Initialization:** During environment setup, create specific `ResourceManager` instances (e.g., `LandingManager`) and register them with the environment (e.g., `env.landing_manager = LandingManager(env)`).
 2.  **Resource Creation:** Create instances of specific `Resource` types (e.g., `LandingResource`) and register them with their corresponding manager (`landing_manager.register_resource(spot1)`).
@@ -88,7 +125,7 @@ This document explains the resource management system in AirFogSim, focusing on 
     *   When finished, the agent/component signals the release (e.g., by removing the object from `possessing_objects`, which triggers the listener set up by `allocate_resource` in `LandingManager`, leading to `release_resource`).
     *   The manager updates the resource state and processes any waiting requests.
 
-## 5. Extensibility
+## 8. Extensibility
 
 *   Create new resource types by inheriting from `airfogsim.core.resource.Resource`.
 *   Create corresponding managers by inheriting from `airfogsim.core.resource.ResourceManager[YourResourceType]`.

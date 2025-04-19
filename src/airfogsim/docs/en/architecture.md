@@ -2,33 +2,52 @@
 
 ### 1. Introduction
 
-AirFogSim is a discrete-event simulation framework built upon the SimPy library. It is designed for modeling and simulating complex systems involving autonomous agents (like drones, ground stations), dynamic resources, event-driven interactions, task execution, and goal-oriented workflows. This document outlines the core architectural components and their interactions, providing a comprehensive understanding of the system's design.
+AirFogSim is a discrete-event simulation framework built upon the SimPy library, designed for benchmarking collaborative intelligence in UAV-integrated fog computing environments. It provides a comprehensive platform for modeling complex interactions between heterogeneous aerial and terrestrial nodes, with a focus on realistic communication, computation, energy, and mobility modeling. This document outlines the core architectural components and their interactions, providing a comprehensive understanding of the system's design.
 
 ### 2. Core Philosophy
 
+*   **High-Performance Event-Driven Simulation Core:** AirFogSim employs an optimized event-driven simulation engine, achieving sub-O(n log n) computational complexity for critical operations. This enables efficient simulation of large-scale scenarios involving hundreds of heterogeneous UAVs and thousands of concurrent tasks spanning multiple temporal scales.
+
+*   **Workflow-Based Task Composition Framework:** The framework provides a flexible and modular workflow-driven task model, explicitly capturing task dependencies, resource constraints, and collaborative interactions among heterogeneous aerial and terrestrial nodes. This facilitates realistic modeling of complex, multi-stage UAV missions.
+
+*   **Standards-Compliant Realistic Modeling:** AirFogSim integrates comprehensive models grounded in established standards, including 3GPP-compliant communication channel models, empirically validated energy consumption profiles, realistic computation capabilities, and physics-based mobility patterns. Additionally, a modular data provider system allows seamless integration of real-world datasets for enhanced realism.
+
 *   **Agent-Centric Autonomy:** `Agent` instances are the primary actors. They possess internal state, own functional `Component`s, and make autonomous decisions about executing `Task`s based on their state, assigned `Workflow`s (goals), and perception of the environment through events.
+
 *   **Event-Driven Interaction:** Communication and synchronization rely heavily on a centralized `EventRegistry`. State changes, task lifecycle events, resource updates, workflow progressions, and trigger activations are published as events, allowing decoupled components to subscribe and react.
+
 *   **Component-Based Capabilities:** Agents utilize `Component`s to encapsulate specific functionalities (e.g., mobility, computation, sensing). Components manage the execution environment for `Task`s and interact with underlying resources.
+
 *   **Task Encapsulation:** `Task` objects encapsulate the logic for specific actions, defining *how* work is performed, what resources are needed (implicitly via the Component), what metrics are consumed, and what agent states are produced.
+
 *   **Workflow-Driven Goals:** `Workflow`s represent higher-level goals or processes. They utilize a `WorkflowStatusMachine` driven by `Trigger`s to monitor simulation events (agent state, task completion, time) and coordinate the overall process without directly executing tasks.
+
 *   **Trigger-Based Reactivity:** The `Trigger` system provides a flexible mechanism for reacting to various conditions (events, state changes, time). Triggers are fundamental for driving `WorkflowStatusMachine` transitions and enabling automated responses.
-*   **Managed Resources:** Simulation resources (e.g., landing spots, CPU, airspace) are managed by dedicated `Manager` classes, handling registration, allocation, contention, and dynamic attribute changes.
+
+*   **Managed Resources:** Simulation resources (e.g., landing spots, CPU, airspace, spectrum) are managed by dedicated `Manager` classes, handling registration, allocation, contention, and dynamic attribute changes.
+
 *   **Modularity and Extensibility:** The architecture promotes extension through subclassing core entities (`Agent`, `Component`, `Task`, `Workflow`, `Trigger`, `Resource`, and specific `Manager`s).
 
 ### 3. Key Components and Interactions
 
 #### 3.1 Simulation Environment (`airfogsim.core.environment.Environment`)
 
-*   **Core:** Extends `simpy.Environment` for discrete-event scheduling.
-*   **Central Hub:** Acts as a central registry and access point for core managers and services.
+*   **Core:** Extends `simpy.Environment` for discrete-event scheduling, providing the foundation for the simulation's temporal progression.
+*   **Central Hub:** Acts as a central registry and access point for core managers and services, facilitating coordinated access to simulation resources and services.
 *   **Key Managers (typically attributes of `env`):**
-    *   **`EventRegistry` (`airfogsim.core.event.EventRegistry`):** Central bus for publishing and subscribing to named events across all simulation entities. Enables decoupled communication.
-    *   **`TaskManager` (`airfogsim.manager.task_manager.TaskManager`):** Manages the creation and tracking of `Task` instances. Provides a central point to access task information.
-    *   **`WorkflowManager` (`airfogsim.manager.workflow.WorkflowManager`):** Manages the lifecycle (creation, starting, tracking status) of `Workflow` instances. Listens to workflow status change events.
-    *   **`TriggerManager` (`airfogsim.manager.trigger.TriggerManager`):** Manages the lifecycle and lookup of `Trigger` instances.
-    *   **Resource Managers (Specific):** Instances of various resource managers (e.g., `LandingManager`, `AirspaceManager`, `FrequencyManager`) responsible for specific resource types. The concept of a single `ResourceManager` base is present, but specific managers handle concrete types.
-    *   **`ContractManager` (`airfogsim.manager.contract.ContractManager`):** (Optional) Manages task offloading contracts between agents.
-    *   **`AirspaceManager` (`airfogsim.manager.airspace.AirspaceManager`):** (Optional) Manages spatial queries and potentially airspace resource allocation/deconfliction.
+    *   **`EventRegistry` (`airfogsim.core.event.EventRegistry`):** Central bus for publishing and subscribing to named events across all simulation entities. Enables decoupled communication through a publish-subscribe pattern, supporting wildcards for both source IDs and event names.
+    *   **`TaskManager` (`airfogsim.manager.task_manager.TaskManager`):** Manages the creation and tracking of `Task` instances. Provides a central point to access task information, including task status, ownership, and execution metrics.
+    *   **`WorkflowManager` (`airfogsim.manager.workflow.WorkflowManager`):** Manages the lifecycle (creation, starting, tracking status) of `Workflow` instances. Listens to workflow status change events and provides methods for workflow creation, starting, and status tracking.
+    *   **`TriggerManager` (`airfogsim.manager.trigger.TriggerManager`):** Manages the lifecycle and lookup of `Trigger` instances, providing centralized activation, deactivation, and callback management.
+    *   **Resource Managers:**
+        *   **`LandingManager` (`airfogsim.manager.landing.LandingManager`):** Manages landing spots and charging stations, handling resource allocation for landing, takeoff, and charging operations.
+        *   **`AirspaceManager` (`airfogsim.manager.airspace.AirspaceManager`):** Manages spatial queries and airspace resource allocation/deconfliction using an octree-based spatial index for efficient collision detection and proximity queries.
+        *   **`FrequencyManager` (`airfogsim.manager.frequency.FrequencyManager`):** Manages spectrum resources with 3GPP-compliant channel models, handling frequency allocation, interference modeling, and signal quality calculations.
+    *   **`ContractManager` (`airfogsim.manager.contract.ContractManager`):** Manages task offloading contracts between agents, facilitating negotiation, agreement, and execution of collaborative tasks.
+    *   **Data Providers:**
+        *   **`WeatherIntegration` (`airfogsim.dataprovider.weather_integration.WeatherIntegration`):** Provides real-time or simulated weather data, affecting flight conditions, energy consumption, and communication quality.
+        *   **`TrafficIntegration` (`airfogsim.dataprovider.traffic_integration.TrafficIntegration`):** Integrates with traffic simulation tools like SUMO to provide realistic ground traffic patterns for UAV-vehicular coordination scenarios.
+        *   **`SensorDataProvider` (`airfogsim.dataprovider.sensor.SensorDataProvider`):** Provides simulated sensor data for environmental monitoring, surveillance, and perception tasks.
 
 #### 3.2 Agent (`airfogsim.core.agent.Agent`)
 
@@ -56,33 +75,37 @@ AirFogSim is a discrete-event simulation framework built upon the SimPy library.
 
 #### 3.4 Task (`airfogsim.core.task.Task`)
 
-*   **Role:** Encapsulates the *logic* for a specific action. Defines *how* work is done based on provided metrics. Represents the result of Agent planning.
+*   **Role:** Encapsulates the *logic* for a specific action. Defines *how* work is done based on provided metrics. Represents the atomic execution units in the simulation.
 *   **Source Code:** `airfogsim/core/task.py`
 *   **Key Features:**
     *   **Execution Logic (`execute` method):** A SimPy generator run *by the Component*. Consumes performance `metrics` provided by the Component. Its core loop typically waits for time passage or metric updates (`ComponentName.metric_changed` event).
-    *   **Metric Consumption:** Declares `NECESSARY_METRICS` required from the executing Component.
+    *   **Metric Consumption:** Declares `NECESSARY_METRICS` required from the executing Component, ensuring that tasks only execute when all required resources and capabilities are available.
     *   **State Production:** Implements `_update_task_state(metrics)` (abstract) to update internal progress. Implements `_get_task_specific_state_repr()` (abstract) to calculate *Agent* state changes based on its logic and progress. Declares `PRODUCED_STATES`. Updates Agent state via `self.agent.update_states()`.
-    *   **Lifecycle:** Manages its own status (`PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELED`).
+    *   **Lifecycle:** Manages its own status (`PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELED`), with support for priority and preemption properties allowing agents to manage task execution based on importance and urgency.
     *   **Possessing Object Hooks:** Provides `_possessing_object_on_complete/fail/cancel` methods for subclasses to manage agent-possessed objects tied to the task lifecycle.
-*   **Subclass Examples:** `airfogsim.task.mobility.MoveToTask`, `airfogsim.task.compute.ComputeTask`, `airfogsim.task.charging.ChargeBatteryTask`, `airfogsim.task.logistics.LoadCargoTask`.
+    *   **Priority and Preemption:** Tasks can have priority levels (e.g., `TaskPriority.CRITICAL`, `TaskPriority.HIGH`) and preemption flags, allowing the system to model urgent tasks that can interrupt lower-priority ones.
+*   **Subclass Examples:** `airfogsim.task.mobility.MoveToTask`, `airfogsim.task.compute.ComputeTask`, `airfogsim.task.charging.ChargeBatteryTask`, `airfogsim.task.logistics.LoadCargoTask`, `airfogsim.task.sensing.SensingTask`.
 
-#### 3.5 Workflow (`airfogsim.core.workflow.Workflow`) & State Machine (`WorkflowStatusMachine`)
+#### 3.5 Workflow-Agent-Task Framework
 
-*   **Role:** Represents a higher-level goal or process. Primarily acts as a **monitor and coordinator** based on simulation events, driven by its internal `WorkflowStatusMachine`.
-*   **Source Code:** `airfogsim/core/workflow.py`
-*   **Key Features (`Workflow`):**
-    *   **Overall Status:** Manages high-level status (`WorkflowStatus` enum).
-    *   **Properties:** Defines expected parameters using `WorkflowPropertyTemplate` (managed by `WorkflowMeta`).
-    *   **State Machine (`self.status_machine`):** Contains the `WorkflowStatusMachine` instance.
-    *   **Transitions Setup (`_setup_transitions` - abstract):** Subclasses MUST implement this to define the state machine logic using `self.status_machine.add_transition()`.
-    *   **Starting/Resetting:** `start()` initiates the workflow and state machine; `reset()` allows restarting.
-    *   **Context/Guidance:** `get_details()` provides workflow context; `get_current_suggested_task()` suggests the next likely task for the agent based on the current internal state.
-*   **Key Features (`WorkflowStatusMachine`):**
-    *   **Internal States:** Tracks `current_status` (string).
+*   **Role:** At the heart of AirFogSim is the workflow-agent-task framework, which enables the modeling of complex mission scenarios through the composition of reusable components.
+*   **Workflow (`airfogsim.core.workflow.Workflow`):**
+    *   **Role:** Represents a higher-level goal or process. Primarily acts as a **monitor and coordinator** based on simulation events, driven by its internal `WorkflowStatusMachine`.
+    *   **Source Code:** `airfogsim/core/workflow.py`
+    *   **Key Features:**
+        *   **Overall Status:** Manages high-level status (`WorkflowStatus` enum).
+        *   **Properties:** Defines expected parameters using `WorkflowPropertyTemplate` (managed by `WorkflowMeta`).
+        *   **State Machine (`self.status_machine`):** Contains the `WorkflowStatusMachine` instance that manages the workflow's progression through various stages.
+        *   **Transitions Setup (`_setup_transitions` - abstract):** Subclasses MUST implement this to define the state machine logic using `self.status_machine.add_transition()`.
+        *   **Starting/Resetting:** `start()` initiates the workflow and state machine; `reset()` allows restarting.
+        *   **Context/Guidance:** `get_details()` provides workflow context; `get_current_suggested_task()` suggests the next likely task for the agent based on the current internal state.
+*   **WorkflowStatusMachine:**
+    *   **Internal States:** Tracks `current_status` (string), representing the current stage of the workflow.
     *   **Event-Driven Transitions:** Uses `add_transition` to define rules based on `Trigger` activations (listening for agent state, events, or time).
-    *   **Trigger Management:** Activates/deactivates relevant triggers based on the current state.
+    *   **Trigger Management:** Activates/deactivates relevant triggers based on the current state, ensuring that only relevant conditions are monitored.
     *   **Notification:** Notifies the parent `Workflow` upon internal state changes (`workflow._trigger_status_changed`).
-*   **Subclass Examples:** `airfogsim.workflow.inspection.InspectionWorkflow`, `airfogsim.workflow.charging.ChargingWorkflow`, `airfogsim.workflow.contract.ContractWorkflow`, `airfogsim.workflow.image_processing.ImageProcessingWorkflow`.
+*   **Key Concept:** State transitions are not predetermined sequences but are dynamically driven by simulation Triggers. These triggers actively monitor the simulation environment for specific conditions to be met before allowing a transition from one state to the next.
+*   **Subclass Examples:** `airfogsim.workflow.inspection.InspectionWorkflow`, `airfogsim.workflow.charging.ChargingWorkflow`, `airfogsim.workflow.contract.ContractWorkflow`, `airfogsim.workflow.image_processing.ImageProcessingWorkflow`, `airfogsim.workflow.order_execution.OrderExecutionWorkflow`.
 
 #### 3.6 Trigger (`airfogsim.core.trigger.Trigger`)
 
@@ -98,17 +121,26 @@ AirFogSim is a discrete-event simulation framework built upon the SimPy library.
     *   `TimeTrigger`: Fires based on absolute time, intervals, or cron-like schedules (currently simplified to intervals).
     *   `CompositeTrigger`: Combines multiple triggers using logical AND or OR.
 
-#### 3.7 Resource Layer (`airfogsim.core.resource.Resource` & Managers)
+#### 3.7 Resource Management
 
-*   **Role:** Models entities that are utilized or consumed.
-*   **`Resource` Base Class (`airfogsim.core.resource.Resource`):** Defines common properties like `id`, `attributes`, `status`. Subclasses represent specific resource types.
-    *   **Subclass Examples:** `airfogsim.resource.landing.LandingResource`, `airfogsim.resource.frequency.FrequencyResource`.
-*   **`ResourceManager` Base Class (`airfogsim.core.resource.ResourceManager`):** Generic base for managing resources of a specific type. Defines methods for registration, finding, allocation, and release.
-*   **Specific Managers (e.g., `airfogsim.manager.landing.LandingManager`):**
-    *   Inherit from `ResourceManager` (or implement similar logic).
-    *   Manage instances of a specific `Resource` subclass (e.g., `LandingManager` manages `LandingResource`).
-    *   Implement resource-specific logic for finding (`find_resources`), allocation (`allocate_resource`, `request_resource`), release (`release_resource`), and potentially modeling contention or dynamic attribute changes.
-    *   Often interact with other managers (e.g., `LandingManager` uses `AirspaceManager` for spatial queries).
+*   **Role:** Resources in AirFogSim represent limited shared assets that components require to produce metrics. These include physical resources like airspace, landing spots, and spectrum.
+*   **Resource Framework:**
+    *   **`Resource` Base Class (`airfogsim.core.resource.Resource`):** Serves as the basic representation for any individual resource instance. It maintains a unique ID, a dictionary of specific attributes, an operational status (e.g., `ResourceStatus.AVAILABLE`, `ResourceStatus.FULLY_ALLOCATED`), and tracks its current allocations.
+    *   **Subclass Examples:** `airfogsim.resource.landing.LandingResource`, `airfogsim.resource.frequency.FrequencyResource`, `airfogsim.resource.computation.ComputationResource`.
+*   **Resource Management:**
+    *   **`ResourceManager<R>` Base Class (`airfogsim.core.resource.ResourceManager`):** The core of the framework is the generic `ResourceManager<R>` base class, designed to manage a collection of resources of a specific type R. Its primary responsibilities include resource lifecycle management, allocation management, and state tracking.
+    *   **Specific Managers:**
+        *   **`LandingManager` (`airfogsim.manager.landing.LandingManager`):** Manages landing spots and charging stations, handling resource allocation for landing, takeoff, and charging operations.
+        *   **`FrequencyManager` (`airfogsim.manager.frequency.FrequencyManager`):** Manages spectrum resources with 3GPP-compliant channel models, handling frequency allocation, interference modeling, and signal quality calculations.
+        *   **`ComputationManager` (`airfogsim.manager.computation.ComputationManager`):** Manages computational resources, handling task allocation, processing power distribution, and computational load balancing.
+    *   **Resource Allocation Process:**
+        1. Components identify resource requirements for tasks via `get_resource_requirements(task)`
+        2. Components request resources from the appropriate manager (e.g., `env.landing_manager.request_resource(...)`)
+        3. Managers find suitable resources based on requirements and current availability
+        4. Managers allocate resources and notify components
+        5. Components calculate performance metrics based on allocated resources
+        6. Upon task completion, components release resources back to managers
+    *   **Contention Handling:** Resource managers implement strategies for handling resource contention, including queuing, priority-based allocation, and preemption mechanisms.
 
 ### 4. Typical Interaction Flow (Simplified)
 

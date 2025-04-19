@@ -1,13 +1,15 @@
 ## AirFogSim Task Developer Documentation
 
-This document guides developers in creating custom `Task` subclasses within the AirFogSim framework. It explains the `Task` object's role, its execution lifecycle managed by a `Component`, interaction with Agent states, and performance metrics.
+This document guides developers in creating custom `Task` subclasses within the AirFogSim framework. It explains the `Task` object's role as an atomic execution unit in the Workflow-Agent-Task framework, its execution lifecycle managed by a `Component`, interaction with Agent states, and performance metrics.
 
 ### 1. Overview
 
-*   **`Task`:** Represents a specific, executable action or piece of work. It contains the *logic* for performing the action. Tasks are initiated by an `Agent` but are executed *by* a `Component`.
+*   **`Task`:** Represents an atomic execution unit that encapsulates the logic for specific actions. Tasks define how work is performed, what resources are needed, what metrics are consumed, and what agent states are produced. Tasks are initiated by an `Agent` but are executed *by* a `Component`.
 
-**Relationship:**
-`Agent` (decides *what* & *when*) -> `Component` (provides *capability* & *resources*) -> `Task` (defines *how* the action is done).
+*   **Priority and Preemption:** Tasks can have priority levels (e.g., `TaskPriority.CRITICAL`, `TaskPriority.HIGH`) and preemption flags, allowing the system to model urgent tasks that can interrupt lower-priority ones.
+
+**Relationship in the Workflow-Agent-Task Framework:**
+`Workflow` (defines higher-level goal) -> `Agent` (decides *what* & *when*) -> `Component` (provides *capability* & *resources*) -> `Task` (defines *how* the action is done).
 
 ### 2. `Task` Base Class
 
@@ -19,6 +21,7 @@ The `Task` class is the abstract base for all specific actions. Subclasses defin
     *   Assigns unique ID, name, links to Agent, Component, and optional Workflow ID.
     *   Stores `target_state` (desired outcome) and `properties` (task-specific parameters like duration, target position).
     *   Initializes status (`PENDING`), times, result, etc.
+    *   Sets priority and preemption flags if provided, allowing for task prioritization and interruption.
     *   **Crucially, validates `PRODUCED_STATES` and `NECESSARY_METRICS` (see below).** It checks that `PRODUCED_STATES` are defined and exist in the agent's state templates, and that `NECESSARY_METRICS` are defined.
 *   **Execution Context (`execute` method):**
     *   The `execute` method contains the core task logic as a **SimPy generator function**.
@@ -163,10 +166,40 @@ When creating a `Task` subclass, you **must** define/implement the following:
             self.agent.remove_possessing_object('my_compute_lock')
     ```
 
-### 4. Key Takeaways
+### 4. Task Priority and Preemption
 
+AirFogSim supports task prioritization and preemption, allowing for modeling of urgent tasks that can interrupt lower-priority ones:
+
+*   **Priority Levels:** Tasks can be assigned priority levels using the `TaskPriority` enum:
+    *   `TaskPriority.CRITICAL`: Highest priority, for emergency or safety-critical tasks
+    *   `TaskPriority.HIGH`: Important tasks that should be executed promptly
+    *   `TaskPriority.NORMAL`: Default priority for most tasks
+    *   `TaskPriority.LOW`: Background or non-urgent tasks
+
+*   **Preemption:** Tasks can be marked as preemptive, allowing them to interrupt lower-priority tasks:
+    *   Set `preemptive=True` when creating a task to allow it to interrupt other tasks
+    *   When a preemptive task is executed, the Component will check if it should interrupt a currently running task
+    *   Interrupted tasks are placed back in the queue and can be resumed later
+
+*   **Example Usage:**
+    ```python
+    # Create a critical, preemptive charging task when battery is low
+    charging_task = agent.execute_task(
+        component_name="ChargingComponent",
+        task_class="ChargeBatteryTask",
+        task_name="Emergency Charging",
+        properties={"target_level": 90.0},
+        priority=TaskPriority.CRITICAL,
+        preemptive=True
+    )
+    ```
+
+### 5. Key Takeaways
+
+*   Tasks represent atomic execution units in the Workflow-Agent-Task framework.
 *   Tasks contain the *logic*, Components provide the *execution environment and resources*.
 *   Subclasses **must** define `NECESSARY_METRICS`, `PRODUCED_STATES`, and implement `estimate_remaining_time`, `_update_task_state`, and `_get_task_specific_state_repr`.
 *   The `execute` method's core loop waits for time passage *or* component metric updates.
 *   Tasks update the owning Agent's state via `_get_task_specific_state_repr`.
+*   Tasks can have priority and preemption properties, allowing agents to manage task execution based on importance and urgency.
 *   Use the `_possessing_object_on_...` hooks to manage agent-possessed resources tied to the task lifecycle.
