@@ -74,12 +74,14 @@ AirFogSim's object-oriented design facilitates extension through inheritance.
 The following example demonstrates AirFogSim's capabilities in modeling collaborative logistics operations, a key application domain for LAVFC systems:
 
 1.  **Initialize Environment:** Create the simulation environment with appropriate visualization interval.
-    ```python
+
+    ```{.python}
     env = Environment(visual_interval=100)
     ```
 
 2.  **Create Delivery Stations:** Define multiple delivery stations with specific properties. The stations periodically generate payloads workflows and select drones for delivery.
-    ```python
+
+    ```{.python}
     station1 = DeliveryStation(
         env, "center_station",
         properties={
@@ -92,7 +94,8 @@ The following example demonstrates AirFogSim's capabilities in modeling collabor
     ```
 
 3.  **Create Delivery Drones:** Instantiate multiple drone agents with varying properties and components.
-    ```python
+
+    ```{.python}
     drone = DeliveryDroneAgent(
         env, "delivery_drone_1",
         properties={
@@ -108,7 +111,8 @@ The following example demonstrates AirFogSim's capabilities in modeling collabor
     ```
 
 4.  **Run Simulation and Analyze Results:** Execute the simulation and examine outcomes.
-    ```python
+
+    ```{.python}
     env.run(until=3600)
     ```
 
