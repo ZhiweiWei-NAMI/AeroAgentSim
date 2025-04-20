@@ -10,7 +10,7 @@ tags:
   - agent-based modeling
 authors:
   - name: Zhiwei Wei
-    orcid: 0000-0002-8756-9035
+    orcid: 0000-0001-9593-0013
     affiliation: 1
   - name: Bing Li
     affiliation: 2
