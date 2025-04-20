@@ -1,0 +1,36 @@
+name: Generate PDF
+
+on:
+  push:
+    branches: [ paper ]
+    paths:
+      - 'paper.md'
+      - 'paper.bib'
+      - 'figures/**'
+  pull_request:
+    branches: [ paper ]
+    paths:
+      - 'paper.md'
+      - 'paper.bib'
+      - 'figures/**'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    name: Generate PDF from paper.md
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate PDF
+        uses: openjournals/openjournals-draft-action@master
+        with:
+          journal: joss
+          paper-path: paper.md
+
+      - name: Upload PDF as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper
+          path: paper.pdf

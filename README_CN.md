@@ -195,54 +195,6 @@ python main_for_visualization.py
 这将启动后端API服务和前端开发服务器，并自动在浏览器中打开可视化界面。
 
 
-### 使用Docker运行（进行中）
-
-这是推荐的运行方式，可以确保环境一致性并简化部署。
-
-**前提条件:**
-
-- Docker ([https://www.docker.com/get-started](https://www.docker.com/get-started))
-- Docker Compose ([https://docs.docker.com/compose/install/](https://docs.docker.com/compose/install/))
-
-**运行步骤:**
-
-1.  **克隆仓库 (如果尚未完成):**
-   ```bash
-   git clone https://github.com/ZhiweiWei-NAMI/AirFogSim.git
-   cd AirFogSim
-   ```
-
-2.  **构建前端静态文件:**
-   > **注意:** 当前Docker Compose配置依赖于在主机上预先构建的前端文件。
-   ```bash
-   cd frontend
-   npm install
-   npm run build
-   cd ..
-   ```
-
-3.  **构建并启动Docker服务:**
-   ```bash
-   docker-compose build
-   docker-compose up -d
-   ```
-   这将构建后端镜像，并启动后端和Nginx服务。
-
-4.  **访问应用:**
-   在浏览器中打开 `http://localhost`。
-
-5.  **查看日志:**
-   ```bash
-   docker-compose logs -f  # 查看所有服务日志
-   docker-compose logs -f backend # 查看后端日志
-   docker-compose logs -f nginx   # 查看Nginx日志
-   ```
-
-6.  **停止服务:**
-   ```bash
-   docker-compose down
-   ```
-
 ## 📝 使用示例
 
 ### 基本仿真示例
