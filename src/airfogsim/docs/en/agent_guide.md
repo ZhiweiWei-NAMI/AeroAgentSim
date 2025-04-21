@@ -199,7 +199,7 @@ Follow these steps to create your own agent type:
 3.  **Implement Hook Methods:**
     *   Subclasses should override hook methods (like `_process_custom_logic`) rather than directly overriding the `live()` method.
     *   The `live()` method is already implemented in the base class and handles the common logic for event listening and task scheduling.
-    *   Inside `_process_custom_logic()`, the agent decides what to do based on its current `self.state`, assigned workflows (`self._get_active_workflows()`), possessed object states (`self.get_state('object.state')`), or other internal logic.
+    *   Inside `_process_custom_logic()`, the agent decides what to do based on its current `self.state`, assigned workflows (`self.get_active_workflows()`), possessed object states (`self.get_state('object.state')`), or other internal logic.
     *   Other overridable hook methods include `_before_event_wait()` and `_check_agent_status()`.
     *   Common patterns:
         *   Wait for a duration: `yield self.env.timeout(duration)`
@@ -209,7 +209,7 @@ Follow these steps to create your own agent type:
         *   Monitor task completion: Use the `task_completed` event or check `self.managed_tasks`. You can `yield` the monitor process (`self.managed_tasks[task_id]['process']`) if synchronous waiting is needed, but often asynchronous handling via events is preferred.
         *   Update state: Call `self.update_state(...)`.
         *   Interact with possessed objects: `station = self.get_possessing_object('my_station')`, then call its methods or check its state.
-        *   Check active workflows: `workflows = self._get_active_workflows()` and adapt behavior based on `workflow.status_machine.current_status` or `workflow.get_details()`.
+        *   Check active workflows: `workflows = self.get_active_workflows()` and adapt behavior based on `workflow.status_machine.current_status` or `workflow.get_details()`.
     ```python
     class MyAgent(Agent, metaclass=MyAgentMeta):
         # ... __init__ ...
@@ -217,7 +217,7 @@ Follow these steps to create your own agent type:
         def _process_custom_logic(self):
             """Execute agent-specific logic"""
             current_status = self.get_state('status', 'idle')
-            active_workflows = self._get_active_workflows() # Check for assigned goals
+            active_workflows = self.get_active_workflows() # Check for assigned goals
 
             if active_workflows:
                 # Example: Prioritize workflow tasks

@@ -199,7 +199,7 @@
 3.  **实现钩子方法：**
     *   子类应该重写钩子方法（如 `_process_custom_logic`）而不是直接重写 `live()` 方法。
     *   `live()` 方法已在基类中实现，处理事件监听和任务调度的通用逻辑。
-    *   在 `_process_custom_logic()` 内部，代理根据其当前 `self.state`、分配的工作流（`self._get_active_workflows()`）、拥有的对象状态（`self.get_state('object.state')`）或其他内部逻辑决定做什么。
+    *   在 `_process_custom_logic()` 内部，代理根据其当前 `self.state`、分配的工作流（`self.get_active_workflows()`）、拥有的对象状态（`self.get_state('object.state')`）或其他内部逻辑决定做什么。
     *   其他可重写的钩子方法包括 `_before_event_wait()` 和 `_check_agent_status()`。
     *   常见模式：
         *   等待一段时间：`yield self.env.timeout(duration)`
@@ -209,7 +209,7 @@
         *   监控任务完成：使用 `task_completed` 事件或检查 `self.managed_tasks`。如果需要同步等待，可以 `yield` 监控进程（`self.managed_tasks[task_id]['process']`），但通常通过事件进行异步处理更好。
         *   更新状态：调用 `self.update_state(...)`。
         *   与拥有的对象交互：`station = self.get_possessing_object('my_station')`，然后调用其方法或检查其状态。
-        *   检查活动工作流：`workflows = self._get_active_workflows()` 并根据 `workflow.status_machine.current_status` 或 `workflow.get_details()` 调整行为。
+        *   检查活动工作流：`workflows = self.get_active_workflows()` 并根据 `workflow.status_machine.current_status` 或 `workflow.get_details()` 调整行为。
     ```python
     class MyAgent(Agent, metaclass=MyAgentMeta):
         # ... __init__ ...
@@ -217,7 +217,7 @@
         def _process_custom_logic(self):
             """执行代理特定的逻辑"""
             current_status = self.get_state('status', 'idle')
-            active_workflows = self._get_active_workflows() # 检查分配的目标
+            active_workflows = self.get_active_workflows() # 检查分配的目标
 
             if active_workflows:
                 # 示例：优先处理工作流任务

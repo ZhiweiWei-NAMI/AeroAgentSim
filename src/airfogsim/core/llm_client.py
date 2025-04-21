@@ -13,12 +13,16 @@ AirFogSim LLM 客户端模块
 
 import json
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TYPE_CHECKING
+# Import find_compatible_tasks function at runtime to avoid circular imports
+
+if TYPE_CHECKING:
+    from airfogsim.core.agent import Agent
 
 class LLMClient:
     """LLM 客户端类，用于与大型语言模型交互"""
 
-    def __init__(self, env=None, api_key: Optional[str] = None, model: str = "gpt-4o"):
+    def __init__(self, env, api_key: Optional[str] = None, model: str = "gpt-4o"):
         """
         初始化 LLM 客户端
 
@@ -48,27 +52,33 @@ class LLMClient:
         """
         return self.client is not None
 
-    def analyze_workflow(self, workflow, agent_state: Dict, available_components: List[str], env=None) -> List[Dict]:
+    def analyze_agent_tasks(self, agent: 'Agent') -> List[Dict]:
         """
-        分析工作流并生成任务
+        分析代理，生成需要执行的任务和等待的任务
 
         Args:
-            workflow: 工作流对象
-            agent_state: 代理当前状态
-            available_components: 可用组件列表
-            env: 环境实例，用于获取任务类
+            agent: 代理对象
 
         Returns:
-            List[Dict]: 任务列表，每个任务是一个字典
+            to_execute_tasks 和 queuing_tasks
+            List[Dict]: 需执行任务列表，每个任务是一个字典
+            List[Dict]: 等待任务列表，每个任务是一个字典
         """
         if not self.is_available():
             return []
 
-        # 保存环境实例供后续使用
-        self.env = env
+        # 在运行时导入find_compatible_tasks函数，避免循环导入
+        from airfogsim.helper.class_checker import find_compatible_tasks
+
+        workflows = agent.get_active_workflows()
+        agent_details = agent.get_details()
+        possible_tasks = []
+        for workflow in workflows:
+            tmp_tasks = find_compatible_tasks(self.env, agent, workflow)
+            possible_tasks.extend(tmp_tasks)
 
         # 构建提示，包含工作流状态机信息
-        prompt = self._build_workflow_prompt(workflow, agent_state, available_components)
+        prompt = self._build_workflow_prompt(workflows, agent_details, possible_tasks)
 
         try:
             # 使用 OpenAI 新版客户端 API
@@ -94,14 +104,14 @@ class LLMClient:
             print(f"LLM 分析失败: {str(e)}")
             return []
 
-    def _build_workflow_prompt(self, workflow, agent_state: Dict, available_components: List[str]) -> str:
+    def _build_workflow_prompt(self, workflows, agent_details: Dict, possible_tasks: List) -> str:
         """
         构建工作流分析提示
 
         Args:
-            workflow: 工作流对象
-            agent_state: 代理当前状态
-            available_components: 可用组件列表
+            workflows: 工作流列表
+            agent_details: 代理当前详细信息
+            possible_tasks: 可能的任务列表，每个元素是(task_class, compatibility_score)元组
 
         Returns:
             str: 提示字符串
@@ -109,17 +119,44 @@ class LLMClient:
         # 获取可用的任务类
         available_task_classes = self._get_available_task_classes()
 
+        # 从agent_details中提取组件信息
+        available_components = agent_details.get('components', [])
+
+        # 格式化可能的任务信息
+        formatted_tasks = []
+        for task_class, score in possible_tasks:
+            task_info = {
+                'name': task_class.__name__,
+                'compatibility_score': f"{score:.2f}",
+                'necessary_metrics': list(getattr(task_class, 'NECESSARY_METRICS', [])),
+                'produced_states': list(getattr(task_class, 'PRODUCED_STATES', [])),
+                'description': task_class.__doc__ or f"{task_class.__name__} 任务"
+            }
+            formatted_tasks.append(task_info)
+
         # 构建提示
         prompt = f"""
             Suggest tasks directly without analysis:
 
-            Workflow Name: {workflow.name}
-            Current State: {agent_state}
-            Current Workflow State: {workflow.status_machine.state}
-            Current Workflow Details: {workflow.get_details()}
-            Possible Next States: {[t[3] for t in workflow.status_machine._get_current_transitions()]}
-            Available Task Classes: {available_task_classes}
-            Available Components: {available_components}
+            Agent Details: {json.dumps(agent_details, ensure_ascii=False)}
+
+            Workflows: {[w.id for w in workflows]}
+            """
+
+        # 为每个工作流添加详细信息
+        for workflow in workflows:
+            prompt += f"""
+            Workflow ID: {workflow.id}
+            Workflow Name: {workflow.name if hasattr(workflow, 'name') else 'Unknown'}
+            Current Workflow State: {workflow.status_machine.state if hasattr(workflow, 'status_machine') and hasattr(workflow.status_machine, 'state') else 'Unknown'}
+            Current Workflow Details: {workflow.get_details() if hasattr(workflow, 'get_details') else {}}
+            Possible Next States: {[t[3] for t in workflow.status_machine._get_current_transitions()] if hasattr(workflow, 'status_machine') and hasattr(workflow.status_machine, '_get_current_transitions') else []}
+            """
+
+        prompt += f"""
+            Available Task Classes: {json.dumps(available_task_classes, ensure_ascii=False)}
+            Available Components: {json.dumps(available_components, ensure_ascii=False)}
+            Compatible Tasks: {json.dumps(formatted_tasks, ensure_ascii=False)}
 
             Return a JSON array of tasks following this format:
             [
@@ -127,11 +164,11 @@ class LLMClient:
                 "component": "ComponentName",
                 "task_class": "TaskClassName",
                 "task_name": "Human readable task name",
-                "workflow_id": "{workflow.id}",
+                "workflow_id": "workflow-id",
                 "target_state": {{"position": [x, y, z]}},  # Target drone state
                 "properties": {{
-                "key1": "value1",
-                "key2": "value2"
+                    "key1": "value1",
+                    "key2": "value2"
                 }}
             }}
             ]
@@ -210,3 +247,118 @@ class LLMClient:
         """
         required_fields = ['component', 'task_name', 'task_class', 'target_state', 'properties']
         return all(field in task for field in required_fields)
+
+
+if __name__ == "__main__":
+    """
+    LLM客户端测试代码
+    测试find_compatible_tasks的返回格式和_build_workflow_prompt方法
+    """
+    import os
+    import sys
+    from typing import List
+    from unittest.mock import MagicMock
+
+    # 添加项目根目录到系统路径
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+    # 模拟环境和代理
+    class MockTask:
+        NECESSARY_METRICS = ['position', 'battery']
+        PRODUCED_STATES = ['position']
+
+        def __init__(self, **_):
+            self.__doc__ = "Mock task for testing"
+
+    class MockWorkflow:
+        def __init__(self, workflow_id: str, name: str):
+            self.id = workflow_id
+            self.name = name
+            self.status_machine = MagicMock()
+            self.status_machine.state = "IDLE"
+            self.status_machine._get_current_transitions = MagicMock(return_value=[(None, None, None, "RUNNING")])
+
+        def get_details(self):
+            return {"status": "ready", "progress": 0}
+
+    class MockAgent:
+        def __init__(self, agent_id: str):
+            self.id = agent_id
+            self._workflows = []
+
+        def get_active_workflows(self):
+            return self._workflows
+
+        def add_workflow(self, workflow):
+            self._workflows.append(workflow)
+
+        def get_details(self):
+            return {
+                "id": self.id,
+                "type": "drone",
+                "state": {
+                    "position": [0, 0, 10],
+                    "battery": 95
+                },
+                "components": ["camera", "gps", "battery"]
+            }
+
+        def get_component_names(self):
+            return ["camera", "gps", "battery"]
+
+    class MockEnvironment:
+        def __init__(self):
+            self.task_manager = MagicMock()
+            self.task_manager.task_classes = {"MockTask": MockTask}
+            self.now = 0
+
+    # 模拟 find_compatible_tasks 函数
+    def mock_find_compatible_tasks(*_, **__):
+        """模拟函数，忽略所有参数，返回固定结果"""
+        return [(MockTask, 0.85)]
+
+    # 在测试中使用模拟函数，不需要导入原始模块
+
+    # 创建测试环境
+    env = MockEnvironment()
+    agent = MockAgent("drone-001")
+    workflow = MockWorkflow("workflow-001", "Test Workflow")
+    agent.add_workflow(workflow)
+
+    # 创建LLM客户端
+    llm_client = LLMClient(env)
+
+    # 测试_build_workflow_prompt方法
+    workflows = agent.get_active_workflows()
+    agent_details = agent.get_details()
+    possible_tasks = mock_find_compatible_tasks(env, agent, workflow)
+
+    prompt = llm_client._build_workflow_prompt(workflows, agent_details, possible_tasks)
+    print("\n=== Generated Prompt ===\n")
+    print(prompt)
+    print("\n=== End of Prompt ===\n")
+
+    # 测试解析响应
+    mock_response = """
+    ```json
+    [
+      {
+        "component": "gps",
+        "task_class": "MockTask",
+        "task_name": "Navigate to position",
+        "workflow_id": "workflow-001",
+        "target_state": {"position": [10, 20, 30]},
+        "properties": {
+          "speed": 5,
+          "altitude": 30
+        }
+      }
+    ]
+    ```
+    """
+
+    tasks = llm_client._parse_response(mock_response)
+    print("\n=== Parsed Tasks ===\n")
+    for task in tasks:
+        print(json.dumps(task, indent=2))
+    print("\n=== End of Tasks ===\n")

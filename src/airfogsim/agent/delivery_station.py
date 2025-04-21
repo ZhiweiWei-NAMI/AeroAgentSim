@@ -351,7 +351,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         """执行快递站特定的逻辑"""
         try:
             # 获取活跃的工作流
-            active_workflows = self._get_active_workflows()
+            active_workflows = self.get_active_workflows()
 
             # 处理每个活跃工作流
             for workflow in active_workflows:
