@@ -1,3 +1,5 @@
+<a href="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9"><img src="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9/status.svg"></a>
+
 # AirFogSim: Benchmarking Collaborative Intelligence for Low-Altitude Vehicular Fog Computing
 
 <div align="center">
@@ -157,10 +159,22 @@ The visualization system employs a client-server architecture:
 ### Prerequisites
 
 - Python 3.8+
-- Node.js 14+
-- npm 6+
+- Node.js 14+ (only needed for visualization)
+- npm 6+ (only needed for visualization)
 
-### Installation Steps
+### Installation Options
+
+#### Option 1: Install from PyPI (Recommended)
+
+The easiest way to install AirFogSim is directly from PyPI:
+
+```bash
+pip install airfogsim
+```
+
+This will install the core simulation framework. If you want to use the visualization system, you'll need to clone the repository as described in Option 2.
+
+#### Option 2: Install from Source
 
 1. Clone the repository
 

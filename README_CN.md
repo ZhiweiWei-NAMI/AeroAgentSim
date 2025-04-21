@@ -1,3 +1,5 @@
+<a href="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9"><img src="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9/status.svg"></a>
+
 # AirFogSim: 低空车载雾计算协同智能基准测试框架
 
 <div align="center">
@@ -157,10 +159,22 @@ AirFogSim集成了一个完整的可视化系统，包括：
 ### 前提条件
 
 - Python 3.8+
-- Node.js 14+
-- npm 6+
+- Node.js 14+ (仅可视化系统需要)
+- npm 6+ (仅可视化系统需要)
 
-### 安装步骤
+### 安装选项
+
+#### 选项1：从PyPI安装（推荐）
+
+最简单的安装方式是直接从PyPI安装：
+
+```bash
+pip install airfogsim
+```
+
+这将安装核心仿真框架。如果您想使用可视化系统，需要按照选项2中的说明克隆仓库。
+
+#### 选项2：从源代码安装
 
 1. 克隆仓库
 

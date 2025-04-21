@@ -16,7 +16,7 @@ dependencies = [
     "numpy",
     "pint",
     "python-dotenv",
-    "gunicorn", # 用于生产 Docker
+    "gunicorn",
     "requests",
     "pandas",
     "openai",
@@ -24,15 +24,7 @@ dependencies = [
     "fastapi",
     "tabulate",
     "pydantic",
-    "uvicorn[standard]" # 添加 uvicorn, [standard] 包含性能优化库
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest",
-    "black",
-    "flake8",
-    "pip-tools"
+    "uvicorn"
 ]
 
 [tool.setuptools]
