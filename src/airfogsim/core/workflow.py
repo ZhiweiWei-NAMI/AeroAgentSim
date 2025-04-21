@@ -20,9 +20,8 @@ import uuid
 import simpy
 import warnings
 from abc import abstractmethod, ABC
-if TYPE_CHECKING:
-    from airfogsim.core.enums import WorkflowStatus, TaskStatus, TriggerOperator, TriggerType
-    from airfogsim.core.trigger import StateTrigger, EventTrigger, TimeTrigger, CompositeTrigger, Trigger
+from airfogsim.core.enums import WorkflowStatus, TaskStatus, TriggerOperator, TriggerType
+from airfogsim.core.trigger import StateTrigger, EventTrigger, TimeTrigger, CompositeTrigger, Trigger
 
 
 class WorkflowPropertyTemplate:
