@@ -1,0 +1,11 @@
+include LICENSE
+include README.md
+include README_CN.md
+include requirements.txt
+recursive-include src/airfogsim/docs *
+recursive-include src/airfogsim/examples *
+recursive-include src/airfogsim/helper *
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store
