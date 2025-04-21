@@ -37,8 +37,8 @@ dev = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-find-namespace = false
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["airfogsim*"]
+include = ["airfogsim", "airfogsim.*"]

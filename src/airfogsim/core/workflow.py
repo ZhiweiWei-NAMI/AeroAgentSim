@@ -14,15 +14,15 @@ AirFogSim工作流(Workflow)核心模块
 @author: zhiwei wei
 @email: 2311769@tongji.edu.cn
 """
-
-from airfogsim.core.enums import WorkflowStatus, TaskStatus, TriggerOperator, TriggerType
-from airfogsim.core.trigger import StateTrigger, EventTrigger, TimeTrigger, CompositeTrigger, Trigger
 from collections import defaultdict, deque
-from typing import List, Optional, Dict, Tuple, Callable, Set, Any, Union, Type
+from typing import List, Optional, Dict, Tuple, Callable, Set, Any, Union, Type, TYPE_CHECKING
 import uuid
 import simpy
 import warnings
 from abc import abstractmethod, ABC
+if TYPE_CHECKING:
+    from airfogsim.core.enums import WorkflowStatus, TaskStatus, TriggerOperator, TriggerType
+    from airfogsim.core.trigger import StateTrigger, EventTrigger, TimeTrigger, CompositeTrigger, Trigger
 
 
 class WorkflowPropertyTemplate:
@@ -116,18 +116,18 @@ class WorkflowStatusMachine:
         self.env = workflow.env
         self.current_status = initial_status
         self.start_status = initial_status
-        self.state_transitions: Dict[str, List[Tuple[Trigger, str, Optional[str]]]] = defaultdict(list)
+        self.state_transitions: Dict[str, List[Tuple['Trigger', str, Optional[str]]]] = defaultdict(list)
         self.terminal_status = {'completed', 'failed', 'canceled'}
         self.process: Optional[simpy.Process] = None
-        self.wildcard_transitions: List[Tuple[Trigger, str, Optional[str]]] = []
-        self.active_triggers: Dict[str, Trigger] = {}  # trigger_id -> Trigger
+        self.wildcard_transitions: List[Tuple['Trigger', str, Optional[str]]] = []
+        self.active_triggers: Dict[str, 'Trigger'] = {}  # trigger_id -> Trigger
         self._monitor_process_active = False
 
     def add_transition(self, state, next_status: str,
                        agent_state: Optional[Dict] = None,
                        time_trigger: Optional[Dict] = None,
                        event_trigger: Optional[Dict] = None,
-                       trigger: Optional[Trigger] = None,
+                       trigger: Optional['Trigger'] = None,
                        callback: Optional[Callable] = None,
                        description: Optional[str] = None):
         """
@@ -302,7 +302,7 @@ class WorkflowStatusMachine:
         finally:
             self._deactivate_all_triggers()
 
-    def _on_trigger_activated(self, trigger: Trigger, next_status: str, context: Dict[str, Any]):
+    def _on_trigger_activated(self, trigger: 'Trigger', next_status: str, context: Dict[str, Any]):
         """触发器被激活时的回调"""
         # 检查当前状态是否仍然有效
         if self.is_in_terminal_status():

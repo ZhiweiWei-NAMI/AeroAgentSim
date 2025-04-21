@@ -11,4 +11,6 @@ from .agent import Agent, AgentMeta
 from .workflow import Workflow, WorkflowMeta
 from .task import Task
 from .component import Component
+from .environment import Environment
+from .trigger import Trigger
 from .enums import *
