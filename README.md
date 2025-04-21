@@ -1,3 +1,5 @@
+<a href="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9"><img src="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9/status.svg"></a>
+
 # AirFogSim: Benchmarking Collaborative Intelligence for Low-Altitude Vehicular Fog Computing
 
 <div align="center">
@@ -157,10 +159,22 @@ The visualization system employs a client-server architecture:
 ### Prerequisites
 
 - Python 3.8+
-- Node.js 14+
-- npm 6+
+- Node.js 14+ (only needed for visualization)
+- npm 6+ (only needed for visualization)
 
-### Installation Steps
+### Installation Options
+
+#### Option 1: Install from PyPI (Recommended)
+
+The easiest way to install AirFogSim is directly from PyPI:
+
+```bash
+pip install airfogsim
+```
+
+This will install the core simulation framework. If you want to use the visualization system, you'll need to clone the repository as described in Option 2.
+
+#### Option 2: Install from Source
 
 1. Clone the repository
 
@@ -194,54 +208,6 @@ python main_for_visualization.py
 
 This will start the backend API service and frontend development server, and automatically open the visualization interface in your browser.
 
-
-### Running with Docker (Work in Progress)
-
-This is the recommended way to run, ensuring environment consistency and simplifying deployment.
-
-**Prerequisites:**
-
-- Docker ([https://www.docker.com/get-started](https://www.docker.com/get-started))
-- Docker Compose ([https://docs.docker.com/compose/install/](https://docs.docker.com/compose/install/))
-
-**Steps:**
-
-1.  **Clone the repository (if not already done):**
-   ```bash
-   git clone https://github.com/ZhiweiWei-NAMI/AirFogSim.git
-   cd AirFogSim
-   ```
-
-2.  **Build frontend static files:**
-   > **Note:** The current Docker Compose configuration depends on pre-built frontend files on the host.
-   ```bash
-   cd frontend
-   npm install
-   npm run build
-   cd ..
-   ```
-
-3.  **Build and start Docker services:**
-   ```bash
-   docker-compose build
-   docker-compose up -d
-   ```
-   This will build the backend image and start the backend and Nginx services.
-
-4.  **Access the application:**
-   Open `http://localhost` in your browser.
-
-5.  **View logs:**
-   ```bash
-   docker-compose logs -f  # View all service logs
-   docker-compose logs -f backend # View backend logs
-   docker-compose logs -f nginx   # View Nginx logs
-   ```
-
-6.  **Stop services:**
-   ```bash
-   docker-compose down
-   ```
 
 ## 📝 Usage Examples
 

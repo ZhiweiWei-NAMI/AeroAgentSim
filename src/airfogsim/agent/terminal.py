@@ -119,7 +119,7 @@ class TerminalAgent(Agent, metaclass=TerminalAgentMeta):
         # 检查终端电源状态
         if self.get_state('power_status') == 'on':
             # 如果没有活跃的工作流和正在运行的任务，重置任务相关状态
-            if not self._get_active_workflows() and not any(task['status'] == 'running' for task in self.managed_tasks.values()):
+            if not self.get_active_workflows() and not any(task['status'] == 'running' for task in self.managed_tasks.values()):
                 self._reset_task_states()
 
             # 终端特定的逻辑可以在这里添加
@@ -165,7 +165,7 @@ class TerminalAgent(Agent, metaclass=TerminalAgentMeta):
             'type': self.__class__.__name__,
             'components': self.get_component_names(),
             'active_tasks_count': len([t for t in self.managed_tasks.values() if t['status'] == 'running']),
-            'active_workflows': [w.id for w in self._get_active_workflows()],
+            'active_workflows': [w.id for w in self.get_active_workflows()],
             'managed_files_count': len(self.managed_files)
         })
         return details

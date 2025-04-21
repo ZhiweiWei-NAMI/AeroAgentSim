@@ -1,3 +1,5 @@
+<a href="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9"><img src="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9/status.svg"></a>
+
 # AirFogSim: 低空车载雾计算协同智能基准测试框架
 
 <div align="center">
@@ -157,10 +159,22 @@ AirFogSim集成了一个完整的可视化系统，包括：
 ### 前提条件
 
 - Python 3.8+
-- Node.js 14+
-- npm 6+
+- Node.js 14+ (仅可视化系统需要)
+- npm 6+ (仅可视化系统需要)
 
-### 安装步骤
+### 安装选项
+
+#### 选项1：从PyPI安装（推荐）
+
+最简单的安装方式是直接从PyPI安装：
+
+```bash
+pip install airfogsim
+```
+
+这将安装核心仿真框架。如果您想使用可视化系统，需要按照选项2中的说明克隆仓库。
+
+#### 选项2：从源代码安装
 
 1. 克隆仓库
 
@@ -194,54 +208,6 @@ python main_for_visualization.py
 
 这将启动后端API服务和前端开发服务器，并自动在浏览器中打开可视化界面。
 
-
-### 使用Docker运行（进行中）
-
-这是推荐的运行方式，可以确保环境一致性并简化部署。
-
-**前提条件:**
-
-- Docker ([https://www.docker.com/get-started](https://www.docker.com/get-started))
-- Docker Compose ([https://docs.docker.com/compose/install/](https://docs.docker.com/compose/install/))
-
-**运行步骤:**
-
-1.  **克隆仓库 (如果尚未完成):**
-   ```bash
-   git clone https://github.com/ZhiweiWei-NAMI/AirFogSim.git
-   cd AirFogSim
-   ```
-
-2.  **构建前端静态文件:**
-   > **注意:** 当前Docker Compose配置依赖于在主机上预先构建的前端文件。
-   ```bash
-   cd frontend
-   npm install
-   npm run build
-   cd ..
-   ```
-
-3.  **构建并启动Docker服务:**
-   ```bash
-   docker-compose build
-   docker-compose up -d
-   ```
-   这将构建后端镜像，并启动后端和Nginx服务。
-
-4.  **访问应用:**
-   在浏览器中打开 `http://localhost`。
-
-5.  **查看日志:**
-   ```bash
-   docker-compose logs -f  # 查看所有服务日志
-   docker-compose logs -f backend # 查看后端日志
-   docker-compose logs -f nginx   # 查看Nginx日志
-   ```
-
-6.  **停止服务:**
-   ```bash
-   docker-compose down
-   ```
 
 ## 📝 使用示例
 

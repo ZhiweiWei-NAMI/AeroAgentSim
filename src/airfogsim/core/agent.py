@@ -576,7 +576,7 @@ class Agent(metaclass=AgentMeta):
     def _process_workflow_tasks(self):
         """处理工作流建议的任务"""
         # 获取活跃的工作流
-        active_workflows = self._get_active_workflows()
+        active_workflows = self.get_active_workflows()
         if not active_workflows:
             return
 
@@ -636,7 +636,7 @@ class Agent(metaclass=AgentMeta):
                 return True
         return False
 
-    def _get_active_workflows(self):
+    def get_active_workflows(self):
         """获取代理的活跃工作流"""
         if not hasattr(self.env, 'workflow_manager'):
             return []
@@ -755,6 +755,49 @@ class Agent(metaclass=AgentMeta):
         # 如果没有任务，直接返回
         if not self.task_queue:
             return
+        to_execute_tasks = []
+        queuing_tasks = []
+        if self.llm_client and self.llm_client.is_available():
+            to_execute_tasks, queuing_tasks = self.llm_client.analyze_agent_tasks(self)
+        else:
+            to_execute_tasks, queuing_tasks = self._default_policy()
+
+        self.task_queue = queuing_tasks
+        # 遍历任务队列（已按优先级排序）
+        i = 0
+        while i < len(to_execute_tasks):
+            task_info = to_execute_tasks[i]
+            component_name = task_info['component_name']
+            component = self.get_component(component_name)
+
+            # 如果组件不存在，移除任务
+            if not component:
+                print(f"\n时间 {self.env.now}: 组件 {component_name} 不存在，移除任务 {task_info['task_name']}")
+                to_execute_tasks.pop(i)
+                continue
+
+            # 检查组件是否可用
+            if component.is_available():
+                # 组件可用，执行任务
+                self._execute_queued_task(task_info)
+                to_execute_tasks.pop(i)
+            else:
+                # 组件不可用，检查是否可以抢占
+                preemptive = task_info['properties'].get('preemptive', False)
+                if preemptive:
+                    # 尝试抢占
+                    if self._try_preempt_task(task_info):
+                        # 抢占成功，移除任务
+                        to_execute_tasks.pop(i)
+                    else:
+                        # 抢占失败，检查下一个任务
+                        i += 1
+                else:
+                    # 不可抢占，检查下一个任务
+                    i += 1
+        self._sort_task_queue()
+
+    def _default_policy(self):
         # 获取任务队列中与正在执行的任务同属于同一工作流的任务        
         workflow_id = self.task_queue[0]['workflow_id']
         # 先判断是否有preemptive任务，如果有，先执行
@@ -766,42 +809,9 @@ class Agent(metaclass=AgentMeta):
                 break
         if len(self.managed_tasks) > 0 and not is_preemptive:
             workflow_id = list(self.managed_tasks.values())[0]['task'].workflow_id
-        workflow_task_queue = [task for task in self.task_queue if task['workflow_id'] == workflow_id]
-        # 遍历任务队列（已按优先级排序）
-        i = 0
-        while i < len(workflow_task_queue):
-            task_info = workflow_task_queue[i]
-            component_name = task_info['component_name']
-            component = self.get_component(component_name)
-
-            # 如果组件不存在，移除任务
-            if not component:
-                print(f"\n时间 {self.env.now}: 组件 {component_name} 不存在，移除任务 {task_info['task_name']}")
-                workflow_task_queue.pop(i)
-                continue
-
-            # 检查组件是否可用
-            if component.is_available():
-                # 组件可用，执行任务
-                self._execute_queued_task(task_info)
-                workflow_task_queue.pop(i)
-            else:
-                # 组件不可用，检查是否可以抢占
-                preemptive = task_info['properties'].get('preemptive', False)
-                if preemptive:
-                    # 尝试抢占
-                    if self._try_preempt_task(task_info):
-                        # 抢占成功，移除任务
-                        workflow_task_queue.pop(i)
-                    else:
-                        # 抢占失败，检查下一个任务
-                        i += 1
-                else:
-                    # 不可抢占，检查下一个任务
-                    i += 1
-
-        self.task_queue = [task for task in self.task_queue if task not in workflow_task_queue]
-        self._sort_task_queue()
+        to_execute_tasks = [task for task in self.task_queue if task['workflow_id'] == workflow_id]
+        queuing_tasks = [task for task in self.task_queue if task not in to_execute_tasks]
+        return to_execute_tasks, queuing_tasks
 
     def _execute_queued_task(self, task_info):
         """执行队列中的任务"""
