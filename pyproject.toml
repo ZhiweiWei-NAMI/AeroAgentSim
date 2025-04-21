@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "airfogsim"
-version = "1.0.0"
+version = "1.0.1"
 description = "Low Altitude Space Simulation System"
 readme = "README.md"
 authors = [
@@ -37,4 +37,8 @@ dev = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["airfogsim"]
+find-namespace = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["airfogsim*"]
