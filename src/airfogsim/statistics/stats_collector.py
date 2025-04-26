@@ -14,9 +14,9 @@ import csv
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 
-from airfogsim.benchmark.collectors.agent_collector import AgentStateCollector
-from airfogsim.benchmark.collectors.workflow_collector import WorkflowStateCollector
-from airfogsim.benchmark.collectors.event_collector import EventCollector
+from airfogsim.statistics.collectors.agent_collector import AgentStateCollector
+from airfogsim.statistics.collectors.workflow_collector import WorkflowStateCollector
+from airfogsim.statistics.collectors.event_collector import EventCollector
 
 class StatsCollector:
     """

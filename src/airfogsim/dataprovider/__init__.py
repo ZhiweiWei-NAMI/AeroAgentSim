@@ -6,3 +6,6 @@ AirFogSim数据提供者模块
 """
 
 from .weather_integration import WeatherIntegration
+from .accident_integration import AccidentIntegration
+
+__all__ = ['WeatherIntegration', 'AccidentIntegration']

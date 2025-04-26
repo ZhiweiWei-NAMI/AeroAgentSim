@@ -60,6 +60,7 @@ class Trigger:
         self.last_triggered_time = None
         self.trigger_count = 0
         self.max_triggers = None  # 默认无限制
+        self.not_to_deactive = False
         
     def add_callback(self, callback: Callable[[Dict[str, Any]], None]):
         """添加触发时的回调函数"""
@@ -123,7 +124,8 @@ class Trigger:
                 print(f"时间 {self.env.now}: 触发器 {self.name} 回调执行错误: {e}")
                 
         # 停用，直到workflow重新激活
-        self._schedule_deactivation()
+        if not self.not_to_deactive:
+            self._schedule_deactivation()
         return True
     
     def _monitor(self):
@@ -366,6 +368,7 @@ class TimeTrigger(Trigger):
         self.trigger_time = trigger_time
         self.interval = interval
         self.cron_expr = cron_expr
+        self.not_to_deactive = self.interval or self.cron_expr
         
         if not any([trigger_time is not None, interval is not None, cron_expr is not None]):
             raise ValueError("必须指定触发时间、间隔或cron表达式")

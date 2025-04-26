@@ -13,11 +13,12 @@ AirFogSim代理(Agent)核心模块
 """
 
 import functools # Added for partial
-from airfogsim.core.enums import TaskStatus
+from airfogsim.core.enums import TaskStatus, TriggerType
 from typing import Dict, List, Any, Optional, get_origin, get_args
 import uuid
 import warnings
 import simpy
+from airfogsim.core.trigger import TimeTrigger
 
 class StateTemplate:
     """状态模板定义"""
@@ -154,7 +155,7 @@ class Agent(metaclass=AgentMeta):
         self.task_manager = env.task_manager
         self.properties = properties or {}
         self.state: Dict[str, Any] = {}
-        self.llm_client = properties.get('llm_client', None)
+        self.llm_client = self.properties.get('llm_client', None)
 
         from airfogsim.core import Component
         self.components: Dict[str, Component] = {}
@@ -173,6 +174,9 @@ class Agent(metaclass=AgentMeta):
 
         # 任务调度间隔（秒）
         self.scheduling_interval = 5
+
+        # 任务调度触发器
+        self.task_schedule_trigger = None
 
         if not hasattr(self.env, 'event_registry'): raise RuntimeError("Environment missing EventRegistry.")
         if not hasattr(self.env, 'workflow_manager'): warnings.warn("Environment missing WorkflowManager.")
@@ -566,11 +570,15 @@ class Agent(metaclass=AgentMeta):
         pass
 
     def cleanup(self):
-        """清理代理资源，包括取消事件监听"""
+        """清理代理资源，包括取消事件监听和触发器"""
         # 取消所有事件监听
         if hasattr(self, 'event_listeners'):
             for listener_id, (source_id, event_name) in self.event_listeners.items():
                 self.env.event_registry.unsubscribe(source_id, event_name, listener_id)
+
+        # 停用任务调度触发器
+        if hasattr(self, 'task_schedule_trigger') and self.task_schedule_trigger:
+            self.task_schedule_trigger.deactivate()
 
     # --- Workflow Task Processing ---
     def _process_workflow_tasks(self):
@@ -798,7 +806,7 @@ class Agent(metaclass=AgentMeta):
         self._sort_task_queue()
 
     def _default_policy(self):
-        # 获取任务队列中与正在执行的任务同属于同一工作流的任务        
+        # 获取任务队列中与正在执行的任务同属于同一工作流的任务
         workflow_id = self.task_queue[0]['workflow_id']
         # 先判断是否有preemptive任务，如果有，先执行
         is_preemptive = False
@@ -895,12 +903,35 @@ class Agent(metaclass=AgentMeta):
 
     def _task_scheduler(self):
         """任务调度器"""
-        while True:
-            # 等待调度间隔
-            yield self.env.timeout(self.scheduling_interval)
+        # 从属性中获取任务调度触发器，如果没有则创建默认的TimeTrigger
+        trigger_config = self.properties.get('task_schedule_trigger', None)
 
-            # 处理队列中的任务
-            self._process_task_queue()
+        if trigger_config:
+            # 如果在属性中指定了触发器，使用指定的触发器
+            # 这里假设触发器已经创建好并传入属性
+            self.task_schedule_trigger = trigger_config
+            self.task_schedule_trigger.not_to_deactive = True
+        else:
+            # 如果没有指定触发器，创建默认的TimeTrigger
+            self.task_schedule_trigger = TimeTrigger(
+                self.env,
+                interval=self.scheduling_interval,  # 使用默认的调度间隔
+                name=f"{self.id}_task_scheduler_trigger"
+            )
+
+        # 添加回调函数，当触发器触发时处理任务队列
+        self.task_schedule_trigger.add_callback(lambda _: self._process_task_queue())
+
+        # 激活触发器
+        self.task_schedule_trigger.activate()
+
+        # 等待直到被中断
+        try:
+            while True:
+                yield self.env.timeout(float('inf'))
+        except simpy.Interrupt:
+            # 如果被中断，停用触发器
+            self.task_schedule_trigger.deactivate()
 
     # --- Core Agent Logic ---
     def live(self):
