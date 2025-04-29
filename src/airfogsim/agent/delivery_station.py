@@ -14,8 +14,8 @@ AirFogSim快递站代理模块
 
 from airfogsim.core import Agent, AgentMeta
 from typing import Dict, List, Optional, Tuple, Any
-import uuid
-import simpy
+from airfogsim.utils.logging_config import get_logger
+logger = get_logger(__name__)
 import random
 
 class DeliveryStationMeta(AgentMeta):
@@ -73,6 +73,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         # 初始化状态
         self.initialize_states(
             position=properties.get('position', [0, 0, 0]),
+            status=properties.get('status', 'idle'),
             storage_capacity=properties.get('storage_capacity', 100),
             current_storage=properties.get('current_storage', 0),
             service_radius=properties.get('service_radius', 50.0),
@@ -97,7 +98,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
             # 增加当前存储量
             current_storage = self.get_state('current_storage')
             self.update_state('current_storage', current_storage + 1)
-            print(f"时间 {self.env.now}: 快递站 {self.id} 当前存储量增加到 {current_storage + 1}, 物品ID: {payload_id}")
+            logger.info(f"时间 {self.env.now}: 快递站 {self.id} 当前存储量增加到 {current_storage + 1}, 物品ID: {payload_id}")
 
     def _on_remove_possessing_object(self, event_value: Dict[str, Any]):
         """
@@ -111,7 +112,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
             # 减少当前存储量
             current_storage = self.get_state('current_storage')
             self.update_state('current_storage', max(0, current_storage - 1))
-            print(f"时间 {self.env.now}: 快递站 {self.id} 当前存储量减少到 {max(0, current_storage - 1)}")
+            logger.info(f"时间 {self.env.now}: 快递站 {self.id} 当前存储量减少到 {max(0, current_storage - 1)}")
 
     @classmethod
     def get_description(cls):
@@ -130,7 +131,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         """
         registered_drones = self.get_state('registered_logistics_drones')
         if drone_id in registered_drones:
-            print(f"时间 {self.env.now}: 无人机 {drone_id} 已注册到快递站 {self.id}")
+            logger.info(f"时间 {self.env.now}: 无人机 {drone_id} 已注册到快递站 {self.id}")
             return False
 
         # 添加到注册列表
@@ -143,7 +144,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
             'time': self.env.now
         })
 
-        print(f"时间 {self.env.now}: 无人机 {drone_id} 成功注册到快递站 {self.id}")
+        logger.info(f"时间 {self.env.now}: 无人机 {drone_id} 成功注册到快递站 {self.id}")
         return True
 
     def unregister_drone(self, drone_id: str) -> bool:
@@ -158,7 +159,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         """
         registered_drones = self.get_state('registered_logistics_drones')
         if drone_id not in registered_drones:
-            print(f"时间 {self.env.now}: 无人机 {drone_id} 未注册到快递站 {self.id}")
+            logger.warning(f"时间 {self.env.now}: 无人机 {drone_id} 未注册到快递站 {self.id}")
             return False
 
         # 从注册列表移除
@@ -171,7 +172,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
             'time': self.env.now
         })
 
-        print(f"时间 {self.env.now}: 无人机 {drone_id} 已从快递站 {self.id} 注销")
+        logger.info(f"时间 {self.env.now}: 无人机 {drone_id} 已从快递站 {self.id} 注销")
         return True
 
     def get_available_drones(self) -> List[str]:
@@ -216,7 +217,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         storage_capacity = self.get_state('storage_capacity')
 
         if current_storage >= storage_capacity:
-            print(f"时间 {self.env.now}: 快递站 {self.id} 存储空间已满，无法创建物品")
+            logger.warning(f"时间 {self.env.now}: 快递站 {self.id} 存储空间已满，无法创建物品")
             return None
 
         # 创建物品信息
@@ -248,14 +249,14 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         # 获取物品信息
         payload_info = self.get_possessing_object(payload_id)
         if not payload_info or payload_info.get('id') != payload_id:
-            print(f"时间 {self.env.now}: 快递站 {self.id} 找不到物品 {payload_id}")
+            logger.warning(f"时间 {self.env.now}: 快递站 {self.id} 找不到物品 {payload_id}")
             return None
 
         # 获取无人机代理
         drone_agent = self.env.agents.get(drone_id)
 
         if not drone_agent:
-            print(f"时间 {self.env.now}: 快递站 {self.id} 找不到无人机 {drone_id}")
+            logger.warning(f"时间 {self.env.now}: 快递站 {self.id} 找不到无人机 {drone_id}")
             return None
 
         # 获取快递站位置作为取件点
@@ -279,7 +280,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         )
 
         if workflow:
-            # print(f"时间 {self.env.now}: 快递站 {self.id} 为无人机 {drone_id} 创建物流工作流 {workflow.id}")
+            # logger.info(f"时间 {self.env.now}: 快递站 {self.id} 为无人机 {drone_id} 创建物流工作流 {workflow.id}")
             return workflow.id
 
         return None
@@ -310,7 +311,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         # 选择无人机
         drone_id = self.select_drone_for_delivery()
         if not drone_id:
-            print(f"时间 {self.env.now}: 快递站 {self.id} 没有可用的无人机")
+            logger.warning(f"时间 {self.env.now}: 快递站 {self.id} 没有可用的无人机")
             return
 
         # 创建物流工作流
@@ -365,4 +366,4 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
                     elif current_state == 'assigning_drone':
                         self._handle_assigning_drone_state(workflow)
         except Exception as e:
-            print(f"时间 {self.env.now}: 快递站 {self.id} 处理工作流时出错: {str(e)}")
+            logger.error(f"Error: 快递站 {self.id} 处理工作流时出错: {str(e)}")

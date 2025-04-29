@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 import requests
-import logging
+from airfogsim.utils.logging_config import get_logger
 from datetime import datetime
 from typing import Dict, Any, Optional, Tuple
 import json
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 def _fetch_api_data(api_key: str, lat: float, lon: float, endpoint: str = "weather") -> Optional[Dict[str, Any]]:
     """

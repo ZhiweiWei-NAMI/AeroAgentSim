@@ -8,7 +8,9 @@ import time
 import json
 import csv
 import os
+from airfogsim.utils.logging_config import get_logger
 
+logger = get_logger(__name__)
 
 class AgentStateCollector:
     """
@@ -44,7 +46,7 @@ class AgentStateCollector:
         self.config = config or {}
         self.config = {**self.default_config, **self.config}
 
-        print(f"AgentStateCollector初始化，配置: {self.config}")
+        logger.info(f"AgentStateCollector初始化，配置: {self.config}")
 
         # 订阅事件
         self._subscribe_events()
@@ -76,7 +78,7 @@ class AgentStateCollector:
 
         # 如果配置了监听visual_update事件，则订阅该事件
         if self.config['listen_visual_update']:
-            print(f"AgentStateCollector订阅visual_update事件")
+            logger.info(f"AgentStateCollector订阅visual_update事件")
             self.env.event_registry.subscribe(
                 self.env.id,
                 'visual_update',
@@ -100,12 +102,12 @@ class AgentStateCollector:
         source_id = event_data.get('agent_id')
         if not source_id or not source_id.startswith('agent_'):
             return
-        
+
         # 获取代理
         agent = self.env.agents.get(source_id)
         if not agent:
             return
-        
+
         # 获取状态变化信息
         key = 'possessing_object'
         current_value = agent.get_possessing_object_names()
@@ -120,7 +122,7 @@ class AgentStateCollector:
             old_value.append(event_data.get('object_name'))
         else:
             return
-        
+
         # 初始化代理状态存储
         if source_id not in self.agent_states:
             self.agent_states[source_id] = []
@@ -156,6 +158,10 @@ class AgentStateCollector:
         key = event_data.get('key')
         old_value = event_data.get('old_value')
         new_value = event_data.get('new_value')
+        if isinstance(old_value, set):
+            old_value = sorted(list(old_value))
+        if isinstance(new_value, set):
+            new_value = sorted(list(new_value))
 
         # 初始化代理状态存储
         if source_id not in self.agent_states:
@@ -182,7 +188,7 @@ class AgentStateCollector:
         # 当收到visual_update事件时，采集所有代理的当前状态
         sim_time = event_data.get('time', self.env.now)
         if self.config.get('debug', False):
-            print(f"Visual update at time {sim_time}, collecting all agent states")
+            logger.info(f"Visual update at time {sim_time}, collecting all agent states")
         self._collect_all_agent_states()
 
     def _collect_all_agent_states(self):
@@ -201,14 +207,37 @@ class AgentStateCollector:
                 'full_state': True  # 标记为全部状态
             }
 
-            # 添加代理的所有状态
-            for key, value in agent.state.items():
+        # 添加代理的所有状态 (处理非JSON序列化类型)
+        for key, value in agent.state.items():
+            if isinstance(value, set):
+                state_data[key] = sorted(list(value))
+            elif isinstance(value, (tuple, list)):
+                state_data[key] = list(value)
+            elif isinstance(value, (str, int, float)):
                 state_data[key] = value
+            else:
+                 state_data[key] = value
+
+            # 确保明确包含新添加的状态键，即使它们可能已经在agent.state中
+            # 如果状态不存在，则设置为None
+            important_states = [
+                'external_force',       # 来自WeatherIntegration
+                'max_allowed_speed',    # 来自TrafficIntegration
+                'current_workflow_id',  # 来自WorkflowManager
+                'signal_quality',       # 来自SignalIntegration
+                'position',             # 基本状态
+                'battery_level',        # 基本状态
+                'status'                # 基本状态
+            ]
+
+            for key in important_states:
+                if key not in state_data:
+                    state_data[key] = agent.get_state(key)
 
             objs = agent.get_possessing_object_names()
             objs.sort()
             # 记录possessing_object
-            state_data['possessing_object'] = objs
+            state_data['possessing_object'] = list(objs)
 
             # 记录状态
             self.agent_states[agent_id].append(state_data)

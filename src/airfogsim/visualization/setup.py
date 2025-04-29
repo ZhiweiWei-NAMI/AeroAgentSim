@@ -1,4 +1,3 @@
-import logging
 import uuid
 from typing import Dict, Any, Callable, Optional, List, Tuple
 
@@ -9,8 +8,9 @@ from airfogsim.workflow.charging import create_charging_workflow
 
 from .environment import PausableEnvironment
 from .config import DEFAULT_AIRSPACE, DEFAULT_FREQUENCY, DEFAULT_LANDING_SPOT
+from airfogsim.utils.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 def setup_environment_resources(env: PausableEnvironment, config: Dict[str, Any], log_event: Callable = None) -> bool:
     """设置仿真环境中的资源

@@ -20,7 +20,9 @@ from airfogsim.agent.drone import DroneAgent
 from airfogsim.component.mobility import MoveToComponent
 from airfogsim.component.charging import ChargingComponent
 import random
+from airfogsim.utils.logging_config import get_logger
 
+logger = get_logger(__name__)
 
 def setup_environment():
     """设置仿真环境"""
@@ -117,7 +119,7 @@ def run_workflow_priority_demo():
                 decrease = random.uniform(1, 3)
                 new_level = max(0, current_level - decrease)
                 drone.update_state('battery_level', new_level)
-                print(f"时间 {env.now:.1f}: 电池电量: {new_level:.1f}%")
+                logger.info(f"时间 {env.now:.1f}: 电池电量: {new_level:.1f}%")
             yield env.timeout(5)
 
     env.process(battery_drain())
@@ -126,9 +128,9 @@ def run_workflow_priority_demo():
     inspection_workflow.start()
 
     # 运行模拟
-    print("开始模拟...")
+    logger.info("开始模拟...")
     env.run(until=500)
-    print("模拟结束")
+    logger.info("模拟结束")
 
 
 if __name__ == "__main__":

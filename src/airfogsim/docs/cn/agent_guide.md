@@ -317,3 +317,92 @@
 *   **错误处理：** 检查 `execute_task` 的返回值。处理 `_process_custom_logic()` 和回调中的潜在异常。
 
 通过遵循这些指南，您可以在 AirFogSim 框架内有效地创建多样化和能力强大的代理。参考 `Agent` 源代码和特定代理示例（如 `DroneAgent`）以获取具体的实现细节。
+
+### 6. 日志记录
+
+日志记录是 Agent 开发中至关重要的一部分，它帮助我们：
+- 追踪 Agent 的行为和状态变化
+- 调试和排查问题
+- 分析性能瓶颈
+- 监控系统运行状况
+
+#### 6.1 日志级别
+
+AirFogSim 使用 Python 的 `logging` 模块，支持以下日志级别：
+- DEBUG：详细的调试信息
+- INFO：一般信息，记录正常运行状态
+- WARNING：警告信息，表示潜在问题
+- ERROR：错误信息，表示严重问题
+- CRITICAL：严重错误，可能导致系统崩溃
+
+#### 6.2 日志格式
+
+建议使用以下格式记录日志：
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+# 在 __init__ 中初始化日志
+def __init__(self, env, name, **kwargs):
+    super().__init__(env, name, **kwargs)
+    self.logger = logging.getLogger(f"{__name__}.{self.name}")
+    
+# 记录日志示例
+self.logger.info(f"Agent {self.name} 开始执行任务 {task_id}")
+self.logger.debug(f"当前状态: {self.get_current_states()}")
+self.logger.warning(f"资源不足: {resource_name}")
+self.logger.error(f"任务执行失败: {error_message}")
+```
+
+#### 6.3 日志记录最佳实践
+
+1. **状态变化记录**
+   - 记录重要的状态转换
+   - 记录状态更新前后的值
+   - 记录状态变化的原因
+
+2. **任务执行记录**
+   - 记录任务的开始和结束
+   - 记录任务执行的关键步骤
+   - 记录任务执行的结果和异常
+
+3. **事件处理记录**
+   - 记录接收到的事件
+   - 记录事件处理的结果
+   - 记录事件触发的动作
+
+4. **性能监控记录**
+   - 记录关键操作的执行时间
+   - 记录资源使用情况
+   - 记录性能瓶颈
+
+5. **错误处理记录**
+   - 记录异常发生的上下文
+   - 记录错误恢复的过程
+   - 记录错误对系统的影响
+
+#### 6.4 日志配置
+
+在 `config.yaml` 中配置日志：
+```yaml
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  handlers:
+    console:
+      level: INFO
+    file:
+      level: DEBUG
+      filename: "airfogsim.log"
+```
+
+#### 6.5 日志分析
+
+日志分析可以帮助我们：
+- 识别性能瓶颈
+- 发现异常模式
+- 优化系统行为
+- 改进决策逻辑
+
+建议定期分析日志，提取有价值的信息，用于系统优化和改进。

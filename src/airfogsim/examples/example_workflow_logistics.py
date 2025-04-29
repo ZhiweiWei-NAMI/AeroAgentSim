@@ -20,6 +20,9 @@ from airfogsim.workflow.charging import create_charging_workflow
 from airfogsim.core.trigger import TimeTrigger
 import random
 from tqdm import tqdm
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 def run_logistics_simulation():
     """运行物流工作流示例"""
@@ -167,7 +170,7 @@ def run_logistics_simulation():
         )
         
         order_workflows.append(order_workflow)
-        print(f"创建订单工作流 {order_workflow.id}，从{source_station.id}到{target_station.id}，交付位置: {target_station.get_state('position')}")
+        logger.info(f"创建订单工作流 {order_workflow.id}，从{source_station.id}到{target_station.id}，交付位置: {target_station.get_state('position')}")
     
     # 为无人机创建充电工作流（作为备用）
     for drone in drones:
@@ -182,42 +185,42 @@ def run_logistics_simulation():
     end_time = 2000  # 仿真1000分钟
     
     # 运行仿真
-    print(f"开始物流仿真...")
+    logger.info(f"开始物流仿真...")
     env.run(until=end_time)
-    print(f"仿真结束，总时长: {env.now} 分钟")
+    logger.info(f"仿真结束，总时长: {env.now} 分钟")
     
     # 打印仿真结果
-    print("\n物流仿真结果:")
+    logger.info("\n物流仿真结果:")
     
     # 打印快递站状态
     for i, station in enumerate([station1, station2, station3]):
-        print(f"\n快递站{i+1} ({station.id}) 最终状态:")
-        print(f"位置: {station.get_state('position')}")
-        print(f"当前存储: {station.get_state('current_storage')}/{station.get_state('storage_capacity')}")
-        print(f"注册的无人机数量: {len(station.get_state('registered_logistics_drones'))}")
+        logger.info(f"\n快递站{i+1} ({station.id}) 最终状态:")
+        logger.info(f"位置: {station.get_state('position')}")
+        logger.info(f"当前存储: {station.get_state('current_storage')}/{station.get_state('storage_capacity')}")
+        logger.info(f"注册的无人机数量: {len(station.get_state('registered_logistics_drones'))}")
     
     # 打印无人机状态
     for i, drone in enumerate(drones[:5]):
-        print(f"\n无人机{i+1} ({drone.id}) 最终状态:")
-        print(f"位置: {drone.get_state('position')}")
-        print(f"电量: {drone.get_state('battery_level'):.1f}%")
-        print(f"状态: {drone.get_state('status')}")
-        print(f"是否携带货物: {drone.get_state('carrying_payload')}")
+        logger.info(f"\n无人机{i+1} ({drone.id}) 最终状态:")
+        logger.info(f"位置: {drone.get_state('position')}")
+        logger.info(f"电量: {drone.get_state('battery_level'):.1f}%")
+        logger.info(f"状态: {drone.get_state('status')}")
+        logger.info(f"是否携带货物: {drone.get_state('carrying_payload')}")
         if drone.get_state('carrying_payload'):
-            print(f"货物ID: {drone.get_state('payload_id')}")
+            logger.info(f"货物ID: {drone.get_state('payload_id')}")
     
     # 打印订单工作流状态
-    print("\n订单工作流状态:")
+    logger.info("\n订单工作流状态:")
     for i, workflow in enumerate(order_workflows):
         source_station_id = workflow.owner.id
         target_agent_id = workflow.target_agent_id
-        print(f"订单{i+1} ({workflow.id}) 状态: {workflow.status_machine.state}")
-        print(f"  从 {source_station_id} 到 {target_agent_id}")
-        print(f"  物品ID: {workflow.payload_id}")
-        print(f"  分配的无人机: {workflow.assigned_drone}")
+        logger.info(f"订单{i+1} ({workflow.id}) 状态: {workflow.status_machine.state}")
+        logger.info(f"  从 {source_station_id} 到 {target_agent_id}")
+        logger.info(f"  物品ID: {workflow.payload_id}")
+        logger.info(f"  分配的无人机: {workflow.assigned_drone}")
     
     # 打印货物状态
-    print("\n货物状态:")
+    logger.info("\n货物状态:")
     payloads = env.payload_manager.get_all_payloads()
     for payload_id, payload_info in payloads.items():
         # create time  pickup time  delivery time
@@ -226,10 +229,10 @@ def run_logistics_simulation():
         delivery_time = payload_info.get('delivery_time', '未知')
         source_agent_id = payload_info['source_agent_id']
         target_agent_id = payload_info['target_agent_id']
-        print(f"货物ID: {payload_id}, 创建时间: {create_time}, 取件时间: {pickup_time}, 投递时间: {delivery_time}, {source_agent_id} -> {target_agent_id}")
+        logger.info(f"货物ID: {payload_id}, 创建时间: {create_time}, 取件时间: {pickup_time}, 投递时间: {delivery_time}, {source_agent_id} -> {target_agent_id}")
         # 打印货物的properties
         properties = payload_info.get('properties', {})
-        print(f"  货物属性: {properties}")
+        logger.info(f"  货物属性: {properties}")
 
     return env, [station1, station2, station3], drones, order_workflows
 

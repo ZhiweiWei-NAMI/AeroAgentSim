@@ -1,6 +1,5 @@
 import threading
 import time
-import logging
 import queue
 import subprocess # Added
 import sys # Added
@@ -19,8 +18,9 @@ from .update_service import UpdateService
 # Import TrafficDataProvider
 from airfogsim.dataprovider.traffic import TrafficDataProvider # Added
 from .sumo_utils import start_sumo, terminate_sumo
+from airfogsim.utils.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class SimulationManager:

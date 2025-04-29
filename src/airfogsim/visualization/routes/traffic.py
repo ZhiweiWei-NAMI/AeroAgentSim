@@ -1,11 +1,8 @@
 from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
-import logging
+from airfogsim.utils.logging_config import get_logger
 import os
 from pathlib import Path
-
-# 设置日志记录
-logger = logging.getLogger(__name__)
 
 # 创建路由器
 router = APIRouter()
@@ -14,6 +11,8 @@ class SumoNetworkRequest(BaseModel):
     center_lat: float
     center_lng: float
     radius_km: float
+
+logger = get_logger(__name__)
 
 # 交通仿真相关API
 @router.post("/generate_sumo_network")

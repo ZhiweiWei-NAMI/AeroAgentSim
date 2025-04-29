@@ -16,7 +16,9 @@ from airfogsim.core.enums import TaskPriority
 from airfogsim.agent.drone import DroneAgent
 from airfogsim.component.mobility import MoveToComponent
 import random
+from airfogsim.utils.logging_config import get_logger
 
+logger = get_logger(__name__)
 
 def setup_environment():
     """设置仿真环境"""
@@ -51,7 +53,7 @@ def run_task_duplicate_check_demo():
     drone.add_component(move_component)
 
     # 打印组件名称
-    print(f"时间 {env.now}: 无人机组件名称: {move_component.name}")
+    logger.info(f"时间 {env.now}: 无人机组件名称: {move_component.name}")
 
     # 注册代理
     env.register_agent(drone)
@@ -59,7 +61,7 @@ def run_task_duplicate_check_demo():
     # 模拟添加相同任务的情况
     def add_duplicate_tasks():
         # 添加第一个任务
-        print(f"\n时间 {env.now}: 添加第一个移动任务")
+        logger.info(f"\n时间 {env.now}: 添加第一个移动任务")
         drone.add_task_to_queue(
             component_name="MoveTo",
             task_name="移动到目标点",
@@ -72,7 +74,7 @@ def run_task_duplicate_check_demo():
         )
 
         # 立即尝试添加相同的任务（应该被队列检查过滤）
-        print(f"\n时间 {env.now}: 尝试添加相同的任务（应该被队列检查过滤）")
+        logger.info(f"\n时间 {env.now}: 尝试添加相同的任务（应该被队列检查过滤）")
         drone.add_task_to_queue(
             component_name="MoveTo",
             task_name="移动到目标点",
@@ -89,7 +91,7 @@ def run_task_duplicate_check_demo():
 
         # 等待5秒后再次尝试添加相同任务（此时第一个任务应该正在执行）
         yield env.timeout(5)
-        print(f"\n时间 {env.now}: 尝试添加相同的任务（应该被执行检查过滤）")
+        logger.info(f"\n时间 {env.now}: 尝试添加相同的任务（应该被执行检查过滤）")
 
         # 模拟工作流添加任务
         task_info = {
@@ -105,7 +107,7 @@ def run_task_duplicate_check_demo():
 
         # 检查是否已经有相同的任务在队列中或正在执行
         if not drone._is_task_in_queue(task_info) and not drone._is_task_being_executed(task_info):
-            print("  任务可以添加到队列")
+            logger.info("  任务可以添加到队列")
             drone.add_task_to_queue(
                 component_name=task_info['component'],
                 task_name=task_info['task_name'],
@@ -114,15 +116,15 @@ def run_task_duplicate_check_demo():
                 properties=task_info.get('properties')
             )
         else:
-            print("  任务已经在队列中或正在执行，不添加")
+            logger.info("  任务已经在队列中或正在执行，不添加")
 
         # 等待10秒后再次尝试添加相同任务（此时第一个任务应该已经完成）
         yield env.timeout(10)
-        print(f"\n时间 {env.now}: 再次添加相同的任务（此时应该可以添加，因为之前的任务已完成）")
+        logger.info(f"\n时间 {env.now}: 再次添加相同的任务（此时应该可以添加，因为之前的任务已完成）")
 
         # 检查是否已经有相同的任务在队列中或正在执行
         if not drone._is_task_in_queue(task_info) and not drone._is_task_being_executed(task_info):
-            print("  任务可以添加到队列")
+            logger.info("  任务可以添加到队列")
             drone.add_task_to_queue(
                 component_name=task_info['component'],
                 task_name=task_info['task_name'],
@@ -131,15 +133,15 @@ def run_task_duplicate_check_demo():
                 properties=task_info.get('properties')
             )
         else:
-            print("  任务已经在队列中或正在执行，不添加")
+            logger.info("  任务已经在队列中或正在执行，不添加")
 
     # 启动任务添加进程
     env.process(add_duplicate_tasks())
 
     # 运行模拟
-    print("开始模拟...")
+    logger.info("开始模拟...")
     env.run(until=30)
-    print("模拟结束")
+    logger.info("模拟结束")
 
 
 if __name__ == "__main__":

@@ -67,4 +67,4 @@ def get_component_descriptions():
 from .mobility import MoveToComponent
 from .computation import CPUComponent
 from .charging import ChargingComponent
-from .sensing import SensingComponent
+from .img_sensor import ImageSensingComponent

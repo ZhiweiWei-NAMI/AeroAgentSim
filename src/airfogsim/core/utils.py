@@ -16,6 +16,9 @@ import math
 from typing import Tuple, Optional
 from pint import UnitRegistry
 import math
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 ureg = UnitRegistry()
 Q_ = ureg.Quantity
@@ -95,8 +98,7 @@ def convert_coordinates(source_pos: Tuple[float, float, float],
         return source_pos
     else:
         # 记录警告但不抛出异常
-        import logging
-        logging.getLogger(__name__).warning(f"不支持的坐标转换类型: {conv_type}，使用 'none'")
+        logger.warning(f"不支持的坐标转换类型: {conv_type}，使用 'none'")
         return source_pos
     
 # 地球半径（米）

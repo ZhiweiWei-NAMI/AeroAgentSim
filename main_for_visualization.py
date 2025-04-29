@@ -14,9 +14,9 @@ import webbrowser
 import signal
 import argparse
 from pathlib import Path
-
+from airfogsim.utils.logging_config import get_logger
 from dotenv import load_dotenv # 新增导入
-
+logger = get_logger(__name__)
 # 加载 .env 文件中的环境变量 (如果存在) - 移到全局作用域
 load_dotenv()
 # 获取项目根目录
@@ -30,7 +30,7 @@ backend_process = None
 
 def signal_handler(sig, frame):
     """处理Ctrl+C信号，优雅地关闭所有进程"""
-    print("\n正在关闭服务...")
+    logger.info("\n正在关闭服务...")
     if frontend_process:
         try:
             if os.name == 'nt':  # Windows
@@ -38,7 +38,7 @@ def signal_handler(sig, frame):
             else:  # Linux/Mac
                 os.killpg(os.getpgid(frontend_process.pid), signal.SIGTERM)
         except Exception as e:
-            print(f"关闭前端进程时出错: {e}")
+            logger.error(f"关闭前端进程时出错: {e}")
     
     if backend_process:
         try:
@@ -47,9 +47,9 @@ def signal_handler(sig, frame):
             else:  # Linux/Mac
                 os.killpg(os.getpgid(backend_process.pid), signal.SIGTERM)
         except Exception as e:
-            print(f"关闭后端进程时出错: {e}")
+            logger.error(f"关闭后端进程时出错: {e}")
     
-    print("所有服务已关闭")
+    logger.info("所有服务已关闭")
     sys.exit(0)
 
 def check_dependencies():
@@ -61,17 +61,17 @@ def check_dependencies():
         
         # 检查Node.js和npm
         if not os.path.exists(FRONTEND_DIR / "node_modules"):
-            print("正在安装前端依赖，这可能需要几分钟时间...")
+            logger.info("正在安装前端依赖，这可能需要几分钟时间...")
             os.chdir(FRONTEND_DIR)
             subprocess.check_call(["npm", "install"], 
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             os.chdir(ROOT_DIR)
     except subprocess.CalledProcessError as e:
-        print(f"安装依赖失败: {e}")
+        logger.error(f"安装依赖失败: {e}")
         return False
     except FileNotFoundError as e:
-        print(f"缺少必要的工具: {e}")
-        print("请确保已安装Node.js和npm")
+        logger.error(f"缺少必要的工具: {e}")
+        logger.error("请确保已安装Node.js和npm")
         return False
     
     return True
@@ -80,7 +80,7 @@ def start_backend(port=8000, reload=True):
     """启动FastAPI后端服务"""
     global backend_process
     
-    print(f"正在启动后端服务 (端口: {port})...")
+    logger.info(f"正在启动后端服务 (端口: {port})...")
     cmd = [
         sys.executable, "-m", "uvicorn", 
         BACKEND_MODULE, 
@@ -102,10 +102,10 @@ def start_backend(port=8000, reload=True):
         
         # 等待服务启动
         time.sleep(2)
-        print(f"后端服务已启动: http://localhost:{port}")
+        logger.info(f"后端服务已启动: http://localhost:{port}")
         return True
     except Exception as e:
-        print(f"启动后端服务失败: {e}")
+        logger.error(f"启动后端服务失败: {e}")
         return False
 
 def start_frontend(port=3000):
@@ -113,10 +113,10 @@ def start_frontend(port=3000):
     global frontend_process
     
     if not os.path.exists(FRONTEND_DIR):
-        print(f"前端目录不存在: {FRONTEND_DIR}")
+        logger.error(f"前端目录不存在: {FRONTEND_DIR}")
         return False
     
-    print(f"正在启动前端服务 (端口: {port})...")
+    logger.info(f"正在启动前端服务 (端口: {port})...")
     os.chdir(FRONTEND_DIR)
     
     env = os.environ.copy()
@@ -142,10 +142,10 @@ def start_frontend(port=3000):
         
         # 等待服务启动
         time.sleep(5)
-        print(f"前端服务已启动: http://localhost:{port}")
+        logger.info(f"前端服务已启动: http://localhost:{port}")
         return True
     except Exception as e:
-        print(f"启动前端服务失败: {e}")
+        logger.error(f"启动前端服务失败: {e}")
         os.chdir(ROOT_DIR)  # 确保返回到根目录
         return False
 
@@ -153,9 +153,9 @@ def open_browser(url):
     """在默认浏览器中打开URL"""
     try:
         webbrowser.open(url)
-        print(f"已在浏览器中打开: {url}")
+        logger.info(f"已在浏览器中打开: {url}")
     except Exception as e:
-        print(f"无法打开浏览器: {e}")
+        logger.error(f"无法打开浏览器: {e}")
 
 def main():
     """主函数"""
@@ -171,13 +171,13 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
-    print("=" * 60)
-    print("AirFogSim 可视化系统启动工具")
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("AirFogSim 可视化系统启动工具")
+    logger.info("=" * 60)
     
     # 检查依赖
     if not check_dependencies():
-        print("依赖检查失败，无法启动服务")
+        logger.info("依赖检查失败，无法启动服务")
         return 1
     
     # 启动后端
@@ -187,10 +187,10 @@ def main():
     frontend_success = start_frontend(port=args.frontend_port)
     
     if backend_success and frontend_success:
-        print("\n所有服务已成功启动!")
-        print(f"API文档: http://localhost:{args.backend_port}/docs")
-        print(f"前端界面: http://localhost:{args.frontend_port}")
-        print("\n按Ctrl+C可以关闭所有服务")
+        logger.info("\n所有服务已成功启动!")
+        logger.info(f"API文档: http://localhost:{args.backend_port}/docs")
+        logger.info(f"前端界面: http://localhost:{args.frontend_port}")
+        logger.info("\n按Ctrl+C可以关闭所有服务")
         
         # 自动打开浏览器
         if not args.no_browser:
@@ -204,7 +204,7 @@ def main():
         except KeyboardInterrupt:
             signal_handler(signal.SIGINT, None)
     else:
-        print("\n服务启动失败")
+        logger.error("\n服务启动失败")
         signal_handler(signal.SIGINT, None)
         return 1
     

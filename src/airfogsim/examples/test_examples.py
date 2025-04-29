@@ -18,13 +18,10 @@ import subprocess
 import argparse
 import time
 from typing import List, Dict, Tuple
-import logging
+from airfogsim.utils.logging_config import get_logger
 
 # 配置日志
-logging.basicConfig(level=logging.INFO,
-                   format='%(asctime)s - %(levelname)s - %(message)s',
-                   datefmt='%Y-%m-%d %H:%M:%S')
-logger = logging.getLogger("TestExamples")
+logger = get_logger("TestExamples")
 
 # 示例配置：
 # 'requires': 列出特殊要求（API密钥，特定软件等）
@@ -120,6 +117,24 @@ EXAMPLES = {
         "requires": [],
         "timeout": 120,
         "expected_exit_code": 0
+    },
+    "example_frequency_signal_integration.py": {
+        "description": "频率信号集成示例，展示频率管理和信号传播",
+        "requires": [],
+        "timeout": 60,
+        "expected_exit_code": 0
+    },
+    "example_object_sensor.py": {
+        "description": "物体传感器示例，展示如何使用物体传感器组件",
+        "requires": [],
+        "timeout": 30,
+        "expected_exit_code": 0
+    },
+    "example_signal_sensing.py": {
+        "description": "信号感知示例，展示电磁信号感知功能",
+        "requires": [],
+        "timeout": 60,
+        "expected_exit_code": 0
     }
 }
 
@@ -186,14 +201,14 @@ def run_example(example: str) -> Tuple[bool, str, int]:
 
 def list_examples():
     """列出所有可用的示例及其描述"""
-    print("可用的示例程序:")
-    print("-" * 70)
+    logger.info("可用的示例程序:")
+    logger.info("-" * 70)
     for name, info in EXAMPLES.items():
         reqs = ""
         if info.get("requires"):
             reqs = f" [需要: {', '.join(info['requires'])}]"
-        print(f"{name:30} - {info['description']}{reqs}")
-    print("-" * 70)
+        logger.info(f"{name:30} - {info['description']}{reqs}")
+    logger.info("-" * 70)
 
 def run_all_examples() -> Dict[str, Tuple[bool, str, int]]:
     """运行所有示例并返回结果字典"""

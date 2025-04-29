@@ -9,7 +9,9 @@ import json
 import csv
 import os
 from datetime import datetime
+from airfogsim.utils.logging_config import get_logger
 
+logger = get_logger(__name__)
 
 class EventCollector:
     """
@@ -50,7 +52,7 @@ class EventCollector:
             event_data: 事件数据
         """
         # 打印事件数据以进行调试
-        # print(f"\n时间 {self.env.now}: 收到事件: {event_data}")
+        # logger.info(f"\n时间 {self.env.now}: 收到事件: {event_data}")
 
         # 记录事件
         try:
@@ -97,7 +99,7 @@ class EventCollector:
 
                 # 添加到事件列表
                 self.events.append(event_record)
-                # print(f"\n时间 {self.env.now}: 记录事件: {source_id}/{event_name}")
+                # logger.info(f"\n时间 {self.env.now}: 记录事件: {source_id}/{event_name}")
             else:
                 # 如果事件数据不是字典，使用默认值
                 event_record['source_id'] = 'unknown_source'
@@ -107,7 +109,7 @@ class EventCollector:
                 # 添加到事件列表
                 self.events.append(event_record)
         except Exception as e:
-            print(f"\n时间 {self.env.now}: 处理事件时出错: {str(e)}")
+            logger.error(f"\n时间 {self.env.now}: 处理事件时出错: {str(e)}")
 
     def export_data(self, output_dir):
         """

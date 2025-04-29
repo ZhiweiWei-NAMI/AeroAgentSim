@@ -15,6 +15,10 @@ import json
 import re
 from typing import Dict, List, Optional, TYPE_CHECKING
 # Import find_compatible_tasks function at runtime to avoid circular imports
+from airfogsim.utils.logging_config import get_logger
+
+# 获取logger
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from airfogsim.core.agent import Agent
@@ -39,9 +43,9 @@ class LLMClient:
             from openai import OpenAI
             self.client = OpenAI(api_key=api_key)
         except ImportError:
-            print("警告: OpenAI 包未安装，LLM 功能将不可用")
+            logger.warning("警告: OpenAI 包未安装，LLM 功能将不可用")
         except Exception as e:
-            print(f"初始化 OpenAI 客户端失败: {str(e)}")
+            logger.error(f"初始化 OpenAI 客户端失败: {str(e)}")
 
     def is_available(self) -> bool:
         """
@@ -101,7 +105,7 @@ class LLMClient:
 
             return tasks
         except Exception as e:
-            print(f"LLM 分析失败: {str(e)}")
+            logger.error(f"LLM 分析失败: {str(e)}")
             return []
 
     def _build_workflow_prompt(self, workflows, agent_details: Dict, possible_tasks: List) -> str:
@@ -198,7 +202,7 @@ class LLMClient:
                 from airfogsim.task.mobility import MoveToTask
                 task_classes['MoveToTask'] = MoveToTask.__init__.__doc__
         except Exception as e:
-            print(f"获取任务类失败: {str(e)}")
+            logger.error(f"获取任务类失败: {str(e)}")
             # 使用默认任务类
             from airfogsim.task.mobility import MoveToTask
             task_classes['MoveToTask'] = MoveToTask.__init__.__doc__
@@ -231,7 +235,7 @@ class LLMClient:
                     if self._validate_task_format(task):
                         tasks.append(task)
         except Exception as e:
-            print(f"解析 LLM 响应失败: {str(e)}")
+            logger.error(f"解析 LLM 响应失败: {str(e)}")
 
         return tasks
 
@@ -334,9 +338,9 @@ if __name__ == "__main__":
     possible_tasks = mock_find_compatible_tasks(env, agent, workflow)
 
     prompt = llm_client._build_workflow_prompt(workflows, agent_details, possible_tasks)
-    print("\n=== Generated Prompt ===\n")
-    print(prompt)
-    print("\n=== End of Prompt ===\n")
+    logger.info("\n=== Generated Prompt ===\n")
+    logger.info(prompt)
+    logger.info("\n=== End of Prompt ===\n")
 
     # 测试解析响应
     mock_response = """
@@ -358,7 +362,7 @@ if __name__ == "__main__":
     """
 
     tasks = llm_client._parse_response(mock_response)
-    print("\n=== Parsed Tasks ===\n")
+    logger.info("\n=== Parsed Tasks ===\n")
     for task in tasks:
-        print(json.dumps(task, indent=2))
-    print("\n=== End of Tasks ===\n")
+        logger.info(json.dumps(task, indent=2))
+    logger.info("\n=== End of Tasks ===\n")

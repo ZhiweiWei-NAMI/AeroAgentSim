@@ -1,10 +1,9 @@
 from fastapi import WebSocket
 from typing import List
-import logging
+from airfogsim.utils.logging_config import get_logger
 
 # 设置日志记录器
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 logger.info("WebSocket连接管理器已初始化。")
 
 # WebSocket连接管理

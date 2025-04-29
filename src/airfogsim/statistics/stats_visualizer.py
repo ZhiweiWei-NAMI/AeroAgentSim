@@ -10,15 +10,18 @@ import os
 import json
 import matplotlib.pyplot as plt
 import numpy as np
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # 设置中文字体
 try:
     # 尝试设置中文字体
     plt.rcParams['font.family']=["Noto Sans CJK JP", "Droid Sans Fallback", "Ubuntu", "DejaVu Sans"]
     plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
-    print("已设置中文字体支持")
+    logger.info("已设置中文字体支持")
 except Exception as e:
-    print(f"设置中文字体时出错: {e}")
+    logger.error(f"设置中文字体时出错: {e}")
 
 class StatsVisualizer:
     """

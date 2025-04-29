@@ -4,8 +4,9 @@ import logging
 from simpy.core import StopSimulation
 from simpy.events import Event, Timeout
 from airfogsim.core.environment import Environment
+from airfogsim.utils.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class PausableEnvironment(Environment):
     """可暂停的仿真环境，扩展自airfogsim的Environment"""

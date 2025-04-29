@@ -2,7 +2,7 @@
 # Ignore all files ending with .db anywhere in the project
 *.db
 paper_code/
-benchmark_data/
+benchmark/
 stats_data/
 paper.*
 

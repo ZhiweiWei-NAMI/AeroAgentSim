@@ -26,20 +26,21 @@ from airfogsim.agent.delivery_drone import DeliveryDroneAgent
 from airfogsim.agent.delivery_station import DeliveryStation
 from airfogsim.agent.inspection_station import InspectionStation
 from airfogsim.component.mobility import MoveToComponent
-from airfogsim.component.sensing import SensingComponent
+from airfogsim.component.img_sensor import ImageSensingComponent
 from airfogsim.component.computation import ComputationComponent
 from airfogsim.component.communication import CommunicationComponent
 from airfogsim.component.charging import ChargingComponent
 from airfogsim.component.logistics import LogisticsComponent
-from airfogsim.core.trigger import TimeTrigger
+from airfogsim.core.trigger import TimeTrigger, StateTrigger, TriggerOperator
 from airfogsim.core.enums import TaskPriority
 from airfogsim.workflow.inspection import InspectionWorkflow
 from airfogsim.workflow.charging import ChargingWorkflow
-from airfogsim.workflow.order_execution import create_order_execution_workflow
+from airfogsim.workflow.order_execution import OrderExecutionWorkflow
 from airfogsim.dataprovider.weather_integration import WeatherIntegration
 from airfogsim.statistics import StatsCollector, StatsAnalyzer, StatsVisualizer
+from airfogsim.utils.logging_config import get_logger
 
-
+logger = get_logger(__name__)
 class WorkflowGenerator:
     """
     工作流生成器
@@ -57,8 +58,36 @@ class WorkflowGenerator:
             env: 仿真环境
         """
         self.env = env
-        self.station_workflows = {}  # 存储站点生成的工作流
-        self.state_triggered_workflows = {}  # 存储状态触发的工作流
+        self.workflows = {}
+
+    def create_inspection_workflow(self, agent, inspection_points, start_time=10):
+        """
+        创建巡检工作流
+
+        Args:
+            agent: 代理
+            inspection_points: 巡检点列表
+            interval: 工作流创建间隔（秒）
+
+        Returns:
+            创建的工作流
+        """
+        # 创建巡检工作流
+        workflow = self.env.create_workflow(
+            InspectionWorkflow,
+            name=f"Inspection of {agent.id}",
+            owner=agent,
+            properties={
+                'inspection_points': inspection_points,
+                'task_priority': TaskPriority.NORMAL,
+                'task_preemptive': False
+            },
+            start_trigger=TimeTrigger(self.env, trigger_time=start_time),
+            max_starts=1
+        )
+        self.workflows[workflow.id] = workflow
+        logger.info(f"时间 {self.env.now}: 为代理 {agent.id} 创建巡检工作流 {workflow.id}")
+        return workflow
 
     def create_charging_workflow(self, agent, battery_threshold=30.0, target_charge_level=90.0):
         """
@@ -84,17 +113,23 @@ class WorkflowGenerator:
                 'task_priority': TaskPriority.CRITICAL,  # 最高优先级
                 'task_preemptive': True  # 允许抢占
             },
-            start_trigger=TimeTrigger(self.env, trigger_time=self.env.now + 1),  # 1秒后立即启动
-            max_starts=1
+            start_trigger=StateTrigger(
+                self.env,
+                agent_id=agent.id,
+                state_key='battery_level',
+                operator=TriggerOperator.LESS_THAN,
+                target_value=battery_threshold
+            ),
+            max_starts=None
         )
-
-        print(f"时间 {self.env.now}: 为代理 {agent.id} 创建充电工作流 {workflow.id}")
-        print(f"  - 当前电量: {agent.get_state('battery_level'):.1f}%, 触发阈值: {battery_threshold}%")
-        print(f"  - 优先级: 关键 (CRITICAL), 可抢占: 是")
+        self.workflows[workflow.id] = workflow
+        logger.info(f"时间 {self.env.now}: 为代理 {agent.id} 创建充电工作流 {workflow.id}")
+        logger.info(f"  - 当前电量: {agent.get_state('battery_level'):.1f}%, 触发阈值: {battery_threshold}%")
+        logger.info(f"  - 优先级: 关键 (CRITICAL), 可抢占: 是")
 
         return workflow
 
-    def create_station_to_station_workflows(self, delivery_stations, interval=10):
+    def create_delivery_station_to_station_workflows(self, delivery_stations, interval=10):
         """
         创建站点之间的快递工作流
 
@@ -125,20 +160,24 @@ class WorkflowGenerator:
             payload_properties['weight'] = payload_properties['weight'] * random.uniform(0.8, 1.2)  # 随机化物品重量
 
             # 创建订单执行工作流
-            order_workflow = create_order_execution_workflow(
-                self.env,
-                source_station,
-                payload_properties,
-                target_station.get_state('position'),
-                target_station.id,  # 指定目标代理ID为目标快递站
-                start_trigger=TimeTrigger(self.env, trigger_time=self.env.now + i*interval),  # 每隔一段时间触发一个订单
+            order_workflow = self.env.create_workflow(
+                OrderExecutionWorkflow,
+                name=f"Order of {source_station.id}",
+                owner=source_station,
+                properties={
+                    'payload_properties': payload_properties,
+                    'delivery_location': target_station.get_state('position'),
+                    'target_agent_id': target_station.id
+                },
+                start_trigger=TimeTrigger(self.env, trigger_time=self.env.now + interval * i),
+                max_starts=1 # 只启动一次
             )
-
+            self.workflows[order_workflow.id] = order_workflow
             payload_properties['order_id'] = order_workflow.id
             order_workflows.append(order_workflow)
-            print(f"创建订单工作流 {order_workflow.id}，从{source_station.id}到{target_station.id}，交付位置: {target_station.get_state('position')}")
+            logger.info(f"创建订单工作流 {order_workflow.id}，从{source_station.id}到{target_station.id}，交付位置: {target_station.get_state('position')}")
 
-        print(f"时间 {self.env.now}: 已创建 {len(order_workflows)} 个站点间快递工作流")
+        logger.info(f"时间 {self.env.now}: 已创建 {len(order_workflows)} 个站点间快递工作流")
 
         return order_workflows
 
@@ -163,7 +202,7 @@ def setup_environment(visual_interval=10, random_seed=42):
     # 创建着陆点
     create_landing_spots(env)
 
-    print(f"环境初始化完成，可视化更新间隔: {visual_interval} 秒")
+    logger.info(f"环境初始化完成，可视化更新间隔: {visual_interval} 秒")
 
     return env
 
@@ -208,7 +247,7 @@ def create_landing_spots(env):
         name='商业区着陆点'
     )
 
-    print(f"创建了 3 个着陆点")
+    logger.info(f"创建了 3 个着陆点")
 
     return {
         'main_base_id': main_base_id,
@@ -256,7 +295,7 @@ def create_agents(env, num_drones=10):
         # 添加到列表
         agents['drones'].append(drone)
 
-    print(f"创建了 {len(agents['drones'])} 架无人机、{len(agents['inspection_stations'])} 个巡检站和 {len(agents['delivery_stations'])} 个快递站")
+    logger.info(f"创建了 {len(agents['drones'])} 架无人机、{len(agents['inspection_stations'])} 个巡检站和 {len(agents['delivery_stations'])} 个快递站")
 
     return agents
 
@@ -304,7 +343,7 @@ def create_inspection_station(env):
         drone_id = available_drones[index]
         last_selected_index[0] = (index + 1) % len(available_drones)
 
-        print(f"时间 {env.now}: 巡检站选择无人机 {drone_id} (轮转策略)")
+        logger.info(f"时间 {env.now}: 巡检站选择无人机 {drone_id} (轮转策略)")
         return drone_id
     
     inspection_station.select_drone_for_inspection = new_select_drone_for_inspection
@@ -451,7 +490,7 @@ def create_drone(env, index):
 
     # 添加组件
     drone.add_component(MoveToComponent(env, drone))
-    drone.add_component(SensingComponent(env, drone))
+    drone.add_component(ImageSensingComponent(env, drone))
     drone.add_component(ComputationComponent(env, drone))
     drone.add_component(CommunicationComponent(env, drone))
     drone.add_component(ChargingComponent(env, drone))
@@ -476,7 +515,7 @@ def setup_station_workflow_generation(env, workflow_generator, agents, scenario,
     """
     drones = agents['drones']
     if not drones:
-        print("没有可用的无人机代理")
+        logger.warning("没有可用的无人机代理")
         return
 
     # 获取快递站和巡检站
@@ -484,11 +523,11 @@ def setup_station_workflow_generation(env, workflow_generator, agents, scenario,
     inspection_stations = agents['inspection_stations']
 
     if not delivery_stations:
-        print("没有可用的快递站代理")
+        logger.warning("没有可用的快递站代理")
         return
 
     if not inspection_stations:
-        print("没有可用的巡检站代理")
+        logger.warning("没有可用的巡检站代理")
         return
 
     # 根据场景类型设置工作流生成
@@ -499,8 +538,8 @@ def setup_station_workflow_generation(env, workflow_generator, agents, scenario,
 
     if scenario == 'delivery' or scenario == 'mixed':
         # 使用工作流生成器创建站点之间的快递工作流
-        order_workflows = workflow_generator.create_station_to_station_workflows(delivery_stations, interval)
-        print(f"时间 {env.now}: 已创建 {len(order_workflows)} 个站点间快递工作流")
+        order_workflows = workflow_generator.create_delivery_station_to_station_workflows(delivery_stations, interval)
+        logger.info(f"时间 {env.now}: 已创建 {len(order_workflows)} 个站点间快递工作流")
 
     if scenario == 'charging' or scenario == 'mixed':
         # 显式创建充电工作流
@@ -514,7 +553,7 @@ def setup_station_workflow_generation(env, workflow_generator, agents, scenario,
             )
             charging_workflows.append(charging_workflow)
 
-        print(f"时间 {env.now}: 已创建 {len(charging_workflows)} 个充电工作流")
+        logger.info(f"时间 {env.now}: 已创建 {len(charging_workflows)} 个充电工作流")
 
 
 def main():
@@ -545,24 +584,24 @@ def main():
     # 创建天气集成
     if args.enable_weather:
         WeatherIntegration(env)
-        print(f"天气系统已启用")
+        logger.info(f"天气系统已启用")
 
     # 创建统计数据收集器
     if args.collect_stats:
         stats_collector = StatsCollector(env, output_dir=args.output_dir,
                                          agent_collector_config={'listen_visual_update': True})
-        print(f"统计数据收集器已创建，输出目录: {args.output_dir}")
+        logger.info(f"统计数据收集器已创建，输出目录: {args.output_dir}")
 
     # 设置基于站点的工作流生成
     setup_station_workflow_generation(env, workflow_generator, agents, args.scenario, args.station_interval)
 
     # 运行仿真
-    print(f"开始运行仿真，时长: {args.duration} 秒 ({args.duration/60:.1f} 分钟)")
+    logger.info(f"开始运行仿真，时长: {args.duration} 秒 ({args.duration/60:.1f} 分钟)")
     start_time = time.time()
     env.run(until=args.duration)
     end_time = time.time()
 
-    print(f"仿真完成，耗时: {end_time - start_time:.2f} 秒")
+    logger.info(f"仿真完成，耗时: {end_time - start_time:.2f} 秒")
 
     # 导出统计数据
     if args.collect_stats:
@@ -578,7 +617,7 @@ def main():
         stats_visualizer = StatsVisualizer(stats_dir, report_file)
         stats_visualizer.visualize_all()
 
-        print(f"统计数据分析和可视化完成，输出目录: {stats_dir}")
+        logger.info(f"统计数据分析和可视化完成，输出目录: {stats_dir}")
 
     return {"duration": args.duration, "real_time": end_time - start_time}
 

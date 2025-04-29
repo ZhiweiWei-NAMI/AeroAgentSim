@@ -1,19 +1,18 @@
 # manager/frequency.py
 
 import functools # Added for partial
-from typing import List, Dict, Optional, Tuple, Set, Any # Added Any
+from typing import List, Dict, Optional, Tuple, Set, Any, Callable # Added Any, Callable
 import numpy as np
 import time
-import logging
+from airfogsim.utils.logging_config import get_logger
 from collections import defaultdict
 from airfogsim.core.resource import ResourceManager
 from airfogsim.core.enums import ResourceStatus, AllocationStatus # 导入枚举
 from airfogsim.resource.frequency import FrequencyResource
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+
 class FrequencyManager(ResourceManager[FrequencyResource]):
     """
     频率资源管理器
@@ -22,7 +21,7 @@ class FrequencyManager(ResourceManager[FrequencyResource]):
     """
     def __init__(self, env=None, total_bandwidth: float = 100.0, block_bandwidth: float = 5.0,
                  start_frequency: float = 2400.0, power_limit: float = 100.0,
-                 update_interval: float = 1.0):
+                 update_interval: float = 1.0, config: Dict = None):
         """
         初始化频率资源管理器
 
@@ -33,9 +32,23 @@ class FrequencyManager(ResourceManager[FrequencyResource]):
             start_frequency: 起始频率 (MHz)
             power_limit: 功率限制 (mW)
             update_interval: 信道状态更新间隔（秒）
+            config: 配置字典，可能包含以下字段:
+                - link_quality_calculator: 链路质量计算函数，用于计算SINR和其他链路质量指标
         """
         super().__init__(env)
         self.id = "frequency_manager"
+
+        # 配置参数
+        self.config = config or {}
+
+        # 链路质量计算器（Hook函数）
+        self.link_quality_calculator = None
+        calculator_func = self.config.get('link_quality_calculator')
+        if callable(calculator_func):
+            self.link_quality_calculator = calculator_func
+            logger.info("Using external link quality calculator.")
+        else:
+            logger.info("Using internal SINR calculation model.")
 
         # 代理位置信息缓存，用于计算信道状态
         # 格式: {agent_id: (x, y, z)}
@@ -190,6 +203,22 @@ class FrequencyManager(ResourceManager[FrequencyResource]):
                     self.user_allocations[source_id] = []
                 self.user_allocations[source_id].append(allocation_id)
 
+                # 触发频率链路活动更新事件
+                if hasattr(self.env, 'event_registry'):
+                    self.env.event_registry.trigger_event(
+                        self.id,
+                        'FrequencyLinkActivityUpdate',
+                        {
+                            'source_id': source_id,
+                            'target_id': target_id,
+                            'resource_id': resource.id,
+                            'center_frequency': resource.center_frequency,
+                            'bandwidth': resource.bandwidth,
+                            'transmit_power_dbm': power_db,
+                            'status': 'allocated'
+                        }
+                    )
+
                 # 添加到已分配资源ID列表
                 allocated_resource_ids.append(resource.id)
 
@@ -254,6 +283,21 @@ class FrequencyManager(ResourceManager[FrequencyResource]):
                         if alloc.get('source_id') == source_id and alloc.get('target_id') == target_id:
                             alloc['status'] = AllocationStatus.RELEASED # 使用枚举
                             alloc['end_time'] = self.env.now
+
+                # 触发频率链路活动更新事件
+                if hasattr(self.env, 'event_registry'):
+                    self.env.event_registry.trigger_event(
+                        self.id,
+                        'FrequencyLinkActivityUpdate',
+                        {
+                            'source_id': source_id,
+                            'target_id': target_id,
+                            'resource_id': res_id,
+                            'center_frequency': resource.center_frequency,
+                            'bandwidth': resource.bandwidth,
+                            'status': 'released'
+                        }
+                    )
 
                 # 更新可用资源缓存
                 if resource.status == ResourceStatus.AVAILABLE:
@@ -426,69 +470,117 @@ class FrequencyManager(ResourceManager[FrequencyResource]):
             target_positions[i] = link_info[i]['target_position']
             power_db_values[i] = link_info[i]['power_db']
 
-        # 1. 计算直接链路的路径损耗矩阵 (num_links,)
-        direct_path_losses = np.zeros(num_links)
-        for i in range(num_links):
-            direct_path_losses[i] = self._calculate_path_loss(
-                source_positions[i], target_positions[i]
-            )
+        # 检查是否使用外部链路质量计算器（Hook函数）
+        if self.link_quality_calculator is not None:
+            # 使用外部链路质量计算器计算SINR
+            rx_power_dbm = np.zeros(num_links)
+            interference_dbm = np.full(num_links, -float('inf'))
+            sinr = np.zeros(num_links)
+            noise_dbm = self._calculate_thermal_noise(resource.bandwidth)  # 默认噪声值，可能被覆盖
 
-        # 2. 计算快速衰落
-        fast_fadings = np.array([self._calculate_fast_fading() for _ in range(num_links)])
+            for i in range(num_links):
+                source_id, target_id = link_ids[i]
+                source_pos = source_positions[i]
+                target_pos = target_positions[i]
+                power_db = power_db_values[i]
 
-        # 3. 计算接收信号功率 (dBm)
-        rx_power_dbm = power_db_values - direct_path_losses + fast_fadings
+                # 准备链路上下文
+                link_context = {
+                    'source_id': source_id,
+                    'target_id': target_id,
+                    'source_position': source_pos,
+                    'target_position': target_pos,
+                    'transmit_power_dbm': power_db,
+                    'center_frequency': resource.center_frequency,
+                    'bandwidth': resource.bandwidth,
+                    'resource_id': resource.id
+                }
 
-        # 4. 计算干扰矩阵 (所有发射机到所有接收机的路径损耗)
-        # 创建 (num_links x num_links) 干扰矩阵
-        interference_path_losses = np.zeros((num_links, num_links))
+                # 调用外部链路质量计算器
+                quality_info = self.link_quality_calculator(link_context, self.env)
 
-        for i in range(num_links):  # 接收机索引
-            for j in range(num_links):  # 发射机索引
-                if i != j:  # 跳过自身链路
-                    interference_path_losses[i, j] = self._calculate_path_loss(
-                        source_positions[j], target_positions[i]
-                    )
+                # 提取计算结果
+                if quality_info:
+                    rx_power_dbm[i] = quality_info.get('received_power_dbm', 0)
+                    interference_dbm[i] = quality_info.get('interference_dbm', -float('inf'))
+                    sinr[i] = quality_info.get('sinr', 0)
+                    # 如果提供了噪声值，则更新
+                    if 'noise_dbm' in quality_info:
+                        noise_dbm = quality_info.get('noise_dbm')
+                else:
+                    # 如果计算器返回None或空字典，使用默认值
+                    logger.warning(f"Link quality calculator returned no data for link {source_id}->{target_id}")
+                    # 使用内部方法计算基本值
+                    path_loss = self._calculate_path_loss(source_pos, target_pos)
+                    fast_fading = self._calculate_fast_fading()
+                    rx_power_dbm[i] = power_db - path_loss + fast_fading
+                    sinr[i] = rx_power_dbm[i] - noise_dbm  # 假设无干扰
 
-        # 5. 将功率从dBm转换为mW
-        power_mw = 10 ** (power_db_values / 10)
+        else:
+            # 使用内部方法计算SINR
+            # 1. 计算直接链路的路径损耗矩阵 (num_links,)
+            direct_path_losses = np.zeros(num_links)
+            for i in range(num_links):
+                direct_path_losses[i] = self._calculate_path_loss(
+                    source_positions[i], target_positions[i]
+                )
 
-        # 6. 计算线性域中的路径损耗因子
-        path_loss_factors = 10 ** (-interference_path_losses / 10)
+            # 2. 计算快速衰落
+            fast_fadings = np.array([self._calculate_fast_fading() for _ in range(num_links)])
 
-        # 7. 计算每个链路的干扰功率（mW）
-        # 对角线设为0，不计算自干扰
-        np.fill_diagonal(path_loss_factors, 0)
+            # 3. 计算接收信号功率 (dBm)
+            rx_power_dbm = power_db_values - direct_path_losses + fast_fadings
 
-        # 计算干扰功率 (mW)：power_mw * path_loss_factors，矩阵乘法
-        interference_mw_matrix = np.outer(power_mw, np.ones(num_links)) * path_loss_factors
-        interference_mw_sum = np.sum(interference_mw_matrix, axis=1)  # 按行求和
+            # 4. 计算干扰矩阵 (所有发射机到所有接收机的路径损耗)
+            # 创建 (num_links x num_links) 干扰矩阵
+            interference_path_losses = np.zeros((num_links, num_links))
 
-        # 8. 计算噪声功率 (dBm)
-        noise_dbm = self._calculate_thermal_noise(resource.bandwidth)
-        noise_mw = 10 ** (noise_dbm / 10)
+            for i in range(num_links):  # 接收机索引
+                for j in range(num_links):  # 发射机索引
+                    if i != j:  # 跳过自身链路
+                        interference_path_losses[i, j] = self._calculate_path_loss(
+                            source_positions[j], target_positions[i]
+                        )
 
-        # 9. 计算干扰功率 (dBm)并处理无干扰情况
-        has_interference = interference_mw_sum > 0
-        interference_dbm = np.full(num_links, -float('inf'))
-        interference_dbm[has_interference] = 10 * np.log10(interference_mw_sum[has_interference])
+            # 5. 将功率从dBm转换为mW
+            power_mw = 10 ** (power_db_values / 10)
 
-        # 10. 计算SINR (dB)
-        sinr = np.zeros(num_links)
+            # 6. 计算线性域中的路径损耗因子
+            path_loss_factors = 10 ** (-interference_path_losses / 10)
 
-        # 对有干扰的链路
-        has_interference_mask = interference_dbm > -float('inf')
-        if np.any(has_interference_mask):
-            # 干扰加噪声功率 (线性域相加)
-            interference_noise_mw = 10 ** (interference_dbm[has_interference_mask] / 10) + noise_mw
-            interference_noise_dbm = 10 * np.log10(interference_noise_mw)
-            sinr[has_interference_mask] = rx_power_dbm[has_interference_mask] - interference_noise_dbm
+            # 7. 计算每个链路的干扰功率（mW）
+            # 对角线设为0，不计算自干扰
+            np.fill_diagonal(path_loss_factors, 0)
 
-        # 对无干扰的链路
-        no_interference_mask = ~has_interference_mask
-        if np.any(no_interference_mask):
-            # 无干扰，仅考虑噪声
-            sinr[no_interference_mask] = rx_power_dbm[no_interference_mask] - noise_dbm
+            # 计算干扰功率 (mW)：power_mw * path_loss_factors，矩阵乘法
+            interference_mw_matrix = np.outer(power_mw, np.ones(num_links)) * path_loss_factors
+            interference_mw_sum = np.sum(interference_mw_matrix, axis=1)  # 按行求和
+
+            # 8. 计算噪声功率 (dBm)
+            noise_dbm = self._calculate_thermal_noise(resource.bandwidth)
+            noise_mw = 10 ** (noise_dbm / 10)
+
+            # 9. 计算干扰功率 (dBm)并处理无干扰情况
+            has_interference = interference_mw_sum > 0
+            interference_dbm = np.full(num_links, -float('inf'))
+            interference_dbm[has_interference] = 10 * np.log10(interference_mw_sum[has_interference])
+
+            # 10. 计算SINR (dB)
+            sinr = np.zeros(num_links)
+
+            # 对有干扰的链路
+            has_interference_mask = interference_dbm > -float('inf')
+            if np.any(has_interference_mask):
+                # 干扰加噪声功率 (线性域相加)
+                interference_noise_mw = 10 ** (interference_dbm[has_interference_mask] / 10) + noise_mw
+                interference_noise_dbm = 10 * np.log10(interference_noise_mw)
+                sinr[has_interference_mask] = rx_power_dbm[has_interference_mask] - interference_noise_dbm
+
+            # 对无干扰的链路
+            no_interference_mask = ~has_interference_mask
+            if np.any(no_interference_mask):
+                # 无干扰，仅考虑噪声
+                sinr[no_interference_mask] = rx_power_dbm[no_interference_mask] - noise_dbm
 
         # 11. 更新每个链路的信道状态
         for i in range(num_links):

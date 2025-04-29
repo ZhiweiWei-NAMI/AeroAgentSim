@@ -6,11 +6,10 @@ import os
 import sys
 import time
 import signal
-import logging
-import subprocess
 from typing import Optional
+from airfogsim.utils.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # --- SUMO Helper Functions ---
 def start_sumo(sumocfg_path, port=8813, gui=False):

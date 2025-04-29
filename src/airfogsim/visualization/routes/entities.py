@@ -1,14 +1,14 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
-import logging
+from airfogsim.utils.logging_config import get_logger
 # 导入 data_service 和 sim_integration 实例
 from ..app import data_service, sim_integration
 
-# 设置日志记录
-logger = logging.getLogger(__name__)
-
 # 创建路由器
 router = APIRouter()
+
+# 设置日志记录
+logger = get_logger(__name__)
 
 # 无人机数据API
 @router.get("/drones")

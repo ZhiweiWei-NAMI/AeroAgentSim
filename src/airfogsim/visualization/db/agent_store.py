@@ -2,9 +2,9 @@ import sqlite3
 import json
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
-import logging
+from airfogsim.utils.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class AgentStore:
     """处理智能体数据的存储和检索"""

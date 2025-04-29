@@ -8,11 +8,10 @@ from airfogsim.resource.landing import LandingResource
 from airfogsim.core.enums import ResourceStatus # Added
 from queue import PriorityQueue
 import math
-import logging # Added
+from airfogsim.utils.logging_config import get_logger
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 class LandingManager(ResourceManager[LandingResource]):
     """
     着陆区资源管理器
@@ -234,25 +233,26 @@ class LandingManager(ResourceManager[LandingResource]):
         # 检查资源是否存在
         resource = self.find_resource_by_id(resource_id)
         if not resource:
-            print(f"时间 {self.env.now}: 资源 {resource_id} 不存在")
+            logger.warning(f"时间 {self.env.now}: 资源 {resource_id} 不存在")
             return False
 
         # 检查代理是否已经分配了此资源
         if self.is_allocated_to(resource_id, agent.id):
-            print(f"时间 {self.env.now}: 代理 {agent.id} 已经分配了资源 {resource_id}")
+            logger.warning(f"时间 {self.env.now}: 代理 {agent.id} 已经分配了资源 {resource_id}")
             return True
 
         # 检查资源是否有可用容量
         if resource.has_capacity():
             # 立即分配资源
+            logger.info(f"时间 {self.env.now}: 代理 {agent.id} 请求资源 {resource_id}，立即分配")
             return self.allocate_resource(resource_id, agent)
         elif not self.is_requesting(resource_id, agent.id):
             # 加入请求队列
             request_time = self.env.now
             self.request_queues.put((priority, request_time, resource_id, agent.id, agent))
-            print(f"时间 {self.env.now}: 代理 {agent.id} 请求资源 {resource_id} 已加入队列，优先级 {priority}")
+            logger.warning(f"时间 {self.env.now}: 代理 {agent.id} 请求资源 {resource_id} 已加入队列，优先级 {priority}")
             return False
-        else:
+        else:            
             return False
         
     def is_allocated_to(self, resource_id: str, agent_id: str) -> bool:
@@ -324,7 +324,7 @@ class LandingManager(ResourceManager[LandingResource]):
         # 更新资源状态
         resource.allocate(agent_id)
 
-        print(f"时间 {self.env.now}: 资源 {resource_id} 已分配给代理 {agent_id}")
+        logger.info(f"时间 {self.env.now}: 资源 {resource_id} 已分配给代理 {agent_id}")
         return True
 
     def release_resource(self, resource_id: str, agent_id: str) -> bool:
@@ -360,7 +360,7 @@ class LandingManager(ResourceManager[LandingResource]):
         resource = self.resources[resource_id]
         resource.release(agent_id)
 
-        print(f"时间 {self.env.now}: 代理 {agent_id} 释放了资源 {resource_id}")
+        logger.info(f"时间 {self.env.now}: 代理 {agent_id} 释放了资源 {resource_id}")
 
         # 处理请求队列
         self._process_request_queue()
@@ -407,6 +407,7 @@ class LandingManager(ResourceManager[LandingResource]):
         Returns:
             注册是否成功
         """
+        resource.env = self.env
         # 调用父类的注册方法
         if not super().register_resource(resource):
             return False
@@ -472,7 +473,8 @@ class LandingManager(ResourceManager[LandingResource]):
             max_capacity=max_capacity,
             has_charging=has_charging,
             has_data_transfer=has_data_transfer,
-            attributes=attributes
+            attributes=attributes,
+            env=self.env
         )
 
         # 注册资源
@@ -754,8 +756,6 @@ class LandingManager(ResourceManager[LandingResource]):
 
                 if status_changed:
                     updated_count += 1
-                    # Optionally trigger an event specific to this manager about the resource status change
-                    # self.env.event_registry.publish(...)
 
         if updated_count > 0:
             logger.info(f"Updated status for {updated_count} landing resources in region due to external condition at time {self.env.now}")

@@ -17,6 +17,10 @@ from collections import defaultdict
 from typing import Dict, List, Tuple
 import warnings
 import simpy
+from airfogsim.utils.logging_config import get_logger
+
+# 获取logger
+logger = get_logger(__name__)
 
 class EventSubscription:
     def __init__(self, source_id, event_name, listener_id, callback=None):
@@ -42,7 +46,7 @@ class EventSubscription:
             for filter_func in self.listener_filters:
                 if not filter_func(event_value): return False
         except Exception as e:
-             print(f"Error applying filter for {self.listener_id} on event {self.source_id}/{self.event_name}: {e}")
+             logger.error(f"Error applying filter for {self.listener_id} on event {self.source_id}/{self.event_name}: {e}")
              return False # Fail safe on filter error
         return True
 
@@ -68,22 +72,19 @@ class EventRegistry:
     def has_event(self, source_id, event_name):
         return source_id in self.events and event_name in self.events[source_id]
 
-    def register_event(self, source_id, event_name):
-        if event_name not in self.events[source_id]:
-            # print(f"DEBUG Registry: Registering {source_id}/{event_name}")
-            self.events[source_id][event_name] = self.env.event()
-        return self.events[source_id][event_name]
-
     def get_event(self, source_id, event_name):
+        # 如果事件不存在，创建一个新事件
         if event_name not in self.events[source_id]:
             # print(f"DEBUG Registry: Auto-registering {source_id}/{event_name} on get")
-            return self.register_event(source_id, event_name)
+            self.events[source_id][event_name] = self.env.event()
+            return self.events[source_id][event_name]
 
         # 检查事件是否已被触发，如果是则创建新事件
         event = self.events[source_id][event_name]
         if event.triggered:
             # print(f"DEBUG Registry: Event {source_id}/{event_name} already triggered, creating new one")
-            return self.register_event(source_id, event_name)
+            self.events[source_id][event_name] = self.env.event()
+            return self.events[source_id][event_name]
 
         return event
 
@@ -108,7 +109,7 @@ class EventRegistry:
 
         # 对于非通配符订阅，确保事件存在
         if not is_wildcard:
-            self.register_event(source_id, event_name)
+            self.get_event(source_id, event_name)
 
         return subscription # Return the subscription object itself
 
@@ -188,7 +189,7 @@ class EventRegistry:
                 }
                 self.logger(event_data)
             except Exception as e:
-                print(f"Error logging event {source_id}/{event_name}: {str(e)}")
+                logger.error(f"Error logging event {source_id}/{event_name}: {str(e)}")
 
         # 1. 通知特定源订阅者
         subscription_key = (source_id, event_name)
@@ -268,6 +269,6 @@ class EventRegistry:
                 # 使用标准回调
                 callback(value) # Direct call might be okay if callbacks are fast/non-blocking
         except Exception as e:
-            print(f"时间 {self.env.now}: Error in subscriber callback for '{listener_id}': {e}")
+            logger.error(f"时间 {self.env.now}: Error in subscriber callback for '{listener_id}': {e}")
             import traceback
-            traceback.print_exc()
+            logger.error(traceback.format_exc())

@@ -71,7 +71,7 @@ AirFogSim is a discrete-event simulation framework built upon the SimPy library,
     *   **Resource Interaction:** Implements `get_resource_requirements(task)` (abstract) to define resource needs. Requests resources via the appropriate `Manager` (e.g., `env.landing_manager`). Handles resource updates via callbacks (`_on_resource_update`).
     *   **Metrics Calculation (`_calculate_performance_metrics` - abstract):** Calculates performance metrics (e.g., speed, processing rate, energy consumption) based on the attributes of acquired resources. Declares `PRODUCED_METRICS`.
     *   **Event Emission:** Triggers namespaced events on the parent `Agent` (e.g., `ComponentName.task_started`, `ComponentName.metric_changed`, `ComponentName.task_completed`) via `self.trigger_event()`.
-*   **Subclass Examples:** `airfogsim.component.mobility.MobilityComponent`, `airfogsim.component.computation.ComputeComponent`, `airfogsim.component.charging.ChargingComponent`, `airfogsim.component.sensing.SensingComponent`.
+*   **Subclass Examples:** `airfogsim.component.mobility.MobilityComponent`, `airfogsim.component.computation.ComputeComponent`, `airfogsim.component.charging.ChargingComponent`, `airfogsim.component.sensing.ImageSensingComponent`.
 
 #### 3.4 Task (`airfogsim.core.task.Task`)
 

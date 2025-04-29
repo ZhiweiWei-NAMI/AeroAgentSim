@@ -19,6 +19,9 @@ from typing import Dict, Any, Optional, List
 
 from airfogsim.core.dataprovider import DataIntegration
 from airfogsim.dataprovider.weather import WeatherDataProvider
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class WeatherIntegration(DataIntegration):
     """
@@ -57,13 +60,13 @@ class WeatherIntegration(DataIntegration):
         
         # 如果没有API密钥且不使用模拟数据，打印警告
         if not api_key and not self.config['use_mock_data']:
-            print("警告: 没有设置OpenWeatherMap API密钥，将使用模拟数据")
+            logger.warning("警告: 没有设置OpenWeatherMap API密钥，将使用模拟数据")
             self.config['use_mock_data'] = True
         
         # 如果使用模拟数据，创建模拟天气数据
         if self.config['use_mock_data']:
             self.weather_provider = MockWeatherProvider(self.env, self.config)
-            print(f"使用模拟天气数据，位置: {self.config['location']}")
+            logger.info(f"使用模拟天气数据，位置: {self.config['location']}")
         else:
             # 创建天气数据提供者配置
             weather_config = {
@@ -74,7 +77,7 @@ class WeatherIntegration(DataIntegration):
             
             # 创建天气数据提供者
             self.weather_provider = WeatherDataProvider(self.env, config=weather_config)
-            print(f"使用OpenWeatherMap API获取天气数据，位置: {self.config['location']}")
+            logger.info(f"使用OpenWeatherMap API获取天气数据，位置: {self.config['location']}")
         
         # 启动天气事件触发
         self.weather_provider.start_event_triggering()
@@ -106,7 +109,7 @@ class WeatherIntegration(DataIntegration):
         temp = event_data.get('temperature', 'N/A')
         wind_speed = event_data.get('wind_speed', 'N/A')
         
-        print(f"时间 {sim_time}: 天气变化 - 严重程度: {severity}, 状况: {condition}, 温度: {temp}°C, 风速: {wind_speed}m/s")
+        logger.info(f"时间 {sim_time}: 天气变化 - 严重程度: {severity}, 状况: {condition}, 温度: {temp}°C, 风速: {wind_speed}m/s")
         
         # 更新所有代理的外部力
         self._update_agents_external_force(event_data)

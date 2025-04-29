@@ -16,6 +16,10 @@ from airfogsim.core.enums import TaskStatus, TaskPriority
 from typing import Dict, Optional, List, Type, Any
 import simpy
 from abc import ABC, abstractmethod
+from airfogsim.utils.logging_config import get_logger
+
+# 获取logger
+logger = get_logger(__name__)
 
 class Task:
     NECESSARY_METRICS = [] # Metrics required for task execution
@@ -35,6 +39,7 @@ class Task:
         self.workflow_id = workflow_id # Link to the workflow this task belongs to
         self.target_state = target_state or {}
         self.properties = properties or {}
+        self.refresh_interval = self.properties.get('refresh_interval', env.visual_interval) # s
 
         # 任务优先级和抢占属性
         priority_str = self.properties.get('priority', 'normal')
@@ -87,7 +92,7 @@ class Task:
         if isinstance(event_data, dict):
             self.current_metrics.update(event_data)
         else:
-            print(f"时间 {self.env.now}: Task {self.id} received invalid metrics: {event_data}")
+            logger.warning(f"时间 {self.env.now}: Task {self.id} received invalid metrics: {event_data}")
 
     def execute(self, env, initial_metrics: Dict):
         """
@@ -121,9 +126,10 @@ class Task:
                 # Wait for time passage
                 completion_timeout = env.timeout(remaining_time + 1e-9) # Epsilon for float comparison
                 visual_update_event = self.event_registry.get_event(env.id, 'visual_update')
+                refresh_interval = env.timeout(self.refresh_interval)
 
                 # Wait for the timeout or visual update event
-                yield env.any_of([completion_timeout, visual_update_event])
+                yield env.any_of([completion_timeout, visual_update_event, refresh_interval])
 
                 current_time = env.now
 
@@ -153,7 +159,7 @@ class Task:
             return self.result # Return final result dict
 
         except simpy.Interrupt as i:
-            print(f"时间 {env.now}: Task {self.id} ({self.name}) interrupted: {i.cause}")
+            logger.info(f"时间 {env.now}: Task {self.id} ({self.name}) interrupted: {i.cause}")
             self.fail(f"Interrupted: {i.cause}")
 
             # 取消订阅metric_changed事件
@@ -161,8 +167,9 @@ class Task:
 
             return self.result
         except Exception as e:
-            print(f"时间 {env.now}: Task {self.id} ({self.name}) execution error: {str(e)}")
-            import traceback; traceback.print_exc()
+            logger.error(f"时间 {env.now}: Task {self.id} ({self.name}) execution error: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
             self.fail(f"Execution error: {str(e)}")
 
             # 取消订阅metric_changed事件
@@ -221,7 +228,7 @@ class Task:
     def on_preempted(self):
         """当任务被抢占时调用"""
         self.preemption_count += 1
-        print(f"时间 {self.env.now}: 任务 {self.id} ({self.name}) 被抢占，已被抢占 {self.preemption_count} 次")
+        logger.info(f"时间 {self.env.now}: 任务 {self.id} ({self.name}) 被抢占，已被抢占 {self.preemption_count} 次")
 
     def get_priority_info(self) -> Dict:
         """
@@ -274,7 +281,7 @@ class Task:
                 listener_id=metric_listener_id
             )
         except Exception as unsubscribe_error:
-            print(f"时间 {self.env.now}: 取消订阅失败: {unsubscribe_error}")
+            logger.error(f"时间 {self.env.now}: 取消订阅失败: {unsubscribe_error}")
 
     # --- Status Update Methods ---
     def complete(self):

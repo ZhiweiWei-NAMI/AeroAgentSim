@@ -1,7 +1,8 @@
 Metadata-Version: 2.4
 Name: airfogsim
-Version: 1.0.1
+Version: 1.1.0
 Summary: Low Altitude Space Simulation System
+Author: AirFogSim Team
 Author-email: Zhiwei Wei <2311769@tongji.edu.cn>
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
@@ -24,6 +25,7 @@ Requires-Dist: pytest; extra == "dev"
 Requires-Dist: black; extra == "dev"
 Requires-Dist: flake8; extra == "dev"
 Requires-Dist: pip-tools; extra == "dev"
+Dynamic: author
 Dynamic: license-file
 
 <a href="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9"><img src="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9/status.svg"></a>

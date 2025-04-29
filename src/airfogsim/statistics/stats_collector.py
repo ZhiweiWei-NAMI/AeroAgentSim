@@ -17,6 +17,9 @@ from typing import Dict, List, Any, Optional, Tuple
 from airfogsim.statistics.collectors.agent_collector import AgentStateCollector
 from airfogsim.statistics.collectors.workflow_collector import WorkflowStateCollector
 from airfogsim.statistics.collectors.event_collector import EventCollector
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class StatsCollector:
     """
@@ -48,7 +51,7 @@ class StatsCollector:
         # 记录开始时间
         self.start_time = time.time()
 
-        print(f"统计数据收集器初始化完成，输出目录: {output_dir}")
+        logger.info(f"统计数据收集器初始化完成，输出目录: {output_dir}")
 
     @property
     def agent_states(self):
@@ -96,55 +99,12 @@ class StatsCollector:
         with open(metadata_file, "w") as f:
             json.dump(metadata, f, indent=2)
 
-        # 导出天气数据（特殊处理，因为benchmark中没有专门的天气收集器）
-        weather_file = self._export_weather_data(output_dir)
-
-        print(f"\n统计数据已导出到: {output_dir}")
+        logger.info(f"\n统计数据已导出到: {output_dir}")
 
         return {
             "output_dir": output_dir,
             "metadata_file": metadata_file,
             **agent_files,
             **workflow_files,
-            **event_files,
-            "weather_file": weather_file
+            **event_files
         }
-
-    def _export_weather_data(self, output_dir):
-        """
-        导出天气数据
-
-        Args:
-            output_dir: 输出目录
-
-        Returns:
-            str: 天气数据文件路径
-        """
-        # 导出天气数据
-        weather_file = os.path.join(output_dir, "weather.csv")
-        with open(weather_file, "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                "timestamp", "severity", "condition", "temperature",
-                "wind_speed", "wind_direction", "precipitation_rate",
-                "humidity", "pressure", "visibility", "cloud_cover"
-            ])
-
-            for event in self.events:
-                if isinstance(event, dict) and event.get("data", {}).get("event_name") == "weather_changed":
-                    data = event.get("data", {})
-                    writer.writerow([
-                        event.get("timestamp", 0),
-                        data.get("severity", "unknown"),
-                        data.get("condition", "unknown"),
-                        data.get("temperature", 0),
-                        data.get("wind_speed", 0),
-                        data.get("wind_direction", 0),
-                        data.get("precipitation_rate", 0),
-                        data.get("humidity", 0),
-                        data.get("pressure", 0),
-                        data.get("visibility", 0),
-                        data.get("cloud_cover", 0)
-                    ])
-
-        return weather_file

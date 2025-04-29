@@ -17,21 +17,21 @@ AirFogSim环境(Environment)核心模块
 
 # -*- coding: utf-8 -*-
 from __future__ import annotations # For forward type hints like 'DataProvider'
-
+import uuid
 from .agent import Agent
 from .workflow import Workflow
 import simpy
-from airfogsim.manager.file_manager import FileManager
+from airfogsim.manager.file import FileManager
 from airfogsim.manager.airspace import AirspaceManager
 from airfogsim.manager.frequency import FrequencyManager
 from airfogsim.manager.landing import LandingManager
 from airfogsim.manager.workflow import WorkflowManager
 from airfogsim.manager.trigger import TriggerManager
 from airfogsim.manager.payload import PayloadManager
-from airfogsim.manager.task_manager import TaskManager
+from airfogsim.manager.task import TaskManager
 from airfogsim.manager.contract import ContractManager
-from airfogsim.manager.component_manager import ComponentManager
-from airfogsim.manager.agent_manager import AgentManager
+from airfogsim.manager.component import ComponentManager
+from airfogsim.manager.agent import AgentManager
 from airfogsim.core.enums import TriggerOperator
 from .event import EventRegistry
 from typing import Dict, Optional, Type, Tuple, Union, List, Any
@@ -40,11 +40,15 @@ import airfogsim.task as airfogsim_task
 import airfogsim.agent as airfogsim_agent
 import airfogsim.component as airfogsim_component
 import airfogsim.workflow as airfogsim_workflow
+from airfogsim.utils.logging_config import get_logger
+
+# 获取logger
+logger = get_logger(__name__)
 
 class Environment(simpy.Environment):
     def __init__(self, initial_time=0, visual_interval=5, logger=None, **kwargs):
         super().__init__(initial_time=initial_time)
-        self.id = f"env_{id(self)}"
+        self.id = f"env_{uuid.uuid4().hex[:8]}"
         self.event_registry = EventRegistry(self, logger)
 
         # 初始化数据提供者存储
@@ -68,7 +72,7 @@ class Environment(simpy.Environment):
 
         self.visual_interval = float(visual_interval) if visual_interval is not None else 0 # s
         if self.visual_interval > 0:
-             self.event_registry.register_event(self.id, 'visual_update')
+             self.event_registry.get_event(self.id, 'visual_update')
              # Run loop only if interval > 0
              self.process(self._visual_update_loop(self.visual_interval))
 
@@ -92,19 +96,19 @@ class Environment(simpy.Environment):
         """注册所有任务、代理、组件和工作流类"""
         # 注册任务类
         task_count = airfogsim_task.register_all_tasks(self.task_manager)
-        print(f"时间 {self.now}: 注册了 {task_count} 个任务类")
+        logger.info(f"时间 {self.now}: 注册了 {task_count} 个任务类")
 
         # 注册代理类
         agent_count = airfogsim_agent.register_all_agents(self.agent_manager)
-        print(f"时间 {self.now}: 注册了 {agent_count} 个代理类")
+        logger.info(f"时间 {self.now}: 注册了 {agent_count} 个代理类")
 
         # 注册组件类
         component_count = airfogsim_component.register_all_components(self.component_manager)
-        print(f"时间 {self.now}: 注册了 {component_count} 个组件类")
+        logger.info(f"时间 {self.now}: 注册了 {component_count} 个组件类")
 
         # 注册工作流类（仅记录可用的工作流类，不实际注册实例）
         workflow_count = airfogsim_workflow.register_all_workflows(self.workflow_manager)
-        print(f"时间 {self.now}: 发现了 {workflow_count} 个工作流类")
+        logger.info(f"时间 {self.now}: 发现了 {workflow_count} 个工作流类")
 
     def _visual_update_loop(self, interval_sec):
         while True:
@@ -174,9 +178,9 @@ class Environment(simpy.Environment):
             provider (DataProvider): The DataProvider instance to register.
         """
         if key in self.data_providers:
-            print(f"DataProvider with key '{key}' already exists. Overwriting.")
+            logger.warning(f"DataProvider with key '{key}' already exists. Overwriting.")
         self.data_providers[key] = provider
-        print(f"DataProvider '{key}' ({provider.__class__.__name__}) registered.")
+        logger.info(f"DataProvider '{key}' ({provider.__class__.__name__}) registered.")
 
     def get_data_provider(self, key: str) -> Optional['DataProvider']:
         """

@@ -22,6 +22,9 @@ from airfogsim.core.component import Component
 from airfogsim.core.task import Task
 from airfogsim.core.workflow import Workflow
 from airfogsim.core.environment import Environment
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 def _wrap_text(text, width=60):
     """将长文本按指定宽度换行"""

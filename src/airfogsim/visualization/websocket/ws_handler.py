@@ -1,12 +1,12 @@
 from fastapi import WebSocket, WebSocketDisconnect
 import json
 import asyncio
-import logging
+from airfogsim.utils.logging_config import get_logger
 from datetime import datetime
 from ..app import manager, sim_integration
 
 # 设置日志记录
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # WebSocket接口
 async def websocket_endpoint(websocket: WebSocket):

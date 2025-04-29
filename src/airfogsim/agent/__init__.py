@@ -63,3 +63,5 @@ def get_agent_descriptions():
     return descriptions
 
 from .drone import DroneAgent
+from .delivery_agent import DeliveryAgent
+from .delivery_drone import DeliveryDroneAgent
