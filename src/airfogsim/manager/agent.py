@@ -56,6 +56,9 @@ class AgentManager:
         # 自动发现并注册代理类
         self._discover_agent_classes()
 
+    def get_all_agents(self):
+        return self.env.agents.values()
+
     def _discover_agent_classes(self):
         """自动发现并注册代理类"""
         # 获取airfogsim.agent包的路径

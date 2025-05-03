@@ -703,6 +703,21 @@ class AirspaceManager:
         """
         return self.octree.query_range((x_min, y_min, z_min, x_max, y_max, z_max))
     
+    def get_objects_in_sphere(self, center_x: float, center_y: float, center_z: float, radius: float) -> Dict[str, Tuple[float, float, float]]:
+        """
+        获取指定球形范围内的所有物体
+
+        Args:
+            center_x: 球心X坐标
+            center_y: 球心Y坐标
+            center_z: 球心Z坐标
+            radius: 半径
+            
+        Returns:
+            球形范围内物体的ID到位置的映射
+        """
+        return self.octree.query_sphere(center_x, center_y, center_z, radius)
+    
     def _on_state_changed(self, event_data):
         """
         处理代理状态变化事件

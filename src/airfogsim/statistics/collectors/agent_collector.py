@@ -117,9 +117,10 @@ class AgentStateCollector:
             old_value.remove(event_data.get('object_name'))
             new_value = current_value
         elif event_type == 'removed':
-            old_value = current_value
-            new_value = current_value.copy()
+            old_value = current_value.copy() # Get the list *before* theoretical removal for the event
             old_value.append(event_data.get('object_name'))
+            old_value.sort() # Sort for consistency if needed
+            new_value = current_value # current_value is already sorted from earlier
         else:
             return
 
@@ -207,39 +208,28 @@ class AgentStateCollector:
                 'full_state': True  # 标记为全部状态
             }
 
-        # 添加代理的所有状态 (处理非JSON序列化类型)
-        for key, value in agent.state.items():
-            if isinstance(value, set):
-                state_data[key] = sorted(list(value))
-            elif isinstance(value, (tuple, list)):
-                state_data[key] = list(value)
-            elif isinstance(value, (str, int, float)):
-                state_data[key] = value
-            else:
-                 state_data[key] = value
-
-            # 确保明确包含新添加的状态键，即使它们可能已经在agent.state中
-            # 如果状态不存在，则设置为None
-            important_states = [
-                'external_force',       # 来自WeatherIntegration
-                'max_allowed_speed',    # 来自TrafficIntegration
-                'current_workflow_id',  # 来自WorkflowManager
-                'signal_quality',       # 来自SignalIntegration
-                'position',             # 基本状态
-                'battery_level',        # 基本状态
-                'status'                # 基本状态
-            ]
-
-            for key in important_states:
-                if key not in state_data:
-                    state_data[key] = agent.get_state(key)
+            # 添加代理的所有状态 (处理非JSON序列化类型)
+            for key, value in agent.state.items():
+                if isinstance(value, set):
+                    state_data[key] = sorted(list(value))
+                elif isinstance(value, (tuple, list)):
+                    state_data[key] = list(value)
+                elif isinstance(value, (str, int, float, bool)):
+                    state_data[key] = value
+                else:
+                    # Attempt to convert others to string or handle specific complex types
+                    try:
+                        state_data[key] = str(value) # Fallback to string representation
+                        logger.debug(f"Converted non-standard state '{key}' to string for agent {agent_id}")
+                    except Exception:
+                        state_data[key] = "Error: Non-serializable/stringifiable state"
+                        logger.warning(f"State '{key}' for agent {agent_id} could not be serialized or converted to string.")
 
             objs = agent.get_possessing_object_names()
             objs.sort()
             # 记录possessing_object
             state_data['possessing_object'] = list(objs)
 
-            # 记录状态
             self.agent_states[agent_id].append(state_data)
 
     def export_data(self, output_dir):
@@ -274,6 +264,46 @@ class AgentStateCollector:
         Args:
             output_dir: 输出目录
         """
+        # 辅助函数：收集数据并确保时间戳递增，相同时间戳的数据会覆盖之前的数据
+        def collect_data_with_timestamp_check(states, data_key, process_func):
+            """
+            收集数据并确保时间戳递增，相同时间戳的数据会覆盖之前的数据
+
+            Args:
+                states: 代理状态列表
+                data_key: 数据键名（如 'position', 'battery_level'）
+                process_func: 处理数据的函数，接收状态和数据值，返回处理后的数据行
+
+            Returns:
+                按时间戳排序的数据行列表
+            """
+            # 使用字典存储每个时间戳的最新数据，键为 (timestamp, agent_id)
+            data_by_timestamp = {}
+
+            for state in states:
+                timestamp = state["timestamp"]
+                agent_id = state["agent_id"]
+                key = (timestamp, agent_id)
+
+                # 检查是否是完整状态记录
+                full_state = state.get("full_state", False)
+                if full_state:
+                    value = state.get(data_key, None)
+                    if value is not None:
+                        data_row = process_func(state, value)
+                        data_by_timestamp[key] = data_row
+                    continue
+
+                # 检查是否是特定状态变化记录
+                if state["state_key"] == data_key and state["new_value"] is not None:
+                    value = state["new_value"]
+                    data_row = process_func(state, value)
+                    data_by_timestamp[key] = data_row
+
+            # 按时间戳和代理ID排序
+            sorted_keys = sorted(data_by_timestamp.keys())
+            return [data_by_timestamp[key] for key in sorted_keys]
+
         # 导出代理位置数据
         positions_file = os.path.join(output_dir, "agent_positions.csv")
         with open(positions_file, "w", newline="") as f:
@@ -281,32 +311,23 @@ class AgentStateCollector:
             writer.writerow(["timestamp", "agent_id", "agent_type", "x", "y", "z"])
 
             for agent_id, states in self.agent_states.items():
-                for state in states:
-                    full_state = state.get("full_state", False)
-                    if full_state:
-                        position = state.get("position", None)
-                        if (isinstance(position, list) or isinstance(position, tuple)) and len(position) >= 3:
-                            writer.writerow([
-                                state["timestamp"],
-                                agent_id,
-                                state["agent_type"],
-                                position[0],
-                                position[1],
-                                position[2]
-                            ])
-                        continue
+                # 处理位置数据
+                def process_position(state, position):
+                    if (isinstance(position, list) or isinstance(position, tuple)) and len(position) >= 3:
+                        return [
+                            state["timestamp"],
+                            agent_id,
+                            state["agent_type"],
+                            position[0],
+                            position[1],
+                            position[2]
+                        ]
+                    return None
 
-                    if state["state_key"] == "position" and state["new_value"] is not None:
-                        position = state["new_value"]
-                        if (isinstance(position, list) or isinstance(position, tuple)) and len(position) >= 3:
-                            writer.writerow([
-                                state["timestamp"],
-                                agent_id,
-                                state["agent_type"],
-                                position[0],
-                                position[1],
-                                position[2]
-                            ])
+                position_data = collect_data_with_timestamp_check(states, "position", process_position)
+                for row in position_data:
+                    if row:  # 确保数据有效
+                        writer.writerow(row)
 
         # 导出代理电量数据
         battery_file = os.path.join(output_dir, "agent_battery.csv")
@@ -315,28 +336,18 @@ class AgentStateCollector:
             writer.writerow(["timestamp", "agent_id", "agent_type", "battery_level"])
 
             for agent_id, states in self.agent_states.items():
-                for state in states:
-                    full_state = state.get("full_state", False)
-                    if full_state:
-                        battery_level = state.get("battery_level", None)
-                        if battery_level is not None:
-                            writer.writerow([
-                                state["timestamp"],
-                                agent_id,
-                                state["agent_type"],
-                                battery_level
-                            ])
-                        continue
+                # 处理电量数据
+                def process_battery(state, battery_level):
+                    return [
+                        state["timestamp"],
+                        agent_id,
+                        state["agent_type"],
+                        battery_level
+                    ]
 
-                    if state["state_key"] == "battery_level" and state["new_value"] is not None:
-                        battery_level = state["new_value"]
-
-                        writer.writerow([
-                            state["timestamp"],
-                            agent_id,
-                            state["agent_type"],
-                            battery_level
-                        ])
+                battery_data = collect_data_with_timestamp_check(states, "battery_level", process_battery)
+                for row in battery_data:
+                    writer.writerow(row)
 
         # 导出代理状态数据
         status_file = os.path.join(output_dir, "agent_status.csv")
@@ -345,28 +356,18 @@ class AgentStateCollector:
             writer.writerow(["timestamp", "agent_id", "agent_type", "status"])
 
             for agent_id, states in self.agent_states.items():
-                for state in states:
-                    full_state = state.get("full_state", False)
-                    if full_state:
-                        status = state.get("status", None)
-                        if status is not None:
-                            writer.writerow([
-                                state["timestamp"],
-                                agent_id,
-                                state["agent_type"],
-                                status
-                            ])
-                        continue
+                # 处理状态数据
+                def process_status(state, status):
+                    return [
+                        state["timestamp"],
+                        agent_id,
+                        state["agent_type"],
+                        status
+                    ]
 
-                    if state["state_key"] == "status" and state["new_value"] is not None:
-                        status = state["new_value"]
-
-                        writer.writerow([
-                            state["timestamp"],
-                            agent_id,
-                            state["agent_type"],
-                            status
-                        ])
+                status_data = collect_data_with_timestamp_check(states, "status", process_status)
+                for row in status_data:
+                    writer.writerow(row)
 
         # 导出代理持有物品数据
         possessing_file = os.path.join(output_dir, "agent_possessing.csv")
@@ -375,28 +376,18 @@ class AgentStateCollector:
             writer.writerow(["timestamp", "agent_id", "agent_type", "possessing_object"])
 
             for agent_id, states in self.agent_states.items():
-                for state in states:
-                    full_state = state.get("full_state", False)
-                    if full_state:
-                        possessing_object = state.get("possessing_object", None)
-                        if possessing_object is not None:
-                            writer.writerow([
-                                state["timestamp"],
-                                agent_id,
-                                state["agent_type"],
-                                possessing_object
-                            ])
-                        continue
+                # 处理持有物品数据
+                def process_possessing(state, possessing_object):
+                    return [
+                        state["timestamp"],
+                        agent_id,
+                        state["agent_type"],
+                        possessing_object
+                    ]
 
-                    if state["state_key"] == "possessing_object" and state["new_value"] is not None:
-                        possessing_object = state["new_value"]
-
-                        writer.writerow([
-                            state["timestamp"],
-                            agent_id,
-                            state["agent_type"],
-                            possessing_object
-                        ])
+                possessing_data = collect_data_with_timestamp_check(states, "possessing_object", process_possessing)
+                for row in possessing_data:
+                    writer.writerow(row)
 
         # 返回所有CSV文件路径
         return {
