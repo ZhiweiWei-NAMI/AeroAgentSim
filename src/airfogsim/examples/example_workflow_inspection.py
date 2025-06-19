@@ -96,9 +96,7 @@ drone.add_component(move_component)
 drone.add_component(charging_component)
 
 # 为无人机设置充电工作流（由触发器自动启动）
-charging_workflow = setup_charging_workflow(env, drone, battery_threshold=50)
-if charging_workflow:
-    logger.info(f"充电工作流已创建，当电量低于{0.3*100}%时将自动启动")
+charging_workflow = setup_charging_workflow(env, drone, battery_threshold=10)
 
 # 创建巡检工作流，定义飞行路径
 # 从起点(10,10,0)起飞，经过目的地(800,800,0)，返回起点
@@ -119,9 +117,6 @@ workflow = create_inspection_workflow(env, drone, waypoints)
 # 不再需要手动分配资源，组件会在任务执行过程中自动处理资源分配
 # 这是因为我们重构了Component基类，使其在_execute_task_wrapper方法中
 # 调用子类的_allocate_task_resources和_release_task_resources方法
-
-# 直接开始工作流，理论上需要用workflow_manager来管理
-workflow.start()
 
 # 运行模拟
 env.run(until=1000)

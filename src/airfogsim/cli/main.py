@@ -11,12 +11,13 @@ import shutil
 from pathlib import Path
 
 
-def export_docs(output_dir=None):
+def export_docs(output_dir=None, format_type='markdown'):
     """
     Export AirFogSim documentation to the specified directory.
 
     Args:
         output_dir (str): The directory to export documentation to. Defaults to './airfogsim_docs'.
+        format_type (str): Format type - 'markdown' for existing docs, 'html' for Sphinx docs.
 
     Returns:
         bool: True if successful, False otherwise.
@@ -29,6 +30,88 @@ def export_docs(output_dir=None):
     # Create output directory if it doesn't exist
     output_path.mkdir(parents=True, exist_ok=True)
 
+    if format_type == 'html':
+        return build_sphinx_docs(output_path)
+    else:
+        return export_markdown_docs(output_path)
+
+
+def build_sphinx_docs(output_path):
+    """
+    Build Sphinx HTML documentation.
+
+    Args:
+        output_path (Path): Output directory for documentation.
+
+    Returns:
+        bool: True if successful, False otherwise.
+    """
+    try:
+        import subprocess
+
+        # Find the docs directory with Sphinx configuration
+        docs_dir = None
+        current_dir = Path.cwd()
+
+        # Look for docs directory with conf.py
+        potential_paths = [
+            current_dir / 'docs',
+            current_dir.parent / 'docs',
+        ]
+
+        for path in potential_paths:
+            if (path / 'conf.py').exists():
+                docs_dir = path
+                break
+
+        if docs_dir is None:
+            print("Error: Could not find Sphinx documentation directory (with conf.py)")
+            print("Please run this command from the project root directory")
+            return False
+
+        print(f"Building Sphinx documentation from: {docs_dir}")
+
+        # Build HTML documentation
+        build_dir = output_path / 'html'
+        build_dir.mkdir(parents=True, exist_ok=True)
+
+        # Run sphinx-build
+        cmd = [
+            'sphinx-build',
+            '-b', 'html',
+            str(docs_dir),
+            str(build_dir)
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            print(f"Sphinx documentation built successfully in: {build_dir}")
+            print(f"Open {build_dir / 'index.html'} in your browser to view the documentation")
+            return True
+        else:
+            print(f"Error building Sphinx documentation:")
+            print(result.stderr)
+            return False
+
+    except ImportError:
+        print("Error: Sphinx is not installed. Install with: pip install sphinx")
+        return False
+    except Exception as e:
+        print(f"Error building Sphinx documentation: {str(e)}")
+        return False
+
+
+def export_markdown_docs(output_path):
+    """
+    Export existing markdown documentation.
+
+    Args:
+        output_path (Path): Output directory for documentation.
+
+    Returns:
+        bool: True if successful, False otherwise.
+    """
     try:
         # Try multiple methods to find the docs directory
         docs_path = None
@@ -322,6 +405,8 @@ def parse_args(args=None):
     docs_parser = subparsers.add_parser('docs', help='Export documentation')
     docs_parser.add_argument('--output-dir', type=str, default='./airfogsim_docs',
                            help='Directory to export documentation to')
+    docs_parser.add_argument('--format', choices=['markdown', 'html'], default='markdown',
+                           help='Documentation format (markdown for existing docs, html for Sphinx API docs)')
 
     # Examples command
     examples_parser = subparsers.add_parser('examples', help='Run examples')
@@ -353,7 +438,8 @@ def process_args(args):
     # Handle special case for -docs shorthand
     if args.command == 'docs':
         output_dir = args.output_dir
-        success = export_docs(output_dir)
+        format_type = getattr(args, 'format', 'markdown')
+        success = export_docs(output_dir, format_type)
         return 0 if success else 1
 
     # Handle examples command

@@ -5,6 +5,7 @@ paper_code/
 benchmark/
 stats_data/
 paper.*
+response_to_JOSS/
 
 # --- Compressed Archives ---
 # Ignore all tar.gz files anywhere in the project
@@ -13,6 +14,7 @@ paper.*
 # --- Python specific ---
 # Ignore Python bytecode cache directories and contents
 __pycache__/
+.pytest_cache/
 *.py[cod]
 *.egg-info/
 *$py.class

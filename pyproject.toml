@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "airfogsim"
-version = "1.1.0"
+version = "1.1.1"
 description = "Low Altitude Space Simulation System"
 readme = "README.md"
 authors = [
@@ -30,9 +30,18 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
     "black",
     "flake8",
     "pip-tools"
+]
+docs = [
+    "sphinx>=4.0",
+    "sphinx-rtd-theme",
+    "sphinx-autodoc-typehints",
+    "myst-parser",
+    "sphinx-copybutton"
 ]
 
 [tool.setuptools]

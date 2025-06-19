@@ -209,7 +209,7 @@ def create_inspection_workflow(env, agent, inspection_points, task_priority=None
             'task_priority': task_priority,
             'task_preemptive': task_preemptive
         },
-        start_trigger=TimeTrigger(env, interval=100),
+        start_trigger=TimeTrigger(env, trigger_time=100),
         max_starts=1
     )
 

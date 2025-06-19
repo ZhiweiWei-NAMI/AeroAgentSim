@@ -16,7 +16,6 @@ import simpy
 import os
 import sys
 from airfogsim.utils.logging_config import get_logger
-from plogger.info import plogger.info
 
 logger = get_logger(__name__)
 # --- Setup Python Path ---
@@ -110,7 +109,7 @@ if __name__ == "__main__":
         source_id=WeatherDataProvider.__name__, # Use class name as source ID
         listener_id=subscriber_name,
         event_name=WeatherDataProvider.EVENT_WEATHER_CHANGED,
-        callback=handle_weather_event
+        callback=lambda event_data: handle_weather_event(subscriber_name, event_data)
     )
     logger.info(f"'{subscriber_name}' subscribed to '{WeatherDataProvider.EVENT_WEATHER_CHANGED}' events.")
 
