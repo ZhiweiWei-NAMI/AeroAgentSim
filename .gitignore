@@ -70,8 +70,8 @@ frontend/yarn-error.log*
 dev_plan/
 
 # --- Paper related ---
-paper.md
-paper.bib
+# paper.md  # Now tracked in root directory
+# paper.bib # Now tracked in root directory
 paper_refs.txt
 bib_refs.txt
 airfogsim_paper.pdf
