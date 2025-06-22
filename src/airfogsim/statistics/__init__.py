@@ -9,5 +9,13 @@ AirFogSim统计模块
 from .stats_collector import StatsCollector
 from .stats_analyzer import StatsAnalyzer
 from .stats_visualizer import StatsVisualizer
+from .collectors import AgentStateCollector, WorkflowStateCollector, EventCollector
 
-__all__ = ['StatsCollector', 'StatsAnalyzer', 'StatsVisualizer']
+__all__ = [
+    'StatsCollector',
+    'StatsAnalyzer',
+    'StatsVisualizer',
+    'AgentStateCollector',
+    'WorkflowStateCollector',
+    'EventCollector'
+]

@@ -12,6 +12,9 @@ import sys
 from airfogsim.core.environment import Environment
 from airfogsim.workflow.inspection import create_inspection_workflow
 from airfogsim.agent.drone import DroneAgent
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 def generate_workflow_diagrams(output_dir="./diagrams"):
     """生成工作流图表并保存到文件"""
@@ -44,7 +47,7 @@ def generate_workflow_diagrams(output_dir="./diagrams"):
     plantuml_content = workflow.to_uml_activity_diagram()
     with open(os.path.join(output_dir, "inspection_workflow.puml"), "w", encoding="utf-8") as f:
         f.write(plantuml_content)
-    print(f"PlantUML活动图已保存到 {os.path.join(output_dir, 'inspection_workflow.puml')}")
+    logger.info(f"PlantUML活动图已保存到 {os.path.join(output_dir, 'inspection_workflow.puml')}")
     
     # 同时创建一个带有封装PlantUML代码的Markdown文件
     with open(os.path.join(output_dir, "inspection_workflow.md"), "w", encoding="utf-8") as f:
@@ -58,16 +61,16 @@ def generate_workflow_diagrams(output_dir="./diagrams"):
         mermaid_content = workflow.to_mermaid_diagram()
         f.write("## Mermaid状态图\n\n")
         f.write(mermaid_content)
-    print(f"综合Markdown文件已保存到 {os.path.join(output_dir, 'inspection_workflow.md')}")
+    logger.info(f"综合Markdown文件已保存到 {os.path.join(output_dir, 'inspection_workflow.md')}")
     
     # 打印使用说明
-    print("\n要查看这些图表，您可以：")
-    print("1. 在VSCode中安装以下插件：")
-    print("   - PlantUML插件 (jebbs.plantuml)")
-    print("   - Markdown Preview Enhanced (shd101wyy.markdown-preview-enhanced)")
-    print("2. 使用在线工具：")
-    print("   - PlantUML: https://www.plantuml.com/plantuml/")
-    print("   - Mermaid Live Editor: https://mermaid.live/")
+    logger.info("\n要查看这些图表，您可以：")
+    logger.info("1. 在VSCode中安装以下插件：")
+    logger.info("   - PlantUML插件 (jebbs.plantuml)")
+    logger.info("   - Markdown Preview Enhanced (shd101wyy.markdown-preview-enhanced)")
+    logger.info("2. 使用在线工具：")
+    logger.info("   - PlantUML: https://www.plantuml.com/plantuml/")
+    logger.info("   - Mermaid Live Editor: https://mermaid.live/")
 
 if __name__ == "__main__":
     # 设置输出目录

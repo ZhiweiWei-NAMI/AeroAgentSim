@@ -60,153 +60,63 @@ If you use AirFogSim in your research, please cite our paper:
 
 AirFogSim is built around an event-driven Agent-Based Modeling (ABM) architecture that enables efficient simulation of complex interactions between heterogeneous agents. The platform extends the SimPy discrete-event simulation library, providing specialized components for UAV-integrated fog computing scenarios.
 
-### Backend Architecture
+### Core Components
 
-The backend architecture of AirFogSim is designed with a focus on modularity, extensibility, and performance. It consists of several key components:
+- **🤖 Agents**: Autonomous entities (UAVs, ground stations) with decision-making capabilities
+- **🔧 Components**: Modular capabilities (mobility, computation, sensing) that agents can use
+- **📋 Tasks**: Specific actions that agents perform through their components
+- **🔄 Workflows**: Higher-level goals that coordinate multiple tasks
+- **⚡ Triggers**: Event-driven conditions that drive workflow transitions
+- **📊 Resources**: Shared simulation resources (airspace, spectrum, landing spots)
+- **🎯 Managers**: Centralized management of resources and system services
 
-#### 1. Simulation Environment (Environment)
-
-The central hub of the simulation, extending SimPy's Environment for discrete-event scheduling:
-- **Event Registry (EventRegistry):** Central bus for publishing and subscribing to named events across all simulation entities, enabling decoupled communication.
-- **Airspace Manager (AirspaceManager):** Octree-based spatial management for position and collision information.
-- **Landing Manager (LandingManager):** Management of landing spots and charging stations.
-- **Frequency Manager (FrequencyManager):** Management of spectrum resources with 3GPP-compliant channel models.
-- **Contract Manager (ContractManager):** Management of contracts and transactions.
-- **Workflow Manager (WorkflowManager):** Management of workflow lifecycles.
-- **Task Manager (TaskManager):** Management of task creation and execution.
-- **Data Provider (DataProvider):** Provision of real-time data and statistics, including weather and traffic flow.
-
-#### 2. Agent (Agent)
-
-Autonomous decision-making entities like UAVs and ground stations:
-- **State Management:** Maintains internal state with type validation through metaclass-based state templates.
-- **Decision Logic:** SimPy process defining the agent's behavior loop, perceiving state, workflows, and events to decide which tasks to execute.
-- **Component Ownership:** Owns components representing its capabilities (mobility, sensing, computation).
-- **Task Initiation:** Initiates tasks by delegating execution to appropriate components.
-- **Event Handling:** Triggers and subscribes to events for state changes, task lifecycle, and object possession.
-
-#### 3. Component (Component)
-
-Abstracts specific capabilities (mobility, computation, charging) and provides the execution environment for tasks:
-- **Task Execution:** Manages task lifecycle, resource acquisition, metrics calculation, and cleanup.
-- **Resource Interaction:** Defines resource requirements and requests resources from appropriate managers.
-- **Metrics Calculation:** Calculates performance metrics based on resource attributes and agent state.
-- **Event Emission:** Triggers namespaced events for task status and metric changes.
-
-#### 4. Task (Task)
-
-Encapsulates the logic for specific actions, defining how work is performed:
-- **Execution Logic:** SimPy generator consuming performance metrics provided by components.
-- **Metric Consumption:** Declares necessary metrics required from executing components.
-- **State Production:** Updates agent state based on task logic and progress.
-- **Lifecycle Management:** Manages task status (PENDING, RUNNING, COMPLETED, FAILED, CANCELED).
-
-#### 5. Workflow (Workflow) & State Machine (WorkflowStatusMachine)
-
-Represents higher-level goals or processes, acting as a monitor and coordinator:
-- **State Machine:** Contains a WorkflowStatusMachine instance managing internal states and transitions.
-- **Trigger-Driven Transitions:** Uses triggers to define rules based on agent state, events, or time.
-- **Context/Guidance:** Provides workflow context and suggests next tasks for agents based on current state.
-
-#### 6. Trigger (Trigger)
-
-Monitors specific simulation conditions and executes callbacks when met:
-- **Condition Monitoring:** Checks for event occurrences, agent state changes, or time passage.
-- **Activation/Deactivation:** Can be activated to monitor and deactivated to stop.
-- **Types:** EventTrigger, StateTrigger, TimeTrigger, and CompositeTrigger for different monitoring needs.
-
-#### 7. Resource Layer (Resource & ResourceManager)
-
-Models entities that are utilized or consumed:
-- **Resource Base Class:** Defines common properties like id, attributes, and status.
-- **ResourceManager Base Class:** Generic base for managing resources of specific types.
-- **Specific Managers:** Implement resource-specific logic for finding, allocation, release, and modeling contention.
+For detailed architecture documentation, see [System Architecture Guide](src/airfogsim/docs/en/architecture.md).
 
 ### Visualization System
 
-AirFogSim integrates a complete visualization system, including:
+AirFogSim includes an integrated visualization system for real-time monitoring:
 
-- **Dashboard:** Displays simulation status, agent information, and system events
-- **UAV Monitoring:** Real-time tracking of UAV positions, states, and trajectories
-- **Workflow Configuration:** Configuration and monitoring of workflow execution
-- **Data Analysis:** Resource usage and performance metrics analysis
+- **📊 Dashboard**: Simulation status and agent monitoring
+- **🗺️ UAV Tracking**: Real-time position and trajectory visualization
+- **⚙️ Workflow Monitor**: Configuration and execution tracking
+- **📈 Analytics**: Resource usage and performance metrics
 
 <div align="center">
-  <img src="src/airfogsim/docs/img/状态监控.png" alt="Status Monitoring Interface" width="800">
-  <p><em>Status Monitoring Interface - Real-time tracking of UAV positions and states</em></p>
+  <img src="src/airfogsim/docs/img/状态监控.png" alt="Status Monitoring Interface" width="600">
+  <p><em>Real-time UAV monitoring and status tracking</em></p>
 </div>
 
-The visualization system employs a client-server architecture:
-- **Frontend:** React-based web application
-  <div align="center">
-    <img src="src/airfogsim/docs/img/前端.png" alt="Frontend Interface" width="600">
-    <p><em>Frontend Interface - User interaction and data visualization</em></p>
-  </div>
-- **Frontend:** SUMO-based 3D traffic simulation visualization
-  <div align="center">
-    <img src="src/airfogsim/docs/img/前端2.png" alt="Frontend Interface" width="600">
-    <p><em>Frontend Interface - 3D traffic simulation visualization</em></p>
-  </div>
-- **Backend:** FastAPI service integrated with the simulation engine
-  <div align="center">
-    <img src="src/airfogsim/docs/img/后端.png" alt="Backend Architecture" width="600">
-    <p><em>Backend Architecture - Data processing and simulation engine integration</em></p>
-  </div>
-- **Communication:** Real-time data transmission via WebSocket
+**Architecture**: React frontend + FastAPI backend + WebSocket communication
+
+For visualization setup, see [Installation Guide](INSTALL.md#visualization-setup).
 
 ## 🚀 Installation Guide
 
-### Prerequisites
-
-- Python 3.8+
-- Node.js 14+ (only needed for visualization)
-- npm 6+ (only needed for visualization)
-
-### Installation Options
-
-#### Option 1: Install from PyPI (Recommended)
-
-The easiest way to install AirFogSim is directly from PyPI:
+### Quick Start
 
 ```bash
 pip install airfogsim
 ```
 
-This will install the core simulation framework. If you want to use the visualization system, you'll need to clone the repository as described in Option 2.
+📋 **Detailed Setup**: See [INSTALL.md](INSTALL.md) for complete installation guide including system requirements, development setup, and troubleshooting.
+
+### Basic Installation
+
+#### Option 1: Install from PyPI (Recommended)
+
+```bash
+pip install airfogsim
+```
 
 #### Option 2: Install from Source
-
-1. Clone the repository
 
 ```bash
 git clone https://github.com/ZhiweiWei-NAMI/AirFogSim.git
 cd AirFogSim
+pip install -e .[dev]
 ```
 
-2. Install Python dependencies
-
-```bash
-python -m venv airfogsim_venv
-source airfogsim_venv/bin/activate  # On Windows: airfogsim_venv\Scripts\activate
-pip install -r requirements.txt
-pip install -e .  # Install in development mode
-```
-
-3. Install frontend dependencies
-
-```bash
-cd frontend
-npm install
-cd ..
-```
-
-4. Start the visualization system
-
-```bash
-python main_for_visualization.py
-```
-
-This will start the backend API service and frontend development server, and automatically open the visualization interface in your browser.
+For visualization system setup and advanced configuration options, please refer to the [detailed installation guide](INSTALL.md).
 
 
 ## 📝 Usage Examples
@@ -280,11 +190,11 @@ python -m airfogsim.helper.class_finder --find-component speed,processing_power
 python main_for_visualization.py --backend-port 8002 --frontend-port 3000
 ```
 
-## 🧪 Examples and Automated Testing
+## 🧪 Examples and Testing
+
+### Examples
 
 AirFogSim provides a rich set of example programs demonstrating various features and use cases. These examples are located in the `src/airfogsim/examples` directory:
-
-### Main Examples
 
 - **Basic Trigger System**: `example_trigger_basic.py` - Shows how to use different types of triggers to create and manage workflows
 - **Workflow Diagram Generation**: `example_workflow_diagram.py` - Demonstrates how to convert workflow state machines to visual diagrams
@@ -294,23 +204,43 @@ AirFogSim provides a rich set of example programs demonstrating various features
 - **Weather Data Integration**: `example_weather_provider.py` - Demonstrates integration of real-time weather data into simulations
 - **Benchmark Multi-Workflow**: `example_benchmark_multi_workflow.py` - JOSS paper benchmark example with inspection, logistics, and charging workflows
 
-### One-Click Testing
-
-We provide an automated testing script to easily run and verify all examples:
+### Running Examples
 
 ```bash
 # List all available examples
-cd src/airfogsim/examples
-python test_examples.py --list
+airfogsim examples
 
 # Run specific examples
-python test_examples.py --run example_workflow_diagram example_trigger_basic
+airfogsim examples workflow_diagram trigger_basic
 
-# Run all examples
-python test_examples.py
+# Run a single example directly
+cd src/airfogsim/examples
+python example_trigger_basic.py
 ```
 
-The example testing script automatically checks necessary dependencies (like API keys) and provides detailed test result reports. This allows new users to quickly understand the framework's capabilities and developers to easily verify different modules.
+### Automated Testing
+
+AirFogSim includes a comprehensive test suite to ensure reliability and catch regressions:
+
+```bash
+# Install test dependencies
+pip install -e .[dev]
+
+# Run all tests
+pytest tests/ -v
+
+# Run tests with coverage
+pytest tests/ --cov=airfogsim --cov-report=html
+
+# Run only fast tests
+pytest tests/ -m "not slow"
+```
+
+The test suite includes:
+- **Unit tests** for core functionality
+- **Integration tests** for component interactions
+- **Example tests** to verify all examples run correctly
+- **Continuous Integration** via GitHub Actions
 
 ## 📁 Project Structure
 
@@ -332,19 +262,27 @@ airfogsim-project/
 │       ├── pages/            # Page components
 │       └── services/         # API services
 ├── LICENSE                   # Project license
+├── INSTALL.md                # Detailed installation guide
+├── CONTRIBUTING.md           # Contributing guidelines
 ├── main_for_visualization.py # Visualization system startup script (for local development)
-├── nginx.conf                # Nginx configuration file
 ├── pyproject.toml            # Python project configuration file (including dependencies)
-├── README.md                 # This document
+├── README.md                 # This document (project overview)
 ├── requirements.txt          # Python locked dependencies (generated by pip-compile)
+├── docs/                     # User documentation (Sphinx-based)
+│   ├── README.md             # Documentation navigation hub
+│   ├── api/                  # Auto-generated API reference
+│   └── guides/               # User guides and tutorials
 ├── src/                      # Backend source code
 │   └── airfogsim/            # Core simulation framework
 │       ├── agent/            # Agent implementations
 │       ├── component/        # Component implementations
 │       ├── core/             # Core classes and interfaces
-│       ├── docs/             # Documentation
+│       ├── docs/             # Technical documentation (developer-focused)
+│       │   ├── en/           # English technical guides
+│       │   ├── cn/           # Chinese technical guides
+│       │   └── img/          # Documentation images
 │       ├── event/            # Event handling
-│       ├── examples/         # Example code
+│       ├── examples/         # Example code and tutorials
 │       ├── helper/           # Development helper tools
 │       ├── manager/          # Various managers
 │       ├── resource/         # Resource implementations
@@ -356,52 +294,55 @@ airfogsim-project/
 
 ## 📚 Documentation
 
-Detailed documentation can be found at:
+### 📖 For Users
+- **[Getting Started](docs/getting_started.html)** - Installation and first simulation
+- **[User Guide](docs/user_guide.html)** - Comprehensive usage guide
+- **[API Reference](docs/api/index.html)** - Complete API documentation
+- **[Examples](docs/examples.html)** - Ready-to-run examples
 
-- [System Architecture](src/airfogsim/docs/en/architecture.md)
-- [Agent Guide](src/airfogsim/docs/en/agent_guide.md)
-- [Component Guide](src/airfogsim/docs/en/component_guide.md)
-- [Task Guide](src/airfogsim/docs/en/task_guide.md)
-- [Trigger Guide](src/airfogsim/docs/en/trigger_guide.md)
-- [Workflow Guide](src/airfogsim/docs/en/workflow_guide.md)
-- [Resource Management Guide](src/airfogsim/docs/en/resource_manager_guide.md)
-- [Data Provider Guide](src/airfogsim/docs/en/dataprovider_guide.md)
-- [Development Helper Tools](src/airfogsim/helper/README.md)
-- [Examples](src/airfogsim/examples/README.md)
+### 🔧 For Developers
+- **[System Architecture](src/airfogsim/docs/en/architecture.md)** - Detailed system design
+- **[Development Guides](src/airfogsim/docs/en/)** - Technical documentation
+- **[Helper Tools](src/airfogsim/helper/README.md)** - Development utilities
 
-## 🤝 Contribution Guidelines
+### 🌍 中文文档
+- **[系统架构](src/airfogsim/docs/cn/architecture.md)** - 系统设计详解
+- **[开发指南](src/airfogsim/docs/cn/)** - 技术文档
 
-We welcome contributions of all kinds, including but not limited to:
+**📋 Documentation Hub**: See [docs/README.md](docs/README.md) for complete navigation
 
-- Reporting issues and suggesting improvements
-- Submitting code improvements and new features
-- Improving documentation and examples
-- Sharing use cases and application scenarios
+## 🤝 Contributing
 
-### Best Practices for Developing New Classes
+We welcome contributions of all kinds! Please see our [Contributing Guide](CONTRIBUTING.md) for detailed information on:
 
-Before developing new agent, component, task, or workflow classes, we recommend using the helper module's class checker tools to see if there are already classes that meet your requirements, avoiding duplicate creation.
+- How to report bugs and request features
+- Development setup and coding standards
+- Testing guidelines and best practices
+- Pull request process
+- Community guidelines
+
+### Quick Start for Contributors
 
 ```bash
-# Check all classes in the system
+# Fork and clone the repository
+git clone https://github.com/YOUR_USERNAME/AirFogSim.git
+cd AirFogSim
+
+# Set up development environment
+pip install -e .[dev]
+
+# Check existing classes before creating new ones
 python -m airfogsim.helper.class_finder --all
 
-# Find agent classes supporting specific states
-python -m airfogsim.helper.class_finder --find-agent position,battery_level
+# Run tests
+pytest tests/ -v
 ```
 
-Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Use the helper module to check existing classes
-4. Commit your changes (`git commit -m 'Add some amazing feature'`)
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Create a Pull Request
+For detailed contribution guidelines, please read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ---
 

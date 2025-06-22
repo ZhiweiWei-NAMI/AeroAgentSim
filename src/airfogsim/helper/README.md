@@ -1,90 +1,72 @@
-# AirFogSim Helper 模块
+# AirFogSim Helper Tools
 
-Helper 模块提供了一系列工具函数和脚本，用于辅助开发和调试 AirFogSim 系统。
+Development utilities and tools for AirFogSim framework development and debugging.
 
-## 主要功能
+## 🔍 Class Finder Tool
 
-### 类检查工具
+The class finder helps developers discover existing classes and avoid duplication.
 
-类检查工具用于检查系统中已实现的各种类及其关键信息，帮助开发者了解系统中已有的类，避免重复创建。
+### 🚀 Quick Usage
 
-#### 使用方法
-
-1. 在代码中使用：
-
-```python
-from airfogsim.helper import check_all_classes, check_agent_classes, find_compatible_agents
-
-# 创建环境
-env = Environment()
-
-# 检查所有类
-check_all_classes(env)
-
-# 检查代理类
-check_agent_classes(env)
-
-# 查找支持特定状态的代理类
-find_compatible_agents(env, ['position', 'battery_level'])
-```
-
-2. 作为命令行工具使用：
-
+**Command Line:**
 ```bash
-# 显示所有类
+# Show all classes
 python -m airfogsim.helper.class_finder --all
 
-# 显示代理类
+# Show specific class types
 python -m airfogsim.helper.class_finder --agent
-
-# 显示组件类
 python -m airfogsim.helper.class_finder --component
-
-# 显示任务类
 python -m airfogsim.helper.class_finder --task
-
-# 显示工作流类
 python -m airfogsim.helper.class_finder --workflow
 
-# 查找支持特定状态的代理类
+# Find classes with specific capabilities
 python -m airfogsim.helper.class_finder --find-agent position,battery_level
-
-# 查找产生特定指标的组件类
 python -m airfogsim.helper.class_finder --find-component speed,processing_power
-
-# 查找产生特定状态的任务类
 python -m airfogsim.helper.class_finder --find-task position,direction
 ```
 
-## 开发指南
+**In Code:**
+```python
+from airfogsim.helper import check_all_classes, find_compatible_agents
+from airfogsim.core.environment import Environment
 
-在开发新的代理、组件、任务或工作流类之前，建议先使用类检查工具查看系统中已有的类，避免重复创建。
+env = Environment()
 
-### 开发新类的步骤
+# Check all available classes
+check_all_classes(env)
 
-1. 使用类检查工具查看系统中已有的类：
-
-```bash
-python -m airfogsim.helper.class_finder --all
+# Find agents supporting specific states
+find_compatible_agents(env, ['position', 'battery_level'])
 ```
 
-2. 如果需要特定功能的类，可以使用查找功能：
+## 🛠️ Development Workflow
 
-```bash
-# 例如，查找支持位置和电池电量状态的代理类
-python -m airfogsim.helper.class_finder --find-agent position,battery_level
-```
+**Before creating new classes**, use the class finder to check existing implementations:
 
-3. 如果找到了符合需求的类，可以直接使用；如果没有找到，再考虑创建新类。
+1. **Check existing classes:**
+   ```bash
+   python -m airfogsim.helper.class_finder --all
+   ```
 
-4. 创建新类时，确保遵循以下规范：
-   - 代理类：定义 `PRODUCED_STATES` 属性
-   - 组件类：定义 `PRODUCED_METRICS` 和 `MONITORED_STATES` 属性
-   - 任务类：定义 `NECESSARY_METRICS` 和 `PRODUCED_STATES` 属性
-   - 工作流类：定义属性模板和创建函数
+2. **Find classes with specific capabilities:**
+   ```bash
+   # Find agents supporting position and battery states
+   python -m airfogsim.helper.class_finder --find-agent position,battery_level
+   ```
 
-5. 创建新类后，使用类检查工具验证类是否正确注册：
+3. **Use existing classes if available**, otherwise create new ones following these conventions:
+   - **Agents**: Define `PRODUCED_STATES` attribute
+   - **Components**: Define `PRODUCED_METRICS` and `MONITORED_STATES` attributes
+   - **Tasks**: Define `NECESSARY_METRICS` and `PRODUCED_STATES` attributes
+   - **Workflows**: Define property templates and creation functions
 
-```bash
-python -m airfogsim.helper.class_finder --all
-```
+4. **Verify new classes** are properly registered:
+   ```bash
+   python -m airfogsim.helper.class_finder --all
+   ```
+
+## 📚 More Information
+
+- **[Development Guide](../docs/en/development_guide.md)** - Detailed development patterns
+- **[API Documentation](../../../docs/api/index.html)** - Complete API reference
+- **[Main Documentation](../../../docs/README.md)** - Documentation hub

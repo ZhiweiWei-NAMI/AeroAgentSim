@@ -1,5 +1,5 @@
 import sqlite3
-import logging
+from airfogsim.utils.logging_config import get_logger
 from typing import Dict, List, Any, Optional, Tuple
 
 # Import the store classes from the db subpackage
@@ -13,7 +13,7 @@ from .db import (
     WorkflowStore
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class SimulationDataService:
     """

@@ -16,7 +16,14 @@ from airfogsim.core import Agent, AgentMeta
 from typing import Dict, List, Optional, Tuple, Any
 import math
 import simpy
+from airfogsim.workflow.inspection import InspectionWorkflow
+from airfogsim.core.enums import TaskPriority
+from airfogsim.core.trigger import TimeTrigger
 import random
+from airfogsim.utils.logging_config import get_logger
+
+# 获取logger
+logger = get_logger(__name__)
 
 class InspectionStationMeta(AgentMeta):
     """巡检站代理元类"""
@@ -72,14 +79,15 @@ class InspectionStation(Agent, metaclass=InspectionStationMeta):
             service_radius=properties.get('service_radius', 1000.0),
             registered_inspection_drones=properties.get('registered_inspection_drones', []),
             inspection_areas=properties.get('inspection_areas', []),
-            inspection_generation_interval=properties.get('inspection_generation_interval', 300)
+            inspection_generation_interval=properties.get('inspection_generation_interval', 300),
+            status=properties.get('status', 'idle')
         )
 
-        # 注册事件
-        self.register_event('inspection_task_generated')
-        self.register_event('drone_registered')
-        self.register_event('drone_unregistered')
-        self.register_event('inspection_workflow_created')
+        # 确保事件存在
+        self.get_event('inspection_task_generated')
+        self.get_event('drone_registered')
+        self.get_event('drone_unregistered')
+        self.get_event('inspection_workflow_created')
 
         # 注册到空间管理器
         if hasattr(env, 'airspace_manager'):
@@ -102,7 +110,7 @@ class InspectionStation(Agent, metaclass=InspectionStationMeta):
         """
         registered_drones = self.get_state('registered_inspection_drones')
         if drone_id in registered_drones:
-            print(f"时间 {self.env.now}: 无人机 {drone_id} 已注册到巡检站 {self.id}")
+            logger.info(f"时间 {self.env.now}: 无人机 {drone_id} 已注册到巡检站 {self.id}")
             return False
 
         # 添加到注册列表
@@ -115,7 +123,7 @@ class InspectionStation(Agent, metaclass=InspectionStationMeta):
             'time': self.env.now
         })
 
-        print(f"时间 {self.env.now}: 无人机 {drone_id} 成功注册到巡检站 {self.id}")
+        logger.info(f"时间 {self.env.now}: 无人机 {drone_id} 成功注册到巡检站 {self.id}")
         return True
 
     def unregister_drone(self, drone_id: str) -> bool:
@@ -130,7 +138,7 @@ class InspectionStation(Agent, metaclass=InspectionStationMeta):
         """
         registered_drones = self.get_state('registered_inspection_drones')
         if drone_id not in registered_drones:
-            print(f"时间 {self.env.now}: 无人机 {drone_id} 未注册到巡检站 {self.id}")
+            logger.info(f"时间 {self.env.now}: 无人机 {drone_id} 未注册到巡检站 {self.id}")
             return False
 
         # 从注册列表移除
@@ -143,7 +151,7 @@ class InspectionStation(Agent, metaclass=InspectionStationMeta):
             'time': self.env.now
         })
 
-        print(f"时间 {self.env.now}: 无人机 {drone_id} 已从巡检站 {self.id} 注销")
+        logger.info(f"时间 {self.env.now}: 无人机 {drone_id} 已从巡检站 {self.id} 注销")
         return True
 
     def get_available_drones(self) -> List[str]:
@@ -196,7 +204,7 @@ class InspectionStation(Agent, metaclass=InspectionStationMeta):
 
         # 确保区域索引有效
         if area_index < 0 or area_index >= len(inspection_areas):
-            print(f"时间 {self.env.now}: 巡检站 {self.id} 指定的区域索引 {area_index} 无效")
+            logger.info(f"时间 {self.env.now}: 巡检站 {self.id} 指定的区域索引 {area_index} 无效")
             return self._generate_random_inspection_points(num_points)
 
         # 获取指定区域
@@ -266,21 +274,25 @@ class InspectionStation(Agent, metaclass=InspectionStationMeta):
         drone_agent = self.env.agents.get(drone_id)
 
         if not drone_agent:
-            print(f"时间 {self.env.now}: 巡检站 {self.id} 找不到无人机 {drone_id}")
+            logger.warning(f"时间 {self.env.now}: 巡检站 {self.id} 找不到无人机 {drone_id}")
             return None
 
         # 创建巡检工作流
-        from airfogsim.workflow.inspection import create_inspection_workflow
-
-        # 创建巡检工作流
-        workflow = create_inspection_workflow(
-            self.env,
-            drone_agent,
-            inspection_points
+        workflow = self.env.create_workflow(
+            InspectionWorkflow,
+            name=f"Inspection of {drone_agent.id}",
+            owner=drone_agent,
+            properties={
+                'inspection_points': inspection_points,
+                'task_priority': TaskPriority.NORMAL,
+                'task_preemptive': False
+            },
+            start_trigger=TimeTrigger(self.env, trigger_time=self.env.now + 1),
+            max_starts=1
         )
 
         if workflow:
-            print(f"时间 {self.env.now}: 巡检站 {self.id} 为无人机 {drone_id} 创建巡检工作流 {workflow.id}")
+            logger.info(f"时间 {self.env.now}: 巡检站 {self.id} 为无人机 {drone_id} 创建巡检工作流 {workflow.id}")
 
             # 触发巡检工作流创建事件
             self.trigger_event('inspection_workflow_created', {
@@ -304,7 +316,7 @@ class InspectionStation(Agent, metaclass=InspectionStationMeta):
         # 选择无人机
         drone_id = self.select_drone_for_inspection()
         if not drone_id:
-            print(f"时间 {self.env.now}: 巡检站 {self.id} 没有可用的无人机")
+            logger.warning(f"时间 {self.env.now}: 巡检站 {self.id} 没有可用的无人机")
             return None
 
         # 生成巡检点
@@ -357,9 +369,9 @@ class InspectionStation(Agent, metaclass=InspectionStationMeta):
                 workflow_id = self.generate_inspection_task()
 
                 if workflow_id:
-                    print(f"时间 {self.env.now}: 巡检站 {self.id} 生成巡检任务 {workflow_id}")
+                    logger.info(f"时间 {self.env.now}: 巡检站 {self.id} 生成巡检任务 {workflow_id}")
                 else:
-                    print(f"时间 {self.env.now}: 巡检站 {self.id} 生成巡检任务失败")
+                    logger.info(f"时间 {self.env.now}: 巡检站 {self.id} 生成巡检任务失败")
 
                 # 等待下一次生成
                 interval = self.get_state('inspection_generation_interval')
@@ -369,6 +381,6 @@ class InspectionStation(Agent, metaclass=InspectionStationMeta):
                 # 处理中断
                 break
             except Exception as e:
-                print(f"时间 {self.env.now}: 巡检站 {self.id} 生成巡检任务时出错: {str(e)}")
+                logger.error(f"Error: 巡检站 {self.id} 生成巡检任务时出错: {str(e)}")
                 # 短暂等待后继续
                 yield self.env.timeout(30)

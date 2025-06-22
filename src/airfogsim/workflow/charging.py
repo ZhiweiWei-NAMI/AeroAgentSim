@@ -15,9 +15,12 @@ AirFogSim充电工作流模块
 """
 
 from airfogsim.core import Workflow, WorkflowMeta
-from airfogsim.core.enums import TriggerOperator, WorkflowStatus
+from airfogsim.core.enums import TriggerOperator, WorkflowStatus, TaskPriority
 import uuid
 from typing import List, Tuple, Any, Dict
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class ChargingWorkflowMeta(WorkflowMeta):
     """充电工作流元类"""
@@ -115,6 +118,7 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
                 'target_state': {},
                 'properties': {
                     'charging_station_id': charging_station.id,
+                    'refresh_interval': 1,
                     'charging_efficiency': 0.95  # 充电效率
                 }
             }
@@ -144,6 +148,15 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
         # 添加优先级和抢占属性
         return self._add_priority_to_task(task_dict)
 
+    def _add_priority_to_task(self, task_dict: Dict) -> Dict:
+        """为任务添加优先级和抢占属性"""
+        if task_dict is None:
+            return None
+        task_priority = TaskPriority.CRITICAL  # 充电任务默认使用最高优先级
+        task_dict['priority'] = task_priority.name.lower()
+        task_dict['preemptive'] = True
+        return task_dict
+
     def _setup_transitions(self):
         """设置状态机转换规则"""
         # 工作流启动时，进入监控电量状态
@@ -165,15 +178,14 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
         self.status_machine.add_transition(
             'requesting_charger',
             'seeking_charger',
-            event_trigger={
-                'source_id': self.owner.id,
-                'event_name': 'possessing_object_added',
-                'value_key': 'object_name',
-                'operator': TriggerOperator.EQUALS,
-                'target_value': 'charging_station'
+            agent_state={
+                'agent_id': self.owner.id,
+                'state_key': 'charging_station.current_allocations',
+                'operator': TriggerOperator.CONTAINS,
+                'target_value': self.owner.id
             },
             callback=lambda context: setattr(
-                self, 'charging_station_id', context['event_value']['object_id']
+                self, 'charging_station_id', self.owner.get_possessing_object('charging_station').id
             )
         )
 
@@ -232,11 +244,11 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
         """添加状态转换回调函数"""
         # 监控状态回调
         def on_monitoring(context):
-            print(f"时间 {self.env.now}: 开始监控 {self.owner.id} 的电池电量")
+            logger.info(f"时间 {self.env.now}: 开始监控 {self.owner.id} 的电池电量")
 
         # 请求充电站回调
         def on_requesting_charger(context):
-            print(f"时间 {self.env.now}: {self.owner.id} 电量低于 {self.battery_threshold}%，开始请求充电站")
+            logger.info(f"时间 {self.env.now}: {self.owner.id} 电量低于 {self.battery_threshold}%，开始请求充电站")
             # 触发充电需求事件
             self.env.event_registry.trigger_event(
                 self.id, 'charging_station_requested',
@@ -251,7 +263,7 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
 
         # 充电中回调
         def on_charging_started(context):
-            print(f"时间 {self.env.now}: {self.owner.id} 到达充电站，开始充电")
+            logger.info(f"时间 {self.env.now}: {self.owner.id} 到达充电站，开始充电")
             # 触发充电开始事件
             self.env.event_registry.trigger_event(
                 self.id, 'charging_started',
@@ -264,7 +276,7 @@ class ChargingWorkflow(Workflow, metaclass=ChargingWorkflowMeta):
 
         # 充电完成回调
         def on_charging_completed(context):
-            print(f"时间 {self.env.now}: {self.owner.id} 充电完成，电量达到 {self.target_charge_level:.1f}%")
+            logger.info(f"时间 {self.env.now}: {self.owner.id} 充电完成，电量达到 {self.target_charge_level:.1f}%")
             # 触发充电完成事件
             self.env.event_registry.trigger_event(
                 self.id, 'charging_completed',

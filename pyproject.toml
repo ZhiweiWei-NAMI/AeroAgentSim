@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "airfogsim"
+version = "1.1.1"
+description = "Low Altitude Space Simulation System"
+readme = "README.md"
+authors = [
+    {name = "Zhiwei Wei", email = "2311769@tongji.edu.cn"}
+]
+requires-python = ">=3.8"
+dependencies = [
+    "simpy",
+    "numpy",
+    "pint",
+    "python-dotenv",
+    "gunicorn", # 用于生产 Docker
+    "requests",
+    "pandas",
+    "openai",
+    "tqdm",
+    "fastapi",
+    "tabulate",
+    "pydantic",
+    "uvicorn[standard]" # 添加 uvicorn, [standard] 包含性能优化库
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+    "black",
+    "flake8",
+    "pip-tools"
+]
+docs = [
+    "sphinx>=4.0",
+    "sphinx-rtd-theme",
+    "sphinx-autodoc-typehints",
+    "myst-parser",
+    "sphinx-copybutton"
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["airfogsim", "airfogsim.*"]
+
+[project.scripts]
+airfogsim = "airfogsim.cli:main"

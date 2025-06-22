@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
-import logging
+from airfogsim.utils.logging_config import get_logger
 import simpy
 from typing import TYPE_CHECKING, Dict, Any, Optional, List, Tuple, Set
 import time
@@ -15,8 +15,7 @@ if TYPE_CHECKING:
     from airfogsim.manager.airspace import AirspaceManager # Import AirspaceManager
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class TrafficDataProvider(DataProvider):
     """

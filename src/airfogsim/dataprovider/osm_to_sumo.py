@@ -13,7 +13,7 @@
 
 import os
 import subprocess
-import logging
+from airfogsim.utils.logging_config import get_logger
 import tempfile
 import urllib.request
 import shutil
@@ -23,8 +23,7 @@ import urllib.parse
 import urllib.request
 
 # 配置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 def download_osm_data(center_lat, center_lng, radius_km, output_file):
     """
@@ -323,7 +322,7 @@ if __name__ == "__main__":
     import math
     # 39.9042 116.4074 1 /home/weizhiwei/data2/weizhiwei/airfogsim/airfogsim-project/frontend/public/data/traffic/sumocfg [可选:车辆数量]
     if len(sys.argv) < 5:
-        print("用法: python osm_to_sumo.py <中心点纬度> <中心点经度> <半径(公里)> <输出目录> [车辆数量上限]")
+        logger.info("用法: python osm_to_sumo.py <中心点纬度> <中心点经度> <半径(公里)> <输出目录> [车辆数量上限]")
         sys.exit(1)
     
     center_lat = float(sys.argv[1])
@@ -335,13 +334,13 @@ if __name__ == "__main__":
     if len(sys.argv) >= 6:
         try:
             vehicle_count = int(sys.argv[5])
-            print(f"设置随机车辆数量上限为: {vehicle_count}")
+            logger.info(f"设置随机车辆数量上限为: {vehicle_count}")
         except ValueError:
-            print(f"警告: 车辆数量参数 '{sys.argv[5]}' 不是有效的整数，将使用默认值（200）")
+            logger.error(f"警告: 车辆数量参数 '{sys.argv[5]}' 不是有效的整数，将使用默认值（200）")
     
     result = osm_to_sumo(center_lat, center_lng, radius_km, output_dir, vehicle_count=vehicle_count)
     if result:
-        print(f"SUMO路网文件生成成功，配置文件位于: {result['sumocfg_file']}")
+        logger.info(f"SUMO路网文件生成成功，配置文件位于: {result['sumocfg_file']}")
     else:
-        print("SUMO路网文件生成失败")
+        logger.error("SUMO路网文件生成失败")
         sys.exit(1)

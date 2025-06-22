@@ -12,6 +12,9 @@ from airfogsim.component.charging import ChargingComponent
 from airfogsim.core.enums import WorkflowStatus, TriggerOperator
 from airfogsim.manager.workflow import Workflow
 from airfogsim.core.utils import calculate_distance
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 def run_trigger_example():
     # 创建环境
@@ -192,15 +195,15 @@ def run_trigger_example():
             current_level = drone.get_state('battery_level')
             if current_level > 0:
                 drone.update_state('battery_level', current_level - 5)
-                print(f"时间 {env.now}: 电池电量: {drone.get_state('battery_level')}%")
+                logger.info(f"时间 {env.now}: 电池电量: {drone.get_state('battery_level')}%")
             yield env.timeout(10)
     
     env.process(battery_drain())
     
     # 运行模拟
-    print("开始模拟...")
+    logger.info("开始模拟...")
     env.run(until=100)
-    print("模拟结束")
+    logger.info("模拟结束")
 
 if __name__ == "__main__":
     run_trigger_example()

@@ -14,11 +14,14 @@ AirFogSim通信组件模块
 from airfogsim.core.component import Component
 from typing import List, Dict, Any, Optional, Tuple
 import math
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class CommunicationComponent(Component):
     """代表代理的通信能力，管理无线通信资源的组件"""
     PRODUCED_METRICS = ['signal_strength', 'bandwidth', 'latency', 'transmission_rate', 'communication_quality']
-    MONITORED_STATES = ['battery_level', 'position', 'trans_target_agent_id', 'status']
+    MONITORED_STATES = ['battery_level', 'position', 'trans_target_agent_id', 'status', 'transmitting_status']
 
     def __init__(self, env, agent, name: Optional[str] = None,
                  supported_events: List[str] = ['communication_status_changed'],
@@ -44,7 +47,7 @@ class CommunicationComponent(Component):
         # 获取频谱管理器
         self.frequency_manager = getattr(env, 'frequency_manager', None)
         if not self.frequency_manager:
-            print(f"警告: 环境中没有频谱管理器，通信组件将使用模拟数据")
+            logger.warning(f"警告: 环境中没有频谱管理器，通信组件将使用模拟数据")
         self.current_frequency_ids = []
 
 
@@ -61,7 +64,8 @@ class CommunicationComponent(Component):
         # 获取代理当前状态
         battery_level = self.agent.get_state('battery_level', 100.0)
         position = self.agent.get_state('position', (0, 0, 0))
-        is_transmitting = self.agent.get_state('is_transmitting')
+        transmitting_status = self.agent.get_state('transmitting_status', 'idle')
+        is_transmitting = transmitting_status == 'transmitting'
         trans_target_agent_id = self.agent.get_state('trans_target_agent_id')
         current_frequency_ids = self.current_frequency_ids
 
@@ -197,7 +201,7 @@ class CommunicationComponent(Component):
             # 保存所有分配的资源ID
             self.current_frequency_ids=resource_ids
 
-            print(f"时间 {self.env.now}: 代理 {self.agent.id} 成功分配频率资源 {resource_ids}")
+            logger.info(f"时间 {self.env.now}: 代理 {self.agent.id} 成功分配频率资源 {resource_ids}")
 
             return True
 
@@ -219,7 +223,7 @@ class CommunicationComponent(Component):
             # 清空当前频率ID列表
             self.current_frequency_ids = []
 
-            print(f"时间 {self.env.now}: 代理 {self.agent.id} 释放频率资源 {current_frequency_ids}")
+            logger.info(f"时间 {self.env.now}: 代理 {self.agent.id} 释放频率资源 {current_frequency_ids}")
 
             return True
 

@@ -12,10 +12,12 @@ AirFogSim无人机代理模块
 @author: zhiwei wei
 @email: 2311769@tongji.edu.cn
 """
-
+import uuid
 from airfogsim.agent.terminal import TerminalAgent, TerminalAgentMeta
 from airfogsim.workflow.charging import ChargingWorkflow
 from airfogsim.core.llm_client import LLMClient
+from airfogsim.utils.logging_config import get_logger
+logger = get_logger(__name__)
 
 class DroneAgentMeta(TerminalAgentMeta):
     """无人机代理元类"""
@@ -32,9 +34,10 @@ class DroneAgentMeta(TerminalAgentMeta):
         mcs.register_template(cls, 'battery_level', (float, int), True,
                             lambda lvl: 0 <= lvl <= 100,
                             "无人机电池电量百分比 (0-100)")
-        mcs.register_template(cls, 'status', str, True,
-                            lambda s: s in ['idle', 'active','flying', 'landing', 'charging', 'error', 'waiting_to_charge'],
-                            "无人机当前状态")
+        # 无人机移动状态
+        mcs.register_template(cls, 'moving_status', str, True,
+                            lambda s: s in ['idle', 'flying', 'landing', 'hovering'],
+                            "无人机当前移动状态")
         mcs.register_template(cls, 'direction', tuple, False,
                             lambda pos: len(pos) == 3 and all(isinstance(x, (int, float)) for x in pos),
                             "无人机的方向向量 (dx, dy, dz)")
@@ -44,6 +47,9 @@ class DroneAgentMeta(TerminalAgentMeta):
                             "无人机的计算负载")
         mcs.register_template(cls, 'altitude', (int, float), False, None,
                             "无人机的高度 (m)")
+        # max_allowed_speed
+        mcs.register_template(cls, 'max_allowed_speed', float, False, None,
+                            "无人机允许的最大速度 (km/h)")
         # battery_capacity
         mcs.register_template(cls, 'battery_capacity', float, False, None,
                             "无人机电池容量 (mAh)")
@@ -67,17 +73,24 @@ class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):
 
     def __init__(self, env, agent_name: str, properties=None, agent_id=None):
         super().__init__(env, agent_name, properties)
-        self.id = agent_id or f"agent_{id(self)}"
+        self.id = agent_id or f"agent_{uuid.uuid4().hex[:8]}"
         self.initialize_states(
             level_class=DroneAgent,
             position=properties.get('position', [0, 0, 0]),
             battery_level=properties.get('battery_level', 100.0),
-            status='idle',
-            speed=0.0,
+            status=properties.get('status', 'idle'),
+            moving_status=properties.get('moving_status', 'idle'),
+            direction=properties.get('direction', (0, 0, 0)),
+            distance_traveled=properties.get('distance_traveled', 0.0),
+            computation_load=properties.get('computation_load', 0.0),
+            altitude=properties.get('altitude', 0.0),
+            battery_capacity=properties.get('battery_capacity', 5000.0),
+            charge_cycles=properties.get('charge_cycles', 0),
+            external_force=properties.get('external_force', (0, 0, 0))
         )
 
         # 初始化 LLM 客户端，传入环境实例
-        self.llm_client = LLMClient(env=self.env)
+        self.llm_client = None
 
     def register_event_listeners(self):
         """注册无人机需要监听的事件"""
@@ -100,8 +113,8 @@ class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):
         active_workflows = self.get_active_workflows()
         if not active_workflows:
             # 如果没有活跃的工作流，则简单地保持空闲状态
-            if self.get_state('status') != 'charging':  # 如果不在充电，则设置为空闲
-                self.update_state('status', 'idle')
+            self.update_state('moving_status', 'idle')
+            self.update_state('status', 'idle')
             return
 
         # 检查是否有充电工作流
@@ -109,7 +122,8 @@ class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):
             if isinstance(workflow, ChargingWorkflow):
                 # 如果当前在充电，更新无人机状态
                 if workflow.status_machine.state == 'charging':
-                    self.update_state('status', 'charging')
+                    self.update_state('moving_status', 'idle')
+                    self.update_state('status', 'active')
                 break
 
         # 无人机特定的逻辑，如使用LLM进行任务规划等
@@ -120,15 +134,19 @@ class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):
     def _check_battery_level(self):
         """检查电池电量并决定是否需要终止当前任务"""
         battery_level = self.get_state('battery_level')
+        status = self.get_state('status')
+        if status == 'error':
+            return False
 
         # 如果电量极低(小于5%)，打印警告并取消所有任务
         if battery_level < 5.0:
-            print(f"时间 {self.env.now}: 警告! {self.id} 电量极低({battery_level:.1f}%)，取消所有任务!")
+            logger.warning(f"时间 {self.env.now}: 警告! {self.id} 电量极低({battery_level:.1f}%)，取消所有任务!")
             self._cancel_all_tasks()
+            self.update_state('moving_status', 'idle')
             self.update_state('status', 'error')
             return False
         elif battery_level < 10.0:
-            print(f"时间 {self.env.now}: 注意! {self.id} 电量低({battery_level:.1f}%)，应尽快充电!")
+            logger.warning(f"时间 {self.env.now}: 注意! {self.id} 电量低({battery_level:.1f}%)，应尽快充电!")
             return True
         return True
 

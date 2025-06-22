@@ -16,6 +16,9 @@ from airfogsim.core import Workflow, WorkflowMeta
 from airfogsim.core.enums import TriggerOperator, WorkflowStatus
 import uuid
 from typing import List, Tuple, Any, Dict, Optional
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class OrderExecutionWorkflowMeta(WorkflowMeta):
     """订单执行工作流元类"""
@@ -71,7 +74,7 @@ class OrderExecutionWorkflow(Workflow, metaclass=OrderExecutionWorkflowMeta):
         # 分配的无人机ID
         self.assigned_drone = properties.get('assigned_drone', None)
         # 目标代理ID
-        self.target_agent_id = properties.get('target_agent_id', None)
+        self.target_agent_id = properties.get('target_agent_id', 'unknown')
         # 关联的物流工作流ID
         self.logistics_workflow_id = properties.get('logistics_workflow_id', None)
         # 生成的物品ID
@@ -274,11 +277,11 @@ class OrderExecutionWorkflow(Workflow, metaclass=OrderExecutionWorkflowMeta):
         """添加状态转换回调函数"""
         # 创建物品完成回调
         def on_payload_created(context):
-            print(f"时间 {self.env.now}: 订单 {self.id} 创建物品完成，物品ID: {self.payload_id}")
+            logger.info(f"时间 {self.env.now}: 订单 {self.id} 创建物品完成，物品ID: {self.payload_id}")
 
         # 分配无人机完成回调
         def on_drone_assigned(context):
-            print(f"时间 {self.env.now}: 订单 {self.id} 分配无人机完成，无人机ID: {self.assigned_drone}，物流工作流ID: {self.logistics_workflow_id}")
+            logger.info(f"时间 {self.env.now}: 订单 {self.id} 分配无人机完成，无人机ID: {self.assigned_drone}，物流工作流ID: {self.logistics_workflow_id}")
             # 触发配送开始事件
             self.env.event_registry.trigger_event(
                 self.id, 'delivery_started',
@@ -292,7 +295,7 @@ class OrderExecutionWorkflow(Workflow, metaclass=OrderExecutionWorkflowMeta):
 
         # 配送完成回调
         def on_delivery_completed(context):
-            print(f"时间 {self.env.now}: 订单 {self.id} 配送完成")
+            logger.info(f"时间 {self.env.now}: 订单 {self.id} 配送完成")
             # 触发配送完成事件
             self.env.event_registry.trigger_event(
                 self.id, 'delivery_completed',

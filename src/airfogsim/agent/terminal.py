@@ -12,7 +12,7 @@ AirFogSim终端代理模块
 @author: zhiwei wei
 @email: 2311769@tongji.edu.cn
 """
-
+import uuid
 from airfogsim.core.agent import Agent, AgentMeta
 
 class TerminalAgentMeta(AgentMeta):
@@ -41,8 +41,9 @@ class TerminalAgentMeta(AgentMeta):
         mcs.register_template(cls, 'storage_usage', float, True,
                             lambda u: 0 <= u <= 100,
                             "存储使用率百分比 (0-100)")
-        mcs.register_template(cls, 'is_computing', bool, True, None,
-                            "是否正在进行计算")
+        mcs.register_template(cls, 'computing_status', str, True,
+                            lambda s: s in ['idle', 'computing', 'paused', 'completed'],
+                            "计算状态")
         mcs.register_template(cls, 'compute_progress', float, True,
                             lambda p: 0 <= p <= 1.0,
                             "计算进度 (0.0-1.0)")
@@ -56,8 +57,9 @@ class TerminalAgentMeta(AgentMeta):
         mcs.register_template(cls, 'bandwidth_usage', float, True,
                             lambda u: 0 <= u <= 100,
                             "带宽使用率百分比 (0-100)")
-        mcs.register_template(cls, 'is_transmitting', bool, True, None,
-                            "是否正在传输数据")
+        mcs.register_template(cls, 'transmitting_status', str, True,
+                            lambda s: s in ['idle', 'transmitting', 'paused', 'completed'],
+                            "传输状态")
         mcs.register_template(cls, 'transmission_progress', float, True,
                             lambda p: 0 <= p <= 1.0,
                             "传输进度 (0.0-1.0)")
@@ -67,14 +69,27 @@ class TerminalAgentMeta(AgentMeta):
         mcs.register_template(cls, 'trans_target_agent_id', str, False, None,
                             "传输目标代理ID")
 
-        # 感知相关状态
-        mcs.register_template(cls, 'is_sensing', bool, True, None,
-                            "是否正在进行感知")
+        # 感知相关状态 - 通用
         mcs.register_template(cls, 'sensing_progress', float, True,
                             lambda p: 0 <= p <= 1.0,
                             "感知进度 (0.0-1.0)")
         mcs.register_template(cls, 'sensing_speed', float, False, None,
                             "感知速度 (单位/秒)")
+
+        # 图像感知状态
+        mcs.register_template(cls, 'image_sensing_status', str, True,
+                            lambda s: s in ['idle', 'sensing', 'paused', 'completed'],
+                            "图像感知状态")
+
+        # 电磁感知状态
+        mcs.register_template(cls, 'em_sensing_status', str, True,
+                            lambda s: s in ['idle', 'sensing', 'paused', 'completed'],
+                            "电磁感知状态")
+
+        # 障碍物感知状态
+        mcs.register_template(cls, 'object_sensing_status', str, True,
+                            lambda s: s in ['idle', 'sensing', 'paused', 'completed'],
+                            "障碍物感知状态")
 
         return cls
 
@@ -88,7 +103,7 @@ class TerminalAgent(Agent, metaclass=TerminalAgentMeta):
 
     def __init__(self, env, agent_name: str, properties=None, agent_id=None):
         super().__init__(env, agent_name, properties)
-        self.id = agent_id or f"agent_{id(self)}"
+        self.id = agent_id or f"agent_{uuid.uuid4().hex[:8]}"
 
         # 初始化状态
         self.initialize_states(
@@ -98,21 +113,21 @@ class TerminalAgent(Agent, metaclass=TerminalAgentMeta):
             cpu_usage=properties.get('cpu_usage', 0.0),
             memory_usage=properties.get('memory_usage', 0.0),
             storage_usage=properties.get('storage_usage', 0.0),
-            is_computing=False,
+            computing_status='idle',
             compute_progress=0.0,
             compute_speed=0.0,
             connection_status=properties.get('connection_status', 'connected'),
             bandwidth_usage=properties.get('bandwidth_usage', 0.0),
-            is_transmitting=False,
+            transmitting_status='idle',
             transmission_progress=0.0,
             transmission_speed=0.0,
-            is_sensing=False,
             sensing_progress=0.0,
-            sensing_speed=0.0
+            sensing_speed=0.0,
+            image_sensing_status='idle',
+            em_sensing_status='idle',
+            object_sensing_status='idle',
+            status='idle'
         )
-
-        # 存储管理的文件
-        self.managed_files = {}
 
     def _process_custom_logic(self):
         """执行终端特定的逻辑"""
@@ -130,15 +145,19 @@ class TerminalAgent(Agent, metaclass=TerminalAgentMeta):
         """重置任务相关状态"""
         if not any(task['status'] == 'running' for task in self.managed_tasks.values()):
             # 如果没有正在运行的任务，重置所有任务状态
-            self.update_state('is_computing', False)
+            self.update_state('computing_status', 'idle')
             self.update_state('compute_progress', 0.0)
             self.update_state('compute_speed', 0.0)
-            self.update_state('is_transmitting', False)
+            self.update_state('transmitting_status', 'idle')
             self.update_state('transmission_progress', 0.0)
             self.update_state('transmission_speed', 0.0)
-            self.update_state('is_sensing', False)
+            # 重置所有感知状态
+            self.update_state('image_sensing_status', 'idle')  # 图像感知状态
+            self.update_state('em_sensing_status', 'idle')  # 电磁感知状态
+            self.update_state('object_sensing_status', 'idle')  # 障碍物感知状态
             self.update_state('sensing_progress', 0.0)
             self.update_state('sensing_speed', 0.0)
+            self.update_state('status', 'idle')
 
 
     def register_event_listeners(self):
@@ -166,7 +185,6 @@ class TerminalAgent(Agent, metaclass=TerminalAgentMeta):
             'components': self.get_component_names(),
             'active_tasks_count': len([t for t in self.managed_tasks.values() if t['status'] == 'running']),
             'active_workflows': [w.id for w in self.get_active_workflows()],
-            'managed_files_count': len(self.managed_files)
         })
         return details
 

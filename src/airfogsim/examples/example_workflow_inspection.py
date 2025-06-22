@@ -5,6 +5,9 @@ from airfogsim.workflow.inspection import create_inspection_workflow
 from openai import OpenAI  # OpenAI新版客户端
 # 在文件顶部导入模块
 from airfogsim.workflow.charging import create_charging_workflow
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # 在创建无人机后，添加充电工作流
 def setup_charging_workflow(env, drone, battery_threshold=50):
@@ -26,10 +29,10 @@ def setup_charging_workflow(env, drone, battery_threshold=50):
             battery_threshold=battery_threshold,
             target_charge_level=90
         )
-        print(f"为无人机 {drone.id} 创建充电工作流，充电站位置: {charging_station_location}")
+        logger.info(f"为无人机 {drone.id} 创建充电工作流，充电站位置: {charging_station_location}")
         return charging_workflow
     else:
-        print(f"未找到可用的充电站为无人机 {drone.id}")
+        logger.info(f"未找到可用的充电站为无人机 {drone.id}")
         return None
 
 
@@ -93,9 +96,7 @@ drone.add_component(move_component)
 drone.add_component(charging_component)
 
 # 为无人机设置充电工作流（由触发器自动启动）
-charging_workflow = setup_charging_workflow(env, drone, battery_threshold=50)
-if charging_workflow:
-    print(f"充电工作流已创建，当电量低于{0.3*100}%时将自动启动")
+charging_workflow = setup_charging_workflow(env, drone, battery_threshold=10)
 
 # 创建巡检工作流，定义飞行路径
 # 从起点(10,10,0)起飞，经过目的地(800,800,0)，返回起点
@@ -116,9 +117,6 @@ workflow = create_inspection_workflow(env, drone, waypoints)
 # 不再需要手动分配资源，组件会在任务执行过程中自动处理资源分配
 # 这是因为我们重构了Component基类，使其在_execute_task_wrapper方法中
 # 调用子类的_allocate_task_resources和_release_task_resources方法
-
-# 直接开始工作流，理论上需要用workflow_manager来管理
-workflow.start()
 
 # 运行模拟
 env.run(until=1000)

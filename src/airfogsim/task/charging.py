@@ -14,6 +14,9 @@ AirFogSim充电任务模块
 
 from airfogsim.core.task import Task
 from typing import Dict, Any, Optional
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class RequestChargingStationTask(Task):
     """
@@ -63,12 +66,15 @@ class RequestChargingStationTask(Task):
         elapsed_time = self.env.now - self.last_update_time
         remain_time = performance_metrics.get('request_processing_time', float('inf'))
         self.waiting_time += elapsed_time
-        self.progress = min(1.0, self.waiting_time / (remain_time + self.waiting_time + 1e-6))
+        self.progress = min(1.0, self.waiting_time / (remain_time + self.waiting_time + 1e-9))
+        # 对self.progress进行浮点数比较时，使用1e-6作为epsilon值
+        if self.progress >= 1.0 - 1e-6:
+            self.progress = 1.0
 
     def _get_task_specific_state_repr(self) -> Dict:
         """返回任务特定状态的表示"""
         return {
-            'status': 'charger_assigned' if self.progress >= 1.0 else 'waiting_to_charge'
+            'status': 'active' if self.progress < 1.0 else 'idle'
         }
 
     def _possessing_object_on_complete(self):
@@ -77,19 +83,19 @@ class RequestChargingStationTask(Task):
         """
         assert self.charging_station.is_allocated(self.agent_id), \
             f"充电站 {self.charging_station.id} 未分配给代理 {self.agent_id}"
-        print(f"时间 {self.env.now}: 代理 {self.agent_id} 成功获取充电站资源 {self.charging_station.id}")
+        logger.info(f"时间 {self.env.now}: 代理 {self.agent_id} 成功获取充电站资源 {self.charging_station.id}")
 
     def _possessing_object_on_fail(self):
         """
         任务失败时的处理
         """
-        print(f"时间 {self.env.now}: 代理 {self.agent_id} 请求充电站失败: {self.failure_reason}")
+        logger.warning(f"时间 {self.env.now}: 代理 {self.agent_id} 请求充电站失败: {self.failure_reason}")
 
     def _possessing_object_on_cancel(self):
         """
         任务取消时的处理
         """
-        print(f"时间 {self.env.now}: 代理 {self.agent_id} 请求充电站被取消")
+        logger.warning(f"时间 {self.env.now}: 代理 {self.agent_id} 请求充电站被取消")
 
 
 class ChargingTask(Task):
@@ -170,7 +176,7 @@ class ChargingTask(Task):
         # 返回所有在 PRODUCED_STATES 中定义的状态
         return {
             'battery_level': self.current_battery_level,
-            'status': 'charging' if self.progress < 1.0 else 'idle',
+            'status': 'active' if self.progress < 1.0 else 'idle',
             'charge_cycles': self.properties.get('charge_cycles', 0) + (1 if self.progress >= 1.0 else 0)
         }
 
@@ -181,7 +187,7 @@ class ChargingTask(Task):
         # 从代理的possessing_objects中移除充电站
         if self.agent.get_possessing_object('charging_station'):
             self.agent.remove_possessing_object('charging_station')
-            print(f"时间 {self.env.now}: 代理 {self.agent_id} 充电完成，释放充电站资源")
+            logger.info(f"时间 {self.env.now}: 代理 {self.agent_id} 充电完成，释放充电站资源")
 
     def _possessing_object_on_fail(self):
         """
@@ -190,7 +196,7 @@ class ChargingTask(Task):
         # 从代理的possessing_objects中移除充电站
         if self.agent.get_possessing_object('charging_station'):
             self.agent.remove_possessing_object('charging_station')
-            print(f"时间 {self.env.now}: 代理 {self.agent_id} 充电失败，释放充电站资源: {self.failure_reason}")
+            logger.warning(f"时间 {self.env.now}: 代理 {self.agent_id} 充电失败，释放充电站资源: {self.failure_reason}")
 
     def _possessing_object_on_cancel(self):
         """
@@ -199,4 +205,4 @@ class ChargingTask(Task):
         # 从代理的possessing_objects中移除充电站
         if self.agent.get_possessing_object('charging_station'):
             self.agent.remove_possessing_object('charging_station')
-            print(f"时间 {self.env.now}: 代理 {self.agent_id} 充电被取消，释放充电站资源")
+            logger.warning(f"时间 {self.env.now}: 代理 {self.agent_id} 充电被取消，释放充电站资源")

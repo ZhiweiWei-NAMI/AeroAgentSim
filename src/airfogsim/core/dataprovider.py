@@ -26,6 +26,9 @@ class DataProvider(ABC):
         """
         self.env = env
         self.config = config if config is not None else {}
+        self.is_blocked = False
+        self.block_until = 0
+        self.registered_sources = []
         logger.info(f"Initializing {self.__class__.__name__} with config: {self.config}")
 
     @abstractmethod
@@ -46,6 +49,64 @@ class DataProvider(ABC):
         It might start one or more SimPy processes.
         """
         pass
+
+    def block(self, duration: float):
+        """
+        Block this data provider for a specified duration.
+        When blocked, the provider should not trigger events or provide data.
+
+        Args:
+            duration: The duration (in simulation time) to block the provider.
+        """
+        self.is_blocked = True
+        self.block_until = self.env.now + duration
+        logger.info(f"{self.__class__.__name__} blocked until {self.block_until}")
+        # Start a process to unblock after the duration
+        self.env.process(self._unblock_after_duration(duration))
+
+    def _unblock_after_duration(self, duration):
+        """
+        SimPy process to unblock the provider after a specified duration.
+
+        Args:
+            duration: The duration (in simulation time) to wait before unblocking.
+        """
+        yield self.env.timeout(duration)
+        self.unblock()
+
+    def unblock(self):
+        """
+        Unblock this data provider.
+        After unblocking, the provider can resume triggering events and providing data.
+        """
+        self.is_blocked = False
+        logger.info(f"{self.__class__.__name__} unblocked at {self.env.now}")
+
+    def register_source(self, provider):
+        """
+        Register another data provider as a source for this provider.
+        This allows providers to interact with each other.
+
+        Args:
+            provider: The data provider to register as a source.
+        """
+        if provider not in self.registered_sources:
+            self.registered_sources.append(provider)
+            logger.info(f"{provider.__class__.__name__} registered as source for {self.__class__.__name__}")
+
+    def get_registered_sources(self, provider_type=None):
+        """
+        Get all registered sources, optionally filtered by type.
+
+        Args:
+            provider_type: Optional type to filter sources by.
+
+        Returns:
+            List of registered sources, filtered by type if specified.
+        """
+        if provider_type is None:
+            return self.registered_sources
+        return [provider for provider in self.registered_sources if isinstance(provider, provider_type)]
 
     # Note: Standard callback methods (like on_weather_changed) will be defined
     # in the concrete subclasses (e.g., WeatherDataProvider) as they are specific

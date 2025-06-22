@@ -17,6 +17,9 @@ from airfogsim.core import Workflow, WorkflowMeta
 from airfogsim.core.enums import TriggerOperator, WorkflowStatus
 import uuid
 from typing import List, Tuple, Any, Dict
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class LogisticsWorkflowMeta(WorkflowMeta):
     """物流工作流元类"""
@@ -69,9 +72,9 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
         # 货物列表
         self.payloads = properties.get('payloads', [])
         # 源代理ID
-        self.source_agent_id = properties.get('source_agent_id')
+        self.source_agent_id = properties.get('source_agent_id', 'unknown')
         # 目标代理ID
-        self.target_agent_id = properties.get('target_agent_id')
+        self.target_agent_id = properties.get('target_agent_id', 'unknown')
 
         # 工作流的事件
         event_names = ['pickup_started', 'pickup_completed', 'transport_started',
@@ -264,7 +267,7 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
         """添加状态转换回调函数"""
         # 取件开始回调
         def on_pickup_started(context):
-            print(f"时间 {self.env.now}: {self.owner.id} 开始取件，目标位置: {self.pickup_location}")
+            logger.info(f"时间 {self.env.now}: {self.owner.id} 开始取件，目标位置: {self.pickup_location}")
             # 触发取件开始事件
             self.env.event_registry.trigger_event(
                 self.id, 'pickup_started',
@@ -277,7 +280,7 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
 
         # 运输开始回调
         def on_transport_started(context):
-            print(f"时间 {self.env.now}: {self.owner.id} 取件完成，开始运输货物 {self.current_payload_id}")
+            logger.info(f"时间 {self.env.now}: {self.owner.id} 取件完成，开始运输货物 {self.current_payload_id}")
             # 触发取件完成和运输开始事件
             self.env.event_registry.trigger_event(
                 self.id, 'pickup_completed',
@@ -298,7 +301,7 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
 
         # 交付开始回调
         def on_delivery_started(context):
-            print(f"时间 {self.env.now}: {self.owner.id} 到达交付点，开始交付货物 {self.current_payload_id}")
+            logger.info(f"时间 {self.env.now}: {self.owner.id} 到达交付点，开始交付货物 {self.current_payload_id}")
             # 触发运输完成和交付开始事件
             self.env.event_registry.trigger_event(
                 self.id, 'transport_completed',
@@ -320,7 +323,7 @@ class LogisticsWorkflow(Workflow, metaclass=LogisticsWorkflowMeta):
 
         # 交付完成回调
         def on_delivery_completed(context):
-            print(f"时间 {self.env.now}: {self.owner.id} 完成货物 {self.current_payload_id} 的交付")
+            logger.info(f"时间 {self.env.now}: {self.owner.id} 完成货物 {self.current_payload_id} 的交付")
             # 触发交付完成事件
             self.env.event_registry.trigger_event(
                 self.id, 'delivery_completed',

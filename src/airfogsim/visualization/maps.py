@@ -12,12 +12,12 @@ AirFogSim地图可视化模块
 @email: 2311769@tongji.edu.cn
 """
 
-import logging
+from airfogsim.utils.logging_config import get_logger
 from typing import Dict, Any, List, Tuple, Optional
 import json
 import math
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class MapService:
     """

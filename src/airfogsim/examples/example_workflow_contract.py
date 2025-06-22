@@ -9,8 +9,11 @@ from airfogsim.core.environment import Environment
 from airfogsim.agent.drone import DroneAgent
 from airfogsim.agent.terminal import TerminalAgent
 from airfogsim.component import MoveToComponent
-from airfogsim.component.sensing import SensingComponent
+from airfogsim.component.img_sensor import ImageSensingComponent
 import uuid
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 def run_multi_task_contract_example():
     # 创建环境
@@ -29,7 +32,7 @@ def run_multi_task_contract_example():
     
     # 添加组件到无人机
     move_component = MoveToComponent(env, drone, name="移动组件")
-    sensing_component = SensingComponent(env, drone, name="感知组件")
+    sensing_component = ImageSensingComponent(env, drone, name="感知组件")
     drone.add_component(move_component)
     drone.add_component(sensing_component)
     
@@ -95,13 +98,13 @@ def run_multi_task_contract_example():
         description="执行多任务巡检合约"
     )
     
-    print(f"创建了合约 {contract_id}")
+    logger.info(f"创建了合约 {contract_id}")
     
     # 接受合约
     def accept_contract():
         yield env.timeout(10)  # 延迟10秒接受合约
         success = contract_manager.accept_contract(contract_id, drone.id)
-        print(f"无人机接受合约: {'成功' if success else '失败'}")
+        logger.info(f"无人机接受合约: {'成功' if success else '失败'}")
     
     env.process(accept_contract())
     
@@ -109,12 +112,12 @@ def run_multi_task_contract_example():
     env.run(until=1000)
     
     # 打印最终结果
-    print("\n=== 合约执行结果 ===")
+    logger.info("\n=== 合约执行结果 ===")
     contract = contract_manager.get_contract(contract_id)
-    print(f"合约状态: {contract['status']}")
-    print(f"完成时间: {contract['completion_time']}")
-    print(f"地面站余额: {contract_manager.get_agent_balance(terminal.id)}")
-    print(f"无人机余额: {contract_manager.get_agent_balance(drone.id)}")
+    logger.info(f"合约状态: {contract['status']}")
+    logger.info(f"完成时间: {contract['completion_time']}")
+    logger.info(f"地面站余额: {contract_manager.get_agent_balance(terminal.id)}")
+    logger.info(f"无人机余额: {contract_manager.get_agent_balance(drone.id)}")
 
 if __name__ == "__main__":
     run_multi_task_contract_example()

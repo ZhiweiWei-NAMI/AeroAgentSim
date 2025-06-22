@@ -1,11 +1,11 @@
 import sqlite3
 from datetime import datetime
-import logging
+from airfogsim.utils.logging_config import get_logger
 # Consider using a proper password hashing library like passlib or werkzeug.security
 # For simplicity, this example continues with plain text, which is NOT secure.
 # from passlib.hash import pbkdf2_sha256 as hasher
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class UserStore:
     """处理用户数据的存储和验证"""

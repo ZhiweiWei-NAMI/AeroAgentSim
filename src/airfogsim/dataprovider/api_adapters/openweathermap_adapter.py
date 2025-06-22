@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import requests
-import logging
+from airfogsim.utils.logging_config import get_logger
 from datetime import datetime
 from typing import Dict, Any, Optional, Tuple
 import json
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+import os
 
 def _fetch_api_data(api_key: str, lat: float, lon: float, endpoint: str = "weather") -> Optional[Dict[str, Any]]:
     """
@@ -23,9 +23,9 @@ def _fetch_api_data(api_key: str, lat: float, lon: float, endpoint: str = "weath
         API response as a dictionary, or None if an error occurs.
     """
     base_url = "https://api.openweathermap.org/data/2.5/"
-    url = f"{base_url}{endpoint}?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+    url = f"{base_url}{endpoint}?lat={lat}&lon={lon}&APPID={api_key}&units=metric"
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=30)
         response.raise_for_status()  # Raise an exception for HTTP errors (4xx or 5xx)
         logger.debug(f"Successfully fetched data from {endpoint} for ({lat}, {lon})")
         return response.json()

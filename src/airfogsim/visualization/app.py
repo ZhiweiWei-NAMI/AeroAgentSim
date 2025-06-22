@@ -1,15 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import logging
+from airfogsim.utils.logging_config import get_logger
 from fastapi import WebSocket, WebSocketDisconnect
 from .data_service import SimulationDataService
 from .real_integration import RealSimulationIntegration
 from .ws_manager import ConnectionManager
 
 # 设置日志记录
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # 创建FastAPI应用
 app = FastAPI(title="AirFogSim API", description="无人机仿真可视化系统API")

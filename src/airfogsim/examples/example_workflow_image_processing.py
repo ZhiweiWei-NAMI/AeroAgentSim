@@ -8,10 +8,13 @@ from airfogsim.core.environment import Environment
 from airfogsim.agent.drone import DroneAgent
 from airfogsim.component.mobility import MoveToComponent
 from airfogsim.component.computation import ComputationComponent
-from airfogsim.component.sensing import SensingComponent
-from airfogsim.manager.file_manager import FileManager
+from airfogsim.component.img_sensor import ImageSensingComponent
+from airfogsim.manager.file import FileManager
 from airfogsim.manager.airspace import AirspaceManager
 from airfogsim.workflow.image_processing import create_image_processing_workflow
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 def run_image_processing_simulation():
     """运行环境图像感知处理仿真"""
@@ -65,7 +68,7 @@ def run_image_processing_simulation():
     )
     
     drone.add_component(
-        SensingComponent(
+        ImageSensingComponent(
             env=env,
             agent=drone,
             properties={
@@ -97,25 +100,25 @@ def run_image_processing_simulation():
     )
     
     # 启动仿真
-    print("开始环境图像感知处理仿真...")
+    logger.info("开始环境图像感知处理仿真...")
     env.run(until=1000)
-    print("仿真完成!")
+    logger.info("仿真完成!")
     
     # 输出结果
-    print("\n工作流执行结果:")
-    print(f"工作流状态: {workflow.status}")
-    print(f"感知的文件: {workflow.collected_file_ids}")
-    print(f"处理后的文件: {workflow.processed_file_ids}")
+    logger.info("\n工作流执行结果:")
+    logger.info(f"工作流状态: {workflow.status}")
+    logger.info(f"感知的文件: {workflow.collected_file_ids}")
+    logger.info(f"处理后的文件: {workflow.processed_file_ids}")
     
     # 输出文件详情
-    print("\n文件详情:")
+    logger.info("\n文件详情:")
     for file_id in workflow.collected_file_ids:
         file_info = env.file_manager.get_file(file_id)
-        print(f"感知文件 {file_id}: {file_info.get('name')} - 类型: {file_info.get('type')}")
+        logger.info(f"感知文件 {file_id}: {file_info.get('name')} - 类型: {file_info.get('type')}")
     
     for file_id in workflow.processed_file_ids:
         file_info = env.file_manager.get_file(file_id)
-        print(f"处理文件 {file_id}: {file_info.get('name')} - 类型: {file_info.get('type')}")
+        logger.info(f"处理文件 {file_id}: {file_info.get('name')} - 类型: {file_info.get('type')}")
 
 if __name__ == "__main__":
     run_image_processing_simulation()

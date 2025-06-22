@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import json
 import uuid
 import threading
@@ -10,8 +9,9 @@ from .data_service import SimulationDataService
 from .simulation_manager import SimulationManager
 from .update_service import UpdateService
 from .setup import create_agent_from_config, create_workflow_from_config
+from airfogsim.utils.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class RealSimulationIntegration:
     """实际仿真集成层，连接仿真环境和API层，并协调各个模块"""

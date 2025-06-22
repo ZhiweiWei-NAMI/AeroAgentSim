@@ -12,12 +12,12 @@ AirFogSim时间线可视化模块
 @email: 2311769@tongji.edu.cn
 """
 
-import logging
+from airfogsim.utils.logging_config import get_logger
 from typing import Dict, Any, List, Tuple, Optional
 import json
 from datetime import datetime
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class TimelineService:
     """

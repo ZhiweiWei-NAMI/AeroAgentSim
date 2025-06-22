@@ -13,11 +13,16 @@ AirFogSim代理(Agent)核心模块
 """
 
 import functools # Added for partial
-from airfogsim.core.enums import TaskStatus
+from airfogsim.core.enums import TaskStatus, TriggerType
 from typing import Dict, List, Any, Optional, get_origin, get_args
 import uuid
 import warnings
 import simpy
+from airfogsim.core.trigger import TimeTrigger
+from airfogsim.utils.logging_config import get_logger
+
+# 获取logger
+logger = get_logger(__name__)
 
 class StateTemplate:
     """状态模板定义"""
@@ -137,6 +142,15 @@ class Agent(metaclass=AgentMeta):
     # Agent.register_state_template('position', value_type=List[float], required=False)
 
     @classmethod
+    def __init_subclass__(cls, **kwargs):
+        """Initialize subclass with core status template"""
+        super().__init_subclass__(**kwargs)
+        # Register the core status template for all Agent subclasses
+        cls.register_state_template('status', value_type=str, required=True,
+                                   validator=lambda s: s in ['active', 'error', 'idle'],
+                                   description="代理核心状态，可选值: active, error, idle")
+
+    @classmethod
     def register_state_template(cls, key, **kwargs):
         """Registers a state template for this Agent class."""
         AgentMeta.register_template(cls, key, **kwargs)
@@ -154,7 +168,7 @@ class Agent(metaclass=AgentMeta):
         self.task_manager = env.task_manager
         self.properties = properties or {}
         self.state: Dict[str, Any] = {}
-        self.llm_client = properties.get('llm_client', None)
+        self.llm_client = self.properties.get('llm_client', None)
 
         from airfogsim.core import Component
         self.components: Dict[str, Component] = {}
@@ -174,11 +188,11 @@ class Agent(metaclass=AgentMeta):
         # 任务调度间隔（秒）
         self.scheduling_interval = 5
 
-        if not hasattr(self.env, 'event_registry'): raise RuntimeError("Environment missing EventRegistry.")
-        if not hasattr(self.env, 'workflow_manager'): warnings.warn("Environment missing WorkflowManager.")
+        # 任务调度触发器
+        self.task_schedule_trigger = None
 
         # Standard Agent Events
-        self.register_event('state_changed')
+        self.get_event('state_changed')
 
         # Agent's core behavior process
         self.agent_process = self.env.process(self.live())
@@ -199,9 +213,8 @@ class Agent(metaclass=AgentMeta):
     def _validate_required_templates(self, cls): # Simplified validation
         templates = cls.get_state_templates()
         missing = [k for k,t in templates.items() if t.required and k not in self.state]
-        if missing: warnings.warn(f"Agent {self.id} missing required states: {missing}")
-
-
+        if missing:
+            warnings.warn(f"Agent {self.id} missing required states: {missing}")
 
     def _cancel_all_tasks(self):
         """取消所有正在执行的任务"""
@@ -279,7 +292,7 @@ class Agent(metaclass=AgentMeta):
                             return default
                     return obj
                 except Exception as e:
-                    print(f"获取对象 {obj_name} 的属性 {attr_name} 时出错: {e}")
+                    logger.error(f"获取对象 {obj_name} 的属性 {attr_name} 时出错: {e}")
                     return default
             return default
         # 普通状态键
@@ -381,19 +394,19 @@ class Agent(metaclass=AgentMeta):
             bool: 如果任务成功取消则返回True，否则返回False
         """
         if task_id not in self.managed_tasks:
-            print(f"时间 {self.env.now}: 警告! {self.id} 尝试取消不存在的任务 {task_id}")
+            logger.warning(f"时间 {self.env.now}: 警告! {self.id} 尝试取消不存在的任务 {task_id}")
             return False
 
         task_info = self.managed_tasks[task_id]
         if task_info['status'] != 'running':
-            print(f"时间 {self.env.now}: 任务 {task_id} 不是运行状态，当前状态: {task_info['status']}")
+            logger.warning(f"时间 {self.env.now}: 任务 {task_id} 不是运行状态，当前状态: {task_info['status']}")
             return False
 
         component_name = task_info['component']
         component = self.get_component(component_name)
 
         if not component:
-            print(f"时间 {self.env.now}: 无法找到任务 {task_id} 对应的组件 {component_name}")
+            logger.error(f"时间 {self.env.now}: 无法找到任务 {task_id} 对应的组件 {component_name}")
             return False
 
         try:
@@ -409,7 +422,7 @@ class Agent(metaclass=AgentMeta):
                     task_info['end_time'] = self.env.now
                     task_info['failure_reason'] = reason
 
-                    print(f"时间 {self.env.now}: {self.id} 成功取消任务 {task_id} ({task_info['task_name']})")
+                    logger.info(f"时间 {self.env.now}: {self.id} 成功取消任务 {task_id} ({task_info['task_name']})")
 
                     # 触发任务取消事件
                     event_name = f"{component_name}.task_canceled"
@@ -423,9 +436,9 @@ class Agent(metaclass=AgentMeta):
 
                     return True
                 else:
-                    print(f"时间 {self.env.now}: 组件 {component_name} 中的任务 {task_id} 没有有效的运行进程")
+                    logger.warning(f"时间 {self.env.now}: 组件 {component_name} 中的任务 {task_id} 没有有效的运行进程")
             else:
-                print(f"时间 {self.env.now}: 组件 {component_name} 中找不到任务 {task_id} 的进程")
+                logger.warning(f"时间 {self.env.now}: 组件 {component_name} 中找不到任务 {task_id} 的进程")
 
             # 如果在组件中找不到进程，尝试使用agent管理的监控进程
             monitor_process = task_info.get('process')
@@ -438,7 +451,7 @@ class Agent(metaclass=AgentMeta):
                 task_info['end_time'] = self.env.now
                 task_info['failure_reason'] = reason
 
-                print(f"时间 {self.env.now}: {self.id} 通过监控进程取消任务 {task_id} ({task_info['task_name']})")
+                logger.info(f"时间 {self.env.now}: {self.id} 通过监控进程取消任务 {task_id} ({task_info['task_name']})")
 
                 # 触发任务取消事件
                 event_name = f"{component_name}.task_canceled"
@@ -452,23 +465,21 @@ class Agent(metaclass=AgentMeta):
 
                 return True
 
-            print(f"时间 {self.env.now}: 无法找到任务 {task_id} 的有效运行进程")
+            logger.warning(f"时间 {self.env.now}: 无法找到任务 {task_id} 的有效运行进程")
             return False
 
         except Exception as e:
-            print(f"时间 {self.env.now}: 取消任务 {task_id} 时出错: {str(e)}")
+            logger.error(f"时间 {self.env.now}: 取消任务 {task_id} 时出错: {str(e)}")
             import traceback
-            traceback.print_exc()
+            logger.error(traceback.format_exc())
             return False
     # --- Event Handling (Unchanged) ---
-    def register_event(self, event_name):
-        return self.env.event_registry.register_event(self.id, event_name)
     def has_event(self, event_name):
         return self.env.event_registry.has_event(self.id, event_name)
     def get_event(self, event_name):
         return self.env.event_registry.get_event(self.id, event_name)
     def trigger_event(self, event_name, value=None):
-        # print(f"DEBUG Agent {self.id} trigger: {event_name}")
+        # logger.debug(f"Agent {self.id} trigger: {event_name}")
         value = value or {}
         value['agent_id'] = self.id
         return self.env.event_registry.trigger_event(self.id, event_name, value)
@@ -495,7 +506,7 @@ class Agent(metaclass=AgentMeta):
                 - event_name: 事件名称，如 'workflow_assigned'、'task_completed' 等
                 - callback: 事件处理函数，接收事件数据作为参数
         """
-        # 默认监听工作流分配事件和环境更新事件
+        # 默认监听工作流分配事件、环境更新事件和状态错误事件
         return [
             {
                 'source_id': self.id,
@@ -506,6 +517,11 @@ class Agent(metaclass=AgentMeta):
                 'source_id': self.env.id,
                 'event_name': 'visual_update',
                 'callback': self._handle_visual_update
+            },
+            {
+                'source_id': self.id,
+                'event_name': 'state_changed',
+                'callback': self._handle_status_error
             }
         ]
 
@@ -517,14 +533,31 @@ class Agent(metaclass=AgentMeta):
         """处理环境更新事件"""
         self._update_agent_status()
 
+    def _handle_status_error(self, event_data):
+        """处理状态变为error的事件"""
+        # 检查是否是status状态变化
+        if event_data.get('key') == 'status' and event_data.get('new_value') == 'error':
+            # 获取事件数据中的组件名称
+            component_name = event_data.get('component_name')
+            if component_name and component_name in self.components:
+                # 禁用该组件
+                self.components[component_name].disable()
+                logger.warning(f"时间 {self.env.now}: 代理 {self.id} 禁用了组件 {component_name} 因为状态变为error")
+
     def _update_agent_status(self):
         """更新代理状态"""
-        # 如果没有活跃任务，将状态设为空闲
-        if not any(task['status'] == 'running' for task in self.managed_tasks.values()):
-            self.update_state('status', 'idle')
-        else:
-            # 更新代理状态
+        # 检查所有组件是否有任何一个处于错误状态
+        if any(component.is_error for component in self.components.values()):
+            self.update_state('status', 'error')
+            return
+
+        # 检查所有组件是否有任何一个正在执行任务
+        if any(component.is_busy for component in self.components.values()):
             self.update_state('status', 'active')
+            return
+
+        # 如果没有活跃任务，将状态设为空闲
+        self.update_state('status', 'idle')
 
     def _before_event_wait(self):
         """
@@ -566,11 +599,15 @@ class Agent(metaclass=AgentMeta):
         pass
 
     def cleanup(self):
-        """清理代理资源，包括取消事件监听"""
+        """清理代理资源，包括取消事件监听和触发器"""
         # 取消所有事件监听
         if hasattr(self, 'event_listeners'):
             for listener_id, (source_id, event_name) in self.event_listeners.items():
                 self.env.event_registry.unsubscribe(source_id, event_name, listener_id)
+
+        # 停用任务调度触发器
+        if hasattr(self, 'task_schedule_trigger') and self.task_schedule_trigger:
+            self.task_schedule_trigger.deactivate()
 
     # --- Workflow Task Processing ---
     def _process_workflow_tasks(self):
@@ -599,6 +636,8 @@ class Agent(metaclass=AgentMeta):
             # 检查是否已经有相同的任务在队列中或正在执行
             if not (self._is_task_in_queue(task_info) or self._is_task_being_executed(task_info)):
                 self.add_task_to_queue(
+                    priority=task_info.get('priority'),
+                    preemptive=task_info.get('preemptive', False),
                     component_name=task_info['component'],
                     task_name=task_info['task_name'],
                     task_class=task_info['task_class'],
@@ -676,7 +715,7 @@ class Agent(metaclass=AgentMeta):
         # 添加优先级和抢占属性
         if priority is not None:
             properties['priority'] = priority.name.lower() if hasattr(priority, 'name') else priority
-        properties['preemptive'] = properties.get('preemptive', preemptive)
+        properties['preemptive'] = preemptive
 
         # 创建任务信息
         task_info = {
@@ -695,7 +734,7 @@ class Agent(metaclass=AgentMeta):
         # 按优先级排序（优先级高的在前面）
         self._sort_task_queue()
 
-        print(f"时间 {self.env.now}: 代理 {self.id} 添加任务 '{task_name}' 到队列")
+        logger.info(f"时间 {self.env.now}: 代理 {self.id} 添加任务 '{task_name}' 到队列")
 
     def _sort_task_queue(self):
         """
@@ -772,7 +811,7 @@ class Agent(metaclass=AgentMeta):
 
             # 如果组件不存在，移除任务
             if not component:
-                print(f"\n时间 {self.env.now}: 组件 {component_name} 不存在，移除任务 {task_info['task_name']}")
+                logger.warning(f"\n时间 {self.env.now}: 组件 {component_name} 不存在，移除任务 {task_info['task_name']}")
                 to_execute_tasks.pop(i)
                 continue
 
@@ -780,6 +819,8 @@ class Agent(metaclass=AgentMeta):
             if component.is_available():
                 # 组件可用，执行任务
                 self._execute_queued_task(task_info)
+                # 释放一下进程，让is_available()可以被更新
+                self.env.timeout(0)
                 to_execute_tasks.pop(i)
             else:
                 # 组件不可用，检查是否可以抢占
@@ -798,7 +839,7 @@ class Agent(metaclass=AgentMeta):
         self._sort_task_queue()
 
     def _default_policy(self):
-        # 获取任务队列中与正在执行的任务同属于同一工作流的任务        
+        # 获取任务队列中与正在执行的任务同属于同一工作流的任务
         workflow_id = self.task_queue[0]['workflow_id']
         # 先判断是否有preemptive任务，如果有，先执行
         is_preemptive = False
@@ -861,7 +902,7 @@ class Agent(metaclass=AgentMeta):
                 # 执行新任务
                 self._execute_queued_task(task_info)
 
-                print(f"\n时间 {self.env.now}: 任务 {new_task.name} 抢占任务 {current_task.name}")
+                # logger.info(f"时间 {self.env.now}: 任务 {new_task.name} 抢占任务 {current_task.name}")
                 return True
 
         return False
@@ -895,12 +936,35 @@ class Agent(metaclass=AgentMeta):
 
     def _task_scheduler(self):
         """任务调度器"""
-        while True:
-            # 等待调度间隔
-            yield self.env.timeout(self.scheduling_interval)
+        # 从属性中获取任务调度触发器，如果没有则创建默认的TimeTrigger
+        trigger_config = self.properties.get('task_schedule_trigger', None)
 
-            # 处理队列中的任务
-            self._process_task_queue()
+        if trigger_config:
+            # 如果在属性中指定了触发器，使用指定的触发器
+            # 这里假设触发器已经创建好并传入属性
+            self.task_schedule_trigger = trigger_config
+            self.task_schedule_trigger.not_to_deactive = True
+        else:
+            # 如果没有指定触发器，创建默认的TimeTrigger
+            self.task_schedule_trigger = TimeTrigger(
+                self.env,
+                interval=self.scheduling_interval,  # 使用默认的调度间隔
+                name=f"{self.id}_task_scheduler_trigger"
+            )
+
+        # 添加回调函数，当触发器触发时处理任务队列
+        self.task_schedule_trigger.add_callback(lambda _: self._process_task_queue())
+
+        # 激活触发器
+        self.task_schedule_trigger.activate()
+
+        # 等待直到被中断
+        try:
+            while True:
+                yield self.env.timeout(float('inf'))
+        except simpy.Interrupt:
+            # 如果被中断，停用触发器
+            self.task_schedule_trigger.deactivate()
 
     # --- Core Agent Logic ---
     def live(self):
@@ -993,7 +1057,7 @@ class Agent(metaclass=AgentMeta):
                 try:
                     yield self.env.any_of(events_to_listen)
                 except Exception as e:
-                    print(f"代理 {self.id} 等待事件时出错: {str(e)}")
+                    logger.error(f"代理 {self.id} 等待事件时出错: {str(e)}")
                     # 出错时等待一段时间
                     yield self.env.timeout(self.scheduling_interval)
             else:
@@ -1016,7 +1080,7 @@ class Agent(metaclass=AgentMeta):
         component = self.get_component(component_name)
         if not component:
             reason = f"Component '{component_name}' not found"
-            print(f"时间 {self.env.now}: Agent {self.id} cannot execute '{task_name}': {reason}")
+            logger.error(f"时间 {self.env.now}: Agent {self.id} cannot execute '{task_name}': {reason}")
             result = {"status": "failed", "reason": reason, "time": self.env.now}
             # Trigger agent's task finished event even if component not found
             self.trigger_event('task_completed', {
@@ -1074,7 +1138,7 @@ class Agent(metaclass=AgentMeta):
 
 
         except simpy.Interrupt as i:
-             print(f"时间 {self.env.now}: Agent {self.id} monitoring task {task_id} interrupted: {i.cause}")
+             logger.warning(f"时间 {self.env.now}: Agent {self.id} monitoring task {task_id} interrupted: {i.cause}")
              reason = f"Agent monitoring interrupted: {i.cause}"
              if task.status not in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELED):
                  task.cancel(reason, self.env.now)
@@ -1082,8 +1146,9 @@ class Agent(metaclass=AgentMeta):
              final_result = task.result
 
         except Exception as e:
-             print(f"时间 {self.env.now}: Agent {self.id} error monitoring task {task_id}: {str(e)}")
-             import traceback; traceback.print_exc()
+             logger.error(f"时间 {self.env.now}: Agent {self.id} error monitoring task {task_id}: {str(e)}")
+             import traceback
+             logger.error(traceback.format_exc())
              reason = f"Agent monitoring error: {str(e)}"
              if task.status not in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELED):
                   task.fail(reason)
@@ -1123,7 +1188,7 @@ class Agent(metaclass=AgentMeta):
         if object_name in self.possessing_objects:
             # 如果已存在，先移除旧对象及其监听器
             self.remove_possessing_object(object_name)
-            print(f"警告: 代理 {self.id} 已拥有名为 {object_name} 的对象，将被覆盖")
+            logger.warning(f"警告: 代理 {self.id} 已拥有名为 {object_name} 的对象，将被覆盖")
 
         # 存储对象
         self.possessing_objects[object_name] = obj
@@ -1145,7 +1210,7 @@ class Agent(metaclass=AgentMeta):
                 self.subscribe(obj_id, 'state_changed', on_object_state_changed, listener_id)
                 # print(f"代理 {self.id} 成功订阅对象 {object_name} (ID: {obj_id}) 的状态变化事件")
             except Exception as e:
-                print(f"订阅对象 {object_name} 状态变化事件失败: {e}")
+                logger.error(f"订阅对象 {object_name} 状态变化事件失败: {e}")
 
         self.trigger_event('possessing_object_added', {
             'object_name': object_name,
@@ -1177,7 +1242,7 @@ class Agent(metaclass=AgentMeta):
                     self.unsubscribe(obj_id, 'state_changed', listener_id)
                     # print(f"代理 {self.id} 已取消订阅对象 {object_name} (ID: {obj_id}) 的状态变化事件")
                 except Exception as e:
-                    print(f"取消订阅对象 {object_name} 状态变化事件失败: {e}")
+                    logger.error(f"取消订阅对象 {object_name} 状态变化事件失败: {e}")
 
             # 从字典中移除对象
             del self.possessing_objects[object_name]
@@ -1230,12 +1295,12 @@ class Agent(metaclass=AgentMeta):
         """
         # 检查环境中是否有合约管理器
         if not hasattr(self.env, 'contract_manager'):
-            print(f"时间 {self.env.now}: 代理 {self.id} 无法创建合约，环境中没有合约管理器")
+            logger.error(f"时间 {self.env.now}: 代理 {self.id} 无法创建合约，环境中没有合约管理器")
             return None
 
         # 检查任务信息是否有效
         if not task_info or 'id' not in task_info:
-            print(f"时间 {self.env.now}: 代理 {self.id} 无法创建合约，任务信息无效")
+            logger.error(f"时间 {self.env.now}: 代理 {self.id} 无法创建合约，任务信息无效")
             return None
 
         # 设置默认截止时间
@@ -1254,7 +1319,7 @@ class Agent(metaclass=AgentMeta):
         )
 
         if contract_id:
-            print(f"时间 {self.env.now}: 代理 {self.id} 创建合约 {contract_id} 针对任务 {task_info['id']}")
+            logger.info(f"时间 {self.env.now}: 代理 {self.id} 创建合约 {contract_id} 针对任务 {task_info['id']}")
 
         return contract_id
 
@@ -1270,14 +1335,14 @@ class Agent(metaclass=AgentMeta):
         """
         # 检查环境中是否有合约管理器
         if not hasattr(self.env, 'contract_manager'):
-            print(f"时间 {self.env.now}: 代理 {self.id} 无法接受合约，环境中没有合约管理器")
+            logger.error(f"时间 {self.env.now}: 代理 {self.id} 无法接受合约，环境中没有合约管理器")
             return False
 
         # 接受合约
         result = self.env.contract_manager.accept_contract(contract_id, self.id)
 
         if result:
-            print(f"时间 {self.env.now}: 代理 {self.id} 接受合约 {contract_id}")
+            logger.info(f"时间 {self.env.now}: 代理 {self.id} 接受合约 {contract_id}")
 
         return result
 

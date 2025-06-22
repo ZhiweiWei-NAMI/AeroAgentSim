@@ -1,4 +1,3 @@
-import logging
 import queue
 import time
 import threading
@@ -12,8 +11,9 @@ if TYPE_CHECKING:
 from datetime import datetime
 
 from .data_service import SimulationDataService
+from airfogsim.utils.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class UpdateService:
     """处理仿真更新和前端通信的服务"""

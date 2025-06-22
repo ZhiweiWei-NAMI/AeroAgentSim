@@ -1,9 +1,9 @@
 from fastapi import APIRouter
-import logging
+from airfogsim.utils.logging_config import get_logger
 from ..config import DEFAULT_WORKFLOW_TEMPLATES, DEFAULT_AGENT_TEMPLATES
 
 # 设置日志记录
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # 创建路由器
 router = APIRouter()

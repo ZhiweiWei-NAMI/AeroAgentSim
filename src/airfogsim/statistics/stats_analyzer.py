@@ -11,6 +11,9 @@ import json
 import csv
 import math
 from collections import defaultdict
+from airfogsim.utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 class StatsAnalyzer:
     """
@@ -54,7 +57,7 @@ class StatsAnalyzer:
                 benchmark_workflow_states = self._load_json_file_from_dir(latest_benchmark_dir, "workflow_states.json")
                 if benchmark_workflow_states:
                     self.workflow_states = benchmark_workflow_states
-                    print(f"从基准测试数据中加载工作流状态数据: {latest_benchmark_dir}")
+                    logger.info(f"从基准测试数据中加载工作流状态数据: {latest_benchmark_dir}")
 
     def _load_json_file(self, filename):
         """
@@ -461,6 +464,6 @@ class StatsAnalyzer:
         with open(output_file, "w") as f:
             json.dump(report, f, indent=2)
 
-        print(f"统计报告已保存到: {output_file}")
+        logger.info(f"统计报告已保存到: {output_file}")
 
         return output_file

@@ -15,9 +15,9 @@ It demonstrates how weather events are loaded and triggered within the simulatio
 import simpy
 import os
 import sys
-import logging
-from pprint import pprint
+from airfogsim.utils.logging_config import get_logger
 
+logger = get_logger(__name__)
 # --- Setup Python Path ---
 # Add the project root to the Python path to allow importing airfogsim modules
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,9 +33,9 @@ try:
     # Import EventRegistry to subscribe to events for demonstration
     from airfogsim.core.event import EventRegistry
 except ImportError as e:
-    print(f"Error importing AirFogSim modules: {e}")
-    print("Please ensure the script is run from the 'examples' directory or the project root,")
-    print("and the airfogsim package structure is correct.")
+    logger.info(f"Error importing AirFogSim modules: {e}")
+    logger.info("Please ensure the script is run from the 'examples' directory or the project root,")
+    logger.info("and the airfogsim package structure is correct.")
     sys.exit(1)
 
 # --- Configuration ---
@@ -54,12 +54,11 @@ SIMULATION_DURATION = 3 * 3600 # Simulate for 3 hours
 API_REFRESH_INTERVAL_SECONDS = 1800 # Refresh every 30 minutes (real time)
 
 # Logging level
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
-logger = logging.getLogger("WeatherProviderDemo")
+logger = get_logger("WeatherProviderDemo")
 
 # --- Event Handler ---
 def handle_weather_event(subscriber_id: str, event_data: dict):
-    """Callback function to simply print received weather events."""
+    """Callback function to simply logger.info received weather events."""
     sim_time = event_data.get('sim_timestamp', 'N/A')
     severity = event_data.get('severity', 'N/A')
     condition = event_data.get('condition', 'N/A')
@@ -67,7 +66,7 @@ def handle_weather_event(subscriber_id: str, event_data: dict):
     logger.info(f"--- [Event Received by {subscriber_id} at SimTime: {sim_time:.2f}] ---")
     logger.info(f"    Weather Changed: Severity={severity}, Condition={condition}, Temp={temp}°C")
     # logger.debug("    Full Event Data:")
-    # logger.debug(pprint(event_data)) # Uncomment for full details
+    # logger.debug(plogger.info(event_data)) # Uncomment for full details
 
 # --- Main Execution ---
 if __name__ == "__main__":
@@ -110,7 +109,7 @@ if __name__ == "__main__":
         source_id=WeatherDataProvider.__name__, # Use class name as source ID
         listener_id=subscriber_name,
         event_name=WeatherDataProvider.EVENT_WEATHER_CHANGED,
-        callback=handle_weather_event
+        callback=lambda event_data: handle_weather_event(subscriber_name, event_data)
     )
     logger.info(f"'{subscriber_name}' subscribed to '{WeatherDataProvider.EVENT_WEATHER_CHANGED}' events.")
 

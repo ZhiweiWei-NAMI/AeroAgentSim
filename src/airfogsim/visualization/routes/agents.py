@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException
-import logging
+from airfogsim.utils.logging_config import get_logger
 from ..models import AgentConfig
 from ..app import data_service, sim_integration
 
 # 设置日志记录
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # 创建路由器
 router = APIRouter()

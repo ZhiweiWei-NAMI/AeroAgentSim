@@ -11,7 +11,7 @@
 """
 
 import os
-import logging
+from airfogsim.utils.logging_config import get_logger
 import time
 from typing import Dict, Any
 import subprocess
@@ -23,8 +23,7 @@ from airfogsim.dataprovider.traffic import TrafficDataProvider
 from airfogsim.agent.drone import DroneAgent
 
 # 配置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # 创建一个简单的无人机代理，用于监听交通事件
 class TrafficMonitorDrone(DroneAgent):

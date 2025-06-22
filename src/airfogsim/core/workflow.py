@@ -22,6 +22,10 @@ import warnings
 from abc import abstractmethod, ABC
 from airfogsim.core.enums import WorkflowStatus, TaskStatus, TriggerOperator, TriggerType
 from airfogsim.core.trigger import StateTrigger, EventTrigger, TimeTrigger, CompositeTrigger, Trigger
+from airfogsim.utils.logging_config import get_logger
+
+# 获取logger
+logger = get_logger(__name__)
 
 
 class WorkflowPropertyTemplate:
@@ -233,7 +237,7 @@ class WorkflowStatusMachine:
         self._monitor_process_active = False
         # If SM process fails unexpectedly, ensure workflow status reflects it
         if not event.ok and self.workflow.status not in (WorkflowStatus.FAILED, WorkflowStatus.CANCELED):
-             print(f"时间 {self.env.now}: Workflow {self.workflow.id} state machine process failed unexpectedly: {event.cause}")
+             logger.error(f"时间 {self.env.now}: Workflow {self.workflow.id} state machine process failed unexpectedly: {event.cause}")
              self._change_status('failed', {'reason': f"State machine process failed: {event.cause}"})
 
     def _monitor_events(self):
@@ -243,7 +247,7 @@ class WorkflowStatusMachine:
 
                 if not transitions:
                     if not self.is_in_terminal_status():
-                        print(f"时间 {self.env.now}: 工作流 {self.workflow.id} 状态机在状态 {self.current_status} 没有转换规则，标记为失败。")
+                        logger.error(f"时间 {self.env.now}: 工作流 {self.workflow.id} 状态机在状态 {self.current_status} 没有转换规则，标记为失败。")
                         self._change_status('failed', {"reason": f"No transitions defined from state {self.current_status}"})
                     break
 
@@ -275,7 +279,7 @@ class WorkflowStatusMachine:
 
                 if not self.active_triggers:
                     if not self.is_in_terminal_status():
-                        print(f"时间 {self.env.now}: 工作流 {self.workflow.id} 状态机在状态 {self.current_status} 没有可激活的触发器，标记为失败。")
+                        logger.error(f"时间 {self.env.now}: 工作流 {self.workflow.id} 状态机在状态 {self.current_status} 没有可激活的触发器，标记为失败。")
                         self._change_status('failed', {"reason": f"No triggers to activate in state {self.current_status}"})
                     break
 
@@ -287,15 +291,16 @@ class WorkflowStatusMachine:
                     pass
 
         except simpy.Interrupt as i:
-             print(f"时间 {self.env.now}: 工作流 {self.workflow.id} 状态机被中断: {i.cause}")
+             logger.warning(f"时间 {self.env.now}: 工作流 {self.workflow.id} 状态机被中断: {i.cause}")
              reason = i.cause.get('reason', str(i.cause)) if isinstance(i.cause, dict) else str(i.cause)
              action = i.cause.get('action', 'fail') if isinstance(i.cause, dict) else 'fail'
              next_state = 'canceled' if action == 'cancel' else 'failed'
              if not self.is_in_terminal_status():
                  self._change_status(next_state, {'reason': f"State machine interrupted: {reason}"})
         except Exception as e:
-            print(f"时间 {self.env.now}: 工作流 {self.workflow.id} 状态机监控错误: {type(e).__name__} - {str(e)}")
-            import traceback; traceback.print_exc()
+            logger.error(f"时间 {self.env.now}: 工作流 {self.workflow.id} 状态机监控错误: {type(e).__name__} - {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
             if not self.is_in_terminal_status():
                 self._change_status('failed', {'reason': f"State machine exception: {str(e)}"})
         finally:
@@ -350,7 +355,7 @@ class WorkflowStatusMachine:
         old_status = self.current_status
         self.current_status = new_status
         timestamp = self.env.now
-        print(f"时间 {timestamp}: SM {self.workflow.id}: State changed {old_status} -> {new_status}")
+        logger.info(f"时间 {timestamp}: SM {self.workflow.id}: State changed {old_status} -> {new_status}")
 
         # 触发工作流的状态变更事件
         self.workflow._trigger_status_changed(old_status, new_status, event_details, timestamp)
@@ -522,7 +527,7 @@ class Workflow(metaclass=WorkflowMeta):
 
             # 检查工作流当前状态
             if self.status not in (WorkflowStatus.COMPLETED, WorkflowStatus.FAILED, WorkflowStatus.CANCELED):
-                print(f"时间 {self.env.now}: 工作流 {self.id} ({self.name}) 超时 ({timeout_sec}秒)")
+                logger.warning(f"时间 {self.env.now}: 工作流 {self.id} ({self.name}) 超时 ({timeout_sec}秒)")
 
                 # 构建超时详情
                 timeout_details = {
@@ -550,7 +555,7 @@ class Workflow(metaclass=WorkflowMeta):
 
     def _register_workflow_events(self):
         for name in self.event_names:
-             self.env.event_registry.register_event(self.id, name)
+             self.env.event_registry.get_event(self.id, name)
 
     def _setup_transitions(self):
         """
@@ -582,7 +587,7 @@ class Workflow(metaclass=WorkflowMeta):
         # 启动状态机
         sm_proc = self.status_machine.start()
         if not sm_proc:
-            print(f"时间 {self.env.now}: Workflow {self.id} state machine failed to start during start() call.")
+            logger.error(f"时间 {self.env.now}: Workflow {self.id} state machine failed to start during start() call.")
             # 更新为失败状态
             self.status = WorkflowStatus.FAILED
             self.completion_reason = "State machine failed to start"
@@ -653,7 +658,7 @@ class Workflow(metaclass=WorkflowMeta):
         # 如果状态有变化，触发工作流状态变更事件
         if new_status != old_status:
             self.status = new_status
-            print(f"时间 {timestamp}: Workflow {self.id}: Status changed {old_status.name} -> {new_status.name} (SM: {new_sm_state})")
+            logger.info(f"时间 {timestamp}: Workflow {self.id}: Status changed {old_status.name} -> {new_status.name} (SM: {new_sm_state})")
 
             self.env.event_registry.trigger_event(self.id, 'workflow_status_changed', {
                 'workflow_id': self.id,
@@ -818,5 +823,5 @@ class Workflow(metaclass=WorkflowMeta):
             'time': self.env.now
         })
 
-        print(f"时间 {self.env.now}: Workflow {self.id} has been reset to PENDING state")
+        logger.info(f"时间 {self.env.now}: Workflow {self.id} has been reset to PENDING state")
         return self

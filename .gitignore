@@ -2,8 +2,9 @@
 # Ignore all files ending with .db anywhere in the project
 *.db
 paper_code/
-benchmark_data/
+benchmark/
 stats_data/
+# Keep response_to_JOSS folder but allow paper.md and paper.bib in root
 
 # --- Compressed Archives ---
 # Ignore all tar.gz files anywhere in the project
@@ -12,7 +13,9 @@ stats_data/
 # --- Python specific ---
 # Ignore Python bytecode cache directories and contents
 __pycache__/
+.pytest_cache/
 *.py[cod]
+*.egg-info/
 *$py.class
 *.so
 .Python

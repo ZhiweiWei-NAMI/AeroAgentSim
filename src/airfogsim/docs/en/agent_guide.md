@@ -317,3 +317,92 @@ This pattern allows agents to leverage sophisticated planning capabilities while
 *   **Error Handling:** Check return values of `execute_task`. Handle potential exceptions in `_process_custom_logic()` and callbacks.
 
 By following these guidelines, you can effectively create diverse and capable agents within the AirFogSim framework. Refer to the `Agent` source code and specific agent examples (like `DroneAgent`) for concrete implementation details.
+
+### 6. Logging
+
+Logging is a crucial part of Agent development, helping us to:
+- Track Agent behavior and state changes
+- Debug and troubleshoot issues
+- Analyze performance bottlenecks
+- Monitor system health
+
+#### 6.1 Log Levels
+
+AirFogSim uses Python's `logging` module, supporting the following log levels:
+- DEBUG: Detailed debugging information
+- INFO: General information, recording normal operation status
+- WARNING: Warning messages, indicating potential issues
+- ERROR: Error messages, indicating serious problems
+- CRITICAL: Critical errors that may cause system crashes
+
+#### 6.2 Log Format
+
+Recommended log format:
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Initialize logging in __init__
+def __init__(self, env, name, **kwargs):
+    super().__init__(env, name, **kwargs)
+    self.logger = logging.getLogger(f"{__name__}.{self.name}")
+    
+# Logging examples
+self.logger.info(f"Agent {self.name} starting task {task_id}")
+self.logger.debug(f"Current states: {self.get_current_states()}")
+self.logger.warning(f"Insufficient resources: {resource_name}")
+self.logger.error(f"Task execution failed: {error_message}")
+```
+
+#### 6.3 Logging Best Practices
+
+1. **State Change Logging**
+   - Log important state transitions
+   - Log state values before and after updates
+   - Log reasons for state changes
+
+2. **Task Execution Logging**
+   - Log task start and completion
+   - Log key steps in task execution
+   - Log task results and exceptions
+
+3. **Event Handling Logging**
+   - Log received events
+   - Log event processing results
+   - Log actions triggered by events
+
+4. **Performance Monitoring Logging**
+   - Log execution time of critical operations
+   - Log resource usage
+   - Log performance bottlenecks
+
+5. **Error Handling Logging**
+   - Log exception context
+   - Log error recovery process
+   - Log system impact of errors
+
+#### 6.4 Log Configuration
+
+Configure logging in `config.yaml`:
+```yaml
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  handlers:
+    console:
+      level: INFO
+    file:
+      level: DEBUG
+      filename: "airfogsim.log"
+```
+
+#### 6.5 Log Analysis
+
+Log analysis helps us to:
+- Identify performance bottlenecks
+- Discover abnormal patterns
+- Optimize system behavior
+- Improve decision logic
+
+Regular log analysis is recommended to extract valuable information for system optimization and improvement.

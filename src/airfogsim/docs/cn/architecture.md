@@ -71,7 +71,7 @@ AirFogSim 是一个基于 SimPy 库构建的离散事件仿真框架，旨在对
     *   **资源交互:** 实现 `get_resource_requirements(task)`（抽象）以定义资源需求。通过适当的 `Manager`（例如，`env.landing_manager`）请求资源。通过回调（`_on_resource_update`）处理资源更新。
     *   **指标计算 (`_calculate_performance_metrics` - 抽象):** 根据获取的资源的属性计算性能指标（例如，速度、处理率、能源消耗）。声明 `PRODUCED_METRICS`。
     *   **事件发射:** 通过 `self.trigger_event()` 在父 `Agent` 上触发命名空间事件（例如，`ComponentName.task_started`、`ComponentName.metric_changed`、`ComponentName.task_completed`）。
-*   **子类示例:** `airfogsim.component.mobility.MobilityComponent`, `airfogsim.component.computation.ComputeComponent`, `airfogsim.component.charging.ChargingComponent`, `airfogsim.component.sensing.SensingComponent`.
+*   **子类示例:** `airfogsim.component.mobility.MobilityComponent`, `airfogsim.component.computation.ComputeComponent`, `airfogsim.component.charging.ChargingComponent`, `airfogsim.component.sensing.ImageSensingComponent`.
 
 #### 3.4 任务 (`airfogsim.core.task.Task`)
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 import functools
-import logging
+from airfogsim.utils.logging_config import get_logger
 import simpy
 # import pandas as pd # No longer needed if only using API
 from typing import TYPE_CHECKING, Dict, Any, Optional, List, Tuple
@@ -21,8 +21,7 @@ if TYPE_CHECKING:
     # Import other managers if needed for callbacks
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class WeatherDataProvider(DataProvider):
     """
@@ -272,13 +271,82 @@ class WeatherDataProvider(DataProvider):
         force_x = wind_speed * 0.1 # Needs proper scaling factor
         return [force_x, 0.0, 0.0]
 
+    def _convert_sim_coords_to_latlon(self, position: Tuple[float, float, float]) -> Tuple[float, float]:
+        """
+        Convert simulation coordinates (x, y, z) to latitude and longitude.
+
+        This implementation assumes a simple conversion where:
+        - The simulation origin (0, 0, 0) corresponds to the base location specified in config
+        - x and y coordinates are in meters from the origin
+        - 111,111 meters = 1 degree of latitude (approximate)
+        - 111,111 * cos(latitude) meters = 1 degree of longitude (approximate)
+
+        Args:
+            position: Agent's position (x, y, z) in simulation coordinates (meters)
+
+        Returns:
+            Tuple of (latitude, longitude) in degrees
+        """
+        # Get the base location from config
+        base_lat = self.location.get('lat', 0.0)
+        base_lon = self.location.get('lon', 0.0)
+
+        # Extract x and y from position
+        x, y, _ = position
+
+        # Convert meters to degrees
+        # 1 degree of latitude is approximately 111,111 meters
+        lat_offset = y / 111111.0
+
+        # 1 degree of longitude varies with latitude
+        # At the equator, 1 degree of longitude is approximately 111,111 meters
+        # At higher latitudes, the distance decreases by cos(latitude)
+        import math
+        lon_offset = x / (111111.0 * math.cos(math.radians(base_lat)))
+
+        # Calculate final latitude and longitude
+        lat = base_lat + lat_offset
+        lon = base_lon + lon_offset
+
+        return (lat, lon)
+
+    def _calculate_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """
+        Calculate the great-circle distance between two points on Earth.
+        Uses the Haversine formula.
+
+        Args:
+            lat1, lon1: Latitude and longitude of first point in degrees
+            lat2, lon2: Latitude and longitude of second point in degrees
+
+        Returns:
+            Distance in meters
+        """
+        import math
+
+        # Convert degrees to radians
+        lat1 = math.radians(lat1)
+        lon1 = math.radians(lon1)
+        lat2 = math.radians(lat2)
+        lon2 = math.radians(lon2)
+
+        # Haversine formula
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+        c = 2 * math.asin(math.sqrt(a))
+
+        # Earth radius in meters
+        r = 6371000
+
+        # Calculate distance
+        return c * r
+
     def is_in_region(self, position: Tuple[float, float, float], region_data: Dict[str, Any]) -> bool:
         """
         Check if a 3D position (agent's position) is within the weather region.
         Currently, the API adapter provides a point region {'lat': ..., 'lon': ..., 'type': 'point'}.
         This implementation assumes the weather affects a certain radius around the point.
-        A more sophisticated implementation would require coordinate system conversion
-        between the simulation's coordinate system (e.g., meters from origin) and lat/lon.
 
         Args:
             position: Agent's position, e.g., (x, y, z) in simulation coordinates.
@@ -291,16 +359,106 @@ class WeatherDataProvider(DataProvider):
             logger.debug("No valid point region data in weather event, assuming agent is not affected.")
             return False
 
-        # --- Simplified Logic ---
-        # TODO: Implement proper coordinate conversion and distance check.
-        # For now, we assume the weather event applies globally if region data is present.
-        # This is a placeholder and needs refinement based on the simulation's coordinate system.
-        logger.warning("is_in_region check is simplified: assuming weather affects all agents globally if region data exists.")
-        # Example of a future distance check (requires coordinate conversion):
-        # sim_lat, sim_lon = convert_sim_coords_to_latlon(position)
-        # distance = calculate_distance(sim_lat, sim_lon, region_data['lat'], region_data['lon'])
-        # return distance < AFFECTED_RADIUS_METERS
-        return True # Simplified: Affects everyone if region data exists
+        # Convert simulation coordinates to latitude and longitude
+        sim_lat, sim_lon = self._convert_sim_coords_to_latlon(position)
+
+        # Get region coordinates
+        region_lat = region_data.get('lat')
+        region_lon = region_data.get('lon')
+
+        if region_lat is None or region_lon is None:
+            logger.warning("Region data missing latitude or longitude. Assuming agent is not affected.")
+            return False
+
+        # Calculate distance between agent and region center
+        distance = self._calculate_distance(sim_lat, sim_lon, region_lat, region_lon)
+
+        # Define the affected radius (in meters)
+        # This could be made configurable or based on weather severity
+        AFFECTED_RADIUS_METERS = 10000  # 10 km radius
+
+        # Check if agent is within the affected radius
+        return distance < AFFECTED_RADIUS_METERS
+
+    def get_weather_at(self, position: Tuple[float, float, float]) -> Dict[str, Any]:
+        """
+        Get the current weather conditions at a specific position in the simulation.
+
+        Args:
+            position: A tuple (x, y, z) representing the position in simulation coordinates.
+
+        Returns:
+            A dictionary containing weather data for the specified position.
+            If no weather data is available, returns a default weather data dictionary.
+        """
+        # Check if we have any weather data
+        if not self._weather_schedule:
+            logger.warning("No weather data available. Returning default weather conditions.")
+            return self._get_default_weather()
+
+        # Convert simulation coordinates to latitude and longitude
+        sim_lat, sim_lon = self._convert_sim_coords_to_latlon(position)
+
+        # Get the current simulation time
+        current_sim_time = self.env.now
+
+        # Find the most recent weather event in the schedule
+        base_sim_time = self._last_api_refresh_sim_time if self._last_api_refresh_sim_time >= 0 else 0.0
+
+        # Convert schedule keys to absolute simulation times
+        absolute_times = {base_sim_time + rel_time: rel_time for rel_time in self._weather_schedule.keys()}
+
+        # Find the most recent weather event time that is less than or equal to current_sim_time
+        most_recent_time = None
+        for abs_time in sorted(absolute_times.keys()):
+            if abs_time <= current_sim_time:
+                most_recent_time = abs_time
+            else:
+                break
+
+        if most_recent_time is None:
+            logger.warning("No weather data available for the current simulation time. Returning default weather conditions.")
+            return self._get_default_weather()
+
+        # Get the relative time key for the most recent weather event
+        rel_time_key = absolute_times[most_recent_time]
+
+        # Get the weather data for the most recent event
+        weather_data = self._weather_schedule[rel_time_key].copy()
+
+        # Check if the position is within the region affected by this weather event
+        region_data = weather_data.get('region')
+        if not self.is_in_region(position, region_data):
+            logger.debug(f"Position {position} is outside the affected region of the current weather event. Returning default weather conditions.")
+            return self._get_default_weather()
+
+        # Add position information to the weather data
+        weather_data['position'] = position
+        weather_data['sim_position_lat'] = sim_lat
+        weather_data['sim_position_lon'] = sim_lon
+
+        return weather_data
+
+    def _get_default_weather(self) -> Dict[str, Any]:
+        """
+        Return default weather conditions when no data is available.
+
+        Returns:
+            A dictionary with default weather data.
+        """
+        return {
+            'condition': 'Clear',
+            'description': 'clear sky',
+            'severity': 'NORMAL',
+            'wind_speed': 0.0,
+            'wind_direction': 0,
+            'temperature': 20.0,  # Celsius
+            'humidity': 50,       # %
+            'pressure': 1013.25,  # hPa (standard atmospheric pressure)
+            'precipitation_rate': 0.0,
+            'data_source': 'default',
+            'sim_timestamp': self.env.now
+        }
 
     # _parse_polygon is likely no longer needed if using API point data
 
@@ -310,12 +468,6 @@ class WeatherDataProvider(DataProvider):
         SimPy process that periodically re-fetches weather data from the API.
         """
         while True:
-            # Wait for the specified real-time interval
-            # Use env.timeout for simulation time delay corresponding to real time
-            # This assumes simulation time progresses roughly with real time,
-            # or we accept that refreshes happen based on simulation time passage.
-            # A more robust solution might involve a separate thread for real-time waits,
-            # but that adds complexity. Let's use env.timeout for now.
             yield self.env.timeout(self.api_refresh_interval)
 
             current_sim_time = self.env.now
@@ -326,10 +478,6 @@ class WeatherDataProvider(DataProvider):
 
             # Fetch new data - this replaces self._weather_schedule
             self.load_data()
-
-            # If the new schedule is different and successfully loaded,
-            # we might need to interrupt and restart the _weather_update_loop.
-            # However, the _weather_update_loop already checks if the schedule reference changed.
             if self._weather_schedule and self._weather_schedule != old_schedule:
                  logger.info("API data refreshed. The _weather_update_loop will detect the change.")
                  # The update loop should handle the restart internally.

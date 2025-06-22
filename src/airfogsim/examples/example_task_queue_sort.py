@@ -17,7 +17,9 @@ from airfogsim.agent.drone import DroneAgent
 from airfogsim.component.mobility import MoveToComponent
 from airfogsim.workflow.inspection import create_inspection_workflow
 import random
+from airfogsim.utils.logging_config import get_logger
 
+logger = get_logger(__name__)
 
 def setup_environment():
     """设置仿真环境"""
@@ -72,7 +74,7 @@ def run_task_queue_sort_demo():
     # 等待5秒后启动第二个工作流
     def start_second_workflow():
         yield env.timeout(5)
-        print(f"\n时间 {env.now}: 启动第二个工作流")
+        logger.info(f"\n时间 {env.now}: 启动第二个工作流")
         workflow2 = create_inspection_workflow(
             env, 
             drone, 
@@ -84,7 +86,7 @@ def run_task_queue_sort_demo():
         
         # 添加一些手动任务到队列
         yield env.timeout(2)
-        print(f"\n时间 {env.now}: 添加低优先级任务")
+        logger.info(f"\n时间 {env.now}: 添加低优先级任务")
         drone.add_task_to_queue(
             component_name="MoveTo",
             task_name="低优先级移动",
@@ -97,7 +99,7 @@ def run_task_queue_sort_demo():
         )
         
         yield env.timeout(1)
-        print(f"\n时间 {env.now}: 添加关键优先级任务")
+        logger.info(f"\n时间 {env.now}: 添加关键优先级任务")
         drone.add_task_to_queue(
             component_name="MoveTo",
             task_name="关键优先级移动",
@@ -110,18 +112,18 @@ def run_task_queue_sort_demo():
         )
         
         # 打印任务队列
-        print(f"\n时间 {env.now}: 任务队列排序后:")
+        logger.info(f"\n时间 {env.now}: 任务队列排序后:")
         for i, task in enumerate(drone.task_queue):
             priority = task.get('properties', {}).get('priority', 'normal')
             workflow_id = task.get('workflow_id', 'none')
-            print(f"  {i+1}. {task['task_name']} - 优先级: {priority}, 工作流: {workflow_id}")
+            logger.info(f"  {i+1}. {task['task_name']} - 优先级: {priority}, 工作流: {workflow_id}")
     
     env.process(start_second_workflow())
     
     # 运行模拟
-    print("开始模拟...")
+    logger.info("开始模拟...")
     env.run(until=20)
-    print("模拟结束")
+    logger.info("模拟结束")
 
 
 if __name__ == "__main__":

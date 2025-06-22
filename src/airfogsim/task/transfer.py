@@ -24,7 +24,7 @@ class FileTransferTask(Task):
     """
     NECESSARY_METRICS = ['transmission_rate', 'latency', 'communication_quality']
     PRODUCED_STATES = ['trans_target_agent_id', 'transmission_progress',
-                       'transmission_speed','is_transmitting']
+                       'transmission_speed', 'transmitting_status']
 
     def __init__(self, env, agent, component_name: str, task_name: str,
                  workflow_id: Optional[str] = None,
@@ -81,7 +81,7 @@ class FileTransferTask(Task):
 
         # 设置代理状态
         self.agent.set_state('trans_target_agent_id', self.trans_target_agent_id)
-        self.agent.set_state('is_transmitting', True)
+        self.agent.set_state('transmitting_status', 'transmitting')
         self.agent.set_state('transmission_progress', 0.0)
         self.agent.set_state('transmission_speed', 0.0)
 
@@ -184,11 +184,14 @@ class FileTransferTask(Task):
         Returns:
             Dict: 任务特定状态表示
         """
+        # 根据任务进度确定传输状态
+        transmitting_status = 'transmitting' if self.progress < 1.0 else 'completed'
+
         return {
             'transmission_progress': self.transfer_progress,
             'transmission_speed': self.transfer_speed,
-            'is_transmitting': True if self.progress<1.0 else False,
-            'trans_target_agent_id':self.trans_target_agent_id
+            'transmitting_status': transmitting_status,
+            'trans_target_agent_id': self.trans_target_agent_id
         }
 
     def _possessing_object_on_complete(self):
@@ -197,7 +200,7 @@ class FileTransferTask(Task):
         self.agent.remove_possessing_object(self.file_id)
 
         # 重置代理状态
-        self.agent.set_state('is_transmitting', False)
+        self.agent.set_state('transmitting_status', 'completed')
         self.agent.set_state('transmission_progress', 0.0)
         self.agent.set_state('transmission_speed', 0.0)
 
@@ -214,13 +217,13 @@ class FileTransferTask(Task):
     def _possessing_object_on_fail(self):
         """处理任务失败时对代理拥有对象的操作"""
         # 重置代理状态
-        self.agent.set_state('is_transmitting', False)
+        self.agent.set_state('transmitting_status', 'idle')
         self.agent.set_state('transmission_progress', 0.0)
         self.agent.set_state('transmission_speed', 0.0)
 
     def _possessing_object_on_cancel(self):
         """处理任务取消时对代理拥有对象的操作"""
         # 重置代理状态
-        self.agent.set_state('is_transmitting', False)
+        self.agent.set_state('transmitting_status', 'idle')
         self.agent.set_state('transmission_progress', 0.0)
         self.agent.set_state('transmission_speed', 0.0)
