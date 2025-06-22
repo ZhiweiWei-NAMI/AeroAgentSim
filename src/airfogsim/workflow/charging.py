@@ -14,8 +14,8 @@ AirFogSim充电工作流模块
 @email: 2311769@tongji.edu.cn
 """
 
-from airfogsim.core import Workflow, WorkflowStatus, WorkflowMeta
-from airfogsim.core.enums import TriggerOperator
+from airfogsim.core import Workflow, WorkflowMeta
+from airfogsim.core.enums import TriggerOperator, WorkflowStatus
 import uuid
 from typing import List, Tuple, Any, Dict
 

@@ -97,7 +97,7 @@ class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):
     def _process_custom_logic(self):
         """执行无人机特定的逻辑"""
         # 获取当前活跃的工作流
-        active_workflows = self._get_active_workflows()
+        active_workflows = self.get_active_workflows()
         if not active_workflows:
             # 如果没有活跃的工作流，则简单地保持空闲状态
             if self.get_state('status') != 'charging':  # 如果不在充电，则设置为空闲
@@ -141,6 +141,6 @@ class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):
             'type': self.__class__.__name__,
             'components': self.get_component_names(),
             'active_tasks_count': len([t for t in self.managed_tasks.values() if t['status'] == 'running']),
-            'active_workflows': [w.id for w in self._get_active_workflows()]
+            'active_workflows': [w.id for w in self.get_active_workflows()]
         })
         return details

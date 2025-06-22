@@ -1,0 +1,199 @@
+@startuml AirFogSim Core Architecture
+skinparam dpi 300
+' 设置全局样式，使图更紧凑
+skinparam {
+  padding 2
+  nodesep 40
+  ranksep 20
+  linetype ortho
+  shadowing false
+  handwritten false
+}
+
+' 核心类
+package "airfogsim.core" {
+  class Environment {
+    + event_registry: EventRegistry
+    + resource_managers: [ResourceManager]
+    + data_providers: Dict[str, DataProvider]
+    + agents: Dict[str, Agent]
+    + create_agent()
+    + create_workflow()
+    + add_data_provider()
+    + get_data_provider()
+    + run()
+  }
+
+  class Agent {
+    + state: Dict[str, Any]
+    + components: Dict[str, Component]
+    + managed_tasks: Dict
+    + {abstract} _process_custom_logic()
+    + update_state()
+    + get_state()
+    + add_component()
+    + execute_task()
+  }
+
+  class Component {
+    + {static} PRODUCED_METRICS: List[str]
+    + {static} MONITORED_STATES: List[str]
+    + agent: Agent
+    + active_tasks: Dict[str, Task]
+    + execute_task()
+    + {abstract} _calculate_performance_metrics()
+  }
+
+  class Task {
+    + {static} NECESSARY_METRICS: List[str]
+    + {static} PRODUCED_STATES: List[str]
+    + agent: Agent
+    + component_name: str
+    + workflow_id: str
+    + status: TaskStatus
+    + progress: float
+    + {abstract} execute()
+    + {abstract} _update_task_state()
+  }
+
+  class Workflow {
+    + owner: Agent
+    + status_machine: WorkflowStatusMachine
+    + status: WorkflowStatus
+    + properties: Dict
+    + {abstract} _setup_transitions()
+    + {abstract} get_current_suggested_task()
+    + start()
+  }
+
+  class WorkflowStatusMachine {
+    + workflow: Workflow
+    + state: str
+    + add_state()
+    + add_transition()
+  }
+
+  class EventRegistry {
+    + register_event()
+    + trigger_event()
+    + subscribe()
+  }
+
+  class ResourceManager {
+    + env: Environment
+    + {abstract} allocate_resource()
+    + {abstract} release_resource()
+  }
+  
+  class DataProvider {
+    + env: Environment
+    + config: Dict
+    + {abstract} load_data()
+    + {abstract} start_event_triggering()
+  }
+  
+  class DataIntegration {
+    + env: Environment
+    + config: Dict
+    + {abstract} _initialize_provider()
+    + {abstract} _register_event_listeners()
+  }
+}
+
+' Agent子类 - 垂直布局
+package "airfogsim.agent" {
+  class TerminalAgent
+  class DroneAgent
+  class "..." as AgentEllipsis
+}
+
+' Component子类 - 垂直布局
+package "airfogsim.component" {
+  class "MoveToComponent" as MoveToComponent
+  class "SensingComponent" as SensingComponent
+  class "ComputationComponent" as ComputationComponent
+  class "..." as ComponentEllipsis
+}
+
+' Workflow子类 - 垂直布局
+package "airfogsim.workflow" {
+  class "InspectionWorkflow" as InspectionWorkflow
+  class "ChargingWorkflow" as ChargingWorkflow
+  class "..." as WorkflowEllipsis
+}
+
+' Task子类 - 垂直布局
+package "airfogsim.task" {
+  class "MoveToTask" as MoveToTask
+  class "FileCollectTask" as FileCollectTask
+  class "..." as TaskEllipsis
+}
+
+' DataProvider子类 - 垂直布局
+package "airfogsim.dataprovider" {
+  class "WeatherDataProvider" as WeatherDataProvider
+  class "TrafficDataProvider" as TrafficDataProvider
+  class "..." as DataProviderEllipsis
+}
+
+' 核心关系
+Environment "1" *-- "1" EventRegistry
+Environment "1" *-- "many" ResourceManager
+Environment "1" *-- "many" Agent
+Environment "1" *-- "many" DataProvider
+
+Agent "1" *-- "many" Component
+Agent "1" o-- "many" Task
+Component "1" o-- "many" Task
+
+Workflow "1" *-- "1" WorkflowStatusMachine
+Workflow "1" o-- "many" Task
+Workflow "many" -- "1" Agent : owned by >
+
+DataIntegration "1" *-- "1..*" DataProvider
+
+' 继承关系
+Agent <|-- TerminalAgent
+TerminalAgent <|-- DroneAgent
+TerminalAgent <|-- AgentEllipsis
+
+Component <|-- MoveToComponent
+Component <|-- SensingComponent
+Component <|-- ComputationComponent
+Component <|-- ComponentEllipsis
+
+Workflow <|-- InspectionWorkflow
+Workflow <|-- ChargingWorkflow
+Workflow <|-- WorkflowEllipsis
+
+Task <|-- MoveToTask
+Task <|-- FileCollectTask
+Task <|-- TaskEllipsis
+
+DataProvider <|-- WeatherDataProvider
+DataProvider <|-- TrafficDataProvider
+DataProvider <|-- DataProviderEllipsis
+
+' 布局优化
+' 垂直排列Component子类
+MoveToComponent -[hidden]-> SensingComponent
+SensingComponent -[hidden]-> ComputationComponent
+ComputationComponent -[hidden]-> ComponentEllipsis
+
+' 垂直排列Workflow子类
+InspectionWorkflow -[hidden]-> ChargingWorkflow
+ChargingWorkflow -[hidden]-> WorkflowEllipsis
+
+' 垂直排列Agent子类
+TerminalAgent -[hidden]-> DroneAgent
+DroneAgent -[hidden]-> AgentEllipsis
+
+' 垂直排列Task子类
+MoveToTask -[hidden]-> FileCollectTask
+FileCollectTask -[hidden]-> TaskEllipsis
+
+' 垂直排列DataProvider子类
+WeatherDataProvider -[hidden]-> TrafficDataProvider
+TrafficDataProvider -[hidden]-> DataProviderEllipsis
+
+@enduml

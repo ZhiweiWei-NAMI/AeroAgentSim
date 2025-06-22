@@ -179,7 +179,7 @@ class DeliveryDroneAgent(DroneAgent, metaclass=DeliveryDroneAgentMeta):
     def _process_custom_logic(self):
         """执行物流无人机特定的逻辑"""
         # 获取当前活跃的工作流
-        active_workflows = self._get_active_workflows()
+        active_workflows = self.get_active_workflows()
         if not active_workflows:
             # 如果没有活跃的工作流，则简单地保持空闲状态
             if self.get_state('status') not in ['charging', 'transporting', 'delivering',
@@ -246,7 +246,7 @@ class DeliveryDroneAgent(DroneAgent, metaclass=DeliveryDroneAgentMeta):
 
         # 添加物流工作流信息
         logistics_workflows = []
-        for workflow in self._get_active_workflows():
+        for workflow in self.get_active_workflows():
             if isinstance(workflow, LogisticsWorkflow):
                 logistics_workflows.append({
                     'id': workflow.id,

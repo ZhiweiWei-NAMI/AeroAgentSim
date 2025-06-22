@@ -4,7 +4,6 @@
 paper_code/
 benchmark_data/
 stats_data/
-paper.*
 
 # --- Compressed Archives ---
 # Ignore all tar.gz files anywhere in the project
