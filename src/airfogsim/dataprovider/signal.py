@@ -155,6 +155,7 @@ class SignalDataProvider(DataProvider):
         self.propagation_model = self.config.get('propagation_model', 'free_space')
         self.default_noise_floor = self.config.get('default_noise_floor', -100.0)  # dBm
         self.weather_enabled = self.config.get('weather_enabled', False)
+        self.use_fast_fading = self.config.get('use_fast_fading', False)
 
         # 信号源字典，键为信号源ID，值为SignalSource对象
         self.signal_sources: Dict[str, SignalSource] = {}
@@ -623,7 +624,7 @@ class SignalDataProvider(DataProvider):
             # PL(dB) = 20*log10(d) + 20*log10(f) + 32.44
             # 其中d为距离(km)，f为频率(MHz)
             distance_km = distance / 1000.0
-            return 20 * math.log10(distance_km) + 20 * math.log10(frequency) + 32.44
+            return 20 * math.log10(distance_km) + 20 * math.log10(frequency) + 32.45
 
         elif self.propagation_model == 'two_ray':
             # 两射线地面反射模型
@@ -635,7 +636,7 @@ class SignalDataProvider(DataProvider):
             else:
                 # 近距离使用自由空间模型
                 distance_km = distance / 1000.0
-                return 20 * math.log10(distance_km) + 20 * math.log10(frequency) + 32.44
+                return 20 * math.log10(distance_km) + 20 * math.log10(frequency) + 32.45
 
         elif self.propagation_model == 'log_distance':
             # 对数距离路径损耗模型
@@ -649,7 +650,7 @@ class SignalDataProvider(DataProvider):
         else:
             # 默认使用自由空间模型
             distance_km = distance / 1000.0
-            return 20 * math.log10(distance_km) + 20 * math.log10(frequency) + 32.44
+            return 20 * math.log10(distance_km) + 20 * math.log10(frequency) + 32.45
 
     def _apply_environmental_factors(self, rx_power: float, source: SignalSource,
                                     receiver_position: Tuple[float, float, float]) -> float:
@@ -695,8 +696,9 @@ class SignalDataProvider(DataProvider):
 
         # 应用随机衰落
         # 简化的快速衰落模型
-        fast_fading = np.random.normal(0, 3.0)  # 均值0，标准差3dB的高斯分布
-        modified_rx_power += fast_fading
+        if self.use_fast_fading:
+            fast_fading = np.random.normal(0, 3.0)  # 均值0，标准差3dB的高斯分布
+            modified_rx_power += fast_fading
 
         return modified_rx_power
 

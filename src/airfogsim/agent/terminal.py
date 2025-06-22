@@ -101,7 +101,7 @@ class TerminalAgent(Agent, metaclass=TerminalAgentMeta):
         """获取代理类型的描述"""
         return "终端代理 - 提供计算、通信和数据存储功能，支持图像处理工作流"
 
-    def __init__(self, env, agent_name: str, properties=None, agent_id=None):
+    def __init__(self, env, agent_name: str, properties={}, agent_id=None):
         super().__init__(env, agent_name, properties)
         self.id = agent_id or f"agent_{uuid.uuid4().hex[:8]}"
 
