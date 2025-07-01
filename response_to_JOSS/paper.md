@@ -13,8 +13,10 @@ authors:
     orcid: 0000-0001-9593-0013
     affiliation: 1
   - name: Bing Li
+    orcid: 0000-0001-5226-7557
     affiliation: 2
   - name: Rongqing Zhang
+    orcid: 0000-0003-3774-6247
     affiliation: 2
     corresponding: true
 affiliations:
@@ -22,7 +24,7 @@ affiliations:
    index: 1
  - name: School of Computer Science and Technology, Tongji University, China
    index: 2
-date: 20 April 2025
+date: 1 July 2025
 bibliography: paper.bib
 ---
 
@@ -55,9 +57,10 @@ Key concepts in AirFogSim include:
 
 
 
-![AirFogSim core architecture showing the key classes and their relationships.](figures/cls_puml.png){#fig:architecture}
+<!-- ![AirFogSim core architecture showing the key classes and their relationships.](figures/cls_puml.png){#fig:architecture}
 
-Figure \ref{fig:architecture} shows the core architecture of AirFogSim: `Environment` manages the simulation and contains various managers; `Agent` represents entities with state and components; `Component` provides capabilities and executes tasks; `Task` represents atomic units of work; and `Workflow` defines higher-level processes using state machines.
+Figure \ref{fig:architecture} shows the core architecture of AirFogSim:  -->
+`Environment` manages the simulation and contains various managers; `Agent` represents entities with state and components; `Component` provides capabilities and executes tasks; `Task` represents atomic units of work; and `Workflow` defines higher-level processes using state machines.
 
 # Developing AirFogSim: Exploring Custom Extensions
 
