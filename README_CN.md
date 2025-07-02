@@ -1,5 +1,5 @@
 <a href="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9"><img src="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9/status.svg"></a>
-
+[![DOI](https://zenodo.org/badge/735258267.svg)](https://doi.org/10.5281/zenodo.15779000)
 # AirFogSim：低空车载雾计算协同智能基准测试平台
 
 <div align="center">
