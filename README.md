@@ -1,18 +1,18 @@
 <a href="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9"><img src="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9/status.svg"></a>
 [![DOI](https://zenodo.org/badge/735258267.svg)](https://doi.org/10.5281/zenodo.15779000)
-# AirFogSim: Benchmarking Collaborative Intelligence for Low-Altitude Vehicular Fog Computing
+# AeroAgentSim: A High-Fidelity Simulation Platform for Agent-Based AI Benchmarking in Low-Altitude Scenario
 
 <div align="center">
-  <img src="src/airfogsim/docs/img/logo.png" alt="AirFogSim Logo" width="300">
+  <img src="src/airfogsim/docs/img/agent_logo.png" alt="AeroAgentSim Logo" width="300">
 </div>
 
-AirFogSim is a discrete-event simulation framework built on SimPy, designed for benchmarking collaborative intelligence in UAV-integrated fog computing environments. It provides a comprehensive platform for modeling complex interactions between heterogeneous aerial and terrestrial nodes, with a focus on realistic communication, computation, energy, and mobility modeling.
+AeroAgentSim is a discrete-event simulation framework built on SimPy, designed for benchmarking collaborative intelligence in UAV-integrated fog computing environments. It provides a comprehensive platform for modeling complex interactions between heterogeneous aerial and terrestrial nodes, with a focus on realistic communication, computation, energy, and mobility modeling.
 
 [中文版本](README_CN.md)
 
 ## 📋 Project Overview
 
-AirFogSim offers a comprehensive simulation environment for:
+AeroAgentSim offers a comprehensive simulation environment for:
 
 - Simulating autonomous agents (like UAVs) in complex environments
 - Researching resource allocation and task offloading strategies
@@ -22,7 +22,7 @@ AirFogSim offers a comprehensive simulation environment for:
 
 The framework employs a modular design, supporting highly customizable simulation scenarios, and provides an intuitive visualization interface for researchers and developers.
 
-If you use AirFogSim in your research, please cite our paper:
+If you use AeroAgentSim in your research, please cite our paper:
 
 ```bibtex
 @misc{wei2024airfogsimlightweightmodularsimulator,
@@ -58,7 +58,7 @@ If you use AirFogSim in your research, please cite our paper:
 
 ## 🏗️ System Architecture
 
-AirFogSim is built around an event-driven Agent-Based Modeling (ABM) architecture that enables efficient simulation of complex interactions between heterogeneous agents. The platform extends the SimPy discrete-event simulation library, providing specialized components for UAV-integrated fog computing scenarios.
+AeroAgentSim is built around an event-driven Agent-Based Modeling (ABM) architecture that enables efficient simulation of complex interactions between heterogeneous agents. The platform extends the SimPy discrete-event simulation library, providing specialized components for UAV-integrated fog computing scenarios.
 
 ### Core Components
 
