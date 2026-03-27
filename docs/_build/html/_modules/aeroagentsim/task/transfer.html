@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.task.transfer &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.task.transfer</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.task.transfer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim传输任务模块</span>
+
+<span class="sd">该模块定义了文件传输任务，负责将文件从一个代理传输到另一个代理。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 文件传输进度跟踪</span>
+<span class="sd">2. 传输性能评估</span>
+<span class="sd">3. 与文件管理器集成</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.task</span> <span class="kn">import</span> <span class="n">Task</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">TaskStatus</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">import</span> <span class="nn">math</span>
+
+<div class="viewcode-block" id="FileTransferTask"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.transfer.FileTransferTask">[docs]</a><span class="k">class</span> <span class="nc">FileTransferTask</span><span class="p">(</span><span class="n">Task</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    文件传输任务</span>
+
+<span class="sd">    将文件从源代理传输到目标代理的任务</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">NECESSARY_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;transmission_rate&#39;</span><span class="p">,</span> <span class="s1">&#39;latency&#39;</span><span class="p">,</span> <span class="s1">&#39;communication_quality&#39;</span><span class="p">]</span>
+    <span class="n">PRODUCED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;trans_target_agent_id&#39;</span><span class="p">,</span> <span class="s1">&#39;transmission_progress&#39;</span><span class="p">,</span>
+                       <span class="s1">&#39;transmission_speed&#39;</span><span class="p">,</span> <span class="s1">&#39;transmitting_status&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="FileTransferTask.__init__"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.transfer.FileTransferTask.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">component_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">task_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">workflow_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">target_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">properties</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化文件传输任务</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            agent: 执行任务的代理</span>
+<span class="sd">            component_name: 使用的组件名称</span>
+<span class="sd">            file_id: 要传输的文件ID</span>
+<span class="sd">            properties: 任务属性</span>
+<span class="sd">                trans_target_agent_id: 目标代理ID</span>
+<span class="sd">                workflow_id: 工作流ID</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">component_name</span><span class="p">,</span> <span class="s2">&quot;file_transfer&quot;</span> <span class="ow">or</span> <span class="n">task_name</span><span class="p">,</span>
+                         <span class="n">workflow_id</span><span class="o">=</span><span class="n">workflow_id</span><span class="p">,</span>
+                         <span class="n">target_state</span><span class="o">=</span><span class="n">target_state</span><span class="p">,</span>
+                         <span class="n">properties</span><span class="o">=</span><span class="n">properties</span> <span class="ow">or</span> <span class="p">{})</span>
+
+        <span class="c1"># 文件传输参数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_id</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;file_id&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trans_target_agent_id</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;trans_target_agent_id&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 获取文件管理器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;file_manager&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;环境中没有文件管理器，无法执行文件传输任务&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 获取文件信息</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">get_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_info</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;文件 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="si">}</span><span class="s2"> 不存在&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">get_file_owner</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="p">)</span> <span class="o">!=</span> <span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;文件 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="si">}</span><span class="s2"> 不在 agent </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 上&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 文件大小 (KB)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;size&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;文件 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="si">}</span><span class="s2"> 大小无效: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">file_size</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trans_target_agent_id</span> <span class="o">==</span> <span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;目的agent和当前agent一致&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_agent</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">agents</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">trans_target_agent_id</span><span class="p">]</span>
+
+        <span class="c1"># 传输状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transfer_progress</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transfer_speed</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># KB/s</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transferred_bytes</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># KB</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimated_time_remaining</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># 秒</span>
+
+        <span class="c1"># 设置代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;trans_target_agent_id&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trans_target_agent_id</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmitting_status&#39;</span><span class="p">,</span> <span class="s1">&#39;transmitting&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmission_progress&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmission_speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="c1"># 通知文件管理器开始传输</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">mark_file_transfer_started</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="p">,</span>
+                                                         <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trans_target_agent_id</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_update_task_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">performance_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        更新任务状态</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            performance_metrics: 性能指标</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">current_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+
+        <span class="c1"># 如果是第一次更新，记录开始时间</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span> <span class="o">=</span> <span class="n">current_time</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 计算时间间隔</span>
+        <span class="n">time_delta</span> <span class="o">=</span> <span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span>
+        <span class="k">if</span> <span class="n">time_delta</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 获取传输速率 (Mbps)</span>
+        <span class="n">transmission_rate</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;transmission_rate&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># Mbps</span>
+
+        <span class="c1"># 计算这个时间间隔内传输的数据量 (KB)</span>
+        <span class="c1"># 传输速率 Mbps 转换为 KB/s: 1 Mbps = 125 KB/s</span>
+        <span class="n">transfer_speed</span> <span class="o">=</span> <span class="n">transmission_rate</span> <span class="o">*</span> <span class="mf">125.0</span>  <span class="c1"># KB/s</span>
+
+        <span class="c1"># 计算传输的字节数</span>
+        <span class="n">transferred_in_interval</span> <span class="o">=</span> <span class="n">transfer_speed</span> <span class="o">*</span> <span class="n">time_delta</span>  <span class="c1"># KB</span>
+
+        <span class="c1"># 更新已传输字节数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transferred_bytes</span> <span class="o">+=</span> <span class="n">transferred_in_interval</span>
+
+        <span class="c1"># 限制已传输字节数不超过文件大小</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transferred_bytes</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transferred_bytes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span><span class="p">)</span>
+
+        <span class="c1"># 更新传输进度</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transfer_progress</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transferred_bytes</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span>
+
+        <span class="c1"># 更新传输速度</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transfer_speed</span> <span class="o">=</span> <span class="n">transfer_speed</span>
+
+        <span class="c1"># 计算剩余时间</span>
+        <span class="n">remaining_bytes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">transferred_bytes</span>
+        <span class="k">if</span> <span class="n">transfer_speed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">estimated_time_remaining</span> <span class="o">=</span> <span class="n">remaining_bytes</span> <span class="o">/</span> <span class="n">transfer_speed</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">estimated_time_remaining</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 更新代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmission_progress&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">transfer_progress</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmission_speed&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">transfer_speed</span><span class="p">)</span>
+
+        <span class="c1"># 检查是否完成传输</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">transfer_progress</span> <span class="o">&gt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transfer_progress</span>
+
+<div class="viewcode-block" id="FileTransferTask.estimate_remaining_time"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.transfer.FileTransferTask.estimate_remaining_time">[docs]</a>    <span class="k">def</span> <span class="nf">estimate_remaining_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">performance_metrics</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        估计剩余时间</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            performance_metrics: 性能指标</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: 估计的剩余时间 (秒)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 如果已经完成，返回0</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">&gt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+
+        <span class="c1"># 获取传输速率 (Mbps)</span>
+        <span class="n">transmission_rate</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;transmission_rate&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># Mbps</span>
+
+        <span class="c1"># 传输速率 Mbps 转换为 KB/s: 1 Mbps = 125 KB/s</span>
+        <span class="n">transfer_speed</span> <span class="o">=</span> <span class="n">transmission_rate</span> <span class="o">*</span> <span class="mf">125.0</span>  <span class="c1"># KB/s</span>
+
+        <span class="c1"># 计算剩余字节数</span>
+        <span class="n">remaining_bytes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">transferred_bytes</span>
+
+        <span class="c1"># 计算剩余时间</span>
+        <span class="k">if</span> <span class="n">transfer_speed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">remaining_bytes</span> <span class="o">/</span> <span class="n">transfer_speed</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_get_task_specific_state_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取任务特定状态表示</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict: 任务特定状态表示</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 根据任务进度确定传输状态</span>
+        <span class="n">transmitting_status</span> <span class="o">=</span> <span class="s1">&#39;transmitting&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">&lt;</span> <span class="mf">1.0</span> <span class="k">else</span> <span class="s1">&#39;completed&#39;</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;transmission_progress&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">transfer_progress</span><span class="p">,</span>
+            <span class="s1">&#39;transmission_speed&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">transfer_speed</span><span class="p">,</span>
+            <span class="s1">&#39;transmitting_status&#39;</span><span class="p">:</span> <span class="n">transmitting_status</span><span class="p">,</span>
+            <span class="s1">&#39;trans_target_agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">trans_target_agent_id</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理任务完成时对代理拥有对象的操作&quot;&quot;&quot;</span>
+        <span class="c1"># 将文件从当前代理移除</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">remove_possessing_object</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="p">)</span>
+
+        <span class="c1"># 重置代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmitting_status&#39;</span><span class="p">,</span> <span class="s1">&#39;completed&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmission_progress&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmission_speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="c1"># 通知文件管理器传输完成</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="p">:</span>
+            <span class="c1"># 获取目标代理位置</span>
+            <span class="n">target_location</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;airspace_manager&#39;</span><span class="p">):</span>
+                <span class="n">target_location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">get_agent_position</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trans_target_agent_id</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">mark_file_transferred</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trans_target_agent_id</span><span class="p">,</span> <span class="n">target_location</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_agent</span><span class="o">.</span><span class="n">add_possessing_object</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">get_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_id</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_fail</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理任务失败时对代理拥有对象的操作&quot;&quot;&quot;</span>
+        <span class="c1"># 重置代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmitting_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmission_progress&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmission_speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理任务取消时对代理拥有对象的操作&quot;&quot;&quot;</span>
+        <span class="c1"># 重置代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmitting_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmission_progress&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;transmission_speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.task.transfer</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

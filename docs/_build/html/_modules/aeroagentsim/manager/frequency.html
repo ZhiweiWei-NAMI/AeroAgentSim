@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.manager.frequency &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.frequency</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.manager.frequency</h1><div class="highlight"><pre>
+<span></span><span class="c1"># manager/frequency.py</span>
+
+<span class="kn">import</span> <span class="nn">functools</span> <span class="c1"># Added for partial</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span> <span class="c1"># Added Any, Callable</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.resource</span> <span class="kn">import</span> <span class="n">ResourceManager</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">ResourceStatus</span><span class="p">,</span> <span class="n">AllocationStatus</span> <span class="c1"># 导入枚举</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.resource.frequency</span> <span class="kn">import</span> <span class="n">FrequencyResource</span>
+
+<span class="c1"># Configure logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FrequencyManager"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.frequency.FrequencyManager">[docs]</a><span class="k">class</span> <span class="nc">FrequencyManager</span><span class="p">(</span><span class="n">ResourceManager</span><span class="p">[</span><span class="n">FrequencyResource</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    频率资源管理器</span>
+
+<span class="sd">    管理预定义的、离散的、固定带宽的频率资源块</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="FrequencyManager.__init__"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.frequency.FrequencyManager.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">total_bandwidth</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span> <span class="n">block_bandwidth</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">,</span>
+                 <span class="n">start_frequency</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2400.0</span><span class="p">,</span> <span class="n">power_limit</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+                 <span class="n">update_interval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化频率资源管理器</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            total_bandwidth: 总带宽 (MHz)</span>
+<span class="sd">            block_bandwidth: 每个资源块的带宽 (MHz)</span>
+<span class="sd">            start_frequency: 起始频率 (MHz)</span>
+<span class="sd">            power_limit: 功率限制 (mW)</span>
+<span class="sd">            update_interval: 信道状态更新间隔（秒）</span>
+<span class="sd">            config: 配置字典，可能包含以下字段:</span>
+<span class="sd">                - link_quality_calculator: 链路质量计算函数，用于计算SINR和其他链路质量指标</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="s2">&quot;frequency_manager&quot;</span>
+
+        <span class="c1"># 配置参数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="p">{}</span>
+
+        <span class="c1"># 链路质量计算器（Hook函数）</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">link_quality_calculator</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">calculator_func</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;link_quality_calculator&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">calculator_func</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">link_quality_calculator</span> <span class="o">=</span> <span class="n">calculator_func</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using external link quality calculator.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using internal SINR calculation model.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 代理位置信息缓存，用于计算信道状态</span>
+        <span class="c1"># 格式: {agent_id: (x, y, z)}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_positions</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 发射功率信息，用于计算信道状态</span>
+        <span class="c1"># 格式: {agent_id: power_mw}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transmit_powers</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 资源分配优化</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">available_resources_cache</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># 可用资源ID缓存</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_by_frequency</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 频率到资源ID的映射</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># 上次信道状态更新时间</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_interval</span> <span class="o">=</span> <span class="n">update_interval</span>  <span class="c1"># 信道状态更新间隔</span>
+
+        <span class="c1"># 性能指标</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allocation_times</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel_update_times</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 订阅环境的visual_update事件，用于更新频率资源的干扰情况</span>
+        <span class="k">if</span> <span class="n">env</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;event_registry&#39;</span><span class="p">):</span>
+            <span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;visual_update&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_visual_update</span><span class="p">)</span>
+
+        <span class="c1"># 初始化离散频率资源块</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_resource_blocks</span><span class="p">(</span><span class="n">total_bandwidth</span><span class="p">,</span> <span class="n">block_bandwidth</span><span class="p">,</span> <span class="n">start_frequency</span><span class="p">,</span> <span class="n">power_limit</span><span class="p">)</span>
+
+        <span class="c1"># Setup subscriptions to DataProvider events</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_data_provider_subscriptions</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_initialize_resource_blocks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">total_bandwidth</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">block_bandwidth</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                                    <span class="n">start_frequency</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">power_limit</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化离散频率资源块</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            total_bandwidth: 总带宽 (MHz)</span>
+<span class="sd">            block_bandwidth: 每个资源块的带宽 (MHz)</span>
+<span class="sd">            start_frequency: 起始频率 (MHz)</span>
+<span class="sd">            power_limit: 功率限制 (mW)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 计算资源块数量</span>
+        <span class="n">num_blocks</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">total_bandwidth</span> <span class="o">/</span> <span class="n">block_bandwidth</span><span class="p">)</span>
+
+        <span class="c1"># 创建资源块</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_blocks</span><span class="p">):</span>
+            <span class="n">center_frequency</span> <span class="o">=</span> <span class="n">start_frequency</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">block_bandwidth</span>
+            <span class="n">resource_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;freq_block_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span>
+
+            <span class="c1"># 创建频率资源块</span>
+            <span class="n">resource</span> <span class="o">=</span> <span class="n">FrequencyResource</span><span class="p">(</span>
+                <span class="n">resource_id</span><span class="o">=</span><span class="n">resource_id</span><span class="p">,</span>
+                <span class="n">center_frequency</span><span class="o">=</span><span class="n">center_frequency</span><span class="p">,</span>
+                <span class="n">bandwidth</span><span class="o">=</span><span class="n">block_bandwidth</span><span class="p">,</span>
+                <span class="n">max_users</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>  <span class="c1"># 每个资源块可以分配给多个链路</span>
+                <span class="n">power_limit</span><span class="o">=</span><span class="n">power_limit</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 注册资源</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">register_resource</span><span class="p">(</span><span class="n">resource</span><span class="p">)</span>
+
+            <span class="c1"># 更新缓存</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">available_resources_cache</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">resource_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource_by_frequency</span><span class="p">[</span><span class="n">center_frequency</span><span class="p">]</span> <span class="o">=</span> <span class="n">resource_id</span>
+
+<div class="viewcode-block" id="FrequencyManager.request_resource"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.frequency.FrequencyManager.request_resource">[docs]</a>    <span class="k">def</span> <span class="nf">request_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">target_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">power_db</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">,</span> <span class="n">requirements</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        请求分配可用的频率资源块用于源和目标代理之间的通信</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source_id: 源代理ID</span>
+<span class="sd">            target_id: 目标代理ID</span>
+<span class="sd">            power_db: 发射功率(dBm)</span>
+<span class="sd">            requirements: 资源需求（可选），可能包含如下字段：</span>
+<span class="sd">                - min_bandwidth: 最小带宽 (MHz)</span>
+<span class="sd">                - preferred_frequency: 优先分配的频率范围 (MHz)</span>
+<span class="sd">                - required_blocks: 需要的资源块数量 (默认为1)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            分配的资源块ID列表，如果没有可用资源则返回空列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">requirements</span> <span class="o">=</span> <span class="n">requirements</span> <span class="ow">or</span> <span class="p">{}</span>
+
+        <span class="c1"># 使用缓存找到所有可用的资源块</span>
+        <span class="n">available_resources</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">res_id</span><span class="p">]</span> <span class="k">for</span> <span class="n">res_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">available_resources_cache</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">available_resources</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># 应用筛选条件</span>
+        <span class="n">filtered_resources</span> <span class="o">=</span> <span class="n">available_resources</span>
+
+        <span class="c1"># 按优先频率范围排序</span>
+        <span class="k">if</span> <span class="s1">&#39;preferred_frequency&#39;</span> <span class="ow">in</span> <span class="n">requirements</span> <span class="ow">and</span> <span class="n">filtered_resources</span><span class="p">:</span>
+            <span class="n">preferred_freq</span> <span class="o">=</span> <span class="n">requirements</span><span class="p">[</span><span class="s1">&#39;preferred_frequency&#39;</span><span class="p">]</span>
+            <span class="n">filtered_resources</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span>
+                <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="nb">abs</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">center_frequency</span> <span class="o">-</span> <span class="n">preferred_freq</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="c1"># 计算所需的总带宽</span>
+        <span class="n">required_bandwidth</span> <span class="o">=</span> <span class="n">requirements</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;min_bandwidth&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">required_blocks</span> <span class="o">=</span> <span class="n">requirements</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;required_blocks&#39;</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">required_bandwidth</span> <span class="o">/</span> <span class="n">filtered_resources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">bandwidth</span><span class="p">)))</span>
+
+        <span class="c1"># 如果没有可用资源，返回空列表</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">filtered_resources</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="c1"># 选择足够多的资源块，使总带宽满足要求</span>
+        <span class="n">selected_resources</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">total_bandwidth</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># 首先尝试选择足够的资源块以满足带宽要求</span>
+        <span class="k">for</span> <span class="n">resource</span> <span class="ow">in</span> <span class="n">filtered_resources</span><span class="p">[:</span><span class="n">required_blocks</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">total_bandwidth</span> <span class="o">&gt;=</span> <span class="n">required_bandwidth</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="n">selected_resources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">resource</span><span class="p">)</span>
+            <span class="n">total_bandwidth</span> <span class="o">+=</span> <span class="n">resource</span><span class="o">.</span><span class="n">bandwidth</span>
+
+        <span class="c1"># 如果无法满足带宽要求，返回空列表</span>
+        <span class="k">if</span> <span class="n">total_bandwidth</span> <span class="o">&lt;</span> <span class="n">required_bandwidth</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="c1"># 分配资源块</span>
+        <span class="n">allocated_resource_ids</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">resource</span> <span class="ow">in</span> <span class="n">selected_resources</span><span class="p">:</span>
+            <span class="c1"># 分配资源块</span>
+            <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">assign_to</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">target_id</span><span class="p">,</span> <span class="n">power_db</span><span class="p">):</span>
+                <span class="c1"># 记录分配</span>
+                <span class="n">allocation_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;alloc_</span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">target_id</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">resource</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
+
+                <span class="c1"># 更新分配记录</span>
+                <span class="n">allocation_info</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">allocation_id</span><span class="p">,</span>
+                    <span class="s1">&#39;resource_id&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+                    <span class="s1">&#39;target_id&#39;</span><span class="p">:</span> <span class="n">target_id</span><span class="p">,</span>
+                    <span class="s1">&#39;requirements&#39;</span><span class="p">:</span> <span class="n">requirements</span><span class="p">,</span>
+                    <span class="s1">&#39;start_time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span>
+                    <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="n">AllocationStatus</span><span class="o">.</span><span class="n">ACTIVE</span> <span class="c1"># 使用枚举</span>
+                <span class="p">}</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="p">[</span><span class="n">allocation_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">allocation_info</span>
+
+                <span class="c1"># 更新索引</span>
+                <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">[</span><span class="n">resource</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="p">[</span><span class="n">resource</span><span class="o">.</span><span class="n">id</span><span class="p">][</span><span class="n">allocation_id</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+                <span class="k">if</span> <span class="n">source_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_allocations</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">user_allocations</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">user_allocations</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">allocation_id</span><span class="p">)</span>
+
+                <span class="c1"># 触发频率链路活动更新事件</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;event_registry&#39;</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                        <span class="s1">&#39;FrequencyLinkActivityUpdate&#39;</span><span class="p">,</span>
+                        <span class="p">{</span>
+                            <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+                            <span class="s1">&#39;target_id&#39;</span><span class="p">:</span> <span class="n">target_id</span><span class="p">,</span>
+                            <span class="s1">&#39;resource_id&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                            <span class="s1">&#39;center_frequency&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">center_frequency</span><span class="p">,</span>
+                            <span class="s1">&#39;bandwidth&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">bandwidth</span><span class="p">,</span>
+                            <span class="s1">&#39;transmit_power_dbm&#39;</span><span class="p">:</span> <span class="n">power_db</span><span class="p">,</span>
+                            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;allocated&#39;</span>
+                        <span class="p">}</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># 添加到已分配资源ID列表</span>
+                <span class="n">allocated_resource_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+
+                <span class="c1"># 更新可用资源缓存</span>
+                <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">available_resources_cache</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># 如果分配失败，释放已分配的资源</span>
+                <span class="k">for</span> <span class="n">res_id</span> <span class="ow">in</span> <span class="n">allocated_resource_ids</span><span class="p">:</span>
+                    <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">res_id</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">res</span><span class="p">:</span>
+                        <span class="n">res</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">target_id</span><span class="p">)</span>
+                        <span class="c1"># 更新可用资源缓存</span>
+                        <span class="k">if</span> <span class="n">res</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">available_resources_cache</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+                <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="c1"># 记录分配时间</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allocation_times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">allocated_resource_ids</span></div>
+
+<div class="viewcode-block" id="FrequencyManager.release_resource"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.frequency.FrequencyManager.release_resource">[docs]</a>    <span class="k">def</span> <span class="nf">release_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">target_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">resource_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        释放源和目标代理之间的频率资源块</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            source_id: 源代理ID</span>
+<span class="sd">            target_id: 目标代理ID</span>
+<span class="sd">            resource_id: 资源块ID列表</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            是否释放成功</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># 如果未指定资源块ID，查找链路使用的所有资源块</span>
+        <span class="k">if</span> <span class="n">resource_ids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">resources_to_check</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">resources_to_check</span> <span class="o">=</span> <span class="n">resource_ids</span>
+
+        <span class="n">success</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># 遍历所有指定的资源块</span>
+        <span class="k">for</span> <span class="n">res_id</span> <span class="ow">in</span> <span class="n">resources_to_check</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">res_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">res_id</span><span class="p">]</span>
+
+            <span class="c1"># 检查链路是否分配了该资源块</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">target_id</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">resource</span><span class="o">.</span><span class="n">assigned_to</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># 释放资源</span>
+            <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">target_id</span><span class="p">):</span>
+                <span class="c1"># 更新分配记录</span>
+                <span class="k">for</span> <span class="n">allocation_id</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resource_allocations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">res_id</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+                    <span class="k">if</span> <span class="n">allocation_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="p">:</span>
+                        <span class="n">alloc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">allocations</span><span class="p">[</span><span class="n">allocation_id</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">alloc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_id&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">source_id</span> <span class="ow">and</span> <span class="n">alloc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;target_id&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">target_id</span><span class="p">:</span>
+                            <span class="n">alloc</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">AllocationStatus</span><span class="o">.</span><span class="n">RELEASED</span> <span class="c1"># 使用枚举</span>
+                            <span class="n">alloc</span><span class="p">[</span><span class="s1">&#39;end_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+
+                <span class="c1"># 触发频率链路活动更新事件</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;event_registry&#39;</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                        <span class="s1">&#39;FrequencyLinkActivityUpdate&#39;</span><span class="p">,</span>
+                        <span class="p">{</span>
+                            <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+                            <span class="s1">&#39;target_id&#39;</span><span class="p">:</span> <span class="n">target_id</span><span class="p">,</span>
+                            <span class="s1">&#39;resource_id&#39;</span><span class="p">:</span> <span class="n">res_id</span><span class="p">,</span>
+                            <span class="s1">&#39;center_frequency&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">center_frequency</span><span class="p">,</span>
+                            <span class="s1">&#39;bandwidth&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">bandwidth</span><span class="p">,</span>
+                            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;released&#39;</span>
+                        <span class="p">}</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># 更新可用资源缓存</span>
+                <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">available_resources_cache</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">res_id</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">success</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># 记录释放时间</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allocation_times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">success</span></div>
+
+    <span class="k">def</span> <span class="nf">_on_visual_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        处理周期性更新事件，计算信道状态数据</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 只在指定间隔更新信道状态</span>
+        <span class="n">current_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="k">if</span> <span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_interval</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_channel_conditions</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span> <span class="o">=</span> <span class="n">current_time</span>
+
+<div class="viewcode-block" id="FrequencyManager.update_channel_conditions"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.frequency.FrequencyManager.update_channel_conditions">[docs]</a>    <span class="k">def</span> <span class="nf">update_channel_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        更新所有活跃链路的信道状态</span>
+
+<span class="sd">        计算每个活动链路的SINR，考虑同频干扰</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># 确保环境存在</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;airspace_manager&#39;</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 遍历所有资源块</span>
+        <span class="k">for</span> <span class="n">resource</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">assigned_to</span><span class="p">:</span>  <span class="c1"># 跳过未分配的资源块</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># 对每个资源块计算已分配用户pair之间的干扰和接收sinr</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_in_block_sinr</span><span class="p">(</span><span class="n">resource</span><span class="p">)</span>
+
+        <span class="c1"># 记录信道更新时间</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel_update_times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_get_nearby_agents</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">radius</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取指定位置周围的代理</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            position: 位置 (x, y, z)</span>
+<span class="sd">            radius: 半径（米）</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            附近代理ID列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 确保环境存在且有空域管理器</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;airspace_manager&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="c1"># 直接使用空域管理器的get_nearby_objects方法</span>
+        <span class="n">nearby_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">get_nearby_objects</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="n">position</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">radius</span><span class="p">)</span>
+
+        <span class="c1"># 返回附近代理的ID列表</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">nearby_objects</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+
+    <span class="k">def</span> <span class="nf">_calculate_path_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tx_position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+                            <span class="n">rx_position</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算路径损耗</span>
+
+<span class="sd">        使用简化的自由空间路径损耗模型</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            tx_position: 发射端位置 (x, y, z)，单位为米</span>
+<span class="sd">            rx_position: 接收端位置 (x, y, z)，单位为米</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            路径损耗 (dB)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 计算距离</span>
+        <span class="n">dx</span> <span class="o">=</span> <span class="n">tx_position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">rx_position</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">dy</span> <span class="o">=</span> <span class="n">tx_position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">rx_position</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">dz</span> <span class="o">=</span> <span class="n">tx_position</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">rx_position</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">dy</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">dz</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># 避免距离为0</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">distance</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="c1"># 自由空间路径损耗模型 (dB)</span>
+        <span class="c1"># PL = 20*log10(d) + 20*log10(f) - 27.55</span>
+        <span class="c1"># 这里假设频率为2.4GHz</span>
+        <span class="n">path_loss</span> <span class="o">=</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">distance</span><span class="p">)</span> <span class="o">+</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mi">2400</span><span class="p">)</span> <span class="o">-</span> <span class="mf">27.55</span>
+
+        <span class="k">return</span> <span class="n">path_loss</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_fast_fading</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算快速衰落</span>
+
+<span class="sd">        使用简化的瑞利衰落模型</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            快速衰落 (dB)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 简化的瑞利衰落模型</span>
+        <span class="c1"># 生成两个高斯随机变量</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># 计算瑞利分布的随机变量</span>
+        <span class="n">rayleigh</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">y</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># 转换为dB</span>
+        <span class="n">fading_db</span> <span class="o">=</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">rayleigh</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">fading_db</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_in_block_sinr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">:</span> <span class="n">FrequencyResource</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算资源块内部各链路的SINR，使用矩阵运算提高效率</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            resource: 频率资源块</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 确保环境存在</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;airspace_manager&#39;</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 获取airspace_manager</span>
+        <span class="n">airspace_manager</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">airspace_manager</span>
+
+        <span class="c1"># 如果资源块未分配给任何链路，直接返回</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">resource</span><span class="o">.</span><span class="n">assigned_to</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 预处理：获取资源块内所有链路的位置和功率信息</span>
+        <span class="n">link_info</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">link_ids</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">target_id</span><span class="p">),</span> <span class="n">power_db</span> <span class="ow">in</span> <span class="n">resource</span><span class="o">.</span><span class="n">assigned_to</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># 从airspace_manager获取位置信息</span>
+            <span class="n">source_position</span> <span class="o">=</span> <span class="n">airspace_manager</span><span class="o">.</span><span class="n">get_agent_position</span><span class="p">(</span><span class="n">source_id</span><span class="p">)</span>
+            <span class="n">target_position</span> <span class="o">=</span> <span class="n">airspace_manager</span><span class="o">.</span><span class="n">get_agent_position</span><span class="p">(</span><span class="n">target_id</span><span class="p">)</span>
+
+            <span class="c1"># 如果没有位置信息，跳过</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">source_position</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">target_position</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">link_ids</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">source_id</span><span class="p">,</span> <span class="n">target_id</span><span class="p">))</span>
+            <span class="n">link_info</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s1">&#39;source_position&#39;</span><span class="p">:</span> <span class="n">source_position</span><span class="p">,</span>
+                <span class="s1">&#39;target_position&#39;</span><span class="p">:</span> <span class="n">target_position</span><span class="p">,</span>
+                <span class="s1">&#39;power_db&#39;</span><span class="p">:</span> <span class="n">power_db</span>
+            <span class="p">})</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">link_info</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">num_links</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">link_info</span><span class="p">)</span>
+
+        <span class="c1"># 构建位置和功率矩阵</span>
+        <span class="n">source_positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_links</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="n">target_positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_links</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="n">power_db_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_links</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_links</span><span class="p">):</span>
+            <span class="n">source_positions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">link_info</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;source_position&#39;</span><span class="p">]</span>
+            <span class="n">target_positions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">link_info</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;target_position&#39;</span><span class="p">]</span>
+            <span class="n">power_db_values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">link_info</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="s1">&#39;power_db&#39;</span><span class="p">]</span>
+
+        <span class="c1"># 检查是否使用外部链路质量计算器（Hook函数）</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">link_quality_calculator</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># 使用外部链路质量计算器计算SINR</span>
+            <span class="n">rx_power_dbm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_links</span><span class="p">)</span>
+            <span class="n">interference_dbm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">num_links</span><span class="p">,</span> <span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))</span>
+            <span class="n">sinr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_links</span><span class="p">)</span>
+            <span class="n">noise_dbm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_thermal_noise</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">bandwidth</span><span class="p">)</span>  <span class="c1"># 默认噪声值，可能被覆盖</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_links</span><span class="p">):</span>
+                <span class="n">source_id</span><span class="p">,</span> <span class="n">target_id</span> <span class="o">=</span> <span class="n">link_ids</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">source_pos</span> <span class="o">=</span> <span class="n">source_positions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">target_pos</span> <span class="o">=</span> <span class="n">target_positions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">power_db</span> <span class="o">=</span> <span class="n">power_db_values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+                <span class="c1"># 准备链路上下文</span>
+                <span class="n">link_context</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+                    <span class="s1">&#39;target_id&#39;</span><span class="p">:</span> <span class="n">target_id</span><span class="p">,</span>
+                    <span class="s1">&#39;source_position&#39;</span><span class="p">:</span> <span class="n">source_pos</span><span class="p">,</span>
+                    <span class="s1">&#39;target_position&#39;</span><span class="p">:</span> <span class="n">target_pos</span><span class="p">,</span>
+                    <span class="s1">&#39;transmit_power_dbm&#39;</span><span class="p">:</span> <span class="n">power_db</span><span class="p">,</span>
+                    <span class="s1">&#39;center_frequency&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">center_frequency</span><span class="p">,</span>
+                    <span class="s1">&#39;bandwidth&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">bandwidth</span><span class="p">,</span>
+                    <span class="s1">&#39;resource_id&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">id</span>
+                <span class="p">}</span>
+
+                <span class="c1"># 调用外部链路质量计算器</span>
+                <span class="n">quality_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">link_quality_calculator</span><span class="p">(</span><span class="n">link_context</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">)</span>
+
+                <span class="c1"># 提取计算结果</span>
+                <span class="k">if</span> <span class="n">quality_info</span><span class="p">:</span>
+                    <span class="n">rx_power_dbm</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">quality_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;received_power_dbm&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="n">interference_dbm</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">quality_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;interference_dbm&#39;</span><span class="p">,</span> <span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))</span>
+                    <span class="n">sinr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">quality_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sinr&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="c1"># 如果提供了噪声值，则更新</span>
+                    <span class="k">if</span> <span class="s1">&#39;noise_dbm&#39;</span> <span class="ow">in</span> <span class="n">quality_info</span><span class="p">:</span>
+                        <span class="n">noise_dbm</span> <span class="o">=</span> <span class="n">quality_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;noise_dbm&#39;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># 如果计算器返回None或空字典，使用默认值</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Link quality calculator returned no data for link </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">-&gt;</span><span class="si">{</span><span class="n">target_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="c1"># 使用内部方法计算基本值</span>
+                    <span class="n">path_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_path_loss</span><span class="p">(</span><span class="n">source_pos</span><span class="p">,</span> <span class="n">target_pos</span><span class="p">)</span>
+                    <span class="n">fast_fading</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_fast_fading</span><span class="p">()</span>
+                    <span class="n">rx_power_dbm</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">power_db</span> <span class="o">-</span> <span class="n">path_loss</span> <span class="o">+</span> <span class="n">fast_fading</span>
+                    <span class="n">sinr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">rx_power_dbm</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">noise_dbm</span>  <span class="c1"># 假设无干扰</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># 使用内部方法计算SINR</span>
+            <span class="c1"># 1. 计算直接链路的路径损耗矩阵 (num_links,)</span>
+            <span class="n">direct_path_losses</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_links</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_links</span><span class="p">):</span>
+                <span class="n">direct_path_losses</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_path_loss</span><span class="p">(</span>
+                    <span class="n">source_positions</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">target_positions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="p">)</span>
+
+            <span class="c1"># 2. 计算快速衰落</span>
+            <span class="n">fast_fadings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_calculate_fast_fading</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_links</span><span class="p">)])</span>
+
+            <span class="c1"># 3. 计算接收信号功率 (dBm)</span>
+            <span class="n">rx_power_dbm</span> <span class="o">=</span> <span class="n">power_db_values</span> <span class="o">-</span> <span class="n">direct_path_losses</span> <span class="o">+</span> <span class="n">fast_fadings</span>
+
+            <span class="c1"># 4. 计算干扰矩阵 (所有发射机到所有接收机的路径损耗)</span>
+            <span class="c1"># 创建 (num_links x num_links) 干扰矩阵</span>
+            <span class="n">interference_path_losses</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_links</span><span class="p">,</span> <span class="n">num_links</span><span class="p">))</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_links</span><span class="p">):</span>  <span class="c1"># 接收机索引</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_links</span><span class="p">):</span>  <span class="c1"># 发射机索引</span>
+                    <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">j</span><span class="p">:</span>  <span class="c1"># 跳过自身链路</span>
+                        <span class="n">interference_path_losses</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_path_loss</span><span class="p">(</span>
+                            <span class="n">source_positions</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">target_positions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                        <span class="p">)</span>
+
+            <span class="c1"># 5. 将功率从dBm转换为mW</span>
+            <span class="n">power_mw</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">power_db_values</span> <span class="o">/</span> <span class="mi">10</span><span class="p">)</span>
+
+            <span class="c1"># 6. 计算线性域中的路径损耗因子</span>
+            <span class="n">path_loss_factors</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">interference_path_losses</span> <span class="o">/</span> <span class="mi">10</span><span class="p">)</span>
+
+            <span class="c1"># 7. 计算每个链路的干扰功率（mW）</span>
+            <span class="c1"># 对角线设为0，不计算自干扰</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">fill_diagonal</span><span class="p">(</span><span class="n">path_loss_factors</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+            <span class="c1"># 计算干扰功率 (mW)：power_mw * path_loss_factors，矩阵乘法</span>
+            <span class="n">interference_mw_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">power_mw</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">num_links</span><span class="p">))</span> <span class="o">*</span> <span class="n">path_loss_factors</span>
+            <span class="n">interference_mw_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">interference_mw_matrix</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># 按行求和</span>
+
+            <span class="c1"># 8. 计算噪声功率 (dBm)</span>
+            <span class="n">noise_dbm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_thermal_noise</span><span class="p">(</span><span class="n">resource</span><span class="o">.</span><span class="n">bandwidth</span><span class="p">)</span>
+            <span class="n">noise_mw</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">noise_dbm</span> <span class="o">/</span> <span class="mi">10</span><span class="p">)</span>
+
+            <span class="c1"># 9. 计算干扰功率 (dBm)并处理无干扰情况</span>
+            <span class="n">has_interference</span> <span class="o">=</span> <span class="n">interference_mw_sum</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="n">interference_dbm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">num_links</span><span class="p">,</span> <span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))</span>
+            <span class="n">interference_dbm</span><span class="p">[</span><span class="n">has_interference</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">interference_mw_sum</span><span class="p">[</span><span class="n">has_interference</span><span class="p">])</span>
+
+            <span class="c1"># 10. 计算SINR (dB)</span>
+            <span class="n">sinr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_links</span><span class="p">)</span>
+
+            <span class="c1"># 对有干扰的链路</span>
+            <span class="n">has_interference_mask</span> <span class="o">=</span> <span class="n">interference_dbm</span> <span class="o">&gt;</span> <span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">has_interference_mask</span><span class="p">):</span>
+                <span class="c1"># 干扰加噪声功率 (线性域相加)</span>
+                <span class="n">interference_noise_mw</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">interference_dbm</span><span class="p">[</span><span class="n">has_interference_mask</span><span class="p">]</span> <span class="o">/</span> <span class="mi">10</span><span class="p">)</span> <span class="o">+</span> <span class="n">noise_mw</span>
+                <span class="n">interference_noise_dbm</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">interference_noise_mw</span><span class="p">)</span>
+                <span class="n">sinr</span><span class="p">[</span><span class="n">has_interference_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">rx_power_dbm</span><span class="p">[</span><span class="n">has_interference_mask</span><span class="p">]</span> <span class="o">-</span> <span class="n">interference_noise_dbm</span>
+
+            <span class="c1"># 对无干扰的链路</span>
+            <span class="n">no_interference_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">has_interference_mask</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">no_interference_mask</span><span class="p">):</span>
+                <span class="c1"># 无干扰，仅考虑噪声</span>
+                <span class="n">sinr</span><span class="p">[</span><span class="n">no_interference_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">rx_power_dbm</span><span class="p">[</span><span class="n">no_interference_mask</span><span class="p">]</span> <span class="o">-</span> <span class="n">noise_dbm</span>
+
+        <span class="c1"># 11. 更新每个链路的信道状态</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_links</span><span class="p">):</span>
+            <span class="n">resource</span><span class="o">.</span><span class="n">update_channel_condition</span><span class="p">(</span>
+                <span class="n">noise_level</span><span class="o">=</span><span class="n">noise_dbm</span><span class="p">,</span>
+                <span class="n">interference</span><span class="o">=</span><span class="n">interference_dbm</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">sinr</span><span class="o">=</span><span class="n">sinr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_thermal_noise</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bandwidth_mhz</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算热噪声功率</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            bandwidth_mhz: 带宽 (MHz)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            噪声功率 (dBm)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 玻尔兹曼常数 (J/K)</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="mf">1.38e-23</span>
+
+        <span class="c1"># 温度 (K)，假设室温</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="mi">290</span>
+
+        <span class="c1"># 带宽 (Hz)</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">bandwidth_mhz</span> <span class="o">*</span> <span class="mf">1e6</span>
+
+        <span class="c1"># 热噪声功率 (W)</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="n">k</span> <span class="o">*</span> <span class="n">T</span> <span class="o">*</span> <span class="n">B</span>
+
+        <span class="c1"># 转换为mW</span>
+        <span class="n">N_mw</span> <span class="o">=</span> <span class="n">N</span> <span class="o">*</span> <span class="mi">1000</span>
+
+        <span class="c1"># 转换为dBm</span>
+        <span class="n">N_dbm</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">N_mw</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">N_dbm</span>
+<div class="viewcode-block" id="FrequencyManager.get_resources"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.frequency.FrequencyManager.get_resources">[docs]</a>    <span class="k">def</span> <span class="nf">get_resources</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_ids</span><span class="p">:</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span><span class="o">-&gt;</span><span class="n">List</span><span class="p">[</span><span class="n">FrequencyResource</span><span class="p">]:</span>
+        <span class="n">resources</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">resource_id</span> <span class="ow">in</span> <span class="n">resource_ids</span><span class="p">:</span>
+            <span class="n">resources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">resource_id</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">resources</span></div>
+
+<div class="viewcode-block" id="FrequencyManager.get_resource_status"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.frequency.FrequencyManager.get_resource_status">[docs]</a>    <span class="k">def</span> <span class="nf">get_resource_status</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取所有资源块的状态</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            资源块状态字典，键为资源ID，值为状态信息</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">resource_id</span><span class="p">,</span> <span class="n">resource</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">status</span><span class="p">[</span><span class="n">resource_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;center_frequency&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">center_frequency</span><span class="p">,</span>
+                <span class="s1">&#39;bandwidth&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">bandwidth</span><span class="p">,</span>
+                <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">status</span><span class="p">,</span>
+                <span class="s1">&#39;assigned_to&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">assigned_to</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="n">resource</span><span class="o">.</span><span class="n">assigned_to</span> <span class="k">else</span> <span class="p">[],</span>
+                <span class="s1">&#39;sinr&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">sinr</span><span class="p">,</span>
+                <span class="s1">&#39;noise_level&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">noise_level</span><span class="p">,</span>
+                <span class="s1">&#39;interference&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="o">.</span><span class="n">interference</span>
+            <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">status</span></div>
+
+    <span class="k">def</span> <span class="nf">_setup_data_provider_subscriptions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sets up subscriptions to events from registered DataProviders.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Import locally if needed, or ensure it&#39;s imported at the top</span>
+            <span class="kn">from</span> <span class="nn">aeroagentsim.dataprovider.weather</span> <span class="kn">import</span> <span class="n">WeatherDataProvider</span>
+
+            <span class="n">weather_provider</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">get_data_provider</span><span class="p">(</span><span class="s1">&#39;weather&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">weather_provider</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">weather_provider</span><span class="p">,</span> <span class="n">WeatherDataProvider</span><span class="p">):</span>
+                <span class="c1"># Use functools.partial to bind &#39;self&#39; (the manager instance) to the callback</span>
+                <span class="n">bound_callback</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">weather_provider</span><span class="o">.</span><span class="n">on_weather_changed</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+                <span class="n">listener_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">_weather_listener&quot;</span> <span class="c1"># Unique listener ID</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+                    <span class="n">event_name</span><span class="o">=</span><span class="n">WeatherDataProvider</span><span class="o">.</span><span class="n">EVENT_WEATHER_CHANGED</span><span class="p">,</span>
+                    <span class="n">callback</span><span class="o">=</span><span class="n">bound_callback</span><span class="p">,</span>
+                    <span class="n">listener_id</span><span class="o">=</span><span class="n">listener_id</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> subscribed to </span><span class="si">{</span><span class="n">WeatherDataProvider</span><span class="o">.</span><span class="n">EVENT_WEATHER_CHANGED</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Add subscriptions for other relevant data providers here</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;WeatherDataProvider not found, cannot subscribe to weather events.&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error setting up DataProvider subscriptions for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FrequencyManager.update_pathloss_parameters"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.frequency.FrequencyManager.update_pathloss_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">update_pathloss_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Placeholder method called by WeatherDataProvider callback.</span>
+<span class="sd">        Updates path loss model parameters based on weather conditions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event_data (Dict[str, Any]): The weather event data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Implement logic to adjust path loss calculation based on weather</span>
+        <span class="c1"># e.g., consider rain attenuation based on event_data[&#39;precipitation_rate&#39;]</span>
+        <span class="n">precipitation_rate</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;precipitation_rate&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">precipitation_rate</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;FrequencyManager received weather update (precipitation: </span><span class="si">{</span><span class="n">precipitation_rate</span><span class="si">}</span><span class="s2"> mm/hr). Path loss parameters might need adjustment (Not implemented yet).&quot;</span><span class="p">)</span></div>
+        <span class="c1"># Example: self.path_loss_model.update_rain_attenuation(precipitation_rate)</span>
+
+<div class="viewcode-block" id="FrequencyManager.get_performance_metrics"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.frequency.FrequencyManager.get_performance_metrics">[docs]</a>    <span class="k">def</span> <span class="nf">get_performance_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取频率管理器的性能指标</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            性能指标字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;avg_allocation_time&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">allocation_times</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">allocation_times</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;max_allocation_time&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">allocation_times</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">allocation_times</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;avg_channel_update_time&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channel_update_times</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel_update_times</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;max_channel_update_time&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channel_update_times</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel_update_times</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;num_allocations&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">allocation_times</span><span class="p">),</span>
+            <span class="s1">&#39;num_channel_updates&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">channel_update_times</span><span class="p">),</span>
+            <span class="s1">&#39;available_resources&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">available_resources_cache</span><span class="p">),</span>
+            <span class="s1">&#39;total_resources&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">metrics</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.frequency</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

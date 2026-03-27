@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.workflow.image_processing &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.workflow.image_processing</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.workflow.image_processing</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim环境图像感知处理工作流模块</span>
+
+<span class="sd">该模块定义了环境图像感知处理工作流及其元类，实现了无人机感知环境图像和处理数据的流程。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 图像感知任务管理</span>
+<span class="sd">2. 数据处理任务管理</span>
+<span class="sd">3. 状态机转换和事件触发</span>
+<span class="sd">4. 动态任务生成</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core</span> <span class="kn">import</span> <span class="n">Workflow</span><span class="p">,</span> <span class="n">WorkflowMeta</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">TriggerOperator</span><span class="p">,</span> <span class="n">WorkflowStatus</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="k">class</span> <span class="nc">ImageProcessingWorkflowMeta</span><span class="p">(</span><span class="n">WorkflowMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;环境图像感知处理工作流元类&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+        <span class="c1"># 注册环境图像感知处理工作流专用的属性模板</span>
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;sensing_locations&#39;</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span>
+                            <span class="k">lambda</span> <span class="n">points</span><span class="p">:</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">points</span><span class="p">),</span>
+                            <span class="s2">&quot;感知位置列表，每个点为3D坐标 (x, y, z)&quot;</span><span class="p">)</span>
+
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;image_resolution&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span>
+                            <span class="k">lambda</span> <span class="n">res</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span>
+                            <span class="s2">&quot;图像分辨率，如&#39;1920x1080&#39;&quot;</span><span class="p">)</span>
+
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;image_format&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span>
+                            <span class="k">lambda</span> <span class="n">fmt</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fmt</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span>
+                            <span class="s2">&quot;图像格式，如&#39;jpeg&#39;或&#39;png&#39;&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span>
+
+<div class="viewcode-block" id="ImageProcessingWorkflow"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow">[docs]</a><span class="k">class</span> <span class="nc">ImageProcessingWorkflow</span><span class="p">(</span><span class="n">Workflow</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">ImageProcessingWorkflowMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    环境图像感知处理工作流，包含感知和计算两个阶段。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ImageProcessingWorkflow.get_description"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_description">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get_description</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取工作流类型的描述&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;环境图像感知处理工作流 - 实现无人机感知环境图像和处理数据的流程&quot;</span></div>
+
+<div class="viewcode-block" id="ImageProcessingWorkflow.__init__"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">owner</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">event_names</span><span class="o">=</span><span class="p">[],</span> <span class="n">initial_status</span><span class="o">=</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># 感知位置列表</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensing_locations</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sensing_locations&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="c1"># 图像参数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">image_resolution</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;image_resolution&#39;</span><span class="p">,</span> <span class="s1">&#39;1920x1080&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">image_format</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;image_format&#39;</span><span class="p">,</span> <span class="s1">&#39;jpeg&#39;</span><span class="p">)</span>
+        <span class="c1"># 当前感知位置索引</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_location_index</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># 感知到的文件ID列表</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collected_file_ids</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># 处理后的文件ID列表</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">processed_file_ids</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 工作流事件</span>
+        <span class="n">event_names</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s1">&#39;sensing_started&#39;</span><span class="p">,</span> <span class="s1">&#39;sensing_completed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;processing_started&#39;</span><span class="p">,</span> <span class="s1">&#39;processing_completed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;workflow_completed&#39;</span>
+        <span class="p">]</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">owner</span><span class="o">=</span><span class="n">owner</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
+            <span class="n">event_names</span><span class="o">=</span><span class="n">event_names</span><span class="p">,</span>
+            <span class="n">initial_status</span><span class="o">=</span><span class="n">initial_status</span><span class="p">,</span>
+            <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span>
+            <span class="n">properties</span><span class="o">=</span><span class="n">properties</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="ImageProcessingWorkflow.get_details"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_details">[docs]</a>    <span class="k">def</span> <span class="nf">get_details</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取工作流详细信息&quot;&quot;&quot;</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_details</span><span class="p">()</span>
+        <span class="n">details</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;sensing_locations&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_locations</span><span class="p">,</span>
+            <span class="s1">&#39;image_resolution&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_resolution</span><span class="p">,</span>
+            <span class="s1">&#39;image_format&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_format</span><span class="p">,</span>
+            <span class="s1">&#39;collected_file_ids&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">collected_file_ids</span><span class="p">,</span>
+            <span class="s1">&#39;processed_file_ids&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">processed_file_ids</span>
+        <span class="p">})</span>
+        <span class="k">return</span> <span class="n">details</span></div>
+
+<div class="viewcode-block" id="ImageProcessingWorkflow.get_current_suggested_task"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_current_suggested_task">[docs]</a>    <span class="k">def</span> <span class="nf">get_current_suggested_task</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取当前状态下建议执行的任务</span>
+
+<span class="sd">        根据当前状态机状态，动态生成任务信息。</span>
+
+<span class="sd">        返回:</span>
+<span class="sd">            Dict: 任务信息字典</span>
+<span class="sd">            None: 如果没有找到匹配的任务</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span>
+
+        <span class="c1"># 根据当前状态生成相应任务</span>
+        <span class="k">if</span> <span class="n">current_state</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;sensing_at_location_&#39;</span><span class="p">):</span>
+            <span class="c1"># 感知任务</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">location_index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">current_state</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">location_index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sensing_locations</span><span class="p">):</span>
+                    <span class="n">location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_locations</span><span class="p">[</span><span class="n">location_index</span><span class="p">]</span>
+                    <span class="k">return</span> <span class="p">{</span>
+                        <span class="s1">&#39;component&#39;</span><span class="p">:</span> <span class="s1">&#39;Sensing&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="s1">&#39;FileCollectTask&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;感知位置 </span><span class="si">{</span><span class="n">location_index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1"> 的环境图像&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                        <span class="s1">&#39;target_state&#39;</span><span class="p">:</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="s1">&#39;properties&#39;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s1">&#39;file_name&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;image_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">location_index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;file_type&#39;</span><span class="p">:</span> <span class="s1">&#39;image&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;file_size&#39;</span><span class="p">:</span> <span class="mi">5120</span><span class="p">,</span>  <span class="c1"># 假设5MB的图像文件</span>
+                            <span class="s1">&#39;content_type&#39;</span><span class="p">:</span> <span class="s1">&#39;image&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;location&#39;</span><span class="p">:</span> <span class="n">location</span><span class="p">,</span>
+                            <span class="s1">&#39;sensing_difficulty&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                            <span class="s1">&#39;resolution&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_resolution</span><span class="p">,</span>
+                            <span class="s1">&#39;format&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_format</span>
+                        <span class="p">}</span>
+                    <span class="p">}</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">):</span>
+                <span class="k">pass</span>
+
+        <span class="k">elif</span> <span class="n">current_state</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;processing_data_at_location_&#39;</span><span class="p">):</span>
+            <span class="c1"># 处理任务</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">location_index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">current_state</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">location_index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sensing_locations</span><span class="p">)</span> <span class="ow">and</span> <span class="n">location_index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">collected_file_ids</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="p">{</span>
+                        <span class="s1">&#39;component&#39;</span><span class="p">:</span> <span class="s1">&#39;Computation&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="s1">&#39;FileComputeTask&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;处理位置 </span><span class="si">{</span><span class="n">location_index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1"> 的感知数据&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                        <span class="s1">&#39;target_state&#39;</span><span class="p">:</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="s1">&#39;properties&#39;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s1">&#39;file_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">collected_file_ids</span><span class="p">[</span><span class="n">location_index</span><span class="p">],</span>
+                            <span class="s1">&#39;result_file_name&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;processed_image_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">location_index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;result_file_type&#39;</span><span class="p">:</span> <span class="s1">&#39;processed_image&#39;</span>
+                        <span class="p">}</span>
+                    <span class="p">}</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">):</span>
+                <span class="k">pass</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="k">def</span> <span class="nf">_setup_transitions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;设置状态机转换规则&quot;&quot;&quot;</span>
+        <span class="c1"># 工作流启动时，转换到第一个感知位置的状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">set_start_transition</span><span class="p">(</span><span class="s1">&#39;sensing_at_location_1&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 定义感知任务完成的回调</span>
+        <span class="k">def</span> <span class="nf">on_sensing_completed</span><span class="p">(</span><span class="n">event_data</span><span class="p">):</span>
+            <span class="c1"># 获取文件ID</span>
+            <span class="n">file_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;event_value&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_id&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">file_id</span><span class="p">:</span>
+                <span class="c1"># 记录感知到的文件ID</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">collected_file_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_id</span><span class="p">)</span>
+
+                <span class="c1"># 获取当前位置索引</span>
+                <span class="n">current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span>
+                <span class="n">location_index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">current_state</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span>
+
+                <span class="c1"># 触发感知完成事件</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;sensing_completed&#39;</span><span class="p">,</span>
+                    <span class="p">{</span>
+                        <span class="s1">&#39;location_index&#39;</span><span class="p">:</span> <span class="n">location_index</span><span class="p">,</span>
+                        <span class="s1">&#39;location&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_locations</span><span class="p">[</span><span class="n">location_index</span><span class="p">],</span>
+                        <span class="s1">&#39;file_id&#39;</span><span class="p">:</span> <span class="n">file_id</span><span class="p">,</span>
+                        <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+
+        <span class="c1"># 定义处理任务完成的回调</span>
+        <span class="k">def</span> <span class="nf">on_processing_completed</span><span class="p">(</span><span class="n">event_data</span><span class="p">):</span>
+            <span class="c1"># 获取源文件ID和结果文件ID</span>
+            <span class="n">file_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;task_properties&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;file_id&#39;</span><span class="p">)</span>
+            <span class="n">result_file_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;task_result&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;result_file_id&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">file_id</span> <span class="ow">and</span> <span class="n">result_file_id</span><span class="p">:</span>
+                <span class="c1"># 记录处理后的文件ID</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">processed_file_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result_file_id</span><span class="p">)</span>
+
+                <span class="c1"># 触发处理完成事件</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;processing_completed&#39;</span><span class="p">,</span>
+                    <span class="p">{</span>
+                        <span class="s1">&#39;source_file_id&#39;</span><span class="p">:</span> <span class="n">file_id</span><span class="p">,</span>
+                        <span class="s1">&#39;result_file_id&#39;</span><span class="p">:</span> <span class="n">result_file_id</span><span class="p">,</span>
+                        <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+
+                <span class="c1"># 更新当前位置索引</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">current_location_index</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="c1"># 如果已完成所有位置的感知和处理，触发工作流完成事件</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_location_index</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sensing_locations</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;workflow_completed&#39;</span><span class="p">,</span>
+                        <span class="p">{</span>
+                            <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                            <span class="s1">&#39;collected_file_ids&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">collected_file_ids</span><span class="p">,</span>
+                            <span class="s1">&#39;processed_file_ids&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">processed_file_ids</span><span class="p">,</span>
+                            <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                        <span class="p">}</span>
+                    <span class="p">)</span>
+
+        <span class="c1"># 为每个感知位置创建转换规则</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">location</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sensing_locations</span><span class="p">):</span>
+            <span class="n">current_state</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;sensing_at_location_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span>
+
+            <span class="c1"># 感知完成后转换到处理状态 - 监听possessing_object_added事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+                <span class="n">current_state</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s1">&#39;processing_data_at_location_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+                <span class="n">event_trigger</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="s1">&#39;possessing_object_added&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">,</span>
+                    <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">event_data</span><span class="p">:</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_name&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;file_&#39;</span><span class="p">)</span> <span class="ow">and</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_sensed_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">get_file</span><span class="p">(</span><span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_id&#39;</span><span class="p">)))</span>
+                <span class="p">},</span>
+                <span class="n">callback</span><span class="o">=</span><span class="n">on_sensing_completed</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;当位置</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">的感知任务完成并添加图像文件时，转换到数据处理状态&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># 处理完成后，如果还有感知位置，转换到下一个感知位置；否则完成工作流</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sensing_locations</span><span class="p">)):</span>
+            <span class="n">next_state</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;sensing_at_location_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">if</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sensing_locations</span><span class="p">)</span> <span class="k">else</span> <span class="s1">&#39;completed&#39;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;processing_data_at_location_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+                <span class="n">next_state</span><span class="p">,</span>
+                <span class="n">event_trigger</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="s1">&#39;possessing_object_added&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">,</span>
+                    <span class="s1">&#39;target_value&#39;</span><span class="p">:</span><span class="k">lambda</span> <span class="n">event_data</span><span class="p">:</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_name&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;file_&#39;</span><span class="p">)</span> <span class="ow">and</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_computed_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">get_file</span><span class="p">(</span><span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_id&#39;</span><span class="p">)))</span>
+                <span class="p">},</span>
+                <span class="n">callback</span><span class="o">=</span><span class="n">on_processing_completed</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;当数据处理任务完成并添加处理后的图像文件且当前位置索引为</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">时，转换到</span><span class="si">{</span><span class="s1">&#39;下一个感知位置&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sensing_locations</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;完成状态&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># 失败处理</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+            <span class="s1">&#39;*&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;failed&#39;</span><span class="p">,</span>
+            <span class="n">event_trigger</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="s1">&#39;status_changed&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;value_key&#39;</span><span class="p">:</span> <span class="s1">&#39;new_status&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">EQUALS</span><span class="p">,</span>
+                <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">FAILED</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_validate_sensed_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_info</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        验证感知文件是否符合要求</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file_info: 文件信息字典</span>
+<span class="sd">            loc: 位置索引，用于验证位置是否匹配</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 文件是否符合要求</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file_info</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 验证文件类型</span>
+        <span class="k">if</span> <span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="s1">&#39;image&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 验证文件名格式</span>
+        <span class="n">expected_name_prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;image_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">expected_name_prefix</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)[</span><span class="nb">len</span><span class="p">(</span><span class="n">expected_name_prefix</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">if</span> <span class="n">loc</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+            <span class="n">loc</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">loc</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 检查感知位置是否匹配</span>
+        <span class="k">if</span> <span class="s1">&#39;sensing_location&#39;</span> <span class="ow">in</span> <span class="n">file_info</span><span class="p">:</span>
+            <span class="n">sensed_location</span> <span class="o">=</span> <span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sensing_location&#39;</span><span class="p">)</span>
+            <span class="n">expected_location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_locations</span><span class="p">[</span><span class="n">loc</span><span class="p">]</span>
+
+            <span class="c1"># 检查位置是否接近（考虑浮点误差）</span>
+            <span class="k">if</span> <span class="n">sensed_location</span> <span class="ow">and</span> <span class="n">expected_location</span><span class="p">:</span>
+                <span class="n">distance_threshold</span> <span class="o">=</span> <span class="mf">1e-6</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sensed_location</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">expected_location</span><span class="p">))):</span>
+                    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">sensed_location</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">expected_location</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&gt;</span> <span class="n">distance_threshold</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">_validate_computed_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_info</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        验证计算处理后的文件是否符合要求</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file_info: 文件信息字典</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 文件是否符合要求</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file_info</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 验证文件类型</span>
+        <span class="k">if</span> <span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="s1">&#39;processed_image&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 验证文件名格式</span>
+        <span class="n">expected_name_prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;processed_image_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">expected_name_prefix</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 验证是否有源文件ID</span>
+        <span class="k">if</span> <span class="s1">&#39;source_file_id&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">file_info</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)[</span><span class="nb">len</span><span class="p">(</span><span class="n">expected_name_prefix</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">if</span> <span class="n">loc</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+            <span class="n">loc</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">loc</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 如果指定了位置索引，验证源文件是否是在该位置感知的</span>
+        <span class="k">if</span> <span class="n">loc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">collected_file_ids</span><span class="p">:</span>
+            <span class="c1"># 检查源文件ID是否在已收集的文件列表中</span>
+            <span class="n">source_file_id</span> <span class="o">=</span> <span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_file_id&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">source_file_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">collected_file_ids</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># 获取源文件信息</span>
+            <span class="n">source_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">get_file</span><span class="p">(</span><span class="n">source_file_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">source_file</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># 验证源文件是否是在指定位置感知的</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_sensed_file</span><span class="p">(</span><span class="n">source_file</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">processed_file_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">))</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<span class="c1"># 使用示例</span>
+<span class="k">def</span> <span class="nf">create_image_processing_workflow</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">sensing_locations</span><span class="p">,</span>
+                                    <span class="n">image_resolution</span><span class="o">=</span><span class="s1">&#39;1920x1080&#39;</span><span class="p">,</span> <span class="n">image_format</span><span class="o">=</span><span class="s1">&#39;jpeg&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    创建环境图像感知处理工作流</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        env: 仿真环境</span>
+<span class="sd">        agent: 执行感知和处理的代理</span>
+<span class="sd">        sensing_locations: 感知位置列表，每个位置为 (x, y, z) 坐标</span>
+<span class="sd">        image_resolution: 图像分辨率，默认为&#39;1920x1080&#39;</span>
+<span class="sd">        image_format: 图像格式，默认为&#39;jpeg&#39;</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Workflow: 创建的工作流对象</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">TimeTrigger</span>
+
+    <span class="n">workflow</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_workflow</span><span class="p">(</span>
+        <span class="n">ImageProcessingWorkflow</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;环境图像感知处理_</span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">owner</span><span class="o">=</span><span class="n">agent</span><span class="p">,</span>
+        <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+            <span class="s1">&#39;sensing_locations&#39;</span><span class="p">:</span> <span class="n">sensing_locations</span><span class="p">,</span>
+            <span class="s1">&#39;image_resolution&#39;</span><span class="p">:</span> <span class="n">image_resolution</span><span class="p">,</span>
+            <span class="s1">&#39;image_format&#39;</span><span class="p">:</span> <span class="n">image_format</span>
+        <span class="p">},</span>
+        <span class="n">start_trigger</span><span class="o">=</span><span class="n">TimeTrigger</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">10</span><span class="p">),</span>
+        <span class="n">max_starts</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">workflow</span>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.workflow.image_processing</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

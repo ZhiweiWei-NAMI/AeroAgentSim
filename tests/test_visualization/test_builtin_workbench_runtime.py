@@ -11,7 +11,7 @@ def load_visualization_app(monkeypatch, tmp_path):
     monkeypatch.setenv("AEROAGENTSIM_DB_PATH", str(tmp_path / "runtime" / "diagnostics.sqlite"))
 
     for module_name in list(sys.modules):
-        if module_name.startswith("airfogsim.visualization"):
+        if module_name.startswith("airfogsim.visualization") or module_name.startswith("aeroagentsim.visualization"):
             sys.modules.pop(module_name, None)
 
     app_module = importlib.import_module("airfogsim.visualization.app")
@@ -131,7 +131,7 @@ def logistics_snapshot():
                 "properties": {
                     "position": [20, 40, 0],
                     "storage_capacity": 20,
-                    "service_radius": 120,
+                    "service_radius": 120.0,
                 },
             },
             {
@@ -144,7 +144,7 @@ def logistics_snapshot():
                 "properties": {
                     "position": [240, 180, 0],
                     "storage_capacity": 20,
-                    "service_radius": 120,
+                    "service_radius": 120.0,
                 },
             },
             {

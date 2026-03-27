@@ -191,7 +191,7 @@ else:
 html_css_files = []
 
 # The name for this set of Sphinx documents.
-html_title = f'{project} v{release} Documentation'
+html_title = 'AeroAgentSim Developer Documentation'
 
 # A shorter title for the navigation bar.
 html_short_title = project
@@ -206,7 +206,7 @@ html_short_title = project
 # html_favicon = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'AirFogSimdoc'
+htmlhelp_basename = 'AeroAgentSimdoc'
 
 # -- Options for LaTeX output ------------------------------------------------
 latex_elements = {}
@@ -214,14 +214,14 @@ latex_elements = {}
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'AirFogSim.tex', 'AirFogSim Documentation', 'Zhiwei Wei', 'manual'),
+    (master_doc, 'AeroAgentSim.tex', 'AeroAgentSim Documentation', 'Zhiwei Wei', 'manual'),
 ]
 
 # -- Options for manual page output ------------------------------------------
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'airfogsim', 'AirFogSim Documentation', [author], 1)
+    (master_doc, 'aeroagentsim', 'AeroAgentSim Developer Documentation', [author], 1)
 ]
 
 # -- Options for Texinfo output ----------------------------------------------
@@ -229,7 +229,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'AirFogSim', 'AirFogSim Documentation', author, 'AirFogSim',
+    (master_doc, 'AeroAgentSim', 'AeroAgentSim Documentation', author, 'AeroAgentSim',
      'Low Altitude Space Simulation System', 'Miscellaneous'),
 ]
 

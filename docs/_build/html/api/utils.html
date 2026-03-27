@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Utilities and Helpers &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Examples" href="../examples.html" />
+    <link rel="prev" title="Statistics and Analysis" href="statistics.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../examples.html" title="Examples"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="statistics.html" title="Statistics and Analysis"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">API Reference</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Utilities and Helpers</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="utilities-and-helpers">
+<h1>Utilities and Helpers<a class="headerlink" href="#utilities-and-helpers" title="Permalink to this heading">¶</a></h1>
+<p>Utility modules provide helper functions, configuration management, and common functionality.</p>
+<section id="module-aeroagentsim.core.utils">
+<span id="core-utilities"></span><h2>Core Utilities<a class="headerlink" href="#module-aeroagentsim.core.utils" title="Permalink to this heading">¶</a></h2>
+<p>AirFogSim工具(Utils)核心模块</p>
+<p>该模块提供了仿真系统中使用的各种实用工具函数和类，主要用于处理
+空间位置、距离计算和物理量表示等通用功能。主要内容包括：
+1. 距离计算函数：计算二维和三维空间中的欧几里得距离
+2. Location类：表示三维空间中的位置，带有单位和距离计算功能
+3. Speed类：表示速度，包含大小和方向
+4. 物理单位处理：使用pint库实现带单位的物理量计算</p>
+<p>&#64;author: zhiwei wei
+&#64;email: <a class="reference external" href="mailto:2311769&#37;&#52;&#48;tongji&#46;edu&#46;cn">2311769<span>&#64;</span>tongji<span>&#46;</span>edu<span>&#46;</span>cn</a></p>
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.core.utils.calculate_distance">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.core.utils.</span></span><span class="sig-name descname"><span class="pre">calculate_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loc1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loc2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/utils.html#calculate_distance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.utils.calculate_distance" title="Permalink to this definition">¶</a></dt>
+<dd><p>计算两个位置之间的欧几里得距离</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.core.utils.Location">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.core.utils.</span></span><span class="sig-name descname"><span class="pre">Location</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/utils.html#Location"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.utils.Location" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.utils.Location.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/utils.html#Location.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.utils.Location.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.utils.Location.distance_to">
+<span class="sig-name descname"><span class="pre">distance_to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#aeroagentsim.core.utils.Location" title="aeroagentsim.core.utils.Location"><span class="pre">Location</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/utils.html#Location.distance_to"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.utils.Location.distance_to" title="Permalink to this definition">¶</a></dt>
+<dd><p>计算与另一个位置的欧几里得距离</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.core.utils.Speed">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.core.utils.</span></span><span class="sig-name descname"><span class="pre">Speed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/utils.html#Speed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.utils.Speed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.utils.Speed.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/utils.html#Speed.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.utils.Speed.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.core.utils.convert_coordinates">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.core.utils.</span></span><span class="sig-name descname"><span class="pre">convert_coordinates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_pos</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conversion_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/utils.html#convert_coordinates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.utils.convert_coordinates" title="Permalink to this definition">¶</a></dt>
+<dd><p>将源坐标系统中的位置转换为仿真坐标系统中的位置。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_pos</strong> – 源坐标系统中的位置，格式为 (x, y, z)</p></li>
+<li><p><strong>conversion_config</strong> – 转换配置字典，可能包含以下键：
+- ‘type’: 转换类型，可以是 ‘none’（无转换）或 ‘offset_scale’（偏移和缩放）
+- ‘offset_x’, ‘offset_y’, ‘offset_z’: 各轴的偏移量
+- ‘scale’: 统一缩放因子</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>转换后的坐标，格式为 (x, y, z)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.core.utils.latlon_to_local">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.core.utils.</span></span><span class="sig-name descname"><span class="pre">latlon_to_local</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">lon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">alt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_lat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_lon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_alt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/utils.html#latlon_to_local"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.utils.latlon_to_local" title="Permalink to this definition">¶</a></dt>
+<dd><p>将经纬度坐标转换为以参考点为原点的局部坐标系（米）。
+使用局部切平面近似（ENU - 东北上坐标系）。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lat</strong> – 纬度（度）</p></li>
+<li><p><strong>lon</strong> – 经度（度）</p></li>
+<li><p><strong>alt</strong> – 高度（米，相对于海平面），默认为0</p></li>
+<li><p><strong>ref_lat</strong> – 参考点纬度（度），如果为None则使用lat作为参考</p></li>
+<li><p><strong>ref_lon</strong> – 参考点经度（度），如果为None则使用lon作为参考</p></li>
+<li><p><strong>ref_alt</strong> – 参考点高度（米），默认为0</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>x: 东向距离（米）
+y: 北向距离（米）
+z: 上向距离（米）</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>局部坐标 (x, y, z)，其中</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.core.utils.local_to_latlon">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.core.utils.</span></span><span class="sig-name descname"><span class="pre">local_to_latlon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_lat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_lon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_alt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/utils.html#local_to_latlon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.utils.local_to_latlon" title="Permalink to this definition">¶</a></dt>
+<dd><p>将局部坐标系（米）转换为经纬度坐标。
+使用局部切平面近似（ENU - 东北上坐标系）的逆变换。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> – 东向距离（米）</p></li>
+<li><p><strong>y</strong> – 北向距离（米）</p></li>
+<li><p><strong>z</strong> – 上向距离（米），默认为0</p></li>
+<li><p><strong>ref_lat</strong> – 参考点纬度（度）</p></li>
+<li><p><strong>ref_lon</strong> – 参考点经度（度）</p></li>
+<li><p><strong>ref_alt</strong> – 参考点高度（米），默认为0</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>纬度: 度
+经度: 度
+高度: 米（相对于海平面）</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(纬度, 经度, 高度) 元组，其中</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.core.utils.utm_zone_for_lon">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.core.utils.</span></span><span class="sig-name descname"><span class="pre">utm_zone_for_lon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/utils.html#utm_zone_for_lon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.utils.utm_zone_for_lon" title="Permalink to this definition">¶</a></dt>
+<dd><p>根据经度确定UTM区域编号。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lon</strong> – 经度（度）</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>UTM区域编号（1-60）</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-aeroagentsim.utils.logging_config">
+<span id="logging-configuration"></span><h2>Logging Configuration<a class="headerlink" href="#module-aeroagentsim.utils.logging_config" title="Permalink to this heading">¶</a></h2>
+<p>AeroAgentSim 日志配置模块。</p>
+<p>该模块提供统一的日志配置，并同时兼容新的 <code class="docutils literal notranslate"><span class="pre">AEROAGENTSIM_LOG_LEVEL</span></code>
+和历史 <code class="docutils literal notranslate"><span class="pre">AIRFOGSIM_LOG_LEVEL</span></code> 环境变量。</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.utils.logging_config.get_logger">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.utils.logging_config.</span></span><span class="sig-name descname"><span class="pre">get_logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.14)"><span class="pre">Logger</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/utils/logging_config.html#get_logger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.utils.logging_config.get_logger" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取配置好的logger实例</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>name</strong> – 日志记录器名称，通常为模块名称</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>配置好的日志记录器</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.14)">logging.Logger</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="helper-functions">
+<h2>Helper Functions<a class="headerlink" href="#helper-functions" title="Permalink to this heading">¶</a></h2>
+<section id="module-aeroagentsim.helper.class_checker">
+<span id="class-checker"></span><h3>Class Checker<a class="headerlink" href="#module-aeroagentsim.helper.class_checker" title="Permalink to this heading">¶</a></h3>
+<p>AeroAgentSim类检查工具</p>
+<p>该模块提供工具函数，用于检查系统中已实现的各种类及其关键信息。
+主要功能包括：
+1. 检查所有已注册的类
+2. 根据需求查找兼容的类
+3. 展示类的关键信息</p>
+<p>&#64;author: zhiwei wei
+&#64;email: <a class="reference external" href="mailto:2311769&#37;&#52;&#48;tongji&#46;edu&#46;cn">2311769<span>&#64;</span>tongji<span>&#46;</span>edu<span>&#46;</span>cn</a></p>
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.class_checker.check_all_classes">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.class_checker.</span></span><span class="sig-name descname"><span class="pre">check_all_classes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><span class="pre">Environment</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/helper/class_checker.html#check_all_classes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.class_checker.check_all_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查系统中所有已注册的类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>env</strong> – 仿真环境</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.class_checker.check_agent_classes">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.class_checker.</span></span><span class="sig-name descname"><span class="pre">check_agent_classes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><span class="pre">Environment</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/helper/class_checker.html#check_agent_classes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.class_checker.check_agent_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查系统中所有已注册的代理类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>env</strong> – 仿真环境</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.class_checker.check_component_classes">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.class_checker.</span></span><span class="sig-name descname"><span class="pre">check_component_classes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><span class="pre">Environment</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/helper/class_checker.html#check_component_classes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.class_checker.check_component_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查系统中所有已注册的组件类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>env</strong> – 仿真环境</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.class_checker.check_task_classes">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.class_checker.</span></span><span class="sig-name descname"><span class="pre">check_task_classes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><span class="pre">Environment</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/helper/class_checker.html#check_task_classes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.class_checker.check_task_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查系统中所有已注册的任务类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>env</strong> – 仿真环境</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.class_checker.check_workflow_classes">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.class_checker.</span></span><span class="sig-name descname"><span class="pre">check_workflow_classes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><span class="pre">Environment</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/helper/class_checker.html#check_workflow_classes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.class_checker.check_workflow_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查系统中所有已注册的工作流类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>env</strong> – 仿真环境</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.class_checker.find_compatible_agents">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.class_checker.</span></span><span class="sig-name descname"><span class="pre">find_compatible_agents</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><span class="pre">Environment</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/helper/class_checker.html#find_compatible_agents"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.class_checker.find_compatible_agents" title="Permalink to this definition">¶</a></dt>
+<dd><p>查找支持指定状态的代理类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>required_states</strong> – 需要的状态列表</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.class_checker.find_compatible_components">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.class_checker.</span></span><span class="sig-name descname"><span class="pre">find_compatible_components</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><span class="pre">Environment</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_metrics</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/helper/class_checker.html#find_compatible_components"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.class_checker.find_compatible_components" title="Permalink to this definition">¶</a></dt>
+<dd><p>查找与代理兼容的组件类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>agent</strong> – 代理</p></li>
+<li><p><strong>required_metrics</strong> – 需要的指标列表（可选）</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.class_checker.find_compatible_tasks">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.class_checker.</span></span><span class="sig-name descname"><span class="pre">find_compatible_tasks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><span class="pre">Environment</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">workflow</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="core.html#aeroagentsim.core.workflow.Workflow" title="aeroagentsim.core.workflow.Workflow"><span class="pre">Workflow</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/helper/class_checker.html#find_compatible_tasks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.class_checker.find_compatible_tasks" title="Permalink to this definition">¶</a></dt>
+<dd><p>查找与代理和工作流兼容的任务类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>agent</strong> – 代理</p></li>
+<li><p><strong>workflow</strong> – 工作流（可选）</p></li>
+<li><p><strong>required_states</strong> – 需要的状态列表（可选）</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-aeroagentsim.helper.class_finder">
+<span id="class-finder"></span><h3>Class Finder<a class="headerlink" href="#module-aeroagentsim.helper.class_finder" title="Permalink to this heading">¶</a></h3>
+<p>AeroAgentSim类查找工具</p>
+<p>该模块提供命令行工具，用于查找和展示系统中已实现的各种类及其关键信息。
+可以作为独立脚本运行，也可以作为模块导入。</p>
+<dl class="simple">
+<dt>使用方法:</dt><dd><p>python -m aeroagentsim.helper.class_finder [options]</p>
+</dd>
+<dt>选项:</dt><dd><p>–all: 显示所有类
+–agent: 显示代理类
+–component: 显示组件类
+–task: 显示任务类
+–workflow: 显示工作流类
+–find-agent: 查找支持指定状态的代理类，格式: –find-agent state1,state2,…
+–find-component: 查找产生指定指标的组件类，格式: –find-component metric1,metric2,…
+–find-task: 查找产生指定状态的任务类，格式: –find-task state1,state2,…</p>
+</dd>
+</dl>
+<p>&#64;author: zhiwei wei
+&#64;email: <a class="reference external" href="mailto:2311769&#37;&#52;&#48;tongji&#46;edu&#46;cn">2311769<span>&#64;</span>tongji<span>&#46;</span>edu<span>&#46;</span>cn</a></p>
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.class_finder.setup_environment">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.class_finder.</span></span><span class="sig-name descname"><span class="pre">setup_environment</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><span class="pre">Environment</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/helper/class_finder.html#setup_environment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.class_finder.setup_environment" title="Permalink to this definition">¶</a></dt>
+<dd><p>设置仿真环境</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>创建的仿真环境</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment">Environment</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.class_finder.parse_args">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.class_finder.</span></span><span class="sig-name descname"><span class="pre">parse_args</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/helper/class_finder.html#parse_args"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.class_finder.parse_args" title="Permalink to this definition">¶</a></dt>
+<dd><p>解析命令行参数</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>解析后的参数</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)">argparse.Namespace</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.class_finder.main">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.class_finder.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/helper/class_finder.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.class_finder.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>主函数</p>
+</dd></dl>
+
+</section>
+<section id="module-aeroagentsim.helper.examples">
+<span id="examples-helper"></span><h3>Examples Helper<a class="headerlink" href="#module-aeroagentsim.helper.examples" title="Permalink to this heading">¶</a></h3>
+<p>AeroAgentSim类检查工具使用示例</p>
+<p>该模块展示了如何使用类检查工具来检查系统中已实现的各种类及其关键信息。
+可以作为独立脚本运行，也可以作为模块导入。</p>
+<dl class="simple">
+<dt>使用方法:</dt><dd><p>python -m aeroagentsim.helper.examples</p>
+</dd>
+</dl>
+<p>&#64;author: zhiwei wei
+&#64;email: <a class="reference external" href="mailto:2311769&#37;&#52;&#48;tongji&#46;edu&#46;cn">2311769<span>&#64;</span>tongji<span>&#46;</span>edu<span>&#46;</span>cn</a></p>
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.examples.setup_environment">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.examples.</span></span><span class="sig-name descname"><span class="pre">setup_environment</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><span class="pre">Environment</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/helper/examples.html#setup_environment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.examples.setup_environment" title="Permalink to this definition">¶</a></dt>
+<dd><p>设置仿真环境</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>创建的仿真环境</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment">Environment</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.examples.example_check_all_classes">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.examples.</span></span><span class="sig-name descname"><span class="pre">example_check_all_classes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/helper/examples.html#example_check_all_classes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.examples.example_check_all_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查所有类的示例</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.examples.example_check_specific_classes">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.examples.</span></span><span class="sig-name descname"><span class="pre">example_check_specific_classes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/helper/examples.html#example_check_specific_classes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.examples.example_check_specific_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查特定类型的类的示例</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.examples.example_find_compatible_agents">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.examples.</span></span><span class="sig-name descname"><span class="pre">example_find_compatible_agents</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/helper/examples.html#example_find_compatible_agents"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.examples.example_find_compatible_agents" title="Permalink to this definition">¶</a></dt>
+<dd><p>查找兼容的代理类的示例</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.examples.example_find_compatible_components">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.examples.</span></span><span class="sig-name descname"><span class="pre">example_find_compatible_components</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/helper/examples.html#example_find_compatible_components"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.examples.example_find_compatible_components" title="Permalink to this definition">¶</a></dt>
+<dd><p>查找兼容的组件类的示例</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.examples.example_find_compatible_tasks">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.examples.</span></span><span class="sig-name descname"><span class="pre">example_find_compatible_tasks</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/helper/examples.html#example_find_compatible_tasks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.examples.example_find_compatible_tasks" title="Permalink to this definition">¶</a></dt>
+<dd><p>查找兼容的任务类的示例</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="aeroagentsim.helper.examples.main">
+<span class="sig-prename descclassname"><span class="pre">aeroagentsim.helper.examples.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/helper/examples.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.helper.examples.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>主函数</p>
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Utilities and Helpers</a><ul>
+<li><a class="reference internal" href="#module-aeroagentsim.core.utils">Core Utilities</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.utils.calculate_distance"><code class="docutils literal notranslate"><span class="pre">calculate_distance()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.utils.Location"><code class="docutils literal notranslate"><span class="pre">Location</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.utils.Location.__init__"><code class="docutils literal notranslate"><span class="pre">Location.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.utils.Location.distance_to"><code class="docutils literal notranslate"><span class="pre">Location.distance_to()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#aeroagentsim.core.utils.Speed"><code class="docutils literal notranslate"><span class="pre">Speed</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.utils.Speed.__init__"><code class="docutils literal notranslate"><span class="pre">Speed.__init__()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#aeroagentsim.core.utils.convert_coordinates"><code class="docutils literal notranslate"><span class="pre">convert_coordinates()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.utils.latlon_to_local"><code class="docutils literal notranslate"><span class="pre">latlon_to_local()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.utils.local_to_latlon"><code class="docutils literal notranslate"><span class="pre">local_to_latlon()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.utils.utm_zone_for_lon"><code class="docutils literal notranslate"><span class="pre">utm_zone_for_lon()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-aeroagentsim.utils.logging_config">Logging Configuration</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.utils.logging_config.get_logger"><code class="docutils literal notranslate"><span class="pre">get_logger()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#helper-functions">Helper Functions</a><ul>
+<li><a class="reference internal" href="#module-aeroagentsim.helper.class_checker">Class Checker</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.helper.class_checker.check_all_classes"><code class="docutils literal notranslate"><span class="pre">check_all_classes()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.class_checker.check_agent_classes"><code class="docutils literal notranslate"><span class="pre">check_agent_classes()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.class_checker.check_component_classes"><code class="docutils literal notranslate"><span class="pre">check_component_classes()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.class_checker.check_task_classes"><code class="docutils literal notranslate"><span class="pre">check_task_classes()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.class_checker.check_workflow_classes"><code class="docutils literal notranslate"><span class="pre">check_workflow_classes()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.class_checker.find_compatible_agents"><code class="docutils literal notranslate"><span class="pre">find_compatible_agents()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.class_checker.find_compatible_components"><code class="docutils literal notranslate"><span class="pre">find_compatible_components()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.class_checker.find_compatible_tasks"><code class="docutils literal notranslate"><span class="pre">find_compatible_tasks()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-aeroagentsim.helper.class_finder">Class Finder</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.helper.class_finder.setup_environment"><code class="docutils literal notranslate"><span class="pre">setup_environment()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.class_finder.parse_args"><code class="docutils literal notranslate"><span class="pre">parse_args()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.class_finder.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-aeroagentsim.helper.examples">Examples Helper</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.helper.examples.setup_environment"><code class="docutils literal notranslate"><span class="pre">setup_environment()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.examples.example_check_all_classes"><code class="docutils literal notranslate"><span class="pre">example_check_all_classes()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.examples.example_check_specific_classes"><code class="docutils literal notranslate"><span class="pre">example_check_specific_classes()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.examples.example_find_compatible_agents"><code class="docutils literal notranslate"><span class="pre">example_find_compatible_agents()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.examples.example_find_compatible_components"><code class="docutils literal notranslate"><span class="pre">example_find_compatible_components()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.examples.example_find_compatible_tasks"><code class="docutils literal notranslate"><span class="pre">example_find_compatible_tasks()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.helper.examples.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="statistics.html"
+                          title="previous chapter">Statistics and Analysis</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="../examples.html"
+                          title="next chapter">Examples</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/utils.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../examples.html" title="Examples"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="statistics.html" title="Statistics and Analysis"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >API Reference</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Utilities and Helpers</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

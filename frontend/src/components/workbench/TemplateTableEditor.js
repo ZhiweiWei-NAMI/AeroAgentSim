@@ -82,7 +82,7 @@ function TemplateTableEditor({ value = {}, onChange, addLabel = 'Add Row' }) {
         pagination={false}
         rowKey={(row, index) => `${row.key}_${index}`}
         dataSource={rows}
-        scroll={{ x: 820 }}
+        scroll={{ x: 'max-content' }}
         columns={[
           {
             title: 'key',

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>aeroagentsim.dataprovider.signal.SignalDataProvider &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.signal.SignalDataProvider</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="aeroagentsim-dataprovider-signal-signaldataprovider">
+<h1>aeroagentsim.dataprovider.signal.SignalDataProvider<a class="headerlink" href="#aeroagentsim-dataprovider-signal-signaldataprovider" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.dataprovider.signal.</span></span><span class="sig-name descname"><span class="pre">SignalDataProvider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/signal.html#SignalDataProvider"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider" title="Permalink to this definition">¶</a></dt>
+<dd><p>信号数据提供者，用于模拟电磁环境中的信号传播</p>
+<p>该提供者维护所有已知的活跃辐射源（发射机），并提供查询API，
+用于获取特定位置可检测到的信号。</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/signal.html#SignalDataProvider.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化信号数据提供者</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>config</strong> – 配置字典，可能包含以下字段:
+- propagation_model: 传播模型 (‘free_space’, ‘two_ray’, ‘log_distance’)
+- default_noise_floor: 默认噪声底 (dBm)
+- weather_enabled: 是否启用天气影响</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.__init__" title="aeroagentsim.dataprovider.signal.SignalDataProvider.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(env[, config])</p></td>
+<td><p>初始化信号数据提供者</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.add_signal_source" title="aeroagentsim.dataprovider.signal.SignalDataProvider.add_signal_source"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_signal_source</span></code></a>(source)</p></td>
+<td><p>添加信号源</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">block</span></code>(duration)</p></td>
+<td><p>Block this data provider for a specified duration.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.get_active_signal_sources" title="aeroagentsim.dataprovider.signal.SignalDataProvider.get_active_signal_sources"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_active_signal_sources</span></code></a>()</p></td>
+<td><p>获取所有活跃的信号源</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.get_all_signal_sources" title="aeroagentsim.dataprovider.signal.SignalDataProvider.get_all_signal_sources"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_all_signal_sources</span></code></a>()</p></td>
+<td><p>获取所有信号源</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.get_detectable_signals_at_location" title="aeroagentsim.dataprovider.signal.SignalDataProvider.get_detectable_signals_at_location"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_detectable_signals_at_location</span></code></a>(...)</p></td>
+<td><p>获取特定位置可检测到的信号</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_registered_sources</span></code>([provider_type])</p></td>
+<td><p>Get all registered sources, optionally filtered by type.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.get_signal_source" title="aeroagentsim.dataprovider.signal.SignalDataProvider.get_signal_source"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_signal_source</span></code></a>(source_id)</p></td>
+<td><p>获取信号源</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.load_data" title="aeroagentsim.dataprovider.signal.SignalDataProvider.load_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_data</span></code></a>()</p></td>
+<td><p>加载外部信号源数据</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_source</span></code>(provider)</p></td>
+<td><p>Register another data provider as a source for this provider.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.remove_signal_source" title="aeroagentsim.dataprovider.signal.SignalDataProvider.remove_signal_source"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_signal_source</span></code></a>(source_id)</p></td>
+<td><p>移除信号源</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.start_event_triggering" title="aeroagentsim.dataprovider.signal.SignalDataProvider.start_event_triggering"><code class="xref py py-obj docutils literal notranslate"><span class="pre">start_event_triggering</span></code></a>()</p></td>
+<td><p>启动事件触发进程</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">unblock</span></code>()</p></td>
+<td><p>Unblock this data provider.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.update_signal_source" title="aeroagentsim.dataprovider.signal.SignalDataProvider.update_signal_source"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_signal_source</span></code></a>(source_id, **kwargs)</p></td>
+<td><p>更新信号源属性</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_ADDED" title="aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_ADDED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EVENT_SIGNAL_SOURCE_ADDED</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_REMOVED" title="aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_REMOVED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EVENT_SIGNAL_SOURCE_REMOVED</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_UPDATED" title="aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_UPDATED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EVENT_SIGNAL_SOURCE_UPDATED</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_ADDED">
+<span class="sig-name descname"><span class="pre">EVENT_SIGNAL_SOURCE_ADDED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'SignalSourceAdded'</span></em><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_ADDED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_REMOVED">
+<span class="sig-name descname"><span class="pre">EVENT_SIGNAL_SOURCE_REMOVED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'SignalSourceRemoved'</span></em><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_REMOVED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_UPDATED">
+<span class="sig-name descname"><span class="pre">EVENT_SIGNAL_SOURCE_UPDATED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'SignalSourceUpdated'</span></em><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_UPDATED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/signal.html#SignalDataProvider.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化信号数据提供者</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>config</strong> – 配置字典，可能包含以下字段:
+- propagation_model: 传播模型 (‘free_space’, ‘two_ray’, ‘log_distance’)
+- default_noise_floor: 默认噪声底 (dBm)
+- weather_enabled: 是否启用天气影响</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider.load_data">
+<span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/signal.html#SignalDataProvider.load_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.load_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>加载外部信号源数据</p>
+<p>此方法可以从配置文件或数据库加载预定义的信号源。</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider.start_event_triggering">
+<span class="sig-name descname"><span class="pre">start_event_triggering</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/signal.html#SignalDataProvider.start_event_triggering"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.start_event_triggering" title="Permalink to this definition">¶</a></dt>
+<dd><p>启动事件触发进程</p>
+<p>此方法可以启动定期更新信号源状态的进程。</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider.add_signal_source">
+<span class="sig-name descname"><span class="pre">add_signal_source</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalSource" title="aeroagentsim.dataprovider.signal.SignalSource"><span class="pre">SignalSource</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/signal.html#SignalDataProvider.add_signal_source"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.add_signal_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>添加信号源</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>source</strong> – 要添加的信号源</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>是否成功添加</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider.remove_signal_source">
+<span class="sig-name descname"><span class="pre">remove_signal_source</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/signal.html#SignalDataProvider.remove_signal_source"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.remove_signal_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>移除信号源</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>source_id</strong> – 要移除的信号源ID</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>是否成功移除</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider.update_signal_source">
+<span class="sig-name descname"><span class="pre">update_signal_source</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/signal.html#SignalDataProvider.update_signal_source"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.update_signal_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>更新信号源属性</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_id</strong> – 要更新的信号源ID</p></li>
+<li><p><strong>**kwargs</strong> – 要更新的属性</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>是否成功更新</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider.get_signal_source">
+<span class="sig-name descname"><span class="pre">get_signal_source</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalSource" title="aeroagentsim.dataprovider.signal.SignalSource"><span class="pre">SignalSource</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/signal.html#SignalDataProvider.get_signal_source"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.get_signal_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取信号源</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>source_id</strong> – 信号源ID</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>信号源对象，如果不存在则返回None</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalSource" title="aeroagentsim.dataprovider.signal.SignalSource">SignalSource</a> or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider.get_all_signal_sources">
+<span class="sig-name descname"><span class="pre">get_all_signal_sources</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalSource" title="aeroagentsim.dataprovider.signal.SignalSource"><span class="pre">SignalSource</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/signal.html#SignalDataProvider.get_all_signal_sources"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.get_all_signal_sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取所有信号源</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>信号源字典</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalSource" title="aeroagentsim.dataprovider.signal.SignalSource">SignalSource</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider.get_active_signal_sources">
+<span class="sig-name descname"><span class="pre">get_active_signal_sources</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalSource" title="aeroagentsim.dataprovider.signal.SignalSource"><span class="pre">SignalSource</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/signal.html#SignalDataProvider.get_active_signal_sources"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.get_active_signal_sources" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取所有活跃的信号源</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>活跃信号源字典</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference internal" href="../dataprovider.html#aeroagentsim.dataprovider.signal.SignalSource" title="aeroagentsim.dataprovider.signal.SignalSource">SignalSource</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.dataprovider.signal.SignalDataProvider.get_detectable_signals_at_location">
+<span class="sig-name descname"><span class="pre">get_detectable_signals_at_location</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sensor_location</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frequency_bands_of_interest</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sensor_sensitivity_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/dataprovider/signal.html#SignalDataProvider.get_detectable_signals_at_location"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.get_detectable_signals_at_location" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取特定位置可检测到的信号</p>
+<p>此方法是组件（如EMSensingComponent）获取电磁环境信息的主要API。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sensor_location</strong> – 传感器位置 (x, y, z)</p></li>
+<li><p><strong>frequency_bands_of_interest</strong> – 感兴趣的频段列表，每个频段为 (min_freq, max_freq) (MHz)</p></li>
+<li><p><strong>sensor_sensitivity_threshold</strong> – 传感器灵敏度阈值 (dBm)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>可检测到的信号列表，每个信号包含以下字段:</dt><dd><ul class="simple">
+<li><p>source_id: 信号源ID</p></li>
+<li><p>position: 信号源位置</p></li>
+<li><p>center_frequency: 中心频率</p></li>
+<li><p>bandwidth: 带宽</p></li>
+<li><p>received_power: 接收功率</p></li>
+<li><p>signal_type: 信号类型</p></li>
+<li><p>snr: 信噪比</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Dict]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">aeroagentsim.dataprovider.signal.SignalDataProvider</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.__init__"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_ADDED"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.EVENT_SIGNAL_SOURCE_ADDED</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_REMOVED"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.EVENT_SIGNAL_SOURCE_REMOVED</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.EVENT_SIGNAL_SOURCE_UPDATED"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.EVENT_SIGNAL_SOURCE_UPDATED</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.load_data"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.load_data()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.start_event_triggering"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.start_event_triggering()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.add_signal_source"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.add_signal_source()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.remove_signal_source"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.remove_signal_source()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.update_signal_source"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.update_signal_source()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.get_signal_source"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.get_signal_source()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.get_all_signal_sources"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.get_all_signal_sources()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.get_active_signal_sources"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.get_active_signal_sources()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.dataprovider.signal.SignalDataProvider.get_detectable_signals_at_location"><code class="docutils literal notranslate"><span class="pre">SignalDataProvider.get_detectable_signals_at_location()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api/_autosummary/airfogsim.dataprovider.signal.SignalDataProvider.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.dataprovider.signal.SignalDataProvider</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.core.environment &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.environment</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.core.environment</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim环境(Environment)核心模块</span>
+
+<span class="sd">该模块定义了仿真系统的核心环境类，继承自SimPy的Environment类。</span>
+<span class="sd">环境是整个仿真系统的容器，负责协调各种管理器、代理和资源的运行。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 管理仿真时间和事件流</span>
+<span class="sd">2. 管理各种资源（空域、频率、着陆点等）</span>
+<span class="sd">3. 注册和管理代理(Agent)</span>
+<span class="sd">4. 创建和管理工作流(Workflow)</span>
+<span class="sd">5. 创建和管理触发器(Trigger)</span>
+<span class="sd">6. 提供数据存储和可视化更新</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span> <span class="c1"># For forward type hints like &#39;DataProvider&#39;</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">.agent</span> <span class="kn">import</span> <span class="n">Agent</span>
+<span class="kn">from</span> <span class="nn">.workflow</span> <span class="kn">import</span> <span class="n">Workflow</span>
+<span class="kn">import</span> <span class="nn">simpy</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.file</span> <span class="kn">import</span> <span class="n">FileManager</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.airspace</span> <span class="kn">import</span> <span class="n">AirspaceManager</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.frequency</span> <span class="kn">import</span> <span class="n">FrequencyManager</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.landing</span> <span class="kn">import</span> <span class="n">LandingManager</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.workflow</span> <span class="kn">import</span> <span class="n">WorkflowManager</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.trigger</span> <span class="kn">import</span> <span class="n">TriggerManager</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.payload</span> <span class="kn">import</span> <span class="n">PayloadManager</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.task</span> <span class="kn">import</span> <span class="n">TaskManager</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.contract</span> <span class="kn">import</span> <span class="n">ContractManager</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.component</span> <span class="kn">import</span> <span class="n">ComponentManager</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.agent</span> <span class="kn">import</span> <span class="n">AgentManager</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">TriggerOperator</span>
+<span class="kn">from</span> <span class="nn">.event</span> <span class="kn">import</span> <span class="n">EventRegistry</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.dataprovider</span> <span class="kn">import</span> <span class="n">DataProvider</span> <span class="c1"># Import DataProvider</span>
+<span class="kn">import</span> <span class="nn">aeroagentsim.task</span> <span class="k">as</span> <span class="nn">airfogsim_task</span>
+<span class="kn">import</span> <span class="nn">aeroagentsim.agent</span> <span class="k">as</span> <span class="nn">airfogsim_agent</span>
+<span class="kn">import</span> <span class="nn">aeroagentsim.component</span> <span class="k">as</span> <span class="nn">airfogsim_component</span>
+<span class="kn">import</span> <span class="nn">aeroagentsim.workflow</span> <span class="k">as</span> <span class="nn">airfogsim_workflow</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="c1"># 获取logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Environment"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment">[docs]</a><span class="k">class</span> <span class="nc">Environment</span><span class="p">(</span><span class="n">simpy</span><span class="o">.</span><span class="n">Environment</span><span class="p">):</span>
+<div class="viewcode-block" id="Environment.__init__"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">initial_time</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">visual_interval</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">initial_time</span><span class="o">=</span><span class="n">initial_time</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;env_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">event_registry</span> <span class="o">=</span> <span class="n">EventRegistry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+
+        <span class="c1"># 初始化数据提供者存储</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_providers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s1">&#39;DataProvider&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span> <span class="c1"># Define before managers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="p">{}</span> <span class="c1"># Keep existing generic data store if needed</span>
+
+        <span class="c1"># 初始化各种资源管理器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span> <span class="o">=</span> <span class="n">AirspaceManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frequency_manager</span> <span class="o">=</span> <span class="n">FrequencyManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">landing_manager</span> <span class="o">=</span> <span class="n">LandingManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span> <span class="o">=</span> <span class="n">FileManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">workflow_manager</span> <span class="o">=</span> <span class="n">WorkflowManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_manager</span> <span class="o">=</span> <span class="n">TriggerManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_manager</span> <span class="o">=</span> <span class="n">TaskManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">component_manager</span> <span class="o">=</span> <span class="n">ComponentManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_manager</span> <span class="o">=</span> <span class="n">AgentManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">payload_manager</span> <span class="o">=</span> <span class="n">PayloadManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">contract_manager</span> <span class="o">=</span> <span class="n">ContractManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s1">&#39;Agent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">visual_interval</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">visual_interval</span><span class="p">)</span> <span class="k">if</span> <span class="n">visual_interval</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">0</span> <span class="c1"># s</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">visual_interval</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+             <span class="bp">self</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;visual_update&#39;</span><span class="p">)</span>
+             <span class="c1"># Run loop only if interval &gt; 0</span>
+             <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_visual_update_loop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">visual_interval</span><span class="p">))</span>
+
+        <span class="c1"># 注册所有类</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_tasks</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;task_classes&#39;</span><span class="p">,</span> <span class="p">[]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_all_classes</span><span class="p">()</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">now</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># 精度为:.3</span>
+        <span class="k">return</span> <span class="nb">round</span><span class="p">(</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">now</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_register_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_classes</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">task_classes</span><span class="p">:</span>
+            <span class="n">airfogsim_task</span><span class="o">.</span><span class="n">register_all_tasks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_manager</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">for</span> <span class="n">task_class</span> <span class="ow">in</span> <span class="n">task_classes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">task_manager</span><span class="o">.</span><span class="n">register_task_class</span><span class="p">(</span><span class="n">task_class</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_register_all_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;注册所有任务、代理、组件和工作流类&quot;&quot;&quot;</span>
+        <span class="c1"># 注册任务类</span>
+        <span class="n">task_count</span> <span class="o">=</span> <span class="n">airfogsim_task</span><span class="o">.</span><span class="n">register_all_tasks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_manager</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 注册了 </span><span class="si">{</span><span class="n">task_count</span><span class="si">}</span><span class="s2"> 个任务类&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 注册代理类</span>
+        <span class="n">agent_count</span> <span class="o">=</span> <span class="n">airfogsim_agent</span><span class="o">.</span><span class="n">register_all_agents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_manager</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 注册了 </span><span class="si">{</span><span class="n">agent_count</span><span class="si">}</span><span class="s2"> 个代理类&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 注册组件类</span>
+        <span class="n">component_count</span> <span class="o">=</span> <span class="n">airfogsim_component</span><span class="o">.</span><span class="n">register_all_components</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">component_manager</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 注册了 </span><span class="si">{</span><span class="n">component_count</span><span class="si">}</span><span class="s2"> 个组件类&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 注册工作流类（仅记录可用的工作流类，不实际注册实例）</span>
+        <span class="n">workflow_count</span> <span class="o">=</span> <span class="n">airfogsim_workflow</span><span class="o">.</span><span class="n">register_all_workflows</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow_manager</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 发现了 </span><span class="si">{</span><span class="n">workflow_count</span><span class="si">}</span><span class="s2"> 个工作流类&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_visual_update_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interval_sec</span><span class="p">):</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">interval_sec</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;visual_update&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="p">})</span>
+
+    <span class="k">def</span> <span class="nf">_get_agent_by_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Environment.register_agent"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.register_agent">[docs]</a>    <span class="k">def</span> <span class="nf">register_agent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent</span><span class="p">:</span> <span class="s1">&#39;Agent&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="p">[</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent</span>
+
+        <span class="c1"># 如果代理有位置信息，注</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;airspace_manager&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="s1">&#39;state&#39;</span><span class="p">):</span>
+            <span class="n">position</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;position&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">position</span><span class="p">:</span>
+                <span class="c1"># 确保位置是三维的</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">position</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="n">position</span> <span class="o">=</span> <span class="p">(</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">position</span><span class="p">)</span>
+
+                <span class="c1"># 订阅代理的状态变化事件，以便在位置变化时更新空域管理器</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+                    <span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;state_changed&#39;</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">_position_tracker&quot;</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_handle_agent_position_change</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">add_source_filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">event_data</span><span class="p">:</span> <span class="s1">&#39;position&#39;</span><span class="o">==</span><span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;key&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+    <span class="k">def</span> <span class="nf">_handle_agent_position_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        处理代理位置变化事件，更新空域管理器中的代理位置事件数据，包含key, old_value, new_value和time</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">event_data</span> <span class="ow">or</span> <span class="s1">&#39;key&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">event_data</span> <span class="ow">or</span> <span class="n">event_data</span><span class="p">[</span><span class="s1">&#39;key&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;position&#39;</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">agent_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_id&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">agent_id</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">position</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;new_value&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">position</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 确保位置是三维的</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">position</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">position</span> <span class="o">=</span> <span class="p">(</span><span class="n">position</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># 更新空域管理器中的代理位置</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;airspace_manager&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">update_object_position</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Environment.get_agent"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.get_agent">[docs]</a>    <span class="k">def</span> <span class="nf">get_agent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Environment.get_all_agents"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.get_all_agents">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_agents</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="c1"># Return list of agent objects</span></div>
+
+<div class="viewcode-block" id="Environment.add_data_provider"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.add_data_provider">[docs]</a>    <span class="k">def</span> <span class="nf">add_data_provider</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">provider</span><span class="p">:</span> <span class="s1">&#39;DataProvider&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Registers a DataProvider instance with the environment.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key (str): A unique key to identify the provider (e.g., &#39;weather&#39;, &#39;traffic&#39;).</span>
+<span class="sd">            provider (DataProvider): The DataProvider instance to register.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_providers</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DataProvider with key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; already exists. Overwriting.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_providers</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">provider</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DataProvider &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; (</span><span class="si">{</span><span class="n">provider</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">) registered.&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Environment.get_data_provider"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.get_data_provider">[docs]</a>    <span class="k">def</span> <span class="nf">get_data_provider</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="s1">&#39;DataProvider&#39;</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves a registered DataProvider instance by its key.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key (str): The key of the DataProvider to retrieve.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Optional[DataProvider]: The DataProvider instance, or None if not found.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_providers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Environment.store_data"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.store_data">[docs]</a>    <span class="k">def</span> <span class="nf">store_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span></div>
+
+<div class="viewcode-block" id="Environment.get_data"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span></div>
+
+    <span class="kn">from</span> <span class="nn">.trigger</span> <span class="kn">import</span> <span class="n">Trigger</span>
+<div class="viewcode-block" id="Environment.create_workflow"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.create_workflow">[docs]</a>    <span class="k">def</span> <span class="nf">create_workflow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow_class</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="s1">&#39;Workflow&#39;</span><span class="p">],</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">owner</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s1">&#39;Agent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                          <span class="n">start_trigger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="s1">&#39;Trigger&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">max_starts</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                          <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">:</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;env&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">owner</span>
+        <span class="n">workflow</span> <span class="o">=</span> <span class="n">workflow_class</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workflow_manager</span><span class="o">.</span><span class="n">register_workflow</span><span class="p">(</span><span class="n">workflow</span><span class="p">,</span> <span class="n">start_trigger</span><span class="p">,</span> <span class="n">max_starts</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">workflow</span></div>
+
+<div class="viewcode-block" id="Environment.create_agent"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.create_agent">[docs]</a>    <span class="k">def</span> <span class="nf">create_agent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_class</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="s1">&#39;Agent&#39;</span><span class="p">],</span> <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Agent&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create an agent instance and optionally attach pre-defined components.</span>
+
+<span class="sd">        This extends the original helper to support a ``components`` keyword used by</span>
+<span class="sd">        TCCN_auto_planner. Any provided components are instantiated *after* the</span>
+<span class="sd">        base agent is created and then attached via ``agent.add_component(...)``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># 从 kwargs 中提取 properties 和 components，其余参数直接传递给 agent_class</span>
+        <span class="n">properties</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;properties&#39;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">components</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;components&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="c1"># 创建基础代理实例（AirFogSim 或自定义 Agent 子类）</span>
+        <span class="n">agent</span> <span class="o">=</span> <span class="n">agent_class</span><span class="p">(</span><span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="n">properties</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">agent</span><span class="p">)</span>
+
+        <span class="c1"># 兼容 TCCN_auto_planner：可选地为代理附加组件列表</span>
+        <span class="c1"># components 形如 [{&#39;class&#39;: &lt;ComponentClass&gt;, &#39;name&#39;: &#39;Mobility&#39;}, ...]</span>
+        <span class="k">if</span> <span class="n">components</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">comp_cfg</span> <span class="ow">in</span> <span class="n">components</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">comp_cfg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                    <span class="k">continue</span>
+                <span class="n">comp_cls</span> <span class="o">=</span> <span class="n">comp_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;class&#39;</span><span class="p">)</span>
+                <span class="n">comp_name</span> <span class="o">=</span> <span class="n">comp_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">comp_cls</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">comp</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="c1"># TCCN 组件通常继承自自定义 Component(agent, component_name=..., **kwargs)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">comp</span> <span class="o">=</span> <span class="n">comp_cls</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="n">component_name</span><span class="o">=</span><span class="n">comp_name</span><span class="p">)</span>  <span class="c1"># type: ignore[call-arg]</span>
+                <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+                    <span class="c1"># 回退到最小签名，避免因额外参数导致失败</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">comp</span> <span class="o">=</span> <span class="n">comp_cls</span><span class="p">(</span><span class="n">agent</span><span class="p">)</span>  <span class="c1"># type: ignore[call-arg]</span>
+                    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                        <span class="n">comp</span> <span class="o">=</span> <span class="kc">None</span>
+
+                <span class="k">if</span> <span class="n">comp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># 如果组件内部未设置名称，则在此处覆盖</span>
+                <span class="k">if</span> <span class="n">comp_name</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="n">comp_name</span><span class="p">:</span>
+                    <span class="nb">setattr</span><span class="p">(</span><span class="n">comp</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="n">comp_name</span><span class="p">)</span>
+
+                <span class="c1"># 通过 Agent 接口注册组件，确保任务/状态监听正常工作</span>
+                <span class="n">agent</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">comp</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">agent</span></div>
+
+    <span class="c1"># 触发器相关方法</span>
+<div class="viewcode-block" id="Environment.create_event_trigger"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.create_event_trigger">[docs]</a>    <span class="k">def</span> <span class="nf">create_event_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">event_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                            <span class="n">value_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="n">operator</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TriggerOperator</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="n">target_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_manager</span><span class="o">.</span><span class="n">create_event_trigger</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">value_key</span><span class="p">,</span> <span class="n">operator</span><span class="p">,</span> <span class="n">target_value</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Environment.create_state_trigger"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.create_state_trigger">[docs]</a>    <span class="k">def</span> <span class="nf">create_state_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">state_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                            <span class="n">operator</span><span class="p">:</span> <span class="n">TriggerOperator</span> <span class="o">=</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">EQUALS</span><span class="p">,</span>
+                            <span class="n">target_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_manager</span><span class="o">.</span><span class="n">create_state_trigger</span><span class="p">(</span><span class="n">agent_id</span><span class="p">,</span> <span class="n">state_key</span><span class="p">,</span> <span class="n">operator</span><span class="p">,</span> <span class="n">target_value</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Environment.create_time_trigger"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.create_time_trigger">[docs]</a>    <span class="k">def</span> <span class="nf">create_time_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trigger_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                          <span class="n">interval</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                          <span class="n">cron_expr</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                          <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_manager</span><span class="o">.</span><span class="n">create_time_trigger</span><span class="p">(</span><span class="n">trigger_time</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">cron_expr</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Environment.create_composite_trigger"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Environment.create_composite_trigger">[docs]</a>    <span class="k">def</span> <span class="nf">create_composite_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">triggers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Trigger</span><span class="p">],</span>
+                               <span class="n">operator_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;and&quot;</span><span class="p">,</span>
+                               <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">aeroagentsim.manager.trigger</span> <span class="kn">import</span> <span class="n">TriggerOperator</span>
+        <span class="n">operator</span> <span class="o">=</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">AND</span> <span class="k">if</span> <span class="n">operator_type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;and&quot;</span> <span class="k">else</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">OR</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_manager</span><span class="o">.</span><span class="n">create_composite_trigger</span><span class="p">(</span><span class="n">triggers</span><span class="p">,</span> <span class="n">operator</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.environment</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

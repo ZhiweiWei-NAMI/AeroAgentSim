@@ -61,7 +61,7 @@ function OverviewPage() {
     <div className="workbench-page">
       <div className="workbench-page-head">
         <Title level={4}>{t('pageOverview')}</Title>
-        <Space>
+        <Space wrap>
           <Text type="secondary">{`${t('configId')}: ${draftConfig?.config_id || 'default'}`}</Text>
           <Button icon={<ReloadOutlined />} loading={isPending} onClick={loadData}>
             {t('refresh')}
@@ -151,6 +151,7 @@ function OverviewPage() {
         {reviewResult?.issues?.length ? (
           <Table
             size="small"
+            scroll={{ x: 'max-content' }}
             rowKey={(item, index) => `${item.message}_${index}`}
             dataSource={reviewResult.issues}
             pagination={{ pageSize: 8 }}

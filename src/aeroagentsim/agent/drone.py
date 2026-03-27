@@ -1,0 +1,224 @@
+"""
+AirFogSim无人机代理模块
+
+该模块定义了无人机代理类及其元类，实现了智能无人机的行为和状态管理。
+主要功能包括：
+1. 无人机状态模板定义和管理
+2. 智能任务规划和执行
+3. 电池管理和充电逻辑
+4. LLM集成的决策支持
+5. 工作流监控和管理
+
+@author: zhiwei wei
+@email: 2311769@tongji.edu.cn
+"""
+import uuid
+from aeroagentsim.agent.terminal import TerminalAgent, TerminalAgentMeta
+from aeroagentsim.workflow.charging import ChargingWorkflow
+from aeroagentsim.core.llm_client import LLMClient
+from aeroagentsim.utils.logging_config import get_logger
+logger = get_logger(__name__)
+
+class DroneAgentMeta(TerminalAgentMeta):
+    """无人机代理元类"""
+
+    def __new__(mcs, name, bases, attrs):
+        cls = super().__new__(mcs, name, bases, attrs)
+
+        # 注册无人机专用的状态模板
+        mcs.register_template(cls, 'position', (tuple, list), True,
+                            lambda pos: len(pos) == 3 and all(isinstance(x, (int, float)) for x in pos),
+                            "无人机的3D位置坐标 (x, y, z)")
+        mcs.register_template(cls, 'speed', float, False, None,
+                            "无人机的速度 (km/h)")
+        mcs.register_template(cls, 'battery_level', (float, int), True,
+                            lambda lvl: 0 <= lvl <= 100,
+                            "无人机电池电量百分比 (0-100)")
+        # 无人机移动状态
+        mcs.register_template(cls, 'moving_status', str, True,
+                            lambda s: s in ['idle', 'flying', 'landing', 'hovering'],
+                            "无人机当前移动状态")
+        mcs.register_template(cls, 'direction', tuple, False,
+                            lambda pos: len(pos) == 3 and all(isinstance(x, (int, float)) for x in pos),
+                            "无人机的方向向量 (dx, dy, dz)")
+        mcs.register_template(cls, 'distance_traveled', float, False, None,
+                            "无人机已经行进的距离 (km)")
+        mcs.register_template(cls, 'computation_load', float, False, None,
+                            "无人机的计算负载")
+        mcs.register_template(cls, 'altitude', (int, float), False, None,
+                            "无人机的高度 (m)")
+        # max_allowed_speed
+        mcs.register_template(cls, 'max_allowed_speed', float, False, None,
+                            "无人机允许的最大速度 (km/h)")
+        # battery_capacity
+        mcs.register_template(cls, 'battery_capacity', float, False, None,
+                            "无人机电池容量 (mAh)")
+        # charge_cycles
+        mcs.register_template(cls, 'charge_cycles', int, False, None,
+                            "无人机充电周期")
+        # external_force
+        mcs.register_template(cls, 'external_force', (tuple, list), False,
+                              lambda v: len(v) == 3 and all(isinstance(i, (int, float)) for i in v),
+                            "无人机受外力影响的3D向量 (fx, fy, fz)")
+        
+        # 功耗状态模板 - 由各种Task产生
+        mcs.register_template(cls, 'mobility_power_consumption', float, False,
+                            lambda p: p >= 0 if p is not None else True,
+                            "移动功耗 (W) - 由MoveToTask产生")
+        mcs.register_template(cls, 'computing_power_consumption', float, False,
+                            lambda p: p >= 0 if p is not None else True,
+                            "计算功耗 (W) - 由ComputeTask产生")
+        mcs.register_template(cls, 'relay_power_consumption', float, False,
+                            lambda p: p >= 0 if p is not None else True,
+                            "中继功耗 (W) - 由DataRelayTask产生")
+        mcs.register_template(cls, 'logistics_power_consumption', float, False,
+                            lambda p: p >= 0 if p is not None else True,
+                            "物流功耗 (W) - 由LogisticsTask产生")
+        mcs.register_template(cls, 'inspection_power_consumption', float, False,
+                            lambda p: p >= 0 if p is not None else True,
+                            "巡检功耗 (W) - 由InspectionTask产生")
+        mcs.register_template(cls, 'communication_power', float, False,
+                            lambda p: p >= 0 if p is not None else True,
+                            "通信功耗 (W) - 由CommunicationComponent产生")
+
+        return cls
+
+class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):
+    """无人机代理，能够执行智能任务规划"""
+
+    @classmethod
+    def get_description(cls):
+        """获取代理类型的描述"""
+        return "无人机代理 - 能够执行智能任务规划，支持巡检和充电工作流"
+
+    def __init__(self, env, agent_name: str, properties=None, agent_id=None):
+        super().__init__(env, agent_name, properties)
+        self.id = agent_id or f"agent_{uuid.uuid4().hex[:8]}"
+        self.initialize_states(
+            level_class=DroneAgent,
+            position=properties.get('position', [0, 0, 0]),
+            battery_level=properties.get('battery_level', 100.0),
+            status=properties.get('status', 'idle'),
+            moving_status=properties.get('moving_status', 'idle'),
+            direction=properties.get('direction', (0, 0, 0)),
+            distance_traveled=properties.get('distance_traveled', 0.0),
+            computation_load=properties.get('computation_load', 0.0),
+            altitude=properties.get('altitude', 0.0),
+            battery_capacity=properties.get('battery_capacity', 5000.0),
+            charge_cycles=properties.get('charge_cycles', 0),
+            external_force=properties.get('external_force', (0, 0, 0)),
+            # 功耗状态初始化 - 由各种Task和Component产生和更新
+            mobility_power_consumption=properties.get('mobility_power_consumption', 0.0),
+            computing_power_consumption=properties.get('computing_power_consumption', 0.0),
+            relay_power_consumption=properties.get('relay_power_consumption', 0.0),
+            logistics_power_consumption=properties.get('logistics_power_consumption', 0.0),
+            inspection_power_consumption=properties.get('inspection_power_consumption', 0.0),
+            communication_power=properties.get('communication_power', 0.0)
+        )
+
+        # 初始化 LLM 客户端，传入环境实例
+        self.llm_client = None
+        
+        # 可嵌入的任务规划器回调接口
+        self.task_planner_callback = None
+
+    def register_event_listeners(self):
+        """注册无人机需要监听的事件"""
+        # 获取基类注册的事件监听器
+        listeners = super().register_event_listeners()
+
+        # 添加无人机特有的事件监听器
+        # 可以根据需要添加更多事件监听器
+
+        return listeners
+
+    def _check_agent_status(self):
+        """检查无人机状态"""
+        # 检查电量并返回状态
+        return self.check_battery_level()
+
+    def _process_custom_logic(self):
+        """执行无人机特定的逻辑"""
+        # 获取当前活跃的工作流
+        active_workflows = self.get_active_workflows()
+
+        # 如果设置了任务规划器回调，则调用它进行运行时规划
+        if self.task_planner_callback:
+            try:
+                suggested_tasks = self.task_planner_callback(self)
+                if suggested_tasks:
+                    self._process_suggested_tasks(suggested_tasks)
+            except Exception as e:
+                logger.error(f"时间 {self.env.now}: 无人机 {self.id} 任务规划器回调执行失败: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
+        
+        # 无人机特定的逻辑，如使用LLM进行任务规划等
+        # 这里可以添加更多无人机特有的功能
+
+    def set_task_planner_callback(self, callback):
+        """
+        设置任务规划器回调函数。
+        
+        Args:
+            callback: 回调函数，接收agent作为参数，返回建议的任务列表
+                     函数签名: callback(agent) -> List[Task]
+        """
+        self.task_planner_callback = callback
+        logger.info(f"时间 {self.env.now}: 无人机 {self.id} 设置了任务规划器回调")
+    
+    def _process_suggested_tasks(self, suggested_tasks):
+        """
+        处理规划器建议的任务。
+        
+        Args:
+            suggested_tasks: 建议的任务列表
+        """
+        if not suggested_tasks:
+            return
+            
+        for task in suggested_tasks:
+            if hasattr(task, 'id') and hasattr(task, 'priority'):
+                # 检查任务是否已经在队列中或正在执行
+                if not self._is_task_queued_or_executing(task.id):
+                    self.task_queue.append(task)
+                    logger.info(f"时间 {self.env.now}: 无人机 {self.id} 添加规划建议任务 {task.id} 到队列")
+                else:
+                    logger.debug(f"时间 {self.env.now}: 无人机 {self.id} 跳过重复任务 {task.id}")
+            else:
+                logger.warning(f"时间 {self.env.now}: 无人机 {self.id} 收到无效的建议任务: {task}")
+        
+        # 重新排序任务队列
+        self.task_queue.sort(key=lambda t: getattr(t, 'priority', 0), reverse=True)
+
+    def check_battery_level(self):
+        """检查电池电量并决定是否需要终止当前任务"""
+        battery_level = self.get_state('battery_level')
+        status = self.get_state('status')
+        if status == 'error':
+            return False
+
+        # 如果电量极低(小于5%)，打印警告并取消所有任务
+        if battery_level < 5.0:
+            logger.warning(f"时间 {self.env.now}: 警告! {self.id} 电量极低({battery_level:.1f}%)，取消所有任务!")
+            self._cancel_all_tasks()
+            self.update_state('moving_status', 'idle')
+            self.update_state('status', 'error')
+            return False
+        elif battery_level < 10.0:
+            logger.warning(f"时间 {self.env.now}: 注意! {self.id} 电量低({battery_level:.1f}%)，应尽快充电!")
+            return True
+        return True
+
+    def get_details(self):
+        """获取代理详细信息"""
+        details = self.get_current_states()
+        details.update({
+            'id': self.id,
+            'name': self.name,
+            'type': self.__class__.__name__,
+            'components': self.get_component_names(),
+            'active_tasks_count': len([t for t in self.managed_tasks.values() if t['status'] == 'running']),
+            'active_workflows': [w.id for w in self.get_active_workflows()]
+        })
+        return details

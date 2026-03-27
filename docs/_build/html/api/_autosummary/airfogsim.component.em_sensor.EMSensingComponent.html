@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>aeroagentsim.component.em_sensor.EMSensingComponent &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.component.em_sensor.EMSensingComponent</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="aeroagentsim-component-em-sensor-emsensingcomponent">
+<h1>aeroagentsim.component.em_sensor.EMSensingComponent<a class="headerlink" href="#aeroagentsim-component-em-sensor-emsensingcomponent" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.component.em_sensor.</span></span><span class="sig-name descname"><span class="pre">EMSensingComponent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['signal_detected',</span> <span class="pre">'signal_lost']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>电磁感知组件，用于感知周围环境中的电磁信号</p>
+<p>该组件利用SignalDataProvider获取周围信号的信息，
+模拟传感器的不确定性（如信号类型识别错误、功率测量误差等），
+并将感知到的信号更新到Agent的状态中。</p>
+<p>性能指标：
+- em_sensor_sensitivity: 传感器灵敏度 (dBm)
+- em_sensor_power_consumption: 传感器功耗
+- em_sensor_accuracy_identification: 信号类型识别精度 (错误率)
+- em_sensor_accuracy_power: 功率测量精度 (dB标准差)
+- em_sensor_accuracy_frequency: 频率测量精度 (MHz标准差)
+- em_sensor_accuracy_direction: 方向测量精度 (度标准差)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['signal_detected',</span> <span class="pre">'signal_lost']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化电磁感知组件</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>agent</strong> – 所属代理</p></li>
+<li><p><strong>name</strong> – 组件名称</p></li>
+<li><p><strong>supported_events</strong> – 支持的额外事件</p></li>
+<li><p><strong>properties</strong> – 组件属性，包含传感器配置参数</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../component.html#aeroagentsim.component.em_sensor.EMSensingComponent.__init__" title="aeroagentsim.component.em_sensor.EMSensingComponent.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(env, agent[, name, ...])</p></td>
+<td><p>初始化电磁感知组件</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">can_execute</span></code>(task)</p></td>
+<td><p>检查组件名称是否匹配</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../component.html#aeroagentsim.component.em_sensor.EMSensingComponent.disable" title="aeroagentsim.component.em_sensor.EMSensingComponent.disable"><code class="xref py py-obj docutils literal notranslate"><span class="pre">disable</span></code></a>()</p></td>
+<td><p>禁用组件，将其设置为错误状态并取消所有正在执行的任务 同时停止持续感知进程</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../component.html#aeroagentsim.component.em_sensor.EMSensingComponent.enable" title="aeroagentsim.component.em_sensor.EMSensingComponent.enable"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable</span></code></a>()</p></td>
+<td><p>启用组件，将其从错误状态恢复 重新启动持续感知进程</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">execute_task</span></code>(task)</p></td>
+<td><p>开始执行任务。返回包含完整生命周期的SimPy进程。 由Agent调用。</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_available</span></code>()</p></td>
+<td><p>检查组件是否可用</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../component.html#aeroagentsim.component.em_sensor.EMSensingComponent.scan_frequency_band" title="aeroagentsim.component.em_sensor.EMSensingComponent.scan_frequency_band"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scan_frequency_band</span></code></a>(min_freq, max_freq)</p></td>
+<td><p>扫描特定频段</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../component.html#aeroagentsim.component.em_sensor.EMSensingComponent.set_accuracy_parameters" title="aeroagentsim.component.em_sensor.EMSensingComponent.set_accuracy_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_accuracy_parameters</span></code></a>([...])</p></td>
+<td><p>设置传感器精度参数</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../component.html#aeroagentsim.component.em_sensor.EMSensingComponent.set_frequency_bands" title="aeroagentsim.component.em_sensor.EMSensingComponent.set_frequency_bands"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_frequency_bands</span></code></a>(frequency_bands)</p></td>
+<td><p>设置频率扫描范围</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../component.html#aeroagentsim.component.em_sensor.EMSensingComponent.set_sensitivity_threshold" title="aeroagentsim.component.em_sensor.EMSensingComponent.set_sensitivity_threshold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_sensitivity_threshold</span></code></a>(threshold)</p></td>
+<td><p>设置灵敏度阈值</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">trigger_event</span></code>(event_name[, event_value])</p></td>
+<td><p>触发组件命名空间下的事件。</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../component.html#aeroagentsim.component.em_sensor.EMSensingComponent.MONITORED_STATES" title="aeroagentsim.component.em_sensor.EMSensingComponent.MONITORED_STATES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MONITORED_STATES</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../component.html#aeroagentsim.component.em_sensor.EMSensingComponent.PRODUCED_METRICS" title="aeroagentsim.component.em_sensor.EMSensingComponent.PRODUCED_METRICS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PRODUCED_METRICS</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_busy</span></code></p></td>
+<td><p>检查组件是否正在执行任务</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.PRODUCED_METRICS">
+<span class="sig-name descname"><span class="pre">PRODUCED_METRICS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['em_sensor_sensitivity',</span> <span class="pre">'em_sensor_power_consumption',</span> <span class="pre">'em_sensor_accuracy_identification',</span> <span class="pre">'em_sensor_accuracy_power',</span> <span class="pre">'em_sensor_accuracy_frequency',</span> <span class="pre">'em_sensor_accuracy_direction']</span></em><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.PRODUCED_METRICS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.MONITORED_STATES">
+<span class="sig-name descname"><span class="pre">MONITORED_STATES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['position',</span> <span class="pre">'status',</span> <span class="pre">'battery_level']</span></em><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.MONITORED_STATES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">['signal_detected',</span> <span class="pre">'signal_lost']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化电磁感知组件</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 仿真环境</p></li>
+<li><p><strong>agent</strong> – 所属代理</p></li>
+<li><p><strong>name</strong> – 组件名称</p></li>
+<li><p><strong>supported_events</strong> – 支持的额外事件</p></li>
+<li><p><strong>properties</strong> – 组件属性，包含传感器配置参数</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.scan_frequency_band">
+<span class="sig-name descname"><span class="pre">scan_frequency_band</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.scan_frequency_band"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.scan_frequency_band" title="Permalink to this definition">¶</a></dt>
+<dd><p>扫描特定频段</p>
+<p>此方法可以由任务调用，用于主动扫描特定频段。
+与持续感知进程不同，此方法不会触发信号检测/丢失事件，
+也不会更新代理的 detected_signals 状态。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>min_freq</strong> – 最小频率 (MHz)</p></li>
+<li><p><strong>max_freq</strong> – 最大频率 (MHz)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>检测到的信号列表（已应用模拟误差）</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Dict]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.set_frequency_bands">
+<span class="sig-name descname"><span class="pre">set_frequency_bands</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frequency_bands</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.set_frequency_bands"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.set_frequency_bands" title="Permalink to this definition">¶</a></dt>
+<dd><p>设置频率扫描范围</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>frequency_bands</strong> – 频率扫描范围列表，每个元素为 (min_freq, max_freq)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.set_sensitivity_threshold">
+<span class="sig-name descname"><span class="pre">set_sensitivity_threshold</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.set_sensitivity_threshold"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.set_sensitivity_threshold" title="Permalink to this definition">¶</a></dt>
+<dd><p>设置灵敏度阈值</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>threshold</strong> – 灵敏度阈值 (dBm)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.set_accuracy_parameters">
+<span class="sig-name descname"><span class="pre">set_accuracy_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">identification_error_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power_accuracy_stddev</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frequency_accuracy_stddev</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction_accuracy_stddev</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.set_accuracy_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.set_accuracy_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>设置传感器精度参数</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>identification_error_rate</strong> – 信号类型识别错误率 (0.0-1.0)</p></li>
+<li><p><strong>power_accuracy_stddev</strong> – 功率测量误差标准差 (dB)</p></li>
+<li><p><strong>frequency_accuracy_stddev</strong> – 频率测量误差标准差 (MHz)</p></li>
+<li><p><strong>direction_accuracy_stddev</strong> – 方向测量误差标准差 (度)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.disable">
+<span class="sig-name descname"><span class="pre">disable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.disable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.disable" title="Permalink to this definition">¶</a></dt>
+<dd><p>禁用组件，将其设置为错误状态并取消所有正在执行的任务
+同时停止持续感知进程</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.component.em_sensor.EMSensingComponent.enable">
+<span class="sig-name descname"><span class="pre">enable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/component/em_sensor.html#EMSensingComponent.enable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.component.em_sensor.EMSensingComponent.enable" title="Permalink to this definition">¶</a></dt>
+<dd><p>启用组件，将其从错误状态恢复
+重新启动持续感知进程</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">aeroagentsim.component.em_sensor.EMSensingComponent</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.__init__"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.PRODUCED_METRICS"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.PRODUCED_METRICS</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.MONITORED_STATES"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.MONITORED_STATES</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.scan_frequency_band"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.scan_frequency_band()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.set_frequency_bands"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.set_frequency_bands()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.set_sensitivity_threshold"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.set_sensitivity_threshold()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.set_accuracy_parameters"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.set_accuracy_parameters()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.disable"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.disable()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.component.em_sensor.EMSensingComponent.enable"><code class="docutils literal notranslate"><span class="pre">EMSensingComponent.enable()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api/_autosummary/airfogsim.component.em_sensor.EMSensingComponent.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.component.em_sensor.EMSensingComponent</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

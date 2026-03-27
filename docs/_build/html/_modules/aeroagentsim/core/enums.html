@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.core.enums &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.enums</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.core.enums</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim枚举(Enums)核心模块</span>
+
+<span class="sd">该模块定义了仿真系统中使用的各种枚举类型，包括任务状态、工作流状态、</span>
+<span class="sd">代理状态、资源状态等。模块还提供了可JSON序列化的枚举基类和辅助工具，</span>
+<span class="sd">使枚举值可以方便地在系统内部传递和持久化。主要内容包括：</span>
+<span class="sd">1. JSONSerializableEnum：可序列化的枚举基类</span>
+<span class="sd">2. 各种状态枚举：TaskStatus, WorkflowStatus, AgentStatus等</span>
+<span class="sd">3. 资源相关枚举：ResourceType, AllocationStatus等</span>
+<span class="sd">4. 触发器相关枚举：TriggerType, TriggerOperator等</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">auto</span>
+<span class="kn">from</span> <span class="nn">json</span> <span class="kn">import</span> <span class="n">JSONEncoder</span>
+
+<div class="viewcode-block" id="get_enum_name_by_value"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.get_enum_name_by_value">[docs]</a><span class="k">def</span> <span class="nf">get_enum_name_by_value</span><span class="p">(</span><span class="n">enum_class</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="n">enum_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">enum_constant</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">enum_constant</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">enum_constant</span> <span class="ow">in</span> <span class="n">enum_class</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">enum_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ContractStatus"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.ContractStatus">[docs]</a><span class="k">class</span> <span class="nc">ContractStatus</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;合约状态枚举&quot;&quot;&quot;</span>
+    <span class="n">PENDING</span> <span class="o">=</span> <span class="s1">&#39;con_pending&#39;</span>    <span class="c1"># 合约已创建但尚未被接受</span>
+    <span class="n">ACTIVE</span> <span class="o">=</span> <span class="s1">&#39;con_active&#39;</span>     <span class="c1"># 合约已被接受，正在执行</span>
+    <span class="n">COMPLETED</span> <span class="o">=</span> <span class="s1">&#39;con_completed&#39;</span>  <span class="c1"># 合约已成功完成</span>
+    <span class="n">FAILED</span> <span class="o">=</span> <span class="s1">&#39;con_failed&#39;</span>     <span class="c1"># 合约执行失败</span>
+    <span class="n">CANCELED</span> <span class="o">=</span> <span class="s1">&#39;con_canceled&#39;</span>   <span class="c1"># 合约被取消</span></div>
+
+<div class="viewcode-block" id="EnumJSONEncoder"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.EnumJSONEncoder">[docs]</a><span class="k">class</span> <span class="nc">EnumJSONEncoder</span><span class="p">(</span><span class="n">JSONEncoder</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;用于序列化枚举类型的JSON编码器&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="EnumJSONEncoder.default"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.EnumJSONEncoder.default">[docs]</a>    <span class="k">def</span> <span class="nf">default</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">JSONSerializableEnum</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span></div></div>
+
+<div class="viewcode-block" id="JSONSerializableEnum"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.JSONSerializableEnum">[docs]</a><span class="k">class</span> <span class="nc">JSONSerializableEnum</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    可JSON序列化的枚举基类</span>
+<span class="sd">    提供了to_json和from_json方法用于序列化和反序列化</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+
+<div class="viewcode-block" id="JSONSerializableEnum.to_json"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.JSONSerializableEnum.to_json">[docs]</a>    <span class="k">def</span> <span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;返回可JSON序列化的表示&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+        <span class="p">}</span></div>
+
+<div class="viewcode-block" id="JSONSerializableEnum.__json__"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.JSONSerializableEnum.__json__">[docs]</a>    <span class="k">def</span> <span class="nf">__json__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;支持json.dumps直接序列化&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="JSONSerializableEnum.from_json"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.JSONSerializableEnum.from_json">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_json</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="c1"># 如果是字典格式，尝试通过名称或值恢复</span>
+            <span class="k">if</span> <span class="s2">&quot;name&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">member</span> <span class="ow">in</span> <span class="bp">cls</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">member</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;value&quot;</span><span class="p">]:</span>
+                        <span class="k">return</span> <span class="n">member</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="c1"># 如果是字符串，尝试作为名称恢复</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="p">[</span><span class="n">data</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="c1"># 如果是整数，尝试作为值恢复</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="c1"># 如果无法恢复，抛出异常</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;无法从</span><span class="si">{</span><span class="n">data</span><span class="si">}</span><span class="s2">恢复</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">枚举值&quot;</span><span class="p">)</span></div></div>
+
+<div class="viewcode-block" id="TaskStatus"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.TaskStatus">[docs]</a><span class="k">class</span> <span class="nc">TaskStatus</span><span class="p">(</span><span class="n">JSONSerializableEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;任务状态枚举&quot;&quot;&quot;</span>
+    <span class="n">PENDING</span> <span class="o">=</span> <span class="s2">&quot;PENDING&quot;</span>
+    <span class="n">RUNNING</span> <span class="o">=</span> <span class="s2">&quot;RUNNING&quot;</span>
+    <span class="n">COMPLETED</span> <span class="o">=</span> <span class="s2">&quot;COMPLETED&quot;</span>
+    <span class="n">FAILED</span> <span class="o">=</span> <span class="s2">&quot;FAILED&quot;</span>
+    <span class="n">CANCELED</span> <span class="o">=</span> <span class="s2">&quot;CANCELED&quot;</span>
+    <span class="n">SUSPENDED</span> <span class="o">=</span> <span class="s2">&quot;SUSPENDED&quot;</span></div>
+
+<div class="viewcode-block" id="WorkflowStatus"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.WorkflowStatus">[docs]</a><span class="k">class</span> <span class="nc">WorkflowStatus</span><span class="p">(</span><span class="n">JSONSerializableEnum</span><span class="p">):</span>
+    <span class="n">PENDING</span> <span class="o">=</span> <span class="s2">&quot;PENDING&quot;</span>    <span class="c1"># 工作流已创建但未开始执行</span>
+    <span class="n">RUNNING</span> <span class="o">=</span> <span class="s2">&quot;RUNNING&quot;</span>    <span class="c1"># 工作流正在执行中</span>
+    <span class="n">COMPLETED</span> <span class="o">=</span> <span class="s2">&quot;COMPLETED&quot;</span>   <span class="c1"># 工作流已成功完成</span>
+    <span class="n">FAILED</span> <span class="o">=</span> <span class="s2">&quot;FAILED&quot;</span>     <span class="c1"># 工作流QoS未满足而失败</span>
+    <span class="n">TIMEOUT</span> <span class="o">=</span> <span class="s2">&quot;TIMEOUT&quot;</span>    <span class="c1"># 工作流执行超时</span>
+    <span class="n">CANCELED</span> <span class="o">=</span> <span class="s2">&quot;CANCELED&quot;</span>   <span class="c1"># 工作流被取消</span>
+    <span class="n">SUSPENDED</span> <span class="o">=</span> <span class="s2">&quot;SUSPENDED&quot;</span>       <span class="c1"># 工作流被暂停/中止</span></div>
+
+<div class="viewcode-block" id="AgentStatus"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.AgentStatus">[docs]</a><span class="k">class</span> <span class="nc">AgentStatus</span><span class="p">(</span><span class="n">JSONSerializableEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Agent状态枚举&quot;&quot;&quot;</span>
+    <span class="n">AVAILABLE</span> <span class="o">=</span> <span class="s2">&quot;AVAILABLE&quot;</span>
+    <span class="n">BUSY</span> <span class="o">=</span> <span class="s2">&quot;BUSY&quot;</span>
+    <span class="n">MAINTENANCE</span> <span class="o">=</span> <span class="s2">&quot;MAINTENANCE&quot;</span>
+    <span class="n">OFFLINE</span> <span class="o">=</span> <span class="s2">&quot;OFFLINE&quot;</span>
+    <span class="n">UNAVAILABLE</span> <span class="o">=</span> <span class="s2">&quot;UNAVAILABLE&quot;</span></div>
+
+<div class="viewcode-block" id="ResourceStatus"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.ResourceStatus">[docs]</a><span class="k">class</span> <span class="nc">ResourceStatus</span><span class="p">(</span><span class="n">JSONSerializableEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;资源状态枚举&quot;&quot;&quot;</span>
+    <span class="n">AVAILABLE</span> <span class="o">=</span> <span class="s2">&quot;AVAILABLE&quot;</span>
+    <span class="n">PARTIALLY_ALLOCATED</span> <span class="o">=</span> <span class="s2">&quot;PARTIALLY_ALLOCATED&quot;</span>
+    <span class="n">FULLY_ALLOCATED</span> <span class="o">=</span> <span class="s2">&quot;FULLY_ALLOCATED&quot;</span>
+    <span class="n">MAINTENANCE</span> <span class="o">=</span> <span class="s2">&quot;MAINTENANCE&quot;</span>
+    <span class="n">UNAVAILABLE</span> <span class="o">=</span> <span class="s2">&quot;UNAVAILABLE&quot;</span>
+    <span class="n">UNAVAILABLE_WEATHER</span> <span class="o">=</span> <span class="s2">&quot;UNAVAILABLE_WEATHER&quot;</span> <span class="c1"># Added for weather impact</span></div>
+
+<div class="viewcode-block" id="UnitStatus"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.UnitStatus">[docs]</a><span class="k">class</span> <span class="nc">UnitStatus</span><span class="p">(</span><span class="n">JSONSerializableEnum</span><span class="p">):</span>
+    <span class="n">AVAILABLE</span> <span class="o">=</span> <span class="s2">&quot;AVAILABLE&quot;</span>
+    <span class="n">ALLOCATED</span> <span class="o">=</span> <span class="s2">&quot;ALLOCATED&quot;</span>
+    <span class="n">MAINTENANCE</span> <span class="o">=</span> <span class="s2">&quot;MAINTENANCE&quot;</span>
+    <span class="n">FAULTY</span> <span class="o">=</span> <span class="s2">&quot;FAULTY&quot;</span></div>
+
+<div class="viewcode-block" id="ResourceType"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.ResourceType">[docs]</a><span class="k">class</span> <span class="nc">ResourceType</span><span class="p">(</span><span class="n">JSONSerializableEnum</span><span class="p">):</span>
+    <span class="n">CONTINUOUS</span> <span class="o">=</span> <span class="s2">&quot;CONTINUOUS&quot;</span>
+    <span class="n">DISCRETE</span> <span class="o">=</span> <span class="s2">&quot;DISCRETE&quot;</span>
+    <span class="n">BANDWIDTH</span> <span class="o">=</span> <span class="s2">&quot;BANDWIDTH&quot;</span></div>
+
+<div class="viewcode-block" id="EventStatus"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.EventStatus">[docs]</a><span class="k">class</span> <span class="nc">EventStatus</span><span class="p">(</span><span class="n">JSONSerializableEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;事件状态枚举&quot;&quot;&quot;</span>
+    <span class="n">COMPLETED</span> <span class="o">=</span> <span class="s2">&quot;COMPLETED&quot;</span>
+    <span class="n">FAILED</span> <span class="o">=</span> <span class="s2">&quot;FAILED&quot;</span>
+    <span class="n">CREATED</span> <span class="o">=</span> <span class="s2">&quot;CREATED&quot;</span>
+    <span class="n">PROCESSING</span> <span class="o">=</span> <span class="s2">&quot;PROCESSING&quot;</span>
+    <span class="n">PENDING</span> <span class="o">=</span> <span class="s2">&quot;PENDING&quot;</span></div>
+
+<div class="viewcode-block" id="TriggerType"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.TriggerType">[docs]</a><span class="k">class</span> <span class="nc">TriggerType</span><span class="p">(</span><span class="n">JSONSerializableEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;触发器类型枚举&quot;&quot;&quot;</span>
+    <span class="n">EVENT</span> <span class="o">=</span> <span class="s2">&quot;event&quot;</span>           <span class="c1"># 基于事件的触发</span>
+    <span class="n">STATE</span> <span class="o">=</span> <span class="s2">&quot;state&quot;</span>           <span class="c1"># 基于状态的触发</span>
+    <span class="n">TIME</span> <span class="o">=</span> <span class="s2">&quot;time&quot;</span>             <span class="c1"># 基于时间的触发</span>
+    <span class="n">COMPOSITE</span> <span class="o">=</span> <span class="s2">&quot;composite&quot;</span>   <span class="c1"># 组合触发器</span></div>
+
+<div class="viewcode-block" id="TriggerOperator"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.TriggerOperator">[docs]</a><span class="k">class</span> <span class="nc">TriggerOperator</span><span class="p">(</span><span class="n">JSONSerializableEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;组合触发器的操作符&quot;&quot;&quot;</span>
+    <span class="n">AND</span> <span class="o">=</span> <span class="s2">&quot;and&quot;</span>  <span class="c1"># 所有子触发器都满足</span>
+    <span class="n">OR</span> <span class="o">=</span> <span class="s2">&quot;or&quot;</span>    <span class="c1"># 任一子触发器满足</span>
+    <span class="n">EQUALS</span> <span class="o">=</span> <span class="s2">&quot;equals&quot;</span>  <span class="c1"># 触发器的结果相等</span>
+    <span class="n">NOT_EQUALS</span> <span class="o">=</span> <span class="s2">&quot;not_equals&quot;</span>  <span class="c1"># 触发器的结果不相等</span>
+    <span class="n">GREATER_THAN</span> <span class="o">=</span> <span class="s2">&quot;greater_than&quot;</span>  <span class="c1"># 触发器的结果大于</span>
+    <span class="n">LESS_THAN</span> <span class="o">=</span> <span class="s2">&quot;less_than&quot;</span>  <span class="c1"># 触发器的结果小于</span>
+    <span class="n">GREATER_EQUAL</span> <span class="o">=</span> <span class="s2">&quot;greater_equal&quot;</span>  <span class="c1"># 触发器的结果大于等于</span>
+    <span class="n">LESS_EQUAL</span> <span class="o">=</span> <span class="s2">&quot;less_equal&quot;</span>  <span class="c1"># 触发器的结果小于等于</span>
+    <span class="n">CONTAINS</span> <span class="o">=</span> <span class="s2">&quot;contains&quot;</span>  <span class="c1"># 触发器的结果包含</span>
+    <span class="n">NOT_CONTAINS</span> <span class="o">=</span> <span class="s2">&quot;not_contains&quot;</span>  <span class="c1"># 触发器的结果不包含</span>
+    <span class="n">CUSTOM</span> <span class="o">=</span> <span class="s2">&quot;custom&quot;</span>  <span class="c1"># 自定义函数</span></div>
+
+<div class="viewcode-block" id="TaskPriority"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.TaskPriority">[docs]</a><span class="k">class</span> <span class="nc">TaskPriority</span><span class="p">(</span><span class="n">JSONSerializableEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;任务优先级枚举</span>
+
+<span class="sd">    定义了任务的优先级级别，从低到高依次为：LOW、NORMAL、HIGH、CRITICAL。</span>
+<span class="sd">    用于在资源竞争时决定任务的执行顺序和抢占策略。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">LOW</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">NORMAL</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">HIGH</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">CRITICAL</span> <span class="o">=</span> <span class="mi">3</span>
+
+<div class="viewcode-block" id="TaskPriority.from_string"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.TaskPriority.from_string">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_string</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">priority_str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;从字符串转换为优先级枚举&quot;&quot;&quot;</span>
+        <span class="n">priority_map</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="bp">cls</span><span class="o">.</span><span class="n">LOW</span><span class="p">,</span>
+            <span class="s1">&#39;normal&#39;</span><span class="p">:</span> <span class="bp">cls</span><span class="o">.</span><span class="n">NORMAL</span><span class="p">,</span>
+            <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="bp">cls</span><span class="o">.</span><span class="n">HIGH</span><span class="p">,</span>
+            <span class="s1">&#39;critical&#39;</span><span class="p">:</span> <span class="bp">cls</span><span class="o">.</span><span class="n">CRITICAL</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">priority_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">priority_str</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="bp">cls</span><span class="o">.</span><span class="n">NORMAL</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="fm">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span> <span class="ow">is</span> <span class="n">other</span><span class="o">.</span><span class="vm">__class__</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&lt;</span> <span class="n">other</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+    <span class="k">def</span> <span class="fm">__gt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span> <span class="ow">is</span> <span class="n">other</span><span class="o">.</span><span class="vm">__class__</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;</span> <span class="n">other</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+    <span class="k">def</span> <span class="fm">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span> <span class="ow">is</span> <span class="n">other</span><span class="o">.</span><span class="vm">__class__</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&lt;=</span> <span class="n">other</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+    <span class="k">def</span> <span class="fm">__ge__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span> <span class="ow">is</span> <span class="n">other</span><span class="o">.</span><span class="vm">__class__</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;=</span> <span class="n">other</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span></div>
+
+<div class="viewcode-block" id="AllocationStatus"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.workflow.AllocationStatus">[docs]</a><span class="k">class</span> <span class="nc">AllocationStatus</span><span class="p">(</span><span class="n">JSONSerializableEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;资源分配状态枚举，典型的预留工作流程是：</span>
+<span class="sd">        1. 客户端请求预留资源（调用reserve方法）</span>
+<span class="sd">        2. 系统检查未来时间窗口的可用性</span>
+<span class="sd">        3. 如果可用，创建一个PENDING状态的分配；如果不可用，创建一个REJECTED状态的分配</span>
+<span class="sd">        4. 客户端在需要时确认使用（可能通过一个confirm_reservation方法，将状态从PENDING改为ACTIVE）</span>
+<span class="sd">        5. 如果客户端不再需要，可以取消预留 PENDING -&gt; CANCELLED</span>
+<span class="sd">        6. 如果时间窗口过期，取消预留 PENDING -&gt; EXPIRED</span>
+<span class="sd">        7. 完成使用后，释放资源 ACTIVE -&gt; RELEASED</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ACTIVE</span> <span class="o">=</span> <span class="s2">&quot;ACTIVE&quot;</span>
+    <span class="n">RELEASED</span> <span class="o">=</span> <span class="s2">&quot;RELEASED&quot;</span>
+    <span class="n">EXPIRED</span> <span class="o">=</span> <span class="s2">&quot;EXPIRED&quot;</span>
+    <span class="n">PENDING</span> <span class="o">=</span> <span class="s2">&quot;PENDING&quot;</span>
+    <span class="n">CANCELLED</span> <span class="o">=</span> <span class="s2">&quot;CANCELLED&quot;</span>
+    <span class="n">REJECTED</span> <span class="o">=</span> <span class="s2">&quot;REJECTED&quot;</span></div>
+
+<span class="c1"># 示例代码：打印枚举成员及其值</span>
+<span class="c1"># print(list(ResourceStatus))</span>
+<span class="c1"># print(list(UnitStatus))</span>
+<span class="c1"># print(list(AllocationStatus))</span>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.enums</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

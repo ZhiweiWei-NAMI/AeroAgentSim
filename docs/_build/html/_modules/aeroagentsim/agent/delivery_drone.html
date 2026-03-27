@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.agent.delivery_drone &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.agent.delivery_drone</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.agent.delivery_drone</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim物流无人机代理模块</span>
+
+<span class="sd">该模块定义了物流无人机代理类，结合了无人机代理和物流代理的功能，实现了物流无人机的行为和状态管理。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 物流无人机状态管理</span>
+<span class="sd">2. 货物携带和运输</span>
+<span class="sd">3. 飞行和充电管理</span>
+<span class="sd">4. 物流工作流集成</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span><span class="p">,</span> <span class="n">DroneAgentMeta</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.delivery_agent</span> <span class="kn">import</span> <span class="n">DeliveryAgent</span><span class="p">,</span> <span class="n">DeliveryAgentMeta</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.workflow.logistics</span> <span class="kn">import</span> <span class="n">LogisticsWorkflow</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.workflow.charging</span> <span class="kn">import</span> <span class="n">ChargingWorkflow</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">DeliveryDroneAgentMeta</span><span class="p">(</span><span class="n">DroneAgentMeta</span><span class="p">,</span> <span class="n">DeliveryAgentMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;物流无人机代理元类，合并了无人机和物流代理的元类&quot;&quot;&quot;</span>
+    <span class="k">pass</span>
+
+<div class="viewcode-block" id="DeliveryDroneAgent"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent">[docs]</a><span class="k">class</span> <span class="nc">DeliveryDroneAgent</span><span class="p">(</span><span class="n">DroneAgent</span><span class="p">,</span> <span class="n">DeliveryAgent</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">DeliveryDroneAgentMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;物流无人机代理，能够执行物流任务和工作流，结合了无人机和物流代理的功能&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="DeliveryDroneAgent.get_description"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.get_description">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get_description</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取代理类型的描述&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;物流无人机代理 - 能够执行物流任务，支持取件、运输和交付工作流&quot;</span></div>
+
+<div class="viewcode-block" id="DeliveryDroneAgent.__init__"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">agent_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># 确保properties是一个字典</span>
+        <span class="n">properties</span> <span class="o">=</span> <span class="n">properties</span> <span class="ow">or</span> <span class="p">{}</span>
+
+        <span class="c1"># 生成一个唯一的agent_id</span>
+        <span class="n">agent_id</span> <span class="o">=</span> <span class="n">agent_id</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;agent_delivery_drone_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># 调用DeliveryAgent的初始化方法，但传入相同的agent_id</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">)</span>
+
+        <span class="c1"># 确保必需的状态被设置</span>
+        <span class="k">if</span> <span class="s1">&#39;moving_status&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;moving_status&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;moving_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;battery_level&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;battery_level&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="s1">&#39;status&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 确保DeliveryAgent的状态也被设置</span>
+        <span class="k">if</span> <span class="s1">&#39;delivery_status&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">[</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 打印初始化后的状态，用于调试</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;初始化 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 完成，状态: moving_status=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;moving_status&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">, battery_level=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+        <span class="c1"># 物流无人机初始化完成</span>
+
+    <span class="k">def</span> <span class="nf">_on_payload_added</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;响应货物添加事件&quot;&quot;&quot;</span>
+        <span class="c1"># 调用DeliveryAgent的方法</span>
+        <span class="n">DeliveryAgent</span><span class="o">.</span><span class="n">_on_payload_added</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_on_payload_removed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;响应货物移除事件&quot;&quot;&quot;</span>
+        <span class="c1"># 调用DeliveryAgent的方法</span>
+        <span class="n">DeliveryAgent</span><span class="o">.</span><span class="n">_on_payload_removed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DeliveryDroneAgent.register_event_listeners"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.register_event_listeners">[docs]</a>    <span class="k">def</span> <span class="nf">register_event_listeners</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;注册物流无人机需要监听的事件&quot;&quot;&quot;</span>
+        <span class="c1"># 获取DroneAgent注册的事件监听器</span>
+        <span class="n">listeners</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="o">.</span><span class="n">register_event_listeners</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c1"># 添加DeliveryAgent特有的事件监听器</span>
+        <span class="n">delivery_listeners</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="s1">&#39;possessing_object_added&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;callback&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_payload_added</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="s1">&#39;possessing_object_removed&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;callback&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_payload_removed</span>
+            <span class="p">}</span>
+        <span class="p">]</span>
+
+        <span class="c1"># 合并监听器列表，确保没有重复</span>
+        <span class="k">for</span> <span class="n">listener</span> <span class="ow">in</span> <span class="n">delivery_listeners</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">listener</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">listeners</span><span class="p">:</span>
+                <span class="n">listeners</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">listener</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">listeners</span></div>
+
+    <span class="k">def</span> <span class="nf">_process_custom_logic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;执行物流无人机特定的逻辑&quot;&quot;&quot;</span>
+        <span class="c1"># 获取当前活跃的工作流</span>
+        <span class="n">active_workflows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_active_workflows</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">active_workflows</span><span class="p">:</span>
+            <span class="c1"># 如果没有活跃的工作流，则简单地保持空闲状态</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 优先级排序：充电 &gt; 物流 &gt; 其他</span>
+        <span class="n">charging_workflow</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">logistics_workflow</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">workflow</span> <span class="ow">in</span> <span class="n">active_workflows</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">workflow</span><span class="p">,</span> <span class="n">LogisticsWorkflow</span><span class="p">):</span>
+                <span class="n">logistics_workflow</span> <span class="o">=</span> <span class="n">workflow</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">workflow</span><span class="p">,</span> <span class="n">ChargingWorkflow</span><span class="p">):</span>
+                <span class="n">charging_workflow</span> <span class="o">=</span> <span class="n">workflow</span>
+
+        <span class="c1"># 检查是否需要优先处理充电</span>
+        <span class="n">charging_needed</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">charging_workflow</span> <span class="ow">and</span> <span class="n">charging_workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;seeking_charger&#39;</span><span class="p">,</span> <span class="s1">&#39;charging&#39;</span><span class="p">]:</span>
+            <span class="n">charging_needed</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># 如果需要优先处理充电</span>
+        <span class="k">if</span> <span class="n">charging_needed</span> <span class="ow">and</span> <span class="n">charging_workflow</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 如果不需要优先充电，处理物流工作流</span>
+        <span class="k">elif</span> <span class="n">logistics_workflow</span><span class="p">:</span>
+            <span class="c1"># 根据物流工作流状态更新无人机状态</span>
+            <span class="n">current_state</span> <span class="o">=</span> <span class="n">logistics_workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span>
+            <span class="k">if</span> <span class="n">current_state</span> <span class="o">==</span> <span class="s1">&#39;picking_up&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">,</span> <span class="s1">&#39;picking_up&#39;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">current_state</span> <span class="o">==</span> <span class="s1">&#39;transporting&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">,</span> <span class="s1">&#39;transporting&#39;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">current_state</span> <span class="o">==</span> <span class="s1">&#39;delivering&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">,</span> <span class="s1">&#39;delivering&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DeliveryDroneAgent.get_details"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent.get_details">[docs]</a>    <span class="k">def</span> <span class="nf">get_details</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取代理详细信息，添加物流无人机相关信息&quot;&quot;&quot;</span>
+        <span class="c1"># 获取DroneAgent的详细信息</span>
+        <span class="n">drone_details</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="o">.</span><span class="n">get_details</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="c1"># 获取DeliveryAgent的详细信息</span>
+        <span class="n">delivery_details</span> <span class="o">=</span> <span class="n">DeliveryAgent</span><span class="o">.</span><span class="n">get_details</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c1"># 合并详细信息</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="n">drone_details</span>
+
+        <span class="c1"># 添加物流相关信息</span>
+        <span class="k">if</span> <span class="s1">&#39;payload_info&#39;</span> <span class="ow">in</span> <span class="n">delivery_details</span><span class="p">:</span>
+            <span class="n">details</span><span class="p">[</span><span class="s1">&#39;payload_info&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">delivery_details</span><span class="p">[</span><span class="s1">&#39;payload_info&#39;</span><span class="p">]</span>
+
+        <span class="c1"># 添加物流工作流信息</span>
+        <span class="k">if</span> <span class="s1">&#39;logistics_workflows&#39;</span> <span class="ow">in</span> <span class="n">delivery_details</span><span class="p">:</span>
+            <span class="n">details</span><span class="p">[</span><span class="s1">&#39;logistics_workflows&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">delivery_details</span><span class="p">[</span><span class="s1">&#39;logistics_workflows&#39;</span><span class="p">]</span>
+
+        <span class="c1"># 添加物流无人机特有信息</span>
+        <span class="n">details</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;DeliveryDroneAgent&#39;</span>
+        <span class="n">details</span><span class="p">[</span><span class="s1">&#39;combined_status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;core_status&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">),</span>
+            <span class="s1">&#39;moving_status&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;moving_status&#39;</span><span class="p">),</span>
+            <span class="s1">&#39;delivery_status&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">details</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.agent.delivery_drone</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

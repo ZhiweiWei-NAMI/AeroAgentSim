@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Developer Guides &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Architecture Guide" href="architecture.html" />
+    <link rel="prev" title="Examples" href="../examples.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="architecture.html" title="Architecture Guide"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../examples.html" title="Examples"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Developer Guides</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="developer-guides">
+<h1>Developer Guides<a class="headerlink" href="#developer-guides" title="Permalink to this heading">¶</a></h1>
+<p>Comprehensive guides for extending and customizing AeroAgentSim.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Development Guides:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#high-level-structure">High-Level Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#core-simulation-layer">Core Simulation Layer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#workbench-backend-layer">Workbench Backend Layer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#frontend-layer">Frontend Layer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#control-and-update-channels">Control and Update Channels</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#configuration-and-runtime-storage">Configuration and Runtime Storage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#visualization-model">Visualization Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#extension-model">Extension Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#current-architectural-emphasis">Current Architectural Emphasis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#related-docs">Related Docs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="agent_development.html">Agent Development Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="agent_development.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agent_development.html#key-concepts">Key Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agent_development.html#creating-a-custom-agent">Creating a Custom Agent</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agent_development.html#agent-integration">Agent Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agent_development.html#best-practices">Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agent_development.html#advanced-topics">Advanced Topics</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="component_development.html">Component Development Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="component_development.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component_development.html#key-concepts">Key Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component_development.html#creating-a-custom-component">Creating a Custom Component</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component_development.html#component-integration">Component Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component_development.html#best-practices">Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component_development.html#advanced-topics">Advanced Topics</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="workflow_development.html">Workflow Development Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="workflow_development.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow_development.html#key-concepts">Key Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow_development.html#creating-a-custom-workflow">Creating a Custom Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow_development.html#advanced-workflow-features">Advanced Workflow Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow_development.html#workflow-integration">Workflow Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow_development.html#best-practices">Best Practices</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="dataprovider_development.html">DataProvider Development Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dataprovider_development.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dataprovider_development.html#key-concepts">Key Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dataprovider_development.html#creating-a-custom-dataprovider">Creating a Custom DataProvider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dataprovider_development.html#advanced-features">Advanced Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dataprovider_development.html#dataprovider-integration">DataProvider Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dataprovider_development.html#best-practices">Best Practices</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="simulation_setup.html">Simulation Setup Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="simulation_setup.html#current-setup-model">Current Setup Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulation_setup.html#python-environment-setup">Python Environment Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulation_setup.html#direct-python-setup">Direct Python Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulation_setup.html#workbench-setup">Workbench Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulation_setup.html#configuration-flow">Configuration Flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulation_setup.html#run-control-and-monitoring">Run Control and Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulation_setup.html#workflow-studio">Workflow Studio</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulation_setup.html#trajectories-and-logs">Trajectories and Logs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulation_setup.html#what-to-avoid">What To Avoid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulation_setup.html#reference-points">Reference Points</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="performance_tuning.html">Performance Tuning Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="performance_tuning.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="performance_tuning.html#performance-fundamentals">Performance Fundamentals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="performance_tuning.html#environment-optimization">Environment Optimization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="performance_tuning.html#agent-optimization">Agent Optimization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="performance_tuning.html#component-optimization">Component Optimization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="performance_tuning.html#data-provider-optimization">Data Provider Optimization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="performance_tuning.html#large-scale-simulation-strategies">Large-Scale Simulation Strategies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="performance_tuning.html#monitoring-and-profiling">Monitoring and Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="performance_tuning.html#best-practices-summary">Best Practices Summary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#common-issues-and-solutions">Common Issues and Solutions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#debugging-techniques">Debugging Techniques</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#testing-and-validation">Testing and Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#common-error-messages">Common Error Messages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#getting-help">Getting Help</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">¶</a></h2>
+<p>These guides provide in-depth information for developers who want to:</p>
+<ul class="simple">
+<li><p>Understand the AeroAgentSim architecture</p></li>
+<li><p>Create custom agent types</p></li>
+<li><p>Develop new component capabilities</p></li>
+<li><p>Design complex workflows</p></li>
+<li><p>Integrate external data sources</p></li>
+<li><p>Optimize simulation performance</p></li>
+<li><p>Debug and troubleshoot issues</p></li>
+</ul>
+<p>Each guide includes:</p>
+<ul class="simple">
+<li><p>Conceptual explanations</p></li>
+<li><p>Step-by-step tutorials</p></li>
+<li><p>Code examples</p></li>
+<li><p>Best practices</p></li>
+<li><p>Common pitfalls and solutions</p></li>
+</ul>
+</section>
+<section id="getting-started-with-development">
+<h2>Getting Started with Development<a class="headerlink" href="#getting-started-with-development" title="Permalink to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p><strong>Read the Architecture Guide</strong>: Understand the overall system design</p></li>
+<li><p><strong>Set up Development Environment</strong>: Install development dependencies</p></li>
+<li><p><strong>Explore Examples</strong>: Study existing implementations</p></li>
+<li><p><strong>Start Small</strong>: Begin with simple customizations</p></li>
+<li><p><strong>Test Thoroughly</strong>: Use the testing framework</p></li>
+<li><p><strong>Contribute Back</strong>: Share your improvements with the community</p></li>
+</ol>
+</section>
+<section id="development-environment-setup">
+<h2>Development Environment Setup<a class="headerlink" href="#development-environment-setup" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Clone the repository</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ZhiweiWei-NAMI/AeroAgentSim.git
+<span class="nb">cd</span><span class="w"> </span>AeroAgentSim
+
+<span class="c1"># Install in development mode with all dependencies</span>
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[dev,docs]&quot;</span>
+
+<span class="c1"># Run tests to verify setup</span>
+pytest<span class="w"> </span>tests/
+
+<span class="c1"># Build documentation</span>
+<span class="nb">cd</span><span class="w"> </span>docs
+make<span class="w"> </span>html
+</pre></div>
+</div>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Developer Guides</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a></li>
+<li><a class="reference internal" href="#getting-started-with-development">Getting Started with Development</a></li>
+<li><a class="reference internal" href="#development-environment-setup">Development Environment Setup</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="../examples.html"
+                          title="previous chapter">Examples</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="architecture.html"
+                          title="next chapter">Architecture Guide</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/guides/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="architecture.html" title="Architecture Guide"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../examples.html" title="Examples"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Developer Guides</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

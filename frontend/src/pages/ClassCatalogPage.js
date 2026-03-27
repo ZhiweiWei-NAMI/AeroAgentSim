@@ -256,6 +256,7 @@ function ClassCatalogPage() {
                       <Table
                         size="small"
                         loading={loading}
+                        scroll={{ x: 'max-content' }}
                         rowKey={(row) => `${row.id}_${row.version}`}
                         dataSource={filteredCatalog.agents}
                         pagination={{ pageSize: 8 }}
@@ -280,6 +281,7 @@ function ClassCatalogPage() {
                       <Table
                         size="small"
                         loading={loading}
+                        scroll={{ x: 'max-content' }}
                         rowKey={(row) => row.name}
                         dataSource={filteredCatalog.components}
                         pagination={{ pageSize: 8 }}
@@ -307,6 +309,7 @@ function ClassCatalogPage() {
                       <Table
                         size="small"
                         loading={loading}
+                        scroll={{ x: 'max-content' }}
                         rowKey={(row) => `${row.id}_${row.version}`}
                         dataSource={filteredCatalog.tasks}
                         pagination={{ pageSize: 8 }}
@@ -336,6 +339,7 @@ function ClassCatalogPage() {
                       <Table
                         size="small"
                         loading={loading}
+                        scroll={{ x: 'max-content' }}
                         rowKey={(row) => `${row.id}_${row.version}`}
                         dataSource={filteredCatalog.workflows}
                         pagination={{ pageSize: 8 }}
@@ -360,6 +364,7 @@ function ClassCatalogPage() {
                       <Table
                         size="small"
                         loading={loading}
+                        scroll={{ x: 'max-content' }}
                         rowKey={(row, index) => `${row.relation}_${row.source}_${row.target}_${index}`}
                         dataSource={filteredCatalog.compatibility}
                         pagination={{ pageSize: 8 }}
@@ -389,7 +394,7 @@ function ClassCatalogPage() {
                 <section className="panel-section registry-list-panel">
                   <div className="section-title-row">
                     <Title level={5} style={{ marginTop: 0 }}>{t('registry')}</Title>
-                    <Space>
+                    <Space wrap>
                       <Segmented
                         value={activeRegistryKind}
                         onChange={(value) => {
@@ -419,6 +424,7 @@ function ClassCatalogPage() {
                   <Table
                     size="small"
                     loading={loading}
+                    scroll={{ x: 'max-content' }}
                     rowKey={(row) => `${row.id}@${row.version}`}
                     dataSource={filteredCatalog.registry}
                     pagination={{ pageSize: 8 }}

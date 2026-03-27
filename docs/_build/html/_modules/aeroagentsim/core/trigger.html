@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.core.trigger &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.trigger</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.core.trigger</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim触发器(Trigger)核心模块</span>
+
+<span class="sd">该模块实现了仿真系统中的触发器机制，用于在特定条件满足时执行相应的操作。</span>
+<span class="sd">触发器是工作流和自动化任务的核心组件，支持多种触发方式和组合条件。主要内容包括：</span>
+<span class="sd">1. Trigger基类：定义触发器的通用属性和行为</span>
+<span class="sd">2. EventTrigger：基于事件的触发器，监听特定事件并在满足条件时触发</span>
+<span class="sd">3. StateTrigger：基于代理状态的触发器，监听状态变化并在满足条件时触发</span>
+<span class="sd">4. TimeTrigger：基于时间的触发器，在特定时间点或间隔触发</span>
+<span class="sd">5. CompositeTrigger：组合触发器，将多个触发器组合成复杂的触发条件</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">TriggerOperator</span><span class="p">,</span> <span class="n">TriggerType</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">import</span> <span class="nn">simpy</span>
+<span class="kn">import</span> <span class="nn">time</span> <span class="k">as</span> <span class="nn">py_time</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="c1"># 获取logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_nested_value"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.get_nested_value">[docs]</a><span class="k">def</span> <span class="nf">get_nested_value</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">key_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    从嵌套字典中获取值，支持点分隔的路径</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data: 字典数据</span>
+<span class="sd">        key_path: 点分隔的键路径，如 &#39;data.position&#39;</span>
+<span class="sd">        default: 如果路径不存在，返回的默认值</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        找到的值或默认值</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">key_path</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">default</span>
+
+    <span class="n">parts</span> <span class="o">=</span> <span class="n">key_path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+    <span class="n">current</span> <span class="o">=</span> <span class="n">data</span>
+
+    <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">parts</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="n">part</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">current</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">default</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="n">current</span><span class="p">[</span><span class="n">part</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">current</span></div>
+
+
+<div class="viewcode-block" id="Trigger"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Trigger">[docs]</a><span class="k">class</span> <span class="nc">Trigger</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;触发器基类&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Trigger.__init__"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Trigger.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">trigger_type</span><span class="p">:</span> <span class="n">TriggerType</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="n">trigger_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;trigger_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_process</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_triggered_time</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_triggers</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">not_to_deactive</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="Trigger.add_callback"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Trigger.add_callback">[docs]</a>    <span class="k">def</span> <span class="nf">add_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="kc">None</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;添加触发时的回调函数&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">callback</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="Trigger.set_max_triggers"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Trigger.set_max_triggers">[docs]</a>    <span class="k">def</span> <span class="nf">set_max_triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_count</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;设置最大触发次数&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_triggers</span> <span class="o">=</span> <span class="n">max_count</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="Trigger.activate"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Trigger.activate">[docs]</a>    <span class="k">def</span> <span class="nf">activate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;激活触发器&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trigger_process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor</span><span class="p">())</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="Trigger.deactivate"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Trigger.deactivate">[docs]</a>    <span class="k">def</span> <span class="nf">deactivate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;停用触发器&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_process</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trigger_process</span><span class="o">.</span><span class="n">interrupt</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="Trigger.has_reached_max"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.Trigger.has_reached_max">[docs]</a>    <span class="k">def</span> <span class="nf">has_reached_max</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;检查是否达到最大触发次数&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_triggers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_count</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_triggers</span></div>
+
+    <span class="k">def</span> <span class="nf">_schedule_deactivation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;安排触发器停用，避免进程自我中断&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_delayed_deactivate</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_delayed_deactivate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;延迟停用触发器&quot;&quot;&quot;</span>
+        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># 在下一个时间步停用</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deactivate</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;触发回调函数&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">context</span> <span class="o">=</span> <span class="n">context</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;trigger_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s1">&#39;trigger_name&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;trigger_type&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+            <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="p">})</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_triggered_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">callback</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 触发器 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 回调执行错误: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 停用，直到workflow重新激活</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">not_to_deactive</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_schedule_deactivation</span><span class="p">()</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;监控条件并在满足时触发回调（由子类实现）&quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;子类必须实现_monitor方法&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EventTrigger"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.EventTrigger">[docs]</a><span class="k">class</span> <span class="nc">EventTrigger</span><span class="p">(</span><span class="n">Trigger</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;基于事件及其状态的触发器，如数据传输成功后传输的数据量判断是否成功&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="EventTrigger.__init__"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.EventTrigger.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">event_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">value_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">operator</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TriggerOperator</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">target_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">TriggerType</span><span class="o">.</span><span class="n">EVENT</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_id</span> <span class="o">=</span> <span class="n">source_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">event_name</span> <span class="o">=</span> <span class="n">event_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value_key</span> <span class="o">=</span> <span class="n">value_key</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">=</span> <span class="n">operator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span> <span class="o">=</span> <span class="n">target_value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subscription_id</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+    <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;监控事件并在满足条件时触发回调&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 订阅事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">subscription_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">_sub&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">event_name</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">subscription_id</span><span class="p">,</span>
+                <span class="k">lambda</span> <span class="n">ev</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_event</span><span class="p">(</span><span class="n">ev</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 等待直到被中断</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))</span>
+
+        <span class="k">except</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Interrupt</span><span class="p">:</span>
+            <span class="c1"># 触发器被停用</span>
+            <span class="k">pass</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># 清理订阅</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subscription_id</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">unsubscribe</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">event_name</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">subscription_id</span>
+                    <span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_check_condition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;使用运算符检查条件&quot;&quot;&quot;</span>
+        <span class="c1"># 如果没有指定运算符，则总是满足条件</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="c1"># 如果指定了value_key，则从事件值中提取</span>
+        <span class="c1"># 使用get_nested_value支持嵌套路径</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">get_nested_value</span><span class="p">(</span><span class="n">event_value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_key</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_key</span> <span class="k">else</span> <span class="n">event_value</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">EQUALS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">NOT_EQUALS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">GREATER_THAN</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">LESS_THAN</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">GREATER_EQUAL</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">LESS_EQUAL</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CONTAINS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span> <span class="ow">in</span> <span class="n">value</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s1">&#39;__contains__&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">False</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">NOT_CONTAINS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s1">&#39;__contains__&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">True</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span>
+            <span class="c1"># 使用自定义函数进行条件判断</span>
+            <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_value</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 触发器 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 自定义条件函数执行错误: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 触发器 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 使用CUSTOM运算符但target_value不是可调用对象&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;不支持的运算符: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">operator</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handle_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理接收到的事件&quot;&quot;&quot;</span>
+        <span class="c1"># 检查条件</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_condition</span><span class="p">(</span><span class="n">event_value</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 触发回调</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span>
+            <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_name</span><span class="p">,</span>
+            <span class="s1">&#39;event_value&#39;</span><span class="p">:</span> <span class="n">event_value</span><span class="p">,</span>
+            <span class="s1">&#39;value_key&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_key</span><span class="p">,</span>
+            <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_value</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trigger</span><span class="p">(</span><span class="n">context</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StateTrigger"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.StateTrigger">[docs]</a><span class="k">class</span> <span class="nc">StateTrigger</span><span class="p">(</span><span class="n">Trigger</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;基于agent单一状态的触发器，对于多种状态联合监听，可以直接使用composite trigger&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="StateTrigger.__init__"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.StateTrigger.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">state_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">operator</span><span class="p">:</span> <span class="n">TriggerOperator</span> <span class="o">=</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">EQUALS</span><span class="p">,</span>
+                 <span class="n">target_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">TriggerType</span><span class="o">.</span><span class="n">STATE</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span> <span class="o">=</span> <span class="n">agent_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state_key</span> <span class="o">=</span> <span class="n">state_key</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">=</span> <span class="n">operator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span> <span class="o">=</span> <span class="n">target_value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_value</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subscription_id</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+    <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;监听agent的state_changed事件&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 获取代理</span>
+            <span class="n">agent</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="p">:</span>
+                    <span class="n">agent</span> <span class="o">=</span> <span class="n">a</span>
+                    <span class="k">break</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">agent</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 触发器 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 找不到代理 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="c1"># 初始化上次值</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_value</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state_key</span><span class="p">)</span>
+
+            <span class="c1"># 订阅agent的state_changed事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">subscription_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">_sub&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="p">,</span>
+                <span class="s1">&#39;state_changed&#39;</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">subscription_id</span><span class="p">,</span>
+                <span class="k">lambda</span> <span class="n">event</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_state_change</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 如果激活时初始状态已经满足条件，立即触发一次。</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_condition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_value</span><span class="p">):</span>
+                <span class="n">context</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="p">,</span>
+                    <span class="s1">&#39;state_key&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_key</span><span class="p">,</span>
+                    <span class="s1">&#39;old_value&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s1">&#39;new_value&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_value</span><span class="p">,</span>
+                    <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                    <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_value</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+                <span class="p">}</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_trigger</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+
+            <span class="c1"># 等待直到被中断</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))</span>
+
+        <span class="k">except</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Interrupt</span><span class="p">:</span>
+            <span class="c1"># 触发器被停用</span>
+            <span class="k">pass</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># 清理订阅</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subscription_id</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">unsubscribe</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="p">,</span>
+                        <span class="s1">&#39;state_changed&#39;</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">subscription_id</span>
+                    <span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_check_condition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;使用运算符检查条件&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">EQUALS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">NOT_EQUALS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">GREATER_THAN</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">LESS_THAN</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">GREATER_EQUAL</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">LESS_EQUAL</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CONTAINS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span> <span class="ow">in</span> <span class="n">value</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s1">&#39;__contains__&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">False</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">NOT_CONTAINS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s1">&#39;__contains__&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">True</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span>
+            <span class="c1"># 使用自定义函数进行条件判断</span>
+            <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_value</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 触发器 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 自定义条件函数执行错误: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 触发器 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 使用CUSTOM运算符但target_value不是可调用对象&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;不支持的运算符: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">operator</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handle_state_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理state_changed事件&quot;&quot;&quot;</span>
+        <span class="c1"># 检查是否是我们关注的状态键</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;key&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_key</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 获取当前值</span>
+        <span class="n">current_value</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;new_value&#39;</span><span class="p">)</span>
+        <span class="n">old_value</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;old_value&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_value</span><span class="p">)</span>
+
+        <span class="c1"># 检查条件</span>
+        <span class="k">if</span> <span class="n">current_value</span> <span class="o">!=</span> <span class="n">old_value</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_condition</span><span class="p">(</span><span class="n">current_value</span><span class="p">):</span>
+            <span class="c1"># 触发回调</span>
+            <span class="n">context</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="p">,</span>
+                <span class="s1">&#39;state_key&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_key</span><span class="p">,</span>
+                <span class="s1">&#39;old_value&#39;</span><span class="p">:</span> <span class="n">old_value</span><span class="p">,</span>
+                <span class="s1">&#39;new_value&#39;</span><span class="p">:</span> <span class="n">current_value</span><span class="p">,</span>
+                <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_value</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_value</span>
+            <span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+
+        <span class="c1"># 更新上次值</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_value</span> <span class="o">=</span> <span class="n">current_value</span></div>
+
+
+<div class="viewcode-block" id="TimeTrigger"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.TimeTrigger">[docs]</a><span class="k">class</span> <span class="nc">TimeTrigger</span><span class="p">(</span><span class="n">Trigger</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;基于时间的触发器&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TimeTrigger.__init__"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.TimeTrigger.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">trigger_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">interval</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">cron_expr</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">TriggerType</span><span class="o">.</span><span class="n">TIME</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_time</span> <span class="o">=</span> <span class="n">trigger_time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interval</span> <span class="o">=</span> <span class="n">interval</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cron_expr</span> <span class="o">=</span> <span class="n">cron_expr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">not_to_deactive</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interval</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">cron_expr</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">([</span><span class="n">trigger_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">interval</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">cron_expr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;必须指定触发时间、间隔或cron表达式&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">sum</span><span class="p">([</span><span class="n">trigger_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">interval</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">cron_expr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;只能指定触发时间、间隔或cron表达式中的一个&quot;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;监控时间并在满足条件时触发回调&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># 单次触发</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_time</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trigger_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_trigger</span><span class="p">({</span><span class="s1">&#39;trigger_mode&#39;</span><span class="p">:</span> <span class="s1">&#39;one_time&#39;</span><span class="p">})</span>
+
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">interval</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># 定期触发</span>
+                <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interval</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_trigger</span><span class="p">({</span><span class="s1">&#39;trigger_mode&#39;</span><span class="p">:</span> <span class="s1">&#39;interval&#39;</span><span class="p">})</span>
+
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">cron_expr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Cron表达式触发</span>
+                <span class="c1"># 注意：这里简化了cron实现，实际应用中可能需要更复杂的解析</span>
+                <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="n">next_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_next_cron_time</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">next_time</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">:</span>
+                        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">next_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_trigger</span><span class="p">({</span><span class="s1">&#39;trigger_mode&#39;</span><span class="p">:</span> <span class="s1">&#39;cron&#39;</span><span class="p">})</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># 避免无限循环</span>
+                        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Interrupt</span><span class="p">:</span>
+            <span class="c1"># 触发器被停用</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_next_cron_time</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;计算下一个cron触发时间（简化实现）&quot;&quot;&quot;</span>
+        <span class="c1"># 这里应该有一个完整的cron表达式解析器</span>
+        <span class="c1"># 简化起见，我们假设cron_expr是一个简单的间隔</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">interval</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cron_expr</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">+</span> <span class="n">interval</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="c1"># 默认每小时触发一次</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">+</span> <span class="mi">60</span></div>
+
+
+<div class="viewcode-block" id="CompositeTrigger"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.CompositeTrigger">[docs]</a><span class="k">class</span> <span class="nc">CompositeTrigger</span><span class="p">(</span><span class="n">Trigger</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;组合触发器&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="CompositeTrigger.__init__"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.CompositeTrigger.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">triggers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Trigger</span><span class="p">],</span>
+                 <span class="n">operator</span><span class="p">:</span> <span class="n">TriggerOperator</span> <span class="o">=</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">AND</span><span class="p">,</span>
+                 <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">TriggerType</span><span class="o">.</span><span class="n">COMPOSITE</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span> <span class="o">=</span> <span class="n">triggers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">=</span> <span class="n">operator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_states</span> <span class="o">=</span> <span class="p">{</span><span class="n">t</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="kc">False</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">triggers</span><span class="p">}</span></div>
+
+<div class="viewcode-block" id="CompositeTrigger.activate"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.CompositeTrigger.activate">[docs]</a>    <span class="k">def</span> <span class="nf">activate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;激活所有子触发器&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">trigger</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="p">:</span>
+            <span class="n">trigger</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="k">lambda</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">t_id</span><span class="o">=</span><span class="n">trigger</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_subtrigger</span><span class="p">(</span><span class="n">t_id</span><span class="p">,</span> <span class="n">ctx</span><span class="p">))</span>
+            <span class="n">trigger</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="CompositeTrigger.deactivate"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.environment.CompositeTrigger.deactivate">[docs]</a>    <span class="k">def</span> <span class="nf">deactivate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;停用所有子触发器&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">deactivate</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">trigger</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="p">:</span>
+            <span class="n">trigger</span><span class="o">.</span><span class="n">deactivate</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+    <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;监控子触发器状态&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 这个进程主要是为了保持触发器活动状态</span>
+            <span class="c1"># 实际的触发逻辑在_handle_subtrigger中</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))</span>
+
+        <span class="k">except</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Interrupt</span><span class="p">:</span>
+            <span class="c1"># 触发器被停用</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_handle_subtrigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trigger_id</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理子触发器的触发&quot;&quot;&quot;</span>
+        <span class="c1"># 更新触发状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_states</span><span class="p">[</span><span class="n">trigger_id</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># 检查组合条件</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">AND</span><span class="p">:</span>
+            <span class="c1"># 所有子触发器都必须触发</span>
+            <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trigger_states</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_trigger</span><span class="p">({</span><span class="s1">&#39;subtriggers&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_states</span><span class="o">.</span><span class="n">copy</span><span class="p">()})</span>
+                <span class="c1"># 重置状态</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trigger_states</span> <span class="o">=</span> <span class="p">{</span><span class="n">t_id</span><span class="p">:</span> <span class="kc">False</span> <span class="k">for</span> <span class="n">t_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_states</span><span class="p">}</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">OR</span><span class="p">:</span>
+            <span class="c1"># 任一子触发器触发即可</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger</span><span class="p">({</span><span class="s1">&#39;subtrigger_id&#39;</span><span class="p">:</span> <span class="n">trigger_id</span><span class="p">,</span> <span class="s1">&#39;subtrigger_context&#39;</span><span class="p">:</span> <span class="n">context</span><span class="p">})</span>
+            <span class="c1"># 重置状态</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trigger_states</span> <span class="o">=</span> <span class="p">{</span><span class="n">t_id</span><span class="p">:</span> <span class="kc">False</span> <span class="k">for</span> <span class="n">t_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_states</span><span class="p">}</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.trigger</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

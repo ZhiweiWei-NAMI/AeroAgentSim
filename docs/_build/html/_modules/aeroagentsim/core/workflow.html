@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.core.workflow &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.workflow</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.core.workflow</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim工作流(Workflow)核心模块</span>
+
+<span class="sd">该模块定义了仿真系统中的工作流框架，工作流是代理执行的一系列任务的集合，</span>
+<span class="sd">通过状态机实现状态转换和任务调度。主要内容包括：</span>
+<span class="sd">1. Workflow类：工作流基类，定义了工作流的生命周期和状态管理</span>
+<span class="sd">2. WorkflowStatusMachine类：工作流状态机，基于各种触发器实现状态转换</span>
+<span class="sd">3. WorkflowPropertyTemplate类：工作流属性模板，用于验证和管理属性</span>
+<span class="sd">4. WorkflowMeta元类：处理属性模板和状态转换任务的继承</span>
+
+<span class="sd">工作流系统支持基于事件、状态、时间和组合条件的触发机制，实现了复杂的</span>
+<span class="sd">自动化任务调度和状态转换。</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">deque</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">import</span> <span class="nn">simpy</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">abstractmethod</span><span class="p">,</span> <span class="n">ABC</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">WorkflowStatus</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="p">,</span> <span class="n">TriggerOperator</span><span class="p">,</span> <span class="n">TriggerType</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">StateTrigger</span><span class="p">,</span> <span class="n">EventTrigger</span><span class="p">,</span> <span class="n">TimeTrigger</span><span class="p">,</span> <span class="n">CompositeTrigger</span><span class="p">,</span> <span class="n">Trigger</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="c1"># 获取logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">WorkflowPropertyTemplate</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;工作流属性模板定义&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">validator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        定义工作流属性的模板</span>
+
+<span class="sd">        参数:</span>
+<span class="sd">            key: 属性键名</span>
+<span class="sd">            value_type: 值的类型(如int, float, str等)，None表示任意类型</span>
+<span class="sd">            required: 是否为必需属性</span>
+<span class="sd">            validator: 可选的验证函数，接收值并返回布尔值</span>
+<span class="sd">            description: 属性的描述</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">key</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value_type</span> <span class="o">=</span> <span class="n">value_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">required</span> <span class="o">=</span> <span class="n">required</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">validator</span> <span class="o">=</span> <span class="n">validator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">description</span>
+
+    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;验证值是否符合模板要求&quot;&quot;&quot;</span>
+        <span class="c1"># 类型检查</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_type</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;值类型应为 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">value_type</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">，而非 </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># 使用自定义验证器</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">validator</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">validator</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;值 &#39;</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&#39; 未通过自定义验证&quot;</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;验证时发生错误: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">None</span>
+
+<span class="k">class</span> <span class="nc">WorkflowMeta</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Workflow元类，用于处理属性模板和状态转换任务继承&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+        <span class="c1"># 确保每个类都有自己独立的模板字典和状态转换任务字典</span>
+        <span class="c1"># 不要直接从父类继承引用</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;_own_property_templates&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;_own_transition_tasks&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 创建类</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+        <span class="c1"># 初始化聚合的模板字典和状态转换任务字典</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">_all_property_templates</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">_all_transition_tasks</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 收集所有父类的模板和状态转换任务</span>
+        <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">bases</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s1">&#39;_all_property_templates&#39;</span><span class="p">):</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="n">_all_property_templates</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">_all_property_templates</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s1">&#39;_all_transition_tasks&#39;</span><span class="p">):</span>
+                <span class="bp">cls</span><span class="o">.</span><span class="n">_all_transition_tasks</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">_all_transition_tasks</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">register_template</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">validator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;注册属性模板到指定类&quot;&quot;&quot;</span>
+
+        <span class="c1"># 确保类有自己的模板存储</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;_own_property_templates&#39;</span><span class="p">):</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">_own_property_templates</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 创建模板</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="n">WorkflowPropertyTemplate</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value_type</span><span class="p">,</span> <span class="n">required</span><span class="p">,</span> <span class="n">validator</span><span class="p">,</span> <span class="n">description</span><span class="p">)</span>
+
+        <span class="c1"># 存储到当前类自己的模板中</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">_own_property_templates</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">template</span>
+
+        <span class="c1"># 同时更新聚合的模板集合</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;_all_property_templates&#39;</span><span class="p">):</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">_all_property_templates</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">cls</span><span class="o">.</span><span class="n">_all_property_templates</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">template</span>
+
+        <span class="k">return</span> <span class="n">template</span>
+
+
+<div class="viewcode-block" id="WorkflowStatusMachine"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.WorkflowStatusMachine">[docs]</a><span class="k">class</span> <span class="nc">WorkflowStatusMachine</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Drives state transitions based on external events and triggers.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="WorkflowStatusMachine.__init__"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.WorkflowStatusMachine.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">workflow</span><span class="p">:</span> <span class="s1">&#39;Workflow&#39;</span><span class="p">,</span> <span class="n">initial_status</span><span class="o">=</span><span class="s1">&#39;idle&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workflow</span> <span class="o">=</span> <span class="n">workflow</span> <span class="c1"># The Workflow object holding this SM</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_status</span> <span class="o">=</span> <span class="n">initial_status</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_status</span> <span class="o">=</span> <span class="n">initial_status</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state_transitions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="s1">&#39;Trigger&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">terminal_status</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;completed&#39;</span><span class="p">,</span> <span class="s1">&#39;failed&#39;</span><span class="p">,</span> <span class="s1">&#39;canceled&#39;</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">simpy</span><span class="o">.</span><span class="n">Process</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wildcard_transitions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="s1">&#39;Trigger&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_triggers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s1">&#39;Trigger&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># trigger_id -&gt; Trigger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_process_active</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="WorkflowStatusMachine.add_transition"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.WorkflowStatusMachine.add_transition">[docs]</a>    <span class="k">def</span> <span class="nf">add_transition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">next_status</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                       <span class="n">agent_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">time_trigger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">event_trigger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">trigger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s1">&#39;Trigger&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">callback</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">description</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        添加状态转换，支持多种触发方式</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            state: 起始状态(字符串或状态列表)</span>
+<span class="sd">            next_status: 目标状态</span>
+<span class="sd">            agent_state: 代理状态触发配置 {agent_id, state_key, operator, target_value}</span>
+<span class="sd">            time_trigger: 时间触发配置 {trigger_time, interval, cron_expr}</span>
+<span class="sd">            event_trigger: 事件触发配置 {source_id, event_name, value_key, operator, target_value}</span>
+<span class="sd">            trigger: 自定义触发器（优先级最高）</span>
+<span class="sd">            callback: 触发器回调函数（可选）</span>
+<span class="sd">            description: 状态转换的描述信息（可选）</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 创建触发器</span>
+        <span class="k">if</span> <span class="n">trigger</span><span class="p">:</span>
+            <span class="c1"># 使用提供的自定义触发器</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="n">trigger</span>
+        <span class="k">elif</span> <span class="n">agent_state</span><span class="p">:</span>
+            <span class="c1"># 创建代理状态触发器</span>
+            <span class="n">agent_id</span> <span class="o">=</span> <span class="n">agent_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;agent_id&#39;</span><span class="p">)</span>
+            <span class="n">state_key</span> <span class="o">=</span> <span class="n">agent_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;state_key&#39;</span><span class="p">)</span>
+            <span class="n">operator</span> <span class="o">=</span> <span class="n">agent_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;operator&#39;</span><span class="p">,</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">EQUALS</span><span class="p">)</span>
+            <span class="n">target_value</span> <span class="o">=</span> <span class="n">agent_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;target_value&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">agent_id</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">state_key</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;agent_state 必须包含 agent_id 和 state_key&quot;</span><span class="p">)</span>
+
+            <span class="n">t</span> <span class="o">=</span> <span class="n">StateTrigger</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span>
+                <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
+                <span class="n">state_key</span><span class="o">=</span><span class="n">state_key</span><span class="p">,</span>
+                <span class="n">operator</span><span class="o">=</span><span class="n">operator</span><span class="p">,</span>
+                <span class="n">target_value</span><span class="o">=</span><span class="n">target_value</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;wf_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">_agent_</span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">next_status</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">time_trigger</span><span class="p">:</span>
+            <span class="c1"># 创建时间触发器</span>
+            <span class="n">trigger_time</span> <span class="o">=</span> <span class="n">time_trigger</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;trigger_time&#39;</span><span class="p">)</span>
+            <span class="n">interval</span> <span class="o">=</span> <span class="n">time_trigger</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;interval&#39;</span><span class="p">)</span>
+            <span class="n">cron_expr</span> <span class="o">=</span> <span class="n">time_trigger</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cron_expr&#39;</span><span class="p">)</span>
+
+            <span class="n">t</span> <span class="o">=</span> <span class="n">TimeTrigger</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span>
+                <span class="n">trigger_time</span><span class="o">=</span><span class="n">trigger_time</span><span class="p">,</span>
+                <span class="n">interval</span><span class="o">=</span><span class="n">interval</span><span class="p">,</span>
+                <span class="n">cron_expr</span><span class="o">=</span><span class="n">cron_expr</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;wf_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">_time_</span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">next_status</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">event_trigger</span><span class="p">:</span>
+            <span class="c1"># 创建事件触发器</span>
+            <span class="n">source_id</span> <span class="o">=</span> <span class="n">event_trigger</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_id&#39;</span><span class="p">)</span>
+            <span class="n">event_name</span> <span class="o">=</span> <span class="n">event_trigger</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;event_name&#39;</span><span class="p">)</span>
+            <span class="n">value_key</span> <span class="o">=</span> <span class="n">event_trigger</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;value_key&#39;</span><span class="p">)</span>
+            <span class="n">operator</span> <span class="o">=</span> <span class="n">event_trigger</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;operator&#39;</span><span class="p">)</span>
+            <span class="n">target_value</span> <span class="o">=</span> <span class="n">event_trigger</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;target_value&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">source_id</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">event_name</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;event_trigger 必须包含 source_id 和 event_name&quot;</span><span class="p">)</span>
+
+            <span class="n">t</span> <span class="o">=</span> <span class="n">EventTrigger</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span>
+                <span class="n">source_id</span><span class="o">=</span><span class="n">source_id</span><span class="p">,</span>
+                <span class="n">event_name</span><span class="o">=</span><span class="n">event_name</span><span class="p">,</span>
+                <span class="n">value_key</span><span class="o">=</span><span class="n">value_key</span><span class="p">,</span>
+                <span class="n">operator</span><span class="o">=</span><span class="n">operator</span><span class="p">,</span>
+                <span class="n">target_value</span><span class="o">=</span><span class="n">target_value</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;wf_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">_event_</span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">next_status</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;必须提供至少一种触发方式&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 设置回调</span>
+        <span class="k">if</span> <span class="n">callback</span><span class="p">:</span>
+            <span class="n">t</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
+        <span class="c1"># 添加转换</span>
+        <span class="n">transition</span> <span class="o">=</span> <span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">next_status</span><span class="p">,</span> <span class="n">description</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">state</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wildcard_transitions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">transition</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">state_transitions</span><span class="p">[</span><span class="n">state</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">transition</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">state</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">state_transitions</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">transition</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="WorkflowStatusMachine.set_start_transition"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.WorkflowStatusMachine.set_start_transition">[docs]</a>    <span class="k">def</span> <span class="nf">set_start_transition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_status</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;默认当workflow running后，直接进入的状态&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_status</span> <span class="o">=</span> <span class="n">start_status</span></div>
+
+<div class="viewcode-block" id="WorkflowStatusMachine.start"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.WorkflowStatusMachine.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_change_status</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_status</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_process_active</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_process_active</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor_events</span><span class="p">())</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor_finished</span><span class="p">)</span> <span class="c1"># Use SimPy callback</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">sm_process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="c1"># Link back to workflow</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span></div>
+
+    <span class="k">def</span> <span class="nf">_monitor_finished</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_process_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1"># If SM process fails unexpectedly, ensure workflow status reflects it</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">event</span><span class="o">.</span><span class="n">ok</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">status</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">,</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">CANCELED</span><span class="p">):</span>
+             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: Workflow </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> state machine process failed unexpectedly: </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">cause</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+             <span class="bp">self</span><span class="o">.</span><span class="n">_change_status</span><span class="p">(</span><span class="s1">&#39;failed&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;State machine process failed: </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">cause</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">})</span>
+
+    <span class="k">def</span> <span class="nf">_monitor_events</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_in_terminal_status</span><span class="p">():</span>
+                <span class="n">transitions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_current_transitions</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">transitions</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_in_terminal_status</span><span class="p">():</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 工作流 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 状态机在状态 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_status</span><span class="si">}</span><span class="s2"> 没有转换规则，标记为失败。&quot;</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_change_status</span><span class="p">(</span><span class="s1">&#39;failed&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;No transitions defined from state </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">})</span>
+                    <span class="k">break</span>
+
+                <span class="c1"># 停用所有活动的触发器</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_deactivate_all_triggers</span><span class="p">()</span>
+
+                <span class="c1"># 激活当前状态的触发器</span>
+                <span class="k">for</span> <span class="n">transition</span> <span class="ow">in</span> <span class="n">transitions</span><span class="p">:</span>
+                    <span class="c1"># 解包转换元组，可能是二元组或三元组</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">transition</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="n">trigger</span><span class="p">,</span> <span class="n">next_status</span> <span class="o">=</span> <span class="n">transition</span>
+                        <span class="n">description</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">transition</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                        <span class="n">trigger</span><span class="p">,</span> <span class="n">next_status</span><span class="p">,</span> <span class="n">description</span> <span class="o">=</span> <span class="n">transition</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid transition format&quot;</span><span class="p">)</span>
+                        <span class="k">continue</span>
+
+                    <span class="n">trigger_id</span> <span class="o">=</span> <span class="n">trigger</span><span class="o">.</span><span class="n">id</span>
+                    <span class="k">if</span> <span class="n">trigger_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_triggers</span><span class="p">:</span>
+                        <span class="c1"># 设置触发器回调</span>
+                        <span class="n">trigger</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span>
+                            <span class="k">lambda</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">trigger</span><span class="p">,</span> <span class="n">ns</span><span class="o">=</span><span class="n">next_status</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_trigger_activated</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span>
+                        <span class="p">)</span>
+                        <span class="c1"># 激活触发器</span>
+                        <span class="n">trigger</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+                        <span class="c1"># 记录活动的触发器</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">active_triggers</span><span class="p">[</span><span class="n">trigger_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">trigger</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_triggers</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_in_terminal_status</span><span class="p">():</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 工作流 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 状态机在状态 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_status</span><span class="si">}</span><span class="s2"> 没有可激活的触发器，标记为失败。&quot;</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_change_status</span><span class="p">(</span><span class="s1">&#39;failed&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;No triggers to activate in state </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">})</span>
+                    <span class="k">break</span>
+
+                <span class="c1"># 等待直到被中断（触发器回调会中断此进程）</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))</span>
+                <span class="k">except</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Interrupt</span> <span class="k">as</span> <span class="n">i</span><span class="p">:</span>
+                    <span class="c1"># 触发器被激活，状态变更已在回调中处理</span>
+                    <span class="k">pass</span>
+
+        <span class="k">except</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Interrupt</span> <span class="k">as</span> <span class="n">i</span><span class="p">:</span>
+             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 工作流 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 状态机被中断: </span><span class="si">{</span><span class="n">i</span><span class="o">.</span><span class="n">cause</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+             <span class="n">reason</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">cause</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reason&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">cause</span><span class="p">))</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">cause</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">cause</span><span class="p">)</span>
+             <span class="n">action</span> <span class="o">=</span> <span class="n">i</span><span class="o">.</span><span class="n">cause</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;action&#39;</span><span class="p">,</span> <span class="s1">&#39;fail&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">cause</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="s1">&#39;fail&#39;</span>
+             <span class="n">next_state</span> <span class="o">=</span> <span class="s1">&#39;canceled&#39;</span> <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s1">&#39;cancel&#39;</span> <span class="k">else</span> <span class="s1">&#39;failed&#39;</span>
+             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_in_terminal_status</span><span class="p">():</span>
+                 <span class="bp">self</span><span class="o">.</span><span class="n">_change_status</span><span class="p">(</span><span class="n">next_state</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;State machine interrupted: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">})</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 工作流 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 状态机监控错误: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="kn">import</span> <span class="nn">traceback</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_in_terminal_status</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_change_status</span><span class="p">(</span><span class="s1">&#39;failed&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;State machine exception: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">})</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_deactivate_all_triggers</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_on_trigger_activated</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trigger</span><span class="p">:</span> <span class="s1">&#39;Trigger&#39;</span><span class="p">,</span> <span class="n">next_status</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;触发器被激活时的回调&quot;&quot;&quot;</span>
+        <span class="c1"># 检查当前状态是否仍然有效</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_in_terminal_status</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 查找该触发器对应的转换描述</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">ns</span><span class="p">,</span> <span class="n">desc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_current_transitions</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">trigger</span><span class="o">.</span><span class="n">id</span> <span class="ow">and</span> <span class="n">ns</span> <span class="o">==</span> <span class="n">next_status</span><span class="p">:</span>
+                <span class="n">description</span> <span class="o">=</span> <span class="n">desc</span>
+                <span class="k">break</span>
+
+        <span class="c1"># 执行状态变更</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;trigger_id&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s1">&#39;trigger_name&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;trigger_type&#39;</span><span class="p">:</span> <span class="n">trigger</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+            <span class="s1">&#39;context&#39;</span><span class="p">:</span> <span class="n">context</span><span class="p">,</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">description</span>
+        <span class="p">}</span>
+        <span class="n">changed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_change_status</span><span class="p">(</span><span class="n">next_status</span><span class="p">,</span> <span class="n">details</span><span class="p">)</span>
+
+        <span class="c1"># 如果状态已变更，中断监控进程以处理新状态</span>
+        <span class="k">if</span> <span class="n">changed</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">interrupt</span><span class="p">({</span><span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;State changed by trigger&#39;</span><span class="p">,</span> <span class="s1">&#39;next_status&#39;</span><span class="p">:</span> <span class="n">next_status</span><span class="p">})</span>
+
+        <span class="k">return</span> <span class="n">changed</span>
+
+    <span class="k">def</span> <span class="nf">_deactivate_all_triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;停用所有活动的触发器&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">trigger</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_triggers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">trigger</span><span class="o">.</span><span class="n">deactivate</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_triggers</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_get_current_transitions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取当前状态的所有可能转换&quot;&quot;&quot;</span>
+        <span class="n">transitions</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state_transitions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_status</span><span class="p">,</span> <span class="p">[]))</span>
+        <span class="n">transitions</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wildcard_transitions</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">transitions</span>
+
+    <span class="k">def</span> <span class="nf">_change_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_status</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">event_details</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;变更状态机状态&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_in_terminal_status</span><span class="p">():</span> <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_status</span> <span class="o">==</span> <span class="n">new_status</span><span class="p">:</span> <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">old_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_status</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_status</span> <span class="o">=</span> <span class="n">new_status</span>
+        <span class="n">timestamp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">: SM </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">: State changed </span><span class="si">{</span><span class="n">old_status</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new_status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 触发工作流的状态变更事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">_trigger_status_changed</span><span class="p">(</span><span class="n">old_status</span><span class="p">,</span> <span class="n">new_status</span><span class="p">,</span> <span class="n">event_details</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="WorkflowStatusMachine.is_in_terminal_status"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.WorkflowStatusMachine.is_in_terminal_status">[docs]</a>    <span class="k">def</span> <span class="nf">is_in_terminal_status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;检查是否处于终止状态&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_status</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">terminal_status</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取当前状态&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_status</span></div>
+
+
+
+<div class="viewcode-block" id="Workflow"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow">[docs]</a><span class="k">class</span> <span class="nc">Workflow</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">WorkflowMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a process/goal tracked by a state machine based on Agent state.&quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">.agent</span> <span class="kn">import</span> <span class="n">Agent</span>
+    <span class="kn">from</span> <span class="nn">.enums</span> <span class="kn">import</span> <span class="n">TaskPriority</span>
+
+<div class="viewcode-block" id="Workflow.register_property_template"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow.register_property_template">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">register_property_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;注册工作流属性模板&quot;&quot;&quot;</span>
+        <span class="n">WorkflowMeta</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span></div>
+
+<div class="viewcode-block" id="Workflow.get_property_templates"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow.get_property_templates">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get_property_templates</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取所有属性模板&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;_all_property_templates&#39;</span><span class="p">,</span> <span class="p">{})</span></div>
+
+<div class="viewcode-block" id="Workflow.get_transition_tasks"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow.get_transition_tasks">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get_transition_tasks</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取所有状态转换任务&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;_all_transition_tasks&#39;</span><span class="p">,</span> <span class="p">{})</span></div>
+
+<div class="viewcode-block" id="Workflow.get_description"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow.get_description">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get_description</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取工作流类型的描述&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> 工作流&quot;</span></div>
+
+<div class="viewcode-block" id="Workflow.__init__"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">owner</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s1">&#39;Agent&#39;</span><span class="p">],</span> <span class="n">timeout</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">event_names</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">initial_status</span><span class="o">=</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;workflow_&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">owner</span> <span class="o">=</span> <span class="n">owner</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="p">:</span> <span class="n">WorkflowStatus</span> <span class="o">=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">PENDING</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">completion_reason</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="n">callback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">properties</span> <span class="o">=</span> <span class="n">properties</span> <span class="ow">or</span> <span class="p">{}</span> <span class="c1"># Store workflow-specific goals, locations etc.</span>
+
+        <span class="c1"># 注册任务优先级和抢占属性模板</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">register_property_template</span><span class="p">(</span><span class="s1">&#39;task_priority&#39;</span><span class="p">,</span> <span class="n">value_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                               <span class="n">description</span><span class="o">=</span><span class="s2">&quot;任务优先级，可以是TaskPriority枚举或字符串&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">register_property_template</span><span class="p">(</span><span class="s1">&#39;task_preemptive&#39;</span><span class="p">,</span> <span class="n">value_type</span><span class="o">=</span><span class="nb">bool</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                               <span class="n">description</span><span class="o">=</span><span class="s2">&quot;任务是否可抢占其他任务&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 验证属性是否符合模板要求</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_properties</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span> <span class="o">=</span> <span class="n">WorkflowStatusMachine</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">initial_status</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sm_process</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">simpy</span><span class="o">.</span><span class="n">Process</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">event_names</span> <span class="o">=</span> <span class="n">event_names</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;sm_status_changed&#39;</span><span class="p">,</span> <span class="s1">&#39;workflow_status_changed&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_workflow_events</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">timeout</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor</span><span class="p">(</span><span class="n">timeout</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_transitions</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_validate_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;验证属性是否符合模板要求&quot;&quot;&quot;</span>
+        <span class="n">templates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_property_templates</span><span class="p">()</span>
+
+        <span class="c1"># 检查必需属性</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">template</span> <span class="ow">in</span> <span class="n">templates</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">template</span><span class="o">.</span><span class="n">required</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">:</span>
+                <span class="n">error_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;工作流 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 缺少必需属性: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">template</span><span class="o">.</span><span class="n">description</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;strict_property_validation&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">:</span>
+                <span class="c1"># 验证属性值</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                <span class="n">valid</span><span class="p">,</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">template</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+                    <span class="n">error_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;工作流 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 属性 &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; 验证失败: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;strict_property_validation&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Workflow.get_details"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow.get_details">[docs]</a>    <span class="k">def</span> <span class="nf">get_details</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取工作流详细信息，子类应该重写此方法提供更多详细信息&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;sm_state&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span><span class="p">,</span>
+            <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;start_time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">,</span>
+            <span class="s1">&#39;end_time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span><span class="p">,</span>
+            <span class="s1">&#39;completion_reason&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">completion_reason</span>
+        <span class="p">}</span></div>
+
+<div class="viewcode-block" id="Workflow.is_active"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow.is_active">[docs]</a>    <span class="k">def</span> <span class="nf">is_active</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;检查工作流是否处于活动状态&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">RUNNING</span></div>
+
+<div class="viewcode-block" id="Workflow.get_current_suggested_task"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow.get_current_suggested_task">[docs]</a>    <span class="k">def</span> <span class="nf">get_current_suggested_task</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取当前状态下建议执行的任务</span>
+
+<span class="sd">        根据当前状态机状态和可能的转换，返回预先定义的任务信息。</span>
+<span class="sd">        这个方法可以被代理用来自动规划任务，而不需要复杂的决策逻辑。</span>
+<span class="sd">        任务会继承工作流的优先级和抢占属性。</span>
+
+<span class="sd">        返回:</span>
+<span class="sd">            Dict: 任务信息字典，包含组件名称、任务类、任务名称等信息</span>
+<span class="sd">            None: 如果没有找到匹配的任务</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 基类返回None，子类应该重写此方法</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="k">def</span> <span class="nf">_add_priority_to_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        向任务字典添加优先级和抢占属性</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            task_dict: 任务信息字典</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict: 添加了优先级和抢占属性的任务信息字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">task_dict</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># 确保properties字段存在</span>
+        <span class="k">if</span> <span class="s1">&#39;properties&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">task_dict</span><span class="p">:</span>
+            <span class="n">task_dict</span><span class="p">[</span><span class="s1">&#39;properties&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 如果任务字典中没有指定优先级，则使用工作流的优先级</span>
+        <span class="k">if</span> <span class="s1">&#39;priority&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">task_dict</span><span class="p">[</span><span class="s1">&#39;properties&#39;</span><span class="p">]:</span>
+            <span class="c1"># 获取工作流的优先级属性</span>
+            <span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">TaskPriority</span>
+            <span class="n">priority_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;task_priority&#39;</span><span class="p">,</span> <span class="n">TaskPriority</span><span class="o">.</span><span class="n">NORMAL</span><span class="p">)</span>
+            <span class="c1"># 如果是枚举对象，转换为字符串</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">priority_value</span><span class="p">,</span> <span class="n">TaskPriority</span><span class="p">):</span>
+                <span class="n">priority_value</span> <span class="o">=</span> <span class="n">priority_value</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="n">task_dict</span><span class="p">[</span><span class="s1">&#39;properties&#39;</span><span class="p">][</span><span class="s1">&#39;priority&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">priority_value</span>
+
+        <span class="c1"># 如果任务字典中没有指定抢占属性，则使用工作流的抢占属性</span>
+        <span class="k">if</span> <span class="s1">&#39;preemptive&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">task_dict</span><span class="p">[</span><span class="s1">&#39;properties&#39;</span><span class="p">]:</span>
+            <span class="n">preemptive</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;task_preemptive&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+            <span class="n">task_dict</span><span class="p">[</span><span class="s1">&#39;properties&#39;</span><span class="p">][</span><span class="s1">&#39;preemptive&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">preemptive</span>
+
+        <span class="k">return</span> <span class="n">task_dict</span>
+
+    <span class="k">def</span> <span class="nf">_timeout_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout_sec</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;监控工作流超时。如果工作流在指定时间内未完成，则将其标记为失败。&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 等待超时时间</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">timeout_sec</span><span class="p">)</span>
+
+            <span class="c1"># 检查工作流当前状态</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">,</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">,</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">CANCELED</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 工作流 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">) 超时 (</span><span class="si">{</span><span class="n">timeout_sec</span><span class="si">}</span><span class="s2">秒)&quot;</span><span class="p">)</span>
+
+                <span class="c1"># 构建超时详情</span>
+                <span class="n">timeout_details</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;timeout after </span><span class="si">{</span><span class="n">timeout_sec</span><span class="si">}</span><span class="s1"> seconds&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;timeout_value&#39;</span><span class="p">:</span> <span class="n">timeout_sec</span><span class="p">,</span>
+                    <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                <span class="p">}</span>
+
+                <span class="c1"># 触发状态更改事件</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_status_changed</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span><span class="p">,</span>  <span class="c1"># 当前SM状态</span>
+                    <span class="s1">&#39;failed&#39;</span><span class="p">,</span>                  <span class="c1"># 新SM状态</span>
+                    <span class="n">timeout_details</span><span class="p">,</span>           <span class="c1"># 事件详情</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>               <span class="c1"># 时间戳</span>
+                <span class="p">)</span>
+
+                <span class="c1"># 如果状态机进程仍在运行，中断它</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sm_process</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">sm_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sm_process</span><span class="o">.</span><span class="n">interrupt</span><span class="p">({</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;fail&#39;</span><span class="p">,</span> <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;Timeout after </span><span class="si">{</span><span class="n">timeout_sec</span><span class="si">}</span><span class="s1"> seconds&#39;</span><span class="p">})</span>
+
+        <span class="k">except</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Interrupt</span><span class="p">:</span>
+            <span class="c1"># 如果超时监控器被中断（例如工作流提前结束），则静默退出</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_register_workflow_events</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_names</span><span class="p">:</span>
+             <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_setup_transitions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        **Must be implemented by subclasses.**</span>
+<span class="sd">        Defines SM transitions using triggers for agent states,</span>
+<span class="sd">        time events, or custom events.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Subclasses must implement _setup_transitions()&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Workflow.start"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">simpy</span><span class="o">.</span><span class="n">Process</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Starts the workflow&#39;s state machine (if PENDING). Called by WM.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="p">:</span> <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># 更新状态，但不触发状态机的状态变更事件</span>
+        <span class="n">old_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">RUNNING</span>
+
+        <span class="c1"># 触发工作流状态变更事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;workflow_status_changed&#39;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s1">&#39;old_status&#39;</span><span class="p">:</span> <span class="n">old_status</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;new_status&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;sm_state&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span><span class="p">,</span>  <span class="c1"># 当前状态机状态</span>
+            <span class="s1">&#39;event_details&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+        <span class="p">})</span>
+
+        <span class="c1"># 启动状态机</span>
+        <span class="n">sm_proc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">sm_proc</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: Workflow </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> state machine failed to start during start() call.&quot;</span><span class="p">)</span>
+            <span class="c1"># 更新为失败状态</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">FAILED</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">completion_reason</span> <span class="o">=</span> <span class="s2">&quot;State machine failed to start&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+
+            <span class="c1"># 触发工作流状态变更事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;workflow_status_changed&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;old_status&#39;</span><span class="p">:</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">RUNNING</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s1">&#39;new_status&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s1">&#39;sm_state&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span><span class="p">,</span>
+                <span class="s1">&#39;event_details&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s2">&quot;State machine failed to start&quot;</span><span class="p">},</span>
+                <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">})</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sm_process</span> <span class="o">=</span> <span class="n">sm_proc</span>
+
+        <span class="c1"># 通知所有者工作流已启动</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;workflow_assigned&#39;</span><span class="p">,</span>
+                <span class="p">{</span><span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">sm_proc</span></div>
+
+    <span class="k">def</span> <span class="nf">_trigger_status_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">old_sm_status</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">new_sm_status</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">event_details</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">],</span> <span class="n">timestamp</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal: Called by SM to trigger workflow&#39;s state machine status_changed event.&quot;&quot;&quot;</span>
+        <span class="c1"># 先根据状态机的状态更新工作流的状态</span>
+        <span class="k">if</span> <span class="n">old_sm_status</span> <span class="o">==</span> <span class="n">new_sm_status</span><span class="p">:</span> <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_status_from_state_machine</span><span class="p">(</span><span class="n">new_sm_status</span><span class="p">,</span> <span class="n">event_details</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">)</span>
+
+        <span class="c1"># 触发状态机状态变更事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;sm_status_changed&#39;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s1">&#39;old_sm_status&#39;</span><span class="p">:</span> <span class="n">old_sm_status</span><span class="p">,</span>
+            <span class="s1">&#39;new_sm_status&#39;</span><span class="p">:</span> <span class="n">new_sm_status</span><span class="p">,</span>
+            <span class="s1">&#39;event_details&#39;</span><span class="p">:</span> <span class="n">event_details</span><span class="p">,</span>
+            <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">timestamp</span>
+        <span class="p">})</span>
+
+<div class="viewcode-block" id="Workflow.update_status_from_state_machine"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow.update_status_from_state_machine">[docs]</a>    <span class="k">def</span> <span class="nf">update_status_from_state_machine</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_sm_state</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">event_details</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;根据状态机状态更新工作流状态&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">timestamp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+
+        <span class="n">old_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span>
+        <span class="n">new_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span>
+
+        <span class="c1"># 根据状态机状态确定工作流状态</span>
+        <span class="k">if</span> <span class="n">new_sm_state</span> <span class="o">==</span> <span class="s1">&#39;completed&#39;</span><span class="p">:</span>
+            <span class="n">new_status</span> <span class="o">=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">COMPLETED</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">completion_reason</span> <span class="o">=</span> <span class="n">event_details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reason&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;SM reached &#39;</span><span class="si">{</span><span class="n">new_sm_state</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event_details</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">event_details</span><span class="p">)</span> <span class="k">if</span> <span class="n">event_details</span> <span class="k">else</span> <span class="s2">&quot;Completed&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="n">timestamp</span>
+        <span class="k">elif</span> <span class="n">new_sm_state</span> <span class="o">==</span> <span class="s1">&#39;failed&#39;</span><span class="p">:</span>
+            <span class="n">new_status</span> <span class="o">=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">FAILED</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">completion_reason</span> <span class="o">=</span> <span class="n">event_details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reason&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;SM reached &#39;</span><span class="si">{</span><span class="n">new_sm_state</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event_details</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">event_details</span><span class="p">)</span> <span class="k">if</span> <span class="n">event_details</span> <span class="k">else</span> <span class="s2">&quot;Failed&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="n">timestamp</span>
+        <span class="k">elif</span> <span class="n">new_sm_state</span> <span class="o">==</span> <span class="s1">&#39;canceled&#39;</span><span class="p">:</span>
+            <span class="n">new_status</span> <span class="o">=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">CANCELED</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">completion_reason</span> <span class="o">=</span> <span class="n">event_details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reason&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;SM reached &#39;</span><span class="si">{</span><span class="n">new_sm_state</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event_details</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">event_details</span><span class="p">)</span> <span class="k">if</span> <span class="n">event_details</span> <span class="k">else</span> <span class="s2">&quot;Canceled&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="n">timestamp</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">PENDING</span> <span class="ow">and</span> <span class="n">new_sm_state</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="s1">&#39;pending&#39;</span><span class="p">):</span>
+            <span class="n">new_status</span> <span class="o">=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">RUNNING</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="ow">or</span> <span class="n">timestamp</span>
+
+        <span class="c1"># 如果状态有变化，触发工作流状态变更事件</span>
+        <span class="k">if</span> <span class="n">new_status</span> <span class="o">!=</span> <span class="n">old_status</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">new_status</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">: Workflow </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">: Status changed </span><span class="si">{</span><span class="n">old_status</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new_status</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> (SM: </span><span class="si">{</span><span class="n">new_sm_state</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;workflow_status_changed&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;old_status&#39;</span><span class="p">:</span> <span class="n">old_status</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s1">&#39;new_status&#39;</span><span class="p">:</span> <span class="n">new_status</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s1">&#39;sm_state&#39;</span><span class="p">:</span> <span class="n">new_sm_state</span><span class="p">,</span>
+                <span class="s1">&#39;event_details&#39;</span><span class="p">:</span> <span class="n">event_details</span><span class="p">,</span>
+                <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">timestamp</span>
+            <span class="p">})</span>
+
+            <span class="c1"># 如果工作流刚开始运行，通知所有者</span>
+            <span class="k">if</span> <span class="n">new_status</span> <span class="o">==</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">RUNNING</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;workflow_assigned&#39;</span><span class="p">,</span>
+                    <span class="p">{</span><span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">}</span>
+                <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Workflow.to_uml_activity_diagram"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow.to_uml_activity_diagram">[docs]</a>    <span class="k">def</span> <span class="nf">to_uml_activity_diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        将工作流表示为UML活动图（PlantUML格式）</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: PlantUML格式的活动图描述</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 使用PlantUML语法创建活动图</span>
+        <span class="n">diagram</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;@startuml&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;title </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> Workflow&quot;</span><span class="p">]</span>
+
+        <span class="c1"># 添加起始节点</span>
+        <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;start&quot;</span><span class="p">)</span>
+        <span class="n">start_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">start_status</span>
+        <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;:</span><span class="si">{</span><span class="n">start_state</span><span class="si">}</span><span class="s2">;&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 记录已处理的状态，避免重复</span>
+        <span class="n">processed_states</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">processed_states</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">start_state</span><span class="p">)</span>
+
+        <span class="c1"># 添加所有状态转换</span>
+        <span class="k">for</span> <span class="n">state</span><span class="p">,</span> <span class="n">transitions</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state_transitions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">trigger</span><span class="p">,</span> <span class="n">next_state</span><span class="p">,</span> <span class="n">description</span> <span class="ow">in</span> <span class="n">transitions</span><span class="p">:</span>
+                <span class="c1"># 根据触发器类型创建不同样式的连接</span>
+                <span class="n">trigger_type</span> <span class="o">=</span> <span class="n">trigger</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trigger</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;UNKNOWN&quot;</span>
+
+                <span class="c1"># 创建转换描述</span>
+                <span class="k">if</span> <span class="n">description</span><span class="p">:</span>
+                    <span class="n">transition_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">description</span><span class="si">}</span><span class="se">\\</span><span class="s2">n[</span><span class="si">{</span><span class="n">trigger_type</span><span class="si">}</span><span class="s2">]&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">transition_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">trigger_type</span><span class="si">}</span><span class="s2">]&quot;</span>
+
+                <span class="k">if</span> <span class="n">state</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">processed_states</span><span class="p">:</span>
+                    <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;:</span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2">;&quot;</span><span class="p">)</span>
+                    <span class="n">processed_states</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+                <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;-&gt; </span><span class="si">{</span><span class="n">transition_label</span><span class="si">}</span><span class="s2"> :</span><span class="si">{</span><span class="n">next_state</span><span class="si">}</span><span class="s2">;&quot;</span><span class="p">)</span>
+
+                <span class="c1"># 如果是终止状态，添加结束节点</span>
+                <span class="k">if</span> <span class="n">next_state</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">terminal_status</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">next_state</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">processed_states</span><span class="p">:</span>
+                        <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;:</span><span class="si">{</span><span class="n">next_state</span><span class="si">}</span><span class="s2">;&quot;</span><span class="p">)</span>
+                        <span class="n">processed_states</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">next_state</span><span class="p">)</span>
+                    <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;stop&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 对于通配符转换，单独处理</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">wildcard_transitions</span><span class="p">:</span>
+            <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">note right: 通配符转换（适用于所有状态）&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">trigger</span><span class="p">,</span> <span class="n">next_state</span><span class="p">,</span> <span class="n">description</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">wildcard_transitions</span><span class="p">:</span>
+                <span class="n">trigger_type</span> <span class="o">=</span> <span class="n">trigger</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trigger</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;UNKNOWN&quot;</span>
+                <span class="k">if</span> <span class="n">description</span><span class="p">:</span>
+                    <span class="n">transition_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">description</span><span class="si">}</span><span class="se">\\</span><span class="s2">n[</span><span class="si">{</span><span class="n">trigger_type</span><span class="si">}</span><span class="s2">]&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">transition_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">trigger_type</span><span class="si">}</span><span class="s2">]&quot;</span>
+
+                <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;-&gt; </span><span class="si">{</span><span class="n">transition_label</span><span class="si">}</span><span class="s2"> :</span><span class="si">{</span><span class="n">next_state</span><span class="si">}</span><span class="s2">;&quot;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">next_state</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">terminal_status</span> <span class="ow">and</span> <span class="n">next_state</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">processed_states</span><span class="p">:</span>
+                    <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;:</span><span class="si">{</span><span class="n">next_state</span><span class="si">}</span><span class="s2">;&quot;</span><span class="p">)</span>
+                    <span class="n">processed_states</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">next_state</span><span class="p">)</span>
+                    <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;stop&quot;</span><span class="p">)</span>
+
+        <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;@enduml&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">diagram</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Workflow.to_mermaid_diagram"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow.to_mermaid_diagram">[docs]</a>    <span class="k">def</span> <span class="nf">to_mermaid_diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        将工作流表示为Mermaid流程图格式</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: Mermaid格式的流程图描述</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 使用Mermaid语法创建流程图</span>
+        <span class="n">diagram</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;```mermaid&quot;</span><span class="p">,</span> <span class="s2">&quot;stateDiagram-v2&quot;</span><span class="p">]</span>
+
+        <span class="c1"># 添加起始状态</span>
+        <span class="n">start_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">start_status</span>
+        <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    [*] --&gt; </span><span class="si">{</span><span class="n">start_state</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 添加所有状态转换</span>
+        <span class="k">for</span> <span class="n">state</span><span class="p">,</span> <span class="n">transitions</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state_transitions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">trigger</span><span class="p">,</span> <span class="n">next_state</span><span class="p">,</span> <span class="n">description</span> <span class="ow">in</span> <span class="n">transitions</span><span class="p">:</span>
+                <span class="c1"># 根据触发器类型创建不同样式的连接</span>
+                <span class="n">trigger_type</span> <span class="o">=</span> <span class="n">trigger</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trigger</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;UNKNOWN&quot;</span>
+
+                <span class="c1"># 创建转换描述</span>
+                <span class="k">if</span> <span class="n">description</span><span class="p">:</span>
+                    <span class="n">transition_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">description</span><span class="si">}</span><span class="s2"> [</span><span class="si">{</span><span class="n">trigger_type</span><span class="si">}</span><span class="s2">]&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">transition_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">trigger_type</span><span class="si">}</span><span class="s2">]&quot;</span>
+
+                <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2"> --&gt; </span><span class="si">{</span><span class="n">next_state</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">transition_label</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="c1"># 如果是终止状态，添加到结束节点的连接</span>
+                <span class="k">if</span> <span class="n">next_state</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">terminal_status</span><span class="p">:</span>
+                    <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">next_state</span><span class="si">}</span><span class="s2"> --&gt; [*]&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 对于通配符转换，单独处理</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">wildcard_transitions</span><span class="p">:</span>
+            <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    </span><span class="si">%%</span><span class="s2"> 通配符转换（适用于所有状态）&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">trigger</span><span class="p">,</span> <span class="n">next_state</span><span class="p">,</span> <span class="n">description</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">wildcard_transitions</span><span class="p">:</span>
+                <span class="n">trigger_type</span> <span class="o">=</span> <span class="n">trigger</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trigger</span><span class="p">,</span> <span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;UNKNOWN&quot;</span>
+                <span class="k">if</span> <span class="n">description</span><span class="p">:</span>
+                    <span class="n">transition_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">description</span><span class="si">}</span><span class="s2"> [</span><span class="si">{</span><span class="n">trigger_type</span><span class="si">}</span><span class="s2">]&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">transition_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">trigger_type</span><span class="si">}</span><span class="s2">]&quot;</span>
+
+                <span class="c1"># 由于通配符适用于所有状态，这里表示为特殊转换</span>
+                <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    note right of [*]: 通配符转换 - 所有状态 --&gt; </span><span class="si">{</span><span class="n">next_state</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Note: </span><span class="si">{</span><span class="n">transition_label</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="c1"># 如果是终止状态，添加到结束节点的连接</span>
+                <span class="k">if</span> <span class="n">next_state</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">terminal_status</span><span class="p">:</span>
+                    <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">next_state</span><span class="si">}</span><span class="s2"> --&gt; [*]&quot;</span><span class="p">)</span>
+
+        <span class="n">diagram</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;```&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">diagram</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Workflow.reset"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.core.workflow.Workflow.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;重置工作流状态，包括状态机&quot;&quot;&quot;</span>
+        <span class="n">old_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span>
+
+        <span class="c1"># 停止当前的状态机进程</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sm_process</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">sm_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sm_process</span><span class="o">.</span><span class="n">interrupt</span><span class="p">({</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;cancel&#39;</span><span class="p">,</span> <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;workflow_reset&#39;</span><span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sm_process</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 重置工作流状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">PENDING</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">completion_reason</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 重置状态机</span>
+        <span class="n">initial_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">start_status</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span> <span class="o">=</span> <span class="n">WorkflowStatusMachine</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">initial_status</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_transitions</span><span class="p">()</span>  <span class="c1"># 重新设置转换规则</span>
+
+        <span class="c1"># 触发工作流状态变更事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;workflow_status_changed&#39;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s1">&#39;old_status&#39;</span><span class="p">:</span> <span class="n">old_status</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;new_status&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;sm_state&#39;</span><span class="p">:</span> <span class="n">initial_status</span><span class="p">,</span>
+            <span class="s1">&#39;event_details&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;workflow_reset&#39;</span><span class="p">},</span>
+            <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="p">})</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: Workflow </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> has been reset to PENDING state&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.workflow</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

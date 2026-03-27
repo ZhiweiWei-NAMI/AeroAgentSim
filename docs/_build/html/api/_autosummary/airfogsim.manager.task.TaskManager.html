@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>aeroagentsim.manager.task.TaskManager &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.task.TaskManager</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="aeroagentsim-manager-task-taskmanager">
+<h1>aeroagentsim.manager.task.TaskManager<a class="headerlink" href="#aeroagentsim-manager-task-taskmanager" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.manager.task.TaskManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.manager.task.</span></span><span class="sig-name descname"><span class="pre">TaskManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/task.html#TaskManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.task.TaskManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>任务管理器：负责根据代理当前的工作流和组件筛选合适的任务</p>
+<p>主要功能：
+1. 根据工作流需要的状态和组件提供的指标筛选合适的任务
+2. 为代理推荐最合适的任务
+3. 管理任务的注册和查询</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.task.TaskManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/task.html#TaskManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.task.TaskManager.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化任务管理器</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>env</strong> – 仿真环境</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.task.TaskManager.__init__" title="aeroagentsim.manager.task.TaskManager.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(env)</p></td>
+<td><p>初始化任务管理器</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.task.TaskManager.create_task" title="aeroagentsim.manager.task.TaskManager.create_task"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_task</span></code></a>(task_class_name, agent, ...[, ...])</p></td>
+<td><p>创建任务实例</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.task.TaskManager.find_compatible_tasks" title="aeroagentsim.manager.task.TaskManager.find_compatible_tasks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_compatible_tasks</span></code></a>(agent[, workflow, ...])</p></td>
+<td><p>查找与代理组件和工作流兼容的任务</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.task.TaskManager.get_all_task_classes" title="aeroagentsim.manager.task.TaskManager.get_all_task_classes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_all_task_classes</span></code></a>()</p></td>
+<td><p>获取所有注册的任务类</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.task.TaskManager.get_task_class" title="aeroagentsim.manager.task.TaskManager.get_task_class"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_task_class</span></code></a>(task_class_name)</p></td>
+<td><p>获取任务类</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.task.TaskManager.recommend_tasks" title="aeroagentsim.manager.task.TaskManager.recommend_tasks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">recommend_tasks</span></code></a>(agent[, workflow, ...])</p></td>
+<td><p>为代理推荐最合适的任务</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../manager.html#aeroagentsim.manager.task.TaskManager.register_task_class" title="aeroagentsim.manager.task.TaskManager.register_task_class"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_task_class</span></code></a>(task_class)</p></td>
+<td><p>注册任务类</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/manager/task.html#TaskManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化任务管理器</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>env</strong> – 仿真环境</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.task.TaskManager.clear_registered_task_classes">
+<span class="sig-name descname"><span class="pre">clear_registered_task_classes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/task.html#TaskManager.clear_registered_task_classes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.task.TaskManager.clear_registered_task_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>清空所有注册的任务类</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.task.TaskManager.register_task_class">
+<span class="sig-name descname"><span class="pre">register_task_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../task.html#aeroagentsim.core.task.Task" title="aeroagentsim.core.task.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/task.html#TaskManager.register_task_class"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.task.TaskManager.register_task_class" title="Permalink to this definition">¶</a></dt>
+<dd><p>注册任务类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>task_class</strong> – 任务类</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.task.TaskManager.register_task_classes">
+<span class="sig-name descname"><span class="pre">register_task_classes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_classes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../task.html#aeroagentsim.core.task.Task" title="aeroagentsim.core.task.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/task.html#TaskManager.register_task_classes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.task.TaskManager.register_task_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>注册多个任务类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>task_classes</strong> – 任务类列表</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.task.TaskManager.get_task_class">
+<span class="sig-name descname"><span class="pre">get_task_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_class_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../task.html#aeroagentsim.core.task.Task" title="aeroagentsim.core.task.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/task.html#TaskManager.get_task_class"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.task.TaskManager.get_task_class" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取任务类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>task_class_name</strong> – 任务类名称</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>任务类或None（如果未找到）</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.task.TaskManager.get_all_task_classes_dict">
+<span class="sig-name descname"><span class="pre">get_all_task_classes_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../task.html#aeroagentsim.core.task.Task" title="aeroagentsim.core.task.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/task.html#TaskManager.get_all_task_classes_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.task.TaskManager.get_all_task_classes_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取所有注册的任务类字典</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>任务类名称到任务类的映射</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.task.TaskManager.get_all_task_classes">
+<span class="sig-name descname"><span class="pre">get_all_task_classes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../task.html#aeroagentsim.core.task.Task" title="aeroagentsim.core.task.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/task.html#TaskManager.get_all_task_classes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.task.TaskManager.get_all_task_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取所有注册的任务类</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>任务类列表</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.task.TaskManager.find_compatible_tasks">
+<span class="sig-name descname"><span class="pre">find_compatible_tasks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">workflow</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow" title="aeroagentsim.core.workflow.Workflow"><span class="pre">Workflow</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../task.html#aeroagentsim.core.task.Task" title="aeroagentsim.core.task.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/task.html#TaskManager.find_compatible_tasks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.task.TaskManager.find_compatible_tasks" title="Permalink to this definition">¶</a></dt>
+<dd><p>查找与代理组件和工作流兼容的任务</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>agent</strong> – 代理</p></li>
+<li><p><strong>workflow</strong> – 工作流（可选）</p></li>
+<li><p><strong>required_states</strong> – 需要的状态列表（可选，如果未提供则从工作流推断）</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>兼容任务类及其兼容性分数的列表，按分数降序排序</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.task.TaskManager.recommend_tasks">
+<span class="sig-name descname"><span class="pre">recommend_tasks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">workflow</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow" title="aeroagentsim.core.workflow.Workflow"><span class="pre">Workflow</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_states</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">top_n</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/task.html#TaskManager.recommend_tasks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.task.TaskManager.recommend_tasks" title="Permalink to this definition">¶</a></dt>
+<dd><p>为代理推荐最合适的任务</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>agent</strong> – 代理</p></li>
+<li><p><strong>workflow</strong> – 工作流（可选）</p></li>
+<li><p><strong>required_states</strong> – 需要的状态列表（可选）</p></li>
+<li><p><strong>top_n</strong> – 返回的推荐任务数量</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>推荐任务的详细信息列表</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.manager.task.TaskManager.create_task">
+<span class="sig-name descname"><span class="pre">create_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_class_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">component_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">workflow_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../task.html#aeroagentsim.core.task.Task" title="aeroagentsim.core.task.Task"><span class="pre">Task</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/manager/task.html#TaskManager.create_task"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.manager.task.TaskManager.create_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>创建任务实例</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task_class_name</strong> – 任务类名称</p></li>
+<li><p><strong>agent</strong> – 代理</p></li>
+<li><p><strong>component_name</strong> – 组件名称</p></li>
+<li><p><strong>task_name</strong> – 任务名称</p></li>
+<li><p><strong>workflow_id</strong> – 工作流ID（可选）</p></li>
+<li><p><strong>target_state</strong> – 目标状态（可选）</p></li>
+<li><p><strong>properties</strong> – 任务属性（可选）</p></li>
+<li><p><strong>task_id</strong> – 任务ID（可选）</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>创建的任务实例或None（如果创建失败）</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">aeroagentsim.manager.task.TaskManager</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.manager.task.TaskManager"><code class="docutils literal notranslate"><span class="pre">TaskManager</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.manager.task.TaskManager.__init__"><code class="docutils literal notranslate"><span class="pre">TaskManager.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">TaskManager.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.task.TaskManager.clear_registered_task_classes"><code class="docutils literal notranslate"><span class="pre">TaskManager.clear_registered_task_classes()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.task.TaskManager.register_task_class"><code class="docutils literal notranslate"><span class="pre">TaskManager.register_task_class()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.task.TaskManager.register_task_classes"><code class="docutils literal notranslate"><span class="pre">TaskManager.register_task_classes()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.task.TaskManager.get_task_class"><code class="docutils literal notranslate"><span class="pre">TaskManager.get_task_class()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.task.TaskManager.get_all_task_classes_dict"><code class="docutils literal notranslate"><span class="pre">TaskManager.get_all_task_classes_dict()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.task.TaskManager.get_all_task_classes"><code class="docutils literal notranslate"><span class="pre">TaskManager.get_all_task_classes()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.task.TaskManager.find_compatible_tasks"><code class="docutils literal notranslate"><span class="pre">TaskManager.find_compatible_tasks()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.task.TaskManager.recommend_tasks"><code class="docutils literal notranslate"><span class="pre">TaskManager.recommend_tasks()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.manager.task.TaskManager.create_task"><code class="docutils literal notranslate"><span class="pre">TaskManager.create_task()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api/_autosummary/airfogsim.manager.task.TaskManager.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.task.TaskManager</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

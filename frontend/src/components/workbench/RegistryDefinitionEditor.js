@@ -352,7 +352,7 @@ function RegistryDefinitionEditor({
               pagination={false}
               rowKey={(_row, index) => `trigger_${index}`}
               dataSource={triggerRows}
-              scroll={{ x: 1180 }}
+              scroll={{ x: 'max-content' }}
               columns={[
                 {
                   title: 'from',
@@ -461,7 +461,7 @@ function RegistryDefinitionEditor({
               pagination={false}
               rowKey={(_row, index) => `binding_${index}`}
               dataSource={bindingRows}
-              scroll={{ x: 1280 }}
+              scroll={{ x: 'max-content' }}
               columns={[
                 {
                   title: 'state',

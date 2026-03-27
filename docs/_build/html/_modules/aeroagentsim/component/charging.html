@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.component.charging &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.component.charging</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.component.charging</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.component</span> <span class="kn">import</span> <span class="n">Component</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+
+<div class="viewcode-block" id="ChargingComponent"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.charging.ChargingComponent">[docs]</a><span class="k">class</span> <span class="nc">ChargingComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    充电组件，用于管理电池充电过程和充电站资源请求。</span>
+
+<span class="sd">    性能指标：</span>
+<span class="sd">    - charging_rate: 充电速率（%/小时）</span>
+<span class="sd">    - time_to_full: 充满所需时间（小时）</span>
+<span class="sd">    - energy_level: 当前电量水平（%）</span>
+<span class="sd">    - request_processing_time: 充电站资源请求处理时间（秒）</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">PRODUCED_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;charging_rate&#39;</span><span class="p">,</span> <span class="s1">&#39;request_processing_time&#39;</span><span class="p">]</span>
+    <span class="n">MONITORED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;battery_capacity&#39;</span><span class="p">,</span> <span class="s1">&#39;position&#39;</span><span class="p">,</span> <span class="s1">&#39;moving_status&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;charging_station.current_allocations&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;charging_station.power_level&#39;</span><span class="p">]</span>  <span class="c1"># 监控这些代理状态的变化</span>
+
+<div class="viewcode-block" id="ChargingComponent.__init__"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.charging.ChargingComponent.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">supported_events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;charging_started&#39;</span><span class="p">,</span> <span class="s1">&#39;charging_completed&#39;</span><span class="p">],</span>
+                 <span class="n">properties</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化充电组件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            agent: 所属代理</span>
+<span class="sd">            name: 组件名称</span>
+<span class="sd">            supported_events: 支持的额外事件</span>
+<span class="sd">            properties: 组件属性，包含charging_factor和charging_efficiency</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;Charging&quot;</span><span class="p">,</span> <span class="n">supported_events</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">charging_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;charging_factor&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># 默认充电速度因子为1.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">charging_efficiency</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;charging_efficiency&#39;</span><span class="p">,</span> <span class="mf">0.85</span><span class="p">)</span>  <span class="c1"># 默认充电效率为0.85</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_calculate_performance_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;计算基于当前代理状态的性能指标&quot;&quot;&quot;</span>
+        <span class="c1"># 获取当前的电池容量和代理状态</span>
+        <span class="n">battery_capacity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_capacity&#39;</span><span class="p">,</span> <span class="mf">5000.0</span><span class="p">)</span>  <span class="c1"># mAh</span>
+        <span class="n">position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;position&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="c1"># 检查是否有moving_status属性</span>
+        <span class="n">moving_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;moving_status&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="p">,</span> <span class="s1">&#39;moving_status&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="c1"># 初始化指标</span>
+        <span class="n">charging_rate</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">request_processing_time</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>  <span class="c1"># 默认值表示无法处理</span>
+
+        <span class="c1"># 检查代理是否有充电站对象</span>
+        <span class="n">charging_station</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_possessing_object</span><span class="p">(</span><span class="s1">&#39;charging_station&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">charging_station</span><span class="p">:</span>
+            <span class="c1"># 获取充电站的请求处理时间，如果不在申请中，则会添加一个申请到队列，并且返回默认的等待时间,确保在申请中;</span>
+            <span class="c1"># 如果申请成功已经分配,则返回0</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">landing_manager</span><span class="o">.</span><span class="n">is_allocated_to</span><span class="p">(</span><span class="n">charging_station</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">landing_manager</span><span class="o">.</span><span class="n">request_resource</span><span class="p">(</span><span class="n">charging_station</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">landing_manager</span><span class="o">.</span><span class="n">is_allocated_to</span><span class="p">(</span><span class="n">charging_station</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">):</span>
+                <span class="n">request_processing_time</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># 申请成功，处理时间为0</span>
+                <span class="c1"># 充电能力只依赖真实空间位置和移动状态，不依赖可能滞后的汇总 status。</span>
+                <span class="n">stationary</span> <span class="o">=</span> <span class="n">moving_status</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="s1">&#39;hovering&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">charging_station</span><span class="o">.</span><span class="n">is_within_range</span><span class="p">(</span><span class="o">*</span><span class="n">position</span><span class="p">)</span> <span class="ow">and</span> <span class="n">stationary</span><span class="p">:</span>
+                    <span class="c1"># 基础充电功率 (W)，根据充电站电源水平调整</span>
+                    <span class="n">base_charging_power</span> <span class="o">=</span> <span class="n">charging_station</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;charging_power&#39;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+
+                    <span class="c1"># 计算充电率 (% / 小时)</span>
+                    <span class="c1"># 充电功率 * 充电效率 / 电池容量 * 100%</span>
+                    <span class="c1"># 假设充电功率单位为W，电池容量为mAh，电压为标准的3.7V</span>
+                    <span class="n">voltage</span> <span class="o">=</span> <span class="mf">3.7</span>  <span class="c1"># 锂电池标准电压</span>
+                    <span class="n">capacity_wh</span> <span class="o">=</span> <span class="n">battery_capacity</span> <span class="o">*</span> <span class="n">voltage</span> <span class="o">/</span> <span class="mi">1000</span>  <span class="c1"># 转换mAh到Wh</span>
+
+                    <span class="c1"># 每小时充电百分比 = (充电功率 * 充电效率 / 电池容量Wh) * 100%</span>
+                    <span class="n">charging_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">base_charging_power</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">charging_efficiency</span> <span class="o">/</span> <span class="n">capacity_wh</span><span class="p">)</span> <span class="o">*</span> <span class="mf">100.0</span>
+
+                    <span class="c1"># 应用充电因子</span>
+                    <span class="n">charging_rate</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">charging_factor</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;charging_rate&#39;</span><span class="p">:</span> <span class="n">charging_rate</span><span class="p">,</span>  <span class="c1"># %/小时</span>
+            <span class="s1">&#39;request_processing_time&#39;</span><span class="p">:</span> <span class="n">request_processing_time</span>  <span class="c1"># 秒</span>
+        <span class="p">}</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.component.charging</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

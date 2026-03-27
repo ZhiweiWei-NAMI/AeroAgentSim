@@ -1,31 +1,31 @@
 # AeroAgentSim Documentation Guide
 
-This guide explains where the main documentation now lives.
+This guide maps the current documentation set to the developer tasks it supports.
 
-`AeroAgentSim` is the outward-facing product name. The technical package name and import path remain `airfogsim`.
+## Main Entry Points
 
-## Documentation Entry Points
-
-- [README.md](README.md): product overview, quick install, and workbench summary
+- [README.md](README.md): project overview, workbench scope, runtime layout, environment variables, and citation
 - [README_CN.md](README_CN.md): Chinese overview and quick start
-- [INSTALL.md](INSTALL.md): installation, 2D workbench setup, and runtime layout
+- [INSTALL.md](INSTALL.md): editable install, frontend setup, runtime storage, and troubleshooting
 - [docs/README.md](docs/README.md): documentation hub
-- [docs/index.rst](docs/index.rst): Sphinx documentation home
-- [src/airfogsim/docs/en/architecture.md](src/airfogsim/docs/en/architecture.md): English technical architecture
-- [src/airfogsim/docs/cn/architecture.md](src/airfogsim/docs/cn/architecture.md): Chinese technical architecture
+- [docs/index.rst](docs/index.rst): Sphinx home page
+- [src/aeroagentsim/docs/en/architecture.md](src/aeroagentsim/docs/en/architecture.md): English architecture notes
+- [src/aeroagentsim/docs/cn/architecture.md](src/aeroagentsim/docs/cn/architecture.md): Chinese architecture notes
+- [src/aeroagentsim/examples/README.md](src/aeroagentsim/examples/README.md): runnable examples
+- [src/aeroagentsim/examples/README_cn.md](src/aeroagentsim/examples/README_cn.md): 中文示例说明
 
-## What Changed
+## Documentation Themes
 
-- 3D frontend pages were removed
-- documentation now describes the 2D developer workbench
-- config snapshots and `run_id` artifacts are documented explicitly
-- top-level imports now recommend `from airfogsim import Environment`
-- `AirFogSimEnv` is documented as a compatibility alias
-- the file-based custom registry model is now part of the documented architecture
-- the bilingual `zh-CN` / `en-US` frontend behavior is part of the documented workbench flow
-- the centralized `Review / Validate` path is part of the documented operator workflow
+The current docs are organized around these developer questions:
 
-## Workbench Concepts To Document Consistently
+- how to install and import AeroAgentSim for local development
+- how to configure and launch the workbench
+- how to understand the registry, config snapshot, and run directory layout
+- how to use `Workflow Studio`, the relation graph, live runtime map, and trajectory review pages
+- how preflight, validation, and run control behave
+- how to run builtin examples and what external integrations they require
+
+## Workbench Concepts That Should Stay Consistent
 
 - `Overview`
 - `Class Catalog`
@@ -33,32 +33,18 @@ This guide explains where the main documentation now lives.
 - `Run Console`
 - `Trajectories & Logs`
 - `Review / Validate`
-- workflow-agent-state relation graph navigation inside the graph canvas
-- runtime preflight warnings vs blocking errors
-
-- 2D map modes:
-  - `simulation_plane`
-  - `geo_osm`
-
-- registry source-of-truth:
-  - `registry/aeroagentsim/agents/`
-  - `registry/aeroagentsim/tasks/`
-  - `registry/aeroagentsim/workflows/`
-
-- runtime storage:
-  - `runtime/aeroagentsim/configs/`
-  - `runtime/aeroagentsim/runs/<run_id>/`
-
-- language support:
-  - `zh-CN`
-  - `en-US`
+- relation graph as an interactive inspection canvas
+- canvas-local zoom and pan behavior
+- node drag refinement for graph layout
+- runtime preflight `warning` versus `error`
+- config snapshots and per-run artifact directories
 
 ## Sphinx Docs
 
-If you build the Sphinx docs locally:
+Build the Sphinx docs locally with:
 
 ```bash
-pip install -e ".[docs]"
+pip install -e ".[dev,docs]"
 cd docs
 make html
 ```

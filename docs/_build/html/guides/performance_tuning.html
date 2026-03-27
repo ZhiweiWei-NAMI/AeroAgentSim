@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Performance Tuning Guide &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Troubleshooting Guide" href="troubleshooting.html" />
+    <link rel="prev" title="Simulation Setup Guide" href="simulation_setup.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="troubleshooting.html" title="Troubleshooting Guide"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="simulation_setup.html" title="Simulation Setup Guide"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Performance Tuning Guide</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="performance-tuning-guide">
+<h1>Performance Tuning Guide<a class="headerlink" href="#performance-tuning-guide" title="Permalink to this heading">¶</a></h1>
+<p>This guide covers techniques for optimizing <code class="docutils literal notranslate"><span class="pre">aeroagentsim</span></code> runtime performance
+and the AeroAgentSim workbench experience for large-scale simulations and
+resource-constrained environments.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">¶</a></h2>
+<p>AeroAgentSim performance depends on several factors including the number of agents, event frequency, component complexity, and data provider update rates. This guide provides strategies for optimizing each aspect.</p>
+</section>
+<section id="performance-fundamentals">
+<h2>Performance Fundamentals<a class="headerlink" href="#performance-fundamentals" title="Permalink to this heading">¶</a></h2>
+<section id="key-performance-metrics">
+<h3>Key Performance Metrics<a class="headerlink" href="#key-performance-metrics" title="Permalink to this heading">¶</a></h3>
+<p>Monitor these metrics to identify performance bottlenecks:</p>
+<ul class="simple">
+<li><p><strong>Events per second</strong>: Rate of event processing</p></li>
+<li><p><strong>Memory usage</strong>: RAM consumption over time</p></li>
+<li><p><strong>CPU utilization</strong>: Processor usage patterns</p></li>
+<li><p><strong>Simulation time ratio</strong>: Real time vs. simulation time</p></li>
+<li><p><strong>Agent update frequency</strong>: How often agents make decisions</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.utils.profiler</span> <span class="kn">import</span> <span class="n">SimulationProfiler</span>
+
+<span class="c1"># Enable performance profiling</span>
+<span class="n">profiler</span> <span class="o">=</span> <span class="n">SimulationProfiler</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+<span class="n">profiler</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+<span class="c1"># Run simulation</span>
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+
+<span class="c1"># Get performance report</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">profiler</span><span class="o">.</span><span class="n">get_report</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Events/sec: </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;events_per_second&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Memory usage: </span><span class="si">{</span><span class="n">report</span><span class="p">[</span><span class="s1">&#39;peak_memory_mb&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="environment-optimization">
+<h2>Environment Optimization<a class="headerlink" href="#environment-optimization" title="Permalink to this heading">¶</a></h2>
+<section id="current-public-tuning-surface">
+<h3>Current Public Tuning Surface<a class="headerlink" href="#current-public-tuning-surface" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+
+<span class="c1"># Prefer explicit constructor arguments and component/provider intervals.</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">(</span><span class="n">visual_interval</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The current public API does not expose a documented <code class="docutils literal notranslate"><span class="pre">Environment(config=...)</span></code>
+dictionary for performance tuning. Prefer these levers instead:</p>
+<ul class="simple">
+<li><p>reduce <code class="docutils literal notranslate"><span class="pre">visual_interval</span></code> updates when you do not need frequent frontend pushes</p></li>
+<li><p>increase agent decision intervals and provider polling intervals</p></li>
+<li><p>avoid attaching unnecessary components or overly chatty state updates</p></li>
+<li><p>limit logging volume during large simulation runs</p></li>
+<li><p>inspect per-run artifacts in <code class="docutils literal notranslate"><span class="pre">runtime/aeroagentsim/runs/&lt;run_id&gt;/</span></code> instead
+of keeping extra in-memory debug state</p></li>
+</ul>
+</section>
+<section id="event-system-optimization">
+<h3>Event System Optimization<a class="headerlink" href="#event-system-optimization" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Optimize event triggering frequency</span>
+<span class="k">class</span> <span class="nc">OptimizedAgent</span><span class="p">(</span><span class="n">Agent</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_interval</span> <span class="o">=</span> <span class="mf">10.0</span>  <span class="c1"># Reduce update frequency</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_state_update</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">update_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c1"># Batch state updates to reduce event frequency</span>
+        <span class="n">current_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="k">if</span> <span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_state_update</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_interval</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_state_update</span> <span class="o">=</span> <span class="n">current_time</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Store for batch update</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pending_updates</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="agent-optimization">
+<h2>Agent Optimization<a class="headerlink" href="#agent-optimization" title="Permalink to this heading">¶</a></h2>
+<section id="efficient-agent-design">
+<h3>Efficient Agent Design<a class="headerlink" href="#efficient-agent-design" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">HighPerformanceAgent</span><span class="p">(</span><span class="n">Agent</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optimized agent for large-scale simulations.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+
+        <span class="c1"># Optimize decision intervals</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">decision_interval</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;decision_interval&#39;</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_decision_time</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Cache frequently accessed data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_neighbors</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache_timestamp</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache_duration</span> <span class="o">=</span> <span class="mf">60.0</span>
+
+    <span class="k">def</span> <span class="nf">_decision_logic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Optimized decision logic with reduced frequency.&quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">current_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+
+                <span class="c1"># Only make decisions at specified intervals</span>
+                <span class="k">if</span> <span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_decision_time</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decision_interval</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_make_decision</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">last_decision_time</span> <span class="o">=</span> <span class="n">current_time</span>
+
+                <span class="c1"># Use adaptive sleep based on activity level</span>
+                <span class="n">sleep_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_adaptive_sleep</span><span class="p">()</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">sleep_time</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Decision logic error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>  <span class="c1"># Error recovery delay</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_adaptive_sleep</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate sleep time based on agent activity.&quot;&quot;&quot;</span>
+        <span class="c1"># Sleep longer when agent is idle</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;idle&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">60.0</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;moving&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">10.0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">30.0</span>
+</pre></div>
+</div>
+</section>
+<section id="memory-management">
+<h3>Memory Management<a class="headerlink" href="#memory-management" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MemoryEfficientAgent</span><span class="p">(</span><span class="n">Agent</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Agent optimized for memory usage.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+
+        <span class="c1"># Limit state history</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_state_history</span> <span class="o">=</span> <span class="mi">100</span>
+
+        <span class="c1"># Use weak references for non-critical data</span>
+        <span class="kn">import</span> <span class="nn">weakref</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_weak_references</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakValueDictionary</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">update_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update state with memory management.&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="c1"># Limit state history to prevent memory leaks</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_state_history&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_state_history</span><span class="p">[</span><span class="n">key</span><span class="p">])</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_state_history</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_state_history</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_history</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">max_state_history</span><span class="p">:]</span>
+
+    <span class="k">def</span> <span class="nf">cleanup_resources</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean up resources to free memory.&quot;&quot;&quot;</span>
+        <span class="c1"># Clear old event subscriptions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_old_subscriptions</span><span class="p">()</span>
+
+        <span class="c1"># Clear cached data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cached_data</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="c1"># Force garbage collection</span>
+        <span class="kn">import</span> <span class="nn">gc</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="component-optimization">
+<h2>Component Optimization<a class="headerlink" href="#component-optimization" title="Permalink to this heading">¶</a></h2>
+<section id="efficient-component-design">
+<h3>Efficient Component Design<a class="headerlink" href="#efficient-component-design" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">OptimizedComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;High-performance component implementation.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">owner</span><span class="p">)</span>
+
+        <span class="c1"># Optimize metric calculation frequency</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metric_update_interval</span> <span class="o">=</span> <span class="mf">30.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_metric_update</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Pre-allocate data structures</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metrics_buffer</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">_update_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Optimized metrics calculation.&quot;&quot;&quot;</span>
+        <span class="n">current_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+
+        <span class="c1"># Only update metrics at specified intervals</span>
+        <span class="k">if</span> <span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_metric_update</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_update_interval</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Batch metric calculations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_all_metrics</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_metric_update</span> <span class="o">=</span> <span class="n">current_time</span>
+
+    <span class="k">def</span> <span class="nf">execute_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Optimized task execution.&quot;&quot;&quot;</span>
+        <span class="c1"># Use object pooling for task objects</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_task_pool&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_pool</span><span class="p">:</span>
+            <span class="n">pooled_task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_pool</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="n">pooled_task</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">properties</span><span class="p">)</span>
+            <span class="n">task</span> <span class="o">=</span> <span class="n">pooled_task</span>
+
+        <span class="c1"># Execute with minimal overhead</span>
+        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fast_execute</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+        <span class="c1"># Return to pool</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_task_pool&#39;</span><span class="p">):</span>
+            <span class="n">task</span><span class="o">.</span><span class="n">cleanup</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_task_pool</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="resource-manager-optimization">
+<h3>Resource Manager Optimization<a class="headerlink" href="#resource-manager-optimization" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">OptimizedResourceManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;High-performance resource management.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+
+        <span class="c1"># Use spatial indexing for fast lookups</span>
+        <span class="kn">from</span> <span class="nn">rtree</span> <span class="kn">import</span> <span class="n">index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spatial_index</span> <span class="o">=</span> <span class="n">index</span><span class="o">.</span><span class="n">Index</span><span class="p">()</span>
+
+        <span class="c1"># Cache frequently accessed resources</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_cache</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_size_limit</span> <span class="o">=</span> <span class="mi">1000</span>
+
+    <span class="k">def</span> <span class="nf">find_nearest_resources</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">resource_type</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Optimized resource search using spatial indexing.&quot;&quot;&quot;</span>
+        <span class="c1"># Use spatial index for fast nearest neighbor search</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">position</span>
+        <span class="n">search_radius</span> <span class="o">=</span> <span class="mf">100.0</span>
+
+        <span class="c1"># Query spatial index</span>
+        <span class="n">candidates</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spatial_index</span><span class="o">.</span><span class="n">nearest</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">search_radius</span><span class="p">,</span> <span class="n">y</span><span class="o">-</span><span class="n">search_radius</span><span class="p">,</span> <span class="n">x</span><span class="o">+</span><span class="n">search_radius</span><span class="p">,</span> <span class="n">y</span><span class="o">+</span><span class="n">search_radius</span><span class="p">),</span>
+            <span class="n">count</span> <span class="o">*</span> <span class="mi">2</span>  <span class="c1"># Get extra candidates for filtering</span>
+        <span class="p">))</span>
+
+        <span class="c1"># Filter by type and return closest</span>
+        <span class="n">filtered</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">candidates</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="n">resource_type</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">filtered</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_distance</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">position</span><span class="p">))[:</span><span class="n">count</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="data-provider-optimization">
+<h2>Data Provider Optimization<a class="headerlink" href="#data-provider-optimization" title="Permalink to this heading">¶</a></h2>
+<section id="efficient-data-updates">
+<h3>Efficient Data Updates<a class="headerlink" href="#efficient-data-updates" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">OptimizedDataProvider</span><span class="p">(</span><span class="n">DataProvider</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;High-performance data provider.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+
+        <span class="c1"># Optimize update intervals</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_update_interval</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;min_update_interval&#39;</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adaptive_updates</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;adaptive_updates&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Use data compression for large datasets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compress_data</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;compress_data&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Implement data caching</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_size</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cache_size&#39;</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_cache</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">_adaptive_update_interval</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate adaptive update interval based on data volatility.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptive_updates</span><span class="p">:</span>
+            <span class="c1"># Increase interval when data is stable</span>
+            <span class="n">volatility</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_data_volatility</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">volatility</span> <span class="o">&lt;</span> <span class="mf">0.1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_update_interval</span> <span class="o">*</span> <span class="mi">2</span>
+            <span class="k">elif</span> <span class="n">volatility</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_update_interval</span> <span class="o">*</span> <span class="mf">0.5</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_update_interval</span>
+
+    <span class="k">def</span> <span class="nf">_compress_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compress data to reduce memory usage.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compress_data</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">pickle</span>
+            <span class="kn">import</span> <span class="nn">gzip</span>
+            <span class="k">return</span> <span class="n">gzip</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">data</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="large-scale-simulation-strategies">
+<h2>Large-Scale Simulation Strategies<a class="headerlink" href="#large-scale-simulation-strategies" title="Permalink to this heading">¶</a></h2>
+<section id="agent-pooling">
+<h3>Agent Pooling<a class="headerlink" href="#agent-pooling" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">AgentPool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pool of reusable agent objects for large-scale simulations.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent_class</span><span class="p">,</span> <span class="n">pool_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_class</span> <span class="o">=</span> <span class="n">agent_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">available_agents</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_agents</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Pre-create agent pool</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">pool_size</span><span class="p">):</span>
+            <span class="n">agent</span> <span class="o">=</span> <span class="n">agent_class</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;pooled_agent_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">agent</span><span class="o">.</span><span class="n">deactivate</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">available_agents</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">agent</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_agent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get an agent from the pool.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">available_agents</span><span class="p">:</span>
+            <span class="n">agent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">available_agents</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="n">agent</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">agent_id</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+            <span class="n">agent</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">active_agents</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent</span>
+            <span class="k">return</span> <span class="n">agent</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Pool exhausted, create new agent</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">return_agent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return an agent to the pool.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_agents</span><span class="p">:</span>
+            <span class="n">agent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_agents</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+            <span class="n">agent</span><span class="o">.</span><span class="n">cleanup</span><span class="p">()</span>
+            <span class="n">agent</span><span class="o">.</span><span class="n">deactivate</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">available_agents</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">agent</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="hierarchical-simulation">
+<h3>Hierarchical Simulation<a class="headerlink" href="#hierarchical-simulation" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">HierarchicalSimulation</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Multi-level simulation for handling large numbers of agents.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">macro_agents</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># High-level aggregate agents</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">micro_agents</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># Detailed individual agents</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detail_threshold</span> <span class="o">=</span> <span class="mi">1000</span>  <span class="c1"># Distance for detailed simulation</span>
+
+    <span class="k">def</span> <span class="nf">update_simulation_level</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">observer_position</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Switch between macro and micro simulation based on observer.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">agent</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">agents</span><span class="p">:</span>
+            <span class="n">distance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_distance</span><span class="p">(</span><span class="n">observer_position</span><span class="p">,</span> <span class="n">agent</span><span class="o">.</span><span class="n">position</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">detail_threshold</span><span class="p">:</span>
+                <span class="c1"># Use detailed micro simulation</span>
+                <span class="k">if</span> <span class="n">agent</span><span class="o">.</span><span class="n">simulation_level</span> <span class="o">!=</span> <span class="s1">&#39;micro&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_switch_to_micro</span><span class="p">(</span><span class="n">agent</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Use aggregate macro simulation</span>
+                <span class="k">if</span> <span class="n">agent</span><span class="o">.</span><span class="n">simulation_level</span> <span class="o">!=</span> <span class="s1">&#39;macro&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_switch_to_macro</span><span class="p">(</span><span class="n">agent</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="monitoring-and-profiling">
+<h2>Monitoring and Profiling<a class="headerlink" href="#monitoring-and-profiling" title="Permalink to this heading">¶</a></h2>
+<section id="performance-monitoring">
+<h3>Performance Monitoring<a class="headerlink" href="#performance-monitoring" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">PerformanceMonitor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Real-time performance monitoring.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">start_monitoring</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start performance monitoring.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_loop</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_monitoring_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Main monitoring loop.&quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># Collect metrics</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_collect_metrics</span><span class="p">()</span>
+
+            <span class="c1"># Check for performance issues</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_check_performance_thresholds</span><span class="p">()</span>
+
+            <span class="c1"># Wait for next monitoring cycle</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>  <span class="c1"># Monitor every minute</span>
+
+    <span class="k">def</span> <span class="nf">_collect_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Collect current performance metrics.&quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">psutil</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span>
+            <span class="s1">&#39;cpu_percent&#39;</span><span class="p">:</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(),</span>
+            <span class="s1">&#39;memory_percent&#39;</span><span class="p">:</span> <span class="n">psutil</span><span class="o">.</span><span class="n">virtual_memory</span><span class="p">()</span><span class="o">.</span><span class="n">percent</span><span class="p">,</span>
+            <span class="s1">&#39;agent_count&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">agents</span><span class="p">),</span>
+            <span class="s1">&#39;event_queue_size&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">_queue</span><span class="p">),</span>
+            <span class="s1">&#39;simulation_speed&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_simulation_speed</span><span class="p">()</span>
+        <span class="p">})</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="best-practices-summary">
+<h2>Best Practices Summary<a class="headerlink" href="#best-practices-summary" title="Permalink to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p><strong>Reduce Event Frequency</strong>
+- Batch state updates
+- Use appropriate update intervals
+- Implement adaptive timing</p></li>
+<li><p><strong>Optimize Memory Usage</strong>
+- Limit state history
+- Use object pooling
+- Implement garbage collection</p></li>
+<li><p><strong>Use Spatial Indexing</strong>
+- Enable spatial optimization
+- Use appropriate resolution
+- Implement efficient search algorithms</p></li>
+<li><p><strong>Monitor Performance</strong>
+- Track key metrics
+- Identify bottlenecks
+- Implement adaptive optimization</p></li>
+<li><p><strong>Scale Appropriately</strong>
+- Use hierarchical simulation
+- Implement level-of-detail
+- Consider distributed processing</p></li>
+</ol>
+<p>For more information, see:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="troubleshooting.html"><span class="doc">Troubleshooting Guide</span></a> - Performance troubleshooting</p></li>
+<li><p><a class="reference internal" href="simulation_setup.html"><span class="doc">Simulation Setup Guide</span></a> - Efficient simulation configuration</p></li>
+<li><p><a class="reference internal" href="../api/core.html"><span class="doc">Core Framework</span></a> - Core performance APIs</p></li>
+</ul>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Performance Tuning Guide</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a></li>
+<li><a class="reference internal" href="#performance-fundamentals">Performance Fundamentals</a><ul>
+<li><a class="reference internal" href="#key-performance-metrics">Key Performance Metrics</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#environment-optimization">Environment Optimization</a><ul>
+<li><a class="reference internal" href="#current-public-tuning-surface">Current Public Tuning Surface</a></li>
+<li><a class="reference internal" href="#event-system-optimization">Event System Optimization</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#agent-optimization">Agent Optimization</a><ul>
+<li><a class="reference internal" href="#efficient-agent-design">Efficient Agent Design</a></li>
+<li><a class="reference internal" href="#memory-management">Memory Management</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#component-optimization">Component Optimization</a><ul>
+<li><a class="reference internal" href="#efficient-component-design">Efficient Component Design</a></li>
+<li><a class="reference internal" href="#resource-manager-optimization">Resource Manager Optimization</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#data-provider-optimization">Data Provider Optimization</a><ul>
+<li><a class="reference internal" href="#efficient-data-updates">Efficient Data Updates</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#large-scale-simulation-strategies">Large-Scale Simulation Strategies</a><ul>
+<li><a class="reference internal" href="#agent-pooling">Agent Pooling</a></li>
+<li><a class="reference internal" href="#hierarchical-simulation">Hierarchical Simulation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#monitoring-and-profiling">Monitoring and Profiling</a><ul>
+<li><a class="reference internal" href="#performance-monitoring">Performance Monitoring</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#best-practices-summary">Best Practices Summary</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="simulation_setup.html"
+                          title="previous chapter">Simulation Setup Guide</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="troubleshooting.html"
+                          title="next chapter">Troubleshooting Guide</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/guides/performance_tuning.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="troubleshooting.html" title="Troubleshooting Guide"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="simulation_setup.html" title="Simulation Setup Guide"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Performance Tuning Guide</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

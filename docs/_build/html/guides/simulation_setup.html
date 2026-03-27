@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Simulation Setup Guide &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Performance Tuning Guide" href="performance_tuning.html" />
+    <link rel="prev" title="DataProvider Development Guide" href="dataprovider_development.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="performance_tuning.html" title="Performance Tuning Guide"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="dataprovider_development.html" title="DataProvider Development Guide"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Simulation Setup Guide</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="simulation-setup-guide">
+<h1>Simulation Setup Guide<a class="headerlink" href="#simulation-setup-guide" title="Permalink to this heading">¶</a></h1>
+<p>This guide describes the current setup model in this repository.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">aeroagentsim</span></code> for current Python imports and package references.</p>
+<section id="current-setup-model">
+<h2>Current Setup Model<a class="headerlink" href="#current-setup-model" title="Permalink to this heading">¶</a></h2>
+<p>There are two supported setup paths:</p>
+<ul class="simple">
+<li><p>direct Python simulation setup through <code class="docutils literal notranslate"><span class="pre">aeroagentsim</span></code></p></li>
+<li><p>workbench-driven setup through saved config snapshots and runs</p></li>
+</ul>
+<p>The current repository centers on the developer workbench and runtime API.</p>
+</section>
+<section id="python-environment-setup">
+<h2>Python Environment Setup<a class="headerlink" href="#python-environment-setup" title="Permalink to this heading">¶</a></h2>
+<p>For local development, the expected baseline is:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>aeroagentsim_env
+<span class="nb">source</span><span class="w"> </span>aeroagentsim_env/bin/activate
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="o">[</span>dev<span class="o">]</span>
+</pre></div>
+</div>
+<p>For browser-level workbench checks:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>playwright
+python<span class="w"> </span>-m<span class="w"> </span>playwright<span class="w"> </span>install<span class="w"> </span>chromium
+</pre></div>
+</div>
+</section>
+<section id="direct-python-setup">
+<h2>Direct Python Setup<a class="headerlink" href="#direct-python-setup" title="Permalink to this heading">¶</a></h2>
+<p>The current <code class="docutils literal notranslate"><span class="pre">Environment</span></code> constructor does not depend on the older
+<code class="docutils literal notranslate"><span class="pre">Environment(config=...)</span></code> pattern documented in legacy guides. Create the
+environment directly and pass runtime state through agent properties.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.mobility</span> <span class="kn">import</span> <span class="n">MoveToComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.charging</span> <span class="kn">import</span> <span class="n">ChargingComponent</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+<span class="n">drone</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_agent</span><span class="p">(</span>
+    <span class="n">DroneAgent</span><span class="p">,</span>
+    <span class="s2">&quot;drone1&quot;</span><span class="p">,</span>
+    <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;position&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span>
+        <span class="s2">&quot;battery_level&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;idle&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">ChargingComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Key points:</p>
+<ul class="simple">
+<li><p>use <code class="docutils literal notranslate"><span class="pre">properties</span></code> for initial position and battery state</p></li>
+<li><p>do not rely on <code class="docutils literal notranslate"><span class="pre">initial_position</span></code> or <code class="docutils literal notranslate"><span class="pre">initial_battery</span></code> kwargs for the
+current <code class="docutils literal notranslate"><span class="pre">DroneAgent</span></code> constructor</p></li>
+<li><p>attach components after agent creation unless you are using a custom helper
+that builds component configs for you</p></li>
+</ul>
+</section>
+<section id="workbench-setup">
+<h2>Workbench Setup<a class="headerlink" href="#workbench-setup" title="Permalink to this heading">¶</a></h2>
+<p>The workbench starts both backend and frontend:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>main_for_visualization.py<span class="w"> </span>--backend-port<span class="w"> </span><span class="m">8002</span><span class="w"> </span>--frontend-port<span class="w"> </span><span class="m">3000</span>
+</pre></div>
+</div>
+<p>The current workbench is organized into five pages:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Overview</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Class</span> <span class="pre">Catalog</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Workflow</span> <span class="pre">Studio</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Run</span> <span class="pre">Console</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Trajectories</span> <span class="pre">&amp;</span> <span class="pre">Logs</span></code></p></li>
+</ul>
+</section>
+<section id="configuration-flow">
+<h2>Configuration Flow<a class="headerlink" href="#configuration-flow" title="Permalink to this heading">¶</a></h2>
+<p>Configuration editing is file-backed and snapshot-oriented:</p>
+<ul class="simple">
+<li><p>config saves create immutable snapshots under
+<code class="docutils literal notranslate"><span class="pre">runtime/aeroagentsim/configs/</span></code></p></li>
+<li><p>custom registry definitions live under <code class="docutils literal notranslate"><span class="pre">registry/aeroagentsim/</span></code></p></li>
+<li><p>each launched run gets its own <code class="docutils literal notranslate"><span class="pre">run_id</span></code> and runtime directory under
+<code class="docutils literal notranslate"><span class="pre">runtime/aeroagentsim/runs/&lt;run_id&gt;/</span></code></p></li>
+</ul>
+<p>Run directories typically contain:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">logs/</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">workflow_states/</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">trajectories/</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">spatial/</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">metrics/</span></code></p></li>
+</ul>
+</section>
+<section id="run-control-and-monitoring">
+<h2>Run Control and Monitoring<a class="headerlink" href="#run-control-and-monitoring" title="Permalink to this heading">¶</a></h2>
+<p>The current control plane is split by transport:</p>
+<ul class="simple">
+<li><p>REST handles save, validate, preflight, start, pause, resume, reset, and
+delete operations</p></li>
+<li><p>WebSocket pushes <code class="docutils literal notranslate"><span class="pre">sim_status</span></code>, <code class="docutils literal notranslate"><span class="pre">workflow_state_diff</span></code>,
+<code class="docutils literal notranslate"><span class="pre">spatial_snapshot</span></code>, and <code class="docutils literal notranslate"><span class="pre">log_event</span></code></p></li>
+</ul>
+<p>Run start is gated by preflight. Warnings can still be reported without
+blocking startup, but preflight errors prevent <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/runs</span></code> from
+launching the run.</p>
+<p>The active runtime can be reset globally. Historical runs can be inspected and
+deleted from the frontend once they are no longer active. Per-run
+<code class="docutils literal notranslate"><span class="pre">pause</span></code>/<code class="docutils literal notranslate"><span class="pre">resume</span></code>/<code class="docutils literal notranslate"><span class="pre">reset</span></code> controls return <code class="docutils literal notranslate"><span class="pre">409</span></code> for non-active runs.</p>
+</section>
+<section id="workflow-studio">
+<h2>Workflow Studio<a class="headerlink" href="#workflow-studio" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Workflow</span> <span class="pre">Studio</span></code> is the primary configuration page for workflow editing.</p>
+<p>It supports:</p>
+<ul class="simple">
+<li><p>table/form editing for agent and workflow instances</p></li>
+<li><p>builtin and custom definition selection</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Review</span> <span class="pre">/</span> <span class="pre">Validate</span></code> checks</p></li>
+<li><p>a workflow-agent-state relation graph for inspection</p></li>
+</ul>
+<p>The graph supports wheel or trackpad zoom inside the canvas, background drag-to-pan, and node drag refinement. Forms and tables remain the persisted source of truth.</p>
+</section>
+<section id="trajectories-and-logs">
+<h2>Trajectories and Logs<a class="headerlink" href="#trajectories-and-logs" title="Permalink to this heading">¶</a></h2>
+<p>Historical runs are reviewed by <code class="docutils literal notranslate"><span class="pre">run_id</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">Trajectories</span> <span class="pre">&amp;</span> <span class="pre">Logs</span></code> page shows:</p>
+<ul class="simple">
+<li><p>stored run status</p></li>
+<li><p>2D trajectory replay</p></li>
+<li><p>filtered logs</p></li>
+<li><p>marker details derived from stored trajectory points</p></li>
+</ul>
+<p>After a run is stopped or reset, the trajectory page reads persisted artifacts from the corresponding run directory.</p>
+</section>
+<section id="what-to-avoid">
+<h2>What To Avoid<a class="headerlink" href="#what-to-avoid" title="Permalink to this heading">¶</a></h2>
+<p>Avoid these outdated patterns:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Environment(config=...)</span></code> as the primary documented setup path</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">env.config</span></code> as a universal runtime configuration store</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">env.register_agents(...)</span></code> in examples for the current public workflow</p></li>
+<li><p>references to removed dashboard-era page structure</p></li>
+</ul>
+</section>
+<section id="reference-points">
+<h2>Reference Points<a class="headerlink" href="#reference-points" title="Permalink to this heading">¶</a></h2>
+<p>Use these files for the current behavior:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">README.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">INSTALL.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/getting_started.rst</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/user_guide.rst</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">src/aeroagentsim/docs/en/architecture.md</span></code></p></li>
+</ul>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Simulation Setup Guide</a><ul>
+<li><a class="reference internal" href="#current-setup-model">Current Setup Model</a></li>
+<li><a class="reference internal" href="#python-environment-setup">Python Environment Setup</a></li>
+<li><a class="reference internal" href="#direct-python-setup">Direct Python Setup</a></li>
+<li><a class="reference internal" href="#workbench-setup">Workbench Setup</a></li>
+<li><a class="reference internal" href="#configuration-flow">Configuration Flow</a></li>
+<li><a class="reference internal" href="#run-control-and-monitoring">Run Control and Monitoring</a></li>
+<li><a class="reference internal" href="#workflow-studio">Workflow Studio</a></li>
+<li><a class="reference internal" href="#trajectories-and-logs">Trajectories and Logs</a></li>
+<li><a class="reference internal" href="#what-to-avoid">What To Avoid</a></li>
+<li><a class="reference internal" href="#reference-points">Reference Points</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="dataprovider_development.html"
+                          title="previous chapter">DataProvider Development Guide</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="performance_tuning.html"
+                          title="next chapter">Performance Tuning Guide</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/guides/simulation_setup.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="performance_tuning.html" title="Performance Tuning Guide"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="dataprovider_development.html" title="DataProvider Development Guide"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Simulation Setup Guide</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

@@ -1,6 +1,6 @@
 # AeroAgentSim Documentation Hub
 
-Welcome to the AeroAgentSim documentation hub. The product name is `AeroAgentSim`, while the Python package and import path remain `airfogsim`.
+Welcome to the AeroAgentSim documentation hub.
 
 ## Start Here
 
@@ -9,48 +9,33 @@ Welcome to the AeroAgentSim documentation hub. The product name is `AeroAgentSim
 - [Installation Guide](../INSTALL.md)
 - [Documentation Guide](../DOCUMENTATION_GUIDE.md)
 
-## Workbench-Oriented Docs
+## Workbench Guides
 
 - [Getting Started](getting_started.html)
 - [User Guide](user_guide.html)
+- [Guides Index](guides/index.html)
 - [API Reference](api/index.html)
 - [Examples](examples.html)
+- [Contributing](contributing.html)
 
-## Technical Docs
+## Technical References
 
-- [English Architecture](../src/airfogsim/docs/en/architecture.md)
-- [Chinese Architecture](../src/airfogsim/docs/cn/architecture.md)
-- [Development Guide](../src/airfogsim/docs/en/development_guide.md)
+- [English Architecture](../src/aeroagentsim/docs/en/architecture.md)
+- [Chinese Architecture](../src/aeroagentsim/docs/cn/architecture.md)
+- [Examples README](../src/aeroagentsim/examples/README.md)
 
-## Current Visualization Model
+## Current Workbench Scope
 
-The current frontend is a 2D developer workbench:
+The current frontend is a developer workbench for:
 
-- no 3D page set
-- no three.js dependency requirement
-- global `zh-CN` / `en-US` UI switch
-- workflow-agent-state coupling shown as a relation graph
-- relation graph navigation supports zoom and pan inside the graph canvas
-- page-local `Validate` and global `Review / Validate`
-- form-driven configuration editing
-- centralized `Review / Validate` checks for draft consistency
-- builtin and custom definitions shown in a merged catalog view
-- run control via REST
-- live updates via WebSocket
-- trajectory and log review by `run_id`
+- configuration editing
+- relation graph inspection
+- validation and preflight review
+- run control
+- live 2D runtime monitoring
+- stored trajectory and log analysis
 
-## Custom Definition Source
-
-Custom `agent`, `task`, and `workflow` definitions are file-backed under:
-
-```text
-registry/aeroagentsim/
-├── agents/
-├── tasks/
-└── workflows/
-```
-
-These files are the primary editable source. Database state is secondary and limited to indexing, cache, and run reference use cases.
+The relation graph is an interactive inspection canvas with auto layout, zoom inside the graph canvas, background pan, and node drag refinement. Persisted config continues to come from the forms and tables.
 
 ## Runtime Layout
 
@@ -73,8 +58,7 @@ runtime/aeroagentsim/
 ## Build Docs
 
 ```bash
-conda activate airfogsim
-pip install -e ".[docs]"
+pip install -e ".[dev,docs]"
 cd docs
 make html
 ```

@@ -422,6 +422,7 @@ function TrajectoriesLogsPage() {
           </Text>
           <Table
             size="small"
+            scroll={{ x: 'max-content' }}
             rowKey={(row, index) => row.id || `${row.timestamp}_${index}`}
             dataSource={filteredLogs}
             pagination={{ pageSize: 10 }}

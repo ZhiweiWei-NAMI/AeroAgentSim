@@ -40,7 +40,7 @@ def test_legacy_simulation_routes_are_disabled(monkeypatch, tmp_path):
     monkeypatch.setenv("AEROAGENTSIM_DB_PATH", str(tmp_path / "legacy-disabled.sqlite"))
 
     for module_name in list(sys.modules):
-        if module_name.startswith("airfogsim.visualization"):
+        if module_name.startswith("airfogsim.visualization") or module_name.startswith("aeroagentsim.visualization"):
             sys.modules.pop(module_name, None)
 
     app_module = importlib.import_module("airfogsim.visualization.app")

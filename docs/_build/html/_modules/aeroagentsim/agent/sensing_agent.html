@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.agent.sensing_agent &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.agent.sensing_agent</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.agent.sensing_agent</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim感知代理模块</span>
+
+<span class="sd">该模块定义了感知代理类，实现了对周围环境的感知能力。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 物理对象感知</span>
+<span class="sd">2. 环境状态监测</span>
+<span class="sd">3. 感知数据处理</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.terminal</span> <span class="kn">import</span> <span class="n">TerminalAgent</span><span class="p">,</span> <span class="n">TerminalAgentMeta</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.object_sensor</span> <span class="kn">import</span> <span class="n">ObjectSensorComponent</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">SensingAgentMeta</span><span class="p">(</span><span class="n">TerminalAgentMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;感知代理元类&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+        
+        <span class="c1"># 注册感知代理专用的状态模板</span>
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;nearby_objects&#39;</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="s2">&quot;代理感知到的附近对象列表&quot;</span><span class="p">)</span>
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;last_object_scan_time&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="s2">&quot;上次扫描时间&quot;</span><span class="p">)</span>
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;sensor_range&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="s2">&quot;感知范围 (米)&quot;</span><span class="p">)</span>
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;sensor_accuracy&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="s2">&quot;感知精度 (0.0-1.0)&quot;</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="bp">cls</span>
+
+
+<div class="viewcode-block" id="SensingAgent"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.sensing_agent.SensingAgent">[docs]</a><span class="k">class</span> <span class="nc">SensingAgent</span><span class="p">(</span><span class="n">TerminalAgent</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">SensingAgentMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    感知代理，能够感知周围环境中的物理对象</span>
+<span class="sd">    </span>
+<span class="sd">    该代理继承自终端代理，添加了物理对象感知能力。</span>
+<span class="sd">    可以检测周围的物理对象，并模拟传感器的不确定性。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SensingAgent.get_description"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.sensing_agent.SensingAgent.get_description">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get_description</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取代理类型的描述&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;感知代理 - 能够感知周围环境中的物理对象，支持位置感知和对象分类&quot;</span></div>
+
+<div class="viewcode-block" id="SensingAgent.__init__"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.sensing_agent.SensingAgent.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">agent_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># 确保properties是一个字典</span>
+        <span class="n">properties</span> <span class="o">=</span> <span class="n">properties</span> <span class="ow">or</span> <span class="p">{}</span>
+        
+        <span class="c1"># 设置默认位置</span>
+        <span class="k">if</span> <span class="s1">&#39;position&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">properties</span><span class="p">:</span>
+            <span class="n">properties</span><span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            
+        <span class="c1"># 设置感知相关属性</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensor_range</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sensor_range&#39;</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position_accuracy</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;position_accuracy&#39;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">classification_error_rate</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;classification_error_rate&#39;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detection_probability</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;detection_probability&#39;</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">)</span>
+        
+        <span class="c1"># 调用父类初始化</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">)</span>
+        
+        <span class="c1"># 设置自定义ID</span>
+        <span class="k">if</span> <span class="n">agent_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;agent_sensing_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            
+        <span class="c1"># 初始化感知状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;nearby_objects&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;last_object_scan_time&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;sensor_range&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensor_range</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;sensor_accuracy&#39;</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">classification_error_rate</span><span class="p">)</span>
+        
+        <span class="c1"># 添加物理对象感知组件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_sensing_components</span><span class="p">()</span>
+        
+        <span class="c1"># 注册事件处理器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_event_handlers</span><span class="p">()</span></div>
+        
+    <span class="k">def</span> <span class="nf">_add_sensing_components</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;添加感知相关组件&quot;&quot;&quot;</span>
+        <span class="c1"># 添加物理对象感知组件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">ObjectSensorComponent</span><span class="p">(</span>
+            <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span>
+            <span class="n">agent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;range&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensor_range</span><span class="p">,</span>
+                <span class="s1">&#39;sensing_interval&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>  <span class="c1"># 每秒感知一次</span>
+                <span class="s1">&#39;position_accuracy_stddev&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_accuracy</span><span class="p">,</span>
+                <span class="s1">&#39;classification_error_rate&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">classification_error_rate</span><span class="p">,</span>
+                <span class="s1">&#39;detection_probability&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">detection_probability</span>
+            <span class="p">}</span>
+        <span class="p">))</span>
+        
+    <span class="k">def</span> <span class="nf">_register_event_handlers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;注册事件处理器&quot;&quot;&quot;</span>
+        <span class="c1"># 注册对象检测事件处理器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> 
+            <span class="s1">&#39;ObjectSensor.object_detected&#39;</span><span class="p">,</span> 
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">_object_detected_handler&quot;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_on_object_detected</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># 注册对象丢失事件处理器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> 
+            <span class="s1">&#39;ObjectSensor.object_lost&#39;</span><span class="p">,</span> 
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">_object_lost_handler&quot;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_on_object_lost</span>
+        <span class="p">)</span>
+        
+    <span class="k">def</span> <span class="nf">_on_object_detected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理对象检测事件&quot;&quot;&quot;</span>
+        <span class="n">obj_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">)</span>
+        <span class="n">obj_type</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span>
+        <span class="n">obj_distance</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;distance&#39;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 检测到新对象 </span><span class="si">{</span><span class="n">obj_id</span><span class="si">}</span><span class="s2">，类型: </span><span class="si">{</span><span class="n">obj_type</span><span class="si">}</span><span class="s2">，距离: </span><span class="si">{</span><span class="n">obj_distance</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">米&quot;</span><span class="p">)</span>
+        
+    <span class="k">def</span> <span class="nf">_on_object_lost</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理对象丢失事件&quot;&quot;&quot;</span>
+        <span class="n">obj_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 丢失对象 </span><span class="si">{</span><span class="n">obj_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+<div class="viewcode-block" id="SensingAgent.get_nearby_objects"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.sensing_agent.SensingAgent.get_nearby_objects">[docs]</a>    <span class="k">def</span> <span class="nf">get_nearby_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取附近的对象&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;nearby_objects&#39;</span><span class="p">,</span> <span class="p">[])</span></div>
+    
+<div class="viewcode-block" id="SensingAgent.get_objects_by_type"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.sensing_agent.SensingAgent.get_objects_by_type">[docs]</a>    <span class="k">def</span> <span class="nf">get_objects_by_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_type</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取指定类型的附近对象&quot;&quot;&quot;</span>
+        <span class="n">nearby_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_nearby_objects</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">obj</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">nearby_objects</span> <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">object_type</span><span class="p">]</span></div>
+    
+<div class="viewcode-block" id="SensingAgent.get_nearest_object"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.sensing_agent.SensingAgent.get_nearest_object">[docs]</a>    <span class="k">def</span> <span class="nf">get_nearest_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_type</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取最近的对象&quot;&quot;&quot;</span>
+        <span class="n">nearby_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_nearby_objects</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">object_type</span><span class="p">:</span>
+            <span class="c1"># 过滤指定类型的对象</span>
+            <span class="n">filtered_objects</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">nearby_objects</span> <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">object_type</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">filtered_objects</span> <span class="o">=</span> <span class="n">nearby_objects</span>
+            
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">filtered_objects</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+            
+        <span class="c1"># 按距离排序</span>
+        <span class="n">sorted_objects</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">filtered_objects</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">obj</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;distance&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">sorted_objects</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">sorted_objects</span> <span class="k">else</span> <span class="kc">None</span></div>
+    
+<div class="viewcode-block" id="SensingAgent.get_details"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.sensing_agent.SensingAgent.get_details">[docs]</a>    <span class="k">def</span> <span class="nf">get_details</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取代理详细信息&quot;&quot;&quot;</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_details</span><span class="p">()</span>
+        
+        <span class="c1"># 添加感知相关信息</span>
+        <span class="n">nearby_objects</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_nearby_objects</span><span class="p">()</span>
+        
+        <span class="n">details</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;sensing_info&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;sensor_range&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;sensor_range&#39;</span><span class="p">),</span>
+                <span class="s1">&#39;sensor_accuracy&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;sensor_accuracy&#39;</span><span class="p">),</span>
+                <span class="s1">&#39;last_scan_time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;last_object_scan_time&#39;</span><span class="p">),</span>
+                <span class="s1">&#39;detected_objects_count&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">nearby_objects</span><span class="p">),</span>
+                <span class="s1">&#39;detected_object_types&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">nearby_objects</span><span class="p">))</span>
+            <span class="p">}</span>
+        <span class="p">})</span>
+        
+        <span class="k">return</span> <span class="n">details</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.agent.sensing_agent</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

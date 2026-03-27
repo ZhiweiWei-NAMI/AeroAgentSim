@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.manager.task &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.task</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.manager.task</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.task</span> <span class="kn">import</span> <span class="n">Task</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.component</span> <span class="kn">import</span> <span class="n">Component</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.workflow</span> <span class="kn">import</span> <span class="n">Workflow</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.agent</span> <span class="kn">import</span> <span class="n">Agent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">TriggerType</span><span class="p">,</span> <span class="n">TriggerOperator</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">StateTrigger</span><span class="p">,</span> <span class="n">EventTrigger</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="c1"># 获取logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TaskManager"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.task.TaskManager">[docs]</a><span class="k">class</span> <span class="nc">TaskManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    任务管理器：负责根据代理当前的工作流和组件筛选合适的任务</span>
+
+<span class="sd">    主要功能：</span>
+<span class="sd">    1. 根据工作流需要的状态和组件提供的指标筛选合适的任务</span>
+<span class="sd">    2. 为代理推荐最合适的任务</span>
+<span class="sd">    3. 管理任务的注册和查询</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TaskManager.__init__"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.task.TaskManager.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化任务管理器</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;task_manager_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">registered_task_classes</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Type</span><span class="p">[</span><span class="n">Task</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 任务类型名称 -&gt; 任务类</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_metrics_map</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 任务类型名称 -&gt; 所需指标集合</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_states_map</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 任务类型名称 -&gt; 产生的状态集合</span>
+
+        <span class="c1"># 确保事件存在</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;task_recommended&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;task_selected&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaskManager.clear_registered_task_classes"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.task.TaskManager.clear_registered_task_classes">[docs]</a>    <span class="k">def</span> <span class="nf">clear_registered_task_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        清空所有注册的任务类</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">registered_task_classes</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_metrics_map</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_states_map</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 任务管理器清空所有注册的任务类&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaskManager.register_task_class"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.task.TaskManager.register_task_class">[docs]</a>    <span class="k">def</span> <span class="nf">register_task_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_class</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">Task</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        注册任务类</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            task_class: 任务类</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">task_name</span> <span class="o">=</span> <span class="n">task_class</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">registered_task_classes</span><span class="p">[</span><span class="n">task_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">task_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_metrics_map</span><span class="p">[</span><span class="n">task_name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">task_class</span><span class="o">.</span><span class="n">NECESSARY_METRICS</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_states_map</span><span class="p">[</span><span class="n">task_name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">task_class</span><span class="o">.</span><span class="n">PRODUCED_STATES</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 任务管理器注册任务类 </span><span class="si">{</span><span class="n">task_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaskManager.register_task_classes"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.task.TaskManager.register_task_classes">[docs]</a>    <span class="k">def</span> <span class="nf">register_task_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_classes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">Task</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        注册多个任务类</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            task_classes: 任务类列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">task_class</span> <span class="ow">in</span> <span class="n">task_classes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">register_task_class</span><span class="p">(</span><span class="n">task_class</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaskManager.get_task_class"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.task.TaskManager.get_task_class">[docs]</a>    <span class="k">def</span> <span class="nf">get_task_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_class_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">Task</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取任务类</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            task_class_name: 任务类名称</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            任务类或None（如果未找到）</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">registered_task_classes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">task_class_name</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="TaskManager.get_all_task_classes_dict"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.task.TaskManager.get_all_task_classes_dict">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_task_classes_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Type</span><span class="p">[</span><span class="n">Task</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取所有注册的任务类字典</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            任务类名称到任务类的映射</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">registered_task_classes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="TaskManager.get_all_task_classes"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.task.TaskManager.get_all_task_classes">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_task_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">Task</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取所有注册的任务类</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            任务类列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">registered_task_classes</span><span class="o">.</span><span class="n">values</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="TaskManager.find_compatible_tasks"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.task.TaskManager.find_compatible_tasks">[docs]</a>    <span class="k">def</span> <span class="nf">find_compatible_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                             <span class="n">agent</span><span class="p">:</span> <span class="n">Agent</span><span class="p">,</span>
+                             <span class="n">workflow</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Workflow</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                             <span class="n">required_states</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">Task</span><span class="p">],</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        查找与代理组件和工作流兼容的任务</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent: 代理</span>
+<span class="sd">            workflow: 工作流（可选）</span>
+<span class="sd">            required_states: 需要的状态列表（可选，如果未提供则从工作流推断）</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            兼容任务类及其兼容性分数的列表，按分数降序排序</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 获取代理的组件</span>
+        <span class="n">agent_components</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_components</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">agent_components</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 没有组件，无法执行任务&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="c1"># 获取所有组件提供的指标</span>
+        <span class="n">available_metrics</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">agent_components</span><span class="p">:</span>
+            <span class="n">available_metrics</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">PRODUCED_METRICS</span><span class="p">)</span>
+
+        <span class="c1"># 确定所需的状态</span>
+        <span class="n">needed_states</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">required_states</span><span class="p">:</span>
+            <span class="n">needed_states</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">required_states</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">workflow</span><span class="p">:</span>
+            <span class="c1"># 从工作流状态机获取可能的下一个状态</span>
+            <span class="n">transitions</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">_get_current_transitions</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">trigger</span><span class="p">,</span> <span class="n">next_status</span><span class="p">,</span> <span class="n">description</span> <span class="ow">in</span> <span class="n">transitions</span><span class="p">:</span>
+                <span class="c1"># 分析触发器，提取可能需要的状态</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trigger</span><span class="p">,</span> <span class="n">StateTrigger</span><span class="p">):</span>
+                    <span class="c1"># 处理状态触发器</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trigger</span><span class="p">,</span> <span class="s1">&#39;agent_id&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">trigger</span><span class="o">.</span><span class="n">agent_id</span> <span class="o">==</span> <span class="n">agent</span><span class="o">.</span><span class="n">id</span> <span class="ow">or</span> <span class="n">trigger</span><span class="o">.</span><span class="n">source_id</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trigger</span><span class="p">,</span> <span class="s1">&#39;state_key&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">trigger</span><span class="o">.</span><span class="n">state_key</span><span class="p">:</span>
+                            <span class="n">needed_states</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">trigger</span><span class="o">.</span><span class="n">state_key</span><span class="p">)</span>
+
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trigger</span><span class="p">,</span> <span class="n">EventTrigger</span><span class="p">):</span>
+                    <span class="c1"># 处理事件触发器</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trigger</span><span class="p">,</span> <span class="s1">&#39;source_id&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">trigger</span><span class="o">.</span><span class="n">source_id</span> <span class="o">==</span> <span class="n">agent</span><span class="o">.</span><span class="n">id</span> <span class="ow">or</span> <span class="n">trigger</span><span class="o">.</span><span class="n">source_id</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trigger</span><span class="p">,</span> <span class="s1">&#39;value_key&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">trigger</span><span class="o">.</span><span class="n">value_key</span><span class="p">:</span>
+                            <span class="c1"># 处理嵌套键，如 &#39;data.position&#39;</span>
+                            <span class="n">parts</span> <span class="o">=</span> <span class="n">trigger</span><span class="o">.</span><span class="n">value_key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_state_templates</span><span class="p">():</span>
+                                <span class="n">needed_states</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+                <span class="c1"># 处理自定义运算符</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">trigger</span><span class="p">,</span> <span class="s1">&#39;operator&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">trigger</span><span class="o">.</span><span class="n">operator</span> <span class="o">==</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">:</span>
+                    <span class="c1"># 对于自定义运算符，我们无法确定具体需要哪些状态</span>
+                    <span class="c1"># 可以考虑添加一些启发式规则，或者让任务开发者明确指定</span>
+                    <span class="k">pass</span>
+
+        <span class="c1"># 如果没有明确的所需状态，则考虑所有可能的状态</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">needed_states</span> <span class="ow">and</span> <span class="n">workflow</span><span class="p">:</span>
+            <span class="n">needed_states</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state_templates</span><span class="p">()</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+        <span class="c1"># 评估每个任务类的兼容性</span>
+        <span class="n">compatible_tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="n">Task</span><span class="p">],</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">task_name</span><span class="p">,</span> <span class="n">task_class</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">registered_task_classes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1"># 检查任务所需的指标是否可用</span>
+            <span class="n">required_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_metrics_map</span><span class="p">[</span><span class="n">task_name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">required_metrics</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="n">available_metrics</span><span class="p">):</span>
+                <span class="k">continue</span>  <span class="c1"># 跳过不兼容的任务</span>
+
+            <span class="c1"># 检查任务产生的状态是否满足需求</span>
+            <span class="n">produced_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_states_map</span><span class="p">[</span><span class="n">task_name</span><span class="p">]</span>
+
+            <span class="c1"># 计算兼容性分数</span>
+            <span class="c1"># 1. 指标匹配度：任务所需指标与可用指标的匹配程度</span>
+            <span class="n">metrics_score</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">required_metrics</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">available_metrics</span><span class="p">))</span>
+
+            <span class="c1"># 2. 状态匹配度：任务产生的状态与所需状态的匹配程度</span>
+            <span class="n">states_overlap</span> <span class="o">=</span> <span class="n">produced_states</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">needed_states</span><span class="p">)</span>
+            <span class="n">states_score</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">states_overlap</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">needed_states</span><span class="p">))</span> <span class="k">if</span> <span class="n">needed_states</span> <span class="k">else</span> <span class="mf">0.5</span>
+
+            <span class="c1"># 3. 综合分数：指标匹配度和状态匹配度的加权平均</span>
+            <span class="n">compatibility_score</span> <span class="o">=</span> <span class="mf">0.4</span> <span class="o">*</span> <span class="n">metrics_score</span> <span class="o">+</span> <span class="mf">0.6</span> <span class="o">*</span> <span class="n">states_score</span>
+
+            <span class="c1"># 只有当产生的状态与所需状态有交集时才考虑该任务</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">needed_states</span> <span class="ow">or</span> <span class="n">states_overlap</span><span class="p">:</span>
+                <span class="n">compatible_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">task_class</span><span class="p">,</span> <span class="n">compatibility_score</span><span class="p">))</span>
+
+        <span class="c1"># 按兼容性分数降序排序</span>
+        <span class="n">compatible_tasks</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">compatible_tasks</span></div>
+
+<div class="viewcode-block" id="TaskManager.recommend_tasks"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.task.TaskManager.recommend_tasks">[docs]</a>    <span class="k">def</span> <span class="nf">recommend_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                       <span class="n">agent</span><span class="p">:</span> <span class="n">Agent</span><span class="p">,</span>
+                       <span class="n">workflow</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Workflow</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">required_states</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">top_n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        为代理推荐最合适的任务</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent: 代理</span>
+<span class="sd">            workflow: 工作流（可选）</span>
+<span class="sd">            required_states: 需要的状态列表（可选）</span>
+<span class="sd">            top_n: 返回的推荐任务数量</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            推荐任务的详细信息列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">compatible_tasks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_compatible_tasks</span><span class="p">(</span><span class="n">agent</span><span class="p">,</span> <span class="n">workflow</span><span class="p">,</span> <span class="n">required_states</span><span class="p">)</span>
+
+        <span class="c1"># 限制返回数量</span>
+        <span class="n">top_tasks</span> <span class="o">=</span> <span class="n">compatible_tasks</span><span class="p">[:</span><span class="n">top_n</span><span class="p">]</span>
+
+        <span class="c1"># 构建推荐结果</span>
+        <span class="n">recommendations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">task_class</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">top_tasks</span><span class="p">:</span>
+            <span class="n">task_info</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="n">task_class</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                <span class="s1">&#39;compatibility_score&#39;</span><span class="p">:</span> <span class="n">score</span><span class="p">,</span>
+                <span class="s1">&#39;required_metrics&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">task_class</span><span class="o">.</span><span class="n">NECESSARY_METRICS</span><span class="p">),</span>
+                <span class="s1">&#39;produced_states&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">task_class</span><span class="o">.</span><span class="n">PRODUCED_STATES</span><span class="p">),</span>
+                <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">task_class</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="s2">&quot;无描述&quot;</span>
+            <span class="p">}</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task_info</span><span class="p">)</span>
+
+        <span class="c1"># 触发推荐事件</span>
+        <span class="k">if</span> <span class="n">recommendations</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;task_recommended&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="n">workflow</span><span class="o">.</span><span class="n">id</span> <span class="k">if</span> <span class="n">workflow</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s1">&#39;recommendations&#39;</span><span class="p">:</span> <span class="n">recommendations</span><span class="p">,</span>
+                <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">})</span>
+
+        <span class="k">return</span> <span class="n">recommendations</span></div>
+
+<div class="viewcode-block" id="TaskManager.create_task"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.task.TaskManager.create_task">[docs]</a>    <span class="k">def</span> <span class="nf">create_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                   <span class="n">task_class_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                   <span class="n">agent</span><span class="p">:</span> <span class="n">Agent</span><span class="p">,</span>
+                   <span class="n">component_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                   <span class="n">task_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                   <span class="n">workflow_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                   <span class="n">target_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                   <span class="n">properties</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                   <span class="n">task_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Task</span><span class="p">]:</span>
+
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        创建任务实例</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            task_class_name: 任务类名称</span>
+<span class="sd">            agent: 代理</span>
+<span class="sd">            component_name: 组件名称</span>
+<span class="sd">            task_name: 任务名称</span>
+<span class="sd">            workflow_id: 工作流ID（可选）</span>
+<span class="sd">            target_state: 目标状态（可选）</span>
+<span class="sd">            properties: 任务属性（可选）</span>
+<span class="sd">            task_id: 任务ID（可选）</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            创建的任务实例或None（如果创建失败）</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">task_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_task_class</span><span class="p">(</span><span class="n">task_class_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">task_class</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 未找到任务类 </span><span class="si">{</span><span class="n">task_class_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">components</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_component_names</span><span class="p">()</span>
+        <span class="c1"># 检查组件是否存在</span>
+        <span class="k">if</span> <span class="n">component_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">components</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 没有组件 </span><span class="si">{</span><span class="n">component_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># 创建任务实例</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">task</span> <span class="o">=</span> <span class="n">task_class</span><span class="p">(</span>
+                <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span>
+                <span class="n">agent</span><span class="o">=</span><span class="n">agent</span><span class="p">,</span>
+                <span class="n">component_name</span><span class="o">=</span><span class="n">component_name</span><span class="p">,</span>
+                <span class="n">task_name</span><span class="o">=</span><span class="n">task_name</span><span class="p">,</span>
+                <span class="n">workflow_id</span><span class="o">=</span><span class="n">workflow_id</span><span class="p">,</span>
+                <span class="n">target_state</span><span class="o">=</span><span class="n">target_state</span><span class="p">,</span>
+                <span class="n">properties</span><span class="o">=</span><span class="n">properties</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">task_id</span><span class="p">:</span>
+                <span class="n">task</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">task_id</span>
+
+            <span class="c1"># 触发任务选择事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;task_selected&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="n">task_class_name</span><span class="p">,</span>
+                <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="n">workflow_id</span><span class="p">,</span>
+                <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">})</span>
+
+            <span class="k">return</span> <span class="n">task</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 创建任务 </span><span class="si">{</span><span class="n">task_class_name</span><span class="si">}</span><span class="s2"> 失败: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="kn">import</span> <span class="nn">traceback</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
+            <span class="k">return</span> <span class="kc">None</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.task</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

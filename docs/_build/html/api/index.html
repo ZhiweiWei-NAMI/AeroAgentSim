@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>API Reference &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Core Framework" href="core.html" />
+    <link rel="prev" title="User Guide" href="../user_guide.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="core.html" title="Core Framework"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../user_guide.html" title="User Guide"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">API Reference</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this heading">¶</a></h1>
+<p>This section provides comprehensive API documentation for the current
+<code class="docutils literal notranslate"><span class="pre">aeroagentsim</span></code> package. The AeroAgentSim workbench is built on top of these
+runtime primitives.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">API Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="core.html">Core Framework</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-aeroagentsim.core.environment">Environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#agent">Agent</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#component">Component</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-aeroagentsim.core.task">Task</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#workflow">Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#dataprovider">DataProvider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-aeroagentsim.core.event">Event System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-aeroagentsim.core.trigger">Trigger System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-aeroagentsim.core.enums">Enumerations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-aeroagentsim.core.utils">Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-aeroagentsim.core.resource">Resource Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.html#module-aeroagentsim.core.llm_client">LLM Integration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="agent.html">Agent Classes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="agent.html#base-agent">Base Agent</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agent.html#drone-agents">Drone Agents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agent.html#ground-agents">Ground Agents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agent.html#specialized-agents">Specialized Agents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agent.html#agent-development-guide">Agent Development Guide</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="component.html">Component Classes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="component.html#base-component">Base Component</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component.html#mobility-components">Mobility Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component.html#power-management">Power Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component.html#communication-components">Communication Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component.html#computation-components">Computation Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component.html#sensing-components">Sensing Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component.html#logistics-components">Logistics Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="component.html#component-development-guide">Component Development Guide</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="workflow.html">Workflow Classes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="workflow.html#base-workflow">Base Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow.html#workflow-state-machine">Workflow State Machine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow.html#inspection-workflows">Inspection Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow.html#logistics-workflows">Logistics Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow.html#charging-workflows">Charging Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow.html#processing-workflows">Processing Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow.html#contract-workflows">Contract Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflow.html#workflow-development-guide">Workflow Development Guide</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="dataprovider.html">DataProvider Classes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dataprovider.html#base-classes">Base Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dataprovider.html#weather-data-providers">Weather Data Providers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dataprovider.html#traffic-data-providers">Traffic Data Providers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dataprovider.html#signal-data-providers">Signal Data Providers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dataprovider.html#dataprovider-development-guide">DataProvider Development Guide</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="manager.html">Manager Classes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="manager.html#module-aeroagentsim.manager.agent">Agent Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="manager.html#module-aeroagentsim.manager.task">Task Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="manager.html#module-aeroagentsim.manager.workflow">Workflow Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="manager.html#resource-managers">Resource Managers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="manager.html#service-managers">Service Managers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="task.html">Task Classes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="task.html#module-aeroagentsim.core.task">Base Task</a></li>
+<li class="toctree-l2"><a class="reference internal" href="task.html#mobility-tasks">Mobility Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="task.html#computation-tasks">Computation Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="task.html#data-collection-tasks">Data Collection Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="task.html#transfer-tasks">Transfer Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="task.html#charging-tasks">Charging Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="task.html#logistics-tasks">Logistics Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="task.html#task-development-guide">Task Development Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="task.html#id1">Charging Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="task.html#id27">Logistics Tasks</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="resource.html">Resource Classes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="resource.html#module-aeroagentsim.core.resource">Base Resource</a></li>
+<li class="toctree-l2"><a class="reference internal" href="resource.html#landing-resources">Landing Resources</a></li>
+<li class="toctree-l2"><a class="reference internal" href="resource.html#frequency-resources">Frequency Resources</a></li>
+<li class="toctree-l2"><a class="reference internal" href="resource.html#resource-development-guide">Resource Development Guide</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="statistics.html">Statistics and Analysis</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="statistics.html#statistics-collector">Statistics Collector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="statistics.html#module-aeroagentsim.statistics.stats_analyzer">Statistics Analyzer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="statistics.html#statistics-visualizer">Statistics Visualizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="statistics.html#module-aeroagentsim.statistics.collectors">Collectors</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utilities and Helpers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#module-aeroagentsim.core.utils">Core Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#module-aeroagentsim.utils.logging_config">Logging Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#helper-functions">Helper Functions</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">¶</a></h2>
+<p>The AeroAgentSim API is organized into several key modules:</p>
+<section id="core-framework">
+<h3>Core Framework<a class="headerlink" href="#core-framework" title="Permalink to this heading">¶</a></h3>
+<p>The core framework provides the fundamental building blocks:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="core.html"><span class="doc">Core Framework</span></a> - Base classes and core functionality</p></li>
+<li><p><a class="reference internal" href="manager.html"><span class="doc">Manager Classes</span></a> - Resource and service management</p></li>
+<li><p><a class="reference internal" href="task.html"><span class="doc">Task Classes</span></a> - Task execution framework</p></li>
+<li><p><a class="reference internal" href="resource.html"><span class="doc">Resource Classes</span></a> - Resource modeling and allocation</p></li>
+</ul>
+</section>
+<section id="agent-system">
+<h3>Agent System<a class="headerlink" href="#agent-system" title="Permalink to this heading">¶</a></h3>
+<p>The agent system implements autonomous entities:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="agent.html"><span class="doc">Agent Classes</span></a> - Agent implementations and base classes</p></li>
+<li><p><a class="reference internal" href="component.html"><span class="doc">Component Classes</span></a> - Component capabilities and interfaces</p></li>
+</ul>
+</section>
+<section id="workflow-and-coordination">
+<h3>Workflow and Coordination<a class="headerlink" href="#workflow-and-coordination" title="Permalink to this heading">¶</a></h3>
+<p>High-level coordination and process management:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="workflow.html"><span class="doc">Workflow Classes</span></a> - Workflow state machines and coordination</p></li>
+<li><p><a class="reference internal" href="dataprovider.html"><span class="doc">DataProvider Classes</span></a> - External data integration</p></li>
+</ul>
+</section>
+<section id="utilities-and-extensions">
+<h3>Utilities and Extensions<a class="headerlink" href="#utilities-and-extensions" title="Permalink to this heading">¶</a></h3>
+<p>Supporting functionality and tools:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="statistics.html"><span class="doc">Statistics and Analysis</span></a> - Data collection and analysis</p></li>
+<li><p>The AeroAgentSim workbench is documented in the top-level guides and uses the <code class="docutils literal notranslate"><span class="pre">aeroagentsim.visualization</span></code> FastAPI app</p></li>
+<li><p><a class="reference internal" href="utils.html"><span class="doc">Utilities and Helpers</span></a> - Utility functions and helpers</p></li>
+</ul>
+</section>
+</section>
+<section id="quick-reference">
+<h2>Quick Reference<a class="headerlink" href="#quick-reference" title="Permalink to this heading">¶</a></h2>
+<section id="core-classes">
+<h3>Core Classes<a class="headerlink" href="#core-classes" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.core.agent.Agent</span></code></a></p></td>
+<td><p>Agent 类是 AirFogSim 中所有代理的基类。</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="core.html#aeroagentsim.core.component.Component" title="aeroagentsim.core.component.Component"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.core.component.Component</span></code></a></p></td>
+<td><p>执行任务的组件，使用分配的资源。</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="core.html#aeroagentsim.core.workflow.Workflow" title="aeroagentsim.core.workflow.Workflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.core.workflow.Workflow</span></code></a></p></td>
+<td><p>Represents a process/goal tracked by a state machine based on Agent state.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="core.html#aeroagentsim.core.dataprovider.DataProvider" title="aeroagentsim.core.dataprovider.DataProvider"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.core.dataprovider.DataProvider</span></code></a></p></td>
+<td><p>Abstract base class for external data providers (e.g., weather, traffic).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="core.html#aeroagentsim.core.environment.Environment" title="aeroagentsim.core.environment.Environment"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.core.environment.Environment</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="task.html#aeroagentsim.core.task.Task" title="aeroagentsim.core.task.Task"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.core.task.Task</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="agent-types">
+<h3>Agent Types<a class="headerlink" href="#agent-types" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="agent.html#aeroagentsim.agent.drone.DroneAgent" title="aeroagentsim.agent.drone.DroneAgent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.agent.drone.DroneAgent</span></code></a></p></td>
+<td><p>无人机代理，能够执行智能任务规划</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="agent.html#aeroagentsim.agent.terminal.TerminalAgent" title="aeroagentsim.agent.terminal.TerminalAgent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.agent.terminal.TerminalAgent</span></code></a></p></td>
+<td><p>终端代理，提供计算、通信和数据存储功能</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="agent.html#aeroagentsim.agent.delivery_drone.DeliveryDroneAgent" title="aeroagentsim.agent.delivery_drone.DeliveryDroneAgent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.agent.delivery_drone.DeliveryDroneAgent</span></code></a></p></td>
+<td><p>物流无人机代理，能够执行物流任务和工作流，结合了无人机和物流代理的功能</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="agent.html#aeroagentsim.agent.sensing_agent.SensingAgent" title="aeroagentsim.agent.sensing_agent.SensingAgent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.agent.sensing_agent.SensingAgent</span></code></a></p></td>
+<td><p>感知代理，能够感知周围环境中的物理对象</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="component-types">
+<h3>Component Types<a class="headerlink" href="#component-types" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="component.html#aeroagentsim.component.mobility.MoveToComponent" title="aeroagentsim.component.mobility.MoveToComponent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.component.mobility.MoveToComponent</span></code></a></p></td>
+<td><p>移动组件，用于执行位置移动任务。</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="component.html#aeroagentsim.component.charging.ChargingComponent" title="aeroagentsim.component.charging.ChargingComponent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.component.charging.ChargingComponent</span></code></a></p></td>
+<td><p>充电组件，用于管理电池充电过程和充电站资源请求。</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="component.html#aeroagentsim.component.communication.CommunicationComponent" title="aeroagentsim.component.communication.CommunicationComponent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.component.communication.CommunicationComponent</span></code></a></p></td>
+<td><p>代表代理的通信能力，管理无线通信资源的组件</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="component.html#aeroagentsim.component.computation.ComputationComponent" title="aeroagentsim.component.computation.ComputationComponent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.component.computation.ComputationComponent</span></code></a></p></td>
+<td><p>代表代理的高级计算能力，提供文件处理的性能指标</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="component.html#aeroagentsim.component.img_sensor.ImageSensingComponent" title="aeroagentsim.component.img_sensor.ImageSensingComponent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.component.img_sensor.ImageSensingComponent</span></code></a></p></td>
+<td><p>代表代理的感知能力，提供环境感知的性能指标</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="component.html#aeroagentsim.component.em_sensor.EMSensingComponent" title="aeroagentsim.component.em_sensor.EMSensingComponent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.component.em_sensor.EMSensingComponent</span></code></a></p></td>
+<td><p>电磁感知组件，用于感知周围环境中的电磁信号</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="component.html#aeroagentsim.component.object_sensor.ObjectSensorComponent" title="aeroagentsim.component.object_sensor.ObjectSensorComponent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.component.object_sensor.ObjectSensorComponent</span></code></a></p></td>
+<td><p>物理对象感知组件，持续感知周围环境中的物理对象。</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="workflow-types">
+<h3>Workflow Types<a class="headerlink" href="#workflow-types" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="workflow.html#aeroagentsim.workflow.inspection.InspectionWorkflow" title="aeroagentsim.workflow.inspection.InspectionWorkflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.workflow.inspection.InspectionWorkflow</span></code></a></p></td>
+<td><p>巡检工作流，检查代理是否按顺序到达指定检查点。</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="workflow.html#aeroagentsim.workflow.logistics.LogisticsWorkflow" title="aeroagentsim.workflow.logistics.LogisticsWorkflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.workflow.logistics.LogisticsWorkflow</span></code></a></p></td>
+<td><p>物流工作流，管理无人机取件、运输和交付货物的过程。</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="workflow.html#aeroagentsim.workflow.charging.ChargingWorkflow" title="aeroagentsim.workflow.charging.ChargingWorkflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.workflow.charging.ChargingWorkflow</span></code></a></p></td>
+<td><p>充电工作流，监控代理的电池电量并在电量低时引导代理前往充电站充电。 通过监听代理的 battery_level 状态来触发充电行为。</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="workflow.html#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow" title="aeroagentsim.workflow.image_processing.ImageProcessingWorkflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.workflow.image_processing.ImageProcessingWorkflow</span></code></a></p></td>
+<td><p>环境图像感知处理工作流，包含感知和计算两个阶段。</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="data-providers">
+<h3>Data Providers<a class="headerlink" href="#data-providers" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="dataprovider.html#aeroagentsim.dataprovider.weather.WeatherDataProvider" title="aeroagentsim.dataprovider.weather.WeatherDataProvider"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.dataprovider.weather.WeatherDataProvider</span></code></a></p></td>
+<td><p>Provides weather data and triggers weather-related events in the simulation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="dataprovider.html#aeroagentsim.dataprovider.traffic.TrafficDataProvider" title="aeroagentsim.dataprovider.traffic.TrafficDataProvider"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.dataprovider.traffic.TrafficDataProvider</span></code></a></p></td>
+<td><p>提供地面车辆交通数据，触发车辆位置更新事件。</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="dataprovider.html#aeroagentsim.dataprovider.signal.SignalDataProvider" title="aeroagentsim.dataprovider.signal.SignalDataProvider"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.dataprovider.signal.SignalDataProvider</span></code></a></p></td>
+<td><p>信号数据提供者，用于模拟电磁环境中的信号传播</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="managers">
+<h3>Managers<a class="headerlink" href="#managers" title="Permalink to this heading">¶</a></h3>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="manager.html#aeroagentsim.manager.agent.AgentManager" title="aeroagentsim.manager.agent.AgentManager"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.manager.agent.AgentManager</span></code></a></p></td>
+<td><p>代理管理器：负责管理和筛选不同类型的代理</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="manager.html#aeroagentsim.manager.task.TaskManager" title="aeroagentsim.manager.task.TaskManager"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.manager.task.TaskManager</span></code></a></p></td>
+<td><p>任务管理器：负责根据代理当前的工作流和组件筛选合适的任务</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="manager.html#aeroagentsim.manager.workflow.WorkflowManager" title="aeroagentsim.manager.workflow.WorkflowManager"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.manager.workflow.WorkflowManager</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="manager.html#aeroagentsim.manager.frequency.FrequencyManager" title="aeroagentsim.manager.frequency.FrequencyManager"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.manager.frequency.FrequencyManager</span></code></a></p></td>
+<td><p>频率资源管理器</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="manager.html#aeroagentsim.manager.landing.LandingManager" title="aeroagentsim.manager.landing.LandingManager"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aeroagentsim.manager.landing.LandingManager</span></code></a></p></td>
+<td><p>着陆区资源管理器</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="usage-patterns">
+<h2>Usage Patterns<a class="headerlink" href="#usage-patterns" title="Permalink to this heading">¶</a></h2>
+<p>Common API usage patterns and examples:</p>
+<section id="creating-agents">
+<h3>Creating Agents<a class="headerlink" href="#creating-agents" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+<span class="n">drone</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_agent</span><span class="p">(</span>
+    <span class="n">DroneAgent</span><span class="p">,</span>
+    <span class="s2">&quot;drone1&quot;</span><span class="p">,</span>
+    <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;position&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">],</span> <span class="s2">&quot;battery_level&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="adding-components">
+<h3>Adding Components<a class="headerlink" href="#adding-components" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.component</span> <span class="kn">import</span> <span class="n">MoveToComponent</span><span class="p">,</span> <span class="n">ChargingComponent</span>
+
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">ChargingComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+<section id="executing-tasks">
+<h3>Executing Tasks<a class="headerlink" href="#executing-tasks" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Execute a movement task</span>
+<span class="n">task</span> <span class="o">=</span> <span class="n">drone</span><span class="o">.</span><span class="n">execute_task</span><span class="p">(</span>
+    <span class="s2">&quot;MoveTo&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;Move to waypoint&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MoveToTask&quot;</span><span class="p">,</span>
+    <span class="n">target_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;position&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">50</span><span class="p">)},</span>
+    <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;target_position&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">50</span><span class="p">)},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="creating-workflows">
+<h3>Creating Workflows<a class="headerlink" href="#creating-workflows" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.workflow.inspection</span> <span class="kn">import</span> <span class="n">create_inspection_workflow</span>
+
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">create_inspection_workflow</span><span class="p">(</span>
+    <span class="n">env</span><span class="p">,</span>
+    <span class="n">drone</span><span class="p">,</span>
+    <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)],</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>For more detailed examples, see the <a class="reference internal" href="../examples.html"><span class="doc">Examples</span></a> section.</p>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">API Reference</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a><ul>
+<li><a class="reference internal" href="#core-framework">Core Framework</a></li>
+<li><a class="reference internal" href="#agent-system">Agent System</a></li>
+<li><a class="reference internal" href="#workflow-and-coordination">Workflow and Coordination</a></li>
+<li><a class="reference internal" href="#utilities-and-extensions">Utilities and Extensions</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#quick-reference">Quick Reference</a><ul>
+<li><a class="reference internal" href="#core-classes">Core Classes</a></li>
+<li><a class="reference internal" href="#agent-types">Agent Types</a></li>
+<li><a class="reference internal" href="#component-types">Component Types</a></li>
+<li><a class="reference internal" href="#workflow-types">Workflow Types</a></li>
+<li><a class="reference internal" href="#data-providers">Data Providers</a></li>
+<li><a class="reference internal" href="#managers">Managers</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#usage-patterns">Usage Patterns</a><ul>
+<li><a class="reference internal" href="#creating-agents">Creating Agents</a></li>
+<li><a class="reference internal" href="#adding-components">Adding Components</a></li>
+<li><a class="reference internal" href="#executing-tasks">Executing Tasks</a></li>
+<li><a class="reference internal" href="#creating-workflows">Creating Workflows</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="../user_guide.html"
+                          title="previous chapter">User Guide</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="core.html"
+                          title="next chapter">Core Framework</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="core.html" title="Core Framework"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../user_guide.html" title="User Guide"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">API Reference</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

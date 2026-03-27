@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>User Guide &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=7a812f30"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api/index.html" />
+    <link rel="prev" title="Getting Started" href="getting_started.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="api/index.html" title="API Reference"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="getting_started.html" title="Getting Started"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">User Guide</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="user-guide">
+<h1>User Guide<a class="headerlink" href="#user-guide" title="Permalink to this heading">¶</a></h1>
+<p>This guide covers the current AeroAgentSim usage model.</p>
+<section id="core-patterns">
+<h2>Core Patterns<a class="headerlink" href="#core-patterns" title="Permalink to this heading">¶</a></h2>
+<section id="agent-component-task-workflow">
+<h3>Agent-Component-Task Workflow<a class="headerlink" href="#agent-component-task-workflow" title="Permalink to this heading">¶</a></h3>
+<p>Agents own components, components execute tasks, and workflows coordinate higher-level behavior.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component</span> <span class="kn">import</span> <span class="n">ChargingComponent</span><span class="p">,</span> <span class="n">MoveToComponent</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+<span class="n">drone</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_agent</span><span class="p">(</span>
+    <span class="n">DroneAgent</span><span class="p">,</span>
+    <span class="s2">&quot;drone1&quot;</span><span class="p">,</span>
+    <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;position&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span>
+        <span class="s2">&quot;battery_level&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">ChargingComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+<section id="configuration-and-runs">
+<h3>Configuration and Runs<a class="headerlink" href="#configuration-and-runs" title="Permalink to this heading">¶</a></h3>
+<p>The workbench uses two different persistence concepts:</p>
+<ul class="simple">
+<li><p>config snapshots</p></li>
+<li><p>runs identified by <code class="docutils literal notranslate"><span class="pre">run_id</span></code></p></li>
+</ul>
+<p>Config snapshots are immutable and stored under <code class="docutils literal notranslate"><span class="pre">runtime/aeroagentsim/configs/</span></code>. Run artifacts are stored under <code class="docutils literal notranslate"><span class="pre">runtime/aeroagentsim/runs/&lt;run_id&gt;/</span></code>.</p>
+<p>Custom definitions are stored separately under <code class="docutils literal notranslate"><span class="pre">registry/aeroagentsim/agents/</span></code>, <code class="docutils literal notranslate"><span class="pre">registry/aeroagentsim/tasks/</span></code>, and <code class="docutils literal notranslate"><span class="pre">registry/aeroagentsim/workflows/</span></code>. These files are the source of truth for custom registry content.</p>
+</section>
+</section>
+<section id="d-workbench">
+<h2>2D Workbench<a class="headerlink" href="#d-workbench" title="Permalink to this heading">¶</a></h2>
+<p>The current frontend is a developer workbench with 2D runtime views, workflow inspection, validation, and run analysis.</p>
+<section id="workflow-studio">
+<h3>Workflow Studio<a class="headerlink" href="#workflow-studio" title="Permalink to this heading">¶</a></h3>
+<p>Use Workflow Studio to:</p>
+<ul class="simple">
+<li><p>edit agent definitions in table form</p></li>
+<li><p>edit workflow definitions in table and JSON form</p></li>
+<li><p>select builtin or custom definitions from a merged catalog</p></li>
+<li><p>run page-local <code class="docutils literal notranslate"><span class="pre">Validate</span></code> on the current draft</p></li>
+<li><p>use global <code class="docutils literal notranslate"><span class="pre">Review</span> <span class="pre">/</span> <span class="pre">Validate</span></code> for aggregated checks</p></li>
+<li><p>inspect workflow-agent-state coupling through the relation graph</p></li>
+<li><p>zoom inside the graph canvas, pan the viewport from blank background, and drag nodes to refine local layout without changing the underlying config</p></li>
+</ul>
+<p>Workflow Studio validation is draft-oriented. It should evaluate the current working form state instead of only the last saved snapshot.</p>
+</section>
+<section id="class-catalog">
+<h3>Class Catalog<a class="headerlink" href="#class-catalog" title="Permalink to this heading">¶</a></h3>
+<p>Use Class Catalog to:</p>
+<ul class="simple">
+<li><p>inspect builtin and custom definitions together</p></li>
+<li><p>review definition source and version</p></li>
+<li><p>create or update declarative custom definitions</p></li>
+<li><p>check definition-level validation before using them in configs</p></li>
+</ul>
+</section>
+<section id="run-console">
+<h3>Run Console<a class="headerlink" href="#run-console" title="Permalink to this heading">¶</a></h3>
+<p>Run Console is the operational view for:</p>
+<ul class="simple">
+<li><p>starting, pausing, resuming, and resetting runs</p></li>
+<li><p>observing critical path markers</p></li>
+<li><p>following live log events</p></li>
+<li><p>viewing the live 2D spatial snapshot</p></li>
+</ul>
+<p>Run start is gated by runtime preflight. Warnings can still allow launch, but preflight errors block <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/runs</span></code>.</p>
+<p>The UI supports <code class="docutils literal notranslate"><span class="pre">zh-CN</span></code> and <code class="docutils literal notranslate"><span class="pre">en-US</span></code> switching at the global header level. Raw runtime log content is not automatically translated.</p>
+</section>
+<section id="trajectories-and-logs">
+<h3>Trajectories and Logs<a class="headerlink" href="#trajectories-and-logs" title="Permalink to this heading">¶</a></h3>
+<p>Historical inspection is organized by <code class="docutils literal notranslate"><span class="pre">run_id</span></code> and focuses on:</p>
+<ul class="simple">
+<li><p>trajectory polylines</p></li>
+<li><p>log filtering</p></li>
+<li><p>run-specific spatial snapshots</p></li>
+<li><p>refresh-by-run inspection after reset or stop</p></li>
+</ul>
+</section>
+</section>
+<section id="api-interaction-model">
+<h2>API Interaction Model<a class="headerlink" href="#api-interaction-model" title="Permalink to this heading">¶</a></h2>
+<p>The current workbench uses:</p>
+<ul class="simple">
+<li><p>REST for control and configuration requests</p></li>
+<li><p>WebSocket for <code class="docutils literal notranslate"><span class="pre">sim_status</span></code>, <code class="docutils literal notranslate"><span class="pre">workflow_state_diff</span></code>, <code class="docutils literal notranslate"><span class="pre">spatial_snapshot</span></code>, and <code class="docutils literal notranslate"><span class="pre">log_event</span></code></p></li>
+</ul>
+<p>Registry CRUD and validation are also handled through REST so that custom definitions can be created, checked, versioned, and referenced without exposing executable code upload paths.</p>
+<p>Active-run control is intentionally narrow: <code class="docutils literal notranslate"><span class="pre">/api/runs/{run_id}/pause|resume|reset</span></code> applies only to the active run and returns <code class="docutils literal notranslate"><span class="pre">409</span></code> for historical runs.</p>
+<p>Current frontend interaction is centered on the workbench pages listed above and the FastAPI-backed runtime services used by those pages.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">User Guide</a><ul>
+<li><a class="reference internal" href="#core-patterns">Core Patterns</a><ul>
+<li><a class="reference internal" href="#agent-component-task-workflow">Agent-Component-Task Workflow</a></li>
+<li><a class="reference internal" href="#configuration-and-runs">Configuration and Runs</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#d-workbench">2D Workbench</a><ul>
+<li><a class="reference internal" href="#workflow-studio">Workflow Studio</a></li>
+<li><a class="reference internal" href="#class-catalog">Class Catalog</a></li>
+<li><a class="reference internal" href="#run-console">Run Console</a></li>
+<li><a class="reference internal" href="#trajectories-and-logs">Trajectories and Logs</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#api-interaction-model">API Interaction Model</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="getting_started.html"
+                          title="previous chapter">Getting Started</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="api/index.html"
+                          title="next chapter">API Reference</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/user_guide.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="api/index.html" title="API Reference"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="getting_started.html" title="Getting Started"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">User Guide</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

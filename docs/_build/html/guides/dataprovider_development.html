@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>DataProvider Development Guide &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Simulation Setup Guide" href="simulation_setup.html" />
+    <link rel="prev" title="Workflow Development Guide" href="workflow_development.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="simulation_setup.html" title="Simulation Setup Guide"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="workflow_development.html" title="Workflow Development Guide"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">DataProvider Development Guide</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="dataprovider-development-guide">
+<h1>DataProvider Development Guide<a class="headerlink" href="#dataprovider-development-guide" title="Permalink to this heading">¶</a></h1>
+<p>This guide covers how to create custom data providers that integrate external data sources into AeroAgentSim simulations.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">¶</a></h2>
+<p>DataProviders are responsible for integrating external data sources (weather, traffic, sensor data) into the simulation environment. They provide real-time data updates and can trigger events based on data changes.</p>
+</section>
+<section id="key-concepts">
+<h2>Key Concepts<a class="headerlink" href="#key-concepts" title="Permalink to this heading">¶</a></h2>
+<section id="dataprovider-architecture">
+<h3>DataProvider Architecture<a class="headerlink" href="#dataprovider-architecture" title="Permalink to this heading">¶</a></h3>
+<p>Every DataProvider in AeroAgentSim:</p>
+<ul class="simple">
+<li><p><strong>Manages external data sources</strong> (APIs, files, databases)</p></li>
+<li><p><strong>Provides real-time data updates</strong> to simulation components</p></li>
+<li><p><strong>Triggers events</strong> when significant data changes occur</p></li>
+<li><p><strong>Handles data caching and refresh</strong> for performance optimization</p></li>
+<li><p><strong>Integrates with simulation time</strong> for synchronized updates</p></li>
+</ul>
+</section>
+<section id="base-dataprovider-class">
+<h3>Base DataProvider Class<a class="headerlink" href="#base-dataprovider-class" title="Permalink to this heading">¶</a></h3>
+<p>All data providers inherit from the base <code class="docutils literal notranslate"><span class="pre">DataProvider</span></code> class:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.dataprovider</span> <span class="kn">import</span> <span class="n">DataProvider</span>
+
+<span class="k">class</span> <span class="nc">CustomDataProvider</span><span class="p">(</span><span class="n">DataProvider</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom data provider implementation.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load initial data from external source.&quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">start_event_triggering</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start automatic event triggering.&quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="creating-a-custom-dataprovider">
+<h2>Creating a Custom DataProvider<a class="headerlink" href="#creating-a-custom-dataprovider" title="Permalink to this heading">¶</a></h2>
+<section id="step-1-define-dataprovider-class">
+<h3>Step 1: Define DataProvider Class<a class="headerlink" href="#step-1-define-dataprovider-class" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.dataprovider</span> <span class="kn">import</span> <span class="n">DataProvider</span>
+<span class="kn">import</span> <span class="nn">requests</span>
+<span class="kn">import</span> <span class="nn">json</span>
+
+<span class="k">class</span> <span class="nc">TrafficDataProvider</span><span class="p">(</span><span class="n">DataProvider</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Provider for real-time traffic data.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;api_key&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">api_url</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;api_url&#39;</span><span class="p">,</span> <span class="s1">&#39;https://api.traffic.com/v1/data&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_interval</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;update_interval&#39;</span><span class="p">,</span> <span class="mi">300</span><span class="p">)</span>  <span class="c1"># 5 minutes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">locations</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;locations&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traffic_data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_update</span> <span class="o">=</span> <span class="mi">0</span>
+</pre></div>
+</div>
+</section>
+<section id="step-2-implement-data-loading">
+<h3>Step 2: Implement Data Loading<a class="headerlink" href="#step-2-implement-data-loading" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load initial traffic data from API.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">location</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">:</span>
+            <span class="n">location_id</span> <span class="o">=</span> <span class="n">location</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">)</span>
+            <span class="n">lat</span> <span class="o">=</span> <span class="n">location</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">)</span>
+            <span class="n">lon</span> <span class="o">=</span> <span class="n">location</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lon&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Fetch traffic data from API</span>
+            <span class="n">traffic_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fetch_traffic_data</span><span class="p">(</span><span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">traffic_data</span><span class="p">[</span><span class="n">location_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">traffic_info</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded traffic data for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">)</span><span class="si">}</span><span class="s2"> locations&quot;</span><span class="p">)</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load traffic data: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># Use mock data as fallback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_mock_data</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">_fetch_traffic_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fetch traffic data from external API.&quot;&quot;&quot;</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="n">lat</span><span class="p">,</span>
+        <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="n">lon</span><span class="p">,</span>
+        <span class="s1">&#39;api_key&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">api_key</span>
+    <span class="p">}</span>
+
+    <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">api_url</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s1">&#39;congestion_level&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;congestion&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="s1">&#39;average_speed&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;avg_speed&#39;</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">),</span>
+        <span class="s1">&#39;incident_count&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;incidents&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+    <span class="p">}</span>
+
+<span class="k">def</span> <span class="nf">_load_mock_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load mock traffic data for testing.&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">location</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">:</span>
+        <span class="n">location_id</span> <span class="o">=</span> <span class="n">location</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traffic_data</span><span class="p">[</span><span class="n">location_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;congestion_level&#39;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+            <span class="s1">&#39;average_speed&#39;</span><span class="p">:</span> <span class="mf">45.0</span><span class="p">,</span>
+            <span class="s1">&#39;incident_count&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="step-3-implement-event-triggering">
+<h3>Step 3: Implement Event Triggering<a class="headerlink" href="#step-3-implement-event-triggering" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">start_event_triggering</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Start automatic traffic data updates and event triggering.&quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_update_loop</span><span class="p">())</span>
+
+<span class="k">def</span> <span class="nf">_update_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Main update loop for traffic data.&quot;&quot;&quot;</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Wait for next update interval</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">update_interval</span><span class="p">)</span>
+
+            <span class="c1"># Update traffic data</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_traffic_data</span><span class="p">()</span>
+
+            <span class="c1"># Check for significant changes and trigger events</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_check_traffic_changes</span><span class="p">()</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in traffic update loop: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>  <span class="c1"># Wait 1 minute before retry</span>
+
+<span class="k">def</span> <span class="nf">_update_traffic_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Update traffic data from external source.&quot;&quot;&quot;</span>
+    <span class="n">old_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">traffic_data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">location</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">:</span>
+        <span class="n">location_id</span> <span class="o">=</span> <span class="n">location</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">)</span>
+        <span class="n">lat</span> <span class="o">=</span> <span class="n">location</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lat&#39;</span><span class="p">)</span>
+        <span class="n">lon</span> <span class="o">=</span> <span class="n">location</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;lon&#39;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Fetch updated traffic data</span>
+            <span class="n">new_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fetch_traffic_data</span><span class="p">(</span><span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">traffic_data</span><span class="p">[</span><span class="n">location_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_data</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to update traffic for </span><span class="si">{</span><span class="n">location_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Keep old data if update fails</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">last_update</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+</pre></div>
+</div>
+</section>
+<section id="step-4-implement-change-detection">
+<h3>Step 4: Implement Change Detection<a class="headerlink" href="#step-4-implement-change-detection" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_check_traffic_changes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check for significant traffic changes and trigger events.&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">location_id</span><span class="p">,</span> <span class="n">current_data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">traffic_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="c1"># Check for high congestion</span>
+        <span class="n">congestion</span> <span class="o">=</span> <span class="n">current_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;congestion_level&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">congestion</span> <span class="o">&gt;</span> <span class="mf">0.8</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;high_congestion&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;location_id&#39;</span><span class="p">:</span> <span class="n">location_id</span><span class="p">,</span>
+                <span class="s1">&#39;congestion_level&#39;</span><span class="p">:</span> <span class="n">congestion</span><span class="p">,</span>
+                <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">})</span>
+
+        <span class="c1"># Check for traffic incidents</span>
+        <span class="n">incidents</span> <span class="o">=</span> <span class="n">current_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;incident_count&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">incidents</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;traffic_incident&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;location_id&#39;</span><span class="p">:</span> <span class="n">location_id</span><span class="p">,</span>
+                <span class="s1">&#39;incident_count&#39;</span><span class="p">:</span> <span class="n">incidents</span><span class="p">,</span>
+                <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">})</span>
+
+        <span class="c1"># Check for speed changes</span>
+        <span class="n">speed</span> <span class="o">=</span> <span class="n">current_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;average_speed&#39;</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">speed</span> <span class="o">&lt;</span> <span class="mf">20.0</span><span class="p">:</span>  <span class="c1"># Very slow traffic</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;slow_traffic&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;location_id&#39;</span><span class="p">:</span> <span class="n">location_id</span><span class="p">,</span>
+                <span class="s1">&#39;average_speed&#39;</span><span class="p">:</span> <span class="n">speed</span><span class="p">,</span>
+                <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">})</span>
+</pre></div>
+</div>
+</section>
+<section id="step-5-implement-data-access-methods">
+<h3>Step 5: Implement Data Access Methods<a class="headerlink" href="#step-5-implement-data-access-methods" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_traffic_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get current traffic data for a location or all locations.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">location_id</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">traffic_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">location_id</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">traffic_data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">get_congestion_level</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location_id</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get current congestion level for a specific location.&quot;&quot;&quot;</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">traffic_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">location_id</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;congestion_level&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">get_average_speed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location_id</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get current average speed for a specific location.&quot;&quot;&quot;</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">traffic_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">location_id</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;average_speed&#39;</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">is_data_fresh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_age</span><span class="o">=</span><span class="mi">600</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if traffic data is fresh (within max_age seconds).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_update</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">max_age</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="advanced-features">
+<h2>Advanced Features<a class="headerlink" href="#advanced-features" title="Permalink to this heading">¶</a></h2>
+<section id="data-caching-and-performance">
+<h3>Data Caching and Performance<a class="headerlink" href="#data-caching-and-performance" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cache_duration</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cache_duration&#39;</span><span class="p">,</span> <span class="mi">300</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cached_data</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cache_timestamps</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="k">def</span> <span class="nf">_get_cached_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location_id</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get cached data if still valid.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">location_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cached_data</span><span class="p">:</span>
+        <span class="n">cache_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_timestamps</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">location_id</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">-</span> <span class="n">cache_time</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_duration</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cached_data</span><span class="p">[</span><span class="n">location_id</span><span class="p">]</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+<span class="k">def</span> <span class="nf">_cache_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location_id</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cache data with timestamp.&quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cached_data</span><span class="p">[</span><span class="n">location_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cache_timestamps</span><span class="p">[</span><span class="n">location_id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+</pre></div>
+</div>
+</section>
+<section id="data-validation-and-error-handling">
+<h3>Data Validation and Error Handling<a class="headerlink" href="#data-validation-and-error-handling" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_validate_traffic_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate traffic data before using.&quot;&quot;&quot;</span>
+    <span class="n">required_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;congestion_level&#39;</span><span class="p">,</span> <span class="s1">&#39;average_speed&#39;</span><span class="p">,</span> <span class="s1">&#39;incident_count&#39;</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">required_fields</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required field: </span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Validate data ranges</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;congestion_level&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Congestion level must be between 0.0 and 1.0&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;average_speed&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Average speed cannot be negative&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;incident_count&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Incident count cannot be negative&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="kc">True</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="dataprovider-integration">
+<h2>DataProvider Integration<a class="headerlink" href="#dataprovider-integration" title="Permalink to this heading">¶</a></h2>
+<section id="using-your-custom-dataprovider">
+<h3>Using Your Custom DataProvider<a class="headerlink" href="#using-your-custom-dataprovider" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">your_module</span> <span class="kn">import</span> <span class="n">TrafficDataProvider</span>
+
+<span class="c1"># Create environment</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+<span class="c1"># Configure traffic data provider</span>
+<span class="n">traffic_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;api_key&#39;</span><span class="p">:</span> <span class="s1">&#39;your_api_key_here&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;api_url&#39;</span><span class="p">:</span> <span class="s1">&#39;https://api.traffic.com/v1/data&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;update_interval&#39;</span><span class="p">:</span> <span class="mi">300</span><span class="p">,</span>  <span class="c1"># Update every 5 minutes</span>
+    <span class="s1">&#39;locations&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="s1">&#39;downtown&#39;</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="mf">40.7128</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">74.0060</span><span class="p">},</span>
+        <span class="p">{</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="s1">&#39;airport&#39;</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="mf">40.6892</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">74.1745</span><span class="p">},</span>
+        <span class="p">{</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="s1">&#39;highway_1&#39;</span><span class="p">,</span> <span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="mf">40.7589</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">73.9851</span><span class="p">}</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+
+<span class="c1"># Create and initialize traffic provider</span>
+<span class="n">traffic_provider</span> <span class="o">=</span> <span class="n">TrafficDataProvider</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">traffic_config</span><span class="p">)</span>
+<span class="n">traffic_provider</span><span class="o">.</span><span class="n">load_data</span><span class="p">()</span>
+<span class="n">traffic_provider</span><span class="o">.</span><span class="n">start_event_triggering</span><span class="p">()</span>
+
+<span class="c1"># Register with environment</span>
+<span class="n">env</span><span class="o">.</span><span class="n">traffic_provider</span> <span class="o">=</span> <span class="n">traffic_provider</span>
+</pre></div>
+</div>
+</section>
+<section id="integrating-with-agents">
+<h3>Integrating with Agents<a class="headerlink" href="#integrating-with-agents" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Agents can subscribe to traffic events</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+
+<span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">&quot;traffic_aware_drone&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">40.7128</span><span class="p">,</span> <span class="o">-</span><span class="mf">74.0060</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="p">})</span>
+
+<span class="c1"># Subscribe to traffic events</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;traffic_provider&#39;</span><span class="p">,</span> <span class="s1">&#39;high_congestion&#39;</span><span class="p">,</span>
+                <span class="n">drone</span><span class="o">.</span><span class="n">_handle_traffic_congestion</span><span class="p">)</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;traffic_provider&#39;</span><span class="p">,</span> <span class="s1">&#39;traffic_incident&#39;</span><span class="p">,</span>
+                <span class="n">drone</span><span class="o">.</span><span class="n">_handle_traffic_incident</span><span class="p">)</span>
+
+<span class="c1"># Agents can also query traffic data directly</span>
+<span class="k">def</span> <span class="nf">_plan_route</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Plan route considering current traffic conditions.&quot;&quot;&quot;</span>
+    <span class="n">current_location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;position&#39;</span><span class="p">)</span>
+    <span class="n">traffic_data</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">traffic_provider</span><span class="o">.</span><span class="n">get_traffic_data</span><span class="p">()</span>
+
+    <span class="c1"># Use traffic data for route planning</span>
+    <span class="n">best_route</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_optimal_route</span><span class="p">(</span><span class="n">current_location</span><span class="p">,</span> <span class="n">traffic_data</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">best_route</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Permalink to this heading">¶</a></h2>
+<section id="data-management">
+<h3>Data Management<a class="headerlink" href="#data-management" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Handle API failures gracefully</strong> with fallback data sources</p></li>
+<li><p><strong>Implement appropriate caching</strong> to reduce API calls</p></li>
+<li><p><strong>Validate data quality</strong> before using in simulation</p></li>
+<li><p><strong>Monitor data freshness</strong> and handle stale data appropriately</p></li>
+</ol>
+</section>
+<section id="performance">
+<h3>Performance<a class="headerlink" href="#performance" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Use appropriate update intervals</strong> to balance accuracy and performance</p></li>
+<li><p><strong>Implement efficient data structures</strong> for large datasets</p></li>
+<li><p><strong>Cache frequently accessed data</strong> to reduce computation</p></li>
+<li><p><strong>Use asynchronous operations</strong> where possible</p></li>
+</ol>
+</section>
+<section id="error-handling">
+<h3>Error Handling<a class="headerlink" href="#error-handling" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Handle network failures</strong> and API rate limits</p></li>
+<li><p><strong>Provide fallback data</strong> when external sources are unavailable</p></li>
+<li><p><strong>Log errors appropriately</strong> for debugging and monitoring</p></li>
+<li><p><strong>Implement retry mechanisms</strong> with exponential backoff</p></li>
+</ol>
+</section>
+<section id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Test with mock data</strong> for development and testing</p></li>
+<li><p><strong>Validate data provider behavior</strong> under various conditions</p></li>
+<li><p><strong>Test error conditions</strong> and recovery mechanisms</p></li>
+<li><p><strong>Monitor performance</strong> with realistic data loads</p></li>
+</ol>
+<p>For more information, see:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api/dataprovider.html"><span class="doc">DataProvider Classes</span></a> - Complete DataProvider API reference</p></li>
+<li><p><a class="reference internal" href="simulation_setup.html"><span class="doc">Simulation Setup Guide</span></a> - Integrating data providers in simulations</p></li>
+<li><p><a class="reference internal" href="performance_tuning.html"><span class="doc">Performance Tuning Guide</span></a> - Optimizing data provider performance</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">DataProvider Development Guide</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a></li>
+<li><a class="reference internal" href="#key-concepts">Key Concepts</a><ul>
+<li><a class="reference internal" href="#dataprovider-architecture">DataProvider Architecture</a></li>
+<li><a class="reference internal" href="#base-dataprovider-class">Base DataProvider Class</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#creating-a-custom-dataprovider">Creating a Custom DataProvider</a><ul>
+<li><a class="reference internal" href="#step-1-define-dataprovider-class">Step 1: Define DataProvider Class</a></li>
+<li><a class="reference internal" href="#step-2-implement-data-loading">Step 2: Implement Data Loading</a></li>
+<li><a class="reference internal" href="#step-3-implement-event-triggering">Step 3: Implement Event Triggering</a></li>
+<li><a class="reference internal" href="#step-4-implement-change-detection">Step 4: Implement Change Detection</a></li>
+<li><a class="reference internal" href="#step-5-implement-data-access-methods">Step 5: Implement Data Access Methods</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#advanced-features">Advanced Features</a><ul>
+<li><a class="reference internal" href="#data-caching-and-performance">Data Caching and Performance</a></li>
+<li><a class="reference internal" href="#data-validation-and-error-handling">Data Validation and Error Handling</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#dataprovider-integration">DataProvider Integration</a><ul>
+<li><a class="reference internal" href="#using-your-custom-dataprovider">Using Your Custom DataProvider</a></li>
+<li><a class="reference internal" href="#integrating-with-agents">Integrating with Agents</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#best-practices">Best Practices</a><ul>
+<li><a class="reference internal" href="#data-management">Data Management</a></li>
+<li><a class="reference internal" href="#performance">Performance</a></li>
+<li><a class="reference internal" href="#error-handling">Error Handling</a></li>
+<li><a class="reference internal" href="#testing">Testing</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="workflow_development.html"
+                          title="previous chapter">Workflow Development Guide</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="simulation_setup.html"
+                          title="next chapter">Simulation Setup Guide</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/guides/dataprovider_development.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="simulation_setup.html" title="Simulation Setup Guide"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="workflow_development.html" title="Workflow Development Guide"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">DataProvider Development Guide</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

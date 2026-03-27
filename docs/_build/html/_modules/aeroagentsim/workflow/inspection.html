@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.workflow.inspection &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.workflow.inspection</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.workflow.inspection</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim巡检工作流模块</span>
+
+<span class="sd">该模块定义了无人机巡检工作流及其元类，实现了无人机按顺序访问多个巡检点的过程管理。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 巡检点序列管理</span>
+<span class="sd">2. 导航和路径规划</span>
+<span class="sd">3. 巡检进度跟踪</span>
+<span class="sd">4. 状态机转换和事件触发</span>
+<span class="sd">5. 动态任务生成</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core</span> <span class="kn">import</span> <span class="n">Workflow</span><span class="p">,</span> <span class="n">WorkflowMeta</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">TriggerOperator</span><span class="p">,</span> <span class="n">WorkflowStatus</span>
+
+
+<span class="k">class</span> <span class="nc">InspectionWorkflowMeta</span><span class="p">(</span><span class="n">WorkflowMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;巡检工作流元类&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+        <span class="c1"># 注册巡检工作流专用的属性模板</span>
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;inspection_points&#39;</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span>
+                            <span class="k">lambda</span> <span class="n">points</span><span class="p">:</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">points</span><span class="p">),</span>
+                            <span class="s2">&quot;巡检点列表，每个点为3D坐标 (x, y, z)&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span>
+
+<div class="viewcode-block" id="InspectionWorkflow"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.inspection.InspectionWorkflow">[docs]</a><span class="k">class</span> <span class="nc">InspectionWorkflow</span><span class="p">(</span><span class="n">Workflow</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">InspectionWorkflowMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    巡检工作流，检查代理是否按顺序到达指定检查点。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="InspectionWorkflow.get_description"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.inspection.InspectionWorkflow.get_description">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get_description</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取工作流类型的描述&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;巡检工作流 - 引导无人机按顺序到达指定的巡检点&quot;</span></div>
+<div class="viewcode-block" id="InspectionWorkflow.__init__"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.inspection.InspectionWorkflow.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">owner</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">event_names</span><span class="o">=</span><span class="p">[],</span> <span class="n">initial_status</span><span class="o">=</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># 巡检点列表</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inspection_points</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;inspection_points&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="c1"># 当前检查点索引</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_point_index</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># 注意，这里的event_names是workflow自身的事件，可以用于处理工作流之间的依赖关系</span>
+        <span class="n">event_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;waypoint_completed&#39;</span><span class="p">,</span> <span class="s1">&#39;inspection_completed&#39;</span><span class="p">]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">owner</span><span class="o">=</span><span class="n">owner</span><span class="p">,</span>
+            <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
+            <span class="n">event_names</span><span class="o">=</span><span class="n">event_names</span><span class="p">,</span>
+            <span class="n">initial_status</span><span class="o">=</span><span class="n">initial_status</span><span class="p">,</span>
+            <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span>
+            <span class="n">properties</span><span class="o">=</span><span class="n">properties</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="InspectionWorkflow.get_details"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.inspection.InspectionWorkflow.get_details">[docs]</a>    <span class="k">def</span> <span class="nf">get_details</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取工作流详细信息&quot;&quot;&quot;</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_details</span><span class="p">()</span>
+        <span class="n">details</span><span class="p">[</span><span class="s1">&#39;inspection_points&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inspection_points</span>
+        <span class="n">details</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;If the current state is `Inspecting point n`, then the current task should be `Move to point n` with the (n-1)-th element in `inspection_points`&quot;</span>
+        <span class="k">return</span> <span class="n">details</span></div>
+
+<div class="viewcode-block" id="InspectionWorkflow.get_current_suggested_task"><a class="viewcode-back" href="../../../api/workflow.html#aeroagentsim.workflow.inspection.InspectionWorkflow.get_current_suggested_task">[docs]</a>    <span class="k">def</span> <span class="nf">get_current_suggested_task</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取当前状态下建议执行的任务</span>
+
+<span class="sd">        根据当前状态机状态和巡检点，动态生成任务信息。</span>
+<span class="sd">        任务会继承工作流的优先级和抢占属性。</span>
+
+<span class="sd">        返回:</span>
+<span class="sd">            Dict: 任务信息字典</span>
+<span class="sd">            None: 如果没有找到匹配的任务</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span>
+        <span class="n">task_dict</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 检查是否是巡检点状态</span>
+        <span class="k">if</span> <span class="n">current_state</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;inspecting_point_&#39;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># 获取当前巡检点索引</span>
+                <span class="n">point_index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">current_state</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span>
+
+                <span class="c1"># 确保索引有效</span>
+                <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">point_index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inspection_points</span><span class="p">):</span>
+                    <span class="c1"># 获取目标坐标</span>
+                    <span class="n">target_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inspection_points</span><span class="p">[</span><span class="n">point_index</span><span class="p">]</span>
+
+                    <span class="c1"># 创建移动任务</span>
+                    <span class="n">task_dict</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s1">&#39;component&#39;</span><span class="p">:</span> <span class="s1">&#39;MoveTo&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="s1">&#39;MoveToTask&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;移动到巡检点 </span><span class="si">{</span><span class="n">point_index</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                        <span class="s1">&#39;target_state&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="n">target_position</span><span class="p">},</span>
+                        <span class="s1">&#39;properties&#39;</span><span class="p">:</span> <span class="p">{</span>
+                            <span class="s1">&#39;movement_type&#39;</span><span class="p">:</span> <span class="s1">&#39;path_following&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;target_position&#39;</span><span class="p">:</span> <span class="n">target_position</span>
+                        <span class="p">}</span>
+                    <span class="p">}</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">):</span>
+                <span class="k">pass</span>
+
+        <span class="c1"># 添加优先级和抢占属性</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_priority_to_task</span><span class="p">(</span><span class="n">task_dict</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_setup_transitions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;设置状态机转换规则&quot;&quot;&quot;</span>
+        <span class="c1"># 工作流启动时，转换到第一个检查点的检查状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">set_start_transition</span><span class="p">(</span><span class="s1">&#39;inspecting_point_1&#39;</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">on_waypoint_reached</span><span class="p">(</span><span class="n">point_index</span><span class="p">):</span>
+            <span class="c1"># 触发检查点完成事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;waypoint_completed&#39;</span><span class="p">,</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;point_index&#39;</span><span class="p">:</span> <span class="n">point_index</span><span class="p">,</span>
+                    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">inspection_points</span><span class="p">[</span><span class="n">point_index</span><span class="p">],</span>
+                    <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 如果是最后一个检查点，触发巡检完成事件</span>
+            <span class="k">if</span> <span class="n">point_index</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inspection_points</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;inspection_completed&#39;</span><span class="p">,</span>
+                    <span class="p">{</span>
+                        <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                        <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+        <span class="c1"># 为每个检查点创建转换规则</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inspection_points</span><span class="p">):</span>
+            <span class="n">current_state</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;inspecting_point_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span>
+
+            <span class="c1"># 确定下一个状态</span>
+            <span class="k">if</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inspection_points</span><span class="p">):</span>
+                <span class="n">next_state</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;inspecting_point_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">next_state</span> <span class="o">=</span> <span class="s1">&#39;completed&#39;</span>
+
+            <span class="c1"># 添加转换：使用代理状态触发器监听位置变化</span>
+            <span class="n">transition_desc</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;当无人机到达巡检点</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">时，</span><span class="si">{</span><span class="s1">&#39;进入下一个巡检点&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inspection_points</span><span class="p">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;完成巡检任务&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+                <span class="n">current_state</span><span class="p">,</span>
+                <span class="n">next_state</span><span class="p">,</span>
+                <span class="n">agent_state</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;state_key&#39;</span><span class="p">:</span> <span class="s1">&#39;position&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">,</span>
+                    <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">position</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="n">point</span><span class="p">:</span>
+                        <span class="nb">all</span><span class="p">([</span><span class="nb">abs</span><span class="p">(</span><span class="n">position</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">point</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mf">1e-6</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)])</span> <span class="k">if</span> <span class="n">position</span> <span class="k">else</span> <span class="kc">False</span>
+                <span class="p">},</span>
+                <span class="n">callback</span><span class="o">=</span><span class="k">lambda</span> <span class="n">_event_data</span><span class="p">,</span> <span class="n">point_idx</span><span class="o">=</span><span class="n">i</span><span class="p">:</span> <span class="n">on_waypoint_reached</span><span class="p">(</span><span class="n">point_idx</span><span class="p">),</span>
+                <span class="n">description</span><span class="o">=</span><span class="n">transition_desc</span>
+            <span class="p">)</span>
+
+
+        <span class="c1"># 失败处理</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+            <span class="s1">&#39;*&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;failed&#39;</span><span class="p">,</span>
+            <span class="n">event_trigger</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="s1">&#39;status_changed&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;value_key&#39;</span><span class="p">:</span> <span class="s1">&#39;new_status&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">EQUALS</span><span class="p">,</span>
+                <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="n">WorkflowStatus</span><span class="o">.</span><span class="n">FAILED</span>
+            <span class="p">}</span>
+        <span class="p">)</span></div>
+
+
+<span class="c1"># 使用示例</span>
+<span class="k">def</span> <span class="nf">create_inspection_workflow</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">inspection_points</span><span class="p">,</span> <span class="n">task_priority</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">task_preemptive</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    创建巡检工作流</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        env: 价格环境</span>
+<span class="sd">        agent: 执行巡检的代理</span>
+<span class="sd">        inspection_points: 巡检点列表</span>
+<span class="sd">        task_priority: 任务优先级，可以是TaskPriority枚举或字符串</span>
+<span class="sd">        task_preemptive: 任务是否可抢占</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        创建的巡检工作流</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">TimeTrigger</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">TaskPriority</span>
+
+    <span class="c1"># 如果没有指定优先级，使用默认值</span>
+    <span class="k">if</span> <span class="n">task_priority</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">task_priority</span> <span class="o">=</span> <span class="n">TaskPriority</span><span class="o">.</span><span class="n">NORMAL</span>
+
+    <span class="n">workflow</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_workflow</span><span class="p">(</span>
+        <span class="n">InspectionWorkflow</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Inspection of </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">owner</span><span class="o">=</span><span class="n">agent</span><span class="p">,</span>
+        <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+            <span class="s1">&#39;inspection_points&#39;</span><span class="p">:</span> <span class="n">inspection_points</span><span class="p">,</span>
+            <span class="s1">&#39;task_priority&#39;</span><span class="p">:</span> <span class="n">task_priority</span><span class="p">,</span>
+            <span class="s1">&#39;task_preemptive&#39;</span><span class="p">:</span> <span class="n">task_preemptive</span>
+        <span class="p">},</span>
+        <span class="n">start_trigger</span><span class="o">=</span><span class="n">TimeTrigger</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">trigger_time</span><span class="o">=</span><span class="mi">100</span><span class="p">),</span>
+        <span class="n">max_starts</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">workflow</span>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.workflow.inspection</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

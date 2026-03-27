@@ -683,7 +683,7 @@ function normalizeTemplateList(templateMap) {
 function normalizeRegistryMeta(meta = {}) {
   return {
     id: meta.id || '',
-    version: meta.version || 'v1',
+    version: meta.version || '1.0.0',
     schema_version: meta.schema_version || '1.0',
     source: meta.source || 'custom',
     display_name: meta.display_name || { zh_CN: '', en_US: '' },

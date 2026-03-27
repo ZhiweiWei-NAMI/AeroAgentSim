@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.core.event &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.event</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.core.event</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim事件(Event)核心模块</span>
+
+<span class="sd">该模块实现了仿真系统的事件处理机制，基于发布-订阅模式设计，</span>
+<span class="sd">允许系统中的不同组件（代理、任务、资源等）之间进行松耦合通信。</span>
+<span class="sd">主要内容包括：</span>
+<span class="sd">1. EventSubscription：事件订阅类，包含订阅信息和过滤功能</span>
+<span class="sd">2. EventRegistry：事件注册表，管理所有事件和订阅关系</span>
+<span class="sd">3. 支持特定事件和通配符订阅</span>
+<span class="sd">4. 异步事件通知和回调执行</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">simpy</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="c1"># 获取logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EventSubscription"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventSubscription">[docs]</a><span class="k">class</span> <span class="nc">EventSubscription</span><span class="p">:</span>
+<div class="viewcode-block" id="EventSubscription.__init__"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventSubscription.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">listener_id</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_id</span> <span class="o">=</span> <span class="n">source_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">event_name</span> <span class="o">=</span> <span class="n">event_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">listener_id</span> <span class="o">=</span> <span class="n">listener_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callback</span> <span class="o">=</span> <span class="n">callback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_filters</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">listener_filters</span> <span class="o">=</span> <span class="p">[]</span></div>
+
+<div class="viewcode-block" id="EventSubscription.add_source_filter"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventSubscription.add_source_filter">[docs]</a>    <span class="k">def</span> <span class="nf">add_source_filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filter_func</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_filters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filter_func</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="EventSubscription.add_listener_filter"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventSubscription.add_listener_filter">[docs]</a>    <span class="k">def</span> <span class="nf">add_listener_filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filter_func</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">listener_filters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filter_func</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="EventSubscription.match_filters"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventSubscription.match_filters">[docs]</a>    <span class="k">def</span> <span class="nf">match_filters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_value</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">filter_func</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_filters</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">filter_func</span><span class="p">(</span><span class="n">event_value</span><span class="p">):</span> <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">filter_func</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">listener_filters</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">filter_func</span><span class="p">(</span><span class="n">event_value</span><span class="p">):</span> <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error applying filter for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">listener_id</span><span class="si">}</span><span class="s2"> on event </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">source_id</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">event_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+             <span class="k">return</span> <span class="kc">False</span> <span class="c1"># Fail safe on filter error</span>
+        <span class="k">return</span> <span class="kc">True</span></div></div>
+
+<div class="viewcode-block" id="EventRegistry"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventRegistry">[docs]</a><span class="k">class</span> <span class="nc">EventRegistry</span><span class="p">:</span>
+<div class="viewcode-block" id="EventRegistry.__init__"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventRegistry.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logger</span>  <span class="c1"># 添加logger引用</span>
+        <span class="c1"># source_id -&gt; event_name -&gt; SimPy Event</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Event</span><span class="p">]]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+        <span class="c1"># source_id -&gt; event_name -&gt; listener_id -&gt; EventSubscription</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subscriptions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">EventSubscription</span><span class="p">]]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+        <span class="c1"># Listener lookup: listener_id -&gt; list of (source_id, event_name)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_listener_map</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="c1"># 存储通配符订阅</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wildcard_subscriptions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">EventSubscription</span><span class="p">]]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="EventRegistry.get_registered_events"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventRegistry.get_registered_events">[docs]</a>    <span class="k">def</span> <span class="nf">get_registered_events</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="EventRegistry.get_all_agent_sources"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventRegistry.get_all_agent_sources">[docs]</a>    <span class="k">def</span> <span class="nf">get_all_agent_sources</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">sid</span> <span class="k">for</span> <span class="n">sid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">events</span> <span class="k">if</span> <span class="n">sid</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;agent_&#39;</span><span class="p">)]</span></div>
+
+<div class="viewcode-block" id="EventRegistry.has_event"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventRegistry.has_event">[docs]</a>    <span class="k">def</span> <span class="nf">has_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">source_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">events</span> <span class="ow">and</span> <span class="n">event_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="EventRegistry.get_event"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventRegistry.get_event">[docs]</a>    <span class="k">def</span> <span class="nf">get_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">):</span>
+        <span class="c1"># 如果事件不存在，创建一个新事件</span>
+        <span class="k">if</span> <span class="n">event_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">[</span><span class="n">source_id</span><span class="p">]:</span>
+            <span class="c1"># print(f&quot;DEBUG Registry: Auto-registering {source_id}/{event_name} on get&quot;)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">[</span><span class="n">source_id</span><span class="p">][</span><span class="n">event_name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event</span><span class="p">()</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">[</span><span class="n">source_id</span><span class="p">][</span><span class="n">event_name</span><span class="p">]</span>
+
+        <span class="c1"># 检查事件是否已被触发，如果是则创建新事件</span>
+        <span class="n">event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">[</span><span class="n">source_id</span><span class="p">][</span><span class="n">event_name</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">triggered</span><span class="p">:</span>
+            <span class="c1"># print(f&quot;DEBUG Registry: Event {source_id}/{event_name} already triggered, creating new one&quot;)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">[</span><span class="n">source_id</span><span class="p">][</span><span class="n">event_name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event</span><span class="p">()</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">[</span><span class="n">source_id</span><span class="p">][</span><span class="n">event_name</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">event</span></div>
+
+<div class="viewcode-block" id="EventRegistry.subscribe"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventRegistry.subscribe">[docs]</a>    <span class="k">def</span> <span class="nf">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">listener_id</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">callback</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Callback must be callable&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 处理通配符订阅</span>
+        <span class="n">is_wildcard</span> <span class="o">=</span> <span class="n">source_id</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span> <span class="ow">or</span> <span class="n">event_name</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span>
+
+        <span class="n">subscription_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">)</span>
+        <span class="c1"># print(f&quot;DEBUG Registry: Subscribing &#39;{listener_id}&#39; to {source_id}/{event_name}&quot;)</span>
+
+        <span class="c1"># Check for duplicate subscription by the same listener</span>
+        <span class="n">subscription_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wildcard_subscriptions</span> <span class="k">if</span> <span class="n">is_wildcard</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">subscriptions</span>
+        <span class="k">if</span> <span class="n">listener_id</span> <span class="ow">in</span> <span class="n">subscription_dict</span><span class="p">[</span><span class="n">subscription_key</span><span class="p">]:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Listener &#39;</span><span class="si">{</span><span class="n">listener_id</span><span class="si">}</span><span class="s2">&#39; already subscribed to &#39;</span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">event_name</span><span class="si">}</span><span class="s2">&#39;. Overwriting callback/filters.&quot;</span><span class="p">)</span>
+
+        <span class="n">subscription</span> <span class="o">=</span> <span class="n">EventSubscription</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">listener_id</span><span class="p">,</span> <span class="n">callback</span><span class="p">)</span>
+        <span class="n">subscription_dict</span><span class="p">[</span><span class="n">subscription_key</span><span class="p">][</span><span class="n">listener_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">subscription</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_listener_map</span><span class="p">[</span><span class="n">listener_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">subscription_key</span><span class="p">)</span>
+
+        <span class="c1"># 对于非通配符订阅，确保事件存在</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_wildcard</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">subscription</span> <span class="c1"># Return the subscription object itself</span></div>
+
+<div class="viewcode-block" id="EventRegistry.unsubscribe"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventRegistry.unsubscribe">[docs]</a>    <span class="k">def</span> <span class="nf">unsubscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">listener_id</span><span class="p">):</span>
+        <span class="n">subscription_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">)</span>
+        <span class="c1"># print(f&quot;DEBUG Registry: Unsubscribing &#39;{listener_id}&#39; from {source_id}/{event_name}&quot;)</span>
+        <span class="n">removed</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># 检查常规订阅</span>
+        <span class="k">if</span> <span class="n">subscription_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subscriptions</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">listener_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subscriptions</span><span class="p">[</span><span class="n">subscription_key</span><span class="p">]:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">subscriptions</span><span class="p">[</span><span class="n">subscription_key</span><span class="p">][</span><span class="n">listener_id</span><span class="p">]</span>
+                <span class="c1"># Clean up dict if empty</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">subscriptions</span><span class="p">[</span><span class="n">subscription_key</span><span class="p">]:</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">subscriptions</span><span class="p">[</span><span class="n">subscription_key</span><span class="p">]</span>
+                <span class="n">removed</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># 检查通配符订阅</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">source_id</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span> <span class="ow">or</span> <span class="n">event_name</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">subscription_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">wildcard_subscriptions</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">listener_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">wildcard_subscriptions</span><span class="p">[</span><span class="n">subscription_key</span><span class="p">]:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">wildcard_subscriptions</span><span class="p">[</span><span class="n">subscription_key</span><span class="p">][</span><span class="n">listener_id</span><span class="p">]</span>
+                <span class="c1"># Clean up dict if empty</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">wildcard_subscriptions</span><span class="p">[</span><span class="n">subscription_key</span><span class="p">]:</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">wildcard_subscriptions</span><span class="p">[</span><span class="n">subscription_key</span><span class="p">]</span>
+                <span class="n">removed</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># Clean up listener map</span>
+        <span class="k">if</span> <span class="n">listener_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listener_map</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_listener_map</span><span class="p">[</span><span class="n">listener_id</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">subscription_key</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listener_map</span><span class="p">[</span><span class="n">listener_id</span><span class="p">]:</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listener_map</span><span class="p">[</span><span class="n">listener_id</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">pass</span> <span class="c1"># Key already removed, ignore</span>
+        <span class="k">return</span> <span class="n">removed</span></div>
+
+<div class="viewcode-block" id="EventRegistry.unsubscribe_all"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventRegistry.unsubscribe_all">[docs]</a>    <span class="k">def</span> <span class="nf">unsubscribe_all</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">listener_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unsubscribe a listener from all events it&#39;s subscribed to.&quot;&quot;&quot;</span>
+        <span class="c1"># print(f&quot;DEBUG Registry: Unsubscribing &#39;{listener_id}&#39; from all events.&quot;)</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">listener_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_listener_map</span><span class="p">:</span>
+            <span class="c1"># Iterate over a copy because unsubscribe modifies the list</span>
+            <span class="n">subs_to_remove</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_listener_map</span><span class="p">[</span><span class="n">listener_id</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span> <span class="ow">in</span> <span class="n">subs_to_remove</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">unsubscribe</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">listener_id</span><span class="p">):</span>
+                    <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># print(f&quot;DEBUG Registry: Removed {count} subscriptions for &#39;{listener_id}&#39;.&quot;)</span>
+        <span class="k">return</span> <span class="n">count</span></div>
+
+    <span class="k">def</span> <span class="nf">_is_env</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">source_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;env_&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EventRegistry.trigger_event"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.event.EventRegistry.trigger_event">[docs]</a>    <span class="k">def</span> <span class="nf">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">event_value</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># 获取当前事件</span>
+        <span class="n">current_event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">)</span>
+
+        <span class="c1"># 通知所有匹配的订阅者</span>
+        <span class="n">notified_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># 确保event_value是字典类型</span>
+        <span class="k">if</span> <span class="n">event_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">event_value</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">event_value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">event_value</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">event_value</span><span class="p">}</span>
+
+        <span class="c1"># 如果有logger，记录事件，但是不记录visual_update事件</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_is_env</span><span class="p">(</span><span class="n">source_id</span><span class="p">)</span> <span class="ow">and</span> <span class="n">event_name</span> <span class="o">==</span> <span class="s2">&quot;visual_update&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># 准备事件数据并传递给logger</span>
+                <span class="n">event_data</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;sim_event&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span>
+                    <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+                    <span class="s2">&quot;event&quot;</span><span class="p">:</span> <span class="n">event_name</span><span class="p">,</span>
+                    <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">event_value</span><span class="p">,</span>
+                    <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="s2">&quot;info&quot;</span>
+                <span class="p">}</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">(</span><span class="n">event_data</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error logging event </span><span class="si">{</span><span class="n">source_id</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">event_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 1. 通知特定源订阅者</span>
+        <span class="n">subscription_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">subscription_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subscriptions</span><span class="p">:</span>
+            <span class="n">notified_count</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_notify_subscribers</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subscriptions</span><span class="p">[</span><span class="n">subscription_key</span><span class="p">],</span> <span class="n">event_value</span><span class="p">)</span>
+
+        <span class="c1"># 2. 通知通配符订阅者</span>
+        <span class="c1"># 先通知特定事件的通配符订阅者</span>
+        <span class="n">wildcard_key</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="n">event_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">wildcard_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">wildcard_subscriptions</span><span class="p">:</span>
+            <span class="n">notified_count</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_notify_subscribers</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wildcard_subscriptions</span><span class="p">[</span><span class="n">wildcard_key</span><span class="p">],</span> <span class="n">event_value</span><span class="p">)</span>
+
+        <span class="c1"># 通知特定源的所有事件的订阅者</span>
+        <span class="n">source_wildcard_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="s2">&quot;*&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">source_wildcard_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">wildcard_subscriptions</span><span class="p">:</span>
+            <span class="c1"># 构造包含事件名称的事件值</span>
+            <span class="n">enhanced_event_value</span> <span class="o">=</span> <span class="n">event_value</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">enhanced_event_value</span><span class="p">[</span><span class="s1">&#39;event_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">event_name</span>
+            <span class="n">notified_count</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_notify_subscribers</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wildcard_subscriptions</span><span class="p">[</span><span class="n">source_wildcard_key</span><span class="p">],</span> <span class="n">enhanced_event_value</span><span class="p">)</span>
+
+        <span class="c1"># 再通知全通配符订阅者</span>
+        <span class="n">all_wildcard_key</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="s2">&quot;*&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">all_wildcard_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">wildcard_subscriptions</span><span class="p">:</span>
+            <span class="c1"># 构造包含源和事件名称的事件值</span>
+            <span class="n">enhanced_event_value</span> <span class="o">=</span> <span class="n">event_value</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">enhanced_event_value</span><span class="p">[</span><span class="s1">&#39;source_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">source_id</span>
+            <span class="n">enhanced_event_value</span><span class="p">[</span><span class="s1">&#39;event_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">event_name</span>
+            <span class="n">notified_count</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_notify_subscribers</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wildcard_subscriptions</span><span class="p">[</span><span class="n">all_wildcard_key</span><span class="p">],</span> <span class="n">enhanced_event_value</span><span class="p">)</span>
+
+        <span class="c1"># 让当前事件成功完成</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">current_event</span><span class="o">.</span><span class="n">triggered</span><span class="p">:</span>
+            <span class="n">current_event</span><span class="o">.</span><span class="n">succeed</span><span class="p">(</span><span class="n">event_value</span><span class="p">)</span>
+
+        <span class="c1"># 在触发后立即创建一个新的事件替换旧事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">[</span><span class="n">source_id</span><span class="p">][</span><span class="n">event_name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event</span><span class="p">()</span>
+
+        <span class="c1"># print(f&quot;DEBUG Registry: Notified {notified_count} listeners for {source_id}/{event_name}&quot;)</span>
+        <span class="k">return</span> <span class="n">notified_count</span> <span class="o">&gt;</span> <span class="mi">0</span></div>
+
+    <span class="k">def</span> <span class="nf">_notify_subscribers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subscribers_dict</span><span class="p">,</span> <span class="n">event_value</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;通知给定的订阅者集合&quot;&quot;&quot;</span>
+        <span class="n">notified_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># 使用列表复制以防回调修改字典</span>
+        <span class="n">listeners</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">subscribers_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">listener_id</span> <span class="ow">in</span> <span class="n">listeners</span><span class="p">:</span>
+            <span class="c1"># 检查订阅是否仍然存在</span>
+            <span class="k">if</span> <span class="n">listener_id</span> <span class="ow">in</span> <span class="n">subscribers_dict</span><span class="p">:</span>
+                <span class="n">subscription</span> <span class="o">=</span> <span class="n">subscribers_dict</span><span class="p">[</span><span class="n">listener_id</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">subscription</span><span class="o">.</span><span class="n">match_filters</span><span class="p">(</span><span class="n">event_value</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">subscription</span><span class="o">.</span><span class="n">callback</span><span class="p">:</span>
+                        <span class="c1"># 检查是否有注入的处理函数</span>
+                        <span class="n">handler_function</span> <span class="o">=</span> <span class="n">event_value</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;handler_function&#39;</span><span class="p">)</span>
+
+                        <span class="c1"># 调度回调执行</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_run_callback</span><span class="p">(</span><span class="n">subscription</span><span class="o">.</span><span class="n">callback</span><span class="p">,</span> <span class="n">event_value</span><span class="p">,</span> <span class="n">listener_id</span><span class="p">,</span> <span class="n">handler_function</span><span class="p">)</span>
+                        <span class="n">notified_count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">notified_count</span>
+
+    <span class="k">def</span> <span class="nf">_run_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">listener_id</span><span class="p">,</span> <span class="n">handler_function</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper process to run subscriber callback asynchronously.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            callback: The registered callback function</span>
+<span class="sd">            value: The event value/data</span>
+<span class="sd">            listener_id: ID of the listener</span>
+<span class="sd">            handler_function: Optional handler function name to use instead of the callback</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 如果有处理函数名称，尝试从回调对象中获取该函数</span>
+            <span class="k">if</span> <span class="n">handler_function</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="vm">__self__</span><span class="p">,</span> <span class="n">handler_function</span><span class="p">):</span>
+                <span class="c1"># 获取处理函数</span>
+                <span class="n">handler</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="vm">__self__</span><span class="p">,</span> <span class="n">handler_function</span><span class="p">)</span>
+                <span class="c1"># 调用处理函数，传递订阅者和事件数据</span>
+                <span class="n">handler</span><span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="vm">__self__</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># 使用标准回调</span>
+                <span class="n">callback</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="c1"># Direct call might be okay if callbacks are fast/non-blocking</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: Error in subscriber callback for &#39;</span><span class="si">{</span><span class="n">listener_id</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="kn">import</span> <span class="nn">traceback</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.event</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

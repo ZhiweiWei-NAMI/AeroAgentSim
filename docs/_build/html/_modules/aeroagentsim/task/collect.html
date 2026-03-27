@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.task.collect &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.task.collect</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.task.collect</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim感知任务模块</span>
+
+<span class="sd">该模块定义了文件感知任务，负责在特定位置生成包含相关内容的文件。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 文件感知进度跟踪</span>
+<span class="sd">2. 感知性能评估</span>
+<span class="sd">3. 与文件管理器集成</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.task</span> <span class="kn">import</span> <span class="n">Task</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">import</span> <span class="nn">math</span>
+
+<div class="viewcode-block" id="FileCollectTask"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.collect.FileCollectTask">[docs]</a><span class="k">class</span> <span class="nc">FileCollectTask</span><span class="p">(</span><span class="n">Task</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    文件感知任务</span>
+
+<span class="sd">    在特定位置生成包含相关内容的文件的任务</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">NECESSARY_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sensing_capability&#39;</span><span class="p">,</span> <span class="s1">&#39;sensing_efficiency&#39;</span><span class="p">]</span>
+    <span class="n">PRODUCED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;image_sensing_status&#39;</span><span class="p">,</span> <span class="s1">&#39;sensing_progress&#39;</span><span class="p">,</span> <span class="s1">&#39;sensing_speed&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="FileCollectTask.__init__"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.collect.FileCollectTask.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">component_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span><span class="n">task_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">workflow_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">target_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">properties</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化文件感知任务</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            agent: 执行任务的代理</span>
+<span class="sd">            component_name: 使用的组件名称</span>
+<span class="sd">            workflow_id: 工作流ID</span>
+<span class="sd">            properties: 任务属性</span>
+<span class="sd">                file_name: 生成的文件名</span>
+<span class="sd">                file_type: 生成的文件类型</span>
+<span class="sd">                file_size: 生成的文件大小（KB）</span>
+<span class="sd">                content_type: 内容类型（如&#39;image&#39;, &#39;text&#39;, &#39;sensor_data&#39;等）</span>
+<span class="sd">                location: 感知位置 (x, y, z)，可选</span>
+<span class="sd">                sensing_difficulty: 感知难度系数（默认为1.0）</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">component_name</span><span class="p">,</span> <span class="s2">&quot;file_collect&quot;</span> <span class="ow">or</span> <span class="n">task_name</span><span class="p">,</span>
+                         <span class="n">workflow_id</span><span class="o">=</span><span class="n">workflow_id</span><span class="p">,</span>
+                         <span class="n">target_state</span><span class="o">=</span><span class="n">target_state</span><span class="p">,</span>
+                         <span class="n">properties</span><span class="o">=</span><span class="n">properties</span> <span class="ow">or</span> <span class="p">{})</span>
+
+        <span class="c1"># 文件感知参数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_name</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;file_name&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;sensed_data_</span><span class="si">{</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_type</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;file_type&#39;</span><span class="p">,</span> <span class="s1">&#39;sensor_data&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;file_size&#39;</span><span class="p">,</span> <span class="mi">1024</span><span class="p">)</span>  <span class="c1"># 默认1MB</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">content_type</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;content_type&#39;</span><span class="p">,</span> <span class="s1">&#39;sensor_data&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;location&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensing_difficulty</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sensing_difficulty&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="c1"># 获取文件管理器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;file_manager&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;环境中没有文件管理器，无法执行文件感知任务&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 感知状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensing_progress</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensing_speed</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># 感知速度 (单位时间内感知的数据量)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensed_bytes</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># 已感知的数据量</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimated_time_remaining</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># 秒</span>
+
+        <span class="c1"># 设置代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;image_sensing_status&#39;</span><span class="p">,</span> <span class="s1">&#39;sensing&#39;</span><span class="p">)</span>  <span class="c1"># 使用特定感知状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;sensing_progress&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;sensing_speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="c1"># 如果没有提供位置，尝试从空间管理器获取当前代理位置</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;airspace_manager&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">airspace_manager</span><span class="o">.</span><span class="n">get_agent_position</span><span class="p">(</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_update_task_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">performance_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        更新任务状态</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            performance_metrics: 性能指标</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">current_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+
+        <span class="c1"># 如果是第一次更新，记录开始时间</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span> <span class="o">=</span> <span class="n">current_time</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 计算时间间隔</span>
+        <span class="n">time_delta</span> <span class="o">=</span> <span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span>
+        <span class="k">if</span> <span class="n">time_delta</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 获取感知能力和感知效率</span>
+        <span class="n">sensing_capability</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sensing_capability&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+        <span class="n">sensing_efficiency</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sensing_efficiency&#39;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="c1"># 获取当前内容类型的感知效率</span>
+        <span class="n">type_efficiency</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sensing_efficiency</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">content_type</span> <span class="ow">in</span> <span class="n">sensing_efficiency</span><span class="p">:</span>
+            <span class="n">type_efficiency</span> <span class="o">=</span> <span class="n">sensing_efficiency</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">content_type</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sensing_efficiency</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="n">type_efficiency</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sensing_efficiency</span><span class="p">)</span>
+
+        <span class="c1"># 计算感知速度 (KB/s)</span>
+        <span class="c1"># 假设每单位感知能力每秒可以感知0.1KB数据</span>
+        <span class="n">sensing_speed</span> <span class="o">=</span> <span class="n">sensing_capability</span> <span class="o">*</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">type_efficiency</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_difficulty</span>
+
+        <span class="c1"># 计算这个时间间隔内感知的数据量</span>
+        <span class="n">sensed_in_interval</span> <span class="o">=</span> <span class="n">sensing_speed</span> <span class="o">*</span> <span class="n">time_delta</span>
+
+        <span class="c1"># 更新已感知数据量</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensed_bytes</span> <span class="o">+=</span> <span class="n">sensed_in_interval</span>
+
+        <span class="c1"># 限制已感知数据量不超过文件大小</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensed_bytes</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sensed_bytes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span><span class="p">)</span>
+
+        <span class="c1"># 更新感知进度</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensing_progress</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensed_bytes</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span>
+
+        <span class="c1"># 更新感知速度</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensing_speed</span> <span class="o">=</span> <span class="n">sensing_speed</span>
+
+        <span class="c1"># 计算剩余时间</span>
+        <span class="n">remaining_bytes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensed_bytes</span>
+        <span class="k">if</span> <span class="n">sensing_speed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">estimated_time_remaining</span> <span class="o">=</span> <span class="n">remaining_bytes</span> <span class="o">/</span> <span class="n">sensing_speed</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">estimated_time_remaining</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+
+        <span class="c1"># 更新代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;sensing_progress&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_progress</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;sensing_speed&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_speed</span><span class="p">)</span>
+
+        <span class="c1"># 检查是否完成感知</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_progress</span> <span class="o">&gt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_progress</span>
+
+<div class="viewcode-block" id="FileCollectTask.estimate_remaining_time"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.collect.FileCollectTask.estimate_remaining_time">[docs]</a>    <span class="k">def</span> <span class="nf">estimate_remaining_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">performance_metrics</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        估计剩余时间</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            performance_metrics: 性能指标</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: 估计的剩余时间 (秒)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 如果已经完成，返回0</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">&gt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+
+        <span class="c1"># 获取感知能力和感知效率</span>
+        <span class="n">sensing_capability</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sensing_capability&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+        <span class="n">sensing_efficiency</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sensing_efficiency&#39;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="c1"># 获取当前内容类型的感知效率</span>
+        <span class="n">type_efficiency</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sensing_efficiency</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">content_type</span> <span class="ow">in</span> <span class="n">sensing_efficiency</span><span class="p">:</span>
+            <span class="n">type_efficiency</span> <span class="o">=</span> <span class="n">sensing_efficiency</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">content_type</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sensing_efficiency</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="n">type_efficiency</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sensing_efficiency</span><span class="p">)</span>
+
+        <span class="c1"># 计算感知速度 (KB/s)</span>
+        <span class="n">sensing_speed</span> <span class="o">=</span> <span class="n">sensing_capability</span> <span class="o">*</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">type_efficiency</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_difficulty</span>
+
+        <span class="c1"># 计算剩余数据量</span>
+        <span class="n">remaining_bytes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_size</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensed_bytes</span>
+
+        <span class="c1"># 计算剩余时间</span>
+        <span class="k">if</span> <span class="n">sensing_speed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">remaining_bytes</span> <span class="o">/</span> <span class="n">sensing_speed</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_get_task_specific_state_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取任务特定状态表示</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict: 任务特定状态表示</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 根据任务进度确定感知状态</span>
+        <span class="n">image_sensing_status</span> <span class="o">=</span> <span class="s1">&#39;sensing&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">&lt;</span> <span class="mf">1.0</span> <span class="k">else</span> <span class="s1">&#39;completed&#39;</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;image_sensing_status&#39;</span><span class="p">:</span> <span class="n">image_sensing_status</span><span class="p">,</span>
+            <span class="s1">&#39;sensing_progress&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_progress</span><span class="p">,</span>
+            <span class="s1">&#39;sensing_speed&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_speed</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理任务完成时对代理拥有对象的操作&quot;&quot;&quot;</span>
+        <span class="c1"># 重置代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;image_sensing_status&#39;</span><span class="p">,</span> <span class="s1">&#39;completed&#39;</span><span class="p">)</span>  <span class="c1"># 使用特定感知状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;sensing_progress&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;sensing_speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="c1"># 生成感知内容</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_content</span><span class="p">()</span>
+
+        <span class="c1"># 创建感知文件</span>
+        <span class="n">file_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">create_file</span><span class="p">(</span>
+            <span class="n">owner_agent_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="n">file_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">file_name</span><span class="p">,</span>
+            <span class="n">file_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">file_size</span><span class="p">,</span>
+            <span class="n">file_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">file_type</span><span class="p">,</span>
+            <span class="n">content</span><span class="o">=</span><span class="n">content</span><span class="p">,</span>
+            <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;content_type&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">content_type</span><span class="p">,</span>
+                <span class="s1">&#39;sensing_time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span>
+                <span class="s1">&#39;sensing_location&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
+                <span class="s1">&#39;sensed_by&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;sensing_duration&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 添加感知文件到代理的possessing_objects</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">add_possessing_object</span><span class="p">(</span><span class="n">file_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_manager</span><span class="o">.</span><span class="n">get_file</span><span class="p">(</span><span class="n">file_id</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_fail</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理任务失败时对代理拥有对象的操作&quot;&quot;&quot;</span>
+        <span class="c1"># 重置代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;image_sensing_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>  <span class="c1"># 使用特定感知状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;sensing_progress&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;sensing_speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;处理任务取消时对代理拥有对象的操作&quot;&quot;&quot;</span>
+        <span class="c1"># 重置代理状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;image_sensing_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>  <span class="c1"># 使用特定感知状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;sensing_progress&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="s1">&#39;sensing_speed&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_generate_content</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        生成感知内容</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            生成的内容</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 根据不同的内容类型生成不同的内容</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">content_type</span> <span class="o">==</span> <span class="s1">&#39;image&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;image&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;format&#39;</span><span class="p">:</span> <span class="s1">&#39;jpeg&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;resolution&#39;</span><span class="p">:</span> <span class="s1">&#39;1920x1080&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;模拟图像数据 - 位置: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">，时间: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">}</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">content_type</span> <span class="o">==</span> <span class="s1">&#39;text&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;在位置 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2"> 感知到的文本数据，时间: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">content_type</span> <span class="o">==</span> <span class="s1">&#39;sensor_data&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;sensor_data&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span>
+                <span class="s1">&#39;location&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
+                <span class="s1">&#39;temperature&#39;</span><span class="p">:</span> <span class="mf">25.5</span><span class="p">,</span>
+                <span class="s1">&#39;humidity&#39;</span><span class="p">:</span> <span class="mf">60.2</span><span class="p">,</span>
+                <span class="s1">&#39;pressure&#39;</span><span class="p">:</span> <span class="mf">1013.25</span><span class="p">,</span>
+                <span class="s1">&#39;light&#39;</span><span class="p">:</span> <span class="mi">850</span><span class="p">,</span>
+                <span class="s1">&#39;sound&#39;</span><span class="p">:</span> <span class="mf">45.3</span>
+            <span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;在位置 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2"> 感知到的 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">content_type</span><span class="si">}</span><span class="s2"> 数据，时间: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">&quot;</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.task.collect</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

@@ -1,99 +1,99 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { DragOutlined, MinusOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+
 import { useI18n } from '../../i18n/I18nProvider';
+import {
+  buildRelationGraphLayout,
+  KIND_COLOR,
+  KIND_LABEL,
+} from './relationGraphLayout';
 
 const { Text } = Typography;
 
-const KIND_COLOR = {
-  agent: '#2dd4bf',
-  workflow: '#60a5fa',
-  component: '#8b5cf6',
-  task: '#a78bfa',
-  agent_state: '#f59e0b',
-  workflow_state: '#f97316',
-};
-
-const KIND_LABEL = {
-  agent: 'Agent',
-  component: 'Component',
-  workflow: 'Workflow',
-  task: 'Task',
-  agent_state: 'Agent State',
-  workflow_state: 'Workflow State',
-};
-
-function fallbackPositionByKind(node, indexByKind) {
-  const laneX = {
-    agent: 120,
-    component: 340,
-    workflow: 560,
-    task: 780,
-    agent_state: 960,
-    workflow_state: 1160,
-  };
-  const kind = node.kind || 'workflow_state';
-  const rank = (indexByKind[kind] || 0) + 1;
-  indexByKind[kind] = rank;
-  return {
-    x: laneX[kind] || 900,
-    y: 70 + rank * 110,
-  };
-}
-
-function buildLayout(graph) {
-  const indexByKind = {};
-  const positionById = {};
-
-  (graph.nodes || []).forEach((node) => {
-    const fallback = fallbackPositionByKind(node, indexByKind);
-    const position = node.position || fallback;
-    positionById[node.id] = position;
-  });
-
-  return positionById;
-}
-
-function computeBaseViewBox(positionById) {
-  const positions = Object.values(positionById);
-  if (!positions.length) {
+function computeBaseViewBox(bounds) {
+  if (!bounds) {
     return { x: 0, y: 0, width: 1320, height: 760 };
   }
-  const pad = 100;
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  positions.forEach(({ x, y }) => {
-    if (x < minX) minX = x;
-    if (y < minY) minY = y;
-    if (x > maxX) maxX = x;
-    if (y > maxY) maxY = y;
-  });
   return {
-    x: minX - pad,
-    y: minY - pad,
-    width: Math.max(maxX - minX + pad * 2, 400),
-    height: Math.max(maxY - minY + pad * 2, 300),
+    x: bounds.x,
+    y: bounds.y,
+    width: Math.max(bounds.width, 420),
+    height: Math.max(bounds.height, 320),
   };
+}
+
+function estimateLabelWidth(value) {
+  return Math.max(String(value || '').trim().length * 6.6 + 24, 48);
 }
 
 function RelationGraph({ graph, selectedNodeId, onNodeSelect }) {
   const { t } = useI18n();
-  const svgRef = useRef(null);
   const canvasRef = useRef(null);
   const dragStateRef = useRef(null);
-  const positionById = useMemo(() => buildLayout(graph || { nodes: [], edges: [] }), [graph]);
-  const baseViewBox = useMemo(() => computeBaseViewBox(positionById), [positionById]);
+  const suppressClickRef = useRef('');
+
+  const graphSignature = useMemo(() => {
+    const nodeIds = (graph?.nodes || []).map((node) => node.id).join('|');
+    const edgeIds = (graph?.edges || []).map((edge) => edge.id).join('|');
+    return `${nodeIds}::${edgeIds}`;
+  }, [graph]);
+
+  const [manualPositions, setManualPositions] = useState({});
+  const [viewport, setViewport] = useState({ x: 0, y: 0, width: 1320, height: 760 });
+  const [interactionMode, setInteractionMode] = useState('idle');
+
+  const autoLayout = useMemo(
+    () => buildRelationGraphLayout(graph || { nodes: [], edges: [] }, {}),
+    [graph]
+  );
+  const layout = useMemo(
+    () => buildRelationGraphLayout(graph || { nodes: [], edges: [] }, manualPositions),
+    [graph, manualPositions]
+  );
+  const referenceViewBox = useMemo(
+    () => computeBaseViewBox(autoLayout.bounds),
+    [autoLayout.bounds]
+  );
   const criticalPath = useMemo(() => new Set(graph?.critical_path || []), [graph]);
-  const edges = graph?.edges || [];
-  const nodes = graph?.nodes || [];
-  const [viewport, setViewport] = useState(baseViewBox);
-  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
-    setViewport(baseViewBox);
-  }, [baseViewBox]);
+    setManualPositions({});
+    setViewport(referenceViewBox);
+  }, [graphSignature, referenceViewBox]);
+
+  const zoomViewport = useCallback(
+    (factor, origin = { x: 0.5, y: 0.5 }) => {
+      setViewport((current) => {
+        const nextWidth = Math.min(
+          Math.max(current.width * factor, referenceViewBox.width * 0.32),
+          referenceViewBox.width * 4
+        );
+        const nextHeight = Math.min(
+          Math.max(current.height * factor, referenceViewBox.height * 0.32),
+          referenceViewBox.height * 4
+        );
+        const deltaWidth = current.width - nextWidth;
+        const deltaHeight = current.height - nextHeight;
+        return {
+          x: current.x + deltaWidth * origin.x,
+          y: current.y + deltaHeight * origin.y,
+          width: nextWidth,
+          height: nextHeight,
+        };
+      });
+    },
+    [referenceViewBox.height, referenceViewBox.width]
+  );
+
+  const resetViewport = useCallback(() => {
+    setViewport(referenceViewBox);
+  }, [referenceViewBox]);
+
+  const resetLayout = useCallback(() => {
+    setManualPositions({});
+    setViewport(referenceViewBox);
+  }, [referenceViewBox]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -119,44 +119,38 @@ function RelationGraph({ graph, selectedNodeId, onNodeSelect }) {
     return () => {
       canvas.removeEventListener('wheel', handleWheel);
     };
-  }, [baseViewBox.height, baseViewBox.width]);
-
-  const presentKinds = useMemo(() => {
-    const kinds = new Set(nodes.map((n) => n.kind));
-    return Object.keys(KIND_COLOR).filter((k) => kinds.has(k));
-  }, [nodes]);
+  }, [zoomViewport]);
 
   const zoomPercent = useMemo(
-    () => Math.round((baseViewBox.width / Math.max(viewport.width, 1)) * 100),
-    [baseViewBox.width, viewport.width]
+    () => Math.round((referenceViewBox.width / Math.max(viewport.width, 1)) * 100),
+    [referenceViewBox.width, viewport.width]
   );
 
-  const zoomViewport = (factor, origin = { x: 0.5, y: 0.5 }) => {
-    setViewport((current) => {
-      const nextWidth = Math.min(Math.max(current.width * factor, baseViewBox.width * 0.28), baseViewBox.width * 4);
-      const nextHeight = Math.min(
-        Math.max(current.height * factor, baseViewBox.height * 0.28),
-        baseViewBox.height * 4
-      );
-      const deltaWidth = current.width - nextWidth;
-      const deltaHeight = current.height - nextHeight;
-      return {
-        x: current.x + deltaWidth * origin.x,
-        y: current.y + deltaHeight * origin.y,
-        width: nextWidth,
-        height: nextHeight,
+  const beginCanvasPan = useCallback(
+    (event) => {
+      if (event.target?.closest?.('[data-node-root="true"]')) {
+        return;
+      }
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      dragStateRef.current = {
+        mode: 'pan',
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        viewport: { ...viewport },
       };
-    });
-  };
+      setInteractionMode('pan');
+      canvas.setPointerCapture?.(event.pointerId);
+    },
+    [viewport]
+  );
 
-  const resetViewport = () => {
-    setViewport(baseViewBox);
-  };
-
-  const onPointerDown = (event) => {
-    if (event.target?.closest?.('[data-node="true"]')) {
-      return;
-    }
+  const beginNodeDrag = useCallback((event, node) => {
     const canvas = canvasRef.current;
     if (!canvas) {
       return;
@@ -164,16 +158,20 @@ function RelationGraph({ graph, selectedNodeId, onNodeSelect }) {
     event.preventDefault();
     event.stopPropagation();
     dragStateRef.current = {
+      mode: 'node',
       pointerId: event.pointerId,
+      nodeId: node.id,
       clientX: event.clientX,
       clientY: event.clientY,
-      viewport,
+      origin: { ...node.position },
+      viewport: { ...viewport },
+      moved: false,
     };
-    setIsDragging(true);
+    setInteractionMode('node');
     canvas.setPointerCapture?.(event.pointerId);
-  };
+  }, [viewport]);
 
-  const onPointerMove = (event) => {
+  const onPointerMove = useCallback((event) => {
     const dragState = dragStateRef.current;
     const canvas = canvasRef.current;
     if (!dragState || !canvas || dragState.pointerId !== event.pointerId) {
@@ -187,40 +185,79 @@ function RelationGraph({ graph, selectedNodeId, onNodeSelect }) {
     }
     const deltaX = event.clientX - dragState.clientX;
     const deltaY = event.clientY - dragState.clientY;
-    setViewport({
-      x: dragState.viewport.x - (deltaX * dragState.viewport.width) / rect.width,
-      y: dragState.viewport.y - (deltaY * dragState.viewport.height) / rect.height,
-      width: dragState.viewport.width,
-      height: dragState.viewport.height,
-    });
-  };
 
-  const stopDragging = (event) => {
-    const canvas = canvasRef.current;
-    if (dragStateRef.current?.pointerId === event.pointerId) {
-      event.preventDefault();
-      event.stopPropagation();
-      canvas?.releasePointerCapture?.(event.pointerId);
-      dragStateRef.current = null;
-      setIsDragging(false);
+    if (dragState.mode === 'pan') {
+      setViewport({
+        x: dragState.viewport.x - (deltaX * dragState.viewport.width) / rect.width,
+        y: dragState.viewport.y - (deltaY * dragState.viewport.height) / rect.height,
+        width: dragState.viewport.width,
+        height: dragState.viewport.height,
+      });
+      return;
     }
-  };
+
+    const graphDeltaX = (deltaX * dragState.viewport.width) / rect.width;
+    const graphDeltaY = (deltaY * dragState.viewport.height) / rect.height;
+    if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+      dragState.moved = true;
+    }
+    setManualPositions((current) => ({
+      ...current,
+      [dragState.nodeId]: {
+        x: dragState.origin.x + graphDeltaX,
+        y: dragState.origin.y + graphDeltaY,
+      },
+    }));
+  }, []);
+
+  const stopDragging = useCallback((event) => {
+    const canvas = canvasRef.current;
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    canvas?.releasePointerCapture?.(event.pointerId);
+    if (dragState.mode === 'node' && dragState.moved) {
+      suppressClickRef.current = dragState.nodeId;
+    }
+    dragStateRef.current = null;
+    setInteractionMode('idle');
+  }, []);
+
+  const handleNodeActivate = useCallback((nodeId) => {
+    if (suppressClickRef.current === nodeId) {
+      suppressClickRef.current = '';
+      return;
+    }
+    onNodeSelect?.(nodeId);
+  }, [onNodeSelect]);
 
   const viewBox = `${viewport.x} ${viewport.y} ${viewport.width} ${viewport.height}`;
+  const presentKinds = layout.lanes.map((lane) => lane.kind);
 
   return (
     <div className="relation-graph-shell">
       <div className="relation-graph-toolbar">
-        {presentKinds.length > 0 && (
+        <div className="relation-graph-toolbar-main">
           <div className="relation-graph-legend">
             {presentKinds.map((kind) => (
               <span key={kind} className="relation-graph-legend-item">
-                <span className="relation-graph-legend-dot" style={{ backgroundColor: KIND_COLOR[kind] }} />
+                <span
+                  className="relation-graph-legend-dot"
+                  style={{ backgroundColor: KIND_COLOR[kind] }}
+                />
                 {KIND_LABEL[kind] || kind}
               </span>
             ))}
           </div>
-        )}
+          <div className="relation-graph-stats">
+            <span className="relation-graph-stat-pill">{`${layout.nodes.length} ${t('nodes') || 'nodes'}`}</span>
+            <span className="relation-graph-stat-pill">{`${layout.edges.length} ${t('edges') || 'edges'}`}</span>
+            <span className="relation-graph-stat-pill">{`${Object.keys(manualPositions).length} ${t('graphManualAdjustments')}`}</span>
+          </div>
+        </div>
         <Space wrap size={8}>
           <Text type="secondary" className="relation-graph-hint">
             <DragOutlined /> {t('graphPanHint')}
@@ -236,108 +273,221 @@ function RelationGraph({ graph, selectedNodeId, onNodeSelect }) {
               <Button size="small" icon={<PlusOutlined />} onClick={() => zoomViewport(0.88)} />
             </Tooltip>
           </Space.Compact>
+          <Tooltip title={t('graphResetLayout')}>
+            <Button size="small" onClick={resetLayout}>
+              {t('graphAutoLayout')}
+            </Button>
+          </Tooltip>
           <Tooltip title={t('graphResetView')}>
             <Button size="small" icon={<ReloadOutlined />} onClick={resetViewport} />
           </Tooltip>
         </Space>
       </div>
+
       <div
         ref={canvasRef}
-        className={`relation-graph-canvas ${isDragging ? 'relation-graph-canvas-dragging' : ''}`}
-        onPointerDown={onPointerDown}
+        className={`relation-graph-canvas relation-graph-canvas-${interactionMode}`}
+        onPointerDown={beginCanvasPan}
         onPointerMove={onPointerMove}
         onPointerUp={stopDragging}
         onPointerLeave={stopDragging}
       >
         <svg
-          ref={svgRef}
-          className={`relation-graph ${isDragging ? 'relation-graph-dragging' : ''}`}
+          className="relation-graph"
           viewBox={viewBox}
           role="img"
           aria-label="Workflow-Agent-State relation graph"
         >
           <defs>
+            <pattern id="relation-grid" width="36" height="36" patternUnits="userSpaceOnUse">
+              <path d="M 36 0 L 0 0 0 36" fill="none" stroke="rgba(148, 163, 184, 0.12)" strokeWidth="1" />
+            </pattern>
+            <linearGradient id="relation-surface" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#071221" />
+              <stop offset="100%" stopColor="#0b1729" />
+            </linearGradient>
+            <filter id="relation-node-shadow" x="-20%" y="-20%" width="140%" height="160%">
+              <feDropShadow dx="0" dy="14" stdDeviation="12" floodColor="rgba(2, 8, 23, 0.28)" />
+            </filter>
             <marker
               id="relation-arrow"
-              markerWidth="6"
-              markerHeight="6"
-              refX="6"
-              refY="3"
+              markerWidth="8"
+              markerHeight="8"
+              refX="7"
+              refY="4"
               orient="auto"
               markerUnits="strokeWidth"
             >
-              <path d="M0,0 L6,3 L0,6 z" fill="#73839f" />
+              <path d="M0,0 L8,4 L0,8 z" fill="#93a6c7" />
             </marker>
           </defs>
 
-          {edges.map((edge) => {
-            const from = positionById[edge.source];
-            const to = positionById[edge.target];
-            if (!from || !to) {
-              return null;
-            }
+          <rect
+            x={layout.bounds.x}
+            y={layout.bounds.y}
+            width={layout.bounds.width}
+            height={layout.bounds.height}
+            fill="url(#relation-surface)"
+            rx="28"
+          />
+          <rect
+            x={layout.bounds.x}
+            y={layout.bounds.y}
+            width={layout.bounds.width}
+            height={layout.bounds.height}
+            fill="url(#relation-grid)"
+            rx="28"
+            opacity="0.85"
+          />
+
+          {layout.lanes.map((lane) => (
+            <g key={lane.kind} className="relation-graph-lane">
+              <rect
+                x={lane.left - 18}
+                y={lane.top}
+                width={lane.width + 36}
+                height={lane.bottom - lane.top}
+                rx="24"
+                fill={KIND_COLOR[lane.kind] || '#94a3b8'}
+                fillOpacity="0.08"
+                stroke={KIND_COLOR[lane.kind] || '#94a3b8'}
+                strokeOpacity="0.16"
+              />
+              <text
+                x={lane.center}
+                y={lane.top + 26}
+                textAnchor="middle"
+                className="relation-lane-label"
+              >
+                {lane.label}
+              </text>
+            </g>
+          ))}
+
+          {layout.edges.map((edge) => {
             const isCritical =
               criticalPath.has(edge.id) ||
               criticalPath.has(edge.source) ||
               criticalPath.has(edge.target);
-            const midX = (from.x + to.x) / 2;
-            const midY = (from.y + to.y) / 2;
+            const label = edge.label || edge.relation || '';
+            const labelWidth = estimateLabelWidth(label);
             return (
-              <g key={edge.id}>
-                <line
-                  x1={from.x}
-                  y1={from.y}
-                  x2={to.x}
-                  y2={to.y}
-                  stroke={isCritical ? '#f97316' : '#73839f'}
-                  strokeWidth={isCritical ? 2.5 : 1.5}
+              <g key={edge.id} className="relation-edge-group">
+                <path
+                  d={edge.geometry.path}
+                  fill="none"
+                  stroke={isCritical ? '#ff9d5c' : '#88a1c7'}
+                  strokeWidth={isCritical ? 3 : 2}
+                  strokeOpacity={isCritical ? 0.96 : 0.58}
                   markerEnd="url(#relation-arrow)"
-                  opacity={0.95}
                 />
-                <text x={midX + 6} y={midY - 6} className="relation-edge-label">
-                  {edge.label || edge.relation}
-                </text>
+                {label ? (
+                  <>
+                    <rect
+                      x={edge.geometry.labelX - labelWidth / 2}
+                      y={edge.geometry.labelY - 14}
+                      width={labelWidth}
+                      height="24"
+                      rx="12"
+                      fill="rgba(8, 18, 33, 0.88)"
+                      stroke="rgba(136, 161, 199, 0.24)"
+                    />
+                    <text
+                      x={edge.geometry.labelX}
+                      y={edge.geometry.labelY + 2}
+                      textAnchor="middle"
+                      className="relation-edge-label"
+                    >
+                      {label}
+                    </text>
+                  </>
+                ) : null}
               </g>
             );
           })}
 
-          {nodes.map((node) => {
-            const pos = positionById[node.id];
-            if (!pos) {
-              return null;
-            }
+          {layout.nodes.map((node) => {
             const isSelected = selectedNodeId === node.id;
             const isCriticalNode = criticalPath.has(node.id);
-            const fill = KIND_COLOR[node.kind] || '#9ca3af';
+            const fill = KIND_COLOR[node.kind] || '#94a3b8';
+            const width = node.size?.width || 188;
+            const height = node.size?.height || 70;
+            const left = node.position.x - width / 2;
+            const top = node.position.y - height / 2;
+            const metadataId =
+              node.metadata?.agent_id ||
+              node.metadata?.workflow_id ||
+              node.metadata?.task_ref?.definition_id ||
+              node.id;
+
             return (
               <g
                 key={node.id}
-                data-node="true"
+                data-node-root="true"
                 role="button"
                 tabIndex={0}
-                onClick={() => onNodeSelect?.(node.id)}
+                className="relation-node-group"
+                onPointerDown={(event) => beginNodeDrag(event, node)}
+                onClick={() => handleNodeActivate(node.id)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
-                    onNodeSelect?.(node.id);
+                    handleNodeActivate(node.id);
                   }
                 }}
               >
+                <title>{`${node.label} (${node.kind})`}</title>
+                {(isSelected || isCriticalNode) ? (
+                  <rect
+                    x={left - 8}
+                    y={top - 8}
+                    width={width + 16}
+                    height={height + 16}
+                    rx="24"
+                    fill="none"
+                    stroke={isSelected ? '#ffd06f' : '#ff9d5c'}
+                    strokeWidth="2.5"
+                    strokeOpacity="0.95"
+                  />
+                ) : null}
                 <rect
-                  x={pos.x - 72}
-                  y={pos.y - 22}
-                  width={144}
-                  height={44}
-                  rx={10}
-                  fill={fill}
-                  fillOpacity={isSelected || isCriticalNode ? 0.3 : 0.16}
-                  stroke={isSelected || isCriticalNode ? '#f97316' : fill}
-                  strokeWidth={isSelected || isCriticalNode ? 2.4 : 1.5}
+                  x={left}
+                  y={top}
+                  width={width}
+                  height={height}
+                  rx="20"
+                  fill="rgba(8, 18, 33, 0.94)"
+                  stroke={fill}
+                  strokeWidth={isSelected || isCriticalNode ? 2.2 : 1.4}
+                  strokeOpacity={isSelected || isCriticalNode ? 1 : 0.56}
+                  filter="url(#relation-node-shadow)"
                 />
-                <text x={pos.x} y={pos.y - 2} className="relation-node-label" textAnchor="middle">
+                <rect
+                  x={left + 14}
+                  y={top + 12}
+                  width={Math.min(width - 28, 72)}
+                  height="18"
+                  rx="9"
+                  fill={fill}
+                  fillOpacity="0.18"
+                />
+                <text x={left + 24} y={top + 25} className="relation-node-chip">
+                  {KIND_LABEL[node.kind] || node.kind}
+                </text>
+                <text
+                  x={node.position.x}
+                  y={top + 46}
+                  className="relation-node-label"
+                  textAnchor="middle"
+                >
                   {node.label}
                 </text>
-                <text x={pos.x} y={pos.y + 14} className="relation-node-kind" textAnchor="middle">
-                  {node.kind}
+                <text
+                  x={node.position.x}
+                  y={top + 64}
+                  className="relation-node-kind"
+                  textAnchor="middle"
+                >
+                  {metadataId}
                 </text>
               </g>
             );

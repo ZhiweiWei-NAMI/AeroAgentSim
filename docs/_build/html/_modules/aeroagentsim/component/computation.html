@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.component.computation &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.component.computation</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.component.computation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim计算组件模块</span>
+
+<span class="sd">该模块定义了代理的计算能力，负责处理计算任务的性能指标计算。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 计算性能指标</span>
+<span class="sd">2. 提供计算能力评估</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.component</span> <span class="kn">import</span> <span class="n">Component</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">import</span> <span class="nn">math</span>
+
+<div class="viewcode-block" id="CPUComponent"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.computation.CPUComponent">[docs]</a><span class="k">class</span> <span class="nc">CPUComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;代表代理的计算能力，管理CPU和内存资源的组件&quot;&quot;&quot;</span>
+    <span class="n">PRODUCED_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;processing_power&#39;</span><span class="p">]</span>
+    <span class="n">MONITORED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="s1">&#39;cpu_usage&#39;</span><span class="p">,</span> <span class="s1">&#39;memory_usage&#39;</span><span class="p">]</span>  <span class="c1"># 监控这些状态的变化</span>
+
+<div class="viewcode-block" id="CPUComponent.__init__"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.computation.CPUComponent.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">supported_events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;cpu_usage_changed&#39;</span><span class="p">],</span>
+                 <span class="n">properties</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化计算组件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            agent: 所属代理</span>
+<span class="sd">            name: 组件名称</span>
+<span class="sd">            supported_events: 支持的额外事件</span>
+<span class="sd">            properties: 组件属性，包含cpu_cores、memory_mb和processing_factor</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;CPU&quot;</span><span class="p">,</span> <span class="n">supported_events</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+
+        <span class="c1"># 从properties获取CPU和内存规格</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_cpu_cores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cpu_cores&#39;</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_memory_mb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;memory_mb&#39;</span><span class="p">,</span> <span class="mi">2048</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">processing_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;processing_factor&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_calculate_performance_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;计算基于当前代理状态的性能指标&quot;&quot;&quot;</span>
+        <span class="c1"># 获取代理当前状态</span>
+        <span class="n">cpu_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;cpu_usage&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">memory_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;memory_usage&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">battery_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+
+        <span class="c1"># 基础处理能力</span>
+        <span class="n">base_processing_power</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_cpu_cores</span> <span class="o">*</span> <span class="mf">100.0</span>  <span class="c1"># MIPS或其他单位</span>
+
+        <span class="c1"># 应用环境和条件因素</span>
+        <span class="c1"># 1. 低电量会降低处理能力以省电</span>
+        <span class="k">if</span> <span class="n">battery_level</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">:</span>
+            <span class="n">base_processing_power</span> <span class="o">*=</span> <span class="mf">0.7</span>
+        <span class="k">elif</span> <span class="n">battery_level</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="n">base_processing_power</span> <span class="o">*=</span> <span class="mf">0.4</span>
+
+        <span class="c1"># 2. 高CPU使用率会导致系统热量增加并可能降低性能</span>
+        <span class="k">if</span> <span class="n">cpu_usage</span> <span class="o">&gt;</span> <span class="mi">80</span><span class="p">:</span>
+            <span class="n">base_processing_power</span> <span class="o">*=</span> <span class="mf">0.9</span>
+
+        <span class="c1"># 3. 应用处理因子</span>
+        <span class="n">processing_power</span> <span class="o">=</span> <span class="n">base_processing_power</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">processing_factor</span>
+
+        <span class="c1"># 4. 如果内存使用率非常高，性能可能会进一步下降</span>
+        <span class="k">if</span> <span class="n">memory_usage</span> <span class="o">&gt;</span> <span class="mi">90</span><span class="p">:</span>
+            <span class="n">processing_power</span> <span class="o">*=</span> <span class="mf">0.8</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;processing_power&#39;</span><span class="p">:</span> <span class="n">processing_power</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="ComputationComponent"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.computation.ComputationComponent">[docs]</a><span class="k">class</span> <span class="nc">ComputationComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;代表代理的高级计算能力，提供文件处理的性能指标&quot;&quot;&quot;</span>
+    <span class="n">PRODUCED_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;processing_power&#39;</span><span class="p">,</span> <span class="s1">&#39;computation_efficiency&#39;</span><span class="p">]</span>
+    <span class="n">MONITORED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="s1">&#39;cpu_usage&#39;</span><span class="p">,</span> <span class="s1">&#39;memory_usage&#39;</span><span class="p">,</span> <span class="s1">&#39;computing_status&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="ComputationComponent.__init__"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.computation.ComputationComponent.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">supported_events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;computation_metrics_changed&#39;</span><span class="p">],</span>
+                 <span class="n">properties</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化计算组件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            agent: 所属代理</span>
+<span class="sd">            name: 组件名称</span>
+<span class="sd">            supported_events: 支持的额外事件</span>
+<span class="sd">            properties: 组件属性，包含cpu_cores、memory_mb、processing_factor和computation_capabilities</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;Computation&quot;</span><span class="p">,</span> <span class="n">supported_events</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+
+        <span class="c1"># 从properties获取计算规格</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cpu_cores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cpu_cores&#39;</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_mb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;memory_mb&#39;</span><span class="p">,</span> <span class="mi">8192</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">processing_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;processing_factor&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="c1"># 计算能力配置，不同类型文件的处理能力</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">computation_capabilities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;computation_capabilities&#39;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s1">&#39;image&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>  <span class="c1"># 图像处理能力</span>
+            <span class="s1">&#39;video&#39;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>  <span class="c1"># 视频处理能力</span>
+            <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="mf">1.2</span><span class="p">,</span>   <span class="c1"># 数据处理能力</span>
+            <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="mf">1.5</span>    <span class="c1"># 文本处理能力</span>
+        <span class="p">})</span></div>
+
+    <span class="k">def</span> <span class="nf">_calculate_performance_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算基于当前代理状态的性能指标</span>
+
+<span class="sd">        此方法会根据代理的当前状态计算计算性能指标，包括CPU使用率、内存使用率、处理能力等。</span>
+<span class="sd">        如果代理正在执行计算任务，还会计算计算效率和估计计算时间。</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, Any]: 包含性能指标的字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 获取代理当前状态</span>
+        <span class="n">battery_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+        <span class="n">computing_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;computing_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>
+        <span class="n">is_computing</span> <span class="o">=</span> <span class="n">computing_status</span> <span class="o">==</span> <span class="s1">&#39;computing&#39;</span>
+        <span class="n">cpu_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;cpu_usage&#39;</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
+        <span class="n">memory_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;memory_usage&#39;</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">)</span>
+
+        <span class="c1"># 基础CPU和内存使用率调整</span>
+        <span class="c1"># 初始化cpu_usage为字典，与computation_capabilities对应</span>
+        <span class="n">cpu_usage_dict</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="n">is_computing</span><span class="p">:</span>
+            <span class="c1"># 如果正在计算，根据文件类型和大小调整CPU和内存使用率</span>
+            <span class="k">for</span> <span class="n">file_type</span><span class="p">,</span> <span class="n">type_factor</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">computation_capabilities</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="c1"># 为每种文件类型计算CPU使用率</span>
+                <span class="n">cpu_usage_dict</span><span class="p">[</span><span class="n">file_type</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">100.0</span><span class="p">,</span> <span class="mf">30.0</span> <span class="o">+</span> <span class="mf">40.0</span> <span class="o">*</span> <span class="n">type_factor</span><span class="p">)</span>
+
+            <span class="n">memory_usage_factor</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">memory_usage</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">100.0</span><span class="p">,</span> <span class="mf">20.0</span> <span class="o">+</span> <span class="mf">30.0</span> <span class="o">*</span> <span class="n">memory_usage_factor</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># 如果不在计算，为所有文件类型设置相同的基础CPU使用率</span>
+            <span class="k">for</span> <span class="n">file_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">computation_capabilities</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">cpu_usage_dict</span><span class="p">[</span><span class="n">file_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">cpu_usage</span>
+
+        <span class="c1"># 应用环境和条件因素</span>
+        <span class="c1"># 1. 低电量会降低CPU使用率以省电</span>
+        <span class="k">if</span> <span class="n">battery_level</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">file_type</span> <span class="ow">in</span> <span class="n">cpu_usage_dict</span><span class="p">:</span>
+                <span class="n">cpu_usage_dict</span><span class="p">[</span><span class="n">file_type</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.7</span>
+        <span class="k">elif</span> <span class="n">battery_level</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">file_type</span> <span class="ow">in</span> <span class="n">cpu_usage_dict</span><span class="p">:</span>
+                <span class="n">cpu_usage_dict</span><span class="p">[</span><span class="n">file_type</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
+
+        <span class="c1"># 基础处理能力 (MIPS)</span>
+        <span class="n">base_processing_power</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cpu_cores</span> <span class="o">*</span> <span class="mf">100.0</span>
+
+        <span class="c1"># 应用处理因子</span>
+        <span class="n">processing_power</span> <span class="o">=</span> <span class="n">base_processing_power</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">processing_factor</span>
+
+        <span class="c1"># 如果内存使用率非常高，性能可能会下降</span>
+        <span class="k">if</span> <span class="n">memory_usage</span> <span class="o">&gt;</span> <span class="mi">90</span><span class="p">:</span>
+            <span class="n">processing_power</span> <span class="o">*=</span> <span class="mf">0.8</span>
+
+        <span class="c1"># 计算效率和估计时间</span>
+        <span class="n">computation_efficiency</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="n">is_computing</span><span class="p">:</span>
+            <span class="c1"># 根据文件类型调整计算效率</span>
+            <span class="k">for</span> <span class="n">file_type</span><span class="p">,</span> <span class="n">type_factor</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">computation_capabilities</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">type_computation_efficiency</span> <span class="o">=</span> <span class="n">type_factor</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">0.2</span> <span class="o">*</span> <span class="p">(</span><span class="n">cpu_usage</span> <span class="o">/</span> <span class="mf">100.0</span><span class="p">))</span>
+                <span class="n">computation_efficiency</span><span class="p">[</span><span class="n">file_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">type_computation_efficiency</span>
+
+
+        <span class="c1"># 返回计算指标</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;processing_power&#39;</span><span class="p">:</span> <span class="n">processing_power</span><span class="p">,</span>
+            <span class="s1">&#39;computation_efficiency&#39;</span><span class="p">:</span> <span class="n">computation_efficiency</span>
+        <span class="p">}</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.component.computation</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

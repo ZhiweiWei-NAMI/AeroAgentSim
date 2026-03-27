@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.core.utils &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.utils</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.core.utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim工具(Utils)核心模块</span>
+
+<span class="sd">该模块提供了仿真系统中使用的各种实用工具函数和类，主要用于处理</span>
+<span class="sd">空间位置、距离计算和物理量表示等通用功能。主要内容包括：</span>
+<span class="sd">1. 距离计算函数：计算二维和三维空间中的欧几里得距离</span>
+<span class="sd">2. Location类：表示三维空间中的位置，带有单位和距离计算功能</span>
+<span class="sd">3. Speed类：表示速度，包含大小和方向</span>
+<span class="sd">4. 物理单位处理：使用pint库实现带单位的物理量计算</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">pint</span> <span class="kn">import</span> <span class="n">UnitRegistry</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">ureg</span> <span class="o">=</span> <span class="n">UnitRegistry</span><span class="p">()</span>
+<span class="n">Q_</span> <span class="o">=</span> <span class="n">ureg</span><span class="o">.</span><span class="n">Quantity</span>
+
+<div class="viewcode-block" id="calculate_distance"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.core.utils.calculate_distance">[docs]</a><span class="k">def</span> <span class="nf">calculate_distance</span><span class="p">(</span><span class="n">loc1</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">loc2</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;计算两个位置之间的欧几里得距离&quot;&quot;&quot;</span>
+    <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">z1</span> <span class="o">=</span> <span class="n">loc1</span>
+    <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">,</span> <span class="n">z2</span> <span class="o">=</span> <span class="n">loc2</span>
+    <span class="k">return</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">x2</span> <span class="o">-</span> <span class="n">x1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">y2</span> <span class="o">-</span> <span class="n">y1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">z2</span> <span class="o">-</span> <span class="n">z1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Location"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.core.utils.Location">[docs]</a><span class="k">class</span> <span class="nc">Location</span><span class="p">:</span>
+<div class="viewcode-block" id="Location.__init__"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.core.utils.Location.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">Q_</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s1">&#39;m&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">Q_</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="s1">&#39;m&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">Q_</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="s1">&#39;m&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Location.distance_to"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.core.utils.Location.distance_to">[docs]</a>    <span class="k">def</span> <span class="nf">distance_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="s1">&#39;Location&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;计算与另一个位置的欧几里得距离&quot;&quot;&quot;</span>
+        <span class="n">dx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">other</span><span class="o">.</span><span class="n">x</span>
+        <span class="n">dy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">other</span><span class="o">.</span><span class="n">y</span>
+        <span class="n">dz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">-</span> <span class="n">other</span><span class="o">.</span><span class="n">z</span>
+        <span class="n">distance_squared</span> <span class="o">=</span> <span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">dy</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">dz</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">magnitude</span>
+        <span class="k">return</span> <span class="n">Q_</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">distance_squared</span><span class="p">),</span> <span class="s1">&#39;m&#39;</span><span class="p">)</span></div>
+            
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span></div>
+    
+
+<div class="viewcode-block" id="Speed"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.core.utils.Speed">[docs]</a><span class="k">class</span> <span class="nc">Speed</span><span class="p">:</span>
+<div class="viewcode-block" id="Speed.__init__"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.core.utils.Speed.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">direction</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">Q_</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s1">&#39;m/s&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span></div>
+        
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">direction</span><span class="si">}</span><span class="s2">&quot;</span></div>
+    
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">loc1</span> <span class="o">=</span> <span class="n">Location</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">loc2</span> <span class="o">=</span> <span class="n">Location</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">loc1</span><span class="o">.</span><span class="n">distance_to</span><span class="p">(</span><span class="n">loc2</span><span class="p">))</span>  <span class="c1"># 5.0 m</span>
+
+    <span class="n">speed</span> <span class="o">=</span> <span class="n">Speed</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">speed</span><span class="p">)</span>  <span class="c1"># 10.00 meter / second (1, 0, 0)</span>
+
+<div class="viewcode-block" id="convert_coordinates"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.core.utils.convert_coordinates">[docs]</a><span class="k">def</span> <span class="nf">convert_coordinates</span><span class="p">(</span><span class="n">source_pos</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+                        <span class="n">conversion_config</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    将源坐标系统中的位置转换为仿真坐标系统中的位置。</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        source_pos: 源坐标系统中的位置，格式为 (x, y, z)</span>
+<span class="sd">        conversion_config: 转换配置字典，可能包含以下键：</span>
+<span class="sd">            - &#39;type&#39;: 转换类型，可以是 &#39;none&#39;（无转换）或 &#39;offset_scale&#39;（偏移和缩放）</span>
+<span class="sd">            - &#39;offset_x&#39;, &#39;offset_y&#39;, &#39;offset_z&#39;: 各轴的偏移量</span>
+<span class="sd">            - &#39;scale&#39;: 统一缩放因子</span>
+<span class="sd">            </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        转换后的坐标，格式为 (x, y, z)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">conversion_config</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">source_pos</span>
+
+    <span class="n">conv_type</span> <span class="o">=</span> <span class="n">conversion_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">,</span> <span class="s1">&#39;none&#39;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">conv_type</span> <span class="o">==</span> <span class="s1">&#39;offset_scale&#39;</span><span class="p">:</span>
+        <span class="n">offset_x</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">conversion_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;offset_x&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+        <span class="n">offset_y</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">conversion_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;offset_y&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+        <span class="n">offset_z</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">conversion_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;offset_z&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">conversion_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;scale&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+        
+        <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">source_pos</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">offset_x</span><span class="p">)</span> <span class="o">*</span> <span class="n">scale</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="n">source_pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">offset_y</span><span class="p">)</span> <span class="o">*</span> <span class="n">scale</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="p">(</span><span class="n">source_pos</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">offset_z</span><span class="p">)</span> <span class="o">*</span> <span class="n">scale</span>
+        
+        <span class="k">return</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">conv_type</span> <span class="o">==</span> <span class="s1">&#39;none&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">source_pos</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># 记录警告但不抛出异常</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;不支持的坐标转换类型: </span><span class="si">{</span><span class="n">conv_type</span><span class="si">}</span><span class="s2">，使用 &#39;none&#39;&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">source_pos</span></div>
+    
+<span class="c1"># 地球半径（米）</span>
+<span class="n">EARTH_RADIUS</span> <span class="o">=</span> <span class="mf">6371000.0</span>
+
+<div class="viewcode-block" id="latlon_to_local"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.core.utils.latlon_to_local">[docs]</a><span class="k">def</span> <span class="nf">latlon_to_local</span><span class="p">(</span><span class="n">lat</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">lon</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">alt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+                   <span class="n">ref_lat</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">ref_lon</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                   <span class="n">ref_alt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    将经纬度坐标转换为以参考点为原点的局部坐标系（米）。</span>
+<span class="sd">    使用局部切平面近似（ENU - 东北上坐标系）。</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        lat: 纬度（度）</span>
+<span class="sd">        lon: 经度（度）</span>
+<span class="sd">        alt: 高度（米，相对于海平面），默认为0</span>
+<span class="sd">        ref_lat: 参考点纬度（度），如果为None则使用lat作为参考</span>
+<span class="sd">        ref_lon: 参考点经度（度），如果为None则使用lon作为参考</span>
+<span class="sd">        ref_alt: 参考点高度（米），默认为0</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        局部坐标 (x, y, z)，其中:</span>
+<span class="sd">        x: 东向距离（米）</span>
+<span class="sd">        y: 北向距离（米）</span>
+<span class="sd">        z: 上向距离（米）</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># 如果没有提供参考点，则使用输入点作为参考（结果将是原点）</span>
+    <span class="k">if</span> <span class="n">ref_lat</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ref_lat</span> <span class="o">=</span> <span class="n">lat</span>
+    <span class="k">if</span> <span class="n">ref_lon</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ref_lon</span> <span class="o">=</span> <span class="n">lon</span>
+        
+    <span class="c1"># 转换为弧度</span>
+    <span class="n">lat_rad</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span>
+    <span class="n">lon_rad</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lon</span><span class="p">)</span>
+    <span class="n">ref_lat_rad</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">ref_lat</span><span class="p">)</span>
+    <span class="n">ref_lon_rad</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">ref_lon</span><span class="p">)</span>
+    
+    <span class="c1"># 计算坐标差异</span>
+    <span class="n">d_lat</span> <span class="o">=</span> <span class="n">lat_rad</span> <span class="o">-</span> <span class="n">ref_lat_rad</span>
+    <span class="n">d_lon</span> <span class="o">=</span> <span class="n">lon_rad</span> <span class="o">-</span> <span class="n">ref_lon_rad</span>
+    
+    <span class="c1"># 使用局部切平面近似计算</span>
+    <span class="c1"># 北向距离（y轴）</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">EARTH_RADIUS</span> <span class="o">*</span> <span class="n">d_lat</span>
+    
+    <span class="c1"># 东向距离（x轴）- 考虑纬度影响</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">EARTH_RADIUS</span> <span class="o">*</span> <span class="n">d_lon</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">ref_lat_rad</span><span class="p">)</span>
+    
+    <span class="c1"># 高度差（z轴）</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">alt</span> <span class="o">-</span> <span class="n">ref_alt</span>
+    
+    <span class="k">return</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="local_to_latlon"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.core.utils.local_to_latlon">[docs]</a><span class="k">def</span> <span class="nf">local_to_latlon</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+                   <span class="n">ref_lat</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">ref_lon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+                   <span class="n">ref_alt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    将局部坐标系（米）转换为经纬度坐标。</span>
+<span class="sd">    使用局部切平面近似（ENU - 东北上坐标系）的逆变换。</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        x: 东向距离（米）</span>
+<span class="sd">        y: 北向距离（米）</span>
+<span class="sd">        z: 上向距离（米），默认为0</span>
+<span class="sd">        ref_lat: 参考点纬度（度）</span>
+<span class="sd">        ref_lon: 参考点经度（度）</span>
+<span class="sd">        ref_alt: 参考点高度（米），默认为0</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        (纬度, 经度, 高度) 元组，其中:</span>
+<span class="sd">        纬度: 度</span>
+<span class="sd">        经度: 度</span>
+<span class="sd">        高度: 米（相对于海平面）</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># 转换为弧度</span>
+    <span class="n">ref_lat_rad</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">ref_lat</span><span class="p">)</span>
+    
+    <span class="c1"># 计算纬度差异（弧度）</span>
+    <span class="n">d_lat</span> <span class="o">=</span> <span class="n">y</span> <span class="o">/</span> <span class="n">EARTH_RADIUS</span>
+    
+    <span class="c1"># 计算经度差异（弧度），考虑纬度影响</span>
+    <span class="n">d_lon</span> <span class="o">=</span> <span class="n">x</span> <span class="o">/</span> <span class="p">(</span><span class="n">EARTH_RADIUS</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">ref_lat_rad</span><span class="p">))</span>
+    
+    <span class="c1"># 计算结果经纬度（弧度）</span>
+    <span class="n">lat_rad</span> <span class="o">=</span> <span class="n">ref_lat_rad</span> <span class="o">+</span> <span class="n">d_lat</span>
+    <span class="n">lon_rad</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">ref_lon</span><span class="p">)</span> <span class="o">+</span> <span class="n">d_lon</span>
+    
+    <span class="c1"># 转换回度</span>
+    <span class="n">lat</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">lat_rad</span><span class="p">)</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">lon_rad</span><span class="p">)</span>
+    
+    <span class="c1"># 计算高度</span>
+    <span class="n">alt</span> <span class="o">=</span> <span class="n">z</span> <span class="o">+</span> <span class="n">ref_alt</span>
+    
+    <span class="k">return</span> <span class="p">(</span><span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span> <span class="n">alt</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="utm_zone_for_lon"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.core.utils.utm_zone_for_lon">[docs]</a><span class="k">def</span> <span class="nf">utm_zone_for_lon</span><span class="p">(</span><span class="n">lon</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    根据经度确定UTM区域编号。</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        lon: 经度（度）</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        UTM区域编号（1-60）</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># 标准UTM区域计算（经度范围从-180到180）</span>
+    <span class="c1"># 区域1从经度-180°开始</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">((</span><span class="n">lon</span> <span class="o">+</span> <span class="mi">180</span><span class="p">)</span> <span class="o">/</span> <span class="mi">6</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span></div>
+        
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.utils</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

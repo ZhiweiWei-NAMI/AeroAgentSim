@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Contributing to AeroAgentSim &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=7a812f30"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Troubleshooting Guide" href="guides/troubleshooting.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="guides/troubleshooting.html" title="Troubleshooting Guide"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Contributing to AeroAgentSim</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="contributing-to-aeroagentsim">
+<h1>Contributing to AeroAgentSim<a class="headerlink" href="#contributing-to-aeroagentsim" title="Permalink to this heading">¶</a></h1>
+<p>We welcome contributions of all kinds! This document provides guidelines for contributing to AeroAgentSim.</p>
+<nav class="contents local" id="table-of-contents">
+<p class="topic-title">Table of Contents</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#code-of-conduct" id="id1">Code of Conduct</a></p>
+<ul>
+<li><p><a class="reference internal" href="#our-standards" id="id2">Our Standards</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#getting-started" id="id3">Getting Started</a></p>
+<ul>
+<li><p><a class="reference internal" href="#prerequisites" id="id4">Prerequisites</a></p></li>
+<li><p><a class="reference internal" href="#development-installation" id="id5">Development Installation</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#how-to-contribute" id="id6">How to Contribute</a></p>
+<ul>
+<li><p><a class="reference internal" href="#types-of-contributions" id="id7">Types of Contributions</a></p></li>
+<li><p><a class="reference internal" href="#before-you-start" id="id8">Before You Start</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#development-setup" id="id9">Development Setup</a></p>
+<ul>
+<li><p><a class="reference internal" href="#development-tools" id="id10">Development Tools</a></p></li>
+<li><p><a class="reference internal" href="#project-structure" id="id11">Project Structure</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#coding-standards" id="id12">Coding Standards</a></p>
+<ul>
+<li><p><a class="reference internal" href="#python-style-guide" id="id13">Python Style Guide</a></p></li>
+<li><p><a class="reference internal" href="#naming-conventions" id="id14">Naming Conventions</a></p></li>
+<li><p><a class="reference internal" href="#documentation-strings" id="id15">Documentation Strings</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#testing-guidelines" id="id16">Testing Guidelines</a></p>
+<ul>
+<li><p><a class="reference internal" href="#writing-tests" id="id17">Writing Tests</a></p></li>
+<li><p><a class="reference internal" href="#test-structure" id="id18">Test Structure</a></p></li>
+<li><p><a class="reference internal" href="#running-tests" id="id19">Running Tests</a></p></li>
+<li><p><a class="reference internal" href="#test-coverage" id="id20">Test Coverage</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#documentation" id="id21">Documentation</a></p>
+<ul>
+<li><p><a class="reference internal" href="#types-of-documentation" id="id22">Types of Documentation</a></p></li>
+<li><p><a class="reference internal" href="#writing-documentation" id="id23">Writing Documentation</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#submitting-changes" id="id24">Submitting Changes</a></p>
+<ul>
+<li><p><a class="reference internal" href="#pull-request-process" id="id25">Pull Request Process</a></p></li>
+<li><p><a class="reference internal" href="#pull-request-guidelines" id="id26">Pull Request Guidelines</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#community" id="id27">Community</a></p>
+<ul>
+<li><p><a class="reference internal" href="#getting-help" id="id28">Getting Help</a></p></li>
+<li><p><a class="reference internal" href="#development-best-practices" id="id29">Development Best Practices</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#questions" id="id30">Questions?</a></p></li>
+</ul>
+</nav>
+<section id="code-of-conduct">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Code of Conduct</a><a class="headerlink" href="#code-of-conduct" title="Permalink to this heading">¶</a></h2>
+<p>By participating in this project, you agree to abide by our Code of Conduct. We are committed to providing a welcoming and inclusive environment for all contributors.</p>
+<section id="our-standards">
+<h3><a class="toc-backref" href="#id2" role="doc-backlink">Our Standards</a><a class="headerlink" href="#our-standards" title="Permalink to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Use welcoming and inclusive language</p></li>
+<li><p>Be respectful of differing viewpoints and experiences</p></li>
+<li><p>Gracefully accept constructive criticism</p></li>
+<li><p>Focus on what is best for the community</p></li>
+<li><p>Show empathy towards other community members</p></li>
+</ul>
+</section>
+</section>
+<section id="getting-started">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Getting Started</a><a class="headerlink" href="#getting-started" title="Permalink to this heading">¶</a></h2>
+<section id="prerequisites">
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">Prerequisites</a><a class="headerlink" href="#prerequisites" title="Permalink to this heading">¶</a></h3>
+<p>Before contributing, please ensure you have:</p>
+<ul class="simple">
+<li><p>Python 3.8+ installed</p></li>
+<li><p>Git installed and configured</p></li>
+<li><p>Familiarity with discrete-event simulation concepts</p></li>
+<li><p>Basic understanding of UAV/fog computing systems (helpful but not required)</p></li>
+</ul>
+</section>
+<section id="development-installation">
+<h3><a class="toc-backref" href="#id5" role="doc-backlink">Development Installation</a><a class="headerlink" href="#development-installation" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic">
+<li><p>Fork the repository on GitHub</p></li>
+<li><p>Clone your fork locally:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/YOUR_USERNAME/AeroAgentSim.git
+<span class="nb">cd</span><span class="w"> </span>AeroAgentSim
+</pre></div>
+</div>
+</li>
+<li><p>Set up development environment:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>aeroagentsim_dev
+<span class="nb">source</span><span class="w"> </span>aeroagentsim_dev/bin/activate<span class="w">  </span><span class="c1"># On Windows: aeroagentsim_dev\Scripts\activate</span>
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.<span class="o">[</span>dev<span class="o">]</span>
+</pre></div>
+</div>
+</li>
+<li><p>Add the upstream repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>remote<span class="w"> </span>add<span class="w"> </span>upstream<span class="w"> </span>https://github.com/ZhiweiWei-NAMI/AeroAgentSim.git
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="how-to-contribute">
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">How to Contribute</a><a class="headerlink" href="#how-to-contribute" title="Permalink to this heading">¶</a></h2>
+<section id="types-of-contributions">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">Types of Contributions</a><a class="headerlink" href="#types-of-contributions" title="Permalink to this heading">¶</a></h3>
+<p>We welcome several types of contributions:</p>
+<dl class="simple">
+<dt>🐛 <strong>Bug Reports</strong></dt><dd><ul class="simple">
+<li><p>Use the GitHub issue tracker</p></li>
+<li><p>Include detailed reproduction steps</p></li>
+<li><p>Provide system information (OS, Python version, etc.)</p></li>
+<li><p>Include relevant error messages and logs</p></li>
+</ul>
+</dd>
+<dt>💡 <strong>Feature Requests</strong></dt><dd><ul class="simple">
+<li><p>Describe the feature and its use case</p></li>
+<li><p>Explain why it would be valuable to the community</p></li>
+<li><p>Consider providing a design proposal</p></li>
+</ul>
+</dd>
+<dt>📝 <strong>Documentation Improvements</strong></dt><dd><ul class="simple">
+<li><p>Fix typos, clarify explanations</p></li>
+<li><p>Add examples and tutorials</p></li>
+<li><p>Improve API documentation</p></li>
+<li><p>Translate documentation</p></li>
+</ul>
+</dd>
+<dt>🔧 <strong>Code Contributions</strong></dt><dd><ul class="simple">
+<li><p>Bug fixes</p></li>
+<li><p>New features</p></li>
+<li><p>Performance improvements</p></li>
+<li><p>Code refactoring</p></li>
+</ul>
+</dd>
+<dt>🧪 <strong>Testing</strong></dt><dd><ul class="simple">
+<li><p>Add test cases for existing functionality</p></li>
+<li><p>Improve test coverage</p></li>
+<li><p>Add integration tests</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="before-you-start">
+<h3><a class="toc-backref" href="#id8" role="doc-backlink">Before You Start</a><a class="headerlink" href="#before-you-start" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic">
+<li><p><strong>Check existing issues</strong> to avoid duplicate work</p></li>
+<li><p><strong>Use our helper tools</strong> to understand the codebase:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check existing classes before creating new ones</span>
+python<span class="w"> </span>-m<span class="w"> </span>aeroagentsim.helper.class_finder<span class="w"> </span>--all
+
+<span class="c1"># Find compatible components</span>
+python<span class="w"> </span>-m<span class="w"> </span>aeroagentsim.helper.class_finder<span class="w"> </span>--find-component<span class="w"> </span>speed,processing_power
+</pre></div>
+</div>
+</li>
+<li><p><strong>Discuss major changes</strong> by opening an issue first</p></li>
+</ol>
+</section>
+</section>
+<section id="development-setup">
+<h2><a class="toc-backref" href="#id9" role="doc-backlink">Development Setup</a><a class="headerlink" href="#development-setup" title="Permalink to this heading">¶</a></h2>
+<section id="development-tools">
+<h3><a class="toc-backref" href="#id10" role="doc-backlink">Development Tools</a><a class="headerlink" href="#development-tools" title="Permalink to this heading">¶</a></h3>
+<p>Install additional development tools:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Code formatting and linting</span>
+pip<span class="w"> </span>install<span class="w"> </span>black<span class="w"> </span>flake8<span class="w"> </span>isort<span class="w"> </span>mypy
+
+<span class="c1"># Pre-commit hooks (optional but recommended)</span>
+pip<span class="w"> </span>install<span class="w"> </span>pre-commit
+pre-commit<span class="w"> </span>install
+</pre></div>
+</div>
+</section>
+<section id="project-structure">
+<h3><a class="toc-backref" href="#id11" role="doc-backlink">Project Structure</a><a class="headerlink" href="#project-structure" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>project-root/
+├── src/aeroagentsim/       # Main package
+│   ├── core/               # Core classes and interfaces
+│   ├── agent/              # Agent implementations
+│   ├── component/          # Component implementations
+│   ├── task/               # Task implementations
+│   ├── workflow/           # Workflow implementations
+│   ├── manager/            # Resource managers
+│   ├── examples/           # Example programs
+│   └── helper/             # Development tools
+├── tests/                  # Test suite
+├── frontend/               # Visualization interface
+└── docs/                   # Documentation
+</pre></div>
+</div>
+</section>
+</section>
+<section id="coding-standards">
+<h2><a class="toc-backref" href="#id12" role="doc-backlink">Coding Standards</a><a class="headerlink" href="#coding-standards" title="Permalink to this heading">¶</a></h2>
+<section id="python-style-guide">
+<h3><a class="toc-backref" href="#id13" role="doc-backlink">Python Style Guide</a><a class="headerlink" href="#python-style-guide" title="Permalink to this heading">¶</a></h3>
+<p>We follow PEP 8 with some modifications:</p>
+<ul class="simple">
+<li><p><strong>Line length</strong>: 127 characters (to match GitHub’s display width)</p></li>
+<li><p><strong>Import organization</strong>: Use isort for consistent import ordering</p></li>
+<li><p><strong>Code formatting</strong>: Use black for automatic formatting</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Format code</span>
+black<span class="w"> </span>src/<span class="w"> </span>tests/
+
+<span class="c1"># Sort imports</span>
+isort<span class="w"> </span>src/<span class="w"> </span>tests/
+
+<span class="c1"># Check style</span>
+flake8<span class="w"> </span>src/<span class="w"> </span>tests/
+</pre></div>
+</div>
+</section>
+<section id="naming-conventions">
+<h3><a class="toc-backref" href="#id14" role="doc-backlink">Naming Conventions</a><a class="headerlink" href="#naming-conventions" title="Permalink to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Classes</strong>: PascalCase (e.g., <code class="docutils literal notranslate"><span class="pre">DroneAgent</span></code>, <code class="docutils literal notranslate"><span class="pre">MoveToComponent</span></code>)</p></li>
+<li><p><strong>Functions/Methods</strong>: snake_case (e.g., <code class="docutils literal notranslate"><span class="pre">create_agent</span></code>, <code class="docutils literal notranslate"><span class="pre">update_state</span></code>)</p></li>
+<li><p><strong>Constants</strong>: UPPER_SNAKE_CASE (e.g., <code class="docutils literal notranslate"><span class="pre">MAX_BATTERY_LEVEL</span></code>)</p></li>
+<li><p><strong>Files</strong>: snake_case (e.g., <code class="docutils literal notranslate"><span class="pre">drone_agent.py</span></code>)</p></li>
+</ul>
+</section>
+<section id="documentation-strings">
+<h3><a class="toc-backref" href="#id15" role="doc-backlink">Documentation Strings</a><a class="headerlink" href="#documentation-strings" title="Permalink to this heading">¶</a></h3>
+<p>Use Google-style docstrings:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">create_agent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_class</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a new agent in the environment.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        agent_class: The class of agent to create.</span>
+<span class="sd">        agent_id: Unique identifier for the agent.</span>
+<span class="sd">        **kwargs: Additional arguments for agent initialization.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The created agent instance.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If agent_id already exists.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="testing-guidelines">
+<h2><a class="toc-backref" href="#id16" role="doc-backlink">Testing Guidelines</a><a class="headerlink" href="#testing-guidelines" title="Permalink to this heading">¶</a></h2>
+<section id="writing-tests">
+<h3><a class="toc-backref" href="#id17" role="doc-backlink">Writing Tests</a><a class="headerlink" href="#writing-tests" title="Permalink to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>Unit tests</strong>: Test individual components in isolation</p></li>
+<li><p><strong>Integration tests</strong>: Test component interactions</p></li>
+<li><p><strong>Example tests</strong>: Ensure examples run without errors</p></li>
+</ul>
+</section>
+<section id="test-structure">
+<h3><a class="toc-backref" href="#id18" role="doc-backlink">Test Structure</a><a class="headerlink" href="#test-structure" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+
+<span class="k">class</span> <span class="nc">TestYourFeature</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test cases for your feature.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">test_basic_functionality</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test basic functionality.&quot;&quot;&quot;</span>
+        <span class="c1"># Arrange</span>
+        <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+        <span class="c1"># Act</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">some_method</span><span class="p">()</span>
+
+        <span class="c1"># Assert</span>
+        <span class="k">assert</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</section>
+<section id="running-tests">
+<h3><a class="toc-backref" href="#id19" role="doc-backlink">Running Tests</a><a class="headerlink" href="#running-tests" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run all tests</span>
+pytest<span class="w"> </span>tests/<span class="w"> </span>-v
+
+<span class="c1"># Run specific test file</span>
+pytest<span class="w"> </span>tests/test_core/test_environment.py<span class="w"> </span>-v
+
+<span class="c1"># Run with coverage</span>
+pytest<span class="w"> </span>tests/<span class="w"> </span>--cov<span class="o">=</span>aeroagentsim<span class="w"> </span>--cov-report<span class="o">=</span>html
+
+<span class="c1"># Run example tests</span>
+python<span class="w"> </span>-m<span class="w"> </span>aeroagentsim.examples.example_workflow_inspection
+python<span class="w"> </span>-m<span class="w"> </span>aeroagentsim.examples.example_workflow_logistics
+</pre></div>
+</div>
+</section>
+<section id="test-coverage">
+<h3><a class="toc-backref" href="#id20" role="doc-backlink">Test Coverage</a><a class="headerlink" href="#test-coverage" title="Permalink to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Aim for &gt;80% test coverage for new code</p></li>
+<li><p>Include both positive and negative test cases</p></li>
+<li><p>Test edge cases and error conditions</p></li>
+</ul>
+</section>
+</section>
+<section id="documentation">
+<h2><a class="toc-backref" href="#id21" role="doc-backlink">Documentation</a><a class="headerlink" href="#documentation" title="Permalink to this heading">¶</a></h2>
+<section id="types-of-documentation">
+<h3><a class="toc-backref" href="#id22" role="doc-backlink">Types of Documentation</a><a class="headerlink" href="#types-of-documentation" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>API Documentation</strong>: Docstrings in code</p></li>
+<li><p><strong>User Guides</strong>: Step-by-step tutorials</p></li>
+<li><p><strong>Examples</strong>: Working code samples</p></li>
+<li><p><strong>Architecture Docs</strong>: System design explanations</p></li>
+</ol>
+</section>
+<section id="writing-documentation">
+<h3><a class="toc-backref" href="#id23" role="doc-backlink">Writing Documentation</a><a class="headerlink" href="#writing-documentation" title="Permalink to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Use clear, concise language</p></li>
+<li><p>Include code examples where appropriate</p></li>
+<li><p>Keep documentation up-to-date with code changes</p></li>
+<li><p>Use English for all documentation</p></li>
+</ul>
+<p>For detailed documentation guidelines, see the main <a class="reference external" href="https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a> file.</p>
+</section>
+</section>
+<section id="submitting-changes">
+<h2><a class="toc-backref" href="#id24" role="doc-backlink">Submitting Changes</a><a class="headerlink" href="#submitting-changes" title="Permalink to this heading">¶</a></h2>
+<section id="pull-request-process">
+<h3><a class="toc-backref" href="#id25" role="doc-backlink">Pull Request Process</a><a class="headerlink" href="#pull-request-process" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic">
+<li><p><strong>Create a feature branch</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>feature/your-feature-name
+</pre></div>
+</div>
+</li>
+<li><p><strong>Make your changes</strong>:
+- Follow coding standards
+- Add tests for new functionality
+- Update documentation as needed</p></li>
+<li><p><strong>Test your changes</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run tests</span>
+pytest<span class="w"> </span>tests/<span class="w"> </span>-v
+
+<span class="c1"># Run examples</span>
+python<span class="w"> </span>-m<span class="w"> </span>aeroagentsim.examples.example_workflow_inspection
+python<span class="w"> </span>-m<span class="w"> </span>aeroagentsim.examples.example_workflow_logistics
+
+<span class="c1"># Check code style</span>
+flake8<span class="w"> </span>src/<span class="w"> </span>tests/
+black<span class="w"> </span>--check<span class="w"> </span>src/<span class="w"> </span>tests/
+</pre></div>
+</div>
+</li>
+<li><p><strong>Commit your changes</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>add<span class="w"> </span>.
+git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;Add feature: brief description&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Push to your fork</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>feature/your-feature-name
+</pre></div>
+</div>
+</li>
+<li><p><strong>Create a Pull Request</strong>:
+- Use a descriptive title
+- Explain what changes you made and why
+- Reference any related issues
+- Include screenshots for UI changes</p></li>
+</ol>
+</section>
+<section id="pull-request-guidelines">
+<h3><a class="toc-backref" href="#id26" role="doc-backlink">Pull Request Guidelines</a><a class="headerlink" href="#pull-request-guidelines" title="Permalink to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>One feature per PR</strong>: Keep changes focused and atomic</p></li>
+<li><p><strong>Clear description</strong>: Explain the problem and solution</p></li>
+<li><p><strong>Tests included</strong>: Add tests for new functionality</p></li>
+<li><p><strong>Documentation updated</strong>: Update docs for user-facing changes</p></li>
+<li><p><strong>No breaking changes</strong>: Unless discussed and approved</p></li>
+</ul>
+</section>
+</section>
+<section id="community">
+<h2><a class="toc-backref" href="#id27" role="doc-backlink">Community</a><a class="headerlink" href="#community" title="Permalink to this heading">¶</a></h2>
+<section id="getting-help">
+<h3><a class="toc-backref" href="#id28" role="doc-backlink">Getting Help</a><a class="headerlink" href="#getting-help" title="Permalink to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><strong>GitHub Issues</strong>: For bugs and feature requests</p></li>
+<li><p><strong>Discussions</strong>: For questions and general discussion</p></li>
+<li><p><strong>Email</strong>: Contact maintainers directly for sensitive issues</p></li>
+</ul>
+</section>
+<section id="development-best-practices">
+<h3><a class="toc-backref" href="#id29" role="doc-backlink">Development Best Practices</a><a class="headerlink" href="#development-best-practices" title="Permalink to this heading">¶</a></h3>
+<section id="before-creating-new-classes">
+<h4>Before Creating New Classes<a class="headerlink" href="#before-creating-new-classes" title="Permalink to this heading">¶</a></h4>
+<p>Always check existing implementations first:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Check all available classes</span>
+python<span class="w"> </span>-m<span class="w"> </span>aeroagentsim.helper.class_finder<span class="w"> </span>--all
+
+<span class="c1"># Find agents with specific capabilities</span>
+python<span class="w"> </span>-m<span class="w"> </span>aeroagentsim.helper.class_finder<span class="w"> </span>--find-agent<span class="w"> </span>position,battery_level
+
+<span class="c1"># Find components with specific metrics</span>
+python<span class="w"> </span>-m<span class="w"> </span>aeroagentsim.helper.class_finder<span class="w"> </span>--find-component<span class="w"> </span>speed,processing_power
+</pre></div>
+</div>
+</section>
+<section id="component-development">
+<h4>Component Development<a class="headerlink" href="#component-development" title="Permalink to this heading">¶</a></h4>
+<p>When creating new components:</p>
+<ul class="simple">
+<li><p>Inherit from the base <code class="docutils literal notranslate"><span class="pre">Component</span></code> class</p></li>
+<li><p>Implement required abstract methods</p></li>
+<li><p>Follow the task execution pattern</p></li>
+<li><p>Add appropriate metrics and state updates</p></li>
+</ul>
+</section>
+<section id="agent-development">
+<h4>Agent Development<a class="headerlink" href="#agent-development" title="Permalink to this heading">¶</a></h4>
+<p>When creating new agents:</p>
+<ul class="simple">
+<li><p>Inherit from the base <code class="docutils literal notranslate"><span class="pre">Agent</span></code> class</p></li>
+<li><p>Define required state variables</p></li>
+<li><p>Implement decision-making logic</p></li>
+<li><p>Add appropriate event handling</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="questions">
+<h2><a class="toc-backref" href="#id30" role="doc-backlink">Questions?</a><a class="headerlink" href="#questions" title="Permalink to this heading">¶</a></h2>
+<p>If you have questions not covered in this guide:</p>
+<ol class="arabic simple">
+<li><p>Check existing documentation</p></li>
+<li><p>Search GitHub issues</p></li>
+<li><p>Ask in GitHub Discussions</p></li>
+<li><p>Contact the maintainers</p></li>
+</ol>
+<p>Thank you for contributing to AeroAgentSim! 🚁✨</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Contributing to AeroAgentSim</a><ul>
+<li><a class="reference internal" href="#code-of-conduct">Code of Conduct</a><ul>
+<li><a class="reference internal" href="#our-standards">Our Standards</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#getting-started">Getting Started</a><ul>
+<li><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li><a class="reference internal" href="#development-installation">Development Installation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#how-to-contribute">How to Contribute</a><ul>
+<li><a class="reference internal" href="#types-of-contributions">Types of Contributions</a></li>
+<li><a class="reference internal" href="#before-you-start">Before You Start</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#development-setup">Development Setup</a><ul>
+<li><a class="reference internal" href="#development-tools">Development Tools</a></li>
+<li><a class="reference internal" href="#project-structure">Project Structure</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#coding-standards">Coding Standards</a><ul>
+<li><a class="reference internal" href="#python-style-guide">Python Style Guide</a></li>
+<li><a class="reference internal" href="#naming-conventions">Naming Conventions</a></li>
+<li><a class="reference internal" href="#documentation-strings">Documentation Strings</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#testing-guidelines">Testing Guidelines</a><ul>
+<li><a class="reference internal" href="#writing-tests">Writing Tests</a></li>
+<li><a class="reference internal" href="#test-structure">Test Structure</a></li>
+<li><a class="reference internal" href="#running-tests">Running Tests</a></li>
+<li><a class="reference internal" href="#test-coverage">Test Coverage</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#documentation">Documentation</a><ul>
+<li><a class="reference internal" href="#types-of-documentation">Types of Documentation</a></li>
+<li><a class="reference internal" href="#writing-documentation">Writing Documentation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#submitting-changes">Submitting Changes</a><ul>
+<li><a class="reference internal" href="#pull-request-process">Pull Request Process</a></li>
+<li><a class="reference internal" href="#pull-request-guidelines">Pull Request Guidelines</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#community">Community</a><ul>
+<li><a class="reference internal" href="#getting-help">Getting Help</a></li>
+<li><a class="reference internal" href="#development-best-practices">Development Best Practices</a><ul>
+<li><a class="reference internal" href="#before-creating-new-classes">Before Creating New Classes</a></li>
+<li><a class="reference internal" href="#component-development">Component Development</a></li>
+<li><a class="reference internal" href="#agent-development">Agent Development</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#questions">Questions?</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="guides/troubleshooting.html"
+                          title="previous chapter">Troubleshooting Guide</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/contributing.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="guides/troubleshooting.html" title="Troubleshooting Guide"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Contributing to AeroAgentSim</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

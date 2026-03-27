@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.agent.delivery_agent &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.agent.delivery_agent</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.agent.delivery_agent</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim物流代理模块</span>
+
+<span class="sd">该模块定义了物流代理类及其元类，实现了物流任务的行为和状态管理。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 物流代理状态模板定义和管理</span>
+<span class="sd">2. 货物携带状态管理</span>
+<span class="sd">3. 物流任务执行逻辑</span>
+<span class="sd">4. 物流工作流集成</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.terminal</span> <span class="kn">import</span> <span class="n">TerminalAgent</span><span class="p">,</span> <span class="n">TerminalAgentMeta</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.workflow.logistics</span> <span class="kn">import</span> <span class="n">LogisticsWorkflow</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">DeliveryAgentMeta</span><span class="p">(</span><span class="n">TerminalAgentMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;物流代理元类&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">mcs</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+        <span class="c1"># 注册物流代理专用的状态模板</span>
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;payload_ids&#39;</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="s2">&quot;代理当前携带的货物ID&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 负载重量状态</span>
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;current_payload_weight&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="s2">&quot;代理当前负载重量 (kg)&quot;</span><span class="p">)</span>
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;max_payload_weight&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="s2">&quot;代理最大负载重量 (kg)&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 负载容积状态</span>
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;current_payload_volume&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="s2">&quot;代理当前负载容积 (m³)&quot;</span><span class="p">)</span>
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;max_payload_volume&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="s2">&quot;代理最大负载容积 (m³)&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 物流状态</span>
+        <span class="n">mcs</span><span class="o">.</span><span class="n">register_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;delivery_status&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span>
+                            <span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="s1">&#39;picking_up&#39;</span><span class="p">,</span> <span class="s1">&#39;transporting&#39;</span><span class="p">,</span> <span class="s1">&#39;delivering&#39;</span><span class="p">,</span> <span class="s1">&#39;pickup_completed&#39;</span><span class="p">,</span> <span class="s1">&#39;delivery_completed&#39;</span><span class="p">],</span>
+                            <span class="s2">&quot;物流代理当前状态&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span>
+
+<div class="viewcode-block" id="DeliveryAgent"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.delivery_agent.DeliveryAgent">[docs]</a><span class="k">class</span> <span class="nc">DeliveryAgent</span><span class="p">(</span><span class="n">TerminalAgent</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">DeliveryAgentMeta</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;物流代理，能够执行物流任务和工作流&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="DeliveryAgent.get_description"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.delivery_agent.DeliveryAgent.get_description">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get_description</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取代理类型的描述&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;物流代理 - 能够执行物流任务，支持取件、运输和交付工作流&quot;</span></div>
+
+<div class="viewcode-block" id="DeliveryAgent.__init__"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.delivery_agent.DeliveryAgent.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">agent_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">agent_id</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;agent_delivery_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># 初始化物流相关状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;payload_ids&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;current_payload_weight&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;max_payload_weight&#39;</span><span class="p">,</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;max_payload_weight&#39;</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;current_payload_volume&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;max_payload_volume&#39;</span><span class="p">,</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;max_payload_volume&#39;</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">))</span>  <span class="c1"># 默认0.125立方米</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span></div>
+
+        <span class="c1"># 物流代理初始化完成</span>
+
+    <span class="k">def</span> <span class="nf">_on_payload_added</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;响应货物添加事件&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_name&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;payload_&#39;</span><span class="p">):</span>
+            <span class="n">payload_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_id&#39;</span><span class="p">)</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_possessing_object</span><span class="p">(</span><span class="n">payload_id</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">payload</span><span class="p">:</span>
+                <span class="c1"># 更新payload_ids状态</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;payload_ids&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;payload_ids&#39;</span><span class="p">,</span> <span class="p">[])</span> <span class="o">+</span> <span class="p">[</span><span class="n">payload_id</span><span class="p">])</span>
+                <span class="n">properties</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;properties&#39;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="c1"># 更新负载重量</span>
+                <span class="n">payload_weight</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;weight&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="n">current_weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;current_payload_weight&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;current_payload_weight&#39;</span><span class="p">,</span> <span class="n">current_weight</span> <span class="o">+</span> <span class="n">payload_weight</span><span class="p">)</span>
+
+                <span class="c1"># 计算并更新负载容积</span>
+                <span class="n">payload_volume</span> <span class="o">=</span> <span class="mf">0.0</span>
+                <span class="k">if</span> <span class="s1">&#39;dimensions&#39;</span> <span class="ow">in</span> <span class="n">properties</span><span class="p">:</span>
+                    <span class="c1"># 假设dimensions是[长, 宽, 高]格式，单位为米</span>
+                    <span class="n">dimensions</span> <span class="o">=</span> <span class="n">properties</span><span class="p">[</span><span class="s1">&#39;dimensions&#39;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dimensions</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                        <span class="n">payload_volume</span> <span class="o">=</span> <span class="n">dimensions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">dimensions</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">dimensions</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+                <span class="n">current_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;current_payload_volume&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;current_payload_volume&#39;</span><span class="p">,</span> <span class="n">current_volume</span> <span class="o">+</span> <span class="n">payload_volume</span><span class="p">)</span>
+
+                <span class="c1"># 更新状态为运输中</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">,</span> <span class="s1">&#39;transporting&#39;</span><span class="p">)</span>
+
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 开始携带货物 </span><span class="si">{</span><span class="n">payload_id</span><span class="si">}</span><span class="s2">, 当前货物ids: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;payload_ids&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t\t</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 当前负载重量: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;current_payload_weight&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">kg, 负载容积: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;current_payload_volume&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">m³&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_on_payload_removed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;响应货物移除事件&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_name&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;payload_&#39;</span><span class="p">):</span>
+            <span class="n">payload_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_id&#39;</span><span class="p">)</span>
+
+            <span class="c1"># 在移除前获取货物信息，用于更新重量和容积</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">for</span> <span class="n">pid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;payload_ids&#39;</span><span class="p">,</span> <span class="p">[]):</span>
+                <span class="k">if</span> <span class="n">pid</span> <span class="o">==</span> <span class="n">payload_id</span><span class="p">:</span>
+                    <span class="c1"># 尝试从环境的payload_manager获取货物信息</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;payload_manager&#39;</span><span class="p">):</span>
+                        <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">payload_manager</span><span class="o">.</span><span class="n">get_payload</span><span class="p">(</span><span class="n">payload_id</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+            <span class="c1"># 更新payload_ids状态</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;payload_ids&#39;</span><span class="p">,</span>
+                              <span class="p">[</span><span class="n">pid</span> <span class="k">for</span> <span class="n">pid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;payload_ids&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">pid</span> <span class="o">!=</span> <span class="n">payload_id</span><span class="p">])</span>
+
+            <span class="c1"># 更新负载重量和容积</span>
+            <span class="k">if</span> <span class="n">payload</span><span class="p">:</span>
+                <span class="n">properties</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;properties&#39;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="c1"># 减去货物重量</span>
+                <span class="n">payload_weight</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;weight&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="n">current_weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;current_payload_weight&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="n">new_weight</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">current_weight</span> <span class="o">-</span> <span class="n">payload_weight</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;current_payload_weight&#39;</span><span class="p">,</span> <span class="n">new_weight</span><span class="p">)</span>
+
+                <span class="c1"># 减去货物容积</span>
+                <span class="n">payload_volume</span> <span class="o">=</span> <span class="mf">0.0</span>
+                <span class="k">if</span> <span class="s1">&#39;dimensions&#39;</span> <span class="ow">in</span> <span class="n">properties</span><span class="p">:</span>
+                    <span class="n">dimensions</span> <span class="o">=</span> <span class="n">properties</span><span class="p">[</span><span class="s1">&#39;dimensions&#39;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dimensions</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+                        <span class="n">payload_volume</span> <span class="o">=</span> <span class="n">dimensions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">dimensions</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">dimensions</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+                <span class="n">current_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;current_payload_volume&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="n">new_volume</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">current_volume</span> <span class="o">-</span> <span class="n">payload_volume</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;current_payload_volume&#39;</span><span class="p">,</span> <span class="n">new_volume</span><span class="p">)</span>
+
+            <span class="c1"># 如果没有剩余货物，将重量和容积设为0</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;payload_ids&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;current_payload_weight&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;current_payload_volume&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+            <span class="c1"># 如果当前状态是delivering，更新为idle</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;delivering&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 不再携带货物 </span><span class="si">{</span><span class="n">payload_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t\t</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 当前负载重量: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;current_payload_weight&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">kg, 负载容积: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;current_payload_volume&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">m³&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DeliveryAgent.register_event_listeners"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.delivery_agent.DeliveryAgent.register_event_listeners">[docs]</a>    <span class="k">def</span> <span class="nf">register_event_listeners</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;注册物流代理需要监听的事件&quot;&quot;&quot;</span>
+        <span class="c1"># 获取基类注册的事件监听器</span>
+        <span class="n">listeners</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">register_event_listeners</span><span class="p">()</span>
+
+        <span class="c1"># 添加物流代理特有的事件监听器</span>
+        <span class="n">listeners</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+            <span class="p">{</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="s1">&#39;possessing_object_added&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;callback&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_payload_added</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="s1">&#39;possessing_object_removed&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;callback&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_payload_removed</span>
+            <span class="p">}</span>
+        <span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">listeners</span></div>
+
+    <span class="k">def</span> <span class="nf">_process_custom_logic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;执行物流代理特定的逻辑&quot;&quot;&quot;</span>
+        <span class="c1"># 获取当前活跃的工作流</span>
+        <span class="n">active_workflows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_active_workflows</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">active_workflows</span><span class="p">:</span>
+            <span class="c1"># 如果没有活跃的工作流，则简单地保持空闲状态</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;transporting&#39;</span><span class="p">,</span> <span class="s1">&#39;delivering&#39;</span><span class="p">,</span>
+                                                <span class="s1">&#39;picking_up&#39;</span><span class="p">,</span> <span class="s1">&#39;pickup_completed&#39;</span><span class="p">,</span> <span class="s1">&#39;delivery_completed&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 检查是否有物流工作流</span>
+        <span class="n">logistics_workflow</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">workflow</span> <span class="ow">in</span> <span class="n">active_workflows</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">workflow</span><span class="p">,</span> <span class="n">LogisticsWorkflow</span><span class="p">):</span>
+                <span class="n">logistics_workflow</span> <span class="o">=</span> <span class="n">workflow</span>
+                <span class="k">break</span>
+
+        <span class="c1"># 如果有物流工作流，处理物流工作流</span>
+        <span class="k">if</span> <span class="n">logistics_workflow</span><span class="p">:</span>
+            <span class="c1"># 根据物流工作流状态更新代理状态</span>
+            <span class="n">current_state</span> <span class="o">=</span> <span class="n">logistics_workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span>
+            <span class="k">if</span> <span class="n">current_state</span> <span class="o">==</span> <span class="s1">&#39;picking_up&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">,</span> <span class="s1">&#39;picking_up&#39;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">current_state</span> <span class="o">==</span> <span class="s1">&#39;transporting&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">,</span> <span class="s1">&#39;transporting&#39;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">current_state</span> <span class="o">==</span> <span class="s1">&#39;delivering&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;delivery_status&#39;</span><span class="p">,</span> <span class="s1">&#39;delivering&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DeliveryAgent.get_details"><a class="viewcode-back" href="../../../api/agent.html#aeroagentsim.agent.delivery_agent.DeliveryAgent.get_details">[docs]</a>    <span class="k">def</span> <span class="nf">get_details</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取代理详细信息，添加物流相关信息&quot;&quot;&quot;</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_details</span><span class="p">()</span>
+
+        <span class="c1"># 添加物流相关信息</span>
+        <span class="n">payload_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;payload_ids&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">if</span> <span class="n">payload_ids</span><span class="p">:</span>
+            <span class="c1"># 获取所有携带的货物信息</span>
+            <span class="n">payloads</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">payload_id</span> <span class="ow">in</span> <span class="n">payload_ids</span><span class="p">:</span>
+                <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_possessing_object</span><span class="p">(</span><span class="n">payload_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">payload</span><span class="p">:</span>
+                    <span class="n">payloads</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+
+            <span class="n">details</span><span class="p">[</span><span class="s1">&#39;payload_info&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;ids&#39;</span><span class="p">:</span> <span class="n">payload_ids</span><span class="p">,</span>
+                <span class="s1">&#39;count&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">payload_ids</span><span class="p">),</span>
+                <span class="s1">&#39;payloads&#39;</span><span class="p">:</span> <span class="n">payloads</span><span class="p">,</span>
+                <span class="s1">&#39;current_weight&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;current_payload_weight&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s1">&#39;max_weight&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;max_payload_weight&#39;</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">),</span>
+                <span class="s1">&#39;current_volume&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;current_payload_volume&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                <span class="s1">&#39;max_volume&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;max_payload_volume&#39;</span><span class="p">,</span> <span class="mf">0.125</span><span class="p">)</span>
+            <span class="p">}</span>
+
+        <span class="c1"># 添加物流工作流信息</span>
+        <span class="n">logistics_workflows</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">workflow</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_active_workflows</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">workflow</span><span class="p">,</span> <span class="n">LogisticsWorkflow</span><span class="p">):</span>
+                <span class="n">logistics_workflows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">workflow</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                    <span class="s1">&#39;state&#39;</span><span class="p">:</span> <span class="n">workflow</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">state</span><span class="p">,</span>
+                    <span class="s1">&#39;pickup_location&#39;</span><span class="p">:</span> <span class="n">workflow</span><span class="o">.</span><span class="n">pickup_location</span><span class="p">,</span>
+                    <span class="s1">&#39;delivery_location&#39;</span><span class="p">:</span> <span class="n">workflow</span><span class="o">.</span><span class="n">delivery_location</span>
+                <span class="p">})</span>
+
+        <span class="k">if</span> <span class="n">logistics_workflows</span><span class="p">:</span>
+            <span class="n">details</span><span class="p">[</span><span class="s1">&#39;logistics_workflows&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">logistics_workflows</span>
+
+        <span class="k">return</span> <span class="n">details</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.agent.delivery_agent</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

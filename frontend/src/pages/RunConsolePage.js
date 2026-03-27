@@ -587,6 +587,7 @@ function RunConsolePage() {
             <Title level={5}>{t('realtimeLogs')}</Title>
             <Table
               size="small"
+              scroll={{ x: 'max-content' }}
               rowKey={(row, index) => row.id || `${row.timestamp}_${index}`}
               dataSource={logs}
               pagination={{ pageSize: 8 }}

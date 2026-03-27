@@ -1,128 +1,124 @@
-<a href="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9"><img src="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9/status.svg"></a>
+<a href="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9"><img src="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9/status.svg" alt="JOSS 状态"></a>
 [![DOI](https://zenodo.org/badge/735258267.svg)](https://doi.org/10.5281/zenodo.15779000)
 
 # AeroAgentSim
 
 <div align="center">
-<img src="src/airfogsim/docs/img/logo.png" alt="AeroAgentSim Logo" width="300">
+<img src="src/aeroagentsim/docs/img/logo.png" alt="AeroAgentSim Logo" width="300">
 </div>
 
-AeroAgentSim 是当前对外使用的产品名。本仓库的 Python 包名、导入路径和技术命名仍然保持为 `airfogsim`。
+AeroAgentSim 是一个面向低空自主系统的离散事件仿真平台与开发者工作台，适用于工作流建模、算法验证、运行调试、轨迹回放和执行链路分析。
 
-AeroAgentSim 基于现有 `airfogsim` 离散事件仿真核心，面向低空车载雾计算中的协同智能研究与开发。当前版本重点在开发者工作台、配置管理、工作流耦合关系可视化、运行控制和轻量 2D 可视化，不再提供 3D 页面。
+当前仓库、工作台与源码分发统一使用 `AeroAgentSim` 与 `aeroagentsim`。已有项目仍可继续导入 `airfogsim`，下文引用部分则对应以 `AirFogSim` 题目发表的 JOSS 论文。
 
 [English Version](README.md)
 
 ## 项目概览
 
-- 安装目标仍然是 `airfogsim`：`pip install airfogsim`
-- 本地开发环境建议先执行 `conda activate airfogsim`
-- 顶层导入已修复：`from airfogsim import Environment`
-- 历史兼容导入仍可用：`from airfogsim import AirFogSimEnv`
-- 前端已经重写为 2D 开发者工作台
-- 3D 页面和 3D 前端依赖已移除
-- 配置快照与运行产物已按 `runtime/aeroagentsim/` 分层存储
-- 自定义 `agent` / `task` / `workflow` 定义采用 `registry/aeroagentsim/` 文件主源
+- 推荐开发安装方式：`pip install -e .[dev]`
+- 推荐 Python 导入方式：`from aeroagentsim import Environment`
+- 当前工作台页面：`Overview`、`Class Catalog`、`Workflow Studio`、`Run Console`、`Trajectories & Logs`
+- 运行产物目录：`runtime/aeroagentsim/`
+- 自定义 `agent` / `task` / `workflow` 文件主源目录：`registry/aeroagentsim/`
+- 工作台内置工作流聚焦于可运行的 inspection、charging、logistics、image-processing 场景
 
 ## 开发者工作台
 
-当前 AeroAgentSim 工作台包含五个页面：
+当前 AeroAgentSim 工作台面向配置、校验、执行与运行验证：
 
 1. `Overview`：当前配置版本、最近一次运行、校验状态
-2. `Class Catalog`：agent/component/task/workflow 元数据和兼容关系
-3. `Workflow Studio`：表格表单编辑 + workflow-agent-state 关系图
-4. `Run Console`：启动、暂停、恢复、重置、关键路径、实时日志和实时 2D 地图
-5. `Trajectories & Logs`：按 `run_id` 查看轨迹和日志
+2. `Class Catalog`：内置与自定义元数据以及兼容关系查询
+3. `Workflow Studio`：表格/表单编辑与 workflow-agent-state 关系图
+4. `Run Console`：启动、暂停、恢复、重置、实时日志、关键路径和实时 2D 地图
+5. `Trajectories & Logs`：按 `run_id` 查看历史轨迹与结构化日志
 
-可视化策略固定为轻量 2D：
+可视化层保持轻量、明确、易验证：
 
-- 基于 Leaflet
+- 基于 Leaflet 的 2D 空间视图
 - `simulation_plane` 模式使用 `CRS.Simple`
-- `geo_osm` 模式使用真实地理坐标
-- 实时展示 agent marker、状态颜色、当前 workflow / task 和近期日志
-- 历史轨迹用 2D polyline 展示
+- `geo_osm` 模式使用地理坐标
+- 实时 marker 展示 workflow、task、状态和近期日志上下文
+- 历史轨迹以 2D polyline 形式回放
 
-关系图仍然不是拖拽式编辑器。配置修改通过表格和表单完成，图负责展示耦合关系、定位节点、突出关键路径、提供校验上下文，并支持缩放和平移查看。在图谱画布内滚轮缩放、拖动画布平移时，不会再联动外层工作台页面滚动。
+`Workflow Studio` 以表格和表单作为持久化配置主源。关系图是交互式检查画布，支持自动布局、画布内滚轮或触控板缩放、空白背景拖拽平移，以及节点拖拽微调布局。
 
 ![Workflow Studio 关系图](docs/images/workflow-studio-relation-graph.png)
 
-当前工作台还支持：
+当前工作台还提供：
 
-- 全局 `zh-CN` / `en-US` 语言切换
-- `Workflow Studio` 页内 `Validate`，用于校验当前草稿
-- 集中的 `Review / Validate` 草稿一致性校验入口
-- 内置定义与自定义定义合并后的统一目录视图
-- 通过表格/表单扩展 workflow 相关定义，而不是上传 Python 脚本
+- 全局 `zh-CN` / `en-US` 界面切换
+- `Workflow Studio` 页内 `Validate`
+- 集中式 `Review / Validate` 草稿一致性与运行前校验
+- 内置定义与自定义定义的统一浏览
+- 基于 `run_id` 的结构化日志与轨迹检查
 
-## 自定义注册目录
+## Registry 与运行时
 
-自定义定义以文件为主源，固定存放在：
+自定义定义采用文件主源：
 
 - `registry/aeroagentsim/agents/`
 - `registry/aeroagentsim/tasks/`
 - `registry/aeroagentsim/workflows/`
 
-每个定义都带有统一元数据，例如：
+配置快照与运行时产物分层存放：
 
-- `id`
-- `version`
-- `display_name`
-- `description`
-- `schema_version`
-- `source`
-- `created_at`
-- `updated_at`
+- 配置快照：`runtime/aeroagentsim/configs/`
+- 运行目录：`runtime/aeroagentsim/runs/<run_id>/`
+- 常见子目录：`logs/`、`workflow_states/`、`trajectories/`、`spatial/`、`metrics/`
 
-当前 v1 采用声明式模型。用户可以在前端扩展 agent、task 和 workflow 定义，但不能直接上传任意 Python 插件代码；运行时仍通过现有 `airfogsim` 组件体系和 workflow 执行逻辑进行适配。
+运行启动前会执行 runtime preflight。像默认 `create_airspace` 或 `create_frequency` 注入被跳过这样的兼容性发现，会保留为 `warning`；只有 preflight `errors` 才会阻塞 `POST /api/runs`。
 
-## 运行时模型
+## 开发配置
 
-配置与运行时产物彻底分层：
+本地开发和自动化最常用的公开环境变量如下：
 
-- 配置快照是不可变的，存放在 `runtime/aeroagentsim/configs/`
-- 每次运行生成独立 `run_id`
-- 运行产物写入 `runtime/aeroagentsim/runs/<run_id>/`
-- 常见子目录包括 `logs/`、`workflow_states/`、`trajectories/`、`spatial/`、`metrics/`
-- SQLite 只保留活动运行缓存和轻量索引，不再作为历史日志主存储
-
-控制与推送分离：
-
-- REST 负责启动、暂停、恢复、重置、保存配置、校验配置和生成关系图
-- WebSocket 只负责推送 `sim_status`、`workflow_state_diff`、`spatial_snapshot`、`log_event`
-
-运行启动前还会执行 runtime preflight。像当前运行时未暴露 `create_airspace` / `create_frequency`、因此跳过默认资源注入这类兼容性问题，会继续以 warning 展示；只有 preflight `errors` 才会阻塞 `POST /api/runs`。
+- 后端存储：
+  - `AEROAGENTSIM_RUNTIME_DIR`
+  - `AEROAGENTSIM_REGISTRY_DIR`
+  - `AEROAGENTSIM_DB_PATH`
+  - `AEROAGENTSIM_LOG_LEVEL`
+- 后端兼容别名：
+  - `AIRFOGSIM_RUNTIME_DIR`
+  - `AIRFOGSIM_REGISTRY_DIR`
+  - `AIRFOGSIM_DB_PATH`
+  - `AIRFOGSIM_LOG_LEVEL`
+- 前端地址：
+  - `REACT_APP_API_BASE_URL`
+  - `REACT_APP_WS_BASE_URL`
+  - `REACT_APP_ENABLE_MOCK_FALLBACK`
+- 示例依赖：
+  - `OPENWEATHERMAP_API_KEY`：天气相关示例
+  - `SUMO_HOME`：SUMO 交通工作流
 
 ## 安装
 
+针对当前仓库和开发者工作台，推荐直接从源码安装：
+
 ```bash
-conda activate airfogsim
-pip install airfogsim
+python -m venv aeroagentsim_env
+source aeroagentsim_env/bin/activate
+pip install -e .[dev]
 ```
 
-> **注意：** PyPI 发布版本可能滞后于源码。如果遇到
-> `ImportError`（例如无法导入 `AirFogSimEnv`），请从源码安装：
-> ```bash
-> pip install git+https://github.com/ZhiweiWei-NAMI/AirFogSim.git
-> ```
-> 或者克隆仓库后以可编辑模式安装 — 参见 [INSTALL.md](INSTALL.md)。
+如果还需要文档构建能力：
 
-完整安装步骤、源码安装和前端依赖请参阅 [INSTALL.md](INSTALL.md)。
+```bash
+pip install -e ".[dev,docs]"
+```
 
 ### 安装后验证
 
 ```bash
-python -c "import airfogsim; from airfogsim import Environment, AirFogSimEnv; print('ok')"
+python -c "import aeroagentsim, airfogsim; from aeroagentsim import Environment; from airfogsim import Environment as LegacyEnvironment; print(Environment.__name__, Environment is LegacyEnvironment)"
 ```
-
-`AirFogSimEnv` 仍然保留为兼容别名，新代码建议优先使用 `Environment`。
 
 ## 快速示例
 
 ```python
-from airfogsim import Environment
-from airfogsim.agent import DroneAgent
-from airfogsim.component import ChargingComponent, MoveToComponent
-from airfogsim.workflow.inspection import create_inspection_workflow
+from aeroagentsim import Environment
+from aeroagentsim.agent import DroneAgent
+from aeroagentsim.component import ChargingComponent, MoveToComponent
+from aeroagentsim.workflow.inspection import create_inspection_workflow
 
 env = Environment()
 
@@ -159,8 +155,6 @@ env.run(until=600)
 python main_for_visualization.py --backend-port 8002 --frontend-port 3000
 ```
 
-当前界面是基于 `airfogsim` 后端的 AeroAgentSim 2D 工作台，不再提供 3D 地图页面。
-
 ## API 概览
 
 当前工作台的主要接口分组如下：
@@ -187,20 +181,26 @@ python main_for_visualization.py --backend-port 8002 --frontend-port 3000
 - [安装指南](INSTALL.md)
 - [文档导航](DOCUMENTATION_GUIDE.md)
 - [文档中心](docs/README.md)
-- [系统架构](src/airfogsim/docs/cn/architecture.md)
+- [系统架构](src/aeroagentsim/docs/cn/architecture.md)
 
 ## 引用
 
-如果您在研究中使用本项目，请引用：
+如果您在研究中使用 AeroAgentSim，请引用 JOSS 论文：
+
+- JOSS 页面：<https://joss.theoj.org/papers/10.21105/joss.08267>
+- PDF：<https://www.theoj.org/joss-papers/joss.08267/10.21105.joss.08267.pdf>
 
 ```bibtex
-@misc{wei2024airfogsimlightweightmodularsimulator,
-      title={AirFogSim: A Light-Weight and Modular Simulator for UAV-Integrated Vehicular Fog Computing},
-      author={Zhiwei Wei and Chenran Huang and Bing Li and Yiting Zhao and Xiang Cheng and Liuqing Yang and Rongqing Zhang},
-      year={2024},
-      eprint={2409.02518},
-      archivePrefix={arXiv},
-      primaryClass={cs.NI},
-      url={https://arxiv.org/abs/2409.02518},
+@article{Wei2025,
+  doi = {10.21105/joss.08267},
+  url = {https://doi.org/10.21105/joss.08267},
+  year = {2025},
+  publisher = {The Open Journal},
+  volume = {10},
+  number = {111},
+  pages = {8267},
+  author = {Wei, Zhiwei and Li, Bing and Zhang, Rongqing},
+  title = {AirFogSim: A Python Package for Benchmarking Collaborative Intelligence in Low-Altitude Vehicular Fog Computing},
+  journal = {Journal of Open Source Software}
 }
 ```

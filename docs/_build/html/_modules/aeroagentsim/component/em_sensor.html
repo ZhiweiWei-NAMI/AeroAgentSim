@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.component.em_sensor &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.component.em_sensor</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.component.em_sensor</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim 电磁感知组件模块</span>
+
+<span class="sd">该模块实现了一个电磁感知组件，用于感知周围环境中的电磁信号。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 周期性扫描特定频段</span>
+<span class="sd">2. 检测和识别信号源</span>
+<span class="sd">3. 更新代理状态</span>
+<span class="sd">4. 模拟电池消耗</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">simpy</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.component</span> <span class="kn">import</span> <span class="n">Component</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EMSensingComponent"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.em_sensor.EMSensingComponent">[docs]</a><span class="k">class</span> <span class="nc">EMSensingComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    电磁感知组件，用于感知周围环境中的电磁信号</span>
+
+<span class="sd">    该组件利用SignalDataProvider获取周围信号的信息，</span>
+<span class="sd">    模拟传感器的不确定性（如信号类型识别错误、功率测量误差等），</span>
+<span class="sd">    并将感知到的信号更新到Agent的状态中。</span>
+
+<span class="sd">    性能指标：</span>
+<span class="sd">    - em_sensor_sensitivity: 传感器灵敏度 (dBm)</span>
+<span class="sd">    - em_sensor_power_consumption: 传感器功耗</span>
+<span class="sd">    - em_sensor_accuracy_identification: 信号类型识别精度 (错误率)</span>
+<span class="sd">    - em_sensor_accuracy_power: 功率测量精度 (dB标准差)</span>
+<span class="sd">    - em_sensor_accuracy_frequency: 频率测量精度 (MHz标准差)</span>
+<span class="sd">    - em_sensor_accuracy_direction: 方向测量精度 (度标准差)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">PRODUCED_METRICS</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;em_sensor_sensitivity&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;em_sensor_power_consumption&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;em_sensor_accuracy_identification&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;em_sensor_accuracy_power&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;em_sensor_accuracy_frequency&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;em_sensor_accuracy_direction&#39;</span>
+    <span class="p">]</span>
+    <span class="n">MONITORED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">,</span> <span class="s1">&#39;status&#39;</span><span class="p">,</span> <span class="s1">&#39;battery_level&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="EMSensingComponent.__init__"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.em_sensor.EMSensingComponent.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">supported_events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;signal_detected&#39;</span><span class="p">,</span> <span class="s1">&#39;signal_lost&#39;</span><span class="p">],</span>
+                 <span class="n">properties</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化电磁感知组件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            agent: 所属代理</span>
+<span class="sd">            name: 组件名称</span>
+<span class="sd">            supported_events: 支持的额外事件</span>
+<span class="sd">            properties: 组件属性，包含传感器配置参数</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span> <span class="ow">or</span> <span class="s2">&quot;EMSensor&quot;</span><span class="p">,</span> <span class="n">supported_events</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+
+        <span class="c1"># 从properties获取传感器参数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensing_interval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sensing_interval&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># 感知间隔（秒）</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensitivity_threshold</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sensitivity_threshold&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mf">90.0</span><span class="p">)</span>  <span class="c1"># 灵敏度阈值 (dBm)</span>
+
+        <span class="c1"># 频率扫描范围，可以是多个频段</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frequency_bands</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;frequency_bands&#39;</span><span class="p">,</span> <span class="p">[(</span><span class="mi">2400</span><span class="p">,</span> <span class="mi">2500</span><span class="p">)])</span>  <span class="c1"># 默认2.4GHz频段</span>
+
+        <span class="c1"># 传感器精度参数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">signal_identification_error_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;signal_identification_error_rate&#39;</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>  <span class="c1"># 信号类型识别错误率 (0.0-1.0)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">power_measurement_accuracy_stddev</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;power_measurement_accuracy_stddev&#39;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>  <span class="c1"># 功率测量误差标准差 (dB)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frequency_measurement_accuracy_stddev</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;frequency_measurement_accuracy_stddev&#39;</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>  <span class="c1"># 频率测量误差标准差 (MHz)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">direction_finding_accuracy_stddev</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;direction_finding_accuracy_stddev&#39;</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>  <span class="c1"># 方向测量误差标准差 (度)</span>
+
+        <span class="c1"># 电池消耗相关属性</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">energy_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;energy_factor&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># 能量消耗因子</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_energy_consumption</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;base_energy_consumption&#39;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># 基础能量消耗率（每秒消耗电池百分比）</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">signal_detection_energy_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;signal_detection_energy_factor&#39;</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">)</span>  <span class="c1"># 每检测到一个信号的额外能量消耗</span>
+
+        <span class="c1"># 信号数据提供者引用</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;signal_data_provider&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No signal_data_provider found in environment, EM sensing will not work properly&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 初始化内部状态变量</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_detected_signals</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># 上次检测到的信号ID集合</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># 持续感知进程</span>
+
+        <span class="c1"># 启动后台感知进程</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_persistent_em_sensing</span><span class="p">())</span>
+
+        <span class="c1"># 更新组件性能指标</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;em_sensor_sensitivity&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensitivity_threshold</span><span class="p">,</span>
+            <span class="s1">&#39;em_sensor_power_consumption&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_energy_consumption</span><span class="p">,</span>
+            <span class="s1">&#39;em_sensor_accuracy_identification&#39;</span><span class="p">:</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_identification_error_rate</span><span class="p">,</span>  <span class="c1"># 转换为精度值</span>
+            <span class="s1">&#39;em_sensor_accuracy_power&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_measurement_accuracy_stddev</span><span class="p">,</span>
+            <span class="s1">&#39;em_sensor_accuracy_frequency&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">frequency_measurement_accuracy_stddev</span><span class="p">,</span>
+            <span class="s1">&#39;em_sensor_accuracy_direction&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_finding_accuracy_stddev</span>
+        <span class="p">})</span></div>
+
+    <span class="k">def</span> <span class="nf">_persistent_em_sensing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        持续电磁感知的后台进程</span>
+
+<span class="sd">        该进程周期性地模拟感知过程并更新Agent状态</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="c1"># 等待一个感知周期</span>
+                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sensing_interval</span><span class="p">)</span>
+
+                <span class="c1"># 检查组件和Agent状态是否正常</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_error</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;error&#39;</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># 获取自身位置</span>
+                <span class="n">my_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;position&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">my_position</span><span class="p">:</span>
+                    <span class="k">continue</span>  <span class="c1"># 如果位置未知，跳过本次感知</span>
+
+                <span class="c1"># 检查信号数据提供者是否可用</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># 获取可检测到的信号（理论上可探测的真实信号）</span>
+                <span class="n">true_signals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span><span class="o">.</span><span class="n">get_detectable_signals_at_location</span><span class="p">(</span>
+                    <span class="n">sensor_location</span><span class="o">=</span><span class="n">my_position</span><span class="p">,</span>
+                    <span class="n">frequency_bands_of_interest</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">frequency_bands</span><span class="p">,</span>
+                    <span class="n">sensor_sensitivity_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sensitivity_threshold</span>
+                <span class="p">)</span>
+
+                <span class="c1"># 模拟感知误差，生成最终感知到的信号列表</span>
+                <span class="n">final_perceived_signals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_sensing_inaccuracies</span><span class="p">(</span><span class="n">true_signals</span><span class="p">)</span>
+
+                <span class="c1"># 处理感知到的信号（触发事件等）</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_process_perceived_signals</span><span class="p">(</span><span class="n">final_perceived_signals</span><span class="p">)</span>
+
+                <span class="c1"># 更新代理状态</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;detected_signals&#39;</span><span class="p">,</span> <span class="n">final_perceived_signals</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;last_em_scan_time&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
+
+                <span class="c1"># 计算并更新电池消耗</span>
+                <span class="n">detected_signals_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">true_signals</span><span class="p">)</span>  <span class="c1"># 使用真实信号数量计算能耗</span>
+                <span class="n">energy_consumed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_sensing_energy_consumption</span><span class="p">(</span><span class="n">detected_signals_count</span><span class="p">)</span>
+
+                <span class="c1"># 获取当前电池电量</span>
+                <span class="n">battery_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+
+                <span class="c1"># 更新电池电量</span>
+                <span class="n">new_battery_level</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">battery_level</span> <span class="o">-</span> <span class="n">energy_consumed</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="n">new_battery_level</span><span class="p">)</span>
+
+                <span class="c1"># 如果电量过低，打印警告</span>
+                <span class="k">if</span> <span class="n">new_battery_level</span> <span class="o">&lt;</span> <span class="mi">20</span> <span class="ow">and</span> <span class="n">battery_level</span> <span class="o">&gt;=</span> <span class="mi">20</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 警告! </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 电磁感知中电量低于20%: </span><span class="si">{</span><span class="n">new_battery_level</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">new_battery_level</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="ow">and</span> <span class="n">battery_level</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 严重警告! </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 电磁感知中电量极低: </span><span class="si">{</span><span class="n">new_battery_level</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">new_battery_level</span> <span class="o">&lt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 严重警告! </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 电磁感知中电量耗尽!&quot;</span><span class="p">)</span>
+                    <span class="c1"># 电量耗尽，将组件设置为错误状态</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">,</span> <span class="s1">&#39;error&#39;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">is_error</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 的 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 组件因电量耗尽被设置为错误状态&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in EM sensing process: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># 将组件状态设为错误</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_error</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_apply_sensing_inaccuracies</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">true_signals</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        模拟感知误差，为真实信号添加随机误差</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            true_signals: 理论上可探测的真实信号列表</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[Dict]: 带有模拟误差的感知信号列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">final_perceived_signals</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">signal</span> <span class="ow">in</span> <span class="n">true_signals</span><span class="p">:</span>
+            <span class="c1"># 创建信号的副本，避免修改原始数据</span>
+            <span class="n">perceived_signal</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+            <span class="c1"># 为信号添加唯一ID（如果原始信号没有）</span>
+            <span class="k">if</span> <span class="s1">&#39;signal_id&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">perceived_signal</span><span class="p">:</span>
+                <span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;signal_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;source_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;center_frequency&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="nb">id</span><span class="p">(</span><span class="n">perceived_signal</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+
+            <span class="c1"># 模拟信号类型识别错误</span>
+            <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_identification_error_rate</span><span class="p">:</span>
+                <span class="c1"># 可能的信号类型列表</span>
+                <span class="n">possible_types</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;unknown&#39;</span><span class="p">,</span> <span class="s1">&#39;wifi&#39;</span><span class="p">,</span> <span class="s1">&#39;bluetooth&#39;</span><span class="p">,</span> <span class="s1">&#39;cellular&#39;</span><span class="p">,</span> <span class="s1">&#39;satellite&#39;</span><span class="p">,</span> <span class="s1">&#39;radar&#39;</span><span class="p">,</span> <span class="s1">&#39;radio&#39;</span><span class="p">]</span>
+                <span class="c1"># 从可能的类型中随机选择一个，但不能是真实类型</span>
+                <span class="n">true_type</span> <span class="o">=</span> <span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;signal_type&#39;</span><span class="p">]</span>
+                <span class="n">possible_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">possible_types</span> <span class="k">if</span> <span class="n">t</span> <span class="o">!=</span> <span class="n">true_type</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">possible_types</span><span class="p">:</span>
+                    <span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;signal_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">possible_types</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;signal_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;unknown&#39;</span>
+
+            <span class="c1"># 模拟功率测量误差</span>
+            <span class="k">if</span> <span class="s1">&#39;received_power&#39;</span> <span class="ow">in</span> <span class="n">perceived_signal</span><span class="p">:</span>
+                <span class="n">power_error</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">power_measurement_accuracy_stddev</span><span class="p">)</span>
+                <span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;received_power&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;received_power&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">power_error</span>
+                <span class="c1"># 更新SNR以保持一致性</span>
+                <span class="k">if</span> <span class="s1">&#39;snr&#39;</span> <span class="ow">in</span> <span class="n">perceived_signal</span><span class="p">:</span>
+                    <span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;snr&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;snr&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">power_error</span>
+
+            <span class="c1"># 模拟频率测量误差</span>
+            <span class="k">if</span> <span class="s1">&#39;center_frequency&#39;</span> <span class="ow">in</span> <span class="n">perceived_signal</span><span class="p">:</span>
+                <span class="n">freq_error</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">frequency_measurement_accuracy_stddev</span><span class="p">)</span>
+                <span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;center_frequency&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;center_frequency&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">freq_error</span>
+
+            <span class="c1"># 模拟带宽测量误差</span>
+            <span class="k">if</span> <span class="s1">&#39;bandwidth&#39;</span> <span class="ow">in</span> <span class="n">perceived_signal</span><span class="p">:</span>
+                <span class="n">bandwidth_error</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">frequency_measurement_accuracy_stddev</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">)</span>  <span class="c1"># 带宽误差通常小于频率误差</span>
+                <span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;bandwidth&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;bandwidth&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">bandwidth_error</span><span class="p">)</span>  <span class="c1"># 确保带宽为正</span>
+
+            <span class="c1"># 模拟方向测量误差（如果有方向信息）</span>
+            <span class="k">if</span> <span class="s1">&#39;direction&#39;</span> <span class="ow">in</span> <span class="n">perceived_signal</span><span class="p">:</span>
+                <span class="n">direction_error</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_finding_accuracy_stddev</span><span class="p">)</span>
+                <span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;direction&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">perceived_signal</span><span class="p">[</span><span class="s1">&#39;direction&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">direction_error</span><span class="p">)</span> <span class="o">%</span> <span class="mi">360</span>  <span class="c1"># 确保方向在0-360度范围内</span>
+
+            <span class="c1"># 添加到最终感知信号列表</span>
+            <span class="n">final_perceived_signals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">perceived_signal</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">final_perceived_signals</span>
+
+    <span class="k">def</span> <span class="nf">_process_perceived_signals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">perceived_signals</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        处理感知到的信号</span>
+
+<span class="sd">        检测新信号和丢失的信号，并触发相应事件。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            perceived_signals: 感知到的信号列表（已应用模拟误差）</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 获取当前检测到的信号ID集合（使用唯一信号ID）</span>
+        <span class="n">current_signal_ids</span> <span class="o">=</span> <span class="p">{</span><span class="n">signal</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;signal_id&#39;</span><span class="p">,</span> <span class="n">signal</span><span class="p">[</span><span class="s1">&#39;source_id&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">signal</span> <span class="ow">in</span> <span class="n">perceived_signals</span><span class="p">}</span>
+
+        <span class="c1"># 检测新信号</span>
+        <span class="n">new_signals</span> <span class="o">=</span> <span class="n">current_signal_ids</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_detected_signals</span>
+        <span class="k">for</span> <span class="n">signal_id</span> <span class="ow">in</span> <span class="n">new_signals</span><span class="p">:</span>
+            <span class="c1"># 找到对应的信号数据</span>
+            <span class="n">signal_data</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">perceived_signals</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;signal_id&#39;</span><span class="p">,</span> <span class="n">s</span><span class="p">[</span><span class="s1">&#39;source_id&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="n">signal_id</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">signal_data</span><span class="p">:</span>
+                <span class="c1"># 触发信号检测事件</span>
+                <span class="n">event_data</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;signal_id&#39;</span><span class="p">:</span> <span class="n">signal_id</span><span class="p">,</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">signal_data</span><span class="p">[</span><span class="s1">&#39;source_id&#39;</span><span class="p">],</span>
+                    <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+                <span class="p">}</span>
+
+                <span class="c1"># 添加其他可用的信号属性</span>
+                <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;center_frequency&#39;</span><span class="p">,</span> <span class="s1">&#39;bandwidth&#39;</span><span class="p">,</span> <span class="s1">&#39;received_power&#39;</span><span class="p">,</span> <span class="s1">&#39;signal_type&#39;</span><span class="p">,</span> <span class="s1">&#39;snr&#39;</span><span class="p">,</span> <span class="s1">&#39;position&#39;</span><span class="p">,</span> <span class="s1">&#39;direction&#39;</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">signal_data</span><span class="p">:</span>
+                        <span class="n">event_data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">signal_data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+                <span class="c1"># 触发事件</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;signal_detected&#39;</span><span class="p">,</span> <span class="n">event_data</span><span class="p">)</span>
+
+        <span class="c1"># 检测丢失的信号</span>
+        <span class="n">lost_signals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_detected_signals</span> <span class="o">-</span> <span class="n">current_signal_ids</span>
+        <span class="k">for</span> <span class="n">signal_id</span> <span class="ow">in</span> <span class="n">lost_signals</span><span class="p">:</span>
+            <span class="c1"># 触发信号丢失事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;signal_lost&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;signal_id&#39;</span><span class="p">:</span> <span class="n">signal_id</span><span class="p">,</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">signal_id</span><span class="p">,</span>
+                <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">})</span>
+
+        <span class="c1"># 更新上次检测到的信号ID集合</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_detected_signals</span> <span class="o">=</span> <span class="n">current_signal_ids</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_sensing_energy_consumption</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">detected_signals_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        计算感知过程的能量消耗</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            detected_signals_count: 检测到的信号数量</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: 感知过程消耗的电池电量百分比</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 基础能量消耗</span>
+        <span class="n">energy_consumed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_energy_consumption</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_factor</span>
+
+        <span class="c1"># 根据检测到的信号数量增加能量消耗</span>
+        <span class="n">energy_consumed</span> <span class="o">+=</span> <span class="n">detected_signals_count</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_detection_energy_factor</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_factor</span>
+
+        <span class="c1"># 根据频段数量调整能量消耗（频段越多，消耗越多）</span>
+        <span class="n">bands_factor</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frequency_bands</span><span class="p">)</span>
+        <span class="n">energy_consumed</span> <span class="o">*=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="p">(</span><span class="n">bands_factor</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>  <span class="c1"># 每增加一个频段，增加10%能耗</span>
+
+        <span class="c1"># 根据频段宽度调整能量消耗（频段越宽，消耗越多）</span>
+        <span class="n">total_bandwidth</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">max_freq</span> <span class="o">-</span> <span class="n">min_freq</span> <span class="k">for</span> <span class="n">min_freq</span><span class="p">,</span> <span class="n">max_freq</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">frequency_bands</span><span class="p">)</span>
+        <span class="n">bandwidth_factor</span> <span class="o">=</span> <span class="n">total_bandwidth</span> <span class="o">/</span> <span class="mf">100.0</span>  <span class="c1"># 标准化为100MHz带宽</span>
+        <span class="n">energy_consumed</span> <span class="o">*=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">bandwidth_factor</span><span class="p">)</span>
+
+        <span class="c1"># 调整为每次感知周期的能量消耗</span>
+        <span class="n">energy_consumed</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensing_interval</span>
+
+        <span class="k">return</span> <span class="n">energy_consumed</span>
+
+<div class="viewcode-block" id="EMSensingComponent.scan_frequency_band"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.em_sensor.EMSensingComponent.scan_frequency_band">[docs]</a>    <span class="k">def</span> <span class="nf">scan_frequency_band</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_freq</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">max_freq</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        扫描特定频段</span>
+
+<span class="sd">        此方法可以由任务调用，用于主动扫描特定频段。</span>
+<span class="sd">        与持续感知进程不同，此方法不会触发信号检测/丢失事件，</span>
+<span class="sd">        也不会更新代理的 detected_signals 状态。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            min_freq: 最小频率 (MHz)</span>
+<span class="sd">            max_freq: 最大频率 (MHz)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List[Dict]: 检测到的信号列表（已应用模拟误差）</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 检查组件状态</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_error</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;无法扫描频段：组件 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 处于错误状态&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="c1"># 获取自身位置</span>
+        <span class="n">my_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;position&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">my_position</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="c1"># 获取可检测到的信号（理论上可探测的真实信号）</span>
+        <span class="n">true_signals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_provider</span><span class="o">.</span><span class="n">get_detectable_signals_at_location</span><span class="p">(</span>
+            <span class="n">sensor_location</span><span class="o">=</span><span class="n">my_position</span><span class="p">,</span>
+            <span class="n">frequency_bands_of_interest</span><span class="o">=</span><span class="p">[(</span><span class="n">min_freq</span><span class="p">,</span> <span class="n">max_freq</span><span class="p">)],</span>
+            <span class="n">sensor_sensitivity_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sensitivity_threshold</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 模拟感知误差，生成最终感知到的信号列表</span>
+        <span class="n">final_perceived_signals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_sensing_inaccuracies</span><span class="p">(</span><span class="n">true_signals</span><span class="p">)</span>
+
+        <span class="c1"># 计算并更新电池消耗</span>
+        <span class="n">energy_consumed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_sensing_energy_consumption</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">true_signals</span><span class="p">))</span>
+
+        <span class="c1"># 获取当前电池电量</span>
+        <span class="n">battery_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+
+        <span class="c1"># 更新电池电量</span>
+        <span class="n">new_battery_level</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">battery_level</span> <span class="o">-</span> <span class="n">energy_consumed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="n">new_battery_level</span><span class="p">)</span>
+
+        <span class="c1"># 更新最后扫描时间</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span><span class="s1">&#39;last_em_scan_time&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">final_perceived_signals</span></div>
+
+<div class="viewcode-block" id="EMSensingComponent.set_frequency_bands"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.em_sensor.EMSensingComponent.set_frequency_bands">[docs]</a>    <span class="k">def</span> <span class="nf">set_frequency_bands</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frequency_bands</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        设置频率扫描范围</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            frequency_bands: 频率扫描范围列表，每个元素为 (min_freq, max_freq)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frequency_bands</span> <span class="o">=</span> <span class="n">frequency_bands</span></div>
+
+<div class="viewcode-block" id="EMSensingComponent.set_sensitivity_threshold"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.em_sensor.EMSensingComponent.set_sensitivity_threshold">[docs]</a>    <span class="k">def</span> <span class="nf">set_sensitivity_threshold</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        设置灵敏度阈值</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            threshold: 灵敏度阈值 (dBm)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sensitivity_threshold</span> <span class="o">=</span> <span class="n">threshold</span>
+
+        <span class="c1"># 更新性能指标</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span><span class="p">[</span><span class="s1">&#39;em_sensor_sensitivity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sensitivity_threshold</span></div>
+
+<div class="viewcode-block" id="EMSensingComponent.set_accuracy_parameters"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.em_sensor.EMSensingComponent.set_accuracy_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">set_accuracy_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">identification_error_rate</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">power_accuracy_stddev</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                               <span class="n">frequency_accuracy_stddev</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">direction_accuracy_stddev</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        设置传感器精度参数</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            identification_error_rate: 信号类型识别错误率 (0.0-1.0)</span>
+<span class="sd">            power_accuracy_stddev: 功率测量误差标准差 (dB)</span>
+<span class="sd">            frequency_accuracy_stddev: 频率测量误差标准差 (MHz)</span>
+<span class="sd">            direction_accuracy_stddev: 方向测量误差标准差 (度)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">identification_error_rate</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">signal_identification_error_rate</span> <span class="o">=</span> <span class="n">identification_error_rate</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span><span class="p">[</span><span class="s1">&#39;em_sensor_accuracy_identification&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">identification_error_rate</span>
+
+        <span class="k">if</span> <span class="n">power_accuracy_stddev</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">power_measurement_accuracy_stddev</span> <span class="o">=</span> <span class="n">power_accuracy_stddev</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span><span class="p">[</span><span class="s1">&#39;em_sensor_accuracy_power&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">power_accuracy_stddev</span>
+
+        <span class="k">if</span> <span class="n">frequency_accuracy_stddev</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frequency_measurement_accuracy_stddev</span> <span class="o">=</span> <span class="n">frequency_accuracy_stddev</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span><span class="p">[</span><span class="s1">&#39;em_sensor_accuracy_frequency&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">frequency_accuracy_stddev</span>
+
+        <span class="k">if</span> <span class="n">direction_accuracy_stddev</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">direction_finding_accuracy_stddev</span> <span class="o">=</span> <span class="n">direction_accuracy_stddev</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span><span class="p">[</span><span class="s1">&#39;em_sensor_accuracy_direction&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">direction_accuracy_stddev</span></div>
+
+<div class="viewcode-block" id="EMSensingComponent.disable"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.em_sensor.EMSensingComponent.disable">[docs]</a>    <span class="k">def</span> <span class="nf">disable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        禁用组件，将其设置为错误状态并取消所有正在执行的任务</span>
+<span class="sd">        同时停止持续感知进程</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 调用父类的disable方法</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">disable</span><span class="p">()</span>
+
+        <span class="c1"># 停止持续感知进程</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span><span class="o">.</span><span class="n">interrupt</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 的 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 组件被禁用，停止持续感知进程&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="EMSensingComponent.enable"><a class="viewcode-back" href="../../../api/component.html#aeroagentsim.component.em_sensor.EMSensingComponent.enable">[docs]</a>    <span class="k">def</span> <span class="nf">enable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        启用组件，将其从错误状态恢复</span>
+<span class="sd">        重新启动持续感知进程</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 调用父类的enable方法</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">enable</span><span class="p">()</span>
+
+        <span class="c1"># 重新启动持续感知进程</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sensing_process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_persistent_em_sensing</span><span class="p">())</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 的 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 组件被启用，重新启动持续感知进程&quot;</span><span class="p">)</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.component.em_sensor</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

@@ -10,7 +10,7 @@ def load_visualization_app(monkeypatch, tmp_path):
     monkeypatch.setenv("AEROAGENTSIM_DB_PATH", str(tmp_path / "runtime" / "diagnostics.sqlite"))
 
     for module_name in list(sys.modules):
-        if module_name.startswith("airfogsim.visualization"):
+        if module_name.startswith("airfogsim.visualization") or module_name.startswith("aeroagentsim.visualization"):
             sys.modules.pop(module_name, None)
 
     app_module = importlib.import_module("airfogsim.visualization.app")
@@ -91,18 +91,9 @@ def test_preflight_failure_creates_error_run_and_reset_endpoint(monkeypatch, tmp
     save_response = client.put(
         "/api/configs/default",
         json={
-            "name": "Broken Resources Config",
+            "name": "Broken Traffic Config",
             "coordinate_mode": "simulation_plane",
-            "airspaces": [
-                {
-                    "x_range": [0, 100],
-                    "y_range": [0, 100],
-                    "altitude_range": [0, 50],
-                }
-            ],
-            "frequencies": [],
-            "landing_spots": [],
-            "traffic": {},
+            "traffic": {"source": "sumo", "sumo_config": {}},
             "agents": [
                 {
                     "id": "drone_alpha",
@@ -141,7 +132,7 @@ def test_preflight_failure_creates_error_run_and_reset_endpoint(monkeypatch, tmp
     detail = start_response.json()["detail"]
     run_id = detail["run_id"]
     assert run_id.startswith("run_")
-    assert any("AirspaceManager" in message for message in detail["errors"])
+    assert any("TrafficDataProvider" in message for message in detail["errors"])
 
     status_response = client.get(f"/api/runs/{run_id}/status")
     assert status_response.status_code == 200

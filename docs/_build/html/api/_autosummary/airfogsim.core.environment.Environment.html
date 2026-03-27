@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>aeroagentsim.core.environment.Environment &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.environment.Environment</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="aeroagentsim-core-environment-environment">
+<h1>aeroagentsim.core.environment.Environment<a class="headerlink" href="#aeroagentsim-core-environment-environment" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.core.environment.</span></span><span class="sig-name descname"><span class="pre">Environment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">initial_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visual_interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.__init__" title="aeroagentsim.core.environment.Environment.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>([initial_time, visual_interval, logger])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.add_data_provider" title="aeroagentsim.core.environment.Environment.add_data_provider"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_data_provider</span></code></a>(key, provider)</p></td>
+<td><p>Registers a DataProvider instance with the environment.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.create_agent" title="aeroagentsim.core.environment.Environment.create_agent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_agent</span></code></a>(agent_class, agent_name, **kwargs)</p></td>
+<td><p>Create an agent instance and optionally attach pre-defined components.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.create_composite_trigger" title="aeroagentsim.core.environment.Environment.create_composite_trigger"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_composite_trigger</span></code></a>(triggers[, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.create_event_trigger" title="aeroagentsim.core.environment.Environment.create_event_trigger"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_event_trigger</span></code></a>(source_id, event_name)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.create_state_trigger" title="aeroagentsim.core.environment.Environment.create_state_trigger"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_state_trigger</span></code></a>(agent_id, state_key[, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.create_time_trigger" title="aeroagentsim.core.environment.Environment.create_time_trigger"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_time_trigger</span></code></a>([trigger_time, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.create_workflow" title="aeroagentsim.core.environment.Environment.create_workflow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_workflow</span></code></a>(workflow_class, name[, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.get_agent" title="aeroagentsim.core.environment.Environment.get_agent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_agent</span></code></a>(agent_id)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.get_all_agents" title="aeroagentsim.core.environment.Environment.get_all_agents"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_all_agents</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.get_data" title="aeroagentsim.core.environment.Environment.get_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_data</span></code></a>(key[, default])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.get_data_provider" title="aeroagentsim.core.environment.Environment.get_data_provider"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_data_provider</span></code></a>(key)</p></td>
+<td><p>Retrieves a registered DataProvider instance by its key.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.register_agent" title="aeroagentsim.core.environment.Environment.register_agent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_agent</span></code></a>(agent)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.store_data" title="aeroagentsim.core.environment.Environment.store_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">store_data</span></code></a>(key, value)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.now" title="aeroagentsim.core.environment.Environment.now"><code class="xref py py-obj docutils literal notranslate"><span class="pre">now</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">initial_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visual_interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.now">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">now</span></span><a class="headerlink" href="#aeroagentsim.core.environment.Environment.now" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.register_agent">
+<span class="sig-name descname"><span class="pre">register_agent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.register_agent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.register_agent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.get_agent">
+<span class="sig-name descname"><span class="pre">get_agent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.get_agent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.get_agent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.get_all_agents">
+<span class="sig-name descname"><span class="pre">get_all_agents</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.get_all_agents"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.get_all_agents" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.add_data_provider">
+<span class="sig-name descname"><span class="pre">add_data_provider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">provider</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../dataprovider.html#aeroagentsim.core.dataprovider.DataProvider" title="aeroagentsim.core.dataprovider.DataProvider"><span class="pre">DataProvider</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.add_data_provider"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.add_data_provider" title="Permalink to this definition">¶</a></dt>
+<dd><p>Registers a DataProvider instance with the environment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – A unique key to identify the provider (e.g., ‘weather’, ‘traffic’).</p></li>
+<li><p><strong>provider</strong> (<a class="reference internal" href="../dataprovider.html#aeroagentsim.core.dataprovider.DataProvider" title="aeroagentsim.core.dataprovider.DataProvider"><em>DataProvider</em></a>) – The DataProvider instance to register.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.get_data_provider">
+<span class="sig-name descname"><span class="pre">get_data_provider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../dataprovider.html#aeroagentsim.core.dataprovider.DataProvider" title="aeroagentsim.core.dataprovider.DataProvider"><span class="pre">DataProvider</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.get_data_provider"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.get_data_provider" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieves a registered DataProvider instance by its key.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The key of the DataProvider to retrieve.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The DataProvider instance, or None if not found.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[<a class="reference internal" href="../dataprovider.html#aeroagentsim.core.dataprovider.DataProvider" title="aeroagentsim.core.dataprovider.DataProvider">DataProvider</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.store_data">
+<span class="sig-name descname"><span class="pre">store_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.store_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.store_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.get_data">
+<span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.get_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.get_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.Trigger">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Trigger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trigger_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../core.html#aeroagentsim.core.enums.TriggerType" title="aeroagentsim.core.enums.TriggerType"><span class="pre">TriggerType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.environment.Environment.Trigger" title="Permalink to this definition">¶</a></dt>
+<dd><p>触发器基类</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.Trigger.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trigger_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../core.html#aeroagentsim.core.enums.TriggerType" title="aeroagentsim.core.enums.TriggerType"><span class="pre">TriggerType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.environment.Environment.Trigger.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.Trigger.activate">
+<span class="sig-name descname"><span class="pre">activate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.environment.Environment.Trigger.activate" title="Permalink to this definition">¶</a></dt>
+<dd><p>激活触发器</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.Trigger.add_callback">
+<span class="sig-name descname"><span class="pre">add_callback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.environment.Environment.Trigger.add_callback" title="Permalink to this definition">¶</a></dt>
+<dd><p>添加触发时的回调函数</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.Trigger.deactivate">
+<span class="sig-name descname"><span class="pre">deactivate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.environment.Environment.Trigger.deactivate" title="Permalink to this definition">¶</a></dt>
+<dd><p>停用触发器</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.Trigger.has_reached_max">
+<span class="sig-name descname"><span class="pre">has_reached_max</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.environment.Environment.Trigger.has_reached_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查是否达到最大触发次数</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.Trigger.set_max_triggers">
+<span class="sig-name descname"><span class="pre">set_max_triggers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.environment.Environment.Trigger.set_max_triggers" title="Permalink to this definition">¶</a></dt>
+<dd><p>设置最大触发次数</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.create_workflow">
+<span class="sig-name descname"><span class="pre">create_workflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">workflow_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow" title="aeroagentsim.core.workflow.Workflow"><span class="pre">Workflow</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_trigger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.Trigger" title="aeroagentsim.core.environment.Environment.Trigger"><span class="pre">Trigger</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_starts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow" title="aeroagentsim.core.workflow.Workflow"><span class="pre">Workflow</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.create_workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.create_workflow" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.create_agent">
+<span class="sig-name descname"><span class="pre">create_agent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.create_agent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.create_agent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an agent instance and optionally attach pre-defined components.</p>
+<p>This extends the original helper to support a <code class="docutils literal notranslate"><span class="pre">components</span></code> keyword used by
+TCCN_auto_planner. Any provided components are instantiated <em>after</em> the
+base agent is created and then attached via <code class="docutils literal notranslate"><span class="pre">agent.add_component(...)</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.create_event_trigger">
+<span class="sig-name descname"><span class="pre">create_event_trigger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">operator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../core.html#aeroagentsim.core.enums.TriggerOperator" title="aeroagentsim.core.enums.TriggerOperator"><span class="pre">TriggerOperator</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.create_event_trigger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.create_event_trigger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.create_state_trigger">
+<span class="sig-name descname"><span class="pre">create_state_trigger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">state_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">operator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../core.html#aeroagentsim.core.enums.TriggerOperator" title="aeroagentsim.core.enums.TriggerOperator"><span class="pre">TriggerOperator</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">TriggerOperator.EQUALS</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.create_state_trigger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.create_state_trigger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.create_time_trigger">
+<span class="sig-name descname"><span class="pre">create_time_trigger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trigger_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cron_expr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.create_time_trigger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.create_time_trigger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.environment.Environment.create_composite_trigger">
+<span class="sig-name descname"><span class="pre">create_composite_trigger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">triggers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../core.html#aeroagentsim.core.environment.Environment.Trigger" title="aeroagentsim.core.environment.Environment.Trigger"><span class="pre">Trigger</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">operator_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'and'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/environment.html#Environment.create_composite_trigger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.environment.Environment.create_composite_trigger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">aeroagentsim.core.environment.Environment</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment"><code class="docutils literal notranslate"><span class="pre">Environment</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.__init__"><code class="docutils literal notranslate"><span class="pre">Environment.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">Environment.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.now"><code class="docutils literal notranslate"><span class="pre">Environment.now</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.register_agent"><code class="docutils literal notranslate"><span class="pre">Environment.register_agent()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.get_agent"><code class="docutils literal notranslate"><span class="pre">Environment.get_agent()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.get_all_agents"><code class="docutils literal notranslate"><span class="pre">Environment.get_all_agents()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.add_data_provider"><code class="docutils literal notranslate"><span class="pre">Environment.add_data_provider()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.get_data_provider"><code class="docutils literal notranslate"><span class="pre">Environment.get_data_provider()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.store_data"><code class="docutils literal notranslate"><span class="pre">Environment.store_data()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.get_data"><code class="docutils literal notranslate"><span class="pre">Environment.get_data()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.Trigger"><code class="docutils literal notranslate"><span class="pre">Environment.Trigger</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.Trigger.__init__"><code class="docutils literal notranslate"><span class="pre">Environment.Trigger.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.Trigger.activate"><code class="docutils literal notranslate"><span class="pre">Environment.Trigger.activate()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.Trigger.add_callback"><code class="docutils literal notranslate"><span class="pre">Environment.Trigger.add_callback()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.Trigger.deactivate"><code class="docutils literal notranslate"><span class="pre">Environment.Trigger.deactivate()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.Trigger.has_reached_max"><code class="docutils literal notranslate"><span class="pre">Environment.Trigger.has_reached_max()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.Trigger.set_max_triggers"><code class="docutils literal notranslate"><span class="pre">Environment.Trigger.set_max_triggers()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.create_workflow"><code class="docutils literal notranslate"><span class="pre">Environment.create_workflow()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.create_agent"><code class="docutils literal notranslate"><span class="pre">Environment.create_agent()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.create_event_trigger"><code class="docutils literal notranslate"><span class="pre">Environment.create_event_trigger()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.create_state_trigger"><code class="docutils literal notranslate"><span class="pre">Environment.create_state_trigger()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.create_time_trigger"><code class="docutils literal notranslate"><span class="pre">Environment.create_time_trigger()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.environment.Environment.create_composite_trigger"><code class="docutils literal notranslate"><span class="pre">Environment.create_composite_trigger()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api/_autosummary/airfogsim.core.environment.Environment.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.environment.Environment</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

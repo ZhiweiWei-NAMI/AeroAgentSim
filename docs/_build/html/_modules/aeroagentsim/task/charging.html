@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.task.charging &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.task.charging</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.task.charging</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim充电任务模块</span>
+
+<span class="sd">该模块定义了无人机充电任务的实现，负责模拟无人机在充电站充电的过程以及充电站资源的请求。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 充电站资源请求 - 为代理分配充电站资源</span>
+<span class="sd">2. 模拟电池充电过程 - 计算充电速率和效率</span>
+<span class="sd">3. 更新代理的电池状态</span>
+<span class="sd">4. 管理充电站资源的添加和移除</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.task</span> <span class="kn">import</span> <span class="n">Task</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RequestChargingStationTask"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.charging.RequestChargingStationTask">[docs]</a><span class="k">class</span> <span class="nc">RequestChargingStationTask</span><span class="p">(</span><span class="n">Task</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    请求充电站资源的任务</span>
+
+<span class="sd">    该任务负责为代理分配充电站资源，成功完成后会将充电站对象添加到代理的possessing_objects中。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">NECESSARY_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;request_processing_time&#39;</span><span class="p">]</span>
+    <span class="n">PRODUCED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="RequestChargingStationTask.__init__"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.charging.RequestChargingStationTask.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">component_name</span><span class="p">,</span> <span class="n">task_name</span><span class="p">,</span>
+                 <span class="n">workflow_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">target_state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化充电站请求任务</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            agent: 代理</span>
+<span class="sd">            component_name: 组件名称</span>
+<span class="sd">            task_name: 任务名称</span>
+<span class="sd">            workflow_id: 工作流ID</span>
+<span class="sd">            target_state: 目标状态</span>
+<span class="sd">            properties: 任务属性，应包含充电站位置信息</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 确保属性不为空</span>
+        <span class="n">properties</span> <span class="o">=</span> <span class="n">properties</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">target_state</span> <span class="o">=</span> <span class="n">target_state</span> <span class="ow">or</span> <span class="p">{}</span>
+
+        <span class="c1"># 调用父类初始化</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">component_name</span><span class="p">,</span> <span class="n">task_name</span><span class="p">,</span>
+                         <span class="n">workflow_id</span><span class="p">,</span> <span class="n">target_state</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+
+        <span class="c1"># 任务特定属性</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">charging_station_id</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;charging_station_id&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">charging_station</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">landing_manager</span><span class="o">.</span><span class="n">find_resource_by_id</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">charging_station_id</span><span class="p">)</span>
+        <span class="c1"># 将充电站添加到代理的possessing_objects中</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">add_possessing_object</span><span class="p">(</span><span class="s1">&#39;charging_station&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">charging_station</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">waiting_time</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+    <span class="k">def</span> <span class="nf">_is_allocation_ready</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;充电站一旦分配给当前代理，请求任务应立即结束。&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">charging_station</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">landing_manager</span><span class="o">.</span><span class="n">is_allocated_to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">charging_station</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RequestChargingStationTask.estimate_remaining_time"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.charging.RequestChargingStationTask.estimate_remaining_time">[docs]</a>    <span class="k">def</span> <span class="nf">estimate_remaining_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">performance_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;估计完成任务所需的剩余时间&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_allocation_ready</span><span class="p">():</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        <span class="n">processing_time</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;request_processing_time&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">processing_time</span></div>
+
+    <span class="k">def</span> <span class="nf">_update_task_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">performance_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;更新任务进度和内部状态&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_allocation_ready</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="k">return</span>
+
+        <span class="n">elapsed_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span>
+        <span class="n">remain_time</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;request_processing_time&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">waiting_time</span> <span class="o">+=</span> <span class="n">elapsed_time</span>
+        <span class="k">if</span> <span class="n">remain_time</span> <span class="o">==</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">waiting_time</span> <span class="o">/</span> <span class="p">(</span><span class="n">remain_time</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">waiting_time</span> <span class="o">+</span> <span class="mf">1e-9</span><span class="p">))</span>
+        <span class="c1"># 对self.progress进行浮点数比较时，使用1e-6作为epsilon值</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">&gt;=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="mf">1e-6</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+    <span class="k">def</span> <span class="nf">_get_task_specific_state_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;返回任务特定状态的表示&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;active&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">&lt;</span> <span class="mf">1.0</span> <span class="k">else</span> <span class="s1">&#39;idle&#39;</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        任务完成时，将充电站对象添加到代理的possessing_objects中</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">charging_station</span><span class="o">.</span><span class="n">is_allocated</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="p">),</span> \
+            <span class="sa">f</span><span class="s2">&quot;充电站 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">charging_station</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> 未分配给代理 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 成功获取充电站资源 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">charging_station</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_fail</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        任务失败时的处理</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 请求充电站失败: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">failure_reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        任务取消时的处理</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 请求充电站被取消&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ChargingTask"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.charging.ChargingTask">[docs]</a><span class="k">class</span> <span class="nc">ChargingTask</span><span class="p">(</span><span class="n">Task</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    执行电池充电任务</span>
+
+<span class="sd">    该任务负责模拟电池充电过程，并在充电完成后释放充电站资源。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">NECESSARY_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;charging_rate&#39;</span><span class="p">]</span>
+    <span class="c1"># 明确定义此任务产生的状态</span>
+    <span class="n">PRODUCED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="s1">&#39;status&#39;</span><span class="p">,</span> <span class="s1">&#39;charge_cycles&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="ChargingTask.__init__"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.charging.ChargingTask.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">component_name</span><span class="p">,</span> <span class="n">task_name</span><span class="p">,</span>
+                 <span class="n">workflow_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">target_state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化充电任务</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">            agent: 代理</span>
+<span class="sd">            component_name: 组件名称</span>
+<span class="sd">            task_name: 任务名称</span>
+<span class="sd">            workflow_id: 工作流ID</span>
+<span class="sd">            target_state: 目标状态，必须包含&#39;battery_level&#39;</span>
+<span class="sd">            properties: 任务属性</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 确保目标状态和属性不为空</span>
+        <span class="n">target_state</span> <span class="o">=</span> <span class="n">target_state</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="n">properties</span> <span class="o">=</span> <span class="n">properties</span> <span class="ow">or</span> <span class="p">{}</span>
+
+        <span class="c1"># 调用父类初始化</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">component_name</span><span class="p">,</span> <span class="n">task_name</span><span class="p">,</span>
+                         <span class="n">workflow_id</span><span class="p">,</span> <span class="n">target_state</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+
+        <span class="c1"># 任务特定属性</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_battery_level</span> <span class="o">=</span> <span class="n">target_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_battery_level</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_battery_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_battery_level</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">charging_efficiency</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;charging_efficiency&#39;</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">)</span>  <span class="c1"># 充电效率</span></div>
+
+<div class="viewcode-block" id="ChargingTask.estimate_remaining_time"><a class="viewcode-back" href="../../../api/task.html#aeroagentsim.task.charging.ChargingTask.estimate_remaining_time">[docs]</a>    <span class="k">def</span> <span class="nf">estimate_remaining_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">performance_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;估计完成任务所需的总时间&quot;&quot;&quot;</span>
+        <span class="n">charging_rate</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;charging_rate&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">charging_rate</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+
+        <span class="n">remaining_charge</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_battery_level</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_battery_level</span>
+        <span class="k">if</span> <span class="n">remaining_charge</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="c1"># 将充电率从%/小时转换为%/秒</span>
+        <span class="n">charging_rate_per_second</span> <span class="o">=</span> <span class="n">charging_rate</span> <span class="o">/</span> <span class="mf">3600.0</span>
+
+        <span class="c1"># 返回剩余时间（秒）</span>
+        <span class="k">return</span> <span class="n">remaining_charge</span> <span class="o">/</span> <span class="p">(</span><span class="n">charging_rate_per_second</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">charging_efficiency</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_update_task_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">performance_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;更新任务进度和内部状态&quot;&quot;&quot;</span>
+        <span class="n">charging_rate</span> <span class="o">=</span> <span class="n">performance_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;charging_rate&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># %/小时</span>
+        <span class="n">elapsed_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_update_time</span>  <span class="c1"># 秒</span>
+
+        <span class="c1"># 将充电率从%/小时转换为%/秒</span>
+        <span class="n">charging_rate_per_second</span> <span class="o">=</span> <span class="n">charging_rate</span> <span class="o">/</span> <span class="mf">3600.0</span>
+
+        <span class="c1"># 计算充电增量</span>
+        <span class="n">charge_added</span> <span class="o">=</span> <span class="n">charging_rate_per_second</span> <span class="o">*</span> <span class="n">elapsed_time</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">charging_efficiency</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_battery_level</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">100.0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_battery_level</span> <span class="o">+</span> <span class="n">charge_added</span><span class="p">)</span>
+
+        <span class="n">total_charge_needed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_battery_level</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_battery_level</span>
+        <span class="k">if</span> <span class="n">total_charge_needed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">charge_completed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_battery_level</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_battery_level</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">charge_completed</span> <span class="o">/</span> <span class="n">total_charge_needed</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+    <span class="k">def</span> <span class="nf">_get_task_specific_state_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;返回任务特定状态的表示&quot;&quot;&quot;</span>
+        <span class="c1"># 返回所有在 PRODUCED_STATES 中定义的状态</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_battery_level</span><span class="p">,</span>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;active&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">&lt;</span> <span class="mf">1.0</span> <span class="k">else</span> <span class="s1">&#39;idle&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;charge_cycles&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;charge_cycles&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">&gt;=</span> <span class="mf">1.0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        充电任务完成时，释放充电站资源</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 从代理的possessing_objects中移除充电站</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_possessing_object</span><span class="p">(</span><span class="s1">&#39;charging_station&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">remove_possessing_object</span><span class="p">(</span><span class="s1">&#39;charging_station&#39;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 充电完成，释放充电站资源&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_fail</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        充电任务失败时，释放充电站资源</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 从代理的possessing_objects中移除充电站</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_possessing_object</span><span class="p">(</span><span class="s1">&#39;charging_station&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">remove_possessing_object</span><span class="p">(</span><span class="s1">&#39;charging_station&#39;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 充电失败，释放充电站资源: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">failure_reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_possessing_object_on_cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        充电任务取消时，释放充电站资源</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 从代理的possessing_objects中移除充电站</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_possessing_object</span><span class="p">(</span><span class="s1">&#39;charging_station&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">remove_possessing_object</span><span class="p">(</span><span class="s1">&#39;charging_station&#39;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s2"> 充电被取消，释放充电站资源&quot;</span><span class="p">)</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.task.charging</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

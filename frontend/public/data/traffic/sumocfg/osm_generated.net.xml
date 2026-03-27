@@ -8,7 +8,7 @@
     </input>
 
     <output>
-        <output-file value="/home/weizhiwei/data2/weizhiwei/airfogsim/airfogsim-project/frontend/public/data/traffic/sumocfg/osm_generated.net.xml"/>
+        <output-file value="osm_generated.net.xml"/>
     </output>
 
     <projection>

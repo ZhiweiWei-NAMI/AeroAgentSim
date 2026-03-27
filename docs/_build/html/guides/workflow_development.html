@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Workflow Development Guide &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="DataProvider Development Guide" href="dataprovider_development.html" />
+    <link rel="prev" title="Component Development Guide" href="component_development.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="dataprovider_development.html" title="DataProvider Development Guide"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="component_development.html" title="Component Development Guide"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Workflow Development Guide</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="workflow-development-guide">
+<h1>Workflow Development Guide<a class="headerlink" href="#workflow-development-guide" title="Permalink to this heading">¶</a></h1>
+<p>This guide covers how to create custom workflows that coordinate high-level processes in AeroAgentSim.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">¶</a></h2>
+<p>Workflows represent higher-level goals or processes that coordinate multiple tasks and components. They use state machines to monitor conditions and automatically suggest appropriate tasks to agents based on their current state and workflow progress.</p>
+</section>
+<section id="key-concepts">
+<h2>Key Concepts<a class="headerlink" href="#key-concepts" title="Permalink to this heading">¶</a></h2>
+<section id="workflow-architecture">
+<h3>Workflow Architecture<a class="headerlink" href="#workflow-architecture" title="Permalink to this heading">¶</a></h3>
+<p>Every workflow in AeroAgentSim consists of:</p>
+<ul class="simple">
+<li><p><strong>State Machine</strong>: Manages internal states and transitions</p></li>
+<li><p><strong>Trigger System</strong>: Monitors conditions and drives state transitions</p></li>
+<li><p><strong>Task Suggestions</strong>: Provides task recommendations based on current state</p></li>
+<li><p><strong>Event Integration</strong>: Responds to simulation events and agent state changes</p></li>
+</ul>
+</section>
+<section id="base-workflow-class">
+<h3>Base Workflow Class<a class="headerlink" href="#base-workflow-class" title="Permalink to this heading">¶</a></h3>
+<p>All workflows inherit from the base <code class="docutils literal notranslate"><span class="pre">Workflow</span></code> class:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.workflow</span> <span class="kn">import</span> <span class="n">Workflow</span>
+
+<span class="k">class</span> <span class="nc">CustomWorkflow</span><span class="p">(</span><span class="n">Workflow</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom workflow implementation.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">owner</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">owner</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_setup_transitions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Define state machine transitions.&quot;&quot;&quot;</span>
+        <span class="c1"># Implement transition logic</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="creating-a-custom-workflow">
+<h2>Creating a Custom Workflow<a class="headerlink" href="#creating-a-custom-workflow" title="Permalink to this heading">¶</a></h2>
+<section id="step-1-define-workflow-class">
+<h3>Step 1: Define Workflow Class<a class="headerlink" href="#step-1-define-workflow-class" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.workflow</span> <span class="kn">import</span> <span class="n">Workflow</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">TriggerOperator</span>
+
+<span class="k">class</span> <span class="nc">MaintenanceWorkflow</span><span class="p">(</span><span class="n">Workflow</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Workflow for equipment maintenance operations.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">owner</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">owner</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maintenance_points</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;maintenance_points&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_point_index</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maintenance_duration</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;maintenance_duration&#39;</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">register_property_template</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">env</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register property templates for this workflow.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;maintenance_points&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
+                <span class="s1">&#39;required&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;List of maintenance locations&#39;</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;maintenance_duration&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                <span class="s1">&#39;required&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s1">&#39;default&#39;</span><span class="p">:</span> <span class="mf">60.0</span><span class="p">,</span>
+                <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;Duration for each maintenance task&#39;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="step-2-setup-state-machine-transitions">
+<h3>Step 2: Setup State Machine Transitions<a class="headerlink" href="#step-2-setup-state-machine-transitions" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_setup_transitions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Define the maintenance workflow state machine.&quot;&quot;&quot;</span>
+    <span class="n">sm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span>
+
+    <span class="c1"># Set initial state</span>
+    <span class="n">sm</span><span class="o">.</span><span class="n">set_start_transition</span><span class="p">(</span><span class="s1">&#39;moving_to_point&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Transition: Arrive at maintenance point</span>
+    <span class="n">sm</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+        <span class="n">state</span><span class="o">=</span><span class="s1">&#39;moving_to_point&#39;</span><span class="p">,</span>
+        <span class="n">next_status</span><span class="o">=</span><span class="s1">&#39;performing_maintenance&#39;</span><span class="p">,</span>
+        <span class="n">agent_state</span><span class="o">=</span><span class="p">{</span>
+            <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s1">&#39;state_key&#39;</span><span class="p">:</span> <span class="s1">&#39;position&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">,</span>
+            <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_at_maintenance_point</span>
+        <span class="p">},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Arrived at maintenance point&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Transition: Complete maintenance</span>
+    <span class="n">sm</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+        <span class="n">state</span><span class="o">=</span><span class="s1">&#39;performing_maintenance&#39;</span><span class="p">,</span>
+        <span class="n">next_status</span><span class="o">=</span><span class="s1">&#39;moving_to_point&#39;</span><span class="p">,</span>
+        <span class="n">time_trigger</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;delay&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">maintenance_duration</span><span class="p">},</span>
+        <span class="n">callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_advance_to_next_point</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Maintenance completed, move to next point&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Transition: All points completed</span>
+    <span class="n">sm</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+        <span class="n">state</span><span class="o">=</span><span class="s1">&#39;performing_maintenance&#39;</span><span class="p">,</span>
+        <span class="n">next_status</span><span class="o">=</span><span class="s1">&#39;completed&#39;</span><span class="p">,</span>
+        <span class="n">event_trigger</span><span class="o">=</span><span class="p">{</span>
+            <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="s1">&#39;task_completed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">CUSTOM</span><span class="p">,</span>
+            <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_points_completed</span>
+        <span class="p">},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;All maintenance points completed&quot;</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="step-3-implement-helper-methods">
+<h3>Step 3: Implement Helper Methods<a class="headerlink" href="#step-3-implement-helper-methods" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_at_maintenance_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if agent is at current maintenance point.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_point_index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">maintenance_points</span><span class="p">):</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maintenance_points</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_point_index</span><span class="p">]</span>
+        <span class="n">distance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_distance</span><span class="p">(</span><span class="n">position</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">target</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">distance</span> <span class="o">&lt;</span> <span class="mf">5.0</span>  <span class="c1"># Within 5 meters</span>
+    <span class="k">return</span> <span class="kc">False</span>
+
+<span class="k">def</span> <span class="nf">_advance_to_next_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Advance to next maintenance point.&quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">current_point_index</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<span class="k">def</span> <span class="nf">_all_points_completed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if all maintenance points have been completed.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_point_index</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">maintenance_points</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_calculate_distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos1</span><span class="p">,</span> <span class="n">pos2</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate distance between two points.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">((</span><span class="n">pos1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">pos2</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">pos1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pos2</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+</pre></div>
+</div>
+</section>
+<section id="step-4-implement-task-suggestions">
+<h3>Step 4: Implement Task Suggestions<a class="headerlink" href="#step-4-implement-task-suggestions" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_current_suggested_task</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get current suggested task based on workflow state.&quot;&quot;&quot;</span>
+    <span class="n">current_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">current_status</span>
+
+    <span class="k">if</span> <span class="n">current_state</span> <span class="o">==</span> <span class="s1">&#39;moving_to_point&#39;</span><span class="p">:</span>
+        <span class="c1"># Suggest movement task to current maintenance point</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_point_index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">maintenance_points</span><span class="p">):</span>
+            <span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maintenance_points</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">current_point_index</span><span class="p">]</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="s1">&#39;MoveToTask&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;target_position&#39;</span><span class="p">:</span> <span class="n">target</span><span class="p">,</span>
+                    <span class="s1">&#39;precision&#39;</span><span class="p">:</span> <span class="mf">5.0</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+
+    <span class="k">elif</span> <span class="n">current_state</span> <span class="o">==</span> <span class="s1">&#39;performing_maintenance&#39;</span><span class="p">:</span>
+        <span class="c1"># Suggest maintenance task</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="s1">&#39;MaintenanceTask&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;duration&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">maintenance_duration</span><span class="p">,</span>
+                <span class="s1">&#39;maintenance_type&#39;</span><span class="p">:</span> <span class="s1">&#39;routine_inspection&#39;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+    <span class="k">return</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</section>
+<section id="step-5-add-event-handling">
+<h3>Step 5: Add Event Handling<a class="headerlink" href="#step-5-add-event-handling" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_register_workflow_events</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Register for workflow-specific events.&quot;&quot;&quot;</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_register_workflow_events</span><span class="p">()</span>
+
+    <span class="c1"># Listen for maintenance completion events</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">event_names</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+        <span class="s1">&#39;maintenance_completed&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;equipment_failure&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;weather_alert&#39;</span>
+    <span class="p">])</span>
+
+<span class="k">def</span> <span class="nf">handle_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Handle workflow-specific events.&quot;&quot;&quot;</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">handle_event</span><span class="p">(</span><span class="n">event_name</span><span class="p">,</span> <span class="n">event_data</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">event_name</span> <span class="o">==</span> <span class="s1">&#39;equipment_failure&#39;</span><span class="p">:</span>
+        <span class="c1"># Handle equipment failure during maintenance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle_equipment_failure</span><span class="p">(</span><span class="n">event_data</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">event_name</span> <span class="o">==</span> <span class="s1">&#39;weather_alert&#39;</span><span class="p">:</span>
+        <span class="c1"># Handle severe weather conditions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handle_weather_alert</span><span class="p">(</span><span class="n">event_data</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_handle_equipment_failure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Handle equipment failure event.&quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Equipment failure detected: </span><span class="si">{</span><span class="n">event_data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1"># Transition to error state or emergency procedures</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">force_transition</span><span class="p">(</span><span class="s1">&#39;emergency_maintenance&#39;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_handle_weather_alert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Handle severe weather alert.&quot;&quot;&quot;</span>
+    <span class="n">alert_level</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;alert_level&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">alert_level</span> <span class="o">&gt;</span> <span class="mf">0.8</span><span class="p">:</span>
+        <span class="c1"># Suspend operations due to severe weather</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span><span class="o">.</span><span class="n">force_transition</span><span class="p">(</span><span class="s1">&#39;weather_hold&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="advanced-workflow-features">
+<h2>Advanced Workflow Features<a class="headerlink" href="#advanced-workflow-features" title="Permalink to this heading">¶</a></h2>
+<section id="conditional-transitions">
+<h3>Conditional Transitions<a class="headerlink" href="#conditional-transitions" title="Permalink to this heading">¶</a></h3>
+<p>Create transitions that depend on multiple conditions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">CompositeTrigger</span><span class="p">,</span> <span class="n">TriggerOperator</span>
+
+<span class="k">def</span> <span class="nf">_setup_conditional_transitions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Setup transitions with multiple conditions.&quot;&quot;&quot;</span>
+    <span class="n">sm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span>
+
+    <span class="c1"># Transition only when both battery is sufficient AND weather is good</span>
+    <span class="n">sm</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+        <span class="n">state</span><span class="o">=</span><span class="s1">&#39;waiting&#39;</span><span class="p">,</span>
+        <span class="n">next_status</span><span class="o">=</span><span class="s1">&#39;active&#39;</span><span class="p">,</span>
+        <span class="n">composite_trigger</span><span class="o">=</span><span class="p">{</span>
+            <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="s1">&#39;AND&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;triggers&#39;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;agent_state&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;agent_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="s1">&#39;state_key&#39;</span><span class="p">:</span> <span class="s1">&#39;battery_level&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;operator&#39;</span><span class="p">:</span> <span class="n">TriggerOperator</span><span class="o">.</span><span class="n">GREATER_THAN</span><span class="p">,</span>
+                    <span class="s1">&#39;target_value&#39;</span><span class="p">:</span> <span class="mf">50.0</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;event&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="s1">&#39;weather_provider&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;event_name&#39;</span><span class="p">:</span> <span class="s1">&#39;weather_clear&#39;</span>
+                <span class="p">}</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Ready to start when battery &gt; 50</span><span class="si">% a</span><span class="s2">nd weather is clear&quot;</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="repeating-workflows">
+<h3>Repeating Workflows<a class="headerlink" href="#repeating-workflows" title="Permalink to this heading">¶</a></h3>
+<p>Create workflows that repeat automatically:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_setup_repeating_workflow</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Setup workflow that repeats automatically.&quot;&quot;&quot;</span>
+    <span class="n">sm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_machine</span>
+
+    <span class="c1"># After completion, return to initial state for next cycle</span>
+    <span class="n">sm</span><span class="o">.</span><span class="n">add_transition</span><span class="p">(</span>
+        <span class="n">state</span><span class="o">=</span><span class="s1">&#39;completed&#39;</span><span class="p">,</span>
+        <span class="n">next_status</span><span class="o">=</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span>
+        <span class="n">time_trigger</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;delay&#39;</span><span class="p">:</span> <span class="mi">300</span><span class="p">},</span>  <span class="c1"># Wait 5 minutes before next cycle</span>
+        <span class="n">callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_reset_workflow_state</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Reset for next maintenance cycle&quot;</span>
+    <span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_reset_workflow_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reset workflow state for next cycle.&quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">current_point_index</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Maintenance workflow reset for next cycle&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="workflow-integration">
+<h2>Workflow Integration<a class="headerlink" href="#workflow-integration" title="Permalink to this heading">¶</a></h2>
+<section id="using-your-custom-workflow">
+<h3>Using Your Custom Workflow<a class="headerlink" href="#using-your-custom-workflow" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.mobility</span> <span class="kn">import</span> <span class="n">MoveToComponent</span>
+<span class="kn">from</span> <span class="nn">your_module</span> <span class="kn">import</span> <span class="n">MaintenanceWorkflow</span>
+
+<span class="c1"># Create environment and agent</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+<span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">&quot;maintenance_drone&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+    <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+<span class="p">})</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+<span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+
+<span class="c1"># Define maintenance points</span>
+<span class="n">maintenance_points</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>   <span class="c1"># Point 1</span>
+    <span class="p">(</span><span class="mi">150</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>  <span class="c1"># Point 2</span>
+    <span class="p">(</span><span class="mi">150</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="c1"># Point 3</span>
+    <span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>   <span class="c1"># Point 4</span>
+<span class="p">]</span>
+
+<span class="c1"># Create workflow with trigger-based startup</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">TimeTrigger</span>
+
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_workflow</span><span class="p">(</span>
+    <span class="n">MaintenanceWorkflow</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;routine_maintenance&quot;</span><span class="p">,</span>
+    <span class="n">owner</span><span class="o">=</span><span class="n">drone</span><span class="p">,</span>
+    <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;maintenance_points&#39;</span><span class="p">:</span> <span class="n">maintenance_points</span><span class="p">,</span>
+        <span class="s1">&#39;maintenance_duration&#39;</span><span class="p">:</span> <span class="mf">120.0</span>
+    <span class="p">},</span>
+    <span class="n">start_trigger</span><span class="o">=</span><span class="n">TimeTrigger</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">trigger_time</span><span class="o">=</span><span class="mi">100</span><span class="p">),</span>
+    <span class="n">max_starts</span><span class="o">=</span><span class="mi">1</span>
+<span class="p">)</span>
+
+<span class="c1"># Run simulation</span>
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="workflow-coordination">
+<h3>Workflow Coordination<a class="headerlink" href="#workflow-coordination" title="Permalink to this heading">¶</a></h3>
+<p>Coordinate multiple workflows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create multiple agents with different workflows</span>
+<span class="n">agents</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+    <span class="n">agent</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;drone_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">100</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+        <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+    <span class="p">})</span>
+    <span class="n">agent</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">))</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">agent</span><span class="p">)</span>
+    <span class="n">agents</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">agent</span><span class="p">)</span>
+
+    <span class="c1"># Stagger workflow start times</span>
+    <span class="n">workflow</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_workflow</span><span class="p">(</span>
+        <span class="n">MaintenanceWorkflow</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;maintenance_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">owner</span><span class="o">=</span><span class="n">agent</span><span class="p">,</span>
+        <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;maintenance_points&#39;</span><span class="p">:</span> <span class="n">maintenance_points</span><span class="p">},</span>
+        <span class="n">start_trigger</span><span class="o">=</span><span class="n">TimeTrigger</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">trigger_time</span><span class="o">=</span><span class="n">i</span><span class="o">*</span><span class="mi">200</span><span class="p">),</span>
+        <span class="n">max_starts</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Permalink to this heading">¶</a></h2>
+<section id="state-machine-design">
+<h3>State Machine Design<a class="headerlink" href="#state-machine-design" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Keep states simple</strong> and focused on specific workflow phases</p></li>
+<li><p><strong>Use descriptive state names</strong> that clearly indicate workflow progress</p></li>
+<li><p><strong>Design for error recovery</strong> with appropriate error states</p></li>
+<li><p><strong>Test all transition paths</strong> thoroughly</p></li>
+</ol>
+</section>
+<section id="task-coordination">
+<h3>Task Coordination<a class="headerlink" href="#task-coordination" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Provide clear task suggestions</strong> based on current workflow state</p></li>
+<li><p><strong>Handle task failures gracefully</strong> with appropriate fallback strategies</p></li>
+<li><p><strong>Monitor task progress</strong> and adjust workflow accordingly</p></li>
+<li><p><strong>Coordinate with agent capabilities</strong> through component interfaces</p></li>
+</ol>
+</section>
+<section id="event-integration">
+<h3>Event Integration<a class="headerlink" href="#event-integration" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Listen for relevant events</strong> that affect workflow execution</p></li>
+<li><p><strong>Handle external events</strong> (weather, failures) appropriately</p></li>
+<li><p><strong>Trigger workflow events</strong> to communicate with other system components</p></li>
+<li><p><strong>Use event filtering</strong> to avoid unnecessary processing</p></li>
+</ol>
+</section>
+<section id="performance">
+<h3>Performance<a class="headerlink" href="#performance" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Optimize trigger conditions</strong> for efficient evaluation</p></li>
+<li><p><strong>Use appropriate timeout values</strong> for time-based transitions</p></li>
+<li><p><strong>Minimize state machine complexity</strong> for better performance</p></li>
+<li><p><strong>Monitor workflow execution</strong> for bottlenecks</p></li>
+</ol>
+</section>
+<section id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Test all state transitions</strong> under various conditions</p></li>
+<li><p><strong>Verify task suggestions</strong> are appropriate for each state</p></li>
+<li><p><strong>Test error conditions</strong> and recovery mechanisms</p></li>
+<li><p><strong>Validate workflow completion</strong> criteria</p></li>
+</ol>
+<p>For more information, see:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api/workflow.html"><span class="doc">Workflow Classes</span></a> - Complete workflow API reference</p></li>
+<li><p><a class="reference internal" href="agent_development.html"><span class="doc">Agent Development Guide</span></a> - Creating agents that use workflows</p></li>
+<li><p><a class="reference internal" href="component_development.html"><span class="doc">Component Development Guide</span></a> - Building components for workflow tasks</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Workflow Development Guide</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a></li>
+<li><a class="reference internal" href="#key-concepts">Key Concepts</a><ul>
+<li><a class="reference internal" href="#workflow-architecture">Workflow Architecture</a></li>
+<li><a class="reference internal" href="#base-workflow-class">Base Workflow Class</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#creating-a-custom-workflow">Creating a Custom Workflow</a><ul>
+<li><a class="reference internal" href="#step-1-define-workflow-class">Step 1: Define Workflow Class</a></li>
+<li><a class="reference internal" href="#step-2-setup-state-machine-transitions">Step 2: Setup State Machine Transitions</a></li>
+<li><a class="reference internal" href="#step-3-implement-helper-methods">Step 3: Implement Helper Methods</a></li>
+<li><a class="reference internal" href="#step-4-implement-task-suggestions">Step 4: Implement Task Suggestions</a></li>
+<li><a class="reference internal" href="#step-5-add-event-handling">Step 5: Add Event Handling</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#advanced-workflow-features">Advanced Workflow Features</a><ul>
+<li><a class="reference internal" href="#conditional-transitions">Conditional Transitions</a></li>
+<li><a class="reference internal" href="#repeating-workflows">Repeating Workflows</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#workflow-integration">Workflow Integration</a><ul>
+<li><a class="reference internal" href="#using-your-custom-workflow">Using Your Custom Workflow</a></li>
+<li><a class="reference internal" href="#workflow-coordination">Workflow Coordination</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#best-practices">Best Practices</a><ul>
+<li><a class="reference internal" href="#state-machine-design">State Machine Design</a></li>
+<li><a class="reference internal" href="#task-coordination">Task Coordination</a></li>
+<li><a class="reference internal" href="#event-integration">Event Integration</a></li>
+<li><a class="reference internal" href="#performance">Performance</a></li>
+<li><a class="reference internal" href="#testing">Testing</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="component_development.html"
+                          title="previous chapter">Component Development Guide</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="dataprovider_development.html"
+                          title="next chapter">DataProvider Development Guide</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/guides/workflow_development.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="dataprovider_development.html" title="DataProvider Development Guide"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="component_development.html" title="Component Development Guide"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Workflow Development Guide</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

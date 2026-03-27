@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>aeroagentsim.workflow.image_processing.ImageProcessingWorkflow &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.workflow.image_processing.ImageProcessingWorkflow</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="aeroagentsim-workflow-image-processing-imageprocessingworkflow">
+<h1>aeroagentsim.workflow.image_processing.ImageProcessingWorkflow<a class="headerlink" href="#aeroagentsim-workflow-image-processing-imageprocessingworkflow" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.workflow.image_processing.ImageProcessingWorkflow">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.workflow.image_processing.</span></span><span class="sig-name descname"><span class="pre">ImageProcessingWorkflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">owner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'idle'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/workflow/image_processing.html#ImageProcessingWorkflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow" title="Permalink to this definition">¶</a></dt>
+<dd><p>环境图像感知处理工作流，包含感知和计算两个阶段。</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">owner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'idle'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/workflow/image_processing.html#ImageProcessingWorkflow.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.__init__" title="aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(env, name, owner[, timeout, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_current_suggested_task" title="aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_current_suggested_task"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_current_suggested_task</span></code></a>()</p></td>
+<td><p>获取当前状态下建议执行的任务</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_description" title="aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_description"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_description</span></code></a>()</p></td>
+<td><p>获取工作流类型的描述</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_details" title="aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_details"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_details</span></code></a>()</p></td>
+<td><p>获取工作流详细信息</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_property_templates</span></code>()</p></td>
+<td><p>获取所有属性模板</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_transition_tasks</span></code>()</p></td>
+<td><p>获取所有状态转换任务</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_active</span></code>()</p></td>
+<td><p>检查工作流是否处于活动状态</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_property_template</span></code>(key, **kwargs)</p></td>
+<td><p>注册工作流属性模板</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reset</span></code>()</p></td>
+<td><p>重置工作流状态，包括状态机</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">start</span></code>()</p></td>
+<td><p>Starts the workflow's state machine (if PENDING).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_mermaid_diagram</span></code>()</p></td>
+<td><p>将工作流表示为Mermaid流程图格式</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_uml_activity_diagram</span></code>()</p></td>
+<td><p>将工作流表示为UML活动图（PlantUML格式）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_status_from_state_machine</span></code>(new_sm_state)</p></td>
+<td><p>根据状态机状态更新工作流状态</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_description">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_description</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/workflow/image_processing.html#ImageProcessingWorkflow.get_description"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_description" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取工作流类型的描述</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">owner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'idle'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/workflow/image_processing.html#ImageProcessingWorkflow.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_details">
+<span class="sig-name descname"><span class="pre">get_details</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/workflow/image_processing.html#ImageProcessingWorkflow.get_details"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_details" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取工作流详细信息</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_current_suggested_task">
+<span class="sig-name descname"><span class="pre">get_current_suggested_task</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/workflow/image_processing.html#ImageProcessingWorkflow.get_current_suggested_task"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_current_suggested_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取当前状态下建议执行的任务</p>
+<p>根据当前状态机状态，动态生成任务信息。</p>
+<dl class="simple">
+<dt>返回:</dt><dd><p>Dict: 任务信息字典
+None: 如果没有找到匹配的任务</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">aeroagentsim.workflow.image_processing.ImageProcessingWorkflow</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow"><code class="docutils literal notranslate"><span class="pre">ImageProcessingWorkflow</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.__init__"><code class="docutils literal notranslate"><span class="pre">ImageProcessingWorkflow.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_description"><code class="docutils literal notranslate"><span class="pre">ImageProcessingWorkflow.get_description()</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">ImageProcessingWorkflow.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_details"><code class="docutils literal notranslate"><span class="pre">ImageProcessingWorkflow.get_details()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.workflow.image_processing.ImageProcessingWorkflow.get_current_suggested_task"><code class="docutils literal notranslate"><span class="pre">ImageProcessingWorkflow.get_current_suggested_task()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api/_autosummary/airfogsim.workflow.image_processing.ImageProcessingWorkflow.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.workflow.image_processing.ImageProcessingWorkflow</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

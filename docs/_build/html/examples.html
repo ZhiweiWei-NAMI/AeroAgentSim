@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Examples &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=7a812f30"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Developer Guides" href="guides/index.html" />
+    <link rel="prev" title="Utilities and Helpers" href="api/utils.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="guides/index.html" title="Developer Guides"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="api/utils.html" title="Utilities and Helpers"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Examples</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="examples">
+<h1>Examples<a class="headerlink" href="#examples" title="Permalink to this heading">¶</a></h1>
+<p>This section provides comprehensive examples demonstrating various AeroAgentSim capabilities.</p>
+<section id="understanding-aeroagentsim-s-execution-model">
+<h2>Understanding AeroAgentSim’s Execution Model<a class="headerlink" href="#understanding-aeroagentsim-s-execution-model" title="Permalink to this heading">¶</a></h2>
+<p>AeroAgentSim uses an <strong>event-driven, workflow-based execution model</strong> where:</p>
+<ol class="arabic simple">
+<li><p><strong>Agents don’t execute tasks directly</strong> - Instead, they have internal task schedulers that automatically process task queues</p></li>
+<li><p><strong>Workflows generate tasks automatically</strong> - Workflows use state machines to monitor agent states and suggest appropriate tasks</p></li>
+<li><p><strong>Tasks are managed by components</strong> - Each component handles specific types of tasks (movement, sensing, charging, etc.)</p></li>
+<li><p><strong>The system runs autonomously</strong> - Once workflows are started, the simulation runs automatically without manual intervention</p></li>
+</ol>
+<p><strong>Key Concepts:</strong></p>
+<ul class="simple">
+<li><p><strong>Agent.live()</strong>: The main agent loop that handles event listening and task processing</p></li>
+<li><p><strong>Workflow.start()</strong>: Activates a workflow’s state machine to begin automatic task generation</p></li>
+<li><p><strong>Component.execute_task()</strong>: Handles the actual execution of tasks assigned by workflows</p></li>
+<li><p><strong>Triggers</strong>: Monitor conditions and drive state transitions in workflows</p></li>
+</ul>
+<p>This means you typically don’t call <code class="docutils literal notranslate"><span class="pre">agent.execute_task()</span></code> directly. Instead, you create workflows that automatically manage task execution based on the agent’s current state and goals.</p>
+<p><strong>Workflow Startup Mechanisms:</strong></p>
+<p>AeroAgentSim provides two ways to start workflows:</p>
+<ol class="arabic simple">
+<li><p><strong>Trigger-based automatic startup</strong> (Recommended):
+- Use <code class="docutils literal notranslate"><span class="pre">env.create_workflow()</span></code> with a <code class="docutils literal notranslate"><span class="pre">start_trigger</span></code> parameter
+- Workflows start automatically when trigger conditions are met
+- Supports various trigger types: TimeTrigger, StateTrigger, CompositeTrigger
+- Can specify <code class="docutils literal notranslate"><span class="pre">max_starts</span></code> for repeated execution</p></li>
+<li><p><strong>Manual startup</strong>:
+- Create workflow instance directly, then call <code class="docutils literal notranslate"><span class="pre">workflow.start()</span></code>
+- Useful for immediate execution or custom control logic
+- Requires manual workflow registration with <code class="docutils literal notranslate"><span class="pre">env.workflow_manager.register_workflow()</span></code></p></li>
+</ol>
+</section>
+<section id="basic-examples">
+<h2>Basic Examples<a class="headerlink" href="#basic-examples" title="Permalink to this heading">¶</a></h2>
+<section id="simple-drone-workflow">
+<h3>Simple Drone Workflow<a class="headerlink" href="#simple-drone-workflow" title="Permalink to this heading">¶</a></h3>
+<p>A basic example showing how workflows automatically manage drone tasks:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.mobility</span> <span class="kn">import</span> <span class="n">MoveToComponent</span>
+
+<span class="c1"># Create environment</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+<span class="c1"># Create drone agent</span>
+<span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="s2">&quot;drone1&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+    <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+<span class="p">})</span>
+
+<span class="c1"># Add movement component</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+
+<span class="c1"># Register agent with environment</span>
+<span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+
+<span class="c1"># Define waypoints for inspection workflow</span>
+<span class="n">waypoints</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">)]</span>
+
+<span class="c1"># Method 1: Create workflow with trigger-based automatic startup</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.workflow.inspection</span> <span class="kn">import</span> <span class="n">InspectionWorkflow</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">TimeTrigger</span>
+
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_workflow</span><span class="p">(</span>
+    <span class="n">InspectionWorkflow</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;waypoint_inspection&quot;</span><span class="p">,</span>
+    <span class="n">owner</span><span class="o">=</span><span class="n">drone</span><span class="p">,</span>
+    <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;inspection_points&#39;</span><span class="p">:</span> <span class="n">waypoints</span><span class="p">},</span>
+    <span class="n">start_trigger</span><span class="o">=</span><span class="n">TimeTrigger</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">trigger_time</span><span class="o">=</span><span class="mi">10</span><span class="p">),</span>  <span class="c1"># Start at time 10</span>
+    <span class="n">max_starts</span><span class="o">=</span><span class="mi">1</span>
+<span class="p">)</span>
+
+<span class="c1"># The workflow will start automatically when the trigger fires</span>
+<span class="c1"># No need to call workflow.start() manually</span>
+
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="manual-workflow-startup">
+<h3>Manual Workflow Startup<a class="headerlink" href="#manual-workflow-startup" title="Permalink to this heading">¶</a></h3>
+<p>Alternative approach with manual workflow startup:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.mobility</span> <span class="kn">import</span> <span class="n">MoveToComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.workflow.inspection</span> <span class="kn">import</span> <span class="n">InspectionWorkflow</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+<span class="c1"># Create drone agent</span>
+<span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="s2">&quot;drone1&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+    <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+<span class="p">})</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+<span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+
+<span class="c1"># Method 2: Create workflow and start manually</span>
+<span class="n">waypoints</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">)]</span>
+
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">InspectionWorkflow</span><span class="p">(</span>
+    <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;manual_inspection&quot;</span><span class="p">,</span>
+    <span class="n">owner</span><span class="o">=</span><span class="n">drone</span><span class="p">,</span>
+    <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;inspection_points&#39;</span><span class="p">:</span> <span class="n">waypoints</span><span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># Register workflow with environment (without trigger)</span>
+<span class="n">env</span><span class="o">.</span><span class="n">workflow_manager</span><span class="o">.</span><span class="n">register_workflow</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span>
+
+<span class="c1"># Start workflow manually</span>
+<span class="n">workflow</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="multi-agent-coordination-with-contracts">
+<h3>Multi-Agent Coordination with Contracts<a class="headerlink" href="#multi-agent-coordination-with-contracts" title="Permalink to this heading">¶</a></h3>
+<p>Example showing contract-based coordination between agents:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.terminal</span> <span class="kn">import</span> <span class="n">TerminalAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.mobility</span> <span class="kn">import</span> <span class="n">MoveToComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.img_sensor</span> <span class="kn">import</span> <span class="n">ImageSensingComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.contract</span> <span class="kn">import</span> <span class="n">ContractManager</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+<span class="c1"># Create contract manager for coordination</span>
+<span class="n">contract_manager</span> <span class="o">=</span> <span class="n">ContractManager</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+
+<span class="c1"># Create terminal agent (ground station)</span>
+<span class="n">terminal</span> <span class="o">=</span> <span class="n">TerminalAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="s2">&quot;terminal1&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="p">})</span>
+<span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">terminal</span><span class="p">)</span>
+
+<span class="c1"># Create drone agent</span>
+<span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="s2">&quot;drone1&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+    <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+<span class="p">})</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">ImageSensingComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+<span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+
+<span class="c1"># Define multi-task contract</span>
+<span class="n">task_info</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;contract_type&quot;</span><span class="p">:</span> <span class="s2">&quot;multi_task&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tasks&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;component&quot;</span><span class="p">:</span> <span class="s2">&quot;MoveToComponent&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;task_class&quot;</span><span class="p">:</span> <span class="s2">&quot;MoveToTask&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;task_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Move to inspection point&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;target_state&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;position&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)},</span>
+            <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;target_position&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)}</span>
+        <span class="p">},</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;component&quot;</span><span class="p">:</span> <span class="s2">&quot;ImageSensingComponent&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;task_class&quot;</span><span class="p">:</span> <span class="s2">&quot;ImageSensingTask&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;task_name&quot;</span><span class="p">:</span> <span class="s2">&quot;Capture images&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;target_state&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;image_sensing_status&quot;</span><span class="p">:</span> <span class="s2">&quot;completed&quot;</span><span class="p">},</span>
+            <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;duration&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+
+<span class="c1"># Create contract between terminal and drone</span>
+<span class="n">contract_id</span> <span class="o">=</span> <span class="n">contract_manager</span><span class="o">.</span><span class="n">create_contract</span><span class="p">(</span>
+    <span class="n">issuer_agent_id</span><span class="o">=</span><span class="n">terminal</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+    <span class="n">task_info</span><span class="o">=</span><span class="n">task_info</span><span class="p">,</span>
+    <span class="n">reward</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">penalty</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+    <span class="n">deadline</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+    <span class="n">appointed_agent_ids</span><span class="o">=</span><span class="p">[</span><span class="n">drone</span><span class="o">.</span><span class="n">id</span><span class="p">],</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Multi-task inspection contract&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Set up automatic contract acceptance</span>
+<span class="k">def</span> <span class="nf">accept_contract</span><span class="p">():</span>
+    <span class="k">yield</span> <span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># Wait 10 seconds then accept</span>
+    <span class="n">success</span> <span class="o">=</span> <span class="n">contract_manager</span><span class="o">.</span><span class="n">accept_contract</span><span class="p">(</span><span class="n">contract_id</span><span class="p">,</span> <span class="n">drone</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Contract acceptance: </span><span class="si">{</span><span class="s1">&#39;Success&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">success</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;Failed&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">accept_contract</span><span class="p">())</span>
+
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="workflow-examples">
+<h2>Workflow Examples<a class="headerlink" href="#workflow-examples" title="Permalink to this heading">¶</a></h2>
+<section id="inspection-mission">
+<h3>Inspection Mission<a class="headerlink" href="#inspection-mission" title="Permalink to this heading">¶</a></h3>
+<p>A complete inspection workflow example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.mobility</span> <span class="kn">import</span> <span class="n">MoveToComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.img_sensor</span> <span class="kn">import</span> <span class="n">ImageSensingComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.workflow.inspection</span> <span class="kn">import</span> <span class="n">InspectionWorkflow</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+<span class="c1"># Create inspection drone</span>
+<span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="s2">&quot;inspector1&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+    <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+<span class="p">})</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">ImageSensingComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+<span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+
+<span class="c1"># Define inspection points</span>
+<span class="n">inspection_points</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="mi">25</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>   <span class="c1"># Point 1</span>
+    <span class="p">(</span><span class="mi">75</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>   <span class="c1"># Point 2</span>
+    <span class="p">(</span><span class="mi">75</span><span class="p">,</span> <span class="mi">75</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>   <span class="c1"># Point 3</span>
+    <span class="p">(</span><span class="mi">25</span><span class="p">,</span> <span class="mi">75</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>   <span class="c1"># Point 4</span>
+<span class="p">]</span>
+
+<span class="c1"># Create inspection workflow with trigger-based startup</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">TimeTrigger</span>
+
+<span class="n">workflow</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_workflow</span><span class="p">(</span>
+    <span class="n">InspectionWorkflow</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;building_inspection&quot;</span><span class="p">,</span>
+    <span class="n">owner</span><span class="o">=</span><span class="n">drone</span><span class="p">,</span>
+    <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;inspection_points&#39;</span><span class="p">:</span> <span class="n">inspection_points</span><span class="p">},</span>
+    <span class="n">start_trigger</span><span class="o">=</span><span class="n">TimeTrigger</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">trigger_time</span><span class="o">=</span><span class="mi">50</span><span class="p">),</span>  <span class="c1"># Start after 50 time units</span>
+    <span class="n">max_starts</span><span class="o">=</span><span class="mi">1</span>
+<span class="p">)</span>
+
+<span class="c1"># Workflow will start automatically when trigger fires</span>
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">3000</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="logistics-mission">
+<h3>Logistics Mission<a class="headerlink" href="#logistics-mission" title="Permalink to this heading">¶</a></h3>
+<p>Package delivery workflow with charging:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.delivery_drone</span> <span class="kn">import</span> <span class="n">DeliveryDroneAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.delivery_station</span> <span class="kn">import</span> <span class="n">DeliveryStation</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.mobility</span> <span class="kn">import</span> <span class="n">MoveToComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.logistics</span> <span class="kn">import</span> <span class="n">LogisticsComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.charging</span> <span class="kn">import</span> <span class="n">ChargingComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.workflow.logistics</span> <span class="kn">import</span> <span class="n">LogisticsWorkflow</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+<span class="c1"># Create delivery station</span>
+<span class="n">station</span> <span class="o">=</span> <span class="n">DeliveryStation</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="s2">&quot;depot1&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="p">})</span>
+<span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">station</span><span class="p">)</span>
+
+<span class="c1"># Create delivery drone</span>
+<span class="n">drone</span> <span class="o">=</span> <span class="n">DeliveryDroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="s2">&quot;delivery1&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+    <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+<span class="p">})</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">LogisticsComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">ChargingComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+<span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+
+<span class="c1"># Create logistics workflow with conditional trigger</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">StateTrigger</span>
+
+<span class="c1"># Create trigger that fires when drone is ready (battery &gt; 80%)</span>
+<span class="n">ready_trigger</span> <span class="o">=</span> <span class="n">StateTrigger</span><span class="p">(</span>
+    <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+    <span class="n">agent_id</span><span class="o">=</span><span class="n">drone</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+    <span class="n">state_name</span><span class="o">=</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span>
+    <span class="n">condition</span><span class="o">=</span><span class="s1">&#39;&gt;=&#39;</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;drone_ready_trigger&quot;</span>
+<span class="p">)</span>
+
+<span class="n">delivery</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_workflow</span><span class="p">(</span>
+    <span class="n">LogisticsWorkflow</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;package_delivery&quot;</span><span class="p">,</span>
+    <span class="n">owner</span><span class="o">=</span><span class="n">drone</span><span class="p">,</span>
+    <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;pickup_location&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="s1">&#39;delivery_location&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="s1">&#39;payloads&#39;</span><span class="p">:</span> <span class="p">[{</span><span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="s1">&#39;PKG001&#39;</span><span class="p">,</span> <span class="s1">&#39;weight&#39;</span><span class="p">:</span> <span class="mf">2.5</span><span class="p">}],</span>
+        <span class="s1">&#39;source_agent_id&#39;</span><span class="p">:</span> <span class="n">station</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+        <span class="s1">&#39;target_agent_id&#39;</span><span class="p">:</span> <span class="s1">&#39;customer1&#39;</span>
+    <span class="p">},</span>
+    <span class="n">start_trigger</span><span class="o">=</span><span class="n">ready_trigger</span><span class="p">,</span>
+    <span class="n">max_starts</span><span class="o">=</span><span class="mi">1</span>
+<span class="p">)</span>
+
+<span class="c1"># Workflow will start automatically when drone battery &gt;= 80%</span>
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="data-integration-examples">
+<h2>Data Integration Examples<a class="headerlink" href="#data-integration-examples" title="Permalink to this heading">¶</a></h2>
+<section id="weather-integration">
+<h3>Weather Integration<a class="headerlink" href="#weather-integration" title="Permalink to this heading">¶</a></h3>
+<p>Integrating weather data that automatically affects all agents in the simulation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.mobility</span> <span class="kn">import</span> <span class="n">MoveToComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.workflow.inspection</span> <span class="kn">import</span> <span class="n">InspectionWorkflow</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.dataprovider.weather_integration</span> <span class="kn">import</span> <span class="n">WeatherIntegration</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+<span class="c1"># Create standard drone agents</span>
+<span class="n">drones</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+    <span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;drone_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">50</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+        <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+    <span class="p">})</span>
+    <span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+    <span class="n">drones</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+
+    <span class="c1"># Create inspection workflow for each drone with staggered start times</span>
+    <span class="n">inspection_points</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">50</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">50</span> <span class="o">+</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">50</span> <span class="o">+</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">TimeTrigger</span>
+    <span class="n">workflow</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_workflow</span><span class="p">(</span>
+        <span class="n">InspectionWorkflow</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;inspection_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">owner</span><span class="o">=</span><span class="n">drone</span><span class="p">,</span>
+        <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;inspection_points&#39;</span><span class="p">:</span> <span class="n">inspection_points</span><span class="p">},</span>
+        <span class="n">start_trigger</span><span class="o">=</span><span class="n">TimeTrigger</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">trigger_time</span><span class="o">=</span><span class="n">i</span><span class="o">*</span><span class="mi">30</span><span class="p">),</span>  <span class="c1"># Stagger starts</span>
+        <span class="n">max_starts</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+
+<span class="c1"># Set up weather integration - this will automatically affect all agents</span>
+<span class="n">weather_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;location&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;lat&#39;</span><span class="p">:</span> <span class="mf">40.7128</span><span class="p">,</span> <span class="s1">&#39;lon&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">74.0060</span><span class="p">},</span>
+    <span class="s1">&#39;use_mock_data&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>  <span class="c1"># Use simulated weather data</span>
+    <span class="s1">&#39;api_refresh_interval&#39;</span><span class="p">:</span> <span class="mi">300</span>  <span class="c1"># Update every 5 minutes</span>
+<span class="p">}</span>
+
+<span class="c1"># WeatherIntegration automatically modifies agent states based on weather</span>
+<span class="n">weather_integration</span> <span class="o">=</span> <span class="n">WeatherIntegration</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">weather_config</span><span class="p">)</span>
+
+<span class="c1"># The integration will:</span>
+<span class="c1"># 1. Monitor weather changes automatically</span>
+<span class="c1"># 2. Calculate external forces from wind</span>
+<span class="c1"># 3. Update all agents&#39; &#39;external_force&#39; state directly</span>
+<span class="c1"># 4. Affect agent movement and battery consumption</span>
+
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">5000</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="signal-integration-with-automatic-management">
+<h3>Signal Integration with Automatic Management<a class="headerlink" href="#signal-integration-with-automatic-management" title="Permalink to this heading">¶</a></h3>
+<p>Integrating signal data with automatic frequency management and interference detection:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.mobility</span> <span class="kn">import</span> <span class="n">MoveToComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.em_sensor</span> <span class="kn">import</span> <span class="n">EMSensingComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.communication</span> <span class="kn">import</span> <span class="n">CommunicationComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.dataprovider.signal</span> <span class="kn">import</span> <span class="n">SignalDataProvider</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.dataprovider.signal_integration</span> <span class="kn">import</span> <span class="n">SignalIntegration</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.manager.frequency</span> <span class="kn">import</span> <span class="n">FrequencyManager</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+<span class="c1"># Set up frequency manager with signal integration</span>
+<span class="n">frequency_manager</span> <span class="o">=</span> <span class="n">FrequencyManager</span><span class="p">(</span>
+    <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+    <span class="n">total_bandwidth</span><span class="o">=</span><span class="mf">200.0</span><span class="p">,</span>
+    <span class="n">block_bandwidth</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
+    <span class="n">start_frequency</span><span class="o">=</span><span class="mf">2400.0</span><span class="p">,</span>
+    <span class="n">power_limit</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span>
+    <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;use_signal_provider_for_sinr&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<span class="p">)</span>
+<span class="n">env</span><span class="o">.</span><span class="n">frequency_manager</span> <span class="o">=</span> <span class="n">frequency_manager</span>
+
+<span class="c1"># Set up signal data provider</span>
+<span class="n">signal_provider</span> <span class="o">=</span> <span class="n">SignalDataProvider</span><span class="p">(</span>
+    <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;propagation_model&#39;</span><span class="p">:</span> <span class="s1">&#39;free_space&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;default_noise_floor&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">100.0</span><span class="p">,</span>
+        <span class="s1">&#39;weather_enabled&#39;</span><span class="p">:</span> <span class="kc">False</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+<span class="n">env</span><span class="o">.</span><span class="n">signal_data_provider</span> <span class="o">=</span> <span class="n">signal_provider</span>
+
+<span class="c1"># Set up signal integration - automatically manages signal interference</span>
+<span class="n">signal_integration</span> <span class="o">=</span> <span class="n">SignalIntegration</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;interference_check_interval&#39;</span><span class="p">:</span> <span class="mf">10.0</span><span class="p">,</span>  <span class="c1"># Check every 10 seconds</span>
+    <span class="s1">&#39;interference_threshold&#39;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">,</span>  <span class="c1"># High interference threshold</span>
+    <span class="s1">&#39;auto_disconnect_on_interference&#39;</span><span class="p">:</span> <span class="kc">True</span>
+<span class="p">})</span>
+
+<span class="c1"># Create communication drones</span>
+<span class="n">comm_drones</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+    <span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;comm_drone_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">100</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+        <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+    <span class="p">})</span>
+    <span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+    <span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">CommunicationComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+    <span class="n">comm_drones</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+
+<span class="c1"># Create sensing drone with EM sensing capability</span>
+<span class="n">sensing_drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="s2">&quot;sensing_drone&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">150</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+    <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+<span class="p">})</span>
+<span class="n">sensing_drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">sensing_drone</span><span class="p">))</span>
+<span class="n">sensing_drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">EMSensingComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">sensing_drone</span><span class="p">))</span>
+<span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">sensing_drone</span><span class="p">)</span>
+
+<span class="c1"># Create patrol workflow for sensing drone with periodic trigger</span>
+<span class="n">patrol_points</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="p">(</span><span class="mi">300</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">100</span><span class="p">)]</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.workflow.inspection</span> <span class="kn">import</span> <span class="n">InspectionWorkflow</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">TimeTrigger</span>
+
+<span class="n">patrol_workflow</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_workflow</span><span class="p">(</span>
+    <span class="n">InspectionWorkflow</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;signal_patrol&quot;</span><span class="p">,</span>
+    <span class="n">owner</span><span class="o">=</span><span class="n">sensing_drone</span><span class="p">,</span>
+    <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;inspection_points&#39;</span><span class="p">:</span> <span class="n">patrol_points</span><span class="p">},</span>
+    <span class="n">start_trigger</span><span class="o">=</span><span class="n">TimeTrigger</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">600</span><span class="p">),</span>  <span class="c1"># Repeat every 10 minutes</span>
+    <span class="n">max_starts</span><span class="o">=</span><span class="kc">None</span>  <span class="c1"># Unlimited repeats</span>
+<span class="p">)</span>
+
+<span class="c1"># The signal integration will automatically:</span>
+<span class="c1"># 1. Monitor signal interference between agents</span>
+<span class="c1"># 2. Update agent connection_status based on interference</span>
+<span class="c1"># 3. Manage frequency allocations and SINR calculations</span>
+<span class="c1"># 4. Handle signal detection events from EM sensors</span>
+
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">3600</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="advanced-examples">
+<h2>Advanced Examples<a class="headerlink" href="#advanced-examples" title="Permalink to this heading">¶</a></h2>
+<section id="large-scale-multi-agent-simulation">
+<h3>Large-Scale Multi-Agent Simulation<a class="headerlink" href="#large-scale-multi-agent-simulation" title="Permalink to this heading">¶</a></h3>
+<p>Simulating large numbers of coordinated agents:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.mobility</span> <span class="kn">import</span> <span class="n">MoveToComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.communication</span> <span class="kn">import</span> <span class="n">CommunicationComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.workflow.inspection</span> <span class="kn">import</span> <span class="n">InspectionWorkflow</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+<span class="c1"># Create swarm of drones</span>
+<span class="n">swarm_size</span> <span class="o">=</span> <span class="mi">20</span>
+<span class="n">drones</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">swarm_size</span><span class="p">):</span>
+    <span class="c1"># Distribute drones in a grid</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">%</span> <span class="mi">5</span><span class="p">)</span> <span class="o">*</span> <span class="mi">50</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">//</span> <span class="mi">5</span><span class="p">)</span> <span class="o">*</span> <span class="mi">50</span>
+
+    <span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;swarm_drone_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+        <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+    <span class="p">})</span>
+    <span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+    <span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">CommunicationComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+    <span class="n">drones</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+
+<span class="c1"># Create inspection workflows for each drone with coordinated triggers</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">TimeTrigger</span>
+
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">drone</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">drones</span><span class="p">):</span>
+    <span class="c1"># Define inspection area for each drone</span>
+    <span class="n">base_x</span><span class="p">,</span> <span class="n">base_y</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span> <span class="o">%</span> <span class="mi">5</span><span class="p">)</span> <span class="o">*</span> <span class="mi">50</span><span class="p">,</span> <span class="p">(</span><span class="n">i</span> <span class="o">//</span> <span class="mi">5</span><span class="p">)</span> <span class="o">*</span> <span class="mi">50</span>
+    <span class="n">inspection_points</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="n">base_x</span><span class="p">,</span> <span class="n">base_y</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">base_x</span> <span class="o">+</span> <span class="mi">25</span><span class="p">,</span> <span class="n">base_y</span> <span class="o">+</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+        <span class="p">(</span><span class="n">base_x</span> <span class="o">+</span> <span class="mi">50</span><span class="p">,</span> <span class="n">base_y</span> <span class="o">+</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="c1"># Stagger workflow starts to avoid conflicts</span>
+    <span class="n">start_time</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">+</span> <span class="p">(</span><span class="n">i</span> <span class="o">*</span> <span class="mi">5</span><span class="p">)</span>  <span class="c1"># Start every 5 time units</span>
+
+    <span class="n">workflow</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_workflow</span><span class="p">(</span>
+        <span class="n">InspectionWorkflow</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;inspection_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">owner</span><span class="o">=</span><span class="n">drone</span><span class="p">,</span>
+        <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;inspection_points&#39;</span><span class="p">:</span> <span class="n">inspection_points</span><span class="p">},</span>
+        <span class="n">start_trigger</span><span class="o">=</span><span class="n">TimeTrigger</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">trigger_time</span><span class="o">=</span><span class="n">start_time</span><span class="p">),</span>
+        <span class="n">max_starts</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">5000</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="real-time-monitoring">
+<h3>Real-time Monitoring<a class="headerlink" href="#real-time-monitoring" title="Permalink to this heading">¶</a></h3>
+<p>Setting up real-time monitoring and statistics collection:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.mobility</span> <span class="kn">import</span> <span class="n">MoveToComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.statistics</span> <span class="kn">import</span> <span class="n">StatsCollector</span>
+
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">(</span><span class="n">visual_interval</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># Enable visualization updates</span>
+
+<span class="c1"># Set up statistics collection</span>
+<span class="n">stats_collector</span> <span class="o">=</span> <span class="n">StatsCollector</span><span class="p">(</span>
+    <span class="n">env</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="s1">&#39;./simulation_stats&#39;</span><span class="p">,</span>
+    <span class="n">agent_collector_config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;listen_visual_update&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s1">&#39;collect_interval&#39;</span><span class="p">:</span> <span class="mi">10</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># Create monitored agents</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+    <span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;monitored_drone_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">10</span><span class="p">,</span> <span class="n">i</span><span class="o">*</span><span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+        <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+    <span class="p">})</span>
+    <span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">))</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+
+<span class="c1"># Start monitoring (stats collector starts automatically)</span>
+<span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">10000</span><span class="p">)</span>
+
+<span class="c1"># Analyze collected statistics</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.statistics</span> <span class="kn">import</span> <span class="n">StatsAnalyzer</span>
+<span class="n">analyzer</span> <span class="o">=</span> <span class="n">StatsAnalyzer</span><span class="p">(</span><span class="s1">&#39;./simulation_stats&#39;</span><span class="p">)</span>
+<span class="n">summary</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">generate_summary</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="performance-testing-with-workflows">
+<h3>Performance Testing with Workflows<a class="headerlink" href="#performance-testing-with-workflows" title="Permalink to this heading">¶</a></h3>
+<p>Benchmarking simulation performance with realistic workflow scenarios:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.mobility</span> <span class="kn">import</span> <span class="n">MoveToComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.component.charging</span> <span class="kn">import</span> <span class="n">ChargingComponent</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.workflow.inspection</span> <span class="kn">import</span> <span class="n">InspectionWorkflow</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.workflow.charging</span> <span class="kn">import</span> <span class="n">ChargingWorkflow</span>
+
+<span class="k">def</span> <span class="nf">benchmark_simulation</span><span class="p">(</span><span class="n">agent_count</span><span class="p">,</span> <span class="n">simulation_time</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Benchmark simulation with workflow-driven agents.&quot;&quot;&quot;</span>
+    <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="c1"># Create agents with realistic workflows</span>
+    <span class="n">agents</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">agent_count</span><span class="p">):</span>
+        <span class="n">agent</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;bench_agent_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+            <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+            <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+        <span class="p">})</span>
+        <span class="n">agent</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">))</span>
+        <span class="n">agent</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">ChargingComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">))</span>
+        <span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">agent</span><span class="p">)</span>
+        <span class="n">agents</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">agent</span><span class="p">)</span>
+
+        <span class="c1"># Create inspection workflow for each agent</span>
+        <span class="n">inspection_points</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">10</span> <span class="o">+</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="p">]</span>
+
+        <span class="kn">from</span> <span class="nn">aeroagentsim.core.trigger</span> <span class="kn">import</span> <span class="n">TimeTrigger</span><span class="p">,</span> <span class="n">StateTrigger</span>
+
+        <span class="n">inspection_workflow</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_workflow</span><span class="p">(</span>
+            <span class="n">InspectionWorkflow</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;inspection_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">owner</span><span class="o">=</span><span class="n">agent</span><span class="p">,</span>
+            <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;inspection_points&#39;</span><span class="p">:</span> <span class="n">inspection_points</span><span class="p">},</span>
+            <span class="n">start_trigger</span><span class="o">=</span><span class="n">TimeTrigger</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">trigger_time</span><span class="o">=</span><span class="n">i</span><span class="o">*</span><span class="mi">2</span><span class="p">),</span>  <span class="c1"># Stagger starts</span>
+            <span class="n">max_starts</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Create charging workflow with battery-level trigger</span>
+        <span class="n">battery_trigger</span> <span class="o">=</span> <span class="n">StateTrigger</span><span class="p">(</span>
+            <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+            <span class="n">agent_id</span><span class="o">=</span><span class="n">agent</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="n">state_name</span><span class="o">=</span><span class="s1">&#39;battery_level&#39;</span><span class="p">,</span>
+            <span class="n">condition</span><span class="o">=</span><span class="s1">&#39;&lt;=&#39;</span><span class="p">,</span>
+            <span class="n">threshold</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;battery_low_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">charging_workflow</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">create_workflow</span><span class="p">(</span>
+            <span class="n">ChargingWorkflow</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;charging_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">owner</span><span class="o">=</span><span class="n">agent</span><span class="p">,</span>
+            <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;target_charge_level&#39;</span><span class="p">:</span> <span class="mi">90</span><span class="p">},</span>
+            <span class="n">start_trigger</span><span class="o">=</span><span class="n">battery_trigger</span><span class="p">,</span>
+            <span class="n">max_starts</span><span class="o">=</span><span class="kc">None</span>  <span class="c1"># Can charge multiple times</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Run simulation - agents will execute workflows automatically</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="n">simulation_time</span><span class="p">)</span>
+
+    <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+    <span class="c1"># Calculate performance metrics</span>
+    <span class="n">real_time</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
+    <span class="n">performance_ratio</span> <span class="o">=</span> <span class="n">simulation_time</span> <span class="o">/</span> <span class="n">real_time</span> <span class="k">if</span> <span class="n">real_time</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s1">&#39;real_time&#39;</span><span class="p">:</span> <span class="n">real_time</span><span class="p">,</span>
+        <span class="s1">&#39;sim_time&#39;</span><span class="p">:</span> <span class="n">simulation_time</span><span class="p">,</span>
+        <span class="s1">&#39;agent_count&#39;</span><span class="p">:</span> <span class="n">agent_count</span><span class="p">,</span>
+        <span class="s1">&#39;performance_ratio&#39;</span><span class="p">:</span> <span class="n">performance_ratio</span>
+    <span class="p">}</span>
+
+<span class="c1"># Run benchmarks</span>
+<span class="n">test_cases</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1000</span><span class="p">),</span>    <span class="c1"># 5 agents, 1000 time units</span>
+    <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1000</span><span class="p">),</span>   <span class="c1"># 10 agents, 1000 time units</span>
+    <span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">1000</span><span class="p">),</span>   <span class="c1"># 20 agents, 1000 time units</span>
+<span class="p">]</span>
+
+<span class="k">for</span> <span class="n">agent_count</span><span class="p">,</span> <span class="n">sim_time</span> <span class="ow">in</span> <span class="n">test_cases</span><span class="p">:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">benchmark_simulation</span><span class="p">(</span><span class="n">agent_count</span><span class="p">,</span> <span class="n">sim_time</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Agents: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;agent_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, &quot;</span>
+          <span class="sa">f</span><span class="s2">&quot;Real time: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;real_time&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s, &quot;</span>
+          <span class="sa">f</span><span class="s2">&quot;Performance: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;performance_ratio&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">x real-time&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="running-examples">
+<h2>Running Examples<a class="headerlink" href="#running-examples" title="Permalink to this heading">¶</a></h2>
+<p>All examples are available in the <cite>src/aeroagentsim/examples/</cite> directory of the AeroAgentSim repository. To run them:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Clone the repository</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ZhiweiWei-NAMI/AeroAgentSim.git
+<span class="nb">cd</span><span class="w"> </span>AeroAgentSim
+
+<span class="c1"># Install in development mode</span>
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+
+<span class="c1"># Run examples</span>
+python<span class="w"> </span>-m<span class="w"> </span>aeroagentsim.examples.example_trigger_basic
+python<span class="w"> </span>-m<span class="w"> </span>aeroagentsim.examples.example_workflow_inspection
+python<span class="w"> </span>-m<span class="w"> </span>aeroagentsim.examples.example_weather_provider
+python<span class="w"> </span>-m<span class="w"> </span>aeroagentsim.examples.example_signal_sensing
+</pre></div>
+</div>
+<section id="available-examples">
+<h3>Available Examples<a class="headerlink" href="#available-examples" title="Permalink to this heading">¶</a></h3>
+<p>The following examples are available in the examples directory:</p>
+<ul class="simple">
+<li><p><strong>example_trigger_basic.py</strong> - Basic trigger system demonstration</p></li>
+<li><p><strong>example_workflow_inspection.py</strong> - Inspection workflow with charging</p></li>
+<li><p><strong>example_workflow_logistics.py</strong> - Logistics and delivery workflows</p></li>
+<li><p><strong>example_weather_provider.py</strong> - Weather data integration</p></li>
+<li><p><strong>example_signal_sensing.py</strong> - Signal detection and EM sensing</p></li>
+<li><p><strong>example_frequency_signal_integration.py</strong> - Frequency management and signal interference</p></li>
+<li><p><strong>example_benchmark_multi_workflow.py</strong> - Multi-workflow performance benchmarking</p></li>
+</ul>
+<p>For more examples and detailed tutorials, see the <a class="reference internal" href="user_guide.html"><span class="doc">User Guide</span></a> and explore the examples directory in the source code.</p>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Examples</a><ul>
+<li><a class="reference internal" href="#understanding-aeroagentsim-s-execution-model">Understanding AeroAgentSim’s Execution Model</a></li>
+<li><a class="reference internal" href="#basic-examples">Basic Examples</a><ul>
+<li><a class="reference internal" href="#simple-drone-workflow">Simple Drone Workflow</a></li>
+<li><a class="reference internal" href="#manual-workflow-startup">Manual Workflow Startup</a></li>
+<li><a class="reference internal" href="#multi-agent-coordination-with-contracts">Multi-Agent Coordination with Contracts</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#workflow-examples">Workflow Examples</a><ul>
+<li><a class="reference internal" href="#inspection-mission">Inspection Mission</a></li>
+<li><a class="reference internal" href="#logistics-mission">Logistics Mission</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#data-integration-examples">Data Integration Examples</a><ul>
+<li><a class="reference internal" href="#weather-integration">Weather Integration</a></li>
+<li><a class="reference internal" href="#signal-integration-with-automatic-management">Signal Integration with Automatic Management</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#advanced-examples">Advanced Examples</a><ul>
+<li><a class="reference internal" href="#large-scale-multi-agent-simulation">Large-Scale Multi-Agent Simulation</a></li>
+<li><a class="reference internal" href="#real-time-monitoring">Real-time Monitoring</a></li>
+<li><a class="reference internal" href="#performance-testing-with-workflows">Performance Testing with Workflows</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#running-examples">Running Examples</a><ul>
+<li><a class="reference internal" href="#available-examples">Available Examples</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="api/utils.html"
+                          title="previous chapter">Utilities and Helpers</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="guides/index.html"
+                          title="next chapter">Developer Guides</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/examples.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="guides/index.html" title="Developer Guides"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="api/utils.html" title="Utilities and Helpers"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Examples</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

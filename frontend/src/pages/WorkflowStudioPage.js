@@ -1284,6 +1284,7 @@ function WorkflowStudioPage() {
             <Table
               size="small"
               pagination={false}
+              scroll={{ x: 'max-content' }}
               rowKey={(_row, index) => `binding_${index}`}
               dataSource={selectedWorkflowDefinition?.task_bindings || []}
               columns={[
@@ -1307,6 +1308,7 @@ function WorkflowStudioPage() {
             <Table
               size="small"
               pagination={false}
+              scroll={{ x: 'max-content' }}
               rowKey={(_row, index) => `transition_${index}`}
               dataSource={selectedWorkflowDefinition?.trigger_conditions || []}
               columns={[
@@ -1467,6 +1469,7 @@ function WorkflowStudioPage() {
               size="small"
               loading={catalogLoading}
               className="studio-entity-table"
+              scroll={{ x: 'max-content' }}
               rowKey={(row) => row.id}
               dataSource={draftConfig.agents || []}
               pagination={false}
@@ -1500,6 +1503,7 @@ function WorkflowStudioPage() {
               size="small"
               loading={catalogLoading}
               className="studio-entity-table"
+              scroll={{ x: 'max-content' }}
               rowKey={(row) => row.id}
               dataSource={draftConfig.workflows || []}
               pagination={false}

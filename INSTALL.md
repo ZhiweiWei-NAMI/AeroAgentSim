@@ -1,76 +1,45 @@
 # AeroAgentSim Installation Guide
 
-This repository ships the AeroAgentSim developer workbench on top of the `airfogsim` Python package. The product name is `AeroAgentSim`, but installation and imports still use `airfogsim`.
+This guide focuses on the current developer workflow for the AeroAgentSim repository, examples, and workbench.
 
 ## Requirements
 
 - Python `>=3.8`
 - `pip`
-- Conda is recommended for the standard local environment name: `airfogsim`
-- Node.js and npm only if you want to build or develop the frontend locally
-- No OpenGL or 3D graphics stack is required for the current 2D workbench
+- Node.js and npm for frontend development
+- `pytest` for local verification
+- `playwright` and Chromium for browser smoke tests
+- `SUMO_HOME` only if you run SUMO-backed traffic examples
+- `OPENWEATHERMAP_API_KEY` only if you run weather-backed examples
 
-## Recommended Environment Baseline
+## Recommended Developer Environment
 
-If you use the project-maintained Conda environment, activate it first:
+Create and activate a fresh environment:
 
 ```bash
-conda activate airfogsim
+python -m venv aeroagentsim_env
+source aeroagentsim_env/bin/activate
 ```
 
-The expected baseline for the current workbench and test flow is:
-
-- `fastapi`
-- `uvicorn`
-- `pytest`
-- `simpy`
-- `playwright` for browser-level frontend validation
-
-## Install From PyPI
+Install the repository in editable mode:
 
 ```bash
-python -m venv airfogsim_env
-source airfogsim_env/bin/activate
-pip install airfogsim
-```
-
-Verify the installation:
-
-```bash
-python -c "import airfogsim; from airfogsim import Environment, AirFogSimEnv; print('ok')"
-```
-
-`AirFogSimEnv` is a compatibility alias. New code should use `Environment`.
-
-## Install From Source
-
-```bash
-git clone https://github.com/ZhiweiWei-NAMI/AirFogSim.git
-cd AirFogSim
-python -m venv airfogsim_env
-source airfogsim_env/bin/activate
 pip install -e .[dev]
 ```
 
-If you also want documentation tooling:
+If you build the docs locally as well:
 
 ```bash
 pip install -e ".[dev,docs]"
 ```
 
+## Verify Python Imports
+
+```bash
+python -c "import aeroagentsim, airfogsim; from aeroagentsim import Environment; from airfogsim import Environment as LegacyEnvironment; print(Environment.__name__, Environment is LegacyEnvironment)"
+```
+
 ## Frontend Workbench Setup
-
-The frontend is a React developer workbench focused on:
-
-- class catalog inspection
-- builtin and custom registry browsing
-- workflow table/form editing
-- workflow-agent-state coupling graph visualization with zoom/pan navigation
-- global `Review / Validate` checks
-- `zh-CN` / `en-US` UI switching
-- run control
-- live 2D map
-- trajectories and logs
 
 Install frontend dependencies:
 
@@ -88,30 +57,21 @@ npm run build
 cd ..
 ```
 
-## Start the 2D Workbench
+## Start The Workbench
 
 ```bash
 python main_for_visualization.py --backend-port 8002 --frontend-port 3000
 ```
 
-The workbench keeps 2D visualization and removes the old 3D page set.
+The workbench is organized around:
 
-The `Workflow Studio` relation graph supports zoom and drag-to-pan navigation. Configuration edits still happen through tables and forms; dragging the graph only changes the viewport.
+- `Overview`
+- `Class Catalog`
+- `Workflow Studio`
+- `Run Console`
+- `Trajectories & Logs`
 
-Wheel and trackpad zoom are scoped to the graph canvas itself so graph inspection does not scroll the outer workbench page.
-
-## Custom Registry Layout
-
-Custom definitions are file-backed and should be stored under:
-
-```text
-registry/aeroagentsim/
-├── agents/
-├── tasks/
-└── workflows/
-```
-
-Files are the primary source of truth for custom definitions. SQLite is used only for lightweight indexes, cache, and run references.
+`Workflow Studio` combines table and form editing with an interactive relation graph. The graph supports wheel or trackpad zoom inside the canvas, background drag-to-pan, and node drag refinement. Persisted configuration still comes from the tables and forms.
 
 ## Runtime Storage
 
@@ -130,96 +90,92 @@ runtime/aeroagentsim/
         └── metrics/
 ```
 
-- Each config save produces an immutable config snapshot
-- Each simulation launch produces a new `run_id`
-- SQLite is used only for active-run cache and indexing
+Each config save produces an immutable snapshot. Each simulation launch creates a new `run_id`.
 
-## API / Dependency Notes
+## Custom Registry Layout
 
-The workbench backend depends on FastAPI and the existing visualization stack in this repository. If your local shell environment does not have `fastapi` installed yet, API startup checks will fail until dependencies are installed.
+Custom definitions are file-backed and stored under:
 
-Similarly, automated Python tests require `pytest` and related test dependencies:
-
-```bash
-pip install pytest pytest-cov
+```text
+registry/aeroagentsim/
+├── agents/
+├── tasks/
+└── workflows/
 ```
 
-Browser-level frontend validation also needs Python Playwright installed in the active environment:
+These files are the editable source of truth. SQLite is used as an index and active-run cache.
+
+## Environment Variables
+
+Backend storage and logging:
+
+- `AEROAGENTSIM_RUNTIME_DIR`
+- `AEROAGENTSIM_REGISTRY_DIR`
+- `AEROAGENTSIM_DB_PATH`
+- `AEROAGENTSIM_LOG_LEVEL`
+
+Compatibility aliases still accepted by the backend:
+
+- `AIRFOGSIM_RUNTIME_DIR`
+- `AIRFOGSIM_REGISTRY_DIR`
+- `AIRFOGSIM_DB_PATH`
+- `AIRFOGSIM_LOG_LEVEL`
+
+Frontend connectivity:
+
+- `REACT_APP_API_BASE_URL`
+- `REACT_APP_WS_BASE_URL`
+- `REACT_APP_ENABLE_MOCK_FALLBACK`
+
+External integrations:
+
+- `OPENWEATHERMAP_API_KEY`
+- `SUMO_HOME`
+
+## Browser Validation
+
+Install Playwright in the active Python environment:
 
 ```bash
 pip install playwright
 python -m playwright install chromium
 ```
 
-The intended browser validation path assumes the `airfogsim` Conda environment is active before running backend, frontend, or Playwright commands.
-
 ## Review / Validate Workflow
 
-The current workbench supports two validation entry points:
+The workbench exposes two validation entry points:
 
-- page-local `Validate` in `Workflow Studio` for the current draft
-- global `Review / Validate` aggregation for consistency, compatibility, unresolved references, and graph warnings
+- page-local `Validate` in `Workflow Studio`
+- global `Review / Validate` for draft consistency, compatibility checks, and runtime readiness
 
-Draft validation is expected to run against the current unsaved or in-progress form state, not just the last stored config snapshot.
-
-Runtime launch also performs `POST /api/configs/{config_id}/preflight` before `POST /api/runs`. Preflight warnings are surfaced in the UI and run diagnostics, but only preflight errors block run start.
+Runtime launch also runs `POST /api/configs/{config_id}/preflight` before `POST /api/runs`. Preflight `warning` entries remain visible and non-blocking. Preflight `errors` block run start.
 
 ## Troubleshooting
 
-### ImportError for `AirFogSimEnv`
-
-Use one of the supported imports:
-
-```python
-from airfogsim import Environment
-from airfogsim import AirFogSimEnv
-```
-
-First check your installed version:
-
-```bash
-python -c "import airfogsim; print(airfogsim.__version__)"
-```
-
-The current source version is **1.1.1**. If your version is older or prints `0.0.0`, the PyPI release is outdated. Install from source instead:
-
-```bash
-pip install git+https://github.com/ZhiweiWei-NAMI/AirFogSim.git
-```
-
-Or clone and install in editable mode:
-
-```bash
-git clone https://github.com/ZhiweiWei-NAMI/AirFogSim.git
-cd AirFogSim
-pip install -e .
-```
-
-### Frontend cannot reach the backend
+### Backend or frontend does not start
 
 - confirm the backend port matches `REACT_APP_API_BASE_URL`
 - confirm the WebSocket URL matches `REACT_APP_WS_BASE_URL`
-- confirm FastAPI dependencies are installed before starting the workbench
+- confirm FastAPI, Uvicorn, and frontend dependencies are installed
 
 ### `runtime_preflight` reports skipped `create_airspace` / `create_frequency`
 
-- these messages are currently non-blocking warnings, not startup failures
-- they mean the active runtime did not expose the optional default resource injection helpers
-- if your config explicitly defines airspaces or frequencies and the runtime still lacks those methods, preflight escalates to an error and run start is blocked
+- these are compatibility warnings
+- they indicate that the active runtime did not expose the optional default resource bootstrap helpers
+- explicit config requirements still escalate to an error when the runtime cannot satisfy them
 
 ### Pause / resume / reset returns `409`
 
-- `/api/runs/{run_id}/pause|resume|reset` only works for the active run
-- historical runs remain inspectable and deletable, but they cannot be controlled after they are no longer active
+- `/api/runs/{run_id}/pause|resume|reset` applies only to the active run
+- historical runs remain inspectable and deletable
 
 ### Legacy `/api/simulation/*` endpoints return `410`
 
-- the older `/api/simulation/start|pause|resume|reset|configure` routes are intentionally disabled
-- use `/api/configs/*` for draft/config operations and `/api/runs/*` for run lifecycle control
+- use `/api/configs/*` for config operations
+- use `/api/runs/*` for run lifecycle control
 
 ### Tests or API startup still fail locally
 
-- install missing runtime dependencies from `requirements.txt` or the extras above
-- install frontend dependencies with `npm install`
-- install Playwright and browser binaries before browser tests
-- rerun the verification command before starting the workbench
+- reinstall the editable package: `pip install -e .[dev]`
+- reinstall frontend dependencies: `cd frontend && npm install`
+- install Playwright and Chromium before browser tests

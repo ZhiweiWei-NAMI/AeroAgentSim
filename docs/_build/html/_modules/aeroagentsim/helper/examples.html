@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.helper.examples &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.helper.examples</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.helper.examples</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AeroAgentSim类检查工具使用示例</span>
+
+<span class="sd">该模块展示了如何使用类检查工具来检查系统中已实现的各种类及其关键信息。</span>
+<span class="sd">可以作为独立脚本运行，也可以作为模块导入。</span>
+
+<span class="sd">使用方法:</span>
+<span class="sd">    python -m aeroagentsim.helper.examples</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.helper.class_checker</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">check_all_classes</span><span class="p">,</span>
+    <span class="n">check_agent_classes</span><span class="p">,</span>
+    <span class="n">check_component_classes</span><span class="p">,</span>
+    <span class="n">check_task_classes</span><span class="p">,</span>
+    <span class="n">check_workflow_classes</span><span class="p">,</span>
+    <span class="n">find_compatible_agents</span><span class="p">,</span>
+    <span class="n">find_compatible_components</span><span class="p">,</span>
+    <span class="n">find_compatible_tasks</span>
+<span class="p">)</span>
+
+<div class="viewcode-block" id="setup_environment"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.examples.setup_environment">[docs]</a><span class="k">def</span> <span class="nf">setup_environment</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Environment</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    设置仿真环境</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Environment: 创建的仿真环境</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">(</span><span class="n">visual_interval</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">env</span></div>
+
+<div class="viewcode-block" id="example_check_all_classes"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.examples.example_check_all_classes">[docs]</a><span class="k">def</span> <span class="nf">example_check_all_classes</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;检查所有类的示例&quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">示例1: 检查所有类&quot;</span><span class="p">)</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">setup_environment</span><span class="p">()</span>
+    <span class="n">check_all_classes</span><span class="p">(</span><span class="n">env</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="example_check_specific_classes"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.examples.example_check_specific_classes">[docs]</a><span class="k">def</span> <span class="nf">example_check_specific_classes</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;检查特定类型的类的示例&quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">示例2: 检查特定类型的类&quot;</span><span class="p">)</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">setup_environment</span><span class="p">()</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">2.1 检查代理类&quot;</span><span class="p">)</span>
+    <span class="n">check_agent_classes</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">2.2 检查组件类&quot;</span><span class="p">)</span>
+    <span class="n">check_component_classes</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">2.3 检查任务类&quot;</span><span class="p">)</span>
+    <span class="n">check_task_classes</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">2.4 检查工作流类&quot;</span><span class="p">)</span>
+    <span class="n">check_workflow_classes</span><span class="p">(</span><span class="n">env</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="example_find_compatible_agents"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.examples.example_find_compatible_agents">[docs]</a><span class="k">def</span> <span class="nf">example_find_compatible_agents</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;查找兼容的代理类的示例&quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">示例3: 查找兼容的代理类&quot;</span><span class="p">)</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">setup_environment</span><span class="p">()</span>
+    
+    <span class="c1"># 查找支持位置和电池电量状态的代理类</span>
+    <span class="n">required_states</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">,</span> <span class="s1">&#39;battery_level&#39;</span><span class="p">]</span>
+    <span class="n">find_compatible_agents</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">required_states</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="example_find_compatible_components"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.examples.example_find_compatible_components">[docs]</a><span class="k">def</span> <span class="nf">example_find_compatible_components</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;查找兼容的组件类的示例&quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">示例4: 查找兼容的组件类&quot;</span><span class="p">)</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">setup_environment</span><span class="p">()</span>
+    
+    <span class="c1"># 创建一个临时代理</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+    <span class="n">agent</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">&quot;temp_drone&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># 查找产生速度指标的组件类</span>
+    <span class="n">required_metrics</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;speed&#39;</span><span class="p">]</span>
+    <span class="n">find_compatible_components</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">required_metrics</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="example_find_compatible_tasks"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.examples.example_find_compatible_tasks">[docs]</a><span class="k">def</span> <span class="nf">example_find_compatible_tasks</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;查找兼容的任务类的示例&quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">示例5: 查找兼容的任务类&quot;</span><span class="p">)</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">setup_environment</span><span class="p">()</span>
+    
+    <span class="c1"># 创建一个临时代理</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+    <span class="n">agent</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">&quot;temp_drone&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># 为代理添加移动组件</span>
+    <span class="kn">from</span> <span class="nn">aeroagentsim.component.mobility</span> <span class="kn">import</span> <span class="n">MoveToComponent</span>
+    <span class="n">agent</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">MoveToComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">))</span>
+    
+    <span class="c1"># 查找产生位置和方向状态的任务类</span>
+    <span class="n">required_states</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;position&#39;</span><span class="p">,</span> <span class="s1">&#39;direction&#39;</span><span class="p">]</span>
+    <span class="n">find_compatible_tasks</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">required_states</span><span class="o">=</span><span class="n">required_states</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../../api/utils.html#aeroagentsim.helper.examples.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;主函数&quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;AeroAgentSim类检查工具使用示例&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    
+    <span class="c1"># 示例1: 检查所有类</span>
+    <span class="n">example_check_all_classes</span><span class="p">()</span>
+    
+    <span class="c1"># 示例2: 检查特定类型的类</span>
+    <span class="n">example_check_specific_classes</span><span class="p">()</span>
+    
+    <span class="c1"># 示例3: 查找兼容的代理类</span>
+    <span class="n">example_find_compatible_agents</span><span class="p">()</span>
+    
+    <span class="c1"># 示例4: 查找兼容的组件类</span>
+    <span class="n">example_find_compatible_components</span><span class="p">()</span>
+    
+    <span class="c1"># 示例5: 查找兼容的任务类</span>
+    <span class="n">example_find_compatible_tasks</span><span class="p">()</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.helper.examples</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

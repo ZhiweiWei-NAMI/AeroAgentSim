@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Component Development Guide &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Workflow Development Guide" href="workflow_development.html" />
+    <link rel="prev" title="Agent Development Guide" href="agent_development.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="workflow_development.html" title="Workflow Development Guide"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="agent_development.html" title="Agent Development Guide"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Component Development Guide</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="component-development-guide">
+<h1>Component Development Guide<a class="headerlink" href="#component-development-guide" title="Permalink to this heading">¶</a></h1>
+<p>This guide covers how to create custom components that provide capabilities to agents in AeroAgentSim.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">¶</a></h2>
+<p>Components are modular capabilities that agents can use to perform specific tasks. They abstract functionality like mobility, sensing, computation, and communication, providing a clean separation of concerns.</p>
+</section>
+<section id="key-concepts">
+<h2>Key Concepts<a class="headerlink" href="#key-concepts" title="Permalink to this heading">¶</a></h2>
+<section id="component-architecture">
+<h3>Component Architecture<a class="headerlink" href="#component-architecture" title="Permalink to this heading">¶</a></h3>
+<p>Every component in AeroAgentSim:</p>
+<ul class="simple">
+<li><p><strong>Provides capabilities</strong> to agents through task execution</p></li>
+<li><p><strong>Manages resources</strong> required for task execution</p></li>
+<li><p><strong>Calculates metrics</strong> based on resource usage and agent state</p></li>
+<li><p><strong>Triggers events</strong> for task status and metric changes</p></li>
+<li><p><strong>Handles task lifecycle</strong> from initiation to completion</p></li>
+</ul>
+</section>
+<section id="base-component-class">
+<h3>Base Component Class<a class="headerlink" href="#base-component-class" title="Permalink to this heading">¶</a></h3>
+<p>All components inherit from the base <code class="docutils literal notranslate"><span class="pre">Component</span></code> class:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.component</span> <span class="kn">import</span> <span class="n">Component</span>
+
+<span class="k">class</span> <span class="nc">CustomComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom component implementation.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Define metrics this component produces</span>
+    <span class="n">PRODUCED_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;custom_metric&#39;</span><span class="p">,</span> <span class="s1">&#39;performance_score&#39;</span><span class="p">]</span>
+
+    <span class="c1"># Define states this component monitors</span>
+    <span class="n">MONITORED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;agent_status&#39;</span><span class="p">,</span> <span class="s1">&#39;battery_level&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">owner</span><span class="p">)</span>
+        <span class="c1"># Custom initialization</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="creating-a-custom-component">
+<h2>Creating a Custom Component<a class="headerlink" href="#creating-a-custom-component" title="Permalink to this heading">¶</a></h2>
+<section id="step-1-define-component-class">
+<h3>Step 1: Define Component Class<a class="headerlink" href="#step-1-define-component-class" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.component</span> <span class="kn">import</span> <span class="n">Component</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">ComponentStatus</span>
+
+<span class="k">class</span> <span class="nc">DataProcessingComponent</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Component for data processing tasks.&quot;&quot;&quot;</span>
+
+    <span class="n">PRODUCED_METRICS</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;processing_power&#39;</span><span class="p">,</span>    <span class="c1"># FLOPS available</span>
+        <span class="s1">&#39;memory_usage&#39;</span><span class="p">,</span>        <span class="c1"># Memory consumption</span>
+        <span class="s1">&#39;processing_latency&#39;</span>   <span class="c1"># Task completion time</span>
+    <span class="p">]</span>
+
+    <span class="n">MONITORED_STATES</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;battery_level&#39;</span><span class="p">,</span>       <span class="c1"># Monitor power consumption</span>
+        <span class="s1">&#39;temperature&#39;</span><span class="p">,</span>         <span class="c1"># Monitor thermal conditions</span>
+        <span class="s1">&#39;cpu_load&#39;</span>            <span class="c1"># Monitor current load</span>
+    <span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">owner</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_processing_power</span> <span class="o">=</span> <span class="mf">1000.0</span>  <span class="c1"># FLOPS</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_capacity</span> <span class="o">=</span> <span class="mf">8192.0</span>       <span class="c1"># MB</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_tasks</span> <span class="o">=</span> <span class="p">[]</span>
+</pre></div>
+</div>
+</section>
+<section id="step-2-implement-task-execution">
+<h3>Step 2: Implement Task Execution<a class="headerlink" href="#step-2-implement-task-execution" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">execute_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute a data processing task.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Validate task requirements</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_can_execute_task</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
+            <span class="n">task</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Set task status to running</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">RUNNING</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+        <span class="c1"># Calculate required resources</span>
+        <span class="n">required_power</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;required_flops&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+        <span class="n">required_memory</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;required_memory&#39;</span><span class="p">,</span> <span class="mf">512.0</span><span class="p">)</span>
+
+        <span class="c1"># Allocate resources</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_allocate_resources</span><span class="p">(</span><span class="n">required_power</span><span class="p">,</span> <span class="n">required_memory</span><span class="p">)</span>
+
+        <span class="c1"># Execute task logic</span>
+        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_data</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+        <span class="c1"># Release resources</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_release_resources</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_tasks</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+        <span class="c1"># Mark task as completed</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task execution failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_failed_task</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="step-3-implement-resource-management">
+<h3>Step 3: Implement Resource Management<a class="headerlink" href="#step-3-implement-resource-management" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_allocate_resources</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">required_power</span><span class="p">,</span> <span class="n">required_memory</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Allocate processing resources for task.&quot;&quot;&quot;</span>
+    <span class="c1"># Check resource availability</span>
+    <span class="n">available_power</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_processing_power</span><span class="p">()</span>
+    <span class="n">available_memory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_memory</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">required_power</span> <span class="o">&gt;</span> <span class="n">available_power</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ResourceError</span><span class="p">(</span><span class="s2">&quot;Insufficient processing power&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">required_memory</span> <span class="o">&gt;</span> <span class="n">available_memory</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ResourceError</span><span class="p">(</span><span class="s2">&quot;Insufficient memory&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Update resource usage</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">current_power_usage</span> <span class="o">+=</span> <span class="n">required_power</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">current_memory_usage</span> <span class="o">+=</span> <span class="n">required_memory</span>
+
+    <span class="c1"># Update metrics</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">_release_resources</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Release resources used by completed task.&quot;&quot;&quot;</span>
+    <span class="n">required_power</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;required_flops&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+    <span class="n">required_memory</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;required_memory&#39;</span><span class="p">,</span> <span class="mf">512.0</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">current_power_usage</span> <span class="o">-=</span> <span class="n">required_power</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">current_memory_usage</span> <span class="o">-=</span> <span class="n">required_memory</span>
+
+    <span class="c1"># Update metrics</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="step-4-implement-metrics-calculation">
+<h3>Step 4: Implement Metrics Calculation<a class="headerlink" href="#step-4-implement-metrics-calculation" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_update_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Update component metrics based on current state.&quot;&quot;&quot;</span>
+    <span class="c1"># Calculate available processing power</span>
+    <span class="n">battery_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;battery_level&#39;</span><span class="p">)</span>
+    <span class="n">temperature</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;temperature&#39;</span><span class="p">,</span> <span class="mf">25.0</span><span class="p">)</span>
+
+    <span class="c1"># Adjust processing power based on battery and temperature</span>
+    <span class="n">power_factor</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">battery_level</span> <span class="o">/</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">temp_factor</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="p">(</span><span class="n">temperature</span> <span class="o">-</span> <span class="mi">25</span><span class="p">)</span> <span class="o">/</span> <span class="mf">50.0</span><span class="p">)</span>
+
+    <span class="n">available_power</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_processing_power</span> <span class="o">*</span> <span class="n">power_factor</span> <span class="o">*</span> <span class="n">temp_factor</span>
+    <span class="n">current_power</span> <span class="o">=</span> <span class="n">available_power</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_power_usage</span>
+
+    <span class="c1"># Update metrics</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;processing_power&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">current_power</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;memory_usage&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_memory_usage</span>
+
+    <span class="c1"># Calculate processing latency based on load</span>
+    <span class="n">load_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_power_usage</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_processing_power</span>
+    <span class="n">base_latency</span> <span class="o">=</span> <span class="mf">10.0</span>  <span class="c1"># Base latency in ms</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;processing_latency&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">base_latency</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">load_factor</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># Trigger metrics update event</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;metrics_updated&#39;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s1">&#39;component_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+        <span class="s1">&#39;metrics&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="p">})</span>
+</pre></div>
+</div>
+</section>
+<section id="step-5-implement-task-specific-logic">
+<h3>Step 5: Implement Task-Specific Logic<a class="headerlink" href="#step-5-implement-task-specific-logic" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_process_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Process data according to task requirements.&quot;&quot;&quot;</span>
+    <span class="n">processing_time</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;processing_time&#39;</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
+    <span class="n">data_size</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;data_size&#39;</span><span class="p">,</span> <span class="mf">1024.0</span><span class="p">)</span>  <span class="c1"># MB</span>
+
+    <span class="c1"># Calculate actual processing time based on current performance</span>
+    <span class="n">current_power</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;processing_power&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+    <span class="n">actual_time</span> <span class="o">=</span> <span class="n">processing_time</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1000.0</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">current_power</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+
+    <span class="c1"># Simulate processing with periodic updates</span>
+    <span class="n">update_interval</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">actual_time</span> <span class="o">/</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">elapsed_time</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">while</span> <span class="n">elapsed_time</span> <span class="o">&lt;</span> <span class="n">actual_time</span><span class="p">:</span>
+        <span class="c1"># Wait for update interval</span>
+        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">update_interval</span><span class="p">)</span>
+        <span class="n">elapsed_time</span> <span class="o">+=</span> <span class="n">update_interval</span>
+
+        <span class="c1"># Update task progress</span>
+        <span class="n">progress</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">elapsed_time</span> <span class="o">/</span> <span class="n">actual_time</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="n">progress</span>
+
+        <span class="c1"># Update battery consumption</span>
+        <span class="n">power_consumption</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_power_consumption</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">consume_battery</span><span class="p">(</span><span class="n">power_consumption</span> <span class="o">*</span> <span class="n">update_interval</span><span class="p">)</span>
+
+        <span class="c1"># Check for thermal throttling</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="s1">&#39;temperature&#39;</span><span class="p">,</span> <span class="mf">25.0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">80.0</span><span class="p">:</span>
+            <span class="c1"># Reduce processing speed due to overheating</span>
+            <span class="n">actual_time</span> <span class="o">*=</span> <span class="mf">1.2</span>
+
+        <span class="c1"># Trigger progress event</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;task_progress&#39;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s1">&#39;progress&#39;</span><span class="p">:</span> <span class="n">progress</span><span class="p">,</span>
+            <span class="s1">&#39;component_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span>
+        <span class="p">})</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="component-integration">
+<h2>Component Integration<a class="headerlink" href="#component-integration" title="Permalink to this heading">¶</a></h2>
+<section id="using-your-custom-component">
+<h3>Using Your Custom Component<a class="headerlink" href="#using-your-custom-component" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.environment</span> <span class="kn">import</span> <span class="n">Environment</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.agent.drone</span> <span class="kn">import</span> <span class="n">DroneAgent</span>
+<span class="kn">from</span> <span class="nn">your_module</span> <span class="kn">import</span> <span class="n">DataProcessingComponent</span>
+
+<span class="c1"># Create environment and agent</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+<span class="n">drone</span> <span class="o">=</span> <span class="n">DroneAgent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">&quot;processor_drone&quot;</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+    <span class="s1">&#39;battery_level&#39;</span><span class="p">:</span> <span class="mi">100</span>
+<span class="p">})</span>
+
+<span class="c1"># Add data processing component</span>
+<span class="n">processor</span> <span class="o">=</span> <span class="n">DataProcessingComponent</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">drone</span><span class="p">)</span>
+<span class="n">drone</span><span class="o">.</span><span class="n">add_component</span><span class="p">(</span><span class="n">processor</span><span class="p">)</span>
+
+<span class="c1"># Register agent</span>
+<span class="n">env</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="n">drone</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="creating-compatible-tasks">
+<h3>Creating Compatible Tasks<a class="headerlink" href="#creating-compatible-tasks" title="Permalink to this heading">¶</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.task</span> <span class="kn">import</span> <span class="n">Task</span>
+
+<span class="k">class</span> <span class="nc">DataProcessingTask</span><span class="p">(</span><span class="n">Task</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Task for processing data.&quot;&quot;&quot;</span>
+
+    <span class="n">NECESSARY_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;processing_power&#39;</span><span class="p">,</span> <span class="s1">&#39;memory_usage&#39;</span><span class="p">]</span>
+    <span class="n">PRODUCED_STATES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;processing_status&#39;</span><span class="p">,</span> <span class="s1">&#39;processed_data&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">properties</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">required_flops</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;required_flops&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">required_memory</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;required_memory&#39;</span><span class="p">,</span> <span class="mf">512.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_size</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;data_size&#39;</span><span class="p">,</span> <span class="mf">1024.0</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Permalink to this heading">¶</a></h2>
+<section id="resource-management">
+<h3>Resource Management<a class="headerlink" href="#resource-management" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Check resource availability</strong> before starting tasks</p></li>
+<li><p><strong>Track resource usage</strong> accurately throughout task execution</p></li>
+<li><p><strong>Release resources promptly</strong> when tasks complete or fail</p></li>
+<li><p><strong>Handle resource contention</strong> gracefully</p></li>
+</ol>
+</section>
+<section id="metrics-and-monitoring">
+<h3>Metrics and Monitoring<a class="headerlink" href="#metrics-and-monitoring" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Update metrics regularly</strong> to reflect current component state</p></li>
+<li><p><strong>Use meaningful metric names</strong> that describe component capabilities</p></li>
+<li><p><strong>Trigger events</strong> when significant metric changes occur</p></li>
+<li><p><strong>Consider external factors</strong> (battery, temperature) in calculations</p></li>
+</ol>
+</section>
+<section id="error-handling">
+<h3>Error Handling<a class="headerlink" href="#error-handling" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Validate task requirements</strong> before execution</p></li>
+<li><p><strong>Handle resource allocation failures</strong> gracefully</p></li>
+<li><p><strong>Clean up properly</strong> when tasks fail</p></li>
+<li><p><strong>Log errors</strong> for debugging and monitoring</p></li>
+</ol>
+</section>
+<section id="performance">
+<h3>Performance<a class="headerlink" href="#performance" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Optimize metric calculations</strong> for frequent updates</p></li>
+<li><p><strong>Use appropriate update intervals</strong> for real-time metrics</p></li>
+<li><p><strong>Avoid blocking operations</strong> in task execution</p></li>
+<li><p><strong>Monitor memory usage</strong> for long-running components</p></li>
+</ol>
+</section>
+<section id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this heading">¶</a></h3>
+<ol class="arabic simple">
+<li><p><strong>Test resource allocation and release</strong> thoroughly</p></li>
+<li><p><strong>Verify metric calculations</strong> under various conditions</p></li>
+<li><p><strong>Test error conditions</strong> and recovery mechanisms</p></li>
+<li><p><strong>Benchmark performance</strong> with realistic workloads</p></li>
+</ol>
+</section>
+</section>
+<section id="advanced-topics">
+<h2>Advanced Topics<a class="headerlink" href="#advanced-topics" title="Permalink to this heading">¶</a></h2>
+<section id="multi-component-coordination">
+<h3>Multi-Component Coordination<a class="headerlink" href="#multi-component-coordination" title="Permalink to this heading">¶</a></h3>
+<p>Components can coordinate through:</p>
+<ul class="simple">
+<li><p><strong>Shared metrics</strong>: Components can read metrics from other components</p></li>
+<li><p><strong>Event communication</strong>: Publishing and subscribing to component events</p></li>
+<li><p><strong>Resource sharing</strong>: Coordinating access to shared resources</p></li>
+<li><p><strong>Task dependencies</strong>: Managing dependencies between component tasks</p></li>
+</ul>
+<p>For more advanced topics, see:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="workflow_development.html"><span class="doc">Workflow Development Guide</span></a> - Coordinating component tasks through workflows</p></li>
+<li><p><a class="reference internal" href="../api/component.html"><span class="doc">Component Classes</span></a> - Complete component API reference</p></li>
+<li><p><a class="reference internal" href="../api/task.html"><span class="doc">Task Classes</span></a> - Task development guide</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Component Development Guide</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a></li>
+<li><a class="reference internal" href="#key-concepts">Key Concepts</a><ul>
+<li><a class="reference internal" href="#component-architecture">Component Architecture</a></li>
+<li><a class="reference internal" href="#base-component-class">Base Component Class</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#creating-a-custom-component">Creating a Custom Component</a><ul>
+<li><a class="reference internal" href="#step-1-define-component-class">Step 1: Define Component Class</a></li>
+<li><a class="reference internal" href="#step-2-implement-task-execution">Step 2: Implement Task Execution</a></li>
+<li><a class="reference internal" href="#step-3-implement-resource-management">Step 3: Implement Resource Management</a></li>
+<li><a class="reference internal" href="#step-4-implement-metrics-calculation">Step 4: Implement Metrics Calculation</a></li>
+<li><a class="reference internal" href="#step-5-implement-task-specific-logic">Step 5: Implement Task-Specific Logic</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#component-integration">Component Integration</a><ul>
+<li><a class="reference internal" href="#using-your-custom-component">Using Your Custom Component</a></li>
+<li><a class="reference internal" href="#creating-compatible-tasks">Creating Compatible Tasks</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#best-practices">Best Practices</a><ul>
+<li><a class="reference internal" href="#resource-management">Resource Management</a></li>
+<li><a class="reference internal" href="#metrics-and-monitoring">Metrics and Monitoring</a></li>
+<li><a class="reference internal" href="#error-handling">Error Handling</a></li>
+<li><a class="reference internal" href="#performance">Performance</a></li>
+<li><a class="reference internal" href="#testing">Testing</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#advanced-topics">Advanced Topics</a><ul>
+<li><a class="reference internal" href="#multi-component-coordination">Multi-Component Coordination</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="agent_development.html"
+                          title="previous chapter">Agent Development Guide</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="workflow_development.html"
+                          title="next chapter">Workflow Development Guide</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/guides/component_development.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="workflow_development.html" title="Workflow Development Guide"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="agent_development.html" title="Agent Development Guide"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Component Development Guide</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

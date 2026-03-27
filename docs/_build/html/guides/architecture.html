@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Architecture Guide &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Agent Development Guide" href="agent_development.html" />
+    <link rel="prev" title="Developer Guides" href="index.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="agent_development.html" title="Agent Development Guide"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Developer Guides"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Architecture Guide</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="architecture-guide">
+<h1>Architecture Guide<a class="headerlink" href="#architecture-guide" title="Permalink to this heading">¶</a></h1>
+<p>This guide describes the current repository architecture.</p>
+<p><code class="docutils literal notranslate"><span class="pre">AeroAgentSim</span></code> is the current product and workbench name, and <code class="docutils literal notranslate"><span class="pre">aeroagentsim</span></code>
+is the current package/import path used across the repository.</p>
+<section id="high-level-structure">
+<h2>High-Level Structure<a class="headerlink" href="#high-level-structure" title="Permalink to this heading">¶</a></h2>
+<p>The repository has three practical layers:</p>
+<ul class="simple">
+<li><p>the <code class="docutils literal notranslate"><span class="pre">aeroagentsim</span></code> simulation core</p></li>
+<li><p>the AeroAgentSim workbench backend under <code class="docutils literal notranslate"><span class="pre">src/aeroagentsim/visualization/</span></code></p></li>
+<li><p>the React frontend under <code class="docutils literal notranslate"><span class="pre">frontend/</span></code></p></li>
+</ul>
+<p>The current frontend is a REST + WebSocket driven developer workbench.</p>
+</section>
+<section id="core-simulation-layer">
+<h2>Core Simulation Layer<a class="headerlink" href="#core-simulation-layer" title="Permalink to this heading">¶</a></h2>
+<p>The execution model is still built from:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Environment</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Agent</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Component</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Task</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Workflow</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Trigger</span></code></p></li>
+<li><p>manager classes for resources and coordination</p></li>
+</ul>
+<p>These classes remain the runtime source of truth.</p>
+</section>
+<section id="workbench-backend-layer">
+<h2>Workbench Backend Layer<a class="headerlink" href="#workbench-backend-layer" title="Permalink to this heading">¶</a></h2>
+<p>The workbench backend adds:</p>
+<ul class="simple">
+<li><p>catalog extraction for builtin and custom definitions</p></li>
+<li><p>config snapshot storage and validation</p></li>
+<li><p>graph generation for workflow-agent-state relationships</p></li>
+<li><p>runtime preflight checks</p></li>
+<li><p>run lifecycle control</p></li>
+<li><p>artifact persistence for logs, trajectories, spatial snapshots, and workflow
+state diffs</p></li>
+</ul>
+<p>The backend is exposed through a FastAPI app.</p>
+<p>Current API groups include:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">/api/catalog/*</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/api/registry/*</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/api/configs/*</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/api/runs/*</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/api/agents/*</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/api/workflows/*</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/api/templates/*</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/api/traffic/*</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/api</span></code> entity endpoints</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/api/runtime/reset</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/api/health</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/ws</span></code></p></li>
+</ul>
+</section>
+<section id="frontend-layer">
+<h2>Frontend Layer<a class="headerlink" href="#frontend-layer" title="Permalink to this heading">¶</a></h2>
+<p>The frontend is a five-page developer workbench:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Overview</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Class</span> <span class="pre">Catalog</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Workflow</span> <span class="pre">Studio</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Run</span> <span class="pre">Console</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Trajectories</span> <span class="pre">&amp;</span> <span class="pre">Logs</span></code></p></li>
+</ul>
+<p>It is intentionally 2D only.</p>
+<p>Key frontend behaviors:</p>
+<ul class="simple">
+<li><p>form/table editing is the source of truth</p></li>
+<li><p>the relation graph is for inspection, highlighting, zoom, and pan inside the graph canvas</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Run</span> <span class="pre">Console</span></code> handles active runtime control</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Trajectories</span> <span class="pre">&amp;</span> <span class="pre">Logs</span></code> handles persisted historical run inspection</p></li>
+<li><p>the UI supports <code class="docutils literal notranslate"><span class="pre">zh-CN</span></code> and <code class="docutils literal notranslate"><span class="pre">en-US</span></code></p></li>
+</ul>
+</section>
+<section id="control-and-update-channels">
+<h2>Control and Update Channels<a class="headerlink" href="#control-and-update-channels" title="Permalink to this heading">¶</a></h2>
+<p>The current split is:</p>
+<ul class="simple">
+<li><p>REST for commands and config requests</p></li>
+<li><p>WebSocket for state and log pushes</p></li>
+</ul>
+<p>REST is authoritative for:</p>
+<ul class="simple">
+<li><p>save</p></li>
+<li><p>validate</p></li>
+<li><p>preflight</p></li>
+<li><p>start</p></li>
+<li><p>pause</p></li>
+<li><p>resume</p></li>
+<li><p>reset</p></li>
+<li><p>delete run</p></li>
+</ul>
+<p>Runtime preflight is the run-start gate. Warnings remain visible in diagnostics, but only preflight errors block <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/runs</span></code>.</p>
+<p>WebSocket is used for:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">sim_status</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">workflow_state_diff</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">spatial_snapshot</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log_event</span></code></p></li>
+</ul>
+</section>
+<section id="configuration-and-runtime-storage">
+<h2>Configuration and Runtime Storage<a class="headerlink" href="#configuration-and-runtime-storage" title="Permalink to this heading">¶</a></h2>
+<p>The current persistence model is layered:</p>
+<ul class="simple">
+<li><p>config snapshots under <code class="docutils literal notranslate"><span class="pre">runtime/aeroagentsim/configs/</span></code></p></li>
+<li><p>run artifacts under <code class="docutils literal notranslate"><span class="pre">runtime/aeroagentsim/runs/&lt;run_id&gt;/</span></code></p></li>
+<li><p>custom definition files under <code class="docutils literal notranslate"><span class="pre">registry/aeroagentsim/</span></code></p></li>
+</ul>
+<p>SQLite is used as a lightweight index/cache layer for active and recent run state.</p>
+</section>
+<section id="visualization-model">
+<h2>Visualization Model<a class="headerlink" href="#visualization-model" title="Permalink to this heading">¶</a></h2>
+<p>The current visualization model includes:</p>
+<ul class="simple">
+<li><p>live 2D markers in <code class="docutils literal notranslate"><span class="pre">Run</span> <span class="pre">Console</span></code></p></li>
+<li><p>historical 2D trajectory replay in <code class="docutils literal notranslate"><span class="pre">Trajectories</span> <span class="pre">&amp;</span> <span class="pre">Logs</span></code></p></li>
+<li><p>a workflow-agent-state relation graph in <code class="docutils literal notranslate"><span class="pre">Workflow</span> <span class="pre">Studio</span></code></p></li>
+</ul>
+<p>Supported coordinate modes:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">simulation_plane</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">geo_osm</span></code></p></li>
+</ul>
+</section>
+<section id="extension-model">
+<h2>Extension Model<a class="headerlink" href="#extension-model" title="Permalink to this heading">¶</a></h2>
+<p>Custom <code class="docutils literal notranslate"><span class="pre">agent</span></code>, <code class="docutils literal notranslate"><span class="pre">task</span></code>, and <code class="docutils literal notranslate"><span class="pre">workflow</span></code> definitions are file-backed and
+declarative. They are loaded from <code class="docutils literal notranslate"><span class="pre">registry/aeroagentsim/</span></code>, validated, and
+compiled into backend proxy/adaptor objects that run through the
+<code class="docutils literal notranslate"><span class="pre">aeroagentsim</span></code> execution model.</p>
+<p>This means:</p>
+<ul class="simple">
+<li><p>the frontend can extend definitions without uploading Python code</p></li>
+<li><p>runtime execution still stays inside controlled backend abstractions</p></li>
+</ul>
+</section>
+<section id="current-architectural-emphasis">
+<h2>Current Architectural Emphasis<a class="headerlink" href="#current-architectural-emphasis" title="Permalink to this heading">¶</a></h2>
+<p>The current architecture puts these parts at the center:</p>
+<ul class="simple">
+<li><p>workbench-driven config editing and validation</p></li>
+<li><p>registry files and config snapshots as first-class artifacts</p></li>
+<li><p>run-scoped trajectory, spatial, and log inspection by <code class="docutils literal notranslate"><span class="pre">run_id</span></code></p></li>
+<li><p>FastAPI and WebSocket services for control plus live updates</p></li>
+</ul>
+</section>
+<section id="related-docs">
+<h2>Related Docs<a class="headerlink" href="#related-docs" title="Permalink to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">README.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">INSTALL.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/getting_started.rst</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/user_guide.rst</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">src/aeroagentsim/docs/en/architecture.md</span></code></p></li>
+</ul>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Architecture Guide</a><ul>
+<li><a class="reference internal" href="#high-level-structure">High-Level Structure</a></li>
+<li><a class="reference internal" href="#core-simulation-layer">Core Simulation Layer</a></li>
+<li><a class="reference internal" href="#workbench-backend-layer">Workbench Backend Layer</a></li>
+<li><a class="reference internal" href="#frontend-layer">Frontend Layer</a></li>
+<li><a class="reference internal" href="#control-and-update-channels">Control and Update Channels</a></li>
+<li><a class="reference internal" href="#configuration-and-runtime-storage">Configuration and Runtime Storage</a></li>
+<li><a class="reference internal" href="#visualization-model">Visualization Model</a></li>
+<li><a class="reference internal" href="#extension-model">Extension Model</a></li>
+<li><a class="reference internal" href="#current-architectural-emphasis">Current Architectural Emphasis</a></li>
+<li><a class="reference internal" href="#related-docs">Related Docs</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="index.html"
+                          title="previous chapter">Developer Guides</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="agent_development.html"
+                          title="next chapter">Agent Development Guide</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/guides/architecture.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="agent_development.html" title="Agent Development Guide"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Developer Guides"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Developer Guides</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Architecture Guide</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

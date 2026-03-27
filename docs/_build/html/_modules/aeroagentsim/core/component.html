@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.core.component &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.component</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.core.component</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim组件(Component)核心模块</span>
+
+<span class="sd">该模块定义了代理(Agent)的组件基类，组件是代理功能的实际执行者。</span>
+<span class="sd">每个组件负责特定类型的任务执行，并管理任务所需的资源。核心功能包括：</span>
+<span class="sd">1. 任务执行：包装和管理任务的完整生命周期</span>
+<span class="sd">2. 资源管理：分配和释放任务所需的资源</span>
+<span class="sd">3. 事件处理：触发与任务执行相关的事件</span>
+<span class="sd">4. 性能监控：计算和更新组件的性能指标</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">TaskStatus</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">import</span> <span class="nn">simpy</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Set</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="c1"># 获取logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Component"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.component.Component">[docs]</a><span class="k">class</span> <span class="nc">Component</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;执行任务的组件，使用分配的资源。&quot;&quot;&quot;</span>
+    <span class="n">PRODUCED_METRICS</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># 子类应当重写此属性，定义组件产生的性能指标</span>
+    <span class="n">MONITORED_STATES</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># 子类应当重写此属性，定义组件关心的代理状态</span>
+
+<div class="viewcode-block" id="Component.__init__"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.component.Component.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">agent</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">supported_events</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent</span> <span class="o">=</span> <span class="n">agent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">supported_events</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">supported_events</span><span class="p">)</span> <span class="c1"># 组件特定事件</span>
+        <span class="kn">from</span> <span class="nn">aeroagentsim.core</span> <span class="kn">import</span> <span class="n">Task</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_tasks</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Task</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># task_id -&gt; Task对象</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_processes</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Process</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span> <span class="c1"># task_id -&gt; SimPy进程（包装器）</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">properties</span> <span class="o">=</span> <span class="n">properties</span> <span class="ow">or</span> <span class="p">{}</span> <span class="c1"># 组件属性</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_error</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># 组件是否处于错误状态</span>
+
+        <span class="c1"># 状态监听器的唯一ID</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state_listener_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">_state_listener&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_component_events</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">PRODUCED_METRICS</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">PRODUCED_METRICS</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;组件 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 没有定义PRODUCED_METRICS或格式不正确。&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 把produced_metrics 以 self.current_metrics的形式保存</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span> <span class="o">=</span> <span class="p">{</span><span class="n">metric</span><span class="p">:</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">PRODUCED_METRICS</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_agent_states</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_validate_agent_states</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;验证代理状态是否符合要求。&quot;&quot;&quot;</span>
+        <span class="c1"># 判断是否都在self.MONITORED_STATES中</span>
+        <span class="n">agent_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_state_templates</span><span class="p">()</span>
+        <span class="n">tmp_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">MONITORED_STATES</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="c1"># 移除tmp_states中带.的state</span>
+        <span class="n">tmp_states</span> <span class="o">=</span> <span class="p">[</span><span class="n">state</span> <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="n">tmp_states</span> <span class="k">if</span> <span class="s1">&#39;.&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">state</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">state</span> <span class="ow">in</span> <span class="n">agent_states</span> <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="n">tmp_states</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;组件 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 监控的状态 </span><span class="si">{</span><span class="n">tmp_states</span><span class="si">}</span><span class="s2"> 不符合要求，必须包含在代理的状态中&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_register_component_events</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;向Agent注册组件的标准和特定事件。&quot;&quot;&quot;</span>
+        <span class="c1"># 组件触发的关于任务的标准事件</span>
+        <span class="n">common_events</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s1">&#39;task_started&#39;</span><span class="p">,</span> <span class="s1">&#39;task_completed&#39;</span><span class="p">,</span> <span class="s1">&#39;task_failed&#39;</span><span class="p">,</span> <span class="s1">&#39;task_canceled&#39;</span><span class="p">,</span> <span class="c1"># 最终结果</span>
+            <span class="s1">&#39;state_changed&#39;</span><span class="p">,</span> <span class="c1"># 来自任务逻辑的中间状态更新</span>
+            <span class="s1">&#39;metric_changed&#39;</span> <span class="c1"># 来自任务逻辑的性能指标更新</span>
+        <span class="p">]</span>
+        <span class="n">all_events</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">common_events</span><span class="p">)</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">supported_events</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">event_name</span> <span class="ow">in</span> <span class="n">all_events</span><span class="p">:</span>
+            <span class="n">full_event_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">event_name</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="c1"># 确保事件存在</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="n">full_event_name</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Component.trigger_event"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.component.Component.trigger_event">[docs]</a>    <span class="k">def</span> <span class="nf">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">event_value</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;触发组件命名空间下的事件。&quot;&quot;&quot;</span>
+        <span class="n">full_event_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">event_name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="n">full_event_name</span><span class="p">,</span> <span class="n">event_value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Component.can_execute"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.component.Component.can_execute">[docs]</a>    <span class="k">def</span> <span class="nf">can_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;检查组件名称是否匹配&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">task</span><span class="o">.</span><span class="n">component_name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_busy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;检查组件是否正在执行任务&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">active_tasks</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="Component.is_available"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.component.Component.is_available">[docs]</a>    <span class="k">def</span> <span class="nf">is_available</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;检查组件是否可用&quot;&quot;&quot;</span>
+        <span class="c1"># 如果组件处于错误状态，则不可用</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_error</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="c1"># 如果组件正在执行任务，则不可用</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_busy</span></div>
+
+<div class="viewcode-block" id="Component.execute_task"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.component.Component.execute_task">[docs]</a>    <span class="k">def</span> <span class="nf">execute_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Process</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        开始执行任务。返回包含完整生命周期的SimPy进程。</span>
+<span class="sd">        由Agent调用。</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_processes</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_processes</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">]</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;组件 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 已经在执行任务 </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_processes</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="c1"># 返回现有进程</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">can_execute</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fail_immediately</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;组件 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 无法执行任务&quot;</span><span class="p">))</span>
+
+        <span class="c1"># 启动包装进程</span>
+        <span class="n">wrapper_proc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_execute_task_wrapper</span><span class="p">(</span><span class="n">task</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_tasks</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">task</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_processes</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">wrapper_proc</span>
+        <span class="k">return</span> <span class="n">wrapper_proc</span></div>
+
+    <span class="k">def</span> <span class="nf">_fail_immediately</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;立即使任务失败的生成器函数。&quot;&quot;&quot;</span>
+        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="n">reason</span><span class="p">)</span>
+        <span class="c1"># 触发组件的失败事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;task_failed&#39;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span>
+            <span class="s1">&#39;result&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">result</span>
+        <span class="p">})</span>
+        <span class="k">return</span> <span class="n">task</span><span class="o">.</span><span class="n">result</span> <span class="c1"># 返回失败字典</span>
+
+    <span class="k">def</span> <span class="nf">_validate_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;验证性能指标是否符合要求。&quot;&quot;&quot;</span>
+        <span class="c1"># 判断是否都在self.current_metrics中</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span> <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;性能指标 </span><span class="si">{</span><span class="n">metrics</span><span class="si">}</span><span class="s2"> 不符合要求，必须包含 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_execute_task_wrapper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;包装资源获取、任务执行和清理。&quot;&quot;&quot;</span>
+        <span class="n">task_id</span> <span class="o">=</span> <span class="n">task</span><span class="o">.</span><span class="n">id</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 1. 触发任务开始事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;task_started&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span> <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span> <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">workflow_id</span><span class="p">,</span> <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">task_class</span><span class="p">})</span>
+
+            <span class="c1"># 2. 计算初始指标</span>
+            <span class="n">initial_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_performance_metrics</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_validate_metrics</span><span class="p">(</span><span class="n">initial_metrics</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">initial_metrics</span><span class="p">)</span>
+
+            <span class="c1"># 3. 向组件的监听器提供初始指标</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;metric_changed&#39;</span><span class="p">,</span> <span class="n">initial_metrics</span><span class="p">)</span>
+
+            <span class="c1"># 4. 注册状态变化监听器</span>
+            <span class="c1"># 使用event_registry的标准接口订阅事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="p">,</span>
+                <span class="s1">&#39;state_changed&#39;</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">state_listener_id</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_on_agent_state_changed</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 5. 执行任务逻辑</span>
+            <span class="n">task_logic_proc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="n">initial_metrics</span><span class="p">))</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">task_logic_proc</span>
+
+            <span class="c1"># 6. 触发最终结果事件（基于任务的最终状态）</span>
+            <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;task_completed&#39;</span><span class="p">,</span> <span class="p">{</span>
+                    <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span> <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">end_time</span><span class="p">,</span> <span class="s1">&#39;result&#39;</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">workflow_id</span><span class="p">,</span> 
+                    <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">task_class</span>
+                <span class="p">})</span>
+            <span class="k">elif</span> <span class="n">task</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">:</span>
+                 <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;task_failed&#39;</span><span class="p">,</span> <span class="p">{</span>
+                    <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span> <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">end_time</span><span class="p">,</span>
+                    <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">failure_reason</span><span class="p">,</span> <span class="s1">&#39;result&#39;</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">workflow_id</span><span class="p">,</span> 
+                    <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">task_class</span>
+                 <span class="p">})</span>
+            <span class="k">elif</span> <span class="n">task</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">CANCELED</span><span class="p">:</span>
+                 <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;task_canceled&#39;</span><span class="p">,</span> <span class="p">{</span>
+                     <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span> <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">end_time</span><span class="p">,</span>
+                     <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">failure_reason</span><span class="p">,</span> <span class="s1">&#39;result&#39;</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span> <span class="s1">&#39;workflow_id&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">workflow_id</span><span class="p">,</span> 
+                    <span class="s1">&#39;task_class&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">task_class</span>
+                 <span class="p">})</span>
+
+            <span class="k">return</span> <span class="n">result</span> <span class="c1"># 返回task.execute的结果</span>
+
+        <span class="k">except</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Interrupt</span> <span class="k">as</span> <span class="n">i</span><span class="p">:</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;执行被中断: </span><span class="si">{</span><span class="n">i</span><span class="o">.</span><span class="n">cause</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">task_logic_proc</span><span class="o">.</span><span class="n">interrupt</span><span class="p">(</span><span class="n">reason</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">status</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">CANCELED</span><span class="p">):</span>
+                 <span class="n">task</span><span class="o">.</span><span class="n">cancel</span><span class="p">(</span><span class="n">reason</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">)</span> <span class="c1"># 假设中断时取消</span>
+            <span class="c1"># 触发取消事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;task_canceled&#39;</span><span class="p">,</span> <span class="p">{</span>
+                 <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span> <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span> <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span> <span class="s1">&#39;result&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">result</span>
+            <span class="p">})</span>
+            <span class="k">return</span> <span class="n">task</span><span class="o">.</span><span class="n">result</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 组件 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 在任务 </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> 的包装器中出错: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="kn">import</span> <span class="nn">traceback</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;组件执行错误: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">status</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">TaskStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">,</span> <span class="n">TaskStatus</span><span class="o">.</span><span class="n">CANCELED</span><span class="p">):</span>
+                 <span class="n">task</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="n">reason</span><span class="p">)</span>
+            <span class="c1"># 触发失败事件</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;task_failed&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span> <span class="s1">&#39;task_name&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span> <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span> <span class="s1">&#39;result&#39;</span><span class="p">:</span> <span class="n">task</span><span class="o">.</span><span class="n">result</span>
+            <span class="p">})</span>
+            <span class="k">return</span> <span class="n">task</span><span class="o">.</span><span class="n">result</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># 7. 清理</span>
+            <span class="c1"># 取消状态监听 - 使用正确的EventRegistry方法</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">unsubscribe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">agent_id</span><span class="p">,</span> <span class="s1">&#39;state_changed&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_listener_id</span><span class="p">)</span>
+
+            <span class="c1"># 清理组件状态</span>
+            <span class="k">if</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_tasks</span><span class="p">:</span> <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_tasks</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_processes</span><span class="p">:</span> <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_processes</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="Component._on_agent_state_changed"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.component.Component._on_agent_state_changed">[docs]</a>    <span class="k">def</span> <span class="nf">_on_agent_state_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        当代理状态改变时的回调。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event_data: 包含状态变化信息的字典，格式为</span>
+<span class="sd">                {&#39;key&#39;: 状态键, &#39;old_value&#39;: 旧值, &#39;new_value&#39;: 新值, &#39;time&#39;: 时间}</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 检查事件来源是否是我们关心的代理</span>
+        <span class="k">if</span> <span class="s1">&#39;key&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">event_data</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 获取变化的状态键</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">event_data</span><span class="p">[</span><span class="s1">&#39;key&#39;</span><span class="p">]</span>
+
+        <span class="c1"># 如果状态变化是我们监控的状态，或者我们监控所有状态（空列表）</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">MONITORED_STATES</span> <span class="ow">or</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">MONITORED_STATES</span><span class="p">:</span>
+            <span class="c1"># 重新计算性能指标并触发事件</span>
+            <span class="n">current_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_performance_metrics</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_validate_metrics</span><span class="p">(</span><span class="n">current_metrics</span><span class="p">)</span>
+            <span class="c1"># 判断current_metrics和self.current_metrics是否相同</span>
+            <span class="k">if</span> <span class="nb">all</span><span class="p">(</span>
+                <span class="n">current_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">metric</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">metric</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">PRODUCED_METRICS</span>
+            <span class="p">):</span>
+                <span class="k">return</span> <span class="c1"># 用于避免循环</span>
+            <span class="c1"># 更新当前指标</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_metrics</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">current_metrics</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;metric_changed&#39;</span><span class="p">,</span> <span class="n">current_metrics</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Component.disable"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.component.Component.disable">[docs]</a>    <span class="k">def</span> <span class="nf">disable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;禁用组件，将其设置为错误状态并取消所有正在执行的任务&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_error</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># 取消所有正在执行的任务</span>
+        <span class="k">for</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">process</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_processes</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="n">process</span><span class="o">.</span><span class="n">is_alive</span><span class="p">:</span>
+                <span class="n">reason</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;组件 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> 被禁用&quot;</span>
+                <span class="n">process</span><span class="o">.</span><span class="n">interrupt</span><span class="p">(</span><span class="n">cause</span><span class="o">=</span><span class="n">reason</span><span class="p">)</span>
+
+        <span class="c1"># 触发组件禁用事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;disabled&#39;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s1">&#39;component_name&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span>
+            <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s2">&quot;组件处于错误状态&quot;</span>
+        <span class="p">})</span></div>
+
+<div class="viewcode-block" id="Component.enable"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.component.Component.enable">[docs]</a>    <span class="k">def</span> <span class="nf">enable</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;启用组件，将其从错误状态恢复&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_error</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1"># 触发组件启用事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="s1">&#39;enabled&#39;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s1">&#39;component_name&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="p">})</span></div>
+
+<div class="viewcode-block" id="Component._calculate_performance_metrics"><a class="viewcode-back" href="../../../api/core.html#aeroagentsim.core.component.Component._calculate_performance_metrics">[docs]</a>    <span class="k">def</span> <span class="nf">_calculate_performance_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;基于当前代理状态和已分配资源计算组件指标。&quot;&quot;&quot;</span>
+        <span class="c1"># 示例: return {&#39;processing_speed&#39;: self.agent.get_state(&#39;cpu_usage&#39;) * factor}</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;子类必须实现_calculate_performance_metrics&quot;</span><span class="p">)</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.component</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

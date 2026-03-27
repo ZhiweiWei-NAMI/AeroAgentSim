@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>aeroagentsim.core.workflow.Workflow &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.workflow.Workflow</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="aeroagentsim-core-workflow-workflow">
+<h1>aeroagentsim.core.workflow.Workflow<a class="headerlink" href="#aeroagentsim-core-workflow-workflow" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.core.workflow.</span></span><span class="sig-name descname"><span class="pre">Workflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent" title="aeroagentsim.core.agent.Agent"><span class="pre">Agent</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'idle'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a process/goal tracked by a state machine based on Agent state.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.Agent" title="aeroagentsim.core.workflow.Workflow.Agent"><span class="pre">Agent</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'idle'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.__init__" title="aeroagentsim.core.workflow.Workflow.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(env, name, owner[, timeout, ...])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.get_current_suggested_task" title="aeroagentsim.core.workflow.Workflow.get_current_suggested_task"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_current_suggested_task</span></code></a>()</p></td>
+<td><p>获取当前状态下建议执行的任务</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.get_description" title="aeroagentsim.core.workflow.Workflow.get_description"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_description</span></code></a>()</p></td>
+<td><p>获取工作流类型的描述</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.get_details" title="aeroagentsim.core.workflow.Workflow.get_details"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_details</span></code></a>()</p></td>
+<td><p>获取工作流详细信息，子类应该重写此方法提供更多详细信息</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.get_property_templates" title="aeroagentsim.core.workflow.Workflow.get_property_templates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_property_templates</span></code></a>()</p></td>
+<td><p>获取所有属性模板</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.get_transition_tasks" title="aeroagentsim.core.workflow.Workflow.get_transition_tasks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_transition_tasks</span></code></a>()</p></td>
+<td><p>获取所有状态转换任务</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.is_active" title="aeroagentsim.core.workflow.Workflow.is_active"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_active</span></code></a>()</p></td>
+<td><p>检查工作流是否处于活动状态</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.register_property_template" title="aeroagentsim.core.workflow.Workflow.register_property_template"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_property_template</span></code></a>(key, **kwargs)</p></td>
+<td><p>注册工作流属性模板</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.reset" title="aeroagentsim.core.workflow.Workflow.reset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reset</span></code></a>()</p></td>
+<td><p>重置工作流状态，包括状态机</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.start" title="aeroagentsim.core.workflow.Workflow.start"><code class="xref py py-obj docutils literal notranslate"><span class="pre">start</span></code></a>()</p></td>
+<td><p>Starts the workflow's state machine (if PENDING).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.to_mermaid_diagram" title="aeroagentsim.core.workflow.Workflow.to_mermaid_diagram"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_mermaid_diagram</span></code></a>()</p></td>
+<td><p>将工作流表示为Mermaid流程图格式</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.to_uml_activity_diagram" title="aeroagentsim.core.workflow.Workflow.to_uml_activity_diagram"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_uml_activity_diagram</span></code></a>()</p></td>
+<td><p>将工作流表示为UML活动图（PlantUML格式）</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.update_status_from_state_machine" title="aeroagentsim.core.workflow.Workflow.update_status_from_state_machine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_status_from_state_machine</span></code></a>(new_sm_state)</p></td>
+<td><p>根据状态机状态更新工作流状态</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Agent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Agent 类是 AirFogSim 中所有代理的基类。</p>
+<p>Agent 提供了以下核心功能：
+1. 状态管理：管理代理的状态属性
+2. 组件管理：管理代理的组件
+3. 任务管理：管理代理的任务队列和执行
+4. 工作流管理：处理分配给代理的工作流
+5. 事件管理：注册、触发和处理事件
+6. 对象持有管理：管理代理拥有的外部对象
+7. 合约管理：创建和管理代理间的合约</p>
+<p>子类可以通过重写以下钩子方法来添加自定义行为：
+- register_event_listeners(): 注册自定义事件监听器
+- _before_event_wait(): 在等待事件之前执行
+- _check_agent_status(): 检查代理状态并决定是否继续处理
+- _process_custom_logic(): 执行代理特定的逻辑</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Component">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Component</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Component" title="Permalink to this definition">¶</a></dt>
+<dd><p>执行任务的组件，使用分配的资源。</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Component.MONITORED_STATES">
+<span class="sig-name descname"><span class="pre">MONITORED_STATES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.MONITORED_STATES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Component.PRODUCED_METRICS">
+<span class="sig-name descname"><span class="pre">PRODUCED_METRICS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.PRODUCED_METRICS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Component.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">supported_events</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Component.can_execute">
+<span class="sig-name descname"><span class="pre">can_execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.can_execute" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查组件名称是否匹配</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Component.disable">
+<span class="sig-name descname"><span class="pre">disable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.disable" title="Permalink to this definition">¶</a></dt>
+<dd><p>禁用组件，将其设置为错误状态并取消所有正在执行的任务</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Component.enable">
+<span class="sig-name descname"><span class="pre">enable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.enable" title="Permalink to this definition">¶</a></dt>
+<dd><p>启用组件，将其从错误状态恢复</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Component.execute_task">
+<span class="sig-name descname"><span class="pre">execute_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">simpy.Process</span></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.execute_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>开始执行任务。返回包含完整生命周期的SimPy进程。
+由Agent调用。</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Component.is_available">
+<span class="sig-name descname"><span class="pre">is_available</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.is_available" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查组件是否可用</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Component.is_busy">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_busy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.is_busy" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查组件是否正在执行任务</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Component.trigger_event">
+<span class="sig-name descname"><span class="pre">trigger_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.trigger_event" title="Permalink to this definition">¶</a></dt>
+<dd><p>触发组件命名空间下的事件。</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Component.active_tasks">
+<span class="sig-name descname"><span class="pre">active_tasks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../core.html#aeroagentsim.core.agent.Agent.Task" title="aeroagentsim.core.agent.Agent.Task"><span class="pre">Task</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.active_tasks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Component.task_processes">
+<span class="sig-name descname"><span class="pre">task_processes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">simpy.Process</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.task_processes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">component_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">workflow_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.NECESSARY_METRICS">
+<span class="sig-name descname"><span class="pre">NECESSARY_METRICS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.NECESSARY_METRICS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.PRODUCED_STATES">
+<span class="sig-name descname"><span class="pre">PRODUCED_STATES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.PRODUCED_STATES" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a specific action performed by a component, initiated by an agent.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">component_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">workflow_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.can_preempt">
+<span class="sig-name descname"><span class="pre">can_preempt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other_task</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.can_preempt" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查当前任务是否可以抢占另一个任务</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>other_task</strong> – 另一个任务</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>如果当前任务可以抢占另一个任务，则返回True</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.cancel">
+<span class="sig-name descname"><span class="pre">cancel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reason</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.cancel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.complete">
+<span class="sig-name descname"><span class="pre">complete</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.complete" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.estimate_remaining_time">
+<span class="sig-name descname"><span class="pre">estimate_remaining_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">performance_metrics</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.estimate_remaining_time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.execute">
+<span class="sig-name descname"><span class="pre">execute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_metrics</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.execute" title="Permalink to this definition">¶</a></dt>
+<dd><p>Core task execution logic. Should be a generator function (SimPy process).
+Run within the component’s execution context.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.fail">
+<span class="sig-name descname"><span class="pre">fail</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reason</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.fail" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.get_priority_info">
+<span class="sig-name descname"><span class="pre">get_priority_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.get_priority_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取任务优先级信息</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>包含优先级和抢占信息的字典</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.on_preempted">
+<span class="sig-name descname"><span class="pre">on_preempted</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.on_preempted" title="Permalink to this definition">¶</a></dt>
+<dd><p>当任务被抢占时调用</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.status">
+<span class="sig-name descname"><span class="pre">status</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="../core.html#aeroagentsim.core.enums.TaskStatus" title="aeroagentsim.core.enums.TaskStatus"><span class="pre">TaskStatus</span></a></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.status" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.start_time">
+<span class="sig-name descname"><span class="pre">start_time</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.start_time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.end_time">
+<span class="sig-name descname"><span class="pre">end_time</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.end_time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.result">
+<span class="sig-name descname"><span class="pre">result</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.result" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.failure_reason">
+<span class="sig-name descname"><span class="pre">failure_reason</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.failure_reason" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.current_metrics">
+<span class="sig-name descname"><span class="pre">current_metrics</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.current_metrics" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.last_update_time">
+<span class="sig-name descname"><span class="pre">last_update_time</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.last_update_time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.Task.progress">
+<span class="sig-name descname"><span class="pre">progress</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.progress" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.__init_subclass__">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">__init_subclass__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.__init_subclass__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize subclass with core status template</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.accept_contract">
+<span class="sig-name descname"><span class="pre">accept_contract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">contract_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.accept_contract" title="Permalink to this definition">¶</a></dt>
+<dd><p>接受合约</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>contract_id</strong> – 合约ID</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>是否成功接受合约</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.add_component">
+<span class="sig-name descname"><span class="pre">add_component</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.add_component" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.add_possessing_object">
+<span class="sig-name descname"><span class="pre">add_possessing_object</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.add_possessing_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>添加代理拥有的对象，并监听其状态变化事件</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>object_name</strong> – 对象名称，用于在复合状态中引用</p></li>
+<li><p><strong>obj</strong> – 对象实例</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>是否成功添加</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.add_task_to_queue">
+<span class="sig-name descname"><span class="pre">add_task_to_queue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preemptive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">workflow_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.add_task_to_queue" title="Permalink to this definition">¶</a></dt>
+<dd><p>添加任务到队列</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>component_name</strong> – 组件名称</p></li>
+<li><p><strong>task_name</strong> – 任务名称</p></li>
+<li><p><strong>task_class</strong> – 任务类名</p></li>
+<li><p><strong>priority</strong> – 任务优先级，如果为None，则使用properties中的priority</p></li>
+<li><p><strong>preemptive</strong> – 是否可抢占</p></li>
+<li><p><strong>target_state</strong> – 目标状态</p></li>
+<li><p><strong>properties</strong> – 任务属性</p></li>
+<li><p><strong>workflow_id</strong> – 工作流ID</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.cancel_task">
+<span class="sig-name descname"><span class="pre">cancel_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.cancel_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>取消指定的任务。在组件级别查找任务进程。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>task_id</strong> – 要取消的任务ID</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>如果任务成功取消则返回True，否则返回False</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.cleanup">
+<span class="sig-name descname"><span class="pre">cleanup</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.cleanup" title="Permalink to this definition">¶</a></dt>
+<dd><p>清理代理资源，包括取消事件监听和触发器</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.create_contract">
+<span class="sig-name descname"><span class="pre">create_contract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_agent_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reward</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">penalty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deadline</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.create_contract" title="Permalink to this definition">¶</a></dt>
+<dd><p>创建任务卸载合约</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task_info</strong> – 任务信息字典，必须包含id字段</p></li>
+<li><p><strong>target_agent_ids</strong> – 目标代理ID列表</p></li>
+<li><p><strong>reward</strong> – 完成任务的奖励</p></li>
+<li><p><strong>penalty</strong> – 未完成任务的惩罚</p></li>
+<li><p><strong>deadline</strong> – 截止时间，默认为当前时间+30分钟</p></li>
+<li><p><strong>description</strong> – 任务描述</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>合约ID，如果创建失败则返回None</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.execute_task">
+<span class="sig-name descname"><span class="pre">execute_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">workflow_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../task.html#aeroagentsim.core.task.Task" title="aeroagentsim.core.task.Task"><span class="pre">Task</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.execute_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates and executes a task using a specified component.
+Non-blocking - returns task object immediately.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_active_workflows">
+<span class="sig-name descname"><span class="pre">get_active_workflows</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_active_workflows" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取代理的活跃工作流</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_agent_contracts">
+<span class="sig-name descname"><span class="pre">get_agent_contracts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">role</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_agent_contracts" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取代理相关的合约</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>role</strong> – 角色，’issuer’或’executor’</p></li>
+<li><p><strong>status</strong> – 合约状态</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>合约列表</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_available_contracts">
+<span class="sig-name descname"><span class="pre">get_available_contracts</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_available_contracts" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取可接受的合约列表</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>可接受的合约列表</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_component">
+<span class="sig-name descname"><span class="pre">get_component</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../core.html#aeroagentsim.core.component.Component" title="aeroagentsim.core.component.Component"><span class="pre">Component</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_component" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_component_names">
+<span class="sig-name descname"><span class="pre">get_component_names</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_component_names" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_component_tasks">
+<span class="sig-name descname"><span class="pre">get_component_tasks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_component_tasks" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取指定组件正在执行的任务</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>component_name</strong> – 组件名称</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>任务信息列表</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_components">
+<span class="sig-name descname"><span class="pre">get_components</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_components" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_current_states">
+<span class="sig-name descname"><span class="pre">get_current_states</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_current_states" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_description">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_description</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_description" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取代理类型的描述</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_details">
+<span class="sig-name descname"><span class="pre">get_details</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_details" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取代理详细信息</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_event">
+<span class="sig-name descname"><span class="pre">get_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_possessing_object">
+<span class="sig-name descname"><span class="pre">get_possessing_object</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_possessing_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取代理拥有的对象</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>object_name</strong> – 对象名称</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>对象实例，如果不存在则返回None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_possessing_object_names">
+<span class="sig-name descname"><span class="pre">get_possessing_object_names</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_possessing_object_names" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取代理拥有的所有对象名称</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>对象名称列表</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_state">
+<span class="sig-name descname"><span class="pre">get_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取状态值，支持复合状态访问（如 ‘charging_station.status’）</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> – 状态键，可以是简单键或复合键（用点分隔）</p></li>
+<li><p><strong>default</strong> – 如果状态不存在，返回的默认值</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>状态值或默认值</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.get_state_templates">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_state_templates</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.get_state_templates" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.has_event">
+<span class="sig-name descname"><span class="pre">has_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.has_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.has_state">
+<span class="sig-name descname"><span class="pre">has_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.has_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查状态是否存在，支持复合状态</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>key</strong> – 状态键，可以是简单键或复合键（用点分隔）</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>布尔值，表示状态是否存在</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.initialize_states">
+<span class="sig-name descname"><span class="pre">initialize_states</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">level_class</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">states</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.initialize_states" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.live">
+<span class="sig-name descname"><span class="pre">live</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.live" title="Permalink to this definition">¶</a></dt>
+<dd><p>代理的主要行为逻辑。</p>
+<p>该方法实现了基本的事件监听和任务处理逻辑，包括：
+1. 初始化任务调度器
+2. 注册事件监听器
+3. 监听注册的事件
+4. 执行代理特定的行为</p>
+<p>子类可以通过重写以下方法来添加自定义行为：
+- register_event_listeners(): 注册自定义事件监听器
+- _before_event_wait(): 在等待事件之前执行
+- _check_agent_status(): 检查代理状态并决定是否继续处理
+- _process_custom_logic(): 执行代理特定的逻辑</p>
+<p>注意：子类通常不应该重写此方法，而是通过重写上述钩子方法来添加自定义行为。
+这样可以确保代理的核心行为逻辑保持一致。</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.register_event_listeners">
+<span class="sig-name descname"><span class="pre">register_event_listeners</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.register_event_listeners" title="Permalink to this definition">¶</a></dt>
+<dd><p>注册代理需要监听的事件</p>
+<p>子类可以重写此方法来注册自定义事件监听器</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>事件监听器列表，每个监听器包含以下字段：</dt><dd><ul class="simple">
+<li><p>source_id: 事件源ID，如代理ID</p></li>
+<li><p>event_name: 事件名称，如 ‘workflow_assigned’、’task_completed’ 等</p></li>
+<li><p>callback: 事件处理函数，接收事件数据作为参数</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>List[Dict]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.register_state_template">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">register_state_template</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.register_state_template" title="Permalink to this definition">¶</a></dt>
+<dd><p>Registers a state template for this Agent class.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.remove_possessing_object">
+<span class="sig-name descname"><span class="pre">remove_possessing_object</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.remove_possessing_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>移除代理拥有的对象，并取消相关事件订阅</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>object_name</strong> – 对象名称</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>是否成功移除</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.resolve_component_name">
+<span class="sig-name descname"><span class="pre">resolve_component_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">component_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.resolve_component_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.set_state">
+<span class="sig-name descname"><span class="pre">set_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.set_state" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.subscribe">
+<span class="sig-name descname"><span class="pre">subscribe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">listener_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.subscribe" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.trigger_event">
+<span class="sig-name descname"><span class="pre">trigger_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.trigger_event" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.unsubscribe">
+<span class="sig-name descname"><span class="pre">unsubscribe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">listener_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.unsubscribe" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.unsubscribe_all">
+<span class="sig-name descname"><span class="pre">unsubscribe_all</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.unsubscribe_all" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.update_state">
+<span class="sig-name descname"><span class="pre">update_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.update_state" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.Agent.update_states">
+<span class="sig-name descname"><span class="pre">update_states</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state_dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.Agent.update_states" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.TaskPriority">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">TaskPriority</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.TaskPriority" title="Permalink to this definition">¶</a></dt>
+<dd><p>任务优先级枚举</p>
+<p>定义了任务的优先级级别，从低到高依次为：LOW、NORMAL、HIGH、CRITICAL。
+用于在资源竞争时决定任务的执行顺序和抢占策略。</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.TaskPriority.LOW">
+<span class="sig-name descname"><span class="pre">LOW</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.TaskPriority.LOW" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.TaskPriority.NORMAL">
+<span class="sig-name descname"><span class="pre">NORMAL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.TaskPriority.NORMAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.TaskPriority.HIGH">
+<span class="sig-name descname"><span class="pre">HIGH</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.TaskPriority.HIGH" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.TaskPriority.CRITICAL">
+<span class="sig-name descname"><span class="pre">CRITICAL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.TaskPriority.CRITICAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.TaskPriority.from_string">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_string</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">priority_str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.TaskPriority.from_string" title="Permalink to this definition">¶</a></dt>
+<dd><p>从字符串转换为优先级枚举</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.register_property_template">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">register_property_template</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.register_property_template"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.register_property_template" title="Permalink to this definition">¶</a></dt>
+<dd><p>注册工作流属性模板</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.get_property_templates">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_property_templates</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.get_property_templates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.get_property_templates" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取所有属性模板</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.get_transition_tasks">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_transition_tasks</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.get_transition_tasks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.get_transition_tasks" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取所有状态转换任务</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.get_description">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_description</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.get_description"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.get_description" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取工作流类型的描述</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../workflow.html#aeroagentsim.core.workflow.Workflow.Agent" title="aeroagentsim.core.workflow.Workflow.Agent"><span class="pre">Agent</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'idle'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.get_details">
+<span class="sig-name descname"><span class="pre">get_details</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.get_details"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.get_details" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取工作流详细信息，子类应该重写此方法提供更多详细信息</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.is_active">
+<span class="sig-name descname"><span class="pre">is_active</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.is_active"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.is_active" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查工作流是否处于活动状态</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.get_current_suggested_task">
+<span class="sig-name descname"><span class="pre">get_current_suggested_task</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.get_current_suggested_task"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.get_current_suggested_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取当前状态下建议执行的任务</p>
+<p>根据当前状态机状态和可能的转换，返回预先定义的任务信息。
+这个方法可以被代理用来自动规划任务，而不需要复杂的决策逻辑。
+任务会继承工作流的优先级和抢占属性。</p>
+<dl class="simple">
+<dt>返回:</dt><dd><p>Dict: 任务信息字典，包含组件名称、任务类、任务名称等信息
+None: 如果没有找到匹配的任务</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.start">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">simpy.Process</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Starts the workflow’s state machine (if PENDING). Called by WM.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.update_status_from_state_machine">
+<span class="sig-name descname"><span class="pre">update_status_from_state_machine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_sm_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_details</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.update_status_from_state_machine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.update_status_from_state_machine" title="Permalink to this definition">¶</a></dt>
+<dd><p>根据状态机状态更新工作流状态</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.to_uml_activity_diagram">
+<span class="sig-name descname"><span class="pre">to_uml_activity_diagram</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.to_uml_activity_diagram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.to_uml_activity_diagram" title="Permalink to this definition">¶</a></dt>
+<dd><p>将工作流表示为UML活动图（PlantUML格式）</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PlantUML格式的活动图描述</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.to_mermaid_diagram">
+<span class="sig-name descname"><span class="pre">to_mermaid_diagram</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.to_mermaid_diagram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.to_mermaid_diagram" title="Permalink to this definition">¶</a></dt>
+<dd><p>将工作流表示为Mermaid流程图格式</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Mermaid格式的流程图描述</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.workflow.Workflow.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/aeroagentsim/core/workflow.html#Workflow.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.workflow.Workflow.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>重置工作流状态，包括状态机</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">aeroagentsim.core.workflow.Workflow</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow"><code class="docutils literal notranslate"><span class="pre">Workflow</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.__init__"><code class="docutils literal notranslate"><span class="pre">Workflow.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Component"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Component</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.MONITORED_STATES"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Component.MONITORED_STATES</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.PRODUCED_METRICS"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Component.PRODUCED_METRICS</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.__init__"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Component.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.can_execute"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Component.can_execute()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.disable"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Component.disable()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.enable"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Component.enable()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.execute_task"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Component.execute_task()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.is_available"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Component.is_available()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.is_busy"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Component.is_busy</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.trigger_event"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Component.trigger_event()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.active_tasks"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Component.active_tasks</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Component.task_processes"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Component.task_processes</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.NECESSARY_METRICS"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.NECESSARY_METRICS</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.PRODUCED_STATES"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.PRODUCED_STATES</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.__init__"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.can_preempt"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.can_preempt()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.cancel"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.cancel()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.complete"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.complete()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.estimate_remaining_time"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.estimate_remaining_time()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.execute"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.execute()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.fail"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.fail()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.get_priority_info"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.get_priority_info()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.on_preempted"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.on_preempted()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.status"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.status</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.start_time"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.start_time</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.end_time"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.end_time</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.result"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.result</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.failure_reason"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.failure_reason</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.current_metrics"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.current_metrics</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.last_update_time"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.last_update_time</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.Task.progress"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.Task.progress</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.__init__"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.__init_subclass__"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.__init_subclass__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.accept_contract"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.accept_contract()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.add_component"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.add_component()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.add_possessing_object"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.add_possessing_object()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.add_task_to_queue"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.add_task_to_queue()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.cancel_task"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.cancel_task()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.cleanup"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.cleanup()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.create_contract"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.create_contract()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.execute_task"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.execute_task()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_active_workflows"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_active_workflows()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_agent_contracts"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_agent_contracts()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_available_contracts"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_available_contracts()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_component"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_component()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_component_names"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_component_names()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_component_tasks"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_component_tasks()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_components"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_components()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_current_states"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_current_states()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_description"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_description()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_details"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_details()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_event"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_event()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_possessing_object"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_possessing_object()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_possessing_object_names"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_possessing_object_names()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_state"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_state()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.get_state_templates"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.get_state_templates()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.has_event"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.has_event()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.has_state"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.has_state()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.initialize_states"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.initialize_states()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.live"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.live()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.register_event_listeners"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.register_event_listeners()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.register_state_template"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.register_state_template()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.remove_possessing_object"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.remove_possessing_object()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.resolve_component_name"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.resolve_component_name()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.set_state"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.set_state()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.subscribe"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.subscribe()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.trigger_event"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.trigger_event()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.unsubscribe"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.unsubscribe()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.unsubscribe_all"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.unsubscribe_all()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.update_state"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.update_state()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.Agent.update_states"><code class="docutils literal notranslate"><span class="pre">Workflow.Agent.update_states()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.TaskPriority"><code class="docutils literal notranslate"><span class="pre">Workflow.TaskPriority</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.TaskPriority.LOW"><code class="docutils literal notranslate"><span class="pre">Workflow.TaskPriority.LOW</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.TaskPriority.NORMAL"><code class="docutils literal notranslate"><span class="pre">Workflow.TaskPriority.NORMAL</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.TaskPriority.HIGH"><code class="docutils literal notranslate"><span class="pre">Workflow.TaskPriority.HIGH</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.TaskPriority.CRITICAL"><code class="docutils literal notranslate"><span class="pre">Workflow.TaskPriority.CRITICAL</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.TaskPriority.from_string"><code class="docutils literal notranslate"><span class="pre">Workflow.TaskPriority.from_string()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.register_property_template"><code class="docutils literal notranslate"><span class="pre">Workflow.register_property_template()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.get_property_templates"><code class="docutils literal notranslate"><span class="pre">Workflow.get_property_templates()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.get_transition_tasks"><code class="docutils literal notranslate"><span class="pre">Workflow.get_transition_tasks()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.get_description"><code class="docutils literal notranslate"><span class="pre">Workflow.get_description()</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">Workflow.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.get_details"><code class="docutils literal notranslate"><span class="pre">Workflow.get_details()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.is_active"><code class="docutils literal notranslate"><span class="pre">Workflow.is_active()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.get_current_suggested_task"><code class="docutils literal notranslate"><span class="pre">Workflow.get_current_suggested_task()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.start"><code class="docutils literal notranslate"><span class="pre">Workflow.start()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.update_status_from_state_machine"><code class="docutils literal notranslate"><span class="pre">Workflow.update_status_from_state_machine()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.to_uml_activity_diagram"><code class="docutils literal notranslate"><span class="pre">Workflow.to_uml_activity_diagram()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.to_mermaid_diagram"><code class="docutils literal notranslate"><span class="pre">Workflow.to_mermaid_diagram()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.workflow.Workflow.reset"><code class="docutils literal notranslate"><span class="pre">Workflow.reset()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/api/_autosummary/airfogsim.core.workflow.Workflow.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">AeroAgentSim</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.core.workflow.Workflow</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

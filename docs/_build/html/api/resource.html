@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Resource Classes &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Statistics and Analysis" href="statistics.html" />
+    <link rel="prev" title="Task Classes" href="task.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="statistics.html" title="Statistics and Analysis"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="task.html" title="Task Classes"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">API Reference</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Resource Classes</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="resource-classes">
+<h1>Resource Classes<a class="headerlink" href="#resource-classes" title="Permalink to this heading">¶</a></h1>
+<p>Resources represent physical and logical entities that can be allocated and managed in simulations.</p>
+<section id="module-aeroagentsim.core.resource">
+<span id="base-resource"></span><h2>Base Resource<a class="headerlink" href="#module-aeroagentsim.core.resource" title="Permalink to this heading">¶</a></h2>
+<p>AirFogSim资源(Resource)核心模块</p>
+<p>该模块定义了仿真系统中资源的基础类和管理机制。资源是系统中被代理使用的
+各种实体，如空域、频率、着陆点等。模块采用泛型设计，支持不同类型的资源
+管理。主要内容包括：
+1. Resource类：基本资源类，定义资源的通用属性和状态
+2. ResourceManager类：资源管理器基类，负责资源的注册、分配和释放
+3. 资源分配机制：包括分配查找、记录和释放</p>
+<p>&#64;author: zhiwei wei
+&#64;email: <a class="reference external" href="mailto:2311769&#37;&#52;&#48;tongji&#46;edu&#46;cn">2311769<span>&#64;</span>tongji<span>&#46;</span>edu<span>&#46;</span>cn</a></p>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.Resource">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.core.resource.</span></span><span class="sig-name descname"><span class="pre">Resource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">attributes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#Resource"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.Resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>基本资源类</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.Resource.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">attributes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#Resource.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.Resource.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.Resource.get_attribute">
+<span class="sig-name descname"><span class="pre">get_attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#Resource.get_attribute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.Resource.get_attribute" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取资源属性</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.Resource.set_status">
+<span class="sig-name descname"><span class="pre">set_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_status</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#Resource.set_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.Resource.set_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>直接设置资源的状态。
+警告：谨慎使用，这可能会绕过管理器的状态逻辑。
+主要用于外部事件（如天气）强制更新状态。</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.ResourceManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.core.resource.</span></span><span class="sig-name descname"><span class="pre">ResourceManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#ResourceManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.ResourceManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generic" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Generic</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">R</span></code>]</p>
+<p>资源管理器基类</p>
+<p>管理单一类型资源的注册、分配和释放</p>
+<p>泛型参数R表示管理的资源类型</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.ResourceManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#ResourceManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.ResourceManager.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.ResourceManager.register_resource">
+<span class="sig-name descname"><span class="pre">register_resource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">R</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#ResourceManager.register_resource"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.ResourceManager.register_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>注册资源到管理器</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.ResourceManager.unregister_resource">
+<span class="sig-name descname"><span class="pre">unregister_resource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#ResourceManager.unregister_resource"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.ResourceManager.unregister_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>从管理器移除资源</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.ResourceManager.update_resource">
+<span class="sig-name descname"><span class="pre">update_resource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">attributes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#ResourceManager.update_resource"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.ResourceManager.update_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>更新资源属性</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.ResourceManager.allocate_resource">
+<span class="sig-name descname"><span class="pre">allocate_resource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">requirements</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#ResourceManager.allocate_resource"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.ResourceManager.allocate_resource" title="Permalink to this definition">¶</a></dt>
+<dd><p>分配符合要求的资源</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>user_id</strong> – 用户ID</p></li>
+<li><p><strong>requirements</strong> – 资源需求</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(allocation_id, resource_id) 或 (None, None)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.ResourceManager.release_allocation">
+<span class="sig-name descname"><span class="pre">release_allocation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">allocation_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#ResourceManager.release_allocation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.ResourceManager.release_allocation" title="Permalink to this definition">¶</a></dt>
+<dd><p>释放资源分配</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.ResourceManager.find_resources">
+<span class="sig-name descname"><span class="pre">find_resources</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">requirements</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><span class="pre">R</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#ResourceManager.find_resources"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.ResourceManager.find_resources" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.ResourceManager.get_user_allocations">
+<span class="sig-name descname"><span class="pre">get_user_allocations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#ResourceManager.get_user_allocations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.ResourceManager.get_user_allocations" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取用户的所有分配</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.ResourceManager.get_resource_allocations">
+<span class="sig-name descname"><span class="pre">get_resource_allocations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#ResourceManager.get_resource_allocations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.ResourceManager.get_resource_allocations" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取资源的所有分配</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.core.resource.ResourceManager.get_allocation">
+<span class="sig-name descname"><span class="pre">get_allocation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">allocation_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/core/resource.html#ResourceManager.get_allocation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.core.resource.ResourceManager.get_allocation" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取分配信息</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="landing-resources">
+<h2>Landing Resources<a class="headerlink" href="#landing-resources" title="Permalink to this heading">¶</a></h2>
+<section id="landingresource">
+<h3>LandingResource<a class="headerlink" href="#landingresource" title="Permalink to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.resource.landing.LandingResource">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.resource.landing.</span></span><span class="sig-name descname"><span class="pre">LandingResource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">location</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_capacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_charging</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_data_transfer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attributes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/resource/landing.html#LandingResource"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.landing.LandingResource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#aeroagentsim.core.resource.Resource" title="aeroagentsim.core.resource.Resource"><code class="xref py py-class docutils literal notranslate"><span class="pre">Resource</span></code></a></p>
+<p>着陆区资源类</p>
+<p>表示无人机可以起飞和降落的物理场地</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.landing.LandingResource.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">location</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_capacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_charging</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_data_transfer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attributes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/resource/landing.html#LandingResource.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.landing.LandingResource.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化着陆区资源</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>resource_id</strong> – 资源唯一标识符</p></li>
+<li><p><strong>location</strong> – 着陆区中心点坐标 (x, y) 或 (x, y, z)</p></li>
+<li><p><strong>radius</strong> – 着陆区半径，单位为米</p></li>
+<li><p><strong>max_capacity</strong> – 同时可容纳的无人机数量</p></li>
+<li><p><strong>has_charging</strong> – 是否提供充电功能</p></li>
+<li><p><strong>has_data_transfer</strong> – 是否提供数据传输功能</p></li>
+<li><p><strong>attributes</strong> – 其他属性</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.landing.LandingResource.allocate">
+<span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/resource/landing.html#LandingResource.allocate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.landing.LandingResource.allocate" title="Permalink to this definition">¶</a></dt>
+<dd><p>分配资源给无人机</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>agent_id</strong> – 无人机ID</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>分配是否成功</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.landing.LandingResource.release">
+<span class="sig-name descname"><span class="pre">release</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/resource/landing.html#LandingResource.release"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.landing.LandingResource.release" title="Permalink to this definition">¶</a></dt>
+<dd><p>释放资源</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>agent_id</strong> – 无人机ID</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>释放是否成功</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.landing.LandingResource.is_allocated">
+<span class="sig-name descname"><span class="pre">is_allocated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/resource/landing.html#LandingResource.is_allocated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.landing.LandingResource.is_allocated" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查无人机是否已分配到该着陆区</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>agent_id</strong> – 无人机ID</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>是否已分配</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.landing.LandingResource.has_capacity">
+<span class="sig-name descname"><span class="pre">has_capacity</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/resource/landing.html#LandingResource.has_capacity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.landing.LandingResource.has_capacity" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查是否还有容量接收新的无人机</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.landing.LandingResource.is_within_range">
+<span class="sig-name descname"><span class="pre">is_within_range</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">altitude</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/resource/landing.html#LandingResource.is_within_range"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.landing.LandingResource.is_within_range" title="Permalink to this definition">¶</a></dt>
+<dd><p>检查给定坐标是否在着陆区范围内</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> – X坐标</p></li>
+<li><p><strong>y</strong> – Y坐标</p></li>
+<li><p><strong>altitude</strong> – 高度坐标 (可选)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>坐标是否在着陆区范围内</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.landing.LandingResource.update_condition">
+<span class="sig-name descname"><span class="pre">update_condition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">condition</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/resource/landing.html#LandingResource.update_condition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.landing.LandingResource.update_condition" title="Permalink to this definition">¶</a></dt>
+<dd><p>更新着陆区状态</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>condition</strong> – 新状态 (normal, damaged, maintenance)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.landing.LandingResource.get_charging_power">
+<span class="sig-name descname"><span class="pre">get_charging_power</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/resource/landing.html#LandingResource.get_charging_power"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.landing.LandingResource.get_charging_power" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取充电功率</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>充电功率 (W)，如果不具备充电功能则返回0</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.landing.LandingResource.get_data_transfer_rate">
+<span class="sig-name descname"><span class="pre">get_data_transfer_rate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/resource/landing.html#LandingResource.get_data_transfer_rate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.landing.LandingResource.get_data_transfer_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>获取数据传输速率</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>数据传输速率 (Mbps)，如果不具备数据传输功能则返回0</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.landing.LandingResource.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/resource/landing.html#LandingResource.to_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.landing.LandingResource.to_json" title="Permalink to this definition">¶</a></dt>
+<dd><p>将LandingResource对象转换为JSON可序列化的字典</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>包含对象属性的字典</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.landing.LandingResource.__json__">
+<span class="sig-name descname"><span class="pre">__json__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/resource/landing.html#LandingResource.__json__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.landing.LandingResource.__json__" title="Permalink to this definition">¶</a></dt>
+<dd><p>支持json.dumps直接序列化</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON可序列化的字典</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.landing.LandingResource.from_json">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/resource/landing.html#LandingResource.from_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.landing.LandingResource.from_json" title="Permalink to this definition">¶</a></dt>
+<dd><p>从JSON字典创建LandingResource对象</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – 包含对象属性的字典</p></li>
+<li><p><strong>env</strong> – 环境引用（可选）</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>LandingResource对象</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="frequency-resources">
+<h2>Frequency Resources<a class="headerlink" href="#frequency-resources" title="Permalink to this heading">¶</a></h2>
+<section id="frequencyresource">
+<h3>FrequencyResource<a class="headerlink" href="#frequencyresource" title="Permalink to this heading">¶</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="aeroagentsim.resource.frequency.FrequencyResource">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">aeroagentsim.resource.frequency.</span></span><span class="sig-name descname"><span class="pre">FrequencyResource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_frequency</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bandwidth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_users</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power_limit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attributes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/resource/frequency.html#FrequencyResource"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.frequency.FrequencyResource" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#aeroagentsim.core.resource.Resource" title="aeroagentsim.core.resource.Resource"><code class="xref py py-class docutils literal notranslate"><span class="pre">Resource</span></code></a></p>
+<p>频率资源块类</p>
+<p>表示预定义的、离散的、固定带宽的频率资源块</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.frequency.FrequencyResource.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resource_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_frequency</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bandwidth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_users</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">power_limit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attributes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/aeroagentsim/resource/frequency.html#FrequencyResource.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.frequency.FrequencyResource.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>初始化频率资源块</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>resource_id</strong> – 资源唯一标识符</p></li>
+<li><p><strong>center_frequency</strong> – 中心频率，单位为MHz</p></li>
+<li><p><strong>bandwidth</strong> – 带宽，单位为MHz</p></li>
+<li><p><strong>max_users</strong> – 可同时使用该频率资源的最大用户数（通常为1，表示正交资源块）</p></li>
+<li><p><strong>power_limit</strong> – 发射功率限制，单位为mW</p></li>
+<li><p><strong>attributes</strong> – 其他属性</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.frequency.FrequencyResource.assign_to">
+<span class="sig-name descname"><span class="pre">assign_to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">power_db</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/resource/frequency.html#FrequencyResource.assign_to"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.frequency.FrequencyResource.assign_to" title="Permalink to this definition">¶</a></dt>
+<dd><p>将资源块分配给用户</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_id</strong> – </p></li>
+<li><p><strong>target_id</strong> – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>是否分配成功</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.frequency.FrequencyResource.release">
+<span class="sig-name descname"><span class="pre">release</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/resource/frequency.html#FrequencyResource.release"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.frequency.FrequencyResource.release" title="Permalink to this definition">¶</a></dt>
+<dd><p>释放资源块</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>是否释放成功</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aeroagentsim.resource.frequency.FrequencyResource.update_channel_condition">
+<span class="sig-name descname"><span class="pre">update_channel_condition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">noise_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interference</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sinr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/aeroagentsim/resource/frequency.html#FrequencyResource.update_channel_condition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aeroagentsim.resource.frequency.FrequencyResource.update_channel_condition" title="Permalink to this definition">¶</a></dt>
+<dd><p>更新信道状态</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>noise_level</strong> – 新的噪声水平 (dBm)</p></li>
+<li><p><strong>interference</strong> – 新的干扰水平 (dBm)</p></li>
+<li><p><strong>sinr</strong> – 新的信噪干扰比 (dB)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="resource-development-guide">
+<h2>Resource Development Guide<a class="headerlink" href="#resource-development-guide" title="Permalink to this heading">¶</a></h2>
+<section id="creating-custom-resources">
+<h3>Creating Custom Resources<a class="headerlink" href="#creating-custom-resources" title="Permalink to this heading">¶</a></h3>
+<p>To create a custom resource, inherit from the base Resource class:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.core.resource</span> <span class="kn">import</span> <span class="n">Resource</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">ResourceStatus</span>
+
+<span class="k">class</span> <span class="nc">CustomResource</span><span class="p">(</span><span class="n">Resource</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom resource implementation.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">,</span> <span class="n">custom_attribute</span><span class="p">,</span> <span class="n">attributes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="n">attributes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">custom_attribute</span> <span class="o">=</span> <span class="n">custom_attribute</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">usage_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">allocate_custom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Custom allocation logic.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">usage_count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">FULLY_ALLOCATED</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">release_custom</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Custom release logic.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">user_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">user_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">usage_count</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+</pre></div>
+</div>
+</section>
+<section id="usage-examples">
+<h3>Usage Examples<a class="headerlink" href="#usage-examples" title="Permalink to this heading">¶</a></h3>
+<section id="landing-resource">
+<h4>Landing Resource<a class="headerlink" href="#landing-resource" title="Permalink to this heading">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.resource.landing</span> <span class="kn">import</span> <span class="n">LandingResource</span>
+
+<span class="c1"># Create a landing resource</span>
+<span class="n">landing_spot</span> <span class="o">=</span> <span class="n">LandingResource</span><span class="p">(</span>
+    <span class="n">resource_id</span><span class="o">=</span><span class="s2">&quot;landing_001&quot;</span><span class="p">,</span>
+    <span class="n">location</span><span class="o">=</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+    <span class="n">radius</span><span class="o">=</span><span class="mf">15.0</span><span class="p">,</span>
+    <span class="n">max_capacity</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">has_charging</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">has_data_transfer</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="c1"># Allocate to an agent</span>
+<span class="n">success</span> <span class="o">=</span> <span class="n">landing_spot</span><span class="o">.</span><span class="n">allocate</span><span class="p">(</span><span class="s2">&quot;drone_001&quot;</span><span class="p">)</span>
+
+<span class="c1"># Check capacity</span>
+<span class="k">if</span> <span class="n">landing_spot</span><span class="o">.</span><span class="n">has_capacity</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Landing spot has available capacity&quot;</span><span class="p">)</span>
+
+<span class="c1"># Release allocation</span>
+<span class="n">landing_spot</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="s2">&quot;drone_001&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="frequency-resource">
+<h4>Frequency Resource<a class="headerlink" href="#frequency-resource" title="Permalink to this heading">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">aeroagentsim.resource.frequency</span> <span class="kn">import</span> <span class="n">FrequencyResource</span>
+
+<span class="c1"># Create a frequency resource</span>
+<span class="n">freq_block</span> <span class="o">=</span> <span class="n">FrequencyResource</span><span class="p">(</span>
+    <span class="n">resource_id</span><span class="o">=</span><span class="s2">&quot;freq_2400_001&quot;</span><span class="p">,</span>
+    <span class="n">center_frequency</span><span class="o">=</span><span class="mf">2400.0</span><span class="p">,</span>  <span class="c1"># MHz</span>
+    <span class="n">bandwidth</span><span class="o">=</span><span class="mf">20.0</span><span class="p">,</span>           <span class="c1"># MHz</span>
+    <span class="n">max_users</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">power_limit</span><span class="o">=</span><span class="mf">100.0</span>         <span class="c1"># mW</span>
+<span class="p">)</span>
+
+<span class="c1"># Assign frequency to communication link</span>
+<span class="n">success</span> <span class="o">=</span> <span class="n">freq_block</span><span class="o">.</span><span class="n">assign_to</span><span class="p">(</span><span class="s2">&quot;transmitter_1&quot;</span><span class="p">,</span> <span class="s2">&quot;receiver_1&quot;</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">)</span>
+
+<span class="c1"># Update channel conditions</span>
+<span class="n">freq_block</span><span class="o">.</span><span class="n">update_channel_condition</span><span class="p">(</span>
+    <span class="n">noise_level</span><span class="o">=-</span><span class="mf">95.0</span><span class="p">,</span>
+    <span class="n">interference</span><span class="o">=-</span><span class="mf">80.0</span><span class="p">,</span>
+    <span class="n">sinr</span><span class="o">=</span><span class="mf">15.0</span>
+<span class="p">)</span>
+
+<span class="c1"># Release frequency</span>
+<span class="n">freq_block</span><span class="o">.</span><span class="n">release</span><span class="p">(</span><span class="s2">&quot;transmitter_1&quot;</span><span class="p">,</span> <span class="s2">&quot;receiver_1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Resource Classes</a><ul>
+<li><a class="reference internal" href="#module-aeroagentsim.core.resource">Base Resource</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.Resource"><code class="docutils literal notranslate"><span class="pre">Resource</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.Resource.__init__"><code class="docutils literal notranslate"><span class="pre">Resource.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.Resource.get_attribute"><code class="docutils literal notranslate"><span class="pre">Resource.get_attribute()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.Resource.set_status"><code class="docutils literal notranslate"><span class="pre">Resource.set_status()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.ResourceManager"><code class="docutils literal notranslate"><span class="pre">ResourceManager</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.ResourceManager.__init__"><code class="docutils literal notranslate"><span class="pre">ResourceManager.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.ResourceManager.register_resource"><code class="docutils literal notranslate"><span class="pre">ResourceManager.register_resource()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.ResourceManager.unregister_resource"><code class="docutils literal notranslate"><span class="pre">ResourceManager.unregister_resource()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.ResourceManager.update_resource"><code class="docutils literal notranslate"><span class="pre">ResourceManager.update_resource()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.ResourceManager.allocate_resource"><code class="docutils literal notranslate"><span class="pre">ResourceManager.allocate_resource()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.ResourceManager.release_allocation"><code class="docutils literal notranslate"><span class="pre">ResourceManager.release_allocation()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.ResourceManager.find_resources"><code class="docutils literal notranslate"><span class="pre">ResourceManager.find_resources()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.ResourceManager.get_user_allocations"><code class="docutils literal notranslate"><span class="pre">ResourceManager.get_user_allocations()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.ResourceManager.get_resource_allocations"><code class="docutils literal notranslate"><span class="pre">ResourceManager.get_resource_allocations()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.core.resource.ResourceManager.get_allocation"><code class="docutils literal notranslate"><span class="pre">ResourceManager.get_allocation()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#landing-resources">Landing Resources</a><ul>
+<li><a class="reference internal" href="#landingresource">LandingResource</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.resource.landing.LandingResource"><code class="docutils literal notranslate"><span class="pre">LandingResource</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.resource.landing.LandingResource.__init__"><code class="docutils literal notranslate"><span class="pre">LandingResource.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.landing.LandingResource.allocate"><code class="docutils literal notranslate"><span class="pre">LandingResource.allocate()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.landing.LandingResource.release"><code class="docutils literal notranslate"><span class="pre">LandingResource.release()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.landing.LandingResource.is_allocated"><code class="docutils literal notranslate"><span class="pre">LandingResource.is_allocated()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.landing.LandingResource.has_capacity"><code class="docutils literal notranslate"><span class="pre">LandingResource.has_capacity()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.landing.LandingResource.is_within_range"><code class="docutils literal notranslate"><span class="pre">LandingResource.is_within_range()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.landing.LandingResource.update_condition"><code class="docutils literal notranslate"><span class="pre">LandingResource.update_condition()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.landing.LandingResource.get_charging_power"><code class="docutils literal notranslate"><span class="pre">LandingResource.get_charging_power()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.landing.LandingResource.get_data_transfer_rate"><code class="docutils literal notranslate"><span class="pre">LandingResource.get_data_transfer_rate()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.landing.LandingResource.to_json"><code class="docutils literal notranslate"><span class="pre">LandingResource.to_json()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.landing.LandingResource.__json__"><code class="docutils literal notranslate"><span class="pre">LandingResource.__json__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.landing.LandingResource.from_json"><code class="docutils literal notranslate"><span class="pre">LandingResource.from_json()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#frequency-resources">Frequency Resources</a><ul>
+<li><a class="reference internal" href="#frequencyresource">FrequencyResource</a><ul>
+<li><a class="reference internal" href="#aeroagentsim.resource.frequency.FrequencyResource"><code class="docutils literal notranslate"><span class="pre">FrequencyResource</span></code></a><ul>
+<li><a class="reference internal" href="#aeroagentsim.resource.frequency.FrequencyResource.__init__"><code class="docutils literal notranslate"><span class="pre">FrequencyResource.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.frequency.FrequencyResource.assign_to"><code class="docutils literal notranslate"><span class="pre">FrequencyResource.assign_to()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.frequency.FrequencyResource.release"><code class="docutils literal notranslate"><span class="pre">FrequencyResource.release()</span></code></a></li>
+<li><a class="reference internal" href="#aeroagentsim.resource.frequency.FrequencyResource.update_channel_condition"><code class="docutils literal notranslate"><span class="pre">FrequencyResource.update_channel_condition()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#resource-development-guide">Resource Development Guide</a><ul>
+<li><a class="reference internal" href="#creating-custom-resources">Creating Custom Resources</a></li>
+<li><a class="reference internal" href="#usage-examples">Usage Examples</a><ul>
+<li><a class="reference internal" href="#landing-resource">Landing Resource</a></li>
+<li><a class="reference internal" href="#frequency-resource">Frequency Resource</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="task.html"
+                          title="previous chapter">Task Classes</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="statistics.html"
+                          title="next chapter">Statistics and Analysis</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/resource.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="statistics.html" title="Statistics and Analysis"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="task.html" title="Task Classes"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >API Reference</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Resource Classes</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

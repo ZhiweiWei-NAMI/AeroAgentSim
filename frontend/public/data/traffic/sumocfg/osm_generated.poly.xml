@@ -4,12 +4,12 @@
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/polyconvertConfiguration.xsd">
 
     <input>
-        <net-file value="/home/weizhiwei/data2/weizhiwei/airfogsim/airfogsim-project/frontend/public/data/traffic/sumocfg/osm_generated.net.xml"/>
+        <net-file value="osm_generated.net.xml"/>
         <osm-files value="/tmp/tmpei9i5h_o/osm_data.xml"/>
     </input>
 
     <output>
-        <output-file value="/home/weizhiwei/data2/weizhiwei/airfogsim/airfogsim-project/frontend/public/data/traffic/sumocfg/osm_generated.poly.xml"/>
+        <output-file value="osm_generated.poly.xml"/>
     </output>
 
 </configuration>

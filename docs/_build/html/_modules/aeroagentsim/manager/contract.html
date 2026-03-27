@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.manager.contract &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.contract</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.manager.contract</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">AirFogSim合约管理器模块</span>
+
+<span class="sd">该模块定义了智能合约管理器，负责管理代理之间的任务卸载合约。</span>
+<span class="sd">主要功能包括：</span>
+<span class="sd">1. 合约创建和管理</span>
+<span class="sd">2. 合约状态跟踪</span>
+<span class="sd">3. 合约验证和结算</span>
+<span class="sd">4. 代理余额管理</span>
+
+<span class="sd">@author: zhiwei wei</span>
+<span class="sd">@email: 2311769@tongji.edu.cn</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">ContractStatus</span><span class="p">,</span> <span class="n">WorkflowStatus</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.workflow.contract</span> <span class="kn">import</span> <span class="n">create_contract_workflow</span>
+<span class="kn">import</span> <span class="nn">simpy</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.utils.logging_config</span> <span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="c1"># 获取logger</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ContractManager"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.contract.ContractManager">[docs]</a><span class="k">class</span> <span class="nc">ContractManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    合约管理器，负责管理所有智能合约的创建、执行和验证 一任务一合约!</span>
+<span class="sd">    底层逻辑是: 每个任务都是原子任务,由agent自行拆分,然后只能由另一个agent来执行</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ContractManager.__init__"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.contract.ContractManager.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化合约管理器</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            env: 仿真环境</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># contract_id -&gt; contract_dict</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>  <span class="c1"># agent_id -&gt; balance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frozen_balances</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>  <span class="c1"># agent_id -&gt; frozen_balance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;contract_manager_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor_processes</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># contract_id -&gt; timeout_process</span>
+
+        <span class="c1"># 工作流相关</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">contract_workflows</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># contract_id -&gt; workflow_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workflow_contracts</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># workflow_id -&gt; contract_id</span>
+
+        <span class="c1"># 注册事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_events</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_register_events</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;注册合约相关事件&quot;&quot;&quot;</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s1">&#39;contract_created&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;contract_accepted&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;contract_completed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;contract_failed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;contract_canceled&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;transaction_executed&#39;</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">get_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
+
+        <span class="c1"># 订阅工作流管理器事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">workflow_manager</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;workflow_completed&#39;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_workflow_completed</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">workflow_manager</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;workflow_failed&#39;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_workflow_failed</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">workflow_manager</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="s1">&#39;workflow_canceled&#39;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_workflow_canceled</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="ContractManager.create_contract"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.contract.ContractManager.create_contract">[docs]</a>    <span class="k">def</span> <span class="nf">create_contract</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">issuer_agent_id</span><span class="p">,</span> <span class="n">task_info</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">penalty</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">deadline</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">),</span> <span class="n">appointed_agent_ids</span><span class="o">=</span><span class="p">[],</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        创建新合约</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            issuer_agent_id: 发起合约的agent ID</span>
+<span class="sd">            task_info: 任务信息字典</span>
+<span class="sd">            reward: 完成合约的奖励</span>
+<span class="sd">            penalty: 未完成合约的惩罚</span>
+<span class="sd">            deadline: 截止时间</span>
+<span class="sd">            appointed_agent_ids: 指定的执行者agent ID列表</span>
+<span class="sd">            description: 合约描述</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: 合约ID</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">contract_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;contract_</span><span class="si">{</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># 检查参数</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">task_info</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;无效的任务信息&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 支持单任务和多任务两种格式</span>
+        <span class="k">if</span> <span class="s1">&#39;tasks&#39;</span> <span class="ow">in</span> <span class="n">task_info</span><span class="p">:</span>
+            <span class="c1"># 多任务格式</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task_info</span><span class="p">[</span><span class="s1">&#39;tasks&#39;</span><span class="p">],</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">task_info</span><span class="p">[</span><span class="s1">&#39;tasks&#39;</span><span class="p">]:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;任务列表无效&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="s1">&#39;id&#39;</span> <span class="ow">in</span> <span class="n">task</span> <span class="ow">and</span> <span class="s1">&#39;component&#39;</span> <span class="ow">in</span> <span class="n">task</span> <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">task_info</span><span class="p">[</span><span class="s1">&#39;tasks&#39;</span><span class="p">]):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;任务列表中的任务缺少必要字段&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s1">&#39;id&#39;</span> <span class="ow">in</span> <span class="n">task_info</span> <span class="ow">and</span> <span class="s1">&#39;component&#39;</span> <span class="ow">in</span> <span class="n">task_info</span><span class="p">:</span>
+            <span class="c1"># 单任务格式 - 转换为多任务格式</span>
+            <span class="n">task_info</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;tasks&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">task_info</span><span class="p">]</span>
+            <span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;无效的任务信息格式&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 创建合约字典</span>
+        <span class="n">contract</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">contract_id</span><span class="p">,</span>
+            <span class="s1">&#39;issuer_agent_id&#39;</span><span class="p">:</span> <span class="n">issuer_agent_id</span><span class="p">,</span>
+            <span class="s1">&#39;executor_agent_id&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;task_info&#39;</span><span class="p">:</span> <span class="n">task_info</span><span class="p">,</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">description</span><span class="p">,</span>
+            <span class="s1">&#39;reward&#39;</span><span class="p">:</span> <span class="n">reward</span><span class="p">,</span>
+            <span class="s1">&#39;penalty&#39;</span><span class="p">:</span> <span class="n">penalty</span><span class="p">,</span>
+            <span class="s1">&#39;deadline&#39;</span><span class="p">:</span> <span class="n">deadline</span><span class="p">,</span>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;creation_time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span>
+            <span class="s1">&#39;appointed_agent_ids&#39;</span><span class="p">:</span> <span class="n">appointed_agent_ids</span><span class="p">,</span>
+            <span class="s1">&#39;acceptance_time&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;completion_time&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;verification_result&#39;</span><span class="p">:</span> <span class="kc">None</span>
+        <span class="p">}</span>
+        <span class="c1"># 判断issuer是否有足够的金额;如果有,则冻结</span>
+        <span class="k">if</span> <span class="n">reward</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reward</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span><span class="p">[</span><span class="n">issuer_agent_id</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">reward</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="n">issuer_agent_id</span><span class="si">}</span><span class="s2"> 余额不足，无法创建合约&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="c1"># 冻结余额</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span><span class="p">[</span><span class="n">issuer_agent_id</span><span class="p">]</span> <span class="o">-=</span> <span class="n">reward</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frozen_balances</span><span class="p">[</span><span class="n">issuer_agent_id</span><span class="p">]</span> <span class="o">+=</span> <span class="n">reward</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="n">issuer_agent_id</span><span class="si">}</span><span class="s2"> 冻结 </span><span class="si">{</span><span class="n">reward</span><span class="si">}</span><span class="s2"> 单位余额用于合约&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 存储合约</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">contract</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+            <span class="s1">&#39;contract_created&#39;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s1">&#39;contract_id&#39;</span><span class="p">:</span> <span class="n">contract_id</span><span class="p">,</span>
+                <span class="s1">&#39;issuer_agent_id&#39;</span><span class="p">:</span> <span class="n">issuer_agent_id</span><span class="p">,</span>
+                <span class="s1">&#39;task_info&#39;</span><span class="p">:</span> <span class="n">task_info</span><span class="p">,</span>
+                <span class="s1">&#39;reward&#39;</span><span class="p">:</span> <span class="n">reward</span><span class="p">,</span>
+                <span class="s1">&#39;penalty&#39;</span><span class="p">:</span> <span class="n">penalty</span><span class="p">,</span>
+                <span class="s1">&#39;deadline&#39;</span><span class="p">:</span> <span class="n">deadline</span><span class="p">,</span>
+                <span class="s1">&#39;appointed_agent_ids&#39;</span><span class="p">:</span> <span class="n">appointed_agent_ids</span><span class="p">,</span>
+                <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">description</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 合约 </span><span class="si">{</span><span class="n">contract_id</span><span class="si">}</span><span class="s2"> 已创建&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">contract_id</span></div>
+
+<div class="viewcode-block" id="ContractManager.accept_contract"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.contract.ContractManager.accept_contract">[docs]</a>    <span class="k">def</span> <span class="nf">accept_contract</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">contract_id</span><span class="p">,</span> <span class="n">executor_agent_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        接受合约</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            contract_id: 合约ID</span>
+<span class="sd">            executor_agent_id: 执行合约的agent ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 是否成功接受合约</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">contract_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 合约 </span><span class="si">{</span><span class="n">contract_id</span><span class="si">}</span><span class="s2"> 不存在&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+
+        <span class="n">contract</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span>
+
+        <span class="c1"># 检查合约状态</span>
+        <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 合约 </span><span class="si">{</span><span class="n">contract_id</span><span class="si">}</span><span class="s2"> 状态为 </span><span class="si">{</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">，无法接受&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 检查执行agent是否在指定的执行者列表中</span>
+        <span class="k">if</span> <span class="n">executor_agent_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;appointed_agent_ids&#39;</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 执行者 </span><span class="si">{</span><span class="n">executor_agent_id</span><span class="si">}</span><span class="s2"> 不在指定的执行者列表中&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 判断执行者是否有足够的余额偿还惩罚，没有就失败，有就冻结</span>
+        <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span><span class="p">[</span><span class="n">executor_agent_id</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 执行者 </span><span class="si">{</span><span class="n">executor_agent_id</span><span class="si">}</span><span class="s2"> 余额不足以支付可能的惩罚，无法接受合约&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="c1"># 冻结惩罚金额</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span><span class="p">[</span><span class="n">executor_agent_id</span><span class="p">]</span> <span class="o">-=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">frozen_balances</span><span class="p">[</span><span class="n">executor_agent_id</span><span class="p">]</span> <span class="o">+=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 执行者 </span><span class="si">{</span><span class="n">executor_agent_id</span><span class="si">}</span><span class="s2"> 冻结 </span><span class="si">{</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> 单位余额作为惩罚保证金&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 更新合约执行者和状态</span>
+        <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;executor_agent_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">executor_agent_id</span>
+        <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">ACTIVE</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;acceptance_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+
+        <span class="c1"># 创建并启动合约工作流</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 获取发起者代理对象</span>
+            <span class="n">issuer_agent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">get_agent</span><span class="p">(</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;issuer_agent_id&#39;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">issuer_agent</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 无法找到合约发起者 </span><span class="si">{</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;issuer_agent_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="n">executor_agent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">get_agent</span><span class="p">(</span><span class="n">executor_agent_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">executor_agent</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 无法找到合约执行者 </span><span class="si">{</span><span class="n">executor_agent_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="c1"># 创建合约工作流</span>
+            <span class="n">workflow</span> <span class="o">=</span> <span class="n">create_contract_workflow</span><span class="p">(</span>
+                <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span>
+                <span class="n">contract_id</span><span class="o">=</span><span class="n">contract_id</span><span class="p">,</span>
+                <span class="n">tasks</span><span class="o">=</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;task_info&#39;</span><span class="p">][</span><span class="s1">&#39;tasks&#39;</span><span class="p">],</span>
+                <span class="n">owner</span><span class="o">=</span><span class="n">issuer_agent</span><span class="p">,</span>
+                <span class="n">executor_agent_id</span><span class="o">=</span><span class="n">executor_agent_id</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;deadline&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;deadline&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 注册工作流</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;workflow_manager&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">workflow_manager</span><span class="o">.</span><span class="n">register_workflow</span><span class="p">(</span><span class="n">workflow</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 环境中没有工作流管理器，无法注册工作流&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># 启动工作流</span>
+            <span class="n">workflow</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+            <span class="c1"># 记录合约和工作流的映射关系</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">contract_workflows</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">id</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">workflow_contracts</span><span class="p">[</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">contract_id</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 合约 </span><span class="si">{</span><span class="n">contract_id</span><span class="si">}</span><span class="s2"> 创建了工作流 </span><span class="si">{</span><span class="n">workflow</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 创建合约工作流失败: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="kn">import</span> <span class="nn">traceback</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 设置超时监控</span>
+        <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;deadline&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">):</span>
+            <span class="n">timeout_duration</span> <span class="o">=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;deadline&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="k">if</span> <span class="n">timeout_duration</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor_processes</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_contract_timeout</span><span class="p">(</span><span class="n">contract_id</span><span class="p">,</span> <span class="n">timeout_duration</span><span class="p">)</span>
+                <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+            <span class="s1">&#39;contract_accepted&#39;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s1">&#39;contract_id&#39;</span><span class="p">:</span> <span class="n">contract_id</span><span class="p">,</span>
+                <span class="s1">&#39;executor_agent_id&#39;</span><span class="p">:</span> <span class="n">executor_agent_id</span><span class="p">,</span>
+                <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 合约 </span><span class="si">{</span><span class="n">contract_id</span><span class="si">}</span><span class="s2"> 已被 </span><span class="si">{</span><span class="n">executor_agent_id</span><span class="si">}</span><span class="s2"> 接受&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="ContractManager.trigger_event"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.contract.ContractManager.trigger_event">[docs]</a>    <span class="k">def</span> <span class="nf">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        触发事件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            event_name: 事件名称</span>
+<span class="sd">            event_data: 事件数据</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager_id</span><span class="p">,</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">event_data</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_on_contract_completed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">contract_id</span><span class="p">,</span> <span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">verification_result</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        完成合约(即完成任务)</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            contract_id: 合约ID</span>
+<span class="sd">            success: 是否成功完成</span>
+<span class="sd">            verification_result: 验证结果</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 是否成功更新合约状态</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">contract_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 合约 </span><span class="si">{</span><span class="n">contract_id</span><span class="si">}</span><span class="s2"> 不存在&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">contract</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span>
+
+        <span class="c1"># 检查合约状态</span>
+        <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">ACTIVE</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 合约 </span><span class="si">{</span><span class="n">contract_id</span><span class="si">}</span><span class="s2"> 状态为 </span><span class="si">{</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">，无法完成&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 更新合约状态</span>
+        <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="n">success</span> <span class="k">else</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;completion_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;verification_result&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">verification_result</span> <span class="ow">or</span> <span class="p">{}</span>
+
+        <span class="c1"># 解冻发起者的奖励金额</span>
+        <span class="n">issuer_agent_id</span> <span class="o">=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;issuer_agent_id&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">],</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frozen_balances</span><span class="p">[</span><span class="n">issuer_agent_id</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">frozen_balances</span><span class="p">[</span><span class="n">issuer_agent_id</span><span class="p">]</span> <span class="o">-=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span><span class="p">[</span><span class="n">issuer_agent_id</span><span class="p">]</span> <span class="o">+=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="n">issuer_agent_id</span><span class="si">}</span><span class="s2"> 解冻 </span><span class="si">{</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> 单位余额（取消合约）&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 如果合约已被接受，解冻执行者的惩罚金额</span>
+        <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;executor_agent_id&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">executor_agent_id</span> <span class="o">=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;executor_agent_id&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frozen_balances</span><span class="p">[</span><span class="n">executor_agent_id</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">frozen_balances</span><span class="p">[</span><span class="n">executor_agent_id</span><span class="p">]</span> <span class="o">-=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span><span class="p">[</span><span class="n">executor_agent_id</span><span class="p">]</span> <span class="o">+=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="n">executor_agent_id</span><span class="si">}</span><span class="s2"> 解冻 </span><span class="si">{</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> 单位余额（取消合约）&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 执行奖励或惩罚</span>
+        <span class="k">if</span> <span class="n">success</span><span class="p">:</span>
+            <span class="c1"># 检查是否在截止时间前完成</span>
+            <span class="n">on_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">&lt;=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;deadline&#39;</span><span class="p">]</span>
+            <span class="n">reward</span> <span class="o">=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">reward</span><span class="p">):</span>
+                <span class="c1"># 如果奖励是一个函数，则调用它</span>
+                <span class="n">reward</span> <span class="o">=</span> <span class="n">reward</span><span class="p">(</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;task_info&#39;</span><span class="p">])</span>
+
+            <span class="c1"># 执行奖励交易</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">execute_transaction</span><span class="p">(</span>
+                <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;issuer_agent_id&#39;</span><span class="p">],</span>
+                <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;executor_agent_id&#39;</span><span class="p">],</span>
+                <span class="n">reward</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;合约 </span><span class="si">{</span><span class="n">contract_id</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;完成奖励&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">on_time</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;超时完成部分奖励&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># 执行惩罚交易</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">execute_transaction</span><span class="p">(</span>
+                <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;executor_agent_id&#39;</span><span class="p">],</span>
+                <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;issuer_agent_id&#39;</span><span class="p">],</span>
+                <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">],</span>
+                <span class="sa">f</span><span class="s2">&quot;合约 </span><span class="si">{</span><span class="n">contract_id</span><span class="si">}</span><span class="s2"> 失败惩罚&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># 触发合约完成事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+            <span class="s1">&#39;contract_completed&#39;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s1">&#39;contract_id&#39;</span><span class="p">:</span> <span class="n">contract_id</span><span class="p">,</span>
+                <span class="s1">&#39;success&#39;</span><span class="p">:</span> <span class="n">success</span><span class="p">,</span>
+                <span class="s1">&#39;verification_result&#39;</span><span class="p">:</span> <span class="n">verification_result</span><span class="p">,</span>
+                <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 合约 </span><span class="si">{</span><span class="n">contract_id</span><span class="si">}</span><span class="s2"> 已</span><span class="si">{</span><span class="s1">&#39;成功&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">success</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;失败&#39;</span><span class="si">}</span><span class="s2">完成&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="ContractManager.cancel_contract"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.contract.ContractManager.cancel_contract">[docs]</a>    <span class="k">def</span> <span class="nf">cancel_contract</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">contract_id</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        取消合约</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            contract_id: 合约ID</span>
+<span class="sd">            reason: 取消原因</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 是否成功取消合约</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">contract_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 合约 </span><span class="si">{</span><span class="n">contract_id</span><span class="si">}</span><span class="s2"> 不存在&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">contract</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span>
+
+        <span class="c1"># 检查合约状态</span>
+        <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ContractStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">ACTIVE</span><span class="o">.</span><span class="n">name</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 合约 </span><span class="si">{</span><span class="n">contract_id</span><span class="si">}</span><span class="s2"> 状态为 </span><span class="si">{</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">，无法取消&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># 更新合约状态</span>
+        <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">CANCELED</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;completion_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+        <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;verification_result&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">reason</span><span class="p">}</span>
+
+        <span class="c1"># 解冻发起者的奖励金额</span>
+        <span class="n">issuer_agent_id</span> <span class="o">=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;issuer_agent_id&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">],</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frozen_balances</span><span class="p">[</span><span class="n">issuer_agent_id</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">frozen_balances</span><span class="p">[</span><span class="n">issuer_agent_id</span><span class="p">]</span> <span class="o">-=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span><span class="p">[</span><span class="n">issuer_agent_id</span><span class="p">]</span> <span class="o">+=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="n">issuer_agent_id</span><span class="si">}</span><span class="s2"> 解冻 </span><span class="si">{</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;reward&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> 单位余额（取消合约）&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 如果合约已被接受，解冻执行者的惩罚金额</span>
+        <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;executor_agent_id&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">executor_agent_id</span> <span class="o">=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;executor_agent_id&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frozen_balances</span><span class="p">[</span><span class="n">executor_agent_id</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">frozen_balances</span><span class="p">[</span><span class="n">executor_agent_id</span><span class="p">]</span> <span class="o">-=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span><span class="p">[</span><span class="n">executor_agent_id</span><span class="p">]</span> <span class="o">+=</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 代理 </span><span class="si">{</span><span class="n">executor_agent_id</span><span class="si">}</span><span class="s2"> 解冻 </span><span class="si">{</span><span class="n">contract</span><span class="p">[</span><span class="s1">&#39;penalty&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> 单位余额（取消合约）&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 触发合约取消事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+            <span class="s1">&#39;contract_canceled&#39;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s1">&#39;contract_id&#39;</span><span class="p">:</span> <span class="n">contract_id</span><span class="p">,</span>
+                <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span>
+                <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 合约 </span><span class="si">{</span><span class="n">contract_id</span><span class="si">}</span><span class="s2"> 已取消，原因: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="ContractManager.execute_transaction"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.contract.ContractManager.execute_transaction">[docs]</a>    <span class="k">def</span> <span class="nf">execute_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">from_agent_id</span><span class="p">,</span> <span class="n">to_agent_id</span><span class="p">,</span> <span class="n">amount</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        执行代理之间的交易</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            from_agent_id: 付款代理ID</span>
+<span class="sd">            to_agent_id: 收款代理ID</span>
+<span class="sd">            amount: 交易金额</span>
+<span class="sd">            reason: 交易原因</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: 交易是否成功</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 增加接收方余额</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span><span class="p">[</span><span class="n">from_agent_id</span><span class="p">]</span> <span class="o">-=</span> <span class="n">amount</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span><span class="p">[</span><span class="n">to_agent_id</span><span class="p">]</span> <span class="o">+=</span> <span class="n">amount</span>
+        <span class="c1"># 触发交易事件</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span>
+            <span class="s1">&#39;transaction_executed&#39;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s1">&#39;from_agent_id&#39;</span><span class="p">:</span> <span class="n">from_agent_id</span><span class="p">,</span>
+                <span class="s1">&#39;to_agent_id&#39;</span><span class="p">:</span> <span class="n">to_agent_id</span><span class="p">,</span>
+                <span class="s1">&#39;amount&#39;</span><span class="p">:</span> <span class="n">amount</span><span class="p">,</span>
+                <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span>
+                <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;时间 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">: 交易执行成功: </span><span class="si">{</span><span class="n">from_agent_id</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">to_agent_id</span><span class="si">}</span><span class="s2">, 金额: </span><span class="si">{</span><span class="n">amount</span><span class="si">}</span><span class="s2">, 原因: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+<div class="viewcode-block" id="ContractManager.get_agent_balance"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.contract.ContractManager.get_agent_balance">[docs]</a>    <span class="k">def</span> <span class="nf">get_agent_balance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取代理余额&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="ContractManager.set_agent_balance"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.contract.ContractManager.set_agent_balance">[docs]</a>    <span class="k">def</span> <span class="nf">set_agent_balance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">amount</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;设置代理余额&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">amount</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">agent_balances</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="ContractManager.get_contract"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.contract.ContractManager.get_contract">[docs]</a>    <span class="k">def</span> <span class="nf">get_contract</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">contract_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取合约&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">contract_id</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ContractManager.get_agent_contracts"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.contract.ContractManager.get_agent_contracts">[docs]</a>    <span class="k">def</span> <span class="nf">get_agent_contracts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取代理相关的合约</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 代理ID</span>
+<span class="sd">            role: 角色，&#39;issuer&#39;或&#39;executor&#39;</span>
+<span class="sd">            status: 合约状态</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list: 合约列表</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">contracts</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">contract</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="c1"># 检查角色</span>
+            <span class="k">if</span> <span class="n">role</span> <span class="o">==</span> <span class="s1">&#39;issuer&#39;</span> <span class="ow">and</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;issuer_agent_id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">agent_id</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">role</span> <span class="o">==</span> <span class="s1">&#39;executor&#39;</span> <span class="ow">and</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;executor_agent_id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">agent_id</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">role</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;issuer_agent_id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">agent_id</span> <span class="ow">and</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;executor_agent_id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">agent_id</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># 检查状态</span>
+            <span class="k">if</span> <span class="n">status</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">status</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">contracts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">contract</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">contracts</span></div>
+
+<div class="viewcode-block" id="ContractManager.get_pending_contracts"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.contract.ContractManager.get_pending_contracts">[docs]</a>    <span class="k">def</span> <span class="nf">get_pending_contracts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;获取所有待处理的合约&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">contract</span> <span class="k">for</span> <span class="n">contract</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="o">.</span><span class="n">name</span><span class="p">]</span></div>
+
+    <span class="k">def</span> <span class="nf">_handle_workflow_completed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        处理工作流完成事件</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            包含 workflow_id</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">workflow_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;workflow_id&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">workflow_id</span> <span class="ow">or</span> <span class="n">workflow_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_contracts</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">contract_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_contracts</span><span class="p">[</span><span class="n">workflow_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">contract_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">contract</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">ACTIVE</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 取消超时监控</span>
+        <span class="k">if</span> <span class="n">contract_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor_processes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor_processes</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span><span class="o">.</span><span class="n">interrupt</span><span class="p">()</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor_processes</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span>
+
+        <span class="c1"># 完成合约</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_on_contract_completed</span><span class="p">(</span>
+            <span class="n">contract_id</span><span class="p">,</span>
+            <span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">verification_result</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;workflow_result&#39;</span><span class="p">:</span> <span class="n">event_data</span><span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handle_workflow_failed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        处理工作流失败事件</span>
+
+<span class="sd">        Args数据，包含 workflow_id</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">workflow_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;workflow_id&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">workflow_id</span> <span class="ow">or</span> <span class="n">workflow_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_contracts</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">contract_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_contracts</span><span class="p">[</span><span class="n">workflow_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">contract_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">contract</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">ACTIVE</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 取消超时监控</span>
+        <span class="k">if</span> <span class="n">contract_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor_processes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor_processes</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span><span class="o">.</span><span class="n">interrupt</span><span class="p">()</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor_processes</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span>
+
+        <span class="c1"># 完成合约（失败）</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_on_contract_completed</span><span class="p">(</span>
+            <span class="n">contract_id</span><span class="p">,</span>
+            <span class="n">success</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">verification_result</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;workflow_result&#39;</span><span class="p">:</span> <span class="n">event_data</span><span class="p">,</span> <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reason&#39;</span><span class="p">,</span> <span class="s1">&#39;工作流执行失败&#39;</span><span class="p">)}</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_handle_workflow_canceled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        处理工作流取消事件</span>
+<span class="sd">        事件数据，包含 workflow_id</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">workflow_id</span> <span class="o">=</span> <span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;workflow_id&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">workflow_id</span> <span class="ow">or</span> <span class="n">workflow_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_contracts</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">contract_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow_contracts</span><span class="p">[</span><span class="n">workflow_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">contract_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">contract</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">ACTIVE</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># 取消超时监控</span>
+        <span class="k">if</span> <span class="n">contract_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor_processes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor_processes</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span><span class="o">.</span><span class="n">interrupt</span><span class="p">()</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor_processes</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span>
+
+        <span class="c1"># 取消合约</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cancel_contract</span><span class="p">(</span><span class="n">contract_id</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;工作流被取消: </span><span class="si">{</span><span class="n">event_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reason&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;未知原因&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_monitor_contract_timeout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">contract_id</span><span class="p">,</span> <span class="n">timeout_duration</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        监控合约超时</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            contract_id: 合约ID</span>
+<span class="sd">            timeout_duration: 超时时间（分钟）</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 等待超时时间</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">timeout_duration</span><span class="p">)</span>
+
+            <span class="c1"># 检查合约是否仍然活跃</span>
+            <span class="k">if</span> <span class="n">contract_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="p">[</span><span class="n">contract_id</span><span class="p">][</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">ACTIVE</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+                <span class="c1"># 合约超时，标记为失败</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_on_contract_completed</span><span class="p">(</span>
+                    <span class="n">contract_id</span><span class="p">,</span>
+                    <span class="n">success</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">verification_result</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;合约超时&#39;</span><span class="p">}</span>
+                <span class="p">)</span>
+
+            <span class="c1"># 移除超时监控进程</span>
+            <span class="k">if</span> <span class="n">contract_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor_processes</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timeout_monitor_processes</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span>
+
+        <span class="k">except</span> <span class="n">simpy</span><span class="o">.</span><span class="n">Interrupt</span><span class="p">:</span>
+            <span class="c1"># 超时监控被中断（合约已完成或取消）</span>
+            <span class="k">pass</span>
+
+<div class="viewcode-block" id="ContractManager.check_contract_deadline"><a class="viewcode-back" href="../../../api/manager.html#aeroagentsim.manager.contract.ContractManager.check_contract_deadline">[docs]</a>    <span class="k">def</span> <span class="nf">check_contract_deadline</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;检查所有活跃合约的截止时间，将超时的合约标记为失败&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">contract_id</span><span class="p">,</span> <span class="n">contract</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">contracts</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">ContractStatus</span><span class="o">.</span><span class="n">ACTIVE</span><span class="o">.</span><span class="n">name</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">&gt;</span> <span class="n">contract</span><span class="p">[</span><span class="s1">&#39;deadline&#39;</span><span class="p">]:</span>
+                <span class="c1"># 合约超时，标记为失败</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_on_contract_completed</span><span class="p">(</span>
+                    <span class="n">contract_id</span><span class="p">,</span>
+                    <span class="n">success</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">verification_result</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;合约超时&#39;</span><span class="p">}</span>
+                <span class="p">)</span>
+
+                <span class="c1"># 如果有关联的工作流，取消它</span>
+                <span class="k">if</span> <span class="n">contract_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">contract_workflows</span><span class="p">:</span>
+                    <span class="n">workflow_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">contract_workflows</span><span class="p">[</span><span class="n">contract_id</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;workflow_manager&#39;</span><span class="p">):</span>
+                        <span class="n">workflow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">workflow_manager</span><span class="o">.</span><span class="n">get_workflow</span><span class="p">(</span><span class="n">workflow_id</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">workflow</span> <span class="ow">and</span> <span class="n">workflow</span><span class="o">.</span><span class="n">is_active</span><span class="p">():</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">workflow_manager</span><span class="o">.</span><span class="n">cancel_workflow</span><span class="p">(</span><span class="n">workflow_id</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;合约超时&quot;</span><span class="p">)</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.manager.contract</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

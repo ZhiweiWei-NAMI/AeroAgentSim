@@ -1,128 +1,124 @@
-<a href="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9"><img src="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9/status.svg"></a>
+<a href="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9"><img src="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9/status.svg" alt="JOSS status"></a>
 [![DOI](https://zenodo.org/badge/735258267.svg)](https://doi.org/10.5281/zenodo.15779000)
 
 # AeroAgentSim
 
 <div align="center">
-  <img src="src/airfogsim/docs/img/logo.png" alt="AeroAgentSim Logo" width="300">
+  <img src="src/aeroagentsim/docs/img/logo.png" alt="AeroAgentSim Logo" width="300">
 </div>
 
-AeroAgentSim is the external product name for the simulation and developer workbench shipped in this repository. The Python package name, import path, and technical module namespace remain `airfogsim`.
+AeroAgentSim is a discrete-event simulation toolkit and developer workbench for low-altitude autonomous systems. It is designed for developers who need to configure workflows, run algorithmic experiments, inspect execution chains, and verify runtime behavior through trajectories, logs, and spatial snapshots.
 
-AeroAgentSim builds on the existing `airfogsim` discrete-event simulation core to benchmark collaborative intelligence in low-altitude vehicular fog computing. The current workbench focuses on developer-facing configuration, workflow coupling inspection, run control, and lightweight 2D visualization rather than 3D scene rendering.
+The current repository, workbench, and source distribution use `AeroAgentSim` and `aeroagentsim`. Existing code can continue to import `airfogsim`, and the citation section below points to the JOSS paper published under the original `AirFogSim` title.
 
 [中文版本](README_CN.md)
 
 ## Overview
 
-- `airfogsim` remains the install target: `pip install airfogsim`
-- the recommended local shell baseline is `conda activate airfogsim`
-- Top-level imports now work: `from airfogsim import Environment`
-- Historical compatibility import also works: `from airfogsim import AirFogSimEnv`
-- The frontend has been rewritten as a 2D developer workbench
-- 3D pages and 3D frontend dependencies have been removed
-- Config snapshots and run artifacts are now separated on disk under `runtime/aeroagentsim/`
-- custom `agent` / `task` / `workflow` definitions are file-based under `registry/aeroagentsim/`
+- Recommended developer install path: `pip install -e .[dev]`
+- Recommended Python import: `from aeroagentsim import Environment`
+- Current workbench pages: `Overview`, `Class Catalog`, `Workflow Studio`, `Run Console`, `Trajectories & Logs`
+- Runtime outputs are stored under `runtime/aeroagentsim/`
+- Custom `agent` / `task` / `workflow` definitions are file-backed under `registry/aeroagentsim/`
+- Builtin workbench workflows are aligned with runnable inspection, charging, logistics, and image-processing flows
 
 ## Developer Workbench
 
-The AeroAgentSim workbench is centered around five pages:
+The AeroAgentSim workbench is built for configuration, validation, execution, and runtime verification:
 
 1. `Overview`: current config version, recent run, and validation status
-2. `Class Catalog`: agent/component/task/workflow metadata and compatibility lookup
-3. `Workflow Studio`: table-form editing plus workflow-agent-state relation graph
-4. `Run Console`: start, pause, resume, reset, critical path, live logs, and live 2D map
-5. `Trajectories & Logs`: per-run trajectory replay and log inspection
+2. `Class Catalog`: builtin and custom metadata plus compatibility lookup
+3. `Workflow Studio`: table/form editing with a workflow-agent-state relation graph
+4. `Run Console`: start, pause, resume, reset, live logs, critical path, and live 2D map
+5. `Trajectories & Logs`: run history, trajectory replay, and structured log inspection
 
-Visualization is intentionally lightweight:
+The visualization layer is intentionally lightweight and developer-oriented:
 
-- 2D only, built on Leaflet
-- `simulation_plane` mode uses `CRS.Simple`
-- `geo_osm` mode uses geographic coordinates
-- Live markers show agent type, position, altitude, workflow, task, and recent log context
-- Trajectories are rendered as 2D polylines
+- Leaflet-based 2D spatial views
+- `simulation_plane` mode with `CRS.Simple`
+- `geo_osm` mode with geographic coordinates
+- live markers with workflow, task, status, and recent log context
+- stored 2D trajectories rendered as polylines
 
-The relation graph remains form-driven rather than node-edit driven. Configuration changes are made through table and form inputs, while the graph is used for coupling visualization, highlighting, validation context, critical-path display, and zoom/pan inspection. Scroll inside the graph canvas to zoom and drag the canvas to pan without moving the outer workbench page.
+`Workflow Studio` uses forms and tables as the persisted source of truth. The relation graph is an interactive inspection canvas with auto layout, wheel or trackpad zoom inside the canvas, background drag-to-pan, and node drag refinement for local layout adjustment.
 
 ![Workflow Studio relation graph](docs/images/workflow-studio-relation-graph.png)
 
-The workbench also supports:
+The workbench also provides:
 
-- global `zh-CN` / `en-US` language switching in the UI
-- page-local `Validate` in `Workflow Studio` for the in-progress draft
-- a centralized `Review / Validate` flow for draft consistency checks
-- merged catalog browsing across builtin and custom definitions
-- table/form editing for custom workflow-related definitions without uploading Python code
+- global `zh-CN` / `en-US` UI switching
+- page-local `Validate` for the active draft in `Workflow Studio`
+- centralized `Review / Validate` checks for draft consistency and runtime readiness
+- merged browsing across builtin and custom definitions
+- structured log and trajectory inspection by `run_id`
 
-## Custom Registry
+## Registry And Runtime
 
-Custom definitions are stored as files and treated as the source of truth:
+Custom definitions are stored as files:
 
 - `registry/aeroagentsim/agents/`
 - `registry/aeroagentsim/tasks/`
 - `registry/aeroagentsim/workflows/`
 
-Each definition carries metadata such as:
+Runtime state is separated cleanly from configuration snapshots:
 
-- `id`
-- `version`
-- `display_name`
-- `description`
-- `schema_version`
-- `source`
-- `created_at`
-- `updated_at`
+- config snapshots: `runtime/aeroagentsim/configs/`
+- run directories: `runtime/aeroagentsim/runs/<run_id>/`
+- typical run subdirectories: `logs/`, `workflow_states/`, `trajectories/`, `spatial/`, `metrics/`
 
-The current v1 model is declarative. Users can extend agent, task, and workflow definitions from the workbench, but cannot upload arbitrary Python plugins. Runtime execution still goes through the existing `airfogsim` component and workflow machinery by way of adapter and proxy compilation.
+Run start performs runtime preflight. Compatibility findings such as skipped default `create_airspace` or `create_frequency` injection remain `warning` entries. Only preflight `errors` block `POST /api/runs`.
 
-## Runtime Model
+## Developer Configuration
 
-Configuration and runtime artifacts are now split:
+These environment variables are the main public knobs for local development and automation:
 
-- Config snapshots are immutable and stored under `runtime/aeroagentsim/configs/`
-- Each simulation launch creates a unique `run_id`
-- Run artifacts are stored under `runtime/aeroagentsim/runs/<run_id>/`
-- Typical run subdirectories are `logs/`, `workflow_states/`, `trajectories/`, `spatial/`, and `metrics/`
-- SQLite is kept as a lightweight active-run cache and index, not the primary historical log store
-
-Control and updates are also split:
-
-- REST handles start, pause, resume, reset, save, validate, and graph/config requests
-- WebSocket pushes `sim_status`, `workflow_state_diff`, `spatial_snapshot`, and `log_event`
-
-Run start also performs runtime preflight. Non-blocking compatibility findings, including skipped default `create_airspace` / `create_frequency` injection when the current runtime does not expose those methods, remain warnings. Only preflight errors block `POST /api/runs`.
+- Backend storage:
+  - `AEROAGENTSIM_RUNTIME_DIR`
+  - `AEROAGENTSIM_REGISTRY_DIR`
+  - `AEROAGENTSIM_DB_PATH`
+  - `AEROAGENTSIM_LOG_LEVEL`
+- Compatibility aliases accepted by the backend:
+  - `AIRFOGSIM_RUNTIME_DIR`
+  - `AIRFOGSIM_REGISTRY_DIR`
+  - `AIRFOGSIM_DB_PATH`
+  - `AIRFOGSIM_LOG_LEVEL`
+- Frontend endpoints:
+  - `REACT_APP_API_BASE_URL`
+  - `REACT_APP_WS_BASE_URL`
+  - `REACT_APP_ENABLE_MOCK_FALLBACK`
+- Example-specific integrations:
+  - `OPENWEATHERMAP_API_KEY` for weather-backed examples
+  - `SUMO_HOME` for SUMO traffic workflows
 
 ## Installation
 
+For the current repository and workbench, use a source install:
+
 ```bash
-conda activate airfogsim
-pip install airfogsim
+python -m venv aeroagentsim_env
+source aeroagentsim_env/bin/activate
+pip install -e .[dev]
 ```
 
-> **Note:** The PyPI release may lag behind the source. If you see
-> `ImportError` for `AirFogSimEnv` or other names, install from source:
-> ```bash
-> pip install git+https://github.com/ZhiweiWei-NAMI/AirFogSim.git
-> ```
-> Or clone and install in editable mode — see [INSTALL.md](INSTALL.md).
+If you also want documentation tooling:
 
-For source installs and frontend setup, see [INSTALL.md](INSTALL.md).
+```bash
+pip install -e ".[dev,docs]"
+```
 
 ### Verify the package
 
 ```bash
-python -c "import airfogsim; from airfogsim import Environment, AirFogSimEnv; print('ok')"
+python -c "import aeroagentsim, airfogsim; from aeroagentsim import Environment; from airfogsim import Environment as LegacyEnvironment; print(Environment.__name__, Environment is LegacyEnvironment)"
 ```
-
-`AirFogSimEnv` is kept as a compatibility alias. New code should prefer `Environment`.
 
 ## Quick Example
 
 ```python
-from airfogsim import Environment
-from airfogsim.agent import DroneAgent
-from airfogsim.component import ChargingComponent, MoveToComponent
-from airfogsim.workflow.inspection import create_inspection_workflow
+from aeroagentsim import Environment
+from aeroagentsim.agent import DroneAgent
+from aeroagentsim.component import ChargingComponent, MoveToComponent
+from aeroagentsim.workflow.inspection import create_inspection_workflow
 
 env = Environment()
 
@@ -153,13 +149,11 @@ workflow.start()
 env.run(until=600)
 ```
 
-## Start the Workbench
+## Start The Workbench
 
 ```bash
 python main_for_visualization.py --backend-port 8002 --frontend-port 3000
 ```
-
-The workbench uses the existing `airfogsim` backend with the AeroAgentSim 2D frontend. There is no 3D map page in the current interface.
 
 ## API Surface
 
@@ -187,20 +181,26 @@ The current workbench API exposes these main groups:
 - [Installation Guide](INSTALL.md)
 - [Documentation Guide](DOCUMENTATION_GUIDE.md)
 - [Documentation Hub](docs/README.md)
-- [System Architecture](src/airfogsim/docs/en/architecture.md)
+- [System Architecture](src/aeroagentsim/docs/en/architecture.md)
 
 ## Citation
 
-If you use the simulator in research, please cite:
+If you use AeroAgentSim in research, cite the JOSS paper:
+
+- JOSS page: <https://joss.theoj.org/papers/10.21105/joss.08267>
+- PDF: <https://www.theoj.org/joss-papers/joss.08267/10.21105.joss.08267.pdf>
 
 ```bibtex
-@misc{wei2024airfogsimlightweightmodularsimulator,
-      title={AirFogSim: A Light-Weight and Modular Simulator for UAV-Integrated Vehicular Fog Computing},
-      author={Zhiwei Wei and Chenran Huang and Bing Li and Yiting Zhao and Xiang Cheng and Liuqing Yang and Rongqing Zhang},
-      year={2024},
-      eprint={2409.02518},
-      archivePrefix={arXiv},
-      primaryClass={cs.NI},
-      url={https://arxiv.org/abs/2409.02518},
+@article{Wei2025,
+  doi = {10.21105/joss.08267},
+  url = {https://doi.org/10.21105/joss.08267},
+  year = {2025},
+  publisher = {The Open Journal},
+  volume = {10},
+  number = {111},
+  pages = {8267},
+  author = {Wei, Zhiwei and Li, Bing and Zhang, Rongqing},
+  title = {AirFogSim: A Python Package for Benchmarking Collaborative Intelligence in Low-Altitude Vehicular Fog Computing},
+  journal = {Journal of Open Source Software}
 }
 ```

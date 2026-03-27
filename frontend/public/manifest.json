@@ -1,6 +1,6 @@
 {
-  "short_name": "AirFogSim",
-  "name": "AirFogSim无人机仿真可视化系统",
+  "short_name": "AeroAgentSim",
+  "name": "AeroAgentSim Workbench",
   "icons": [
     {
       "src": "favicon.ico",

@@ -4,9 +4,9 @@
 <configuration>
     <end value="3600"/>
     <insertion-rate value="500.0"/>
-    <net-file value="/home/weizhiwei/data2/weizhiwei/airfogsim/airfogsim-project/frontend/public/data/traffic/sumocfg/osm_generated.net.xml"/>
+    <net-file value="osm_generated.net.xml"/>
     <random value="True"/>
-    <output-trip-file value="/home/weizhiwei/data2/weizhiwei/airfogsim/airfogsim-project/frontend/public/data/traffic/sumocfg/osm_generated.rou.xml"/>
+    <output-trip-file value="osm_generated.rou.xml"/>
     <prefix value="vehicle"/>
     <vehicle-class value="passenger"/>
 </configuration>

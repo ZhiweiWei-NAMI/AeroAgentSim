@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>aeroagentsim.resource.landing &#8212; AeroAgentSim Developer Documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/classic.css?v=89b800e6" />
+    
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js?v=7a812f30"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.resource.landing</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for aeroagentsim.resource.landing</h1><div class="highlight"><pre>
+<span></span><span class="c1"># resource/landing.py</span>
+
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.resource</span> <span class="kn">import</span> <span class="n">Resource</span>
+<span class="kn">from</span> <span class="nn">aeroagentsim.core.enums</span> <span class="kn">import</span> <span class="n">ResourceStatus</span> <span class="c1"># 导入枚举</span>
+
+<div class="viewcode-block" id="LandingResource"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.resource.landing.LandingResource">[docs]</a><span class="k">class</span> <span class="nc">LandingResource</span><span class="p">(</span><span class="n">Resource</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    着陆区资源类</span>
+
+<span class="sd">    表示无人机可以起飞和降落的物理场地</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="LandingResource.__init__"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.resource.landing.LandingResource.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">location</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span>
+                 <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span>
+                 <span class="n">max_capacity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                 <span class="n">has_charging</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                 <span class="n">has_data_transfer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                 <span class="n">attributes</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">env</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        初始化着陆区资源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            resource_id: 资源唯一标识符</span>
+<span class="sd">            location: 着陆区中心点坐标 (x, y) 或 (x, y, z)</span>
+<span class="sd">            radius: 着陆区半径，单位为米</span>
+<span class="sd">            max_capacity: 同时可容纳的无人机数量</span>
+<span class="sd">            has_charging: 是否提供充电功能</span>
+<span class="sd">            has_data_transfer: 是否提供数据传输功能</span>
+<span class="sd">            attributes: 其他属性</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="n">attributes</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">resource_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;landing_&quot;</span><span class="p">),</span> <span class="s2">&quot;资源ID必须以&#39;landing_&#39;开头&quot;</span>
+        <span class="c1"># 着陆区基本参数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="n">location</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">location</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="k">else</span> <span class="p">(</span><span class="o">*</span><span class="n">location</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">radius</span> <span class="o">=</span> <span class="n">radius</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_capacity</span> <span class="o">=</span> <span class="n">max_capacity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">has_charging</span> <span class="o">=</span> <span class="n">has_charging</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">has_data_transfer</span> <span class="o">=</span> <span class="n">has_data_transfer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+
+        <span class="c1"># 着陆区状态</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">occupied_slots</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">condition</span> <span class="o">=</span> <span class="s2">&quot;normal&quot;</span>  <span class="c1"># normal, damaged, maintenance</span></div>
+
+<div class="viewcode-block" id="LandingResource.allocate"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.resource.landing.LandingResource.allocate">[docs]</a>    <span class="k">def</span> <span class="nf">allocate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        分配资源给无人机</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 无人机ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            分配是否成功</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_capacity</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_allocated</span><span class="p">(</span><span class="n">agent_id</span><span class="p">):</span>
+            <span class="n">old_allocation</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">occupied_slots</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;state_changed&#39;</span><span class="p">,</span>
+                                                  <span class="p">{</span><span class="s1">&#39;key&#39;</span><span class="p">:</span> <span class="s1">&#39;current_allocations&#39;</span><span class="p">,</span>
+                                                   <span class="s1">&#39;old_value&#39;</span><span class="p">:</span> <span class="n">old_allocation</span><span class="p">,</span>
+                                                   <span class="s1">&#39;new_value&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span><span class="p">)})</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="LandingResource.release"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.resource.landing.LandingResource.release">[docs]</a>    <span class="k">def</span> <span class="nf">release</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        释放资源</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 无人机ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            释放是否成功</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span><span class="p">:</span>
+            <span class="n">old_allocation</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">occupied_slots</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">event_registry</span><span class="o">.</span><span class="n">trigger_event</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s1">&#39;state_changed&#39;</span><span class="p">,</span>
+                                                  <span class="p">{</span><span class="s1">&#39;key&#39;</span><span class="p">:</span> <span class="s1">&#39;current_allocations&#39;</span><span class="p">,</span>
+                                                   <span class="s1">&#39;old_value&#39;</span><span class="p">:</span> <span class="n">old_allocation</span><span class="p">,</span>
+                                                   <span class="s1">&#39;new_value&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span><span class="p">)})</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="LandingResource.is_allocated"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.resource.landing.LandingResource.is_allocated">[docs]</a>    <span class="k">def</span> <span class="nf">is_allocated</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        检查无人机是否已分配到该着陆区</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: 无人机ID</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            是否已分配</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">agent_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span></div>
+
+<div class="viewcode-block" id="LandingResource.has_capacity"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.resource.landing.LandingResource.has_capacity">[docs]</a>    <span class="k">def</span> <span class="nf">has_capacity</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;检查是否还有容量接收新的无人机&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_capacity</span></div>
+
+<div class="viewcode-block" id="LandingResource.is_within_range"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.resource.landing.LandingResource.is_within_range">[docs]</a>    <span class="k">def</span> <span class="nf">is_within_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">altitude</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        检查给定坐标是否在着陆区范围内</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x: X坐标</span>
+<span class="sd">            y: Y坐标</span>
+<span class="sd">            altitude: 高度坐标 (可选)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            坐标是否在着陆区范围内</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 获取着陆区坐标</span>
+        <span class="n">landing_x</span><span class="p">,</span> <span class="n">landing_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># 计算平面距离</span>
+        <span class="n">distance_2d</span> <span class="o">=</span> <span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">landing_x</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">landing_y</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span>
+
+        <span class="c1"># 检查是否在半径范围内</span>
+        <span class="k">return</span> <span class="n">distance_2d</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span></div>
+
+<div class="viewcode-block" id="LandingResource.update_condition"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.resource.landing.LandingResource.update_condition">[docs]</a>    <span class="k">def</span> <span class="nf">update_condition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">condition</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        更新着陆区状态</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            condition: 新状态 (normal, damaged, maintenance)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">condition</span> <span class="o">=</span> <span class="n">condition</span>
+
+        <span class="c1"># 如果状态变为不可用，则更新资源状态</span>
+        <span class="k">if</span> <span class="n">condition</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;damaged&#39;</span><span class="p">,</span> <span class="s1">&#39;maintenance&#39;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">MAINTENANCE</span> <span class="c1"># 使用枚举</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># 如果没有分配且状态正常，则为可用</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">AVAILABLE</span> <span class="c1"># 使用枚举</span></div>
+
+<div class="viewcode-block" id="LandingResource.get_charging_power"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.resource.landing.LandingResource.get_charging_power">[docs]</a>    <span class="k">def</span> <span class="nf">get_charging_power</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取充电功率</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            充电功率 (W)，如果不具备充电功能则返回0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_charging</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+
+        <span class="c1"># 从属性中获取充电功率，如果未指定则使用默认值</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;charging_power&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LandingResource.get_data_transfer_rate"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.resource.landing.LandingResource.get_data_transfer_rate">[docs]</a>    <span class="k">def</span> <span class="nf">get_data_transfer_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        获取数据传输速率</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            数据传输速率 (Mbps)，如果不具备数据传输功能则返回0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_data_transfer</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+
+        <span class="c1"># 从属性中获取数据传输速率，如果未指定则使用默认值</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;data_transfer_rate&#39;</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="LandingResource.to_json"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.resource.landing.LandingResource.to_json">[docs]</a>    <span class="k">def</span> <span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        将LandingResource对象转换为JSON可序列化的字典</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            包含对象属性的字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s2">&quot;attributes&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">,</span>
+            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="s1">&#39;to_json&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="p">),</span>
+            <span class="s2">&quot;current_allocations&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_allocations</span><span class="p">),</span>
+            <span class="s2">&quot;location&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
+            <span class="s2">&quot;radius&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">radius</span><span class="p">,</span>
+            <span class="s2">&quot;max_capacity&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_capacity</span><span class="p">,</span>
+            <span class="s2">&quot;has_charging&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_charging</span><span class="p">,</span>
+            <span class="s2">&quot;has_data_transfer&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_data_transfer</span><span class="p">,</span>
+            <span class="s2">&quot;occupied_slots&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">occupied_slots</span><span class="p">,</span>
+            <span class="s2">&quot;condition&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">condition</span>
+        <span class="p">}</span></div>
+
+<div class="viewcode-block" id="LandingResource.__json__"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.resource.landing.LandingResource.__json__">[docs]</a>    <span class="k">def</span> <span class="nf">__json__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        支持json.dumps直接序列化</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            JSON可序列化的字典</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="LandingResource.from_json"><a class="viewcode-back" href="../../../api/resource.html#aeroagentsim.resource.landing.LandingResource.from_json">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_json</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        从JSON字典创建LandingResource对象</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: 包含对象属性的字典</span>
+<span class="sd">            env: 环境引用（可选）</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            LandingResource对象</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># 创建基本对象</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">resource_id</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">],</span>
+            <span class="n">location</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;location&quot;</span><span class="p">],</span>
+            <span class="n">radius</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;radius&quot;</span><span class="p">],</span>
+            <span class="n">max_capacity</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;max_capacity&quot;</span><span class="p">],</span>
+            <span class="n">has_charging</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;has_charging&quot;</span><span class="p">],</span>
+            <span class="n">has_data_transfer</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;has_data_transfer&quot;</span><span class="p">],</span>
+            <span class="n">attributes</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;attributes&quot;</span><span class="p">],</span>
+            <span class="n">env</span><span class="o">=</span><span class="n">env</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 设置其他属性</span>
+        <span class="n">resource</span><span class="o">.</span><span class="n">occupied_slots</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;occupied_slots&quot;</span><span class="p">]</span>
+        <span class="n">resource</span><span class="o">.</span><span class="n">condition</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;condition&quot;</span><span class="p">]</span>
+
+        <span class="c1"># 恢复当前分配</span>
+        <span class="n">resource</span><span class="o">.</span><span class="n">current_allocations</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;current_allocations&quot;</span><span class="p">])</span>
+
+        <span class="c1"># 恢复状态（如果是枚举）</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">],</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;name&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]:</span>
+            <span class="n">resource</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ResourceStatus</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># 尝试从字符串恢复</span>
+            <span class="k">for</span> <span class="n">status</span> <span class="ow">in</span> <span class="n">ResourceStatus</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">status</span><span class="p">)</span> <span class="o">==</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]:</span>
+                    <span class="n">resource</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">status</span>
+                    <span class="k">break</span>
+
+        <span class="k">return</span> <span class="n">resource</span></div></div>
+
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">AeroAgentSim</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">aeroagentsim.resource.landing</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2026, Zhiwei Wei.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    </div>
+  </body>
+</html>

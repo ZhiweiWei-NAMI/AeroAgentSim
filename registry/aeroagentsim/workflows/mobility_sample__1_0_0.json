@@ -1,0 +1,78 @@
+{
+  "id": "mobility_sample",
+  "version": "1.0.0",
+  "schema_version": "2026-03-27",
+  "source": "custom",
+  "display_name": {
+    "zh_CN": null,
+    "en_US": "Mobility Sample"
+  },
+  "description": {
+    "zh_CN": null,
+    "en_US": "Custom registry workflow that moves a drone"
+  },
+  "created_at": "2026-03-27T12:17:17.433525+00:00",
+  "updated_at": "2026-03-27T12:17:17.433525+00:00",
+  "enabled": true,
+  "kind": "workflows",
+  "adapter_type": "custom",
+  "property_templates": {},
+  "states": [
+    "moving",
+    "completed"
+  ],
+  "start_state": "moving",
+  "trigger_conditions": [
+    {
+      "source_state": "moving",
+      "target_state": "completed",
+      "trigger_type": "state",
+      "source_ref": "position",
+      "operator": "equals",
+      "description": null,
+      "target_value": null,
+      "config": {
+        "state_key": "position",
+        "target_value": [
+          40,
+          0,
+          10
+        ]
+      }
+    }
+  ],
+  "task_bindings": [
+    {
+      "workflow_state": "moving",
+      "component": "MoveToComponent",
+      "task_class": "MoveToTask",
+      "task_name": "Move to custom waypoint",
+      "task_ref": null,
+      "produced_states": [],
+      "target_state": {
+        "position": [
+          40,
+          0,
+          10
+        ]
+      },
+      "properties": {
+        "movement_type": "path_following",
+        "target_position": [
+          40,
+          0,
+          10
+        ]
+      },
+      "binding_status": null
+    }
+  ],
+  "critical_path": [
+    "moving",
+    "completed"
+  ],
+  "supported_agent_types": [
+    "drone_agent"
+  ],
+  "registry_dependencies": []
+}
