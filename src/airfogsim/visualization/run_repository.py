@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import shutil
 import threading
 import uuid
@@ -19,6 +20,16 @@ def _model_dump(value: Any) -> Dict[str, Any]:
     if hasattr(value, "model_dump"):
         return value.model_dump()
     return value.dict()
+
+
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(item) for item in value]
+    return value
 
 
 class RunRepository:
@@ -77,7 +88,7 @@ class RunRepository:
             self._recent_logs[run_id] = {}
             self._write_manifest(manifest)
             (run_dir / "config_snapshot.json").write_text(
-                json.dumps(_model_dump(snapshot), indent=2, ensure_ascii=False)
+                json.dumps(_json_safe(_model_dump(snapshot)), indent=2, ensure_ascii=False)
             )
             self.latest_pointer.write_text(run_id)
 
@@ -170,7 +181,7 @@ class RunRepository:
         data = dict(payload)
         data.setdefault("run_id", self._active_run_id)
         snapshot = SpatialSnapshot(**data)
-        dumped = _model_dump(snapshot)
+        dumped = _json_safe(_model_dump(snapshot))
         run_dir = self._run_dir(self._active_run_id)
         self._latest_spatial[self._active_run_id] = dumped
         (run_dir / "spatial" / "latest.json").write_text(
@@ -188,6 +199,7 @@ class RunRepository:
                 "status": agent.get("status"),
                 "current_workflow": agent.get("current_workflow"),
                 "current_task": agent.get("current_task"),
+                "current_task_id": agent.get("current_task_id"),
             }
             self._append_jsonl(run_dir / "trajectories" / "points.jsonl", point)
 
@@ -260,7 +272,7 @@ class RunRepository:
 
     def _write_manifest(self, manifest: RunManifest) -> None:
         path = self._run_dir(manifest.run_id) / "manifest.json"
-        payload = json.dumps(_model_dump(manifest), indent=2, ensure_ascii=False)
+        payload = json.dumps(_json_safe(_model_dump(manifest)), indent=2, ensure_ascii=False)
         temp_path = path.with_suffix(".json.tmp")
         with self._lock:
             temp_path.write_text(payload)
@@ -268,15 +280,16 @@ class RunRepository:
 
     def _append_jsonl(self, path: Path, payload: Dict[str, Any]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
+        safe_payload = _json_safe(payload)
         with self._lock:
             with path.open("a", encoding="utf-8") as handle:
-                handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
+                handle.write(json.dumps(safe_payload, ensure_ascii=False) + "\n")
 
     def _tail_jsonl(self, path: Path, limit: int) -> List[Dict[str, Any]]:
         if not path.exists():
             return []
         lines = path.read_text().splitlines()
-        return [json.loads(line) for line in lines[-limit:]]
+        return [_json_safe(json.loads(line)) for line in lines[-limit:]]
 
     def _run_dir(self, run_id: str) -> Path:
         return self.runs_dir / run_id

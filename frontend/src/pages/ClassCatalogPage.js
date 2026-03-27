@@ -3,6 +3,7 @@ import { Alert, Button, Input, Segmented, Space, Table, Tabs, Tag, Typography } 
 import { CopyOutlined, DeleteOutlined, PlusOutlined, SaveOutlined, SearchOutlined } from '@ant-design/icons';
 
 import RegistryDefinitionEditor from '../components/workbench/RegistryDefinitionEditor';
+import { useWorkbench } from '../context/WorkbenchContext';
 import { useI18n } from '../i18n/I18nProvider';
 import { catalogApi, registryApi } from '../services/workbenchApi';
 
@@ -65,6 +66,7 @@ function filterByKeyword(data, keyword) {
 
 function ClassCatalogPage() {
   const { t } = useI18n();
+  const { authoritativeActionsEnabled, displayOnlyFallbackMode } = useWorkbench();
   const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -229,6 +231,15 @@ function ClassCatalogPage() {
 
       {message ? <Alert type="success" showIcon message={message} style={{ marginBottom: 12 }} /> : null}
       {error ? <Alert type="error" showIcon message={error} style={{ marginBottom: 12 }} /> : null}
+      {displayOnlyFallbackMode ? (
+        <Alert
+          type="warning"
+          showIcon
+          message={t('authoritativeActionsDisabled')}
+          description={t('catalogOfflineHint')}
+          style={{ marginBottom: 12 }}
+        />
+      ) : null}
 
       <Tabs
         items={[
@@ -394,6 +405,7 @@ function ClassCatalogPage() {
                       <Button
                         type="primary"
                         icon={<PlusOutlined />}
+                        disabled={!authoritativeActionsEnabled}
                         onClick={() => {
                           setSelectedRegistryKey('');
                           setEditorValue(createBlankDefinition(activeRegistryKind));
@@ -437,14 +449,20 @@ function ClassCatalogPage() {
                   <div className="section-title-row">
                     <Title level={5} style={{ marginTop: 0 }}>{t('registryEditor')}</Title>
                     <Space wrap>
-                      <Button icon={<CopyOutlined />} onClick={copyDefinition}>
+                      <Button icon={<CopyOutlined />} disabled={!authoritativeActionsEnabled} onClick={copyDefinition}>
                         {t('copy')}
                       </Button>
-                      <Button danger icon={<DeleteOutlined />} onClick={deleteDefinition}>
+                      <Button danger icon={<DeleteOutlined />} disabled={!authoritativeActionsEnabled} onClick={deleteDefinition}>
                         {t('delete')}
                       </Button>
-                      <Button onClick={validateDefinition}>{t('registryValidate')}</Button>
-                      <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={saveDefinition}>
+                      <Button disabled={!authoritativeActionsEnabled} onClick={validateDefinition}>{t('registryValidate')}</Button>
+                      <Button
+                        type="primary"
+                        icon={<SaveOutlined />}
+                        loading={saving}
+                        disabled={!authoritativeActionsEnabled}
+                        onClick={saveDefinition}
+                      >
                         {t('save')}
                       </Button>
                     </Space>

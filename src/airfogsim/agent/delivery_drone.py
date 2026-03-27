@@ -68,21 +68,10 @@ class DeliveryDroneAgent(DroneAgent, DeliveryAgent, metaclass=DeliveryDroneAgent
         # 调用DeliveryAgent的方法
         DeliveryAgent._on_payload_added(self, event_data)
 
-        # 更新移动状态
-        if self.get_state('delivery_status') == 'transporting':
-            self.update_state('moving_status', 'flying')
-
     def _on_payload_removed(self, event_data):
         """响应货物移除事件"""
         # 调用DeliveryAgent的方法
         DeliveryAgent._on_payload_removed(self, event_data)
-
-        # 如果没有剩余货物，更新移动状态
-        if not self.get_state('payload_ids'):
-            # 检查是否有活跃的工作流
-            active_workflows = self.get_active_workflows()
-            if not active_workflows:
-                self.update_state('moving_status', 'idle')
 
     def register_event_listeners(self):
         """注册物流无人机需要监听的事件"""
@@ -116,9 +105,7 @@ class DeliveryDroneAgent(DroneAgent, DeliveryAgent, metaclass=DeliveryDroneAgent
         active_workflows = self.get_active_workflows()
         if not active_workflows:
             # 如果没有活跃的工作流，则简单地保持空闲状态
-            self.update_state('moving_status', 'idle')
             self.update_state('delivery_status', 'idle')
-            self.update_state('status', 'idle')
             return
 
         # 优先级排序：充电 > 物流 > 其他
@@ -138,27 +125,18 @@ class DeliveryDroneAgent(DroneAgent, DeliveryAgent, metaclass=DeliveryDroneAgent
 
         # 如果需要优先处理充电
         if charging_needed and charging_workflow:
-            # 如果当前在充电，更新无人机状态
-            if charging_workflow.status_machine.state == 'charging':
-                self.update_state('moving_status', 'idle')
-                self.update_state('status', 'active')
+            return
 
         # 如果不需要优先充电，处理物流工作流
         elif logistics_workflow:
             # 根据物流工作流状态更新无人机状态
             current_state = logistics_workflow.status_machine.state
             if current_state == 'picking_up':
-                self.update_state('moving_status', 'flying')
                 self.update_state('delivery_status', 'picking_up')
-                self.update_state('status', 'active')
             elif current_state == 'transporting':
-                self.update_state('moving_status', 'flying')
                 self.update_state('delivery_status', 'transporting')
-                self.update_state('status', 'active')
             elif current_state == 'delivering':
-                self.update_state('moving_status', 'flying')
                 self.update_state('delivery_status', 'delivering')
-                self.update_state('status', 'active')
 
     def get_details(self) -> Dict:
         """获取代理详细信息，添加物流无人机相关信息"""

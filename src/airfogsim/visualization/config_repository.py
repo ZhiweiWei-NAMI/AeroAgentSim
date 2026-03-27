@@ -30,7 +30,7 @@ class ConfigRepository:
         now = _utc_now()
         payload = _model_dump(snapshot)
         payload["source_config_id"] = payload.get("source_config_id") or payload.get("config_id")
-        payload["config_id"] = self._generate_config_id()
+        payload["config_id"] = payload.get("config_id") or self._generate_config_id()
         payload["created_at"] = payload.get("created_at") or now
         payload["updated_at"] = now
 
@@ -48,7 +48,9 @@ class ConfigRepository:
         return ConfigSnapshot(**json.loads(path.read_text()))
 
     def resolve_config_id(self, config_id: Optional[str]) -> str:
-        if config_id in {None, "", "current", "latest", "default"}:
+        if config_id == "default":
+            return "default"
+        if config_id in {None, "", "current", "latest"}:
             if not self.latest_pointer.exists():
                 raise FileNotFoundError("No saved config snapshot available.")
             return self.latest_pointer.read_text().strip()

@@ -141,20 +141,6 @@ class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):
         """执行无人机特定的逻辑"""
         # 获取当前活跃的工作流
         active_workflows = self.get_active_workflows()
-        if not active_workflows:
-            # 如果没有活跃的工作流，则简单地保持空闲状态
-            self.update_state('moving_status', 'idle')
-            self.update_state('status', 'idle')
-            return
-
-        # 检查是否有充电工作流
-        for workflow in active_workflows:
-            if isinstance(workflow, ChargingWorkflow):
-                # 如果当前在充电，更新无人机状态
-                if workflow.status_machine.state == 'charging':
-                    self.update_state('moving_status', 'idle')
-                    self.update_state('status', 'active')
-                break
 
         # 如果设置了任务规划器回调，则调用它进行运行时规划
         if self.task_planner_callback:

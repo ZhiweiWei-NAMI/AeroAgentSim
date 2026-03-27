@@ -15,7 +15,13 @@ from .schemas import (
     WorkflowDefinition,
     WorkflowTypeDefinition,
 )
-from .type_utils import normalize_workflow_type
+from .type_utils import (
+    is_coordinate3d,
+    is_explicitly_unsupported_workbench_workflow_type,
+    is_supported_workbench_workflow_type,
+    normalize_component_name,
+    normalize_workflow_type,
+)
 
 
 def _model_dump(value: Any) -> Dict[str, Any]:
@@ -92,6 +98,24 @@ class ConfigCompiler:
                 issues.append(self._issue("error", "duplicate", f"Duplicate workflow id: {workflow.id}", path))
             workflow_ids.add(workflow.id)
 
+            workflow_type = normalize_workflow_type(workflow.type)
+            if workflow.source != "custom" and (
+                is_explicitly_unsupported_workbench_workflow_type(workflow.type)
+                or not is_supported_workbench_workflow_type(workflow.type)
+            ):
+                issues.append(
+                    self._issue(
+                        "error",
+                        "unsupported_runtime",
+                        (
+                            f"Workflow {workflow.id} uses builtin type {workflow.type}, which is not "
+                            "supported by the workbench runtime."
+                        ),
+                        path,
+                    )
+                )
+                continue
+
             workflow_definition = self._resolve_workflow_definition(workflow)
             if workflow_definition is None:
                 issues.append(
@@ -126,6 +150,36 @@ class ConfigCompiler:
                             f"{path}.properties.{key}",
                         )
                     )
+
+            if workflow_type == "inspection":
+                self._validate_inspection_workflow(
+                    workflow=workflow,
+                    issues=issues,
+                    agent_components=agent_components_by_id.get(workflow.agent_id, set()),
+                    path=path,
+                )
+            elif workflow_type == "charging":
+                self._validate_charging_workflow(
+                    workflow=workflow,
+                    issues=issues,
+                    agent_components=agent_components_by_id.get(workflow.agent_id, set()),
+                    path=path,
+                )
+            elif workflow_type == "logistics":
+                self._validate_logistics_workflow(
+                    workflow=workflow,
+                    issues=issues,
+                    agent_ids=agent_ids,
+                    agent_components=agent_components_by_id.get(workflow.agent_id, set()),
+                    path=path,
+                )
+            elif workflow_type == "imageprocessing":
+                self._validate_image_processing_workflow(
+                    workflow=workflow,
+                    issues=issues,
+                    agent_components=agent_components_by_id.get(workflow.agent_id, set()),
+                    path=path,
+                )
 
             try:
                 self._validate_workflow_bindings(
@@ -361,7 +415,7 @@ class ConfigCompiler:
                     missing_dependencies.append(str(target))
                 continue
 
-            component_name = binding.component or task_definition.component
+            component_name = normalize_component_name(binding.component or task_definition.component)
             if not component_name:
                 issues.append(
                     self._issue(
@@ -480,6 +534,263 @@ class ConfigCompiler:
             key = (reference.kind, reference.definition_id, reference.version, reference.source)
             deduped[key] = reference
         return list(deduped.values())
+
+    def _validate_logistics_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        issues: List[ValidationIssue],
+        agent_ids: Set[str],
+        agent_components: Set[str],
+        path: str,
+    ) -> None:
+        properties = workflow.properties or {}
+        pickup_location = properties.get("pickup_location")
+        delivery_location = properties.get("delivery_location")
+        payloads = properties.get("payloads")
+        source_agent_id = properties.get("source_agent_id")
+        target_agent_id = properties.get("target_agent_id")
+
+        if not is_coordinate3d(pickup_location):
+            issues.append(
+                self._issue(
+                    "error",
+                    "schema",
+                    f"Workflow {workflow.id} requires pickup_location as a 3D numeric coordinate.",
+                    f"{path}.properties.pickup_location",
+                )
+            )
+        if not is_coordinate3d(delivery_location):
+            issues.append(
+                self._issue(
+                    "error",
+                    "schema",
+                    f"Workflow {workflow.id} requires delivery_location as a 3D numeric coordinate.",
+                    f"{path}.properties.delivery_location",
+                )
+            )
+
+        if not isinstance(payloads, list) or not payloads:
+            issues.append(
+                self._issue(
+                    "error",
+                    "schema",
+                    f"Workflow {workflow.id} requires at least one payload.",
+                    f"{path}.properties.payloads",
+                )
+            )
+        elif any(not isinstance(payload, dict) or not payload.get("id") for payload in payloads):
+            issues.append(
+                self._issue(
+                    "error",
+                    "schema",
+                    f"Workflow {workflow.id} payloads must be objects containing an id.",
+                    f"{path}.properties.payloads",
+                )
+            )
+
+        if not source_agent_id or source_agent_id not in agent_ids:
+            issues.append(
+                self._issue(
+                    "error",
+                    "binding",
+                    f"Workflow {workflow.id} references missing source agent {source_agent_id or '(empty)'}.",
+                    f"{path}.properties.source_agent_id",
+                )
+            )
+        if not target_agent_id or target_agent_id not in agent_ids:
+            issues.append(
+                self._issue(
+                    "error",
+                    "binding",
+                    f"Workflow {workflow.id} references missing target agent {target_agent_id or '(empty)'}.",
+                    f"{path}.properties.target_agent_id",
+                )
+            )
+
+        required_components = {"MoveToComponent", "LogisticsComponent"}
+        missing_components = sorted(required_components.difference(agent_components))
+        if missing_components:
+            issues.append(
+                self._issue(
+                    "error",
+                    "binding",
+                    (
+                        f"Workflow {workflow.id} requires owner agent {workflow.agent_id} to enable "
+                        f"{missing_components}."
+                    ),
+                    f"{path}.agent_id",
+                )
+            )
+
+    def _validate_inspection_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        issues: List[ValidationIssue],
+        agent_components: Set[str],
+        path: str,
+    ) -> None:
+        points = workflow.properties.get("inspection_points") or workflow.properties.get("waypoints")
+        if not isinstance(points, list) or not points:
+            issues.append(
+                self._issue(
+                    "error",
+                    "schema",
+                    f"Workflow {workflow.id} requires a non-empty inspection_points list.",
+                    f"{path}.properties.inspection_points",
+                )
+            )
+        elif any(not is_coordinate3d(point) for point in points):
+            issues.append(
+                self._issue(
+                    "error",
+                    "schema",
+                    f"Workflow {workflow.id} requires every inspection point to be a 3D numeric coordinate.",
+                    f"{path}.properties.inspection_points",
+                )
+            )
+
+        if "MoveToComponent" not in agent_components:
+            issues.append(
+                self._issue(
+                    "error",
+                    "binding",
+                    (
+                        f"Workflow {workflow.id} requires owner agent {workflow.agent_id} to enable "
+                        "MoveToComponent."
+                    ),
+                    f"{path}.agent_id",
+                )
+            )
+
+    def _validate_charging_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        issues: List[ValidationIssue],
+        agent_components: Set[str],
+        path: str,
+    ) -> None:
+        properties = workflow.properties or {}
+        battery_threshold = properties.get("battery_threshold")
+        target_charge_level = properties.get(
+            "target_charge_level",
+            properties.get("target_level"),
+        )
+
+        if not isinstance(battery_threshold, (int, float)):
+            issues.append(
+                self._issue(
+                    "error",
+                    "schema",
+                    f"Workflow {workflow.id} requires battery_threshold as a numeric value between 0 and 100.",
+                    f"{path}.properties.battery_threshold",
+                )
+            )
+        elif not 0 <= float(battery_threshold) <= 100:
+            issues.append(
+                self._issue(
+                    "error",
+                    "schema",
+                    f"Workflow {workflow.id} battery_threshold must be between 0 and 100.",
+                    f"{path}.properties.battery_threshold",
+                )
+            )
+
+        if not isinstance(target_charge_level, (int, float)):
+            issues.append(
+                self._issue(
+                    "error",
+                    "schema",
+                    f"Workflow {workflow.id} requires target_charge_level as a numeric value between 0 and 100.",
+                    f"{path}.properties.target_charge_level",
+                )
+            )
+        elif not 0 <= float(target_charge_level) <= 100:
+            issues.append(
+                self._issue(
+                    "error",
+                    "schema",
+                    f"Workflow {workflow.id} target_charge_level must be between 0 and 100.",
+                    f"{path}.properties.target_charge_level",
+                )
+            )
+
+        if (
+            isinstance(battery_threshold, (int, float))
+            and isinstance(target_charge_level, (int, float))
+            and float(battery_threshold) >= float(target_charge_level)
+        ):
+            issues.append(
+                self._issue(
+                    "error",
+                    "schema",
+                    (
+                        f"Workflow {workflow.id} requires battery_threshold to be lower than "
+                        "target_charge_level."
+                    ),
+                    f"{path}.properties.battery_threshold",
+                )
+            )
+
+        missing_components = {
+            "MoveToComponent",
+            "ChargingComponent",
+        }.difference(agent_components)
+        if missing_components:
+            issues.append(
+                self._issue(
+                    "error",
+                    "binding",
+                    (
+                        f"Workflow {workflow.id} requires owner agent {workflow.agent_id} to enable "
+                        f"{sorted(missing_components)}."
+                    ),
+                    f"{path}.agent_id",
+                )
+            )
+
+    def _validate_image_processing_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        issues: List[ValidationIssue],
+        agent_components: Set[str],
+        path: str,
+    ) -> None:
+        sensing_locations = workflow.properties.get("sensing_locations")
+        if not isinstance(sensing_locations, list) or not sensing_locations:
+            issues.append(
+                self._issue(
+                    "error",
+                    "schema",
+                    f"Workflow {workflow.id} requires a non-empty sensing_locations list.",
+                    f"{path}.properties.sensing_locations",
+                )
+            )
+        elif any(not is_coordinate3d(location) for location in sensing_locations):
+            issues.append(
+                self._issue(
+                    "error",
+                    "schema",
+                    f"Workflow {workflow.id} requires every sensing location to be a 3D numeric coordinate.",
+                    f"{path}.properties.sensing_locations",
+                )
+            )
+
+        missing_components = {
+            "ImageSensingComponent",
+            "ComputationComponent",
+        }.difference(agent_components)
+        if missing_components:
+            issues.append(
+                self._issue(
+                    "error",
+                    "binding",
+                    (
+                        f"Workflow {workflow.id} requires owner agent {workflow.agent_id} to enable "
+                        f"{sorted(missing_components)}."
+                    ),
+                    f"{path}.agent_id",
+                )
+            )
 
     def _issue(self, level: str, category: str, message: str, path: Optional[str] = None) -> ValidationIssue:
         return ValidationIssue(level=level, category=category, message=message, path=path)

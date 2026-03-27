@@ -17,6 +17,7 @@ import {
 import { DeleteOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 
 import Map2D from '../components/workbench/Map2D';
+import { useWorkbench } from '../context/WorkbenchContext';
 import { useI18n } from '../i18n/I18nProvider';
 import { runApi } from '../services/workbenchApi';
 
@@ -34,8 +35,22 @@ function formatTimestamp(value) {
   return parsed.toLocaleString();
 }
 
+function matchesLogAgent(log, agentId) {
+  if (agentId === 'all') {
+    return true;
+  }
+  return [
+    log?.source_id,
+    log?.source,
+    log?.details?.agent_id,
+    log?.result?.agent_id,
+    log?.message,
+  ].some((value) => String(value || '').includes(agentId));
+}
+
 function TrajectoriesLogsPage() {
   const { t } = useI18n();
+  const { authoritativeActionsEnabled, displayOnlyFallbackMode } = useWorkbench();
   const [runs, setRuns] = useState([]);
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [trajectoriesPayload, setTrajectoriesPayload] = useState({
@@ -64,15 +79,21 @@ function TrajectoriesLogsPage() {
     if (!selectedRunId) {
       return false;
     }
+    if (!authoritativeActionsEnabled) {
+      return false;
+    }
     return !(activeRun && selectedRunId === activeRun.run_id);
-  }, [activeRun, selectedRunId]);
+  }, [activeRun, authoritativeActionsEnabled, selectedRunId]);
 
   const deleteRunTooltip = useMemo(() => {
     if (!selectedRunId) {
       return '';
     }
+    if (!authoritativeActionsEnabled) {
+      return t('authoritativeActionsDisabled');
+    }
     return canDeleteSelectedRun ? t('deleteRunHint') : t('cannotDeleteActiveRun');
-  }, [canDeleteSelectedRun, selectedRunId, t]);
+  }, [authoritativeActionsEnabled, canDeleteSelectedRun, selectedRunId, t]);
 
   const refreshRuns = useCallback(async () => {
     const nextRuns = await runApi.listRuns();
@@ -242,10 +263,7 @@ function TrajectoriesLogsPage() {
     const normalizedKeyword = keyword.trim().toLowerCase();
     return logs.filter((log) => {
       const matchesLevel = selectedLevel === 'all' || log.level === selectedLevel;
-      const matchesAgent =
-        selectedAgentId === 'all' ||
-        String(log.message || '').includes(selectedAgentId) ||
-        String(log.source || '').includes(selectedAgentId);
+      const matchesAgent = matchesLogAgent(log, selectedAgentId);
       const matchesKeyword =
         !normalizedKeyword || JSON.stringify(log).toLowerCase().includes(normalizedKeyword);
       return matchesLevel && matchesAgent && matchesKeyword;
@@ -308,6 +326,15 @@ function TrajectoriesLogsPage() {
         </Space>
       </div>
 
+      {displayOnlyFallbackMode ? (
+        <Alert
+          type="warning"
+          showIcon
+          message={t('offlineDisplayMode')}
+          description={t('authoritativeActionsDisabled')}
+          style={{ marginBottom: 12 }}
+        />
+      ) : null}
       {error ? <Alert type="error" showIcon message={error} style={{ marginBottom: 12 }} /> : null}
 
       <div className="studio-grid">
@@ -318,6 +345,12 @@ function TrajectoriesLogsPage() {
               <Tag>{`${selectedRun.run_id} / ${selectedRun.status}`}</Tag>
             ) : null}
           </div>
+          <Alert
+            type="info"
+            showIcon
+            message={t('trajectoryHint')}
+            style={{ marginBottom: 12 }}
+          />
           {selectedRunId ? (
             hasTrajectoryData || markers.length ? (
               <Map2D
@@ -325,6 +358,7 @@ function TrajectoriesLogsPage() {
                 markers={markers}
                 trajectories={filteredTrajectories}
                 height={520}
+                testId="trajectories-map"
                 selectedMarkerId={selectedMarker?.id}
                 onSelectMarker={setSelectedMarker}
               />
@@ -402,7 +436,20 @@ function TrajectoriesLogsPage() {
                   </Tag>
                 ),
               },
+              { title: 'Event', dataIndex: 'event', width: 200, render: (value) => value || '-' },
               { title: t('source'), dataIndex: 'source', width: 120 },
+              {
+                title: t('taskId'),
+                key: 'task_meta',
+                width: 220,
+                render: (_value, row) => row.task_name || row.task_id || '-',
+              },
+              {
+                title: t('workflowType'),
+                dataIndex: 'workflow_id',
+                width: 180,
+                render: (value) => value || '-',
+              },
               { title: t('description'), dataIndex: 'message' },
             ]}
           />

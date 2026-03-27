@@ -15,6 +15,16 @@ from airfogsim.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 
+
+def _json_safe(value):
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(item) for item in value]
+    return value
+
 class UpdateService:
     """处理仿真更新和前端通信的服务"""
     
@@ -56,7 +66,7 @@ class UpdateService:
         Args:添加到队列的更新数据
         """
         try:
-            normalized = dict(update_data)
+            normalized = _json_safe(dict(update_data))
             if self.run_repository and self.run_repository.active_run_id:
                 normalized.setdefault("run_id", self.run_repository.active_run_id)
             if normalized.get("type") == "sim_event":
@@ -240,6 +250,21 @@ class UpdateService:
             except Exception as exc:
                 logger.warning(f"更新工作流 {workflow_id} 状态时出错: {exc}")
 
+    def _get_running_task_snapshot(self, agent) -> Optional[Dict[str, Any]]:
+        managed_tasks = getattr(agent, "managed_tasks", {}) or {}
+        for task_info in managed_tasks.values():
+            if task_info.get("status") != "running":
+                continue
+            task = task_info.get("task")
+            if not task:
+                continue
+            return {
+                "task_id": getattr(task, "id", None),
+                "task_name": getattr(task, "name", None),
+                "workflow_id": getattr(task, "workflow_id", None),
+            }
+        return None
+
     def _build_spatial_snapshot(self) -> Optional[Dict[str, Any]]:
         coordinate_mode = self.simulation_manager.config.get("coordinate_mode", "simulation_plane")
         traffic = self.simulation_manager.config.get("traffic", {}) or {}
@@ -261,11 +286,14 @@ class UpdateService:
                 workflow_info = workflow_by_agent.get(agent_id)
                 current_workflow = None
                 current_task = None
+                current_task_id = None
+                running_task = self._get_running_task_snapshot(agent)
+                if running_task:
+                    current_workflow = running_task.get("workflow_id")
+                    current_task = running_task.get("task_name")
+                    current_task_id = running_task.get("task_id")
                 if workflow_info:
-                    current_workflow = workflow_info[0]
-                    workflow = workflow_info[1]
-                    task = workflow.get_current_suggested_task() if hasattr(workflow, "get_current_suggested_task") else None
-                    current_task = task.get("task_name") if task else None
+                    current_workflow = current_workflow or workflow_info[0]
 
                 status = "idle"
                 if hasattr(agent, "has_state") and agent.has_state("status"):
@@ -287,6 +315,7 @@ class UpdateService:
                         "status": status,
                         "current_workflow": current_workflow,
                         "current_task": current_task,
+                        "current_task_id": current_task_id,
                         "color": self._agent_color(agent, status),
                         "recent_log": self.run_repository.get_recent_log_message(agent_id)
                         if self.run_repository

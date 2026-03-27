@@ -21,7 +21,14 @@ function formatTs(value) {
 
 function OverviewPage() {
   const { t } = useI18n();
-  const { draftConfig, refreshDraft, reviewResult, runReview } = useWorkbench();
+  const {
+    authoritativeActionsEnabled,
+    displayOnlyFallbackMode,
+    draftConfig,
+    refreshDraft,
+    reviewResult,
+    runReview,
+  } = useWorkbench();
   const [runs, setRuns] = useState([]);
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -43,10 +50,10 @@ function OverviewPage() {
   }, [loadData]);
 
   useEffect(() => {
-    if (draftConfig && !reviewResult) {
+    if (draftConfig && !reviewResult && authoritativeActionsEnabled) {
       runReview(draftConfig).catch(() => {});
     }
-  }, [draftConfig, reviewResult, runReview]);
+  }, [authoritativeActionsEnabled, draftConfig, reviewResult, runReview]);
 
   const latestRun = runs[0];
 
@@ -63,6 +70,9 @@ function OverviewPage() {
       </div>
 
       {error ? <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} /> : null}
+      {displayOnlyFallbackMode ? (
+        <Alert type="warning" showIcon message={t('authoritativeActionsDisabled')} style={{ marginBottom: 16 }} />
+      ) : null}
 
       <Row gutter={16}>
         <Col xs={24} xl={8}>

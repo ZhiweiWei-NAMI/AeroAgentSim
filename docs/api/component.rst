@@ -1,5 +1,5 @@
 Component Classes
-================
+=================
 
 Components provide functional capabilities to agents. Each component encapsulates specific functionality and manages the execution of related tasks.
 

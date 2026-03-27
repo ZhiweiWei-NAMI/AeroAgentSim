@@ -56,16 +56,31 @@ class RequestChargingStationTask(Task):
         self.agent.add_possessing_object('charging_station', self.charging_station)
         self.waiting_time = 0
 
+    def _is_allocation_ready(self) -> bool:
+        """充电站一旦分配给当前代理，请求任务应立即结束。"""
+        if not self.charging_station:
+            return False
+        return self.env.landing_manager.is_allocated_to(self.charging_station.id, self.agent_id)
+
     def estimate_remaining_time(self, performance_metrics: Dict) -> float:
         """估计完成任务所需的剩余时间"""
+        if self._is_allocation_ready():
+            return 0.0
         processing_time = performance_metrics.get('request_processing_time', float('inf'))
         return processing_time
 
     def _update_task_state(self, performance_metrics: Dict):
         """更新任务进度和内部状态"""
+        if self._is_allocation_ready():
+            self.progress = 1.0
+            return
+
         elapsed_time = self.env.now - self.last_update_time
         remain_time = performance_metrics.get('request_processing_time', float('inf'))
         self.waiting_time += elapsed_time
+        if remain_time == float('inf'):
+            self.progress = 0.0
+            return
         self.progress = min(1.0, self.waiting_time / (remain_time + self.waiting_time + 1e-9))
         # 对self.progress进行浮点数比较时，使用1e-6作为epsilon值
         if self.progress >= 1.0 - 1e-6:

@@ -1,5 +1,5 @@
 Resource Classes
-===============
+================
 
 Resources represent physical and logical entities that can be allocated and managed in simulations.
 

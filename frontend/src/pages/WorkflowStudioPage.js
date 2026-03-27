@@ -18,7 +18,14 @@ import { DeleteOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons';
 import RelationGraph from '../components/workbench/RelationGraph';
 import { useWorkbench } from '../context/WorkbenchContext';
 import { useI18n } from '../i18n/I18nProvider';
-import { catalogApi, configApi, MOCK_CONFIG_ID } from '../services/workbenchApi';
+import {
+  catalogApi,
+  configApi,
+  defaultComponentsForDefinition,
+  MOCK_CONFIG_ID,
+  normalizeAgentTypeToken,
+  normalizeWorkflowTypeToken,
+} from '../services/workbenchApi';
 
 const { Paragraph, Text, Title } = Typography;
 const { TextArea } = Input;
@@ -79,13 +86,25 @@ function mergeTemplateDefaults(templateMap, current = {}, base = {}) {
   return next;
 }
 
-function filterCompatibleComponents(existingComponents, compatibleComponents) {
-  const compatibleSet = new Set(compatibleComponents || []);
+function filterCompatibleComponents(existingComponents, definition) {
+  const compatibleSet = new Set(definition?.compatible_components || []);
   const filtered = (existingComponents || []).filter((c) => compatibleSet.has(c));
   if (filtered.length > 0) {
     return filtered;
   }
-  return (compatibleComponents || []).slice(0, 2);
+  return defaultComponentsForDefinition(definition);
+}
+
+function defaultInitialPositionForDefinition(definition, index) {
+  const normalized = normalizeAgentTypeToken(definition?.id || definition?.name);
+  const basePosition = [40 + index * 40, 60 + index * 20, 10];
+  if (normalized.includes('station')) {
+    return [basePosition[0], basePosition[1], 0];
+  }
+  if (normalized.includes('drone')) {
+    return [basePosition[0], basePosition[1], 30];
+  }
+  return basePosition;
 }
 
 function buildDefinitionRef(kind, definition) {
@@ -100,8 +119,195 @@ function buildDefinitionRef(kind, definition) {
   };
 }
 
+function cloneValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => cloneValue(item));
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, cloneValue(item)])
+    );
+  }
+  return value;
+}
+
+function resolveAgentPosition(agent) {
+  const rawPosition = agent?.initial_position || agent?.properties?.position || [0, 0, 0];
+  return [0, 1, 2].map((index) => {
+    const numeric = Number(rawPosition?.[index] ?? 0);
+    return Number.isFinite(numeric) ? numeric : 0;
+  });
+}
+
+function resolveWorkflowFlightAltitude(agent) {
+  const position = resolveAgentPosition(agent);
+  const altitude = Number(position?.[2] ?? 0);
+  return altitude > 0 ? altitude : 30;
+}
+
+function withAltitude(position, altitude) {
+  const normalized = resolveAgentPosition({ initial_position: position });
+  return [normalized[0], normalized[1], altitude];
+}
+
+function isCoordinate3d(value) {
+  return (
+    Array.isArray(value) &&
+    value.length === 3 &&
+    value.every((item) => typeof item === 'number' && !Number.isNaN(item))
+  );
+}
+
+function isCoordinateCollection(value) {
+  return Array.isArray(value) && value.length > 0 && value.every((item) => isCoordinate3d(item));
+}
+
+function isPayloadCollection(value) {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        !Array.isArray(item) &&
+        typeof item.id === 'string' &&
+        item.id
+    )
+  );
+}
+
+function isCompatibleWorkflowOwner(definition, agent) {
+  const workflowType = normalizeWorkflowTypeToken(definition?.id || definition?.name);
+  const agentType = normalizeAgentTypeToken(agent?.type);
+  if (workflowType === 'logistics') {
+    return agentType === 'deliverydrone' || agentType === 'delivery';
+  }
+  if (['inspection', 'charging', 'imageprocessing'].includes(workflowType)) {
+    return agentType === 'drone' || agentType === 'deliverydrone';
+  }
+  return true;
+}
+
+function selectWorkflowOwnerId(definition, agents = [], preferredAgentId = '') {
+  const preferred = (agents || []).find((agent) => agent.id === preferredAgentId);
+  if (preferred && isCompatibleWorkflowOwner(definition, preferred)) {
+    return preferred.id;
+  }
+  const compatible = (agents || []).find((agent) => isCompatibleWorkflowOwner(definition, agent));
+  if (compatible) {
+    return compatible.id;
+  }
+  return preferred?.id || agents?.[0]?.id || '';
+}
+
+function selectLogisticsStations(agents = []) {
+  const deliveryStations = (agents || []).filter(
+    (agent) => normalizeAgentTypeToken(agent?.type) === 'deliverystation'
+  );
+  if (deliveryStations.length >= 1) {
+    return {
+      source: deliveryStations[0],
+      target: deliveryStations[1] || deliveryStations[0],
+    };
+  }
+  const stations = (agents || []).filter((agent) =>
+    normalizeAgentTypeToken(agent?.type).includes('station')
+  );
+  return {
+    source: stations[0] || null,
+    target: stations[1] || stations[0] || null,
+  };
+}
+
+function buildWorkflowProperties(
+  definition,
+  workflowAgentId,
+  agents = [],
+  index = 0,
+  currentProperties = {}
+) {
+  const properties = mergeTemplateDefaults(definition.property_templates || {}, currentProperties);
+  const normalized = normalizeWorkflowTypeToken(definition?.id || definition?.name);
+  const workflowAgent = (agents || []).find((agent) => agent.id === workflowAgentId) || null;
+
+  if (normalized === 'inspection') {
+    if (isCoordinateCollection(currentProperties.inspection_points)) {
+      return properties;
+    }
+    const [x, y, z] = resolveAgentPosition(workflowAgent);
+    return {
+      ...properties,
+      inspection_points: [
+        [x + 40, y, z || 30],
+        [x + 40, y + 40, z || 30],
+      ],
+    };
+  }
+
+  if (normalized === 'imageprocessing') {
+    if (isCoordinateCollection(currentProperties.sensing_locations)) {
+      return properties;
+    }
+    const [x, y, z] = resolveAgentPosition(workflowAgent);
+    return {
+      ...properties,
+      sensing_locations: [
+        [x + 30, y, z || 30],
+        [x + 60, y + 20, z || 30],
+      ],
+    };
+  }
+
+  if (normalized !== 'logistics') {
+    return properties;
+  }
+
+  const altitude = resolveWorkflowFlightAltitude(workflowAgent);
+  const { source, target } = selectLogisticsStations(agents);
+  const sourceAgentId =
+    (agents || []).some((agent) => agent.id === currentProperties.source_agent_id)
+      ? currentProperties.source_agent_id
+      : source?.id || '';
+  const targetAgentId =
+    (agents || []).some((agent) => agent.id === currentProperties.target_agent_id)
+      ? currentProperties.target_agent_id
+      : target?.id || '';
+  const sourceAgent = (agents || []).find((agent) => agent.id === sourceAgentId) || source || null;
+  const targetAgent = (agents || []).find((agent) => agent.id === targetAgentId) || target || null;
+
+  return {
+    ...properties,
+    pickup_location: isCoordinate3d(currentProperties.pickup_location)
+      ? cloneValue(currentProperties.pickup_location)
+      : withAltitude(resolveAgentPosition(sourceAgent || workflowAgent), altitude),
+    delivery_location: isCoordinate3d(currentProperties.delivery_location)
+      ? cloneValue(currentProperties.delivery_location)
+      : withAltitude(resolveAgentPosition(targetAgent || workflowAgent), altitude),
+    payloads: isPayloadCollection(currentProperties.payloads)
+      ? cloneValue(currentProperties.payloads)
+      : [
+          {
+            id: `payload_${index + 1}`,
+            description: 'Starter logistics payload',
+          },
+        ],
+    source_agent_id: sourceAgentId,
+    target_agent_id: targetAgentId,
+  };
+}
+
 function buildAgentInstance(definition, index) {
   const definitionRef = buildDefinitionRef('agents', definition);
+  const initialPosition = defaultInitialPositionForDefinition(definition, index);
+  const properties = mergeTemplateDefaults(
+    definition.state_templates || {},
+    {},
+    definition.default_properties || {}
+  );
+  if (properties.position === undefined) {
+    properties.position = initialPosition;
+  }
   return {
     id: `agent_${index + 1}`,
     name: resolveDefinitionName(definition, 'en-US') || `Agent ${index + 1}`,
@@ -110,19 +316,16 @@ function buildAgentInstance(definition, index) {
     version: definition.version || null,
     definition_ref: definitionRef,
     registry_ref: definitionRef,
-    initial_position: [40 + index * 40, 60 + index * 20, 10],
+    initial_position: initialPosition,
     initial_battery: 100,
-    components: (definition.compatible_components || []).slice(0, 2),
-    properties: mergeTemplateDefaults(
-      definition.state_templates || {},
-      {},
-      definition.default_properties || {}
-    ),
+    components: defaultComponentsForDefinition(definition),
+    properties,
   };
 }
 
-function buildWorkflowInstance(definition, agentId, index) {
+export function buildWorkflowInstance(definition, agents = [], index = 0, preferredAgentId = '') {
   const definitionRef = buildDefinitionRef('workflows', definition);
+  const workflowAgentId = selectWorkflowOwnerId(definition, agents, preferredAgentId);
   return {
     id: `workflow_${index + 1}`,
     name: resolveDefinitionName(definition, 'en-US') || `Workflow ${index + 1}`,
@@ -131,9 +334,9 @@ function buildWorkflowInstance(definition, agentId, index) {
     version: definition.version || null,
     definition_ref: definitionRef,
     registry_ref: definitionRef,
-    agent_id: agentId || '',
+    agent_id: workflowAgentId,
     enabled: true,
-    properties: mergeTemplateDefaults(definition.property_templates || {}),
+    properties: buildWorkflowProperties(definition, workflowAgentId, agents, index),
   };
 }
 
@@ -245,7 +448,9 @@ function TemplateEditor({ templates, values, onChange }) {
 function WorkflowStudioPage() {
   const { locale, t } = useI18n();
   const {
+    authoritativeActionsEnabled,
     draftConfig,
+    displayOnlyFallbackMode,
     setDraftConfig,
     saveDraft,
     runReview,
@@ -405,11 +610,16 @@ function WorkflowStudioPage() {
     (agent) =>
       catalog.agents.find(
         (definition) =>
-          definition.id === (agent?.definition_ref?.definition_id || agent?.type) &&
+          normalizeAgentTypeToken(definition.id) ===
+            normalizeAgentTypeToken(agent?.definition_ref?.definition_id || agent?.type) &&
           definition.source === (agent?.definition_ref?.source || agent?.source || 'builtin') &&
           (!agent?.definition_ref?.version ||
             definition.version === agent.definition_ref.version)
-      ) || catalog.agents.find((definition) => definition.id === agent?.type),
+      ) ||
+      catalog.agents.find(
+        (definition) =>
+          normalizeAgentTypeToken(definition.id) === normalizeAgentTypeToken(agent?.type)
+      ),
     [catalog.agents]
   );
 
@@ -417,12 +627,20 @@ function WorkflowStudioPage() {
     (workflow) =>
       catalog.workflows.find(
         (definition) =>
-          definition.id === (workflow?.definition_ref?.definition_id || workflow?.type) &&
+          normalizeWorkflowTypeToken(definition.id) ===
+            normalizeWorkflowTypeToken(
+              workflow?.definition_ref?.definition_id || workflow?.type
+            ) &&
           definition.source ===
             (workflow?.definition_ref?.source || workflow?.source || 'builtin') &&
           (!workflow?.definition_ref?.version ||
             definition.version === workflow.definition_ref.version)
-      ) || catalog.workflows.find((definition) => definition.id === workflow?.type),
+      ) ||
+      catalog.workflows.find(
+        (definition) =>
+          normalizeWorkflowTypeToken(definition.id) ===
+            normalizeWorkflowTypeToken(workflow?.type)
+      ),
     [catalog.workflows]
   );
 
@@ -509,7 +727,7 @@ function WorkflowStudioPage() {
         ...(currentDraft?.workflows || []),
         buildWorkflowInstance(
           definition,
-          currentDraft?.agents?.[0]?.id || '',
+          currentDraft?.agents || [],
           (currentDraft?.workflows || []).length
         ),
       ],
@@ -569,7 +787,7 @@ function WorkflowStudioPage() {
       width: 240,
       render: (_value, row) => (
         <Select
-          value={row.definition_ref?.definition_id || row.type}
+          value={findAgentDefinition(row)?.id || row.definition_ref?.definition_id || row.type}
           style={{ width: '100%' }}
           options={agentOptions}
           onChange={(definitionId) => {
@@ -584,10 +802,7 @@ function WorkflowStudioPage() {
               version: definition.version || null,
               definition_ref: definitionRef,
               registry_ref: definitionRef,
-              components: filterCompatibleComponents(
-                row.components,
-                definition.compatible_components
-              ),
+              components: filterCompatibleComponents(row.components, definition),
               properties: mergeTemplateDefaults(
                 definition.state_templates || {},
                 row.properties || {},
@@ -654,7 +869,7 @@ function WorkflowStudioPage() {
       width: 240,
       render: (_value, row) => (
         <Select
-          value={row.definition_ref?.definition_id || row.type}
+          value={findWorkflowDefinition(row)?.id || row.definition_ref?.definition_id || row.type}
           style={{ width: '100%' }}
           options={workflowOptions}
           onChange={(definitionId) => {
@@ -663,14 +878,26 @@ function WorkflowStudioPage() {
               return;
             }
             const definitionRef = buildDefinitionRef('workflows', definition);
+            const workflowIndex = (draftConfig?.workflows || []).findIndex(
+              (workflow) => workflow.id === row.id
+            );
+            const agentId = selectWorkflowOwnerId(
+              definition,
+              draftConfig?.agents || [],
+              row.agent_id
+            );
             updateWorkflowRow(row.id, {
               type: definition.id,
               source: definition.source || 'builtin',
               version: definition.version || null,
               definition_ref: definitionRef,
               registry_ref: definitionRef,
-              properties: mergeTemplateDefaults(
-                definition.property_templates || {},
+              agent_id: agentId,
+              properties: buildWorkflowProperties(
+                definition,
+                agentId,
+                draftConfig?.agents || [],
+                workflowIndex >= 0 ? workflowIndex : 0,
                 row.properties || {}
               ),
             });
@@ -769,7 +996,11 @@ function WorkflowStudioPage() {
             <div className="editor-field">
               <Text strong>{t('agentType')}</Text>
               <Select
-                value={selectedAgent.definition_ref?.definition_id || selectedAgent.type}
+                value={
+                  selectedAgentDefinition?.id ||
+                  selectedAgent.definition_ref?.definition_id ||
+                  selectedAgent.type
+                }
                 options={agentOptions}
                 onChange={(definitionId) => {
                   const definition = catalog.agents.find((item) => item.id === definitionId);
@@ -783,10 +1014,7 @@ function WorkflowStudioPage() {
                     version: definition.version || null,
                     definition_ref: definitionRef,
                     registry_ref: definitionRef,
-                    components: filterCompatibleComponents(
-                      selectedAgent.components,
-                      definition.compatible_components
-                    ),
+                    components: filterCompatibleComponents(selectedAgent.components, definition),
                     properties: mergeTemplateDefaults(
                       definition.state_templates || {},
                       selectedAgent.properties || {},
@@ -956,7 +1184,11 @@ function WorkflowStudioPage() {
             <div className="editor-field">
               <Text strong>{t('workflowType')}</Text>
               <Select
-                value={selectedWorkflow.definition_ref?.definition_id || selectedWorkflow.type}
+                value={
+                  selectedWorkflowDefinition?.id ||
+                  selectedWorkflow.definition_ref?.definition_id ||
+                  selectedWorkflow.type
+                }
                 options={workflowOptions}
                 onChange={(definitionId) => {
                   const definition = catalog.workflows.find((item) => item.id === definitionId);
@@ -964,14 +1196,26 @@ function WorkflowStudioPage() {
                     return;
                   }
                   const definitionRef = buildDefinitionRef('workflows', definition);
+                  const workflowIndex = (draftConfig?.workflows || []).findIndex(
+                    (workflow) => workflow.id === selectedWorkflow.id
+                  );
+                  const agentId = selectWorkflowOwnerId(
+                    definition,
+                    draftConfig?.agents || [],
+                    selectedWorkflow.agent_id
+                  );
                   updateWorkflowRow(selectedWorkflow.id, {
                     type: definition.id,
                     source: definition.source || 'builtin',
                     version: definition.version || null,
                     definition_ref: definitionRef,
                     registry_ref: definitionRef,
-                    properties: mergeTemplateDefaults(
-                      definition.property_templates || {},
+                    agent_id: agentId,
+                    properties: buildWorkflowProperties(
+                      definition,
+                      agentId,
+                      draftConfig?.agents || [],
+                      workflowIndex >= 0 ? workflowIndex : 0,
                       selectedWorkflow.properties || {}
                     ),
                   });
@@ -1117,10 +1361,16 @@ function WorkflowStudioPage() {
       <div className="workbench-page-head">
         <Title level={4}>{t('pageStudio')}</Title>
         <Space wrap>
-          <Button loading={validating} onClick={validateDraft}>
+          <Button loading={validating} disabled={!authoritativeActionsEnabled} onClick={validateDraft}>
             {t('validate')}
           </Button>
-          <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={saveConfig}>
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            loading={saving}
+            disabled={!authoritativeActionsEnabled}
+            onClick={saveConfig}
+          >
             {t('saveConfig')}
           </Button>
         </Space>
@@ -1128,6 +1378,15 @@ function WorkflowStudioPage() {
 
       {error ? <Alert type="error" showIcon message={error} style={{ marginBottom: 12 }} /> : null}
       {message ? <Alert type="info" showIcon message={message} style={{ marginBottom: 12 }} /> : null}
+      {displayOnlyFallbackMode ? (
+        <Alert
+          type="warning"
+          showIcon
+          message={t('authoritativeActionsDisabled')}
+          description={t('graphPreviewOfflineHint')}
+          style={{ marginBottom: 12 }}
+        />
+      ) : null}
 
       <div className="studio-grid">
         <div className="panel-stack">

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Button, Layout, Menu, Select, Space, Tag, Typography } from 'antd';
 import {
@@ -19,7 +19,6 @@ import OverviewPage from './pages/OverviewPage';
 import RunConsolePage from './pages/RunConsolePage';
 import TrajectoriesLogsPage from './pages/TrajectoriesLogsPage';
 import WorkflowStudioPage from './pages/WorkflowStudioPage';
-import { systemApi } from './services/workbenchApi';
 import './App.css';
 
 const { Header, Content, Footer, Sider } = Layout;
@@ -37,11 +36,20 @@ function resolveSelectedKey(pathname, items) {
 function AppShell() {
   const location = useLocation();
   const { locale, setLocale, t } = useI18n();
-  const { draftConfig, reviewResult, reviewGraph, reviewError, reviewing, runReview } = useWorkbench();
+  const {
+    authoritativeActionsEnabled,
+    displayOnlyFallbackMode,
+    draftConfig,
+    health,
+    healthError,
+    reviewResult,
+    reviewGraph,
+    reviewError,
+    reviewing,
+    runReview,
+  } = useWorkbench();
   const [collapsed, setCollapsed] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [health, setHealth] = useState(null);
-  const [healthError, setHealthError] = useState('');
 
   const navItems = useMemo(
     () => [
@@ -58,34 +66,6 @@ function AppShell() {
     () => resolveSelectedKey(location.pathname, navItems),
     [location.pathname, navItems]
   );
-
-  useEffect(() => {
-    let active = true;
-    const loadHealth = async () => {
-      try {
-        const nextHealth = await systemApi.getHealth();
-        if (!active) {
-          return;
-        }
-        setHealth(nextHealth);
-        setHealthError('');
-      } catch (error) {
-        if (!active) {
-          return;
-        }
-        setHealth(null);
-        setHealthError(error?.message || 'Backend unavailable');
-      }
-    };
-    loadHealth();
-    const timer = window.setInterval(() => {
-      loadHealth().catch(() => {});
-    }, 1000);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, []);
 
   return (
     <>
@@ -134,6 +114,9 @@ function AppShell() {
               <Tag color={healthError ? 'error' : 'green'}>
                 {healthError ? t('restUnavailable') : t('restHealthy')}
               </Tag>
+              {displayOnlyFallbackMode ? (
+                <Tag color="gold">{t('offlineDisplayMode')}</Tag>
+              ) : null}
               {health ? (
                 <Tag color="blue">{`${t('status')}: ${health.simulation_status}`}</Tag>
               ) : null}
@@ -155,6 +138,7 @@ function AppShell() {
                 type="primary"
                 icon={<SafetyCertificateOutlined />}
                 loading={reviewing}
+                disabled={!authoritativeActionsEnabled}
                 onClick={async () => {
                   setReviewOpen(true);
                   await runReview().catch(() => {});

@@ -12,6 +12,12 @@ const messages = {
     runtimePreflight: 'Runtime Preflight',
     restHealthy: 'REST Connected',
     restUnavailable: 'REST Unavailable',
+    offlineDisplayMode: 'Offline Display Mode',
+    authoritativeActionsDisabled: 'Backend-authoritative actions are disabled while the backend is unavailable.',
+    graphPreviewOfflineHint:
+      'Current forms, catalog data, and graph preview may come from local fallback data. Save, validate, review, and run actions stay disabled until REST connectivity returns.',
+    catalogOfflineHint:
+      'Builtin catalog and local registry fallback remain readable, but registry save/delete/validate stay disabled until the backend reconnects.',
     backendUnavailable: 'Backend unavailable',
     resetRuntime: 'Reset Runtime',
     startupFailure: 'Startup Failure',
@@ -72,6 +78,8 @@ const messages = {
     criticalPath: 'Critical Path',
     realtimeLogs: 'Realtime Logs',
     realtimeSpatial: 'Realtime 2D Spatial Snapshot',
+    realtimeSpatialHint:
+      'Marker positions come from live spatial snapshots. Workflow status text alone does not imply real movement.',
     noSpatial: 'No active run spatial data',
     noRun: 'No run started yet.',
     registry: 'Custom Registry',
@@ -127,6 +135,8 @@ const messages = {
     transitions: 'Transitions',
     emptyInspector: 'Select an agent, workflow row, or graph node to inspect definition details.',
     trajectoriesReplay: '2D Trajectory Replay',
+    trajectoryHint:
+      'Trajectories are recorded only when runtime positions actually change over time. A static map means no movement was captured.',
     runLogs: 'Run Logs',
     showingLogs: 'Showing {shown} / {total} log events',
     keyword: 'Keyword',
@@ -210,6 +220,12 @@ const messages = {
     runtimePreflight: '运行前预检',
     restHealthy: 'REST 已连接',
     restUnavailable: 'REST 不可用',
+    offlineDisplayMode: '离线显示模式',
+    authoritativeActionsDisabled: '后端不可用时，所有依赖后端权威结果的操作都会被禁用。',
+    graphPreviewOfflineHint:
+      '当前表单、目录数据和关系图预览可能来自本地 fallback，仅用于显示。保存、校验、全局评审和启动运行会一直禁用，直到 REST 连接恢复。',
+    catalogOfflineHint:
+      '内置目录和本地注册表 fallback 仍可浏览，但注册表的保存、删除和校验会保持禁用，直到后端恢复连接。',
     backendUnavailable: '后端不可用',
     resetRuntime: '重置运行时',
     startupFailure: '启动失败诊断',
@@ -270,6 +286,8 @@ const messages = {
     criticalPath: '关键路径',
     realtimeLogs: '实时日志',
     realtimeSpatial: '实时 2D 空间快照',
+    realtimeSpatialHint:
+      '地图上的标记位置来自实时 spatial snapshot，只有状态文本变化并不代表智能体真的发生了位移。',
     noSpatial: '当前没有可展示的空间数据',
     noRun: '还没有启动任何运行。',
     registry: '自定义注册表',
@@ -324,6 +342,8 @@ const messages = {
     transitions: '状态转换',
     emptyInspector: '选择智能体、工作流行或图节点以查看定义细节。',
     trajectoriesReplay: '2D 轨迹回放',
+    trajectoryHint:
+      '轨迹只会在运行时位置真实发生变化时写入；如果地图静止，说明当前没有捕获到实际位移。',
     runLogs: '运行日志',
     showingLogs: '显示 {shown} / {total} 条日志',
     keyword: '关键词',

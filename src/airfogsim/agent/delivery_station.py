@@ -58,7 +58,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
     负责生成和接收物品的固定位置代理，同时维护可用的无人机列表。
     """
 
-    def __init__(self, env, agent_name: str, properties: Optional[Dict] = None):
+    def __init__(self, env, agent_name: str, properties: Optional[Dict] = None, agent_id: Optional[str] = None):
         """
         初始化快递站代理
 
@@ -69,6 +69,7 @@ class DeliveryStation(Agent, metaclass=DeliveryStationMeta):
         """
         properties = properties or {}
         super().__init__(env, agent_name, properties)
+        self.id = agent_id or self.id
 
         # 初始化状态
         self.initialize_states(

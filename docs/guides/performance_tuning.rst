@@ -1,7 +1,9 @@
 Performance Tuning Guide
 ========================
 
-This guide covers techniques for optimizing AirFogSim performance for large-scale simulations and resource-constrained environments.
+This guide covers techniques for optimizing ``airfogsim`` runtime performance
+and the AeroAgentSim workbench experience for large-scale simulations and
+resource-constrained environments.
 
 Overview
 --------
@@ -41,35 +43,25 @@ Monitor these metrics to identify performance bottlenecks:
 Environment Optimization
 ------------------------
 
-Configuration Settings
-~~~~~~~~~~~~~~~~~~~~~~
+Current Public Tuning Surface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
    from airfogsim.core.environment import Environment
    
-   # Optimized environment configuration
-   env = Environment(config={
-       # Event processing optimization
-       'event_batching': True,
-       'batch_size': 100,
-       'max_events_per_tick': 1000,
-       
-       # Spatial optimization
-       'spatial_indexing': True,
-       'spatial_resolution': 50.0,
-       'use_octree': True,
-       
-       # Memory optimization
-       'garbage_collection_interval': 1000,
-       'event_history_limit': 10000,
-       'state_history_limit': 1000,
-       
-       # Parallel processing
-       'parallel_agents': True,
-       'worker_threads': 4,
-       'thread_pool_size': 8
-   })
+   # Prefer explicit constructor arguments and component/provider intervals.
+   env = Environment(visual_interval=10)
+
+The current public API does not expose a documented ``Environment(config=...)``
+dictionary for performance tuning. Prefer these levers instead:
+
+* reduce ``visual_interval`` updates when you do not need frequent frontend pushes
+* increase agent decision intervals and provider polling intervals
+* avoid attaching unnecessary components or overly chatty state updates
+* limit logging volume during large simulation runs
+* inspect per-run artifacts in ``runtime/aeroagentsim/runs/<run_id>/`` instead
+  of keeping extra in-memory debug state
 
 Event System Optimization
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -146,7 +138,7 @@ Efficient Agent Design
                return 30.0
 
 Memory Management
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -185,7 +177,7 @@ Memory Management
            gc.collect()
 
 Component Optimization
----------------------
+----------------------
 
 Efficient Component Design
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -235,7 +227,7 @@ Efficient Component Design
                self._task_pool.append(task)
 
 Resource Manager Optimization
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -273,7 +265,7 @@ Data Provider Optimization
 --------------------------
 
 Efficient Data Updates
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -318,7 +310,7 @@ Large-Scale Simulation Strategies
 ---------------------------------
 
 Agent Pooling
-~~~~~~~~~~~~
+~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -358,7 +350,7 @@ Agent Pooling
                self.available_agents.append(agent)
 
 Hierarchical Simulation
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -389,7 +381,7 @@ Monitoring and Profiling
 ------------------------
 
 Performance Monitoring
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -431,7 +423,7 @@ Performance Monitoring
            })
 
 Best Practices Summary
----------------------
+----------------------
 
 1. **Reduce Event Frequency**
    - Batch state updates

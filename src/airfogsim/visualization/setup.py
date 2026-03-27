@@ -14,7 +14,17 @@ from .environment import PausableEnvironment
 from .config import DEFAULT_AIRSPACE, DEFAULT_FREQUENCY, DEFAULT_LANDING_SPOT
 from .registry_service import RegistryService
 from .schemas import PreflightCheck, PreflightResult
-from .type_utils import canonical_agent_display_type, is_drone_type, normalize_workflow_type, normalize_agent_type
+from .type_utils import (
+    canonical_agent_display_type,
+    is_coordinate3d,
+    is_drone_type,
+    is_explicitly_unsupported_workbench_workflow_type,
+    is_supported_workbench_workflow_type,
+    is_station_type,
+    normalize_agent_type,
+    normalize_component_name,
+    normalize_workflow_type,
+)
 from airfogsim.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -55,13 +65,28 @@ def _normalize_agent_properties(
     agent_config: Dict[str, Any],
     proxy_defaults: Optional[Dict[str, Any]] = None,
 ) -> Tuple[List[float], float, Dict[str, Any]]:
+    raw_properties = dict(agent_config.get("properties", {}) or {})
     position = _normalize_position(
-        agent_config.get("position", agent_config.get("initial_position", [10.0, 10.0, 0.0]))
+        agent_config.get(
+            "position",
+            agent_config.get(
+                "initial_position",
+                raw_properties.get("position", [10.0, 10.0, 0.0]),
+            ),
+        )
     )
-    battery = float(agent_config.get("battery", agent_config.get("initial_battery", 100.0)))
+    battery = float(
+        agent_config.get(
+            "battery",
+            agent_config.get(
+                "initial_battery",
+                raw_properties.get("battery_level", 100.0),
+            ),
+        )
+    )
     properties = {
         **(proxy_defaults or {}),
-        **dict(agent_config.get("properties", {}) or {}),
+        **raw_properties,
     }
     properties.setdefault("position", position)
     properties.setdefault("battery_level", battery)
@@ -69,6 +94,64 @@ def _normalize_agent_properties(
     properties.setdefault("status", "idle")
     properties.setdefault("moving_status", "idle")
     return position, battery, properties
+
+
+def _default_component_names(agent_type: str) -> List[str]:
+    normalized = normalize_agent_type(agent_type)
+    if is_station_type(agent_type):
+        return []
+    if normalized in {"deliverydrone", "delivery"}:
+        return ["MoveToComponent", "LogisticsComponent", "ChargingComponent"]
+    if normalized == "drone":
+        return ["MoveToComponent", "ChargingComponent"]
+    return []
+
+
+def _agent_has_component(agent: Any, component_name: str) -> bool:
+    normalized_name = normalize_component_name(component_name)
+    if not normalized_name:
+        return False
+    return agent.get_component(normalized_name) is not None
+
+
+def _payload_exists_on_source(source_agent: Any, payload_id: str) -> bool:
+    if not source_agent or not payload_id:
+        return False
+    try:
+        return bool(source_agent.get_possessing_object(payload_id))
+    except Exception:
+        return False
+
+
+def _ensure_logistics_payloads(
+    env: PausableEnvironment,
+    source_agent: Any,
+    target_agent_id: str,
+    payloads: List[Dict[str, Any]],
+) -> None:
+    if not source_agent:
+        return
+    for payload in payloads:
+        payload_id = payload.get("id")
+        if not payload_id or _payload_exists_on_source(source_agent, payload_id):
+            continue
+        payload_properties = {
+            key: value
+            for key, value in payload.items()
+            if key not in {"id", "create_time", "source_agent_id", "target_agent_id"}
+        }
+        created_payload_id = env.payload_manager.create_payload(
+            source_agent.id,
+            target_agent_id,
+            {
+                "id": payload_id,
+                "properties": payload_properties,
+            },
+        )
+        source_agent.add_possessing_object(
+            created_payload_id,
+            env.payload_manager.get_payload(created_payload_id),
+        )
 
 
 def _validate_registry_proxies(config: Dict[str, Any]) -> Tuple[List[str], List[str]]:
@@ -469,9 +552,11 @@ def create_agent_from_config(env: PausableEnvironment, agent_config: Dict[str, A
             properties=normalized_properties,
         )
 
-        component_names = agent_config.get("components") or ["MoveToComponent", "ChargingComponent"]
-        if not component_names:
-            component_names = ["MoveToComponent", "ChargingComponent"]
+        component_names = agent_config.get("components")
+        if component_names is None:
+            component_names = _default_component_names(agent_class.__name__)
+        else:
+            component_names = list(component_names)
         for component_name in component_names:
             component_class = env.component_manager.get_component_class(component_name)
             if not component_class:
@@ -487,19 +572,21 @@ def create_agent_from_config(env: PausableEnvironment, agent_config: Dict[str, A
                     pass
 
         # 如果提供了数据服务，更新数据库
+        is_runtime_drone = isinstance(agent, DroneAgent)
         if data_service:
-            data_service.update_drone_state(
-                drone_id=agent_id,
-                position=position,
-                battery_level=battery,
-                status="idle",
-                speed=0.0,
-                sim_time=env.now
-            )
+            if is_runtime_drone:
+                data_service.update_drone_state(
+                    drone_id=agent_id,
+                    position=position,
+                    battery_level=battery,
+                    status="idle",
+                    speed=0.0,
+                    sim_time=env.now
+                )
             data_service.update_agent(
                 agent_id=agent_id,
                 name=agent_name,
-                type_=agent_type,
+                type_=agent.__class__.__name__,
                 position=position,
                 properties={
                     "battery": battery,
@@ -621,16 +708,12 @@ def create_workflow_from_config(env: PausableEnvironment, workflow_config: Dict[
                 or properties.get("waypoints")
                 or []
             )
-            if not waypoints:
-                # 默认路径
-                waypoints = [
-                    (10, 10, 100),
-                    (500, 500, 150),
-                    (10, 10, 100),
-                    (10, 10, 0)
-                ]
-                if log_event:
-                    log_event("WorkflowManager", "使用默认巡检路径点")
+            if not isinstance(waypoints, list) or not waypoints:
+                raise ValueError("Inspection workflow requires a non-empty inspection_points list.")
+            if any(not is_coordinate3d(point) for point in waypoints):
+                raise ValueError("Inspection workflow requires every inspection point to be a 3D coordinate.")
+            if not _agent_has_component(agent, "MoveToComponent"):
+                raise ValueError("Inspection workflow owner must enable MoveToComponent.")
             
             workflow = create_inspection_workflow(env, agent, waypoints)
             workflow.id = workflow_id
@@ -666,6 +749,16 @@ def create_workflow_from_config(env: PausableEnvironment, workflow_config: Dict[
                 "target_charge_level",
                 workflow_config.get("target_level", properties.get("target_charge_level", 90)),
             )
+            if not isinstance(battery_threshold, (int, float)) or not 0 <= float(battery_threshold) <= 100:
+                raise ValueError("Charging workflow requires battery_threshold between 0 and 100.")
+            if not isinstance(target_charge_level, (int, float)) or not 0 <= float(target_charge_level) <= 100:
+                raise ValueError("Charging workflow requires target_charge_level between 0 and 100.")
+            if float(battery_threshold) >= float(target_charge_level):
+                raise ValueError("Charging workflow requires battery_threshold to be lower than target_charge_level.")
+            if not _agent_has_component(agent, "MoveToComponent"):
+                raise ValueError("Charging workflow owner must enable MoveToComponent.")
+            if not _agent_has_component(agent, "ChargingComponent"):
+                raise ValueError("Charging workflow owner must enable ChargingComponent.")
             
             # 查找最近的充电站
             position3d = agent.get_state('position')
@@ -730,6 +823,30 @@ def create_workflow_from_config(env: PausableEnvironment, workflow_config: Dict[
             source_agent_id = properties.get("source_agent_id", workflow_config.get("source_agent_id", agent.id))
             target_agent_id = properties.get("target_agent_id", workflow_config.get("target_agent_id", agent.id))
 
+            if not is_coordinate3d(pickup_location):
+                raise ValueError("Logistics workflow requires a 3D pickup_location.")
+            if not is_coordinate3d(delivery_location):
+                raise ValueError("Logistics workflow requires a 3D delivery_location.")
+            if not isinstance(payloads, list) or not payloads or any(not isinstance(payload, dict) or not payload.get("id") for payload in payloads):
+                raise ValueError("Logistics workflow requires at least one payload with an id.")
+
+            source_agent = env.agents.get(source_agent_id)
+            if source_agent is None:
+                raise ValueError(f"Logistics workflow source agent {source_agent_id} does not exist.")
+            if env.agents.get(target_agent_id) is None:
+                raise ValueError(f"Logistics workflow target agent {target_agent_id} does not exist.")
+            if not _agent_has_component(agent, "MoveToComponent"):
+                raise ValueError("Logistics workflow owner must enable MoveToComponent.")
+            if not _agent_has_component(agent, "LogisticsComponent"):
+                raise ValueError("Logistics workflow owner must enable LogisticsComponent.")
+
+            _ensure_logistics_payloads(
+                env=env,
+                source_agent=source_agent,
+                target_agent_id=target_agent_id,
+                payloads=payloads,
+            )
+
             workflow = create_logistics_workflow(
                 env=env,
                 agent=agent,
@@ -769,6 +886,14 @@ def create_workflow_from_config(env: PausableEnvironment, workflow_config: Dict[
             sensing_locations = properties.get("sensing_locations", workflow_config.get("sensing_locations", []))
             image_resolution = properties.get("image_resolution", workflow_config.get("image_resolution", "1920x1080"))
             image_format = properties.get("image_format", workflow_config.get("image_format", "jpeg"))
+            if not isinstance(sensing_locations, list) or not sensing_locations:
+                raise ValueError("Image processing workflow requires a non-empty sensing_locations list.")
+            if any(not is_coordinate3d(location) for location in sensing_locations):
+                raise ValueError("Image processing workflow requires every sensing location to be a 3D coordinate.")
+            if not _agent_has_component(agent, "ImageSensingComponent"):
+                raise ValueError("Image processing workflow owner must enable ImageSensingComponent.")
+            if not _agent_has_component(agent, "ComputationComponent"):
+                raise ValueError("Image processing workflow owner must enable ComputationComponent.")
 
             workflow = create_image_processing_workflow(
                 env=env,
@@ -802,6 +927,17 @@ def create_workflow_from_config(env: PausableEnvironment, workflow_config: Dict[
 
             return workflow
         else:
+            if is_explicitly_unsupported_workbench_workflow_type(workflow_type) or not is_supported_workbench_workflow_type(workflow_type):
+                unsupported_message = (
+                    f"Builtin workflow type {workflow_config.get('type')} is not supported by the workbench runtime."
+                )
+                if log_event:
+                    log_event(
+                        "WorkflowManager",
+                        unsupported_message,
+                        "error"
+                    )
+                raise ValueError(unsupported_message)
             if log_event:
                 log_event(
                     "WorkflowManager", 

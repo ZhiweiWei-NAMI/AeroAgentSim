@@ -59,9 +59,17 @@ function runStatusColor(status) {
   return 'default';
 }
 
+function isSuccessfulTaskLog(log) {
+  return Boolean(
+    log?.event &&
+      String(log.event).toLowerCase().endsWith('task_completed') &&
+      (log.status === 'completed' || log.result?.status === 'completed')
+  );
+}
+
 function RunConsolePage() {
   const { t } = useI18n();
-  const { draftConfig, saveDraft } = useWorkbench();
+  const { authoritativeActionsEnabled, draftConfig, saveDraft } = useWorkbench();
   const [runs, setRuns] = useState([]);
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [status, setStatus] = useState(null);
@@ -356,7 +364,7 @@ function RunConsolePage() {
             type="primary"
             icon={<PlayCircleOutlined />}
             loading={loadingAction}
-            disabled={!restAvailable}
+            disabled={!restAvailable || !authoritativeActionsEnabled}
             onClick={startRun}
           >
             {t('startSimulation')}
@@ -460,12 +468,19 @@ function RunConsolePage() {
               </Tooltip>
             </Space>
           </div>
+          <Alert
+            type="info"
+            showIcon
+            message={t('realtimeSpatialHint')}
+            style={{ marginBottom: 12 }}
+          />
           {selectedRunId && spatial ? (
             <Map2D
               mode={spatial.coordinate_mode || selectedRun?.coordinate_mode || 'simulation_plane'}
               markers={spatial.agents || []}
               trajectories={[]}
               height={520}
+              testId="run-console-map"
               selectedMarkerId={selectedMarker?.id}
               onSelectMarker={setSelectedMarker}
             />
@@ -553,7 +568,7 @@ function RunConsolePage() {
                     {selectedMarker.workflow_id || '-'}
                   </Descriptions.Item>
                   <Descriptions.Item label={t('taskId')}>
-                    {selectedMarker.task_id || '-'}
+                    {selectedMarker.task_name || selectedMarker.task_id || '-'}
                   </Descriptions.Item>
                 </Descriptions>
                 <div className="map-meta">
@@ -578,15 +593,36 @@ function RunConsolePage() {
               columns={[
                 {
                   title: t('status'),
-                  dataIndex: 'level',
-                  width: 100,
-                  render: (value) => (
-                    <Tag color={value === 'error' ? 'error' : value === 'warning' ? 'warning' : 'blue'}>
-                      {value}
-                    </Tag>
+                  key: 'level',
+                  width: 120,
+                  render: (_value, row) => (
+                    <Space direction="vertical" size={4}>
+                      <Tag color={row.level === 'error' ? 'error' : row.level === 'warning' ? 'warning' : 'blue'}>
+                        {row.level}
+                      </Tag>
+                      {isSuccessfulTaskLog(row) ? <Tag color="success">task ok</Tag> : null}
+                    </Space>
                   ),
                 },
+                {
+                  title: 'Event',
+                  dataIndex: 'event',
+                  width: 200,
+                  render: (value) => value || '-',
+                },
                 { title: t('source'), dataIndex: 'source', width: 120 },
+                {
+                  title: t('taskId'),
+                  key: 'task_meta',
+                  width: 220,
+                  render: (_value, row) => row.task_name || row.task_id || '-',
+                },
+                {
+                  title: t('workflowType'),
+                  dataIndex: 'workflow_id',
+                  width: 180,
+                  render: (value) => value || '-',
+                },
                 { title: t('description'), dataIndex: 'message' },
               ]}
             />

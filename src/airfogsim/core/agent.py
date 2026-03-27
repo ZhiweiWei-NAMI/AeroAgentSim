@@ -24,6 +24,16 @@ from airfogsim.utils.logging_config import get_logger
 # 获取logger
 logger = get_logger(__name__)
 
+
+def _normalize_component_token(component_name: Optional[str]) -> str:
+    normalized = str(component_name or "").lower()
+    for marker in ("_", "-", " "):
+        normalized = normalized.replace(marker, "")
+    normalized = normalized.replace("component", "")
+    if normalized in {"imagesensing", "sensing"}:
+        return "sensing"
+    return normalized
+
 class StateTemplate:
     """状态模板定义"""
 
@@ -364,9 +374,25 @@ class Agent(metaclass=AgentMeta):
         return self
 
     from airfogsim.core.component import Component
+    def resolve_component_name(self, component_name: str) -> Optional[str]:
+        requested_name = str(component_name or "")
+        if requested_name in self.components:
+            return requested_name
+        if requested_name and not requested_name.endswith('Component'):
+            candidate = f"{requested_name}Component"
+            if candidate in self.components:
+                return candidate
+        normalized_requested = _normalize_component_token(requested_name)
+        for existing_name in self.components:
+            if _normalize_component_token(existing_name) == normalized_requested:
+                return existing_name
+        if requested_name:
+            return requested_name if requested_name.endswith('Component') else f"{requested_name}Component"
+        return None
+
     def get_component(self, component_name: str) -> Optional[Component]:
-        component_name_lower = component_name
-        return self.components.get(component_name_lower)
+        resolved_name = self.resolve_component_name(component_name)
+        return self.components.get(resolved_name)
     def get_components(self):
         return list(self.components.values())
     def get_component_names(self) -> List[str]:
@@ -546,6 +572,10 @@ class Agent(metaclass=AgentMeta):
 
     def _update_agent_status(self):
         """更新代理状态"""
+        current_status = self.get_state('status')
+        if current_status == 'error':
+            return
+
         # 检查所有组件是否有任何一个处于错误状态
         if any(component.is_error for component in self.components.values()):
             self.update_state('status', 'error')
@@ -596,25 +626,33 @@ class Agent(metaclass=AgentMeta):
         - 代理特定的状态更新
         - 特殊资源管理
         """
-        
-        if self.llm_client and self.llm_client.is_available():
-            queuing_tasks = self.llm_client.analyze_agent_tasks(self)
-        else:
-            queuing_tasks = self._process_workflow_tasks()
-        
-        # 将任务添加到队列
-        for task_info in queuing_tasks:
-            # 检查是否已经有相同的任务在队列中或正在执行
+        pass
+
+    def _queue_task_descriptors(self, task_descriptors):
+        """将任务描述统一写入任务队列，避免子类覆写后丢失工作流调度。"""
+        for task_info in task_descriptors or []:
+            if not isinstance(task_info, dict):
+                continue
+            normalized_task_info = {**task_info}
+            normalized_task_info['component'] = self.resolve_component_name(task_info.get('component'))
+            if self._is_task_in_queue(normalized_task_info) or self._is_task_being_executed(normalized_task_info):
+                continue
             self.add_task_to_queue(
-                priority=task_info.get('priority', None),
-                preemptive=task_info.get('preemptive', False),
-                component_name=task_info['component'],
-                task_name=task_info['task_name'],
-                task_class=task_info['task_class'],
-                target_state=task_info.get('target_state'),
-                properties=task_info.get('properties'),
-                workflow_id=task_info.get('workflow_id')
+                priority=normalized_task_info.get('priority', None),
+                preemptive=normalized_task_info.get('preemptive', False),
+                component_name=normalized_task_info['component'],
+                task_name=normalized_task_info['task_name'],
+                task_class=normalized_task_info['task_class'],
+                target_state=normalized_task_info.get('target_state'),
+                properties=normalized_task_info.get('properties'),
+                workflow_id=normalized_task_info.get('workflow_id')
             )
+
+    def _process_runtime_task_sources(self):
+        """统一处理工作流和 LLM 产生的任务建议。"""
+        if self.llm_client and self.llm_client.is_available():
+            self._queue_task_descriptors(self.llm_client.analyze_agent_tasks(self))
+        self._queue_task_descriptors(self._process_workflow_tasks())
 
     def cleanup(self):
         """清理代理资源，包括取消事件监听和触发器"""
@@ -651,7 +689,7 @@ class Agent(metaclass=AgentMeta):
         """检查任务是否已经在队列中"""
         for queued_task in self.task_queue:
             # 检查关键属性是否相同
-            if (queued_task['component_name'] == task_info['component'] and
+            if (self.resolve_component_name(queued_task['component_name']) == self.resolve_component_name(task_info['component']) and
                 queued_task['task_class'] == task_info['task_class'] and
                 queued_task['workflow_id'] == task_info.get('workflow_id')):
                 # 可以根据需要添加更多的属性比较
@@ -670,7 +708,7 @@ class Agent(metaclass=AgentMeta):
         """
         for _, managed_task in self.managed_tasks.items():
             # 检查关键属性是否相同
-            if (managed_task['component'] == task_info['component'] and
+            if (self.resolve_component_name(managed_task['component']) == self.resolve_component_name(task_info['component']) and
                 managed_task['task_name'] == task_info['task_name'] and
                 managed_task.get('task').workflow_id == task_info.get('workflow_id')):
                 return True
@@ -719,8 +757,9 @@ class Agent(metaclass=AgentMeta):
         properties['preemptive'] = preemptive
 
         # 创建任务信息
+        resolved_component_name = self.resolve_component_name(component_name)
         task_info = {
-            'component_name': component_name,
+            'component_name': resolved_component_name or component_name,
             'task_name': task_name,
             'task_class': task_class,
             'target_state': target_state or {},
@@ -858,8 +897,9 @@ class Agent(metaclass=AgentMeta):
             List: 任务信息列表
         """
         tasks = []
+        resolved_component_name = self.resolve_component_name(component_name)
         for _, task_info in self.managed_tasks.items():
-            if task_info['component'] == component_name and task_info['status'] == 'running':
+            if task_info['component'] == resolved_component_name and task_info['status'] == 'running':
                 task = task_info['task']
                 task_data = {
                     'id': task.id,
@@ -1005,6 +1045,7 @@ class Agent(metaclass=AgentMeta):
                 yield self.env.timeout(self.scheduling_interval)
             # 执行代理特定的逻辑
             self._process_custom_logic()
+            self._process_runtime_task_sources()
 
     # --- Task Execution Management ---
     from .task import Task
@@ -1027,8 +1068,9 @@ class Agent(metaclass=AgentMeta):
             })
             return None  # Return None for failure
 
+        resolved_component_name = component.name
         # Create the task instance
-        task = self.task_manager.create_task(task_class, self, component_name,
+        task = self.task_manager.create_task(task_class, self, resolved_component_name,
                                              task_name, workflow_id, target_state=target_state,
                                              properties=properties, task_id=task_id)
         task_id = task.id
@@ -1040,7 +1082,7 @@ class Agent(metaclass=AgentMeta):
         self.managed_tasks[task_id] = {
             'task': task,
             'process': monitor_proc,
-            'component': component_name,
+            'component': resolved_component_name,
             'task_name': task_name,
             'status': 'running',
             'start_time': self.env.now

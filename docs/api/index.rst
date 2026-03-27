@@ -1,7 +1,9 @@
 API Reference
 =============
 
-This section provides comprehensive API documentation for all AirFogSim classes and functions.
+This section provides comprehensive API documentation for the current
+``airfogsim`` package. The AeroAgentSim workbench is built on top of these
+runtime primitives.
 
 .. toctree::
    :maxdepth: 2
@@ -16,7 +18,6 @@ This section provides comprehensive API documentation for all AirFogSim classes 
    task
    resource
    statistics
-   visualization
    utils
 
 Overview
@@ -51,12 +52,12 @@ High-level coordination and process management:
 * :doc:`dataprovider` - External data integration
 
 Utilities and Extensions
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Supporting functionality and tools:
 
 * :doc:`statistics` - Data collection and analysis
-* :doc:`visualization` - Dashboard and monitoring
+* The AeroAgentSim workbench is documented in the top-level guides and uses the ``airfogsim.visualization`` FastAPI app rather than a separate Sphinx API page
 * :doc:`utils` - Utility functions and helpers
 
 Quick Reference
@@ -99,7 +100,7 @@ Component Types
    airfogsim.component.charging.ChargingComponent
    airfogsim.component.communication.CommunicationComponent
    airfogsim.component.computation.ComputationComponent
-   airfogsim.component.img_sensor.ImageSensorComponent
+   airfogsim.component.img_sensor.ImageSensingComponent
    airfogsim.component.em_sensor.EMSensingComponent
    airfogsim.component.object_sensor.ObjectSensorComponent
 
@@ -153,8 +154,11 @@ Creating Agents
    from airfogsim.agent import DroneAgent
    
    env = Environment()
-   drone = env.create_agent(DroneAgent, "drone1", 
-                           initial_position=(0, 0, 100))
+   drone = env.create_agent(
+       DroneAgent,
+       "drone1",
+       properties={"position": [0, 0, 100], "battery_level": 100},
+   )
 
 Adding Components
 ~~~~~~~~~~~~~~~~~
@@ -172,8 +176,13 @@ Executing Tasks
 .. code-block:: python
 
    # Execute a movement task
-   task = drone.execute_task("MoveToTask", 
-                            target_position=(100, 100, 50))
+   task = drone.execute_task(
+       "MoveTo",
+       "Move to waypoint",
+       "MoveToTask",
+       target_state={"position": (100, 100, 50)},
+       properties={"target_position": (100, 100, 50)},
+   )
 
 Creating Workflows
 ~~~~~~~~~~~~~~~~~~
@@ -183,8 +192,9 @@ Creating Workflows
    from airfogsim.workflow.inspection import create_inspection_workflow
    
    workflow = create_inspection_workflow(
-       env, "inspection1", drone,
-       waypoints=[(0, 0, 100), (50, 50, 100), (100, 100, 100)]
+       env,
+       drone,
+       [(0, 0, 100), (50, 50, 100), (100, 100, 100)],
    )
 
 For more detailed examples, see the :doc:`../examples` section.

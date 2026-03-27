@@ -1,33 +1,46 @@
-# --- Databases ---
-# Ignore all files ending with .db anywhere in the project
+# --- Databases and Runtime State ---
 *.db
-paper_code/
-benchmark/
-stats_data/
-paper.*
-response_to_JOSS/
+*.sqlite
+*.db-shm
+*.db-wal
+runtime/
+logs/
+*.log
+optimization_log.txt
 
-# --- Compressed Archives ---
-# Ignore all tar.gz files anywhere in the project
+# --- Project-specific generated data ---
+# --- Research / experimental code (not part of platform delivery) ---
+paper_code/
+TCCN_auto_planner/
+pddl_planner/
+examples/
+data/
+
+# --- Project-specific generated data ---
+TCCN_auto_planner/model_cache/
+TCCN_auto_planner/data/
+data/cache/
+data/generated/
+data/output/
+
+# --- Archives ---
 *.tar.gz
 
-# --- Python specific ---
-# Ignore Python bytecode cache directories and contents
+# --- Python ---
 __pycache__/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 *.py[cod]
-*.egg-info/
 *$py.class
 *.so
 .Python
 build/
-develop-eggs/
 dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+develop-eggs/
 parts/
 sdist/
 var/
@@ -35,29 +48,29 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-latex/
+htmlcov/
+.coverage
 
-# --- Virtual Environment ---
+# --- Virtual environments ---
 venv/
 env/
 ENV/
 .env
-.venv
+.venv/
 
-# --- IDE specific files ---
+# --- IDE and OS ---
 .idea/
 .vscode/
 *.swp
 *.swo
 .DS_Store
 
-# --- Frontend specific ---
+# --- Frontend build artifacts ---
 frontend/node_modules/
 frontend/.pnp
 frontend/.pnp.js
-frontend/coverage
-frontend/build
-frontend/.DS_Store
+frontend/coverage/
+frontend/build/
 frontend/.env.local
 frontend/.env.development.local
 frontend/.env.test.local
@@ -66,16 +79,7 @@ frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
 
-# --- Custom ---
+# --- Local tooling ---
 .clinerules
-dev_plan/
-
-# --- Paper related ---
-paper.md
-paper.bib
-paper_refs.txt
-bib_refs.txt
-airfogsim_paper.pdf
-large_scale_image_transfer_results.png
-file_renaming_plan.txt
-package-lock.json
+=1.21.0
+# dev_plan/

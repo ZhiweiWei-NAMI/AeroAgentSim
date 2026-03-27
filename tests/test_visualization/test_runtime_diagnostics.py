@@ -32,6 +32,59 @@ def test_default_snapshot_preflight_is_ready(monkeypatch, tmp_path):
     assert statuses["resources"] in {"pass", "warning"}
 
 
+def test_default_snapshot_is_not_shadowed_by_latest_saved_config(monkeypatch, tmp_path):
+    _app_module, client = load_visualization_app(monkeypatch, tmp_path)
+
+    save_response = client.put(
+        "/api/configs/custom-broken",
+        json={
+            "name": "Broken Logistics Config",
+            "coordinate_mode": "simulation_plane",
+            "traffic": {},
+            "agents": [
+                {
+                    "id": "agent_2",
+                    "name": "Agent 2",
+                    "type": "delivery_drone_agent",
+                    "initial_position": [0, 0, 30],
+                    "initial_battery": 90,
+                    "components": ["MoveToComponent", "LogisticsComponent"],
+                    "properties": {},
+                }
+            ],
+            "workflows": [
+                {
+                    "id": "workflow_2",
+                    "name": "Broken Workflow",
+                    "type": "logistics_workflow",
+                    "agent_id": "agent_2",
+                    "enabled": True,
+                    "properties": {
+                        "pickup_location": [],
+                        "delivery_location": [],
+                        "payloads": [],
+                        "source_agent_id": "",
+                        "target_agent_id": "",
+                    },
+                }
+            ],
+        },
+    )
+
+    assert save_response.status_code == 200
+
+    default_response = client.get("/api/configs/default")
+    assert default_response.status_code == 200
+    payload = default_response.json()
+    assert payload["config_id"] == "default"
+    assert payload["workflows"][0]["properties"]["source_agent_id"] == "station_source"
+    assert payload["workflows"][0]["properties"]["target_agent_id"] == "station_target"
+
+    preflight_response = client.post("/api/configs/default/preflight")
+    assert preflight_response.status_code == 200
+    assert preflight_response.json()["is_ready"] is True
+
+
 def test_preflight_failure_creates_error_run_and_reset_endpoint(monkeypatch, tmp_path):
     _app_module, client = load_visualization_app(monkeypatch, tmp_path)
 

@@ -27,7 +27,12 @@ from .schemas import (
     WorkflowTypeDefinition,
 )
 from .setup import setup_environment_resources
-from .type_utils import normalize_agent_type, normalize_workflow_type
+from .type_utils import (
+    is_supported_workbench_workflow_type,
+    normalize_agent_type,
+    normalize_component_name,
+    normalize_workflow_type,
+)
 
 
 def _model_dump(value: Any) -> Dict[str, Any]:
@@ -38,6 +43,17 @@ def _model_dump(value: Any) -> Dict[str, Any]:
 
 def _normalize_name(name: str) -> str:
     return normalize_workflow_type(normalize_agent_type(name))
+
+
+def _sanitize_catalog_value(value: Any) -> Any:
+    if callable(value):
+        name = getattr(value, "__name__", None) or value.__class__.__name__
+        return f"<callable:{name}>"
+    if isinstance(value, dict):
+        return {key: _sanitize_catalog_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_sanitize_catalog_value(item) for item in value]
+    return value
 
 
 class CatalogService:
@@ -242,6 +258,8 @@ class CatalogService:
     def get_builtin_workflows(self) -> Tuple[WorkflowTypeDefinition, ...]:
         definitions: List[WorkflowTypeDefinition] = []
         for workflow_class in workflow_pkg.get_all_workflow_classes():
+            if not is_supported_workbench_workflow_type(workflow_class.__name__):
+                continue
             try:
                 definitions.append(self._preview_workflow_definition(workflow_class))
             except Exception:
@@ -435,7 +453,7 @@ class CatalogService:
         }
         for attr in ("state_key", "event_name", "value_key", "trigger_time", "interval"):
             if hasattr(trigger, attr):
-                payload["config"][attr] = getattr(trigger, attr)
+                payload["config"][attr] = _sanitize_catalog_value(getattr(trigger, attr))
         if hasattr(trigger, "state_key"):
             payload["source_ref"] = getattr(trigger, "state_key")
         elif hasattr(trigger, "event_name"):
@@ -444,7 +462,7 @@ class CatalogService:
             operator = getattr(trigger, "operator")
             payload["operator"] = getattr(operator, "value", str(operator))
         if hasattr(trigger, "target_value"):
-            payload["target_value"] = getattr(trigger, "target_value")
+            payload["target_value"] = _sanitize_catalog_value(getattr(trigger, "target_value"))
         return TriggerCondition(**payload)
 
     def _compute_critical_path(
@@ -556,9 +574,4 @@ class CatalogService:
         return env
 
     def _normalize_component_name(self, component_name: Optional[str]) -> Optional[str]:
-        if component_name in {None, ""}:
-            return component_name
-        name = str(component_name)
-        if name.endswith("Component"):
-            return name
-        return f"{name}Component"
+        return normalize_component_name(component_name)

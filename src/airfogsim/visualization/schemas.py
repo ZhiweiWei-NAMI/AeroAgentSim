@@ -279,6 +279,7 @@ class SpatialAgentSnapshot(BaseModel):
     status: str = "unknown"
     current_workflow: Optional[str] = None
     current_task: Optional[str] = None
+    current_task_id: Optional[str] = None
     color: str = "#2f6fed"
     recent_log: Optional[str] = None
 

@@ -157,7 +157,8 @@ class TerminalAgent(Agent, metaclass=TerminalAgentMeta):
             self.update_state('object_sensing_status', 'idle')  # 障碍物感知状态
             self.update_state('sensing_progress', 0.0)
             self.update_state('sensing_speed', 0.0)
-            self.update_state('status', 'idle')
+            if self.get_state('status') != 'error':
+                self.update_state('status', 'idle')
 
 
     def register_event_listeners(self):

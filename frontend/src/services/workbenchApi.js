@@ -17,46 +17,89 @@ const apiClient = axios.create({
 export const MOCK_CONFIG_ID = 'default';
 
 const LS_CONFIGS_KEY = 'aeroagentsim.configs';
-const LS_RUNS_KEY = 'aeroagentsim.runs';
 const LS_REGISTRY_KEY = 'aeroagentsim.registry';
+const CONNECTIVITY_ERROR_CODES = new Set(['ERR_NETWORK', 'ECONNABORTED', 'ETIMEDOUT']);
+const SUPPORTED_WORKBENCH_WORKFLOW_TOKENS = new Set([
+  'inspection',
+  'charging',
+  'logistics',
+  'imageprocessing',
+]);
 
 const defaultConfig = {
   config_id: MOCK_CONFIG_ID,
-  name: 'AeroAgentSim Config',
+  name: 'AeroAgentSim Logistics Config',
   coordinate_mode: 'simulation_plane',
   metadata: {
-    name: 'AeroAgentSim Config',
+    name: 'AeroAgentSim Logistics Config',
     updated_at: new Date().toISOString(),
   },
   traffic: {},
   agents: [
     {
-      id: 'agent_drone_1',
-      name: 'Survey Drone A1',
-      type: 'drone',
+      id: 'station_source',
+      name: 'Source Station',
+      type: 'delivery_station',
       registry_ref: null,
-      initial_position: [120, 240, 40],
-      initial_battery: 87,
-      components: ['MoveToComponent', 'ChargingComponent'],
+      initial_position: [20, 40, 0],
+      initial_battery: 100,
+      components: [],
       properties: {
-        battery_level: 87,
+        position: [20, 40, 0],
+        storage_capacity: 20,
+        service_radius: 120,
+      },
+    },
+    {
+      id: 'station_target',
+      name: 'Target Station',
+      type: 'delivery_station',
+      registry_ref: null,
+      initial_position: [240, 180, 0],
+      initial_battery: 100,
+      components: [],
+      properties: {
+        position: [240, 180, 0],
+        storage_capacity: 20,
+        service_radius: 120,
+      },
+    },
+    {
+      id: 'delivery_drone_alpha',
+      name: 'Delivery Drone Alpha',
+      type: 'delivery_drone_agent',
+      registry_ref: null,
+      initial_position: [120, 20, 30],
+      initial_battery: 92,
+      components: ['MoveToComponent', 'LogisticsComponent', 'ChargingComponent'],
+      properties: {
+        battery_level: 92,
+        max_payload_weight: 5,
+        max_payload_volume: 1,
       },
     },
   ],
   workflows: [
     {
-      id: 'workflow_inspection_1',
-      name: 'Inspection Path Alpha',
-      type: 'inspection',
+      id: 'workflow_logistics_1',
+      name: 'Logistics Path Alpha',
+      type: 'logistics_workflow',
       registry_ref: null,
-      agent_id: 'agent_drone_1',
+      agent_id: 'delivery_drone_alpha',
       enabled: true,
       properties: {
-        inspection_points: [
-          [120, 240, 40],
-          [180, 260, 60],
-          [240, 220, 50],
+        pickup_location: [20, 40, 30],
+        delivery_location: [240, 180, 30],
+        payloads: [
+          {
+            id: 'payload_demo',
+            weight: 1.2,
+            dimensions: [0.25, 0.15, 0.1],
+            description: 'Starter logistics payload',
+          },
         ],
+        source_agent_id: 'station_source',
+        target_agent_id: 'station_target',
       },
     },
   ],
@@ -166,6 +209,29 @@ const defaultCatalog = {
         'EMSensingComponent',
         'ObjectSensorComponent',
       ],
+    },
+    {
+      id: 'delivery_station',
+      name: 'DeliveryStation',
+      description: 'Stationary logistics hub that stores payloads and acts as a logistics source or sink',
+      source: 'builtin',
+      version: 'builtin',
+      state_templates: {
+        position: { value_type: 'list', required: true },
+        storage_capacity: { value_type: 'int', required: true, default: 100 },
+        current_storage: { value_type: 'int', required: true, default: 0 },
+        service_radius: { value_type: 'float', required: true, default: 50 },
+        registered_logistics_drones: { value_type: 'list', required: false, default: [] },
+        payload_generation_model: { value_type: 'dict', required: false, default: { properties: {} } },
+      },
+      compatible_components: [],
+      default_properties: {
+        storage_capacity: 100,
+        current_storage: 0,
+        service_radius: 50,
+        registered_logistics_drones: [],
+        payload_generation_model: { properties: {} },
+      },
     },
   ],
   components: [
@@ -381,35 +447,6 @@ const defaultCatalog = {
       states: ['idle', 'moving_to_location', 'sensing', 'processing', 'transferring', 'completed'],
       start_state: 'idle',
     },
-    {
-      id: 'contract_workflow',
-      name: 'ContractWorkflow',
-      description: 'Contract workflow managing multi-task execution flows',
-      source: 'builtin',
-      version: 'builtin',
-      property_templates: {
-        contract_id: { value_type: 'str', required: true },
-        tasks: { value_type: 'list', required: true },
-      },
-      states: ['idle', 'executing', 'completed', 'failed'],
-      start_state: 'idle',
-    },
-    {
-      id: 'order_execution_workflow',
-      name: 'OrderExecutionWorkflow',
-      description: 'Order execution workflow managing logistics order generation, assignment and delivery monitoring',
-      source: 'builtin',
-      version: 'builtin',
-      property_templates: {
-        payload_properties: { value_type: 'dict', required: true },
-        delivery_location: { value_type: 'list', required: true },
-        assigned_drone: { value_type: 'str', required: false },
-        target_agent_id: { value_type: 'str', required: false },
-        logistics_workflow_id: { value_type: 'str', required: false },
-      },
-      states: ['pending', 'assigned', 'in_transit', 'delivered', 'cancelled'],
-      start_state: 'pending',
-    },
   ],
   compatibility: {
     agent_components: {
@@ -424,6 +461,7 @@ const defaultCatalog = {
         'ComputationComponent', 'EMSensingComponent', 'ImageSensingComponent',
         'LogisticsComponent', 'MoveToComponent', 'ObjectSensorComponent',
       ],
+      delivery_station: [],
     },
     component_tasks: {
       MoveToComponent: ['move_to_task'],
@@ -441,19 +479,121 @@ const defaultCatalog = {
       charging_workflow: ['drone_agent', 'delivery_drone_agent'],
       logistics_workflow: ['delivery_agent', 'delivery_drone_agent'],
       image_processing_workflow: ['drone_agent', 'delivery_drone_agent'],
-      contract_workflow: ['drone_agent', 'delivery_agent', 'delivery_drone_agent'],
-      order_execution_workflow: ['delivery_agent', 'delivery_drone_agent'],
     },
     workflow_tasks: {
       inspection_workflow: ['move_to_task'],
       charging_workflow: ['charging_task', 'move_to_task', 'request_charging_station_task'],
       logistics_workflow: ['handover_task', 'move_to_task', 'pickup_task'],
       image_processing_workflow: ['file_collect_task', 'file_compute_task', 'file_transfer_task', 'move_to_task'],
-      contract_workflow: [],
-      order_execution_workflow: [],
     },
   },
 };
+
+function normalizeToken(value, ...stripWords) {
+  let normalized = String(value || '').toLowerCase();
+  ['_', '-', ' '].forEach((marker) => {
+    normalized = normalized.split(marker).join('');
+  });
+  stripWords.forEach((word) => {
+    normalized = normalized.split(String(word || '').toLowerCase()).join('');
+  });
+  return normalized;
+}
+
+function normalizeAgentTypeToken(agentType) {
+  return normalizeToken(agentType, 'agent');
+}
+
+function normalizeWorkflowTypeToken(workflowType) {
+  return normalizeToken(workflowType, 'workflow');
+}
+
+function isObjectLike(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function firstDefined(...values) {
+  return values.find((value) => value !== undefined && value !== null);
+}
+
+function isSupportedWorkbenchWorkflowReference(workflowRef, source = 'builtin') {
+  if (!workflowRef) {
+    return false;
+  }
+  if (source === 'custom' || String(workflowRef).includes('@')) {
+    return true;
+  }
+  return SUPPORTED_WORKBENCH_WORKFLOW_TOKENS.has(normalizeWorkflowTypeToken(workflowRef));
+}
+
+function filterSupportedWorkflowDefinitions(definitions) {
+  return (definitions || []).filter((definition) =>
+    isSupportedWorkbenchWorkflowReference(
+      definition?.id || definition?.type || definition?.name,
+      definition?.source || 'builtin'
+    )
+  );
+}
+
+function isCoordinate3d(value) {
+  return (
+    Array.isArray(value) &&
+    value.length === 3 &&
+    value.every((item) => typeof item === 'number' && !Number.isNaN(item))
+  );
+}
+
+function defaultComponentsForDefinition(definition) {
+  const compatible = new Set(definition?.compatible_components || []);
+  const normalized = normalizeAgentTypeToken(definition?.id || definition?.name);
+  let preferred = [];
+  if (normalized.includes('station')) {
+    preferred = [];
+  } else if (normalized === 'deliverydrone' || normalized === 'delivery') {
+    preferred = ['MoveToComponent', 'LogisticsComponent', 'ChargingComponent'];
+  } else if (normalized === 'drone') {
+    preferred = ['MoveToComponent', 'ChargingComponent'];
+  }
+  const filtered = preferred.filter((componentName) => compatible.has(componentName));
+  if (filtered.length > 0 || preferred.length === 0) {
+    return filtered;
+  }
+  return (definition?.compatible_components || []).slice(0, 2);
+}
+
+function resolveCatalogIdByToken(items, rawValue, normalizeValue) {
+  if (!rawValue) {
+    return rawValue;
+  }
+  const exactMatch = (items || []).find((item) =>
+    [item?.id, item?.type, item?.name].includes(rawValue)
+  );
+  if (exactMatch?.id) {
+    return exactMatch.id;
+  }
+  const normalized = normalizeValue(rawValue);
+  const tokenMatch = (items || []).find(
+    (item) => normalizeValue(item?.id || item?.type || item?.name) === normalized
+  );
+  return tokenMatch?.id || rawValue;
+}
+
+function normalizeBuiltinAgentTypeId(agentType) {
+  return resolveCatalogIdByToken(defaultCatalog.agents, agentType, normalizeAgentTypeToken);
+}
+
+function normalizeBuiltinWorkflowTypeId(workflowType) {
+  return resolveCatalogIdByToken(defaultCatalog.workflows, workflowType, normalizeWorkflowTypeToken);
+}
+
+function findBuiltinAgentDefinition(agentType) {
+  const normalized = normalizeAgentTypeToken(agentType);
+  return (
+    defaultCatalog.agents.find(
+      (definition) => normalizeAgentTypeToken(definition.id || definition.name) === normalized
+    ) || null
+  );
+}
 
 function readLocalJson(key, fallbackValue) {
   try {
@@ -513,14 +653,6 @@ function ensureLocalRegistry() {
 function saveLocalRegistry(registry) {
   writeLocalJson(LS_REGISTRY_KEY, registry);
   return registry;
-}
-
-function getLocalRuns() {
-  return readLocalJson(LS_RUNS_KEY, []);
-}
-
-function saveLocalRuns(runs) {
-  writeLocalJson(LS_RUNS_KEY, runs);
 }
 
 function normalizeTemplateMap(templateMap) {
@@ -703,7 +835,13 @@ function normalizeCatalogItem(item, kind) {
 
 function normalizeCompatibilityMatrix(data) {
   if (Array.isArray(data)) {
-    return data;
+    return data.filter((item) => {
+      const relation = String(item?.relation || '').toLowerCase();
+      if (!relation.includes('workflow')) {
+        return true;
+      }
+      return isSupportedWorkbenchWorkflowReference(item?.source);
+    });
   }
   if (!data || typeof data !== 'object') {
     return [];
@@ -725,7 +863,12 @@ function normalizeCompatibilityMatrix(data) {
   pushRelations('component compatible with task', data.component_tasks);
   pushRelations('workflow compatible with agent', data.workflow_agents);
   pushRelations('workflow suggests task', data.workflow_tasks);
-  return result;
+  return result.filter((item) => {
+    if (!String(item?.relation || '').toLowerCase().includes('workflow')) {
+      return true;
+    }
+    return isSupportedWorkbenchWorkflowReference(item?.source);
+  });
 }
 
 function normalizeConfig(data) {
@@ -742,35 +885,41 @@ function normalizeConfig(data) {
       updated_at: data.updated_at || data?.metadata?.updated_at || null,
     },
     traffic: data.traffic || {},
-    agents: (data.agents || []).map((agent) => ({
-      id: agent.id,
-      name: agent.name,
-      type: agent.type,
-      source: agent.source || (agent.definition_ref?.source || 'builtin'),
-      version: agent.version || agent.definition_ref?.version || null,
-      definition_ref: agent.definition_ref || agent.registry_ref || null,
-      registry_ref: agent.definition_ref || agent.registry_ref || null,
-      initial_position: agent.initial_position || agent.position || [0, 0, 0],
-      initial_battery:
-        agent.initial_battery ??
-        agent.battery ??
-        agent.properties?.battery_level ??
-        100,
-      components: agent.components || [],
-      properties: agent.properties || {},
-    })),
-    workflows: (data.workflows || []).map((workflow) => ({
-      id: workflow.id,
-      name: workflow.name,
-      type: workflow.type,
-      source: workflow.source || (workflow.definition_ref?.source || 'builtin'),
-      version: workflow.version || workflow.definition_ref?.version || null,
-      definition_ref: workflow.definition_ref || workflow.registry_ref || null,
-      registry_ref: workflow.definition_ref || workflow.registry_ref || null,
-      agent_id: workflow.agent_id,
-      enabled: workflow.enabled !== false,
-      properties: workflow.properties || workflow.parameters || workflow.details || {},
-    })),
+    agents: (data.agents || []).map((agent) => {
+      const source = agent.source || agent.definition_ref?.source || 'builtin';
+      return {
+        id: agent.id,
+        name: agent.name,
+        type: source === 'builtin' ? normalizeBuiltinAgentTypeId(agent.type) : agent.type,
+        source,
+        version: agent.version || agent.definition_ref?.version || null,
+        definition_ref: agent.definition_ref || agent.registry_ref || null,
+        registry_ref: agent.definition_ref || agent.registry_ref || null,
+        initial_position: agent.initial_position || agent.position || [0, 0, 0],
+        initial_battery:
+          agent.initial_battery ??
+          agent.battery ??
+          agent.properties?.battery_level ??
+          100,
+        components: agent.components || [],
+        properties: agent.properties || {},
+      };
+    }),
+    workflows: (data.workflows || []).map((workflow) => {
+      const source = workflow.source || workflow.definition_ref?.source || 'builtin';
+      return {
+        id: workflow.id,
+        name: workflow.name,
+        type: source === 'builtin' ? normalizeBuiltinWorkflowTypeId(workflow.type) : workflow.type,
+        source,
+        version: workflow.version || workflow.definition_ref?.version || null,
+        definition_ref: workflow.definition_ref || workflow.registry_ref || null,
+        registry_ref: workflow.definition_ref || workflow.registry_ref || null,
+        agent_id: workflow.agent_id,
+        enabled: workflow.enabled !== false,
+        properties: workflow.properties || workflow.parameters || workflow.details || {},
+      };
+    }),
   };
 }
 
@@ -938,14 +1087,65 @@ function normalizeHealth(data) {
 }
 
 function normalizeLog(log, index = 0) {
+  const raw = isObjectLike(log) ? log : { message: String(log || '') };
+  const value = isObjectLike(raw.value)
+    ? raw.value
+    : isObjectLike(raw.event_data)
+      ? raw.event_data
+      : {};
+  const result = isObjectLike(raw.result)
+    ? raw.result
+    : isObjectLike(value.result)
+      ? value.result
+      : {};
+  const details = {
+    ...value,
+    ...result,
+  };
+  const event = firstDefined(raw.event, raw.event_type, value.event_name, details.event_name, null);
+  const sourceId = firstDefined(raw.source_id, value.source_id, details.source_id, raw.source, null);
+  const workflowId = firstDefined(
+    raw.workflow_id,
+    value.workflow_id,
+    details.workflow_id,
+    result.workflow_id,
+    null
+  );
+  const taskId = firstDefined(raw.task_id, value.task_id, details.task_id, result.task_id, null);
+  const taskName = firstDefined(
+    raw.task_name,
+    value.task_name,
+    details.task_name,
+    null
+  );
+  const taskClass = firstDefined(
+    raw.task_class,
+    value.task_class,
+    details.task_class,
+    result.task_class,
+    null
+  );
+  const status = firstDefined(raw.status, value.status, result.status, null);
+
   return {
-    id: log.id || `${log.recorded_at || log.timestamp || Date.now()}_${index}`,
-    run_id: log.run_id || null,
-    level: log.level || 'info',
-    source: log.source || 'system',
-    sim_time: log.time ?? log.sim_time ?? 0,
-    message: log.message || JSON.stringify(log),
-    timestamp: log.timestamp || log.recorded_at || new Date().toISOString(),
+    id: raw.id || `${raw.recorded_at || raw.timestamp || Date.now()}_${index}`,
+    run_id: raw.run_id || null,
+    level: raw.level || 'info',
+    source: raw.source || sourceId || 'system',
+    source_id: sourceId,
+    event,
+    workflow_id: workflowId,
+    task_id: taskId,
+    task_name: taskName,
+    task_class: taskClass,
+    status: status ? String(status).toLowerCase() : null,
+    result,
+    value,
+    details,
+    sim_time: raw.time ?? raw.sim_time ?? 0,
+    message: raw.message || JSON.stringify(raw),
+    timestamp: raw.timestamp || raw.recorded_at || new Date().toISOString(),
+    raw,
   };
 }
 
@@ -962,7 +1162,8 @@ function normalizeSpatialPayload(data) {
       type: agent.agent_type || agent.type,
       status: String(agent.status || 'idle').toLowerCase(),
       workflow_id: agent.current_workflow || agent.workflow_id || null,
-      task_id: agent.current_task || agent.task_id || null,
+      task_id: agent.current_task_id || agent.task_id || null,
+      task_name: agent.current_task || agent.task_name || null,
       position:
         data.coordinate_mode === 'geo_osm'
           ? {
@@ -1060,6 +1261,7 @@ function buildValidationFromConfig(configData) {
   const issues = [];
   const agentIds = new Set();
   const workflowIds = new Set();
+  const agentConfigs = new Map();
 
   (configData.agents || []).forEach((agent) => {
     if (!agent.id) {
@@ -1068,9 +1270,20 @@ function buildValidationFromConfig(configData) {
       issues.push({ level: 'error', category: 'errors', message: `Duplicate agent id: ${agent.id}` });
     }
     agentIds.add(agent.id);
+    const definition = findBuiltinAgentDefinition(agent.type);
+    const hasExplicitComponents = Object.prototype.hasOwnProperty.call(agent || {}, 'components');
+    agentConfigs.set(agent.id, {
+      ...agent,
+      type: normalizeBuiltinAgentTypeId(agent.type),
+      definition,
+      components: hasExplicitComponents
+        ? (agent.components || [])
+        : defaultComponentsForDefinition(definition),
+    });
   });
 
   (configData.workflows || []).forEach((workflow) => {
+    const workflowLabel = workflow.id || workflow.name || '(unnamed workflow)';
     if (!workflow.id) {
       issues.push({ level: 'error', category: 'errors', message: 'Workflow id is required.' });
     } else if (workflowIds.has(workflow.id)) {
@@ -1088,10 +1301,77 @@ function buildValidationFromConfig(configData) {
         message: `Workflow ${workflow.id} references missing agent ${workflow.agent_id || '(empty)'}.`,
       });
     }
+
+    if (normalizeWorkflowTypeToken(workflow.type) === 'logistics') {
+      const properties = workflow.properties || {};
+      const owner = agentConfigs.get(workflow.agent_id);
+      const ownerComponents = new Set(owner?.components || []);
+
+      if (!isCoordinate3d(properties.pickup_location)) {
+        issues.push({
+          level: 'error',
+          category: 'schema',
+          message: `Workflow ${workflowLabel} requires pickup_location as a 3D numeric coordinate.`,
+        });
+      }
+      if (!isCoordinate3d(properties.delivery_location)) {
+        issues.push({
+          level: 'error',
+          category: 'schema',
+          message: `Workflow ${workflowLabel} requires delivery_location as a 3D numeric coordinate.`,
+        });
+      }
+      if (!Array.isArray(properties.payloads) || properties.payloads.length === 0) {
+        issues.push({
+          level: 'error',
+          category: 'schema',
+          message: `Workflow ${workflowLabel} requires at least one payload.`,
+        });
+      } else if (
+        properties.payloads.some((payload) => !payload || typeof payload !== 'object' || !payload.id)
+      ) {
+        issues.push({
+          level: 'error',
+          category: 'schema',
+          message: `Workflow ${workflowLabel} payloads must be objects containing an id.`,
+        });
+      }
+      if (!properties.source_agent_id || !agentIds.has(properties.source_agent_id)) {
+        issues.push({
+          level: 'error',
+          category: 'missing_dependencies',
+          message: `Workflow ${workflowLabel} references missing source agent ${properties.source_agent_id || '(empty)'}.`,
+        });
+      }
+      if (!properties.target_agent_id || !agentIds.has(properties.target_agent_id)) {
+        issues.push({
+          level: 'error',
+          category: 'missing_dependencies',
+          message: `Workflow ${workflowLabel} references missing target agent ${properties.target_agent_id || '(empty)'}.`,
+        });
+      }
+      if (owner && !ownerComponents.has('MoveToComponent')) {
+        issues.push({
+          level: 'error',
+          category: 'compatibility',
+          message: `Workflow ${workflowLabel} requires owner ${workflow.agent_id} to enable MoveToComponent.`,
+        });
+      }
+      if (owner && !ownerComponents.has('LogisticsComponent')) {
+        issues.push({
+          level: 'error',
+          category: 'compatibility',
+          message: `Workflow ${workflowLabel} requires owner ${workflow.agent_id} to enable LogisticsComponent.`,
+        });
+      }
+    }
   });
 
   return {
     valid: issues.every((item) => item.level !== 'error'),
+    is_valid: issues.every((item) => item.level !== 'error'),
+    errors: issues.filter((item) => item.level === 'error').map((item) => item.message),
+    warnings: issues.filter((item) => item.level === 'warning').map((item) => item.message),
     issues,
     checked_at: new Date().toISOString(),
     source: 'local',
@@ -1119,6 +1399,20 @@ function extractErrorPayload(data) {
   };
 }
 
+function isConnectivityFailure(error, response) {
+  if (response) {
+    return false;
+  }
+  const code = String(error?.code || error?.cause?.code || '').toUpperCase();
+  if (CONNECTIVITY_ERROR_CODES.has(code)) {
+    return true;
+  }
+  if (error?.request) {
+    return true;
+  }
+  return /network|timeout|failed to fetch|load failed/i.test(String(error?.message || ''));
+}
+
 function normalizeApiError(error) {
   const response = error?.response;
   const payload = extractErrorPayload(response?.data);
@@ -1134,7 +1428,7 @@ function normalizeApiError(error) {
   normalized.recentLogs = (Array.isArray(payload.recentLogs) ? payload.recentLogs : []).map((item, index) =>
     normalizeLog(item, index)
   );
-  normalized.isConnectivityError = !response;
+  normalized.isConnectivityError = isConnectivityFailure(error, response);
   normalized.response = response;
   normalized.originalError = error;
   return normalized;
@@ -1148,7 +1442,7 @@ async function requestWithFallback(request, fallbackFactory) {
     const shouldFallback =
       ENABLE_LOCAL_FALLBACK &&
       fallbackFactory &&
-      !error?.response;
+      normalizedError.isConnectivityError;
     if (!shouldFallback) {
       throw normalizedError;
     }
@@ -1191,7 +1485,9 @@ const catalogApi = {
       () => apiClient.get('/catalog/workflows', { params: { scope } }).then((response) => response.data),
       () => defaultCatalog.workflows
     );
-    return (Array.isArray(data) ? data : []).map((item) => normalizeCatalogItem(item, 'workflows'));
+    return filterSupportedWorkflowDefinitions(
+      (Array.isArray(data) ? data : []).map((item) => normalizeCatalogItem(item, 'workflows'))
+    );
   },
   async getCompatibility(scope = 'all') {
     const data = await requestWithFallback(
@@ -1224,53 +1520,22 @@ const registryApi = {
   },
   async save(kind, payload) {
     const normalized = toRegistryPayload(kind, payload);
-    const data = await requestWithFallback(
-      () => apiClient.post(`/registry/${kind}`, normalized).then((response) => response.data),
-      () => {
-        const registry = ensureLocalRegistry();
-        const next = [...(registry[kind] || [])];
-        const existingIndex = next.findIndex(
-          (item) =>
-            item.id === normalized.meta.id &&
-            item.version === normalized.meta.version
-        );
-        const flattened = flattenRegistryDefinition(kind, normalized);
-        if (existingIndex >= 0) {
-          next[existingIndex] = flattened;
-        } else {
-          next.push(flattened);
-        }
-        saveLocalRegistry({ ...registry, [kind]: next });
-        return flattened;
-      }
+    const data = await requestStrict(() =>
+      apiClient.post(`/registry/${kind}`, normalized).then((response) => response.data)
     );
     return flattenRegistryDefinition(kind, data);
   },
   async delete(kind, definitionId, version) {
-    return requestWithFallback(
-      () => apiClient.delete(`/registry/${kind}/${definitionId}`, { params: { version } }).then((response) => response.data),
-      () => {
-        const registry = ensureLocalRegistry();
-        const next = (registry[kind] || []).filter(
-          (item) => item.id !== definitionId || (version && item.version !== version)
-        );
-        saveLocalRegistry({ ...registry, [kind]: next });
-        return { status: 'deleted' };
-      }
+    return requestStrict(() =>
+      apiClient.delete(`/registry/${kind}/${definitionId}`, { params: { version } }).then((response) => response.data)
     );
   },
   async validate(kind, definitionId, payload, version) {
     const normalized = payload ? toRegistryPayload(kind, payload) : undefined;
-    const data = await requestWithFallback(
-      () =>
-        apiClient
-          .post(`/registry/${kind}/${definitionId}/validate`, normalized, { params: { version } })
-          .then((response) => response.data),
-      () => ({
-        is_valid: true,
-        errors: [],
-        warnings: [],
-      })
+    const data = await requestStrict(() =>
+      apiClient
+        .post(`/registry/${kind}/${definitionId}/validate`, normalized, { params: { version } })
+        .then((response) => response.data)
     );
     return data;
   },
@@ -1286,20 +1551,17 @@ const configApi = {
   },
   async saveConfig(configId, configData) {
     const payload = serializeConfigForApi(configData);
-    const data = await requestWithFallback(
-      () => apiClient.put(`/configs/${configId}`, payload).then((response) => response.data),
-      () => saveLocalConfig(configId, configData)
+    const data = await requestStrict(() =>
+      apiClient.put(`/configs/${configId}`, payload).then((response) => response.data)
     );
     return normalizeConfig(data);
   },
   async validate(configId = MOCK_CONFIG_ID, configData) {
     const payload = configData ? serializeConfigForApi(configData) : undefined;
-    const data = await requestWithFallback(
-      () =>
-        apiClient
-          .post(`/configs/${configId}/validate`, payload)
-          .then((response) => response.data),
-      () => buildValidationFromConfig(configData || ensureLocalConfig(configId))
+    const data = await requestStrict(() =>
+      apiClient
+        .post(`/configs/${configId}/validate`, payload)
+        .then((response) => response.data)
     );
     return normalizeValidation(data);
   },
@@ -1427,6 +1689,9 @@ export {
   catalogApi,
   configApi,
   createWorkbenchSocket,
+  defaultComponentsForDefinition,
+  normalizeAgentTypeToken,
+  normalizeWorkflowTypeToken,
   registryApi,
   runApi,
   systemApi,

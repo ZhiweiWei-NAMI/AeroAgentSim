@@ -8,7 +8,7 @@ import React, {
   useState,
 } from 'react';
 
-import { configApi, MOCK_CONFIG_ID } from '../services/workbenchApi';
+import { configApi, MOCK_CONFIG_ID, systemApi } from '../services/workbenchApi';
 
 const WorkbenchContext = createContext(null);
 
@@ -19,11 +19,36 @@ export function WorkbenchProvider({ children }) {
   const [loadingDraft, setLoadingDraft] = useState(true);
   const [reviewing, setReviewing] = useState(false);
   const [error, setError] = useState('');
+  const [health, setHealth] = useState(null);
+  const [healthError, setHealthError] = useState('');
   const draftRef = useRef(null);
 
   useEffect(() => {
     draftRef.current = draftConfig;
   }, [draftConfig]);
+
+  const refreshHealth = useCallback(async () => {
+    try {
+      const nextHealth = await systemApi.getHealth();
+      setHealth(nextHealth);
+      setHealthError('');
+      return nextHealth;
+    } catch (nextError) {
+      setHealth(null);
+      setHealthError(nextError?.message || 'Backend unavailable');
+      throw nextError;
+    }
+  }, []);
+
+  const authoritativeActionsEnabled = !healthError && Boolean(health?.backend_available);
+  const displayOnlyFallbackMode = Boolean(healthError) || health?.backend_available === false;
+
+  const createOfflineModeError = useCallback(() => {
+    const offlineError = new Error('Backend-authoritative actions are unavailable in offline display mode.');
+    offlineError.name = 'WorkbenchOfflineModeError';
+    offlineError.code = 'OFFLINE_DISPLAY_MODE';
+    return offlineError;
+  }, []);
 
   const refreshDraft = useCallback(async () => {
     const config = await configApi.getConfig(MOCK_CONFIG_ID);
@@ -32,13 +57,19 @@ export function WorkbenchProvider({ children }) {
   }, []);
 
   const saveDraft = useCallback(async (nextDraft) => {
+    if (!authoritativeActionsEnabled) {
+      throw createOfflineModeError();
+    }
     const saved = await configApi.saveConfig(MOCK_CONFIG_ID, nextDraft);
     setDraftConfig(saved);
     draftRef.current = saved;
     return saved;
-  }, []);
+  }, [authoritativeActionsEnabled, createOfflineModeError]);
 
   const runReview = useCallback(async (nextDraft = null) => {
+    if (!authoritativeActionsEnabled) {
+      throw createOfflineModeError();
+    }
     const targetDraft = nextDraft || draftRef.current;
     if (!targetDraft) {
       return null;
@@ -86,7 +117,7 @@ export function WorkbenchProvider({ children }) {
     } finally {
       setReviewing(false);
     }
-  }, []);
+  }, [authoritativeActionsEnabled, createOfflineModeError]);
 
   useEffect(() => {
     let active = true;
@@ -94,7 +125,10 @@ export function WorkbenchProvider({ children }) {
       setLoadingDraft(true);
       setError('');
       try {
-        const config = await refreshDraft();
+        const [config] = await Promise.all([
+          refreshDraft(),
+          refreshHealth().catch(() => null),
+        ]);
         if (active) {
           setDraftConfig(config);
         }
@@ -112,11 +146,23 @@ export function WorkbenchProvider({ children }) {
     return () => {
       active = false;
     };
-  }, [refreshDraft]);
+  }, [refreshDraft, refreshHealth]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      refreshHealth().catch(() => {});
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [refreshHealth]);
 
   const value = useMemo(
     () => ({
+      authoritativeActionsEnabled,
+      backendAvailable: authoritativeActionsEnabled,
       draftConfig,
+      displayOnlyFallbackMode,
+      health,
+      healthError,
       setDraftConfig,
       loadingDraft,
       reviewResult,
@@ -124,10 +170,28 @@ export function WorkbenchProvider({ children }) {
       reviewError: error,
       reviewing,
       refreshDraft,
+      refreshHealth,
       saveDraft,
       runReview,
+      createOfflineModeError,
     }),
-    [draftConfig, error, loadingDraft, refreshDraft, reviewGraph, reviewResult, reviewing, runReview, saveDraft]
+    [
+      authoritativeActionsEnabled,
+      createOfflineModeError,
+      displayOnlyFallbackMode,
+      draftConfig,
+      error,
+      health,
+      healthError,
+      loadingDraft,
+      refreshDraft,
+      refreshHealth,
+      reviewGraph,
+      reviewResult,
+      reviewing,
+      runReview,
+      saveDraft,
+    ]
   );
 
   return <WorkbenchContext.Provider value={value}>{children}</WorkbenchContext.Provider>;

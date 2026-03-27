@@ -100,7 +100,6 @@ class DeliveryAgent(TerminalAgent, metaclass=DeliveryAgentMeta):
 
                 # 更新状态为运输中
                 self.update_state('delivery_status', 'transporting')
-                self.update_state('status', 'active')
 
                 logger.info(f"时间 {self.env.now}: {self.id} 开始携带货物 {payload_id}, 当前货物ids: {self.get_state('payload_ids')}")
                 logger.info(f"\t\t {self.id} 当前负载重量: {self.get_state('current_payload_weight')}kg, 负载容积: {self.get_state('current_payload_volume')}m³")
@@ -151,7 +150,6 @@ class DeliveryAgent(TerminalAgent, metaclass=DeliveryAgentMeta):
             # 如果当前状态是delivering，更新为idle
             if self.get_state('delivery_status') == 'delivering':
                 self.update_state('delivery_status', 'idle')
-                self.update_state('status', 'idle')
 
             logger.info(f"时间 {self.env.now}: {self.id} 不再携带货物 {payload_id}")
             logger.info(f"\t\t {self.id} 当前负载重量: {self.get_state('current_payload_weight')}kg, 负载容积: {self.get_state('current_payload_volume')}m³")
@@ -186,7 +184,6 @@ class DeliveryAgent(TerminalAgent, metaclass=DeliveryAgentMeta):
             if self.get_state('delivery_status') not in ['transporting', 'delivering',
                                                 'picking_up', 'pickup_completed', 'delivery_completed']:
                 self.update_state('delivery_status', 'idle')
-                self.update_state('status', 'idle')
             return
 
         # 检查是否有物流工作流
@@ -203,13 +200,10 @@ class DeliveryAgent(TerminalAgent, metaclass=DeliveryAgentMeta):
             current_state = logistics_workflow.status_machine.state
             if current_state == 'picking_up':
                 self.update_state('delivery_status', 'picking_up')
-                self.update_state('status', 'active')
             elif current_state == 'transporting':
                 self.update_state('delivery_status', 'transporting')
-                self.update_state('status', 'active')
             elif current_state == 'delivering':
                 self.update_state('delivery_status', 'delivering')
-                self.update_state('status', 'active')
 
     def get_details(self) -> Dict:
         """获取代理详细信息，添加物流相关信息"""

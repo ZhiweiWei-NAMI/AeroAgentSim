@@ -59,6 +59,7 @@ function Map2D({
   trajectories = [],
   height = 360,
   selectedMarkerId,
+  testId,
   onSelectMarker,
 }) {
   const markerLatLng = useMemo(
@@ -87,7 +88,7 @@ function Map2D({
   const mapCrs = mode === 'geo_osm' ? L.CRS.EPSG3857 : L.CRS.Simple;
 
   return (
-    <div className="map2d-shell" style={{ height }}>
+    <div className="map2d-shell" style={{ height }} data-testid={testId}>
       <MapContainer
         center={center}
         zoom={mode === 'geo_osm' ? 12 : 1}
@@ -129,7 +130,7 @@ function Map2D({
                   <div>Type: {marker.type || 'unknown'}</div>
                   <div>Status: {marker.status || 'idle'}</div>
                   <div>Workflow: {marker.workflow_id || '-'}</div>
-                  <div>Task: {marker.task_id || '-'}</div>
+                  <div>Task: {marker.task_name || marker.task_id || '-'}</div>
                   <div>Z: {z}</div>
                 </div>
               </Popup>

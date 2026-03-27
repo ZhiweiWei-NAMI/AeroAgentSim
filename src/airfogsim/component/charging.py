@@ -13,7 +13,8 @@ class ChargingComponent(Component):
     - request_processing_time: 充电站资源请求处理时间（秒）
     """
     PRODUCED_METRICS = ['charging_rate', 'request_processing_time']
-    MONITORED_STATES = ['battery_capacity', 'position', 'charging_station.current_allocations',
+    MONITORED_STATES = ['battery_capacity', 'position', 'moving_status',
+                        'charging_station.current_allocations',
                         'charging_station.power_level']  # 监控这些代理状态的变化
 
     def __init__(self, env, agent, name: Optional[str] = None,
@@ -39,7 +40,6 @@ class ChargingComponent(Component):
         """计算基于当前代理状态的性能指标"""
         # 获取当前的电池容量和代理状态
         battery_capacity = self.agent.get_state('battery_capacity', 5000.0)  # mAh
-        agent_status = self.agent.get_state('status', 'idle')
         position = self.agent.get_state('position', (0, 0, 0))
         # 检查是否有moving_status属性
         moving_status = self.agent.get_state('moving_status', None) if hasattr(self.agent, 'moving_status') else None
@@ -54,12 +54,11 @@ class ChargingComponent(Component):
             # 如果申请成功已经分配,则返回0
             if not self.env.landing_manager.is_allocated_to(charging_station.id, self.agent.id):
                 self.env.landing_manager.request_resource(charging_station.id, self.agent)
-            else:
+            if self.env.landing_manager.is_allocated_to(charging_station.id, self.agent.id):
                 request_processing_time = 0.0  # 申请成功，处理时间为0
-                # 检查状态，如果有moving_status，则需要是idle状态才能充电
-                if (agent_status == 'active' and
-                    charging_station.is_within_range(*position) and
-                    (moving_status == 'idle' if moving_status is not None else True)):
+                # 充电能力只依赖真实空间位置和移动状态，不依赖可能滞后的汇总 status。
+                stationary = moving_status in (None, 'idle', 'hovering')
+                if charging_station.is_within_range(*position) and stationary:
                     # 基础充电功率 (W)，根据充电站电源水平调整
                     base_charging_power = charging_station.get_attribute('charging_power', 100)
 

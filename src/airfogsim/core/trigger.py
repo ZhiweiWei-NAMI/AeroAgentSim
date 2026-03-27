@@ -283,6 +283,18 @@ class StateTrigger(Trigger):
                 lambda event: self._handle_state_change(event)
             )
 
+            # 如果激活时初始状态已经满足条件，立即触发一次。
+            if self._check_condition(self.last_value):
+                context = {
+                    'agent_id': self.agent_id,
+                    'state_key': self.state_key,
+                    'old_value': None,
+                    'new_value': self.last_value,
+                    'operator': self.operator.value,
+                    'target_value': str(self.target_value) if self.operator == TriggerOperator.CUSTOM else self.target_value
+                }
+                self._trigger(context)
+
             # 等待直到被中断
             while True:
                 yield self.env.timeout(float('inf'))

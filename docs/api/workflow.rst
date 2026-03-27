@@ -1,5 +1,5 @@
 Workflow Classes
-===============
+================
 
 Workflows coordinate high-level processes and goals in AirFogSim. They use state machines to track progress and suggest tasks to agents.
 

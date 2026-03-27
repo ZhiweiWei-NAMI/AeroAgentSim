@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .catalog_service import CatalogService
 from .config_compiler import ConfigCompiler
@@ -11,6 +11,7 @@ from .schemas import (
     ConfigValidationResult,
     GraphEdge,
     GraphNode,
+    PreflightCheck,
     PreflightResult,
     TaskBinding,
     TriggerCondition,
@@ -54,6 +55,7 @@ class WorkspaceService:
         else:
             payload = _model_dump(snapshot)
 
+        payload["config_id"] = self._resolve_persisted_config_id(base_config_id, payload)
         payload["source_config_id"] = self._resolve_source_config_id(base_config_id, payload)
         candidate = ConfigSnapshot(**payload)
         candidate.registry_references = self.config_compiler.collect_registry_references(candidate)
@@ -85,12 +87,31 @@ class WorkspaceService:
         return self.config_compiler.compile_snapshot(snapshot)
 
     def preflight_snapshot(self, config_id: str) -> PreflightResult:
-        compiled = self.compile_snapshot(config_id)
-        return preflight_runtime_config(compiled)
+        snapshot = self.get_snapshot(config_id)
+        return self.preflight_draft(snapshot)
 
     def preflight_draft(self, snapshot: ConfigSnapshot) -> PreflightResult:
+        validation = self.validate_draft(snapshot)
         compiled = self.config_compiler.compile_snapshot(snapshot)
-        return preflight_runtime_config(compiled)
+        runtime_preflight = preflight_runtime_config(compiled)
+        if validation.is_valid:
+            return runtime_preflight
+
+        validation_check = PreflightCheck(
+            name="validation",
+            status="error",
+            message="Configuration validation contains blocking errors.",
+            details={
+                "errors": validation.errors,
+                "warnings": validation.warnings,
+            },
+        )
+        return PreflightResult(
+            is_ready=False,
+            errors=list(validation.errors) + list(runtime_preflight.errors),
+            warnings=list(validation.warnings) + list(runtime_preflight.warnings),
+            checks=[validation_check, *runtime_preflight.checks],
+        )
 
     def build_graph(self, config_id: str) -> WorkflowGraph:
         snapshot = self.get_snapshot(config_id)
@@ -387,37 +408,79 @@ class WorkspaceService:
 
     def _bootstrap_default_snapshot(self) -> ConfigSnapshot:
         snapshot = ConfigSnapshot(
-            name="AeroAgentSim Starter Config",
+            config_id="default",
+            name="AeroAgentSim Logistics Starter Config",
             coordinate_mode="simulation_plane",
             agents=[
                 {
-                    "id": "drone_alpha",
-                    "name": "Drone Alpha",
-                    "type": "DroneAgent",
-                    "initial_position": [10, 10, 20],
+                    "id": "station_source",
+                    "name": "Source Station",
+                    "type": "deliverystation",
+                    "initial_position": [20, 40, 0],
+                    "components": [],
+                    "properties": {
+                        "position": [20, 40, 0],
+                        "storage_capacity": 20,
+                        "service_radius": 120.0,
+                    },
+                },
+                {
+                    "id": "station_target",
+                    "name": "Target Station",
+                    "type": "deliverystation",
+                    "initial_position": [240, 180, 0],
+                    "components": [],
+                    "properties": {
+                        "position": [240, 180, 0],
+                        "storage_capacity": 20,
+                        "service_radius": 120.0,
+                    },
+                },
+                {
+                    "id": "delivery_drone_alpha",
+                    "name": "Delivery Drone Alpha",
+                    "type": "deliverydrone",
+                    "initial_position": [120, 20, 30],
                     "initial_battery": 92,
-                    "components": ["MoveToComponent", "ChargingComponent"],
-                    "properties": {},
-                }
+                    "components": ["MoveToComponent", "LogisticsComponent", "ChargingComponent"],
+                    "properties": {
+                        "max_payload_weight": 5.0,
+                        "max_payload_volume": 1.0,
+                    },
+                },
             ],
             workflows=[
                 WorkflowDefinition(
-                    id="inspection_alpha",
-                    name="Inspection Alpha",
-                    type="inspection",
-                    agent_id="drone_alpha",
+                    id="logistics_alpha",
+                    name="Logistics Alpha",
+                    type="logistics",
+                    agent_id="delivery_drone_alpha",
                     properties={
-                        "inspection_points": [
-                            [10, 10, 20],
-                            [150, 60, 40],
-                            [220, 180, 50],
-                        ]
+                        "pickup_location": [20, 40, 30],
+                        "delivery_location": [240, 180, 30],
+                        "payloads": [
+                            {
+                                "id": "payload_demo",
+                                "weight": 1.2,
+                                "dimensions": [0.25, 0.15, 0.1],
+                                "description": "Starter logistics payload",
+                            }
+                        ],
+                        "source_agent_id": "station_source",
+                        "target_agent_id": "station_target",
                     },
                 )
             ],
         )
         snapshot.registry_references = self.config_compiler.collect_registry_references(snapshot)
         return self.config_repository.save_snapshot(snapshot)
+
+    def _resolve_persisted_config_id(self, base_config_id: str, payload: Dict[str, Any]) -> Optional[str]:
+        if base_config_id not in {"", "current", "latest"}:
+            return str(base_config_id)
+        if payload.get("config_id"):
+            return str(payload["config_id"])
+        return None
 
     def _resolve_source_config_id(self, base_config_id: str, payload: Dict[str, Any]) -> str:
         if payload.get("source_config_id"):
