@@ -212,10 +212,53 @@ class Environment(simpy.Environment):
         return workflow
 
     def create_agent(self, agent_class: Type['Agent'], agent_name: str, **kwargs) -> 'Agent':
-        #  直接把kwards变成properties
-        properties = kwargs.pop('properties', {})
-        agent = agent_class(env=self, agent_name=agent_name, properties=properties)
+        """Create an agent instance and optionally attach pre-defined components.
+
+        This extends the original helper to support a ``components`` keyword used by
+        TCCN_auto_planner. Any provided components are instantiated *after* the
+        base agent is created and then attached via ``agent.add_component(...)``.
+        """
+
+        # 从 kwargs 中提取 properties 和 components，其余参数直接传递给 agent_class
+        properties = kwargs.pop('properties', {}) or {}
+        components = kwargs.pop('components', None)
+
+        # 创建基础代理实例（AirFogSim 或自定义 Agent 子类）
+        agent = agent_class(env=self, agent_name=agent_name, properties=properties, **kwargs)
         self.register_agent(agent)
+
+        # 兼容 TCCN_auto_planner：可选地为代理附加组件列表
+        # components 形如 [{'class': <ComponentClass>, 'name': 'Mobility'}, ...]
+        if components:
+            for comp_cfg in components:
+                if not isinstance(comp_cfg, dict):
+                    continue
+                comp_cls = comp_cfg.get('class')
+                comp_name = comp_cfg.get('name')
+                if comp_cls is None:
+                    continue
+
+                comp = None
+                # TCCN 组件通常继承自自定义 Component(agent, component_name=..., **kwargs)
+                try:
+                    comp = comp_cls(agent, component_name=comp_name)  # type: ignore[call-arg]
+                except TypeError:
+                    # 回退到最小签名，避免因额外参数导致失败
+                    try:
+                        comp = comp_cls(agent)  # type: ignore[call-arg]
+                    except Exception:
+                        comp = None
+
+                if comp is None:
+                    continue
+
+                # 如果组件内部未设置名称，则在此处覆盖
+                if comp_name and getattr(comp, 'name', None) != comp_name:
+                    setattr(comp, 'name', comp_name)
+
+                # 通过 Agent 接口注册组件，确保任务/状态监听正常工作
+                agent.add_component(comp)
+
         return agent
 
     # 触发器相关方法

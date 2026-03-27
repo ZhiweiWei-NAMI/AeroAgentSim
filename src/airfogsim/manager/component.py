@@ -86,6 +86,25 @@ class ComponentManager:
         except ImportError:
             logger.error("Error: 无法导入airfogsim.component包")
 
+    def clear_registered_component_classes(self) -> None:
+        """
+        清空所有注册的组件类
+        """
+        self.registered_component_classes.clear()
+        self.component_metrics_map.clear()
+        self.component_states_map.clear()
+        logger.info(f"时间 {self.env.now}: 组件管理器清空所有注册的组件类")
+
+    def register_component_classes(self, component_classes: List[Type[Component]]) -> None:
+        """
+        注册组件类列表
+
+        Args:
+            component_classes: 组件类列表
+        """
+        for component_class in component_classes:
+            self.register_component_class(component_class)
+
     def register_component_class(self, component_class: Type[Component]) -> None:
         """
         注册组件类

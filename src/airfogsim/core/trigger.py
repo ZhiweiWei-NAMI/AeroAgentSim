@@ -385,7 +385,7 @@ class TimeTrigger(Trigger):
         try:
             if self.trigger_time is not None:
                 # 单次触发
-                if self.trigger_time > self.env.now:
+                if self.trigger_time >= self.env.now:
                     yield self.env.timeout(self.trigger_time - self.env.now)
                     self._trigger({'trigger_mode': 'one_time'})
 

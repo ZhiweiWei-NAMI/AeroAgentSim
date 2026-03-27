@@ -57,10 +57,29 @@ def get_workflow_descriptions():
     """获取所有工作流类的描述信息"""
     descriptions = []
     for workflow_class in _WORKFLOW_CLASSES:
+        # 将WorkflowPropertyTemplate对象转换为可序列化的字典
+        property_templates = workflow_class.get_property_templates()
+        properties_dict = {}
+        for key, template in property_templates.items():
+            # 处理value_type，可能是类型、类型元组或None
+            if template.value_type is None:
+                value_type_str = None
+            elif isinstance(template.value_type, tuple):
+                value_type_str = ' | '.join(t.__name__ for t in template.value_type)
+            else:
+                value_type_str = template.value_type.__name__
+            
+            properties_dict[key] = {
+                'key': template.key,
+                'value_type': value_type_str,
+                'required': template.required,
+                'description': template.description
+            }
+        
         descriptions.append({
             'id': workflow_class.__name__,
             'name': workflow_class.__name__,
             'description': workflow_class.get_description(),
-            'properties': workflow_class.get_property_templates()
+            'properties': properties_dict
         })
     return descriptions

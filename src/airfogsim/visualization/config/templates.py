@@ -13,7 +13,7 @@ def _get_workflow_templates():
         for wf in workflow_classes:
             # 从属性模板中提取参数
             parameters = []
-            if hasattr(wf, 'properties') and wf['properties']:
+            if 'properties' in wf and wf['properties']:
                 parameters = list(wf['properties'].keys())
             
             templates.append({

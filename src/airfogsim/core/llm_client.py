@@ -12,10 +12,10 @@ AirFogSim LLM 客户端模块
 """
 
 import json
-import re
 from typing import Dict, List, Optional, TYPE_CHECKING
 # Import find_compatible_tasks function at runtime to avoid circular imports
 from airfogsim.utils.logging_config import get_logger
+from airfogsim.utils.json_parser import parse_llm_json_response
 
 # 获取logger
 logger = get_logger(__name__)
@@ -78,7 +78,7 @@ class LLMClient:
         agent_details = agent.get_details()
         possible_tasks = []
         for workflow in workflows:
-            tmp_tasks = find_compatible_tasks(self.env, agent, workflow)
+            tmp_tasks = find_compatible_tasks(self.env, agent, workflow=workflow)
             possible_tasks.extend(tmp_tasks)
 
         # 构建提示，包含工作流状态机信息
@@ -154,7 +154,7 @@ class LLMClient:
             Workflow Name: {workflow.name if hasattr(workflow, 'name') else 'Unknown'}
             Current Workflow State: {workflow.status_machine.state if hasattr(workflow, 'status_machine') and hasattr(workflow.status_machine, 'state') else 'Unknown'}
             Current Workflow Details: {workflow.get_details() if hasattr(workflow, 'get_details') else {}}
-            Possible Next States: {[t[3] for t in workflow.status_machine._get_current_transitions()] if hasattr(workflow, 'status_machine') and hasattr(workflow.status_machine, '_get_current_transitions') else []}
+            Possible Next States: {[t[1] for t in workflow.status_machine._get_current_transitions()] if hasattr(workflow, 'status_machine') and hasattr(workflow.status_machine, '_get_current_transitions') else []}
             """
 
         prompt += f"""
@@ -193,7 +193,7 @@ class LLMClient:
             # 使用保存的环境实例
             if hasattr(self, 'env') and self.env and hasattr(self.env, 'task_manager'):
                 # 获取所有注册的任务类
-                for task_name, task_class in self.env.task_manager.task_classes.items():
+                for task_name, task_class in self.env.task_manager.get_all_task_classes_dict().items():
                     # 获取任务类的文档
                     doc = task_class.__init__.__doc__ if hasattr(task_class, '__init__') and task_class.__init__.__doc__ else ""
                     task_classes[task_name] = doc
@@ -221,21 +221,24 @@ class LLMClient:
         """
         tasks = []
 
-        try:
-            # 提取可能的 JSON 部分
-            json_match = re.search(r'```json\n(.*?)\n```', response, re.DOTALL)
-            if json_match:
-                json_content = json_match.group(1)
-            else:
-                json_content = response
+        # 使用通用JSON解析工具
+        task_data = parse_llm_json_response(
+            response_text=response,
+            expected_type=list,
+            auto_fix=True,
+            debug=False
+        )
 
-            task_data = json.loads(json_content)
-            if isinstance(task_data, list):
-                for task in task_data:
-                    if self._validate_task_format(task):
-                        tasks.append(task)
-        except Exception as e:
-            logger.error(f"解析 LLM 响应失败: {str(e)}")
+        if task_data and isinstance(task_data, list):
+            for task in task_data:
+                if isinstance(task, dict) and self._validate_task_format(task):
+                    tasks.append(task)
+                else:
+                    logger.warning(f"跳过无效任务格式: {type(task)} - {task}")
+        elif task_data is None:
+            logger.error("LLM响应JSON解析失败")
+        else:
+            logger.warning(f"LLM响应解析结果不是列表类型: {type(task_data)}")
 
         return tasks
 

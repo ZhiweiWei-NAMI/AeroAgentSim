@@ -1,4 +1,11 @@
-# 可视化模块初始化文件
+"""Visualization package exports."""
 
-# 导出主要组件，使其可以直接从airfogsim.visualization导入
-from .app import app
+__all__ = ["app"]
+
+
+def __getattr__(name):
+    if name == "app":
+        from .app import app
+
+        return app
+    raise AttributeError(name)

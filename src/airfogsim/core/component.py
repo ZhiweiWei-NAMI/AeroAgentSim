@@ -140,7 +140,7 @@ class Component:
 
         try:
             # 1. 触发任务开始事件
-            self.trigger_event('task_started', {'task_id': task_id, 'task_name': task.name, 'time': self.env.now})
+            self.trigger_event('task_started', {'task_id': task_id, 'task_name': task.name, 'time': self.env.now, 'workflow_id': task.workflow_id, 'task_class': task.task_class})
 
             # 2. 计算初始指标
             initial_metrics = self._calculate_performance_metrics()
@@ -166,17 +166,20 @@ class Component:
             # 6. 触发最终结果事件（基于任务的最终状态）
             if task.status == TaskStatus.COMPLETED:
                 self.trigger_event('task_completed', {
-                    'task_id': task_id, 'task_name': task.name, 'time': task.end_time, 'result': result
+                    'task_id': task_id, 'task_name': task.name, 'time': task.end_time, 'result': result, 'workflow_id': task.workflow_id, 
+                    'task_class': task.task_class
                 })
             elif task.status == TaskStatus.FAILED:
                  self.trigger_event('task_failed', {
                     'task_id': task_id, 'task_name': task.name, 'time': task.end_time,
-                    'reason': task.failure_reason, 'result': result
+                    'reason': task.failure_reason, 'result': result, 'workflow_id': task.workflow_id, 
+                    'task_class': task.task_class
                  })
             elif task.status == TaskStatus.CANCELED:
                  self.trigger_event('task_canceled', {
                      'task_id': task_id, 'task_name': task.name, 'time': task.end_time,
-                     'reason': task.failure_reason, 'result': result # 使用failure_reason作为取消原因
+                     'reason': task.failure_reason, 'result': result, 'workflow_id': task.workflow_id, 
+                    'task_class': task.task_class
                  })
 
             return result # 返回task.execute的结果
@@ -239,7 +242,7 @@ class Component:
                 current_metrics.get(metric) == self.current_metrics.get(metric)
                 for metric in self.PRODUCED_METRICS
             ):
-                return
+                return # 用于避免循环
             # 更新当前指标
             self.current_metrics.update(current_metrics)
             self.trigger_event('metric_changed', current_metrics)

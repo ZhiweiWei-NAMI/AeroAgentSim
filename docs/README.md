@@ -1,180 +1,80 @@
-# AirFogSim Documentation
+# AeroAgentSim Documentation Hub
 
-Welcome to the AirFogSim documentation hub! This directory contains comprehensive documentation for users, developers, and contributors.
+Welcome to the AeroAgentSim documentation hub. The product name is `AeroAgentSim`, while the Python package and import path remain `airfogsim`.
 
-## 📖 For Users
+## Start Here
 
-**New to AirFogSim?** Start here:
-- [Getting Started Guide](getting_started.html) - Installation and first simulation
-- [API Reference](api/index.html) - Complete API documentation
-- [User Guide](user_guide.html) - Comprehensive user manual
-- [Examples](examples.html) - Ready-to-run examples
+- [Project Overview](../README.md)
+- [Chinese Overview](../README_CN.md)
+- [Installation Guide](../INSTALL.md)
+- [Documentation Guide](../DOCUMENTATION_GUIDE.md)
 
-**Core Documentation:**
-- [Agent Guide](api/agent.html) - Creating and managing agents
-- [Component Guide](api/component.html) - Building custom components
-- [Workflow Guide](api/workflow.html) - Designing simulation workflows
-- [Task Guide](api/task.html) - Implementing custom tasks
+## Workbench-Oriented Docs
 
-## 🔧 For Developers
+- [Getting Started](getting_started.html)
+- [User Guide](user_guide.html)
+- [API Reference](api/index.html)
+- [Examples](examples.html)
 
-**Technical Deep Dive:**
-- [System Architecture](../src/airfogsim/docs/en/architecture.md) - Detailed system design
-- [Development Guide](../src/airfogsim/docs/en/development_guide.md) - Development setup and patterns
-- [Component Development](../src/airfogsim/docs/en/component_guide.md) - Creating new components
-- [Agent Development](../src/airfogsim/docs/en/agent_guide.md) - Building custom agents
+## Technical Docs
 
-## 🤝 For Contributors
+- [English Architecture](../src/airfogsim/docs/en/architecture.md)
+- [Chinese Architecture](../src/airfogsim/docs/cn/architecture.md)
+- [Development Guide](../src/airfogsim/docs/en/development_guide.md)
 
-**Contributing to AirFogSim:**
-- [Contributing Guide](../CONTRIBUTING.md) - How to contribute code
-- [Development Setup](../INSTALL.md) - Setting up development environment
-- [Documentation Guide](contributing.html) - Writing documentation
+## Current Visualization Model
 
-## 🏗️ Building Documentation
+The current frontend is a 2D developer workbench:
 
-### Quick Build
-```bash
-# Build HTML documentation
-python build_docs.py
+- no 3D page set
+- no three.js dependency requirement
+- global `zh-CN` / `en-US` UI switch
+- workflow-agent-state coupling shown as a relation graph
+- relation graph navigation supports zoom and pan inside the graph canvas
+- page-local `Validate` and global `Review / Validate`
+- form-driven configuration editing
+- centralized `Review / Validate` checks for draft consistency
+- builtin and custom definitions shown in a merged catalog view
+- run control via REST
+- live updates via WebSocket
+- trajectory and log review by `run_id`
 
-# Or use CLI tool
-airfogsim docs --format html --output-dir ./api_docs
+## Custom Definition Source
+
+Custom `agent`, `task`, and `workflow` definitions are file-backed under:
+
+```text
+registry/aeroagentsim/
+├── agents/
+├── tasks/
+└── workflows/
 ```
 
-### Advanced Build Options
-```bash
-# Use Sphinx directly
-cd docs
-make html          # HTML documentation
-make latexpdf      # PDF documentation
+These files are the primary editable source. Database state is secondary and limited to indexing, cache, and run reference use cases.
 
-# Serve locally
-python build_docs.py --serve
+## Runtime Layout
 
-# Live reload during development
-pip install sphinx-autobuild
-sphinx-autobuild docs docs/_build/html
+```text
+runtime/aeroagentsim/
+├── configs/
+└── runs/
+    └── <run_id>/
+        ├── logs/
+        ├── workflow_states/
+        ├── trajectories/
+        ├── spatial/
+        └── metrics/
 ```
 
-### Prerequisites
+## Screenshot
+
+![Workflow Studio relation graph](images/workflow-studio-relation-graph.png)
+
+## Build Docs
+
 ```bash
+conda activate airfogsim
 pip install -e ".[docs]"
-# Or: pip install -r docs/requirements.txt
+cd docs
+make html
 ```
-
-## 📁 Documentation Structure
-
-```
-docs/
-├── README.md              # This navigation file
-├── index.rst             # Documentation homepage
-├── conf.py               # Sphinx configuration
-├── getting_started.rst   # Getting started guide
-├── user_guide.rst        # User guide
-├── examples.rst          # Examples and tutorials
-├── contributing.rst      # Contributing guidelines
-├── api/                  # Auto-generated API reference
-│   ├── index.rst         # API index
-│   ├── core.rst          # Core framework
-│   ├── agent.rst         # Agent classes
-│   ├── component.rst     # Component classes
-│   ├── workflow.rst      # Workflow classes
-│   ├── dataprovider.rst  # DataProvider classes
-│   ├── manager.rst       # Manager classes
-│   ├── task.rst          # Task classes
-│   ├── resource.rst      # Resource classes
-│   └── ...               # Other API modules
-├── _static/              # Static files (CSS, images)
-├── _templates/           # Custom templates
-└── _build/               # Generated documentation
-    └── html/             # HTML output
-```
-
-## 🔗 Quick Links
-
-- **Main Project**: [README.md](../README.md) - Project overview
-- **Installation**: [INSTALL.md](../INSTALL.md) - Detailed installation guide
-- **Examples**: [examples/](../src/airfogsim/examples/) - Code examples
-- **Helper Tools**: [helper/](../src/airfogsim/helper/) - Development utilities
-
-## 📝 Documentation Guidelines
-
-When contributing to documentation:
-
-1. **API Documentation**: Auto-generated from docstrings - update source code
-2. **User Guides**: Written in reStructuredText (.rst) - update files in this directory
-3. **Technical Docs**: Markdown files in `src/airfogsim/docs/` - for deep technical content
-4. **Examples**: Include working code examples with explanations
-
-## 🆘 Need Help?
-
-- **Issues**: [GitHub Issues](https://github.com/ZhiweiWei-NAMI/AirFogSim/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ZhiweiWei-NAMI/AirFogSim/discussions)
-- **Email**: Contact the development team
-
----
-
-**Generated Documentation**: After building, open `_build/html/index.html` to browse the complete documentation.
-
-## 🔧 Advanced Documentation Development
-
-### Customization Options
-
-The documentation uses the Read the Docs theme. For advanced customization:
-
-```python
-# In conf.py
-html_theme_options = {
-    'display_version': True,
-    'prev_next_buttons_location': 'bottom',
-    'style_external_links': False,
-}
-```
-
-### Troubleshooting
-
-**Common Issues:**
-1. **Import errors**: Install AirFogSim in development mode: `pip install -e .`
-2. **Missing dependencies**: Install docs dependencies: `pip install -e ".[docs]"`
-3. **Build errors**: Check RST syntax and docstring formatting
-
-**Debugging:**
-```bash
-# Build with warnings as errors
-sphinx-build -W -b html docs docs/_build/html
-
-# Clean build cache
-python build_docs.py --clean
-```
-
-### Writing Guidelines
-
-**Docstring Style** (Google format):
-```python
-def example_function(param1: str, param2: int = 10) -> bool:
-    """Brief description of the function.
-
-    Args:
-        param1: Description of the first parameter.
-        param2: Description with default value.
-
-    Returns:
-        Description of the return value.
-
-    Example:
-        >>> result = example_function("hello", 20)
-        >>> print(result)
-        True
-    """
-    return True
-```
-
-**Cross-references**:
-```rst
-:class:`airfogsim.core.agent.Agent`
-:meth:`airfogsim.core.agent.Agent.execute_task`
-:doc:`user_guide`
-```
-
-For detailed contributing guidelines, see [Contributing Guide](contributing.html).

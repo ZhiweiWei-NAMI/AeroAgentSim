@@ -73,6 +73,9 @@ class WorkflowManager:
                 trigger.activate()
             else:
                 warnings.warn(f"Invalid start_trigger format for workflow {workflow.id}")
+        # else:
+        #     # 没有触发器，立即启动
+        #     self.start_workflow(workflow.id)
 
         self.env.event_registry.trigger_event(
             self.manager_id, 'workflow_registered',
@@ -195,6 +198,10 @@ class WorkflowManager:
             for trigger in self.workflow_triggers[workflow_id]:
                 trigger.deactivate()
             del self.workflow_triggers[workflow_id]
+
+    def get_active_workflows(self):
+        """获取所有活跃的工作流字典"""
+        return {w.id: w for w in self.workflows.values() if w.is_active()}
 
     def cancel_workflow(self, workflow_id, reason="canceled_by_manager"):
         """取消工作流"""

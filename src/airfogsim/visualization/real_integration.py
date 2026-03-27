@@ -1,14 +1,12 @@
-import asyncio
-import json
 import uuid
-import threading
-import time
+from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Set
 
 from .data_service import SimulationDataService
 from .simulation_manager import SimulationManager
 from .update_service import UpdateService
 from .setup import create_agent_from_config, create_workflow_from_config
+from .type_utils import canonical_agent_display_type, is_drone_type
 from airfogsim.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -16,13 +14,17 @@ logger = get_logger(__name__)
 class RealSimulationIntegration:
     """实际仿真集成层，连接仿真环境和API层，并协调各个模块"""
     
-    def __init__(self, data_service: SimulationDataService):
+    def __init__(self, data_service: SimulationDataService, run_repository=None):
         """初始化仿真集成层
         
         Args:
             data_service: 数据服务实例
         """
         self.data_service = data_service
+        self.run_repository = run_repository
+        self.active_run_id: Optional[str] = None
+        self.active_config_id: Optional[str] = None
+        self.last_startup_error: Optional[Dict[str, Any]] = None
         
         # 初始化配置
         self.config = {
@@ -37,7 +39,11 @@ class RealSimulationIntegration:
         self.simulation_manager = SimulationManager(None, self.config)  # 暂时传递None，后面会设置
         
         # 创建更新服务，并传入仿真管理器
-        self.update_service = UpdateService(data_service, self.simulation_manager)
+        self.update_service = UpdateService(
+            data_service,
+            self.simulation_manager,
+            run_repository=run_repository,
+        )
         
         # 设置更新服务到仿真管理器
         self.simulation_manager.update_service = self.update_service
@@ -76,8 +82,20 @@ class RealSimulationIntegration:
         if 'level' not in event_data:
             event_data['level'] = 'info'
         
-        # 添加到更新队列
-        self.update_service.add_update(event_data)
+        payload = {
+            "type": "log_event",
+            "run_id": self.active_run_id,
+            "time": event_data.get("time", self.simulation_time),
+            "source": event_data.get("source", event_data.get("source_id", "SimulationSystem")),
+            "message": event_data.get("message"),
+            "level": event_data.get("level", "info"),
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
+        }
+        for key, value in event_data.items():
+            if key not in payload:
+                payload[key] = value
+        
+        self.update_service.add_update(payload)
     
     def get_updates(self, max_items: int = 10) -> List[Dict[str, Any]]:
         """从队列中获取更新，API层调用此方法
@@ -138,7 +156,7 @@ class RealSimulationIntegration:
             self.data_service.update_agent(
                 agent_id=agent_id,
                 name=agent_config.get("name", f"智能体{agent_id}"),
-                type_=agent_config.get("type", "drone"),
+                type_=canonical_agent_display_type(agent_config.get("type", "drone")) or "DroneAgent",
                 position=agent_config.get("position", (10, 10, 0)),
                 properties={
                     "battery": agent_config.get("battery", 100),
@@ -148,7 +166,7 @@ class RealSimulationIntegration:
             )
             
             # 如果是drone类型，还需更新drone_states表
-            if agent_config.get("type") == "drone":
+            if is_drone_type(agent_config.get("type", "drone")):
                 self.data_service.update_drone_state(
                     drone_id=agent_id,
                     position=agent_config.get("position", (10, 10, 0)),
@@ -180,7 +198,7 @@ class RealSimulationIntegration:
             )
             if agent:
                 # 注册到更新服务
-                is_drone = agent_config.get("type") == "drone"
+                is_drone = is_drone_type(agent_config.get("type"))
                 self.update_service.register_agent(agent_id, agent, is_drone)
                 
                 # 通知添加成功
@@ -289,11 +307,16 @@ class RealSimulationIntegration:
         """启动仿真"""
         # 直接调用仿真管理器方法，状态通过属性自动更新
         result = self.simulation_manager.start_simulation()
-        
-        # 如果状态为RUNNING，启动前端更新器
-        if self.simulation_status == "RUNNING":
+
+        if result.get("status") == "success":
+            self.clear_startup_error()
+            # Sync agents created by SimulationManager to UpdateService so that
+            # spatial snapshots and drone state updates can find them.
+            for agent_id, agent in self.simulation_manager.active_agents.items():
+                is_drone = agent_id in self.simulation_manager.active_drones
+                self.update_service.register_agent(agent_id, agent, is_drone)
             self.update_service.start_frontend_updater()
-        
+
         return result
     
     async def pause_simulation(self):
@@ -309,8 +332,12 @@ class RealSimulationIntegration:
     
     async def reset_simulation(self):
         """重置仿真"""
+        active_run_id = self.run_repository.active_run_id if self.run_repository else None
+        final_sim_time = self.simulation_manager.simulation_time
+        final_sim_speed = self.simulation_manager.simulation_speed
         # 停止前端更新器
         self.update_service.stop_frontend_updater()
+        self.update_service.clear_all_agents()
         
         # 重置仿真管理器
         self.simulation_manager.reset_simulation()
@@ -319,7 +346,16 @@ class RealSimulationIntegration:
         
         # 清空活动实体
         self.active_workflows.clear()
-        
+        if self.run_repository and active_run_id:
+            self.run_repository.update_status(
+                "stopped",
+                final_sim_time,
+                final_sim_speed,
+            )
+        self.active_run_id = None
+        self.active_config_id = None
+        self.clear_startup_error()
+
         # 记录状态变更
         logger.info("仿真已重置")
         
@@ -335,28 +371,17 @@ class RealSimulationIntegration:
             logger.warning("仿真速度必须大于0")
             return {"status": "error", "message": "仿真速度必须大于0"}
         logger.info(f"设置仿真速度为 {speed}x")
-        # 不再需要更新本地speed状态
-        self.simulation_speed = speed
-        
-        # 将速度设置应用到环境中
-        env = getattr(self.simulation_manager, 'env', None)
-        if env and hasattr(env, 'set_speed'):
-            try:
-                env.set_speed(speed)
-                logger.info(f"已将速度 {speed}x 应用到仿真环境")
-            except Exception as e:
-                logger.error(f"设置仿真环境速度时出错: {str(e)}")
-        
-        # 状态变化通知已在SimulationManager中处理，不需要在这里重复
-        # 如果需要额外通知，可以使用以下代码
-        self.update_service.add_update({
-            "type": "sim_status",
-            "status": self.simulation_manager.simulation_status,
-            "time": self.simulation_manager.simulation_time,
-            "speed": self.simulation_manager.simulation_speed
-        })
-        
-        return {"status": "success", "message": f"仿真速度已设置为 {speed}x"}
+        return self.simulation_manager.set_simulation_speed(speed)
+
+    def activate_run(self, manifest) -> None:
+        self.active_run_id = getattr(manifest, "run_id", None)
+        self.active_config_id = getattr(manifest, "config_id", None)
+
+    def set_startup_error(self, error_payload: Optional[Dict[str, Any]]) -> None:
+        self.last_startup_error = dict(error_payload) if error_payload else None
+
+    def clear_startup_error(self) -> None:
+        self.last_startup_error = None
     
     async def delete_workflow(self, workflow_id: str) -> bool:
         """删除工作流

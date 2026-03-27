@@ -348,7 +348,7 @@ def find_compatible_tasks(env: Environment, agent: Agent, workflow: Optional[Wor
     
     if not compatible_tasks:
         print("未找到兼容的任务类")
-        return
+        return []
     
     task_info = []
     for task_class, score in compatible_tasks:
@@ -372,5 +372,6 @@ def find_compatible_tasks(env: Environment, agent: Agent, workflow: Optional[Wor
     headers = ["任务类名", "描述", "所需指标", "产生的状态", "兼容性分数", "模块"]
     table_data = [[info['name'], info['description'], info['necessary_metrics'], info['produced_states'], info['compatibility_score'], info['module']] for info in task_info]
     
-    print(tabulate(table_data, headers=headers, tablefmt="grid"))
+    # print(tabulate(table_data, headers=headers, tablefmt="grid"))
     print(f"共找到 {len(task_info)} 个兼容的任务类")
+    return compatible_tasks

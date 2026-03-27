@@ -1,195 +1,206 @@
-import React, { useState, useEffect } from 'react';
-import { Route, Routes, Link, useLocation } from 'react-router-dom';
-import { Layout, Menu, Typography, Breadcrumb } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Button, Layout, Menu, Select, Space, Tag, Typography } from 'antd';
 import {
-  HomeOutlined,
-  RobotOutlined,
-  HistoryOutlined,
-  SettingOutlined,
+  AppstoreOutlined,
+  BranchesOutlined,
+  FundProjectionScreenOutlined,
   PlayCircleOutlined,
-  AimOutlined,
-  DashboardOutlined,
-  TeamOutlined,
-  GlobalOutlined
+  ProfileOutlined,
+  RadarChartOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 
-// 导入页面组件
-import Dashboard from './pages/Dashboard';
-import DroneMonitor from './pages/DroneMonitor';
-import DroneHistory from './pages/DroneHistory';
-import WorkflowConfig from './pages/WorkflowConfig';
-import AgentConfig from './pages/AgentConfig';
-import SimulationControl from './pages/SimulationControl';
-import Simulation3DMapView from './pages/Simulation3DMapView';
-
-// 导入样式
+import ReviewDrawer from './components/workbench/ReviewDrawer';
+import { WorkbenchProvider, useWorkbench } from './context/WorkbenchContext';
+import { I18nProvider, useI18n } from './i18n/I18nProvider';
+import ClassCatalogPage from './pages/ClassCatalogPage';
+import OverviewPage from './pages/OverviewPage';
+import RunConsolePage from './pages/RunConsolePage';
+import TrajectoriesLogsPage from './pages/TrajectoriesLogsPage';
+import WorkflowStudioPage from './pages/WorkflowStudioPage';
+import { systemApi } from './services/workbenchApi';
 import './App.css';
 
 const { Header, Content, Footer, Sider } = Layout;
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
-function App() {
+function resolveSelectedKey(pathname, items) {
+  const exact = items.find((item) => item.key === pathname);
+  if (exact) {
+    return exact.key;
+  }
+  const matched = items.find((item) => item.key !== '/' && pathname.startsWith(item.key));
+  return matched ? matched.key : '/';
+}
+
+function AppShell() {
   const location = useLocation();
+  const { locale, setLocale, t } = useI18n();
+  const { draftConfig, reviewResult, reviewGraph, reviewError, reviewing, runReview } = useWorkbench();
   const [collapsed, setCollapsed] = useState(false);
-  const [currentPath, setCurrentPath] = useState(location.pathname);
-  
-  // 当路由变化时更新currentPath
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [health, setHealth] = useState(null);
+  const [healthError, setHealthError] = useState('');
+
+  const navItems = useMemo(
+    () => [
+      { key: '/', icon: <FundProjectionScreenOutlined />, label: t('navOverview') },
+      { key: '/catalog', icon: <AppstoreOutlined />, label: t('navCatalog') },
+      { key: '/studio', icon: <BranchesOutlined />, label: t('navStudio') },
+      { key: '/console', icon: <PlayCircleOutlined />, label: t('navConsole') },
+      { key: '/runs', icon: <ProfileOutlined />, label: t('navRuns') },
+    ],
+    [t]
+  );
+
+  const selectedKey = useMemo(
+    () => resolveSelectedKey(location.pathname, navItems),
+    [location.pathname, navItems]
+  );
+
   useEffect(() => {
-    setCurrentPath(location.pathname);
-  }, [location]);
-
-  // 面包屑映射
-  const breadcrumbNameMap = {
-    '/': '仪表盘',
-    '/drones': '无人机监控',
-    '/history': '历史数据',
-    '/workflows': '工作流配置',
-    '/agents': '智能体配置',
-    '/simulation': '仿真控制',
-    '/3dmap': '3D地图视图',
-  };
-  
-  // 动态路径的面包屑映射
-  const getDynamicBreadcrumbName = (path) => {
-    // 匹配 /drones/:droneId/history 格式的路径
-    const droneHistoryMatch = path.match(/^\/drones\/(.+)\/history$/);
-    if (droneHistoryMatch) {
-      return `无人机 ${droneHistoryMatch[1]} 历史数据`;
-    }
-    return null;
-  };
-
-  // 获取当前面包屑路径
-  const getBreadcrumb = (path) => {
-    // 首先检查是否是动态路径
-    const droneHistoryMatch = path.match(/^\/drones\/(.+)\/history$/);
-    
-    // 如果是无人机历史数据路径，使用特殊处理
-    if (droneHistoryMatch) {
-      const droneId = droneHistoryMatch[1];
-      return [
-        <Breadcrumb.Item key="home">
-          <Link to="/"><HomeOutlined /> 首页</Link>
-        </Breadcrumb.Item>,
-        <Breadcrumb.Item key="/drones">
-          <Link to="/drones">无人机监控</Link>
-        </Breadcrumb.Item>,
-        <Breadcrumb.Item key={path}>
-          无人机 {droneId} 历史数据
-        </Breadcrumb.Item>
-      ];
-    }
-    
-    // 其他路径使用常规处理
-    const pathSnippets = path.split('/').filter(i => i);
-    const extraBreadcrumbItems = pathSnippets.map((_, index) => {
-      const url = `/${pathSnippets.slice(0, index + 1).join('/')}`;
-      return (
-        <Breadcrumb.Item key={url}>
-          <Link to={url}>{breadcrumbNameMap[url] || url}</Link>
-        </Breadcrumb.Item>
-      );
-    });
-    
-    const breadcrumbItems = [
-      <Breadcrumb.Item key="home">
-        <Link to="/"><HomeOutlined /> 首页</Link>
-      </Breadcrumb.Item>,
-    ].concat(extraBreadcrumbItems);
-    
-    return breadcrumbItems;
-  };
-
-  // 处理菜单点击
-  const handleMenuClick = (e) => {
-    setCurrentPath(e.key);
-  };
+    let active = true;
+    const loadHealth = async () => {
+      try {
+        const nextHealth = await systemApi.getHealth();
+        if (!active) {
+          return;
+        }
+        setHealth(nextHealth);
+        setHealthError('');
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+        setHealth(null);
+        setHealthError(error?.message || 'Backend unavailable');
+      }
+    };
+    loadHealth();
+    const timer = window.setInterval(() => {
+      loadHealth().catch(() => {});
+    }, 1000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   return (
-      <Layout style={{ minHeight: '100vh' }}>
-        <Sider 
-          collapsible 
-          collapsed={collapsed} 
-          onCollapse={value => setCollapsed(value)}
-          theme="dark"
+    <>
+      <Layout className="workbench-layout">
+        <Sider
+          collapsible
+          collapsed={collapsed}
+          onCollapse={(value) => setCollapsed(value)}
+          className="workbench-sider"
+          width={252}
         >
-          <div className="logo">
-            {!collapsed && <Title level={5} style={{ color: 'white', margin: '0' }}>AirFogSim</Title>}
-            {collapsed && <Title level={5} style={{ color: 'white', margin: '0', fontSize: '14px' }}>AFS</Title>}
+          <div className="workbench-brand">
+            <RadarChartOutlined className="workbench-brand-icon" />
+            {!collapsed ? (
+              <div>
+                <Title level={4} className="workbench-brand-title">
+                  AeroAgentSim
+                </Title>
+                <Text className="workbench-brand-subtitle">{t('appSubtitle')}</Text>
+              </div>
+            ) : null}
           </div>
-          
-          <Menu 
-            theme="dark" 
-            selectedKeys={[currentPath]} 
-            mode="inline"
-            onClick={handleMenuClick}
-          >
-            <Menu.Item key="/" icon={<DashboardOutlined />}>
-              <Link to="/">仪表盘</Link>
-            </Menu.Item>
-            
-            <Menu.Item key="/drones" icon={<RobotOutlined />}>
-              <Link to="/drones">无人机监控</Link>
-            </Menu.Item>
-            
-            {/* <Menu.Item key="/history" icon={<HistoryOutlined />}>
-              <Link to="/history">历史数据</Link>
-            </Menu.Item> */}
-            
-            <Menu.Item key="/workflows" icon={<AimOutlined />}>
-              <Link to="/workflows">工作流配置</Link>
-            </Menu.Item>
-            
-            <Menu.Item key="/agents" icon={<TeamOutlined />}>
-              <Link to="/agents">智能体配置</Link>
-            </Menu.Item>
-            
-            <Menu.Item key="/simulation" icon={<PlayCircleOutlined />}>
-              <Link to="/simulation">仿真控制</Link>
-            </Menu.Item>
-            
-            <Menu.Item key="/3dmap" icon={<GlobalOutlined />}>
-              <Link to="/3dmap">3D地图视图</Link>
-            </Menu.Item>
-            
-            <Menu.Item key="/settings" icon={<SettingOutlined />}>
-              <Link to="/settings">系统设置</Link>
-            </Menu.Item>
+
+          <Menu mode="inline" selectedKeys={[selectedKey]} className="workbench-menu">
+            {navItems.map((item) => (
+              <Menu.Item key={item.key} icon={item.icon}>
+                <Link to={item.key}>{item.label}</Link>
+              </Menu.Item>
+            ))}
           </Menu>
+
+          <div className="workbench-sider-footer">
+            <Text className="workbench-sider-footnote">{t('techPackage')}</Text>
+          </div>
         </Sider>
-        
-        <Layout className="site-layout">
-          <Header className="site-layout-background" style={{ padding: 0, background: '#fff' }}>
-            <div style={{ display: 'flex', alignItems: 'center', height: '100%', paddingLeft: '24px' }}>
-              <Title level={3} style={{ margin: 0 }}>无人机仿真可视化系统</Title>
+
+        <Layout>
+          <Header className="workbench-header">
+            <div>
+              <Title level={3} className="workbench-header-title">
+                {t('appTitle')}
+              </Title>
+              <Text type="secondary">{draftConfig?.metadata?.name || draftConfig?.name || 'AeroAgentSim Config'}</Text>
             </div>
+            <Space wrap>
+              <Tag color={healthError ? 'error' : 'green'}>
+                {healthError ? t('restUnavailable') : t('restHealthy')}
+              </Tag>
+              {health ? (
+                <Tag color="blue">{`${t('status')}: ${health.simulation_status}`}</Tag>
+              ) : null}
+              {reviewResult ? (
+                <Tag color={reviewResult.valid ? 'success' : 'error'}>
+                  {reviewResult.valid ? t('ok') : t('blocked')}
+                </Tag>
+              ) : null}
+              <Select
+                value={locale}
+                style={{ width: 132 }}
+                onChange={setLocale}
+                options={[
+                  { value: 'zh-CN', label: t('localeZh') },
+                  { value: 'en-US', label: t('localeEn') },
+                ]}
+              />
+              <Button
+                type="primary"
+                icon={<SafetyCertificateOutlined />}
+                loading={reviewing}
+                onClick={async () => {
+                  setReviewOpen(true);
+                  await runReview().catch(() => {});
+                }}
+              >
+                {t('review')}
+              </Button>
+            </Space>
           </Header>
-          
-          <Content style={{ margin: '0 16px' }}>
-            <Breadcrumb style={{ margin: '16px 0' }}>
-              {getBreadcrumb(currentPath)}
-            </Breadcrumb>
-            
-            <div className="site-layout-background" style={{ padding: 24, minHeight: 360 }}>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/drones" element={<DroneMonitor />} />
-                <Route path="/history" element={<DroneHistory />} />
-                <Route path="/drones/:droneId/history" element={<DroneHistory />} />
-                <Route path="/workflows" element={<WorkflowConfig />} />
-                <Route path="/agents" element={<AgentConfig />} />
-                <Route path="/simulation" element={<SimulationControl />} />
-                <Route path="/3dmap" element={<Simulation3DMapView />} />
-                <Route path="/settings" element={<div>系统设置页面</div>} />
-              </Routes>
-            </div>
+
+          <Content className="workbench-content">
+            <Routes>
+              <Route path="/" element={<OverviewPage />} />
+              <Route path="/catalog" element={<ClassCatalogPage />} />
+              <Route path="/studio" element={<WorkflowStudioPage />} />
+              <Route path="/console" element={<RunConsolePage />} />
+              <Route path="/runs" element={<TrajectoriesLogsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </Content>
-          
-          <Footer style={{ textAlign: 'center' }}>
-            AirFogSim 无人机仿真可视化系统 ©{new Date().getFullYear()} 版权所有
+
+          <Footer className="workbench-footer">
+            {t('footer')} ©{new Date().getFullYear()}
           </Footer>
         </Layout>
       </Layout>
+
+      <ReviewDrawer
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        reviewResult={reviewResult}
+        reviewGraph={reviewGraph}
+        reviewing={reviewing}
+        error={reviewError}
+      />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <I18nProvider>
+      <WorkbenchProvider>
+        <AppShell />
+      </WorkbenchProvider>
+    </I18nProvider>
   );
 }
 

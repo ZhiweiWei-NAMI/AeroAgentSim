@@ -1,214 +1,110 @@
 User Guide
 ==========
 
-This comprehensive guide covers all aspects of using AirFogSim for simulation development.
-
-.. toctree::
-   :maxdepth: 2
-   :caption: User Guide Topics:
-
-   guides/architecture
-   guides/agent_development
-   guides/component_development
-   guides/workflow_development
-   guides/dataprovider_development
-   guides/simulation_setup
-   guides/performance_tuning
-   guides/troubleshooting
+This guide covers the current AeroAgentSim usage model. The underlying technical package remains ``airfogsim``.
 
 Core Patterns
 -------------
 
-Agent-Component Pattern
-~~~~~~~~~~~~~~~~~~~~~~~
+Agent-Component-Task Workflow
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Agents gain capabilities through components:
-
-.. code-block:: python
-
-   # Create agent
-   drone = env.create_agent(DroneAgent, "drone1")
-   
-   # Add capabilities
-   drone.add_component(MoveToComponent(env, drone))
-   drone.add_component(SensorComponent(env, drone))
-   drone.add_component(CommunicationComponent(env, drone))
-   
-   # Agent can now move, sense, and communicate
-
-Event-Driven Communication
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Components and agents communicate through events:
+Agents own components, components execute tasks, and workflows coordinate higher-level behavior.
 
 .. code-block:: python
 
-   # Subscribe to events
-   drone.subscribe('weather_provider', 'weather_changed', 
-                   drone._handle_weather_change)
-   
-   # Trigger events
-   drone.trigger_event('battery_low', {'level': 15})
+   from airfogsim import Environment
+   from airfogsim.agent import DroneAgent
+   from airfogsim.component import ChargingComponent, MoveToComponent
 
-State Management
-~~~~~~~~~~~~~~~~
-
-Agents maintain structured state:
-
-.. code-block:: python
-
-   # Register state templates
-   drone.register_state_template('altitude', value_type=float, required=True)
-   
-   # Initialize states
-   drone.initialize_states(altitude=100.0, status='idle')
-   
-   # Update states (triggers events)
-   drone.update_state('altitude', 150.0)
-
-Workflow Coordination
-~~~~~~~~~~~~~~~~~~~~~
-
-Workflows coordinate high-level processes:
-
-.. code-block:: python
-
-   # Create workflow
-   workflow = InspectionWorkflow(env, "mission1", drone,
-                                waypoints=[(0,0,100), (100,100,100)])
-   
-   # Assign to agent
-   env.workflow_manager.assign_workflow(drone, workflow)
-   
-   # Start workflow
-   workflow.start()
-
-Advanced Topics
----------------
-
-Multi-Agent Coordination
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Coordinate multiple agents through contracts and communication:
-
-.. code-block:: python
-
-   # Create multiple agents
-   drone1 = env.create_agent(DroneAgent, "drone1")
-   drone2 = env.create_agent(DroneAgent, "drone2")
-   station = env.create_agent(GroundStation, "station1")
-   
-   # Set up communication network
-   for agent in [drone1, drone2, station]:
-       agent.add_component(CommunicationComponent(env, agent))
-   
-   # Create coordination workflow
-   coordination_workflow = CoordinationWorkflow(
-       env, "coordination", [drone1, drone2],
-       coordination_strategy="leader_follower"
+   env = Environment()
+   drone = env.create_agent(
+       DroneAgent,
+       "drone1",
+       properties={
+           "position": [0, 0, 20],
+           "battery_level": 100,
+       },
    )
+   drone.add_component(MoveToComponent(env, drone))
+   drone.add_component(ChargingComponent(env, drone))
 
-Real-time Data Integration
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Configuration and Runs
+~~~~~~~~~~~~~~~~~~~~~~
 
-Integrate real-world data sources:
+The workbench uses two different persistence concepts:
 
-.. code-block:: python
+* config snapshots
+* runs identified by ``run_id``
 
-   # Weather data provider
-   weather_provider = WeatherDataProvider(env, {
-       'api_key': 'your_api_key',
-       'locations': [{'lat': 40.7128, 'lon': -74.0060}],
-       'update_interval': 300
-   })
-   
-   # Load and start data updates
-   weather_provider.load_data()
-   weather_provider.start_event_triggering()
-   
-   # Agents automatically receive weather updates
+Config snapshots are immutable and stored under ``runtime/aeroagentsim/configs/``. Run artifacts are stored under ``runtime/aeroagentsim/runs/<run_id>/``.
 
-Performance Optimization
-~~~~~~~~~~~~~~~~~~~~~~~~
+Custom definitions are stored separately under ``registry/aeroagentsim/agents/``, ``registry/aeroagentsim/tasks/``, and ``registry/aeroagentsim/workflows/``. These files are the source of truth for custom registry content.
 
-Optimize simulations for large-scale scenarios:
+2D Workbench
+------------
 
-.. code-block:: python
+The current frontend is a developer workbench rather than a 3D monitor.
 
-   # Use efficient data structures
-   env.config['use_spatial_indexing'] = True
-   env.config['event_batching'] = True
-   
-   # Limit event frequency
-   env.config['max_events_per_second'] = 1000
-   
-   # Use parallel processing
-   env.config['parallel_agents'] = True
-   env.config['worker_threads'] = 4
+Workflow Studio
+~~~~~~~~~~~~~~~
 
-Debugging and Monitoring
-~~~~~~~~~~~~~~~~~~~~~~~~
+Use Workflow Studio to:
 
-Monitor simulation progress and debug issues:
+* edit agent definitions in table form
+* edit workflow definitions in table and JSON form
+* select builtin or custom definitions from a merged catalog
+* run page-local ``Validate`` on the current draft
+* use global ``Review / Validate`` for aggregated checks
+* inspect workflow-agent-state coupling through the relation graph
+* zoom and drag the graph viewport inside the graph canvas without changing the underlying config
 
-.. code-block:: python
+Workflow Studio validation is draft-oriented. It should evaluate the current working form state instead of only the last saved snapshot.
 
-   # Enable detailed logging
-   import logging
-   logging.getLogger('airfogsim').setLevel(logging.DEBUG)
-   
-   # Use built-in monitoring
-   from airfogsim.visualization import Dashboard
-   dashboard = Dashboard(env)
-   dashboard.start()
-   
-   # Access simulation statistics
-   stats = env.get_simulation_stats()
-   print(f"Agents: {stats['agent_count']}")
-   print(f"Events: {stats['event_count']}")
+Class Catalog
+~~~~~~~~~~~~~
 
-Best Practices
---------------
+Use Class Catalog to:
 
-Code Organization
-~~~~~~~~~~~~~~~~~
+* inspect builtin and custom definitions together
+* review definition source and version
+* create or update declarative custom definitions
+* check definition-level validation before using them in configs
 
-1. **Separate Concerns**: Keep agents, components, and workflows in separate modules
-2. **Configuration Files**: Use YAML/JSON for simulation parameters
-3. **Reusable Components**: Design components for reuse across agent types
-4. **Clear Interfaces**: Define clear APIs between system components
-
-Error Handling
-~~~~~~~~~~~~~~
-
-1. **Graceful Degradation**: Handle component failures gracefully
-2. **Recovery Mechanisms**: Implement automatic recovery where possible
-3. **Logging**: Use comprehensive logging for debugging
-4. **Validation**: Validate inputs and configurations
-
-Performance
+Run Console
 ~~~~~~~~~~~
 
-1. **Efficient Algorithms**: Use appropriate data structures and algorithms
-2. **Event Optimization**: Minimize unnecessary event triggering
-3. **Memory Management**: Clean up resources properly
-4. **Profiling**: Profile simulations to identify bottlenecks
+Run Console is the operational view for:
 
-Testing
-~~~~~~~
+* starting, pausing, resuming, and resetting runs
+* observing critical path markers
+* following live log events
+* viewing the live 2D spatial snapshot
 
-1. **Unit Tests**: Test individual components and agents
-2. **Integration Tests**: Test component interactions
-3. **Scenario Tests**: Test complete simulation scenarios
-4. **Performance Tests**: Benchmark simulation performance
+Run start is gated by runtime preflight. Warnings can still allow launch, but preflight errors block ``POST /api/runs``.
 
-Common Patterns and Examples
-----------------------------
+The UI supports ``zh-CN`` and ``en-US`` switching at the global header level. Raw runtime log content is not automatically translated.
 
-For detailed examples and patterns, see:
+Trajectories and Logs
+~~~~~~~~~~~~~~~~~~~~~
 
-- :doc:`examples` - Complete simulation examples
-- :doc:`guides/agent_development` - Custom agent development
-- :doc:`guides/component_development` - Component creation
-- :doc:`guides/workflow_development` - Workflow design
-- :doc:`api/index` - Complete API reference
+Historical inspection is organized by ``run_id`` and focuses on:
+
+* trajectory polylines
+* log filtering
+* run-specific spatial snapshots
+* refresh-by-run inspection after reset or stop
+
+API Interaction Model
+---------------------
+
+The current workbench uses:
+
+* REST for control and configuration requests
+* WebSocket for ``sim_status``, ``workflow_state_diff``, ``spatial_snapshot``, and ``log_event``
+
+Registry CRUD and validation are also handled through REST so that custom definitions can be created, checked, versioned, and referenced without exposing executable code upload paths.
+
+Active-run control is intentionally narrow: ``/api/runs/{run_id}/pause|resume|reset`` applies only to the active run and returns ``409`` for historical runs.
+
+There is no ``Dashboard`` class in the current usage model, and the old 3D page workflow is no longer part of the frontend.

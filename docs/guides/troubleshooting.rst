@@ -1,13 +1,14 @@
 Troubleshooting Guide
-====================
+=====================
 
-This guide helps you diagnose and resolve common issues when working with AirFogSim.
+This guide helps you diagnose and resolve common issues when working with
+``airfogsim`` and the AeroAgentSim workbench.
 
 Common Issues and Solutions
 ---------------------------
 
 Installation Problems
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 **Issue: ImportError when importing AirFogSim**
 
@@ -123,8 +124,47 @@ Simulation Runtime Errors
       for trigger in workflow.status_machine.triggers:
           print(f"Trigger {trigger.name}: {trigger.is_active()}")
 
+**Issue: ``runtime_preflight`` reports skipped ``create_airspace`` or ``create_frequency``**
+
+.. code-block:: text
+
+   warning runtime_preflight AirspaceManager: 当前运行时未暴露 create_airspace，跳过默认空域注入。
+   warning runtime_preflight FrequencyManager: 当前运行时未暴露 create_frequency，跳过默认频率注入。
+
+**Solutions:**
+
+1. Treat these as compatibility warnings when no explicit airspace/frequency config is required.
+
+2. If your draft explicitly configures airspaces or frequencies, fix the runtime support gap first because preflight will escalate to an error and block run start.
+
+3. Check preflight results rather than warning count alone: only preflight errors block ``POST /api/runs``.
+
+**Issue: ``/api/runs/{run_id}/pause|resume|reset`` returns ``409``**
+
+.. code-block:: text
+
+   409 Only the active run can be paused/resumed/reset.
+
+**Solutions:**
+
+1. Use run control endpoints only for the active run shown in the workbench header.
+
+2. Use historical runs for inspection and deletion only; they cannot be resumed after they become inactive.
+
+**Issue: Legacy ``/api/simulation/*`` endpoints return ``410``**
+
+.. code-block:: text
+
+   410 Legacy /api/simulation endpoints are disabled.
+
+**Solutions:**
+
+1. Use ``/api/configs/*`` for draft editing, validation, graph preview, and preflight.
+
+2. Use ``/api/runs/*`` for start, pause, resume, reset, and historical run access.
+
 Performance Issues
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 **Issue: Simulation runs slowly**
 
@@ -162,15 +202,13 @@ Performance Issues
       # Increase agent decision intervals
       agent.decision_interval = 60.0  # Reduce from default
 
-2. Enable performance optimizations:
+2. Reduce visualization and logging overhead:
 
    .. code-block:: python
 
-      env.config.update({
-          'event_batching': True,
-          'spatial_indexing': True,
-          'parallel_agents': True
-      })
+      # Use explicit public knobs rather than env.config mutation.
+      env.visual_interval = 15
+      agent.decision_interval = 60.0
 
 **Issue: Memory usage grows continuously**
 
@@ -198,14 +236,16 @@ Performance Issues
       # Configure agents to limit history
       agent.max_state_history = 100
 
-2. Enable garbage collection:
+2. Reduce retained debug/runtime history:
 
    .. code-block:: python
 
-      env.config['garbage_collection_interval'] = 1000
+      # Prefer writing logs/trajectories to run artifacts and trimming
+      # custom in-memory caches maintained by your own agents/components.
+      agent.max_state_history = 100
 
 Data Provider Issues
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 **Issue: External API failures**
 
@@ -270,10 +310,10 @@ Data Provider Issues
                   raise ValueError(f"Missing field: {field}")
 
 Debugging Techniques
--------------------
+--------------------
 
 Logging and Diagnostics
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 1. **Enable detailed logging:**
 
@@ -317,7 +357,7 @@ Logging and Diagnostics
               pickle.dump(state, f)
 
 Interactive Debugging
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 1. **Use simulation stepping:**
 
@@ -363,7 +403,7 @@ Testing and Validation
 ----------------------
 
 Unit Testing
-~~~~~~~~~~~
+~~~~~~~~~~~~
 
 1. **Test agent behavior:**
 
@@ -402,7 +442,7 @@ Unit Testing
           assert task.status == TaskStatus.COMPLETED
 
 Integration Testing
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 
 1. **Test complete workflows:**
 
@@ -430,7 +470,7 @@ Integration Testing
           assert workflow.status_machine.current_status == 'completed'
 
 Common Error Messages
---------------------
+---------------------
 
 **"Agent not found in environment"**
    - Ensure agent is registered: ``env.register_agent(agent)``
@@ -455,7 +495,7 @@ Common Error Messages
    - Enable memory optimization settings
 
 Getting Help
------------
+------------
 
 When reporting issues:
 

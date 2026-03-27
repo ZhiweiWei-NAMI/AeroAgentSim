@@ -1,330 +1,175 @@
 Architecture Guide
 ==================
 
-This guide provides a comprehensive overview of the AirFogSim architecture, design principles, and system organization.
+This guide describes the current repository architecture.
 
-System Overview
----------------
+``AeroAgentSim`` is the current product/workbench name. ``airfogsim`` remains
+the Python package name and the technical execution namespace.
 
-AirFogSim is built on a layered, event-driven architecture that promotes modularity, extensibility, and scalability. The system is designed around the following core principles:
-
-* **Agent-Centric Design**: Autonomous agents are the primary actors
-* **Component-Based Capabilities**: Functionality is provided through composable components
-* **Event-Driven Communication**: Loose coupling through publish-subscribe patterns
-* **Workflow Coordination**: High-level process management through state machines
-* **Resource Management**: Dynamic allocation and contention modeling
-* **Data Integration**: External data sources for realistic scenarios
-
-Architecture Layers
--------------------
-
-Core Layer
-~~~~~~~~~~
-
-The foundation layer provides essential abstractions and services:
-
-.. code-block:: text
-
-   ┌─────────────────────────────────────────────────────────────┐
-   │                     Core Layer                              │
-   ├─────────────────────────────────────────────────────────────┤
-   │ Environment │ Agent  │ Component    │ Task  │ Workflow      │
-   │ Resource    │ Trigger│ DataProvider │ Utils │ Enums │ Event │
-   └─────────────────────────────────────────────────────────────┘
-
-Key components:
-
-* **Environment**: SimPy-based discrete event simulation engine
-* **Agent**: Base class for autonomous entities
-* **Component**: Base class for agent capabilities
-* **Task**: Encapsulation of specific actions
-* **Workflow**: State machine-based process coordination
-* **Resource**: Base class for allocatable resources
-* **DataProvider**: External data integration interface
-* **Event System**: Publish-subscribe event management
-
-Implementation Layer
-~~~~~~~~~~~~~~~~~~~~
-
-Concrete implementations of core abstractions:
-
-.. code-block:: text
-
-   ┌─────────────────────────────────────────────────────────────┐
-   │                Implementation Layer                         │
-   ├─────────────────────────────────────────────────────────────┤
-   │ Agents      │ Components  │ Tasks      │ Workflows          │
-   │ - Drone     │ - Mobility  │ - MoveTo   │ - Inspection       │
-   │ - Terminal  │ - Sensing   │ - Compute  │ - Logistics        │
-   │ - Station   │ - Charging  │ - Transfer │ - Charging         │
-   └─────────────────────────────────────────────────────────────┘
-
-Management Layer
-~~~~~~~~~~~~~~~~
-
-System-wide services and resource management:
-
-.. code-block:: text
-
-   ┌─────────────────────────────────────────────────────────────┐
-   │                  Management Layer                           │
-   ├─────────────────────────────────────────────────────────────┤
-   │ AgentManager │ TaskManager │ WorkflowManager │TriggerManager│
-   │ LandingManager │ FrequencyManager │ ContractManager         │
-   └─────────────────────────────────────────────────────────────┘
-
-Integration Layer
-~~~~~~~~~~~~~~~~~
-
-External interfaces and data sources:
-
-.. code-block:: text
-
-   ┌─────────────────────────────────────────────────────────────┐
-   │                 Integration Layer                           │
-   ├─────────────────────────────────────────────────────────────┤
-   │ Weather │ Traffic │ Signal │ Statistics │ Visualization     │
-   │ APIs    │ SUMO    │ RF     │ Collection │ Dashboard         │
-   └─────────────────────────────────────────────────────────────┘
-
-Core Design Patterns
+High-Level Structure
 --------------------
 
-Agent-Component Pattern
-~~~~~~~~~~~~~~~~~~~~~~~
+The repository has three practical layers:
 
-Agents gain capabilities through composition of components:
+* the ``airfogsim`` simulation core
+* the AeroAgentSim workbench backend under ``src/airfogsim/visualization/``
+* the React frontend under ``frontend/``
 
-.. code-block:: python
+The old ``Dashboard`` wording in legacy docs should now be read as historical
+only. The current frontend is a REST + WebSocket driven 2D workbench.
 
-   class DroneAgent(Agent):
-       def __init__(self, env, name, **kwargs):
-           super().__init__(env, name, **kwargs)
-           
-           # Add capabilities through components
-           self.add_component(MoveToComponent(env, self))
-           self.add_component(SensorComponent(env, self))
-           self.add_component(CommunicationComponent(env, self))
+Core Simulation Layer
+---------------------
 
-Benefits:
-* **Modularity**: Components can be developed and tested independently
-* **Reusability**: Components can be shared across agent types
-* **Flexibility**: Agents can be configured with different capability sets
-* **Maintainability**: Changes to capabilities don't affect agent core logic
+The execution model is still built from:
 
-Event-Driven Communication
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+* ``Environment``
+* ``Agent``
+* ``Component``
+* ``Task``
+* ``Workflow``
+* ``Trigger``
+* manager classes for resources and coordination
 
-Loose coupling through publish-subscribe events:
+These classes remain the runtime source of truth.
 
-.. code-block:: python
+Workbench Backend Layer
+-----------------------
 
-   # Publisher
-   agent.trigger_event('battery_low', {'level': 15, 'agent_id': agent.id})
-   
-   # Subscriber
-   agent.subscribe('weather_provider', 'weather_changed', 
-                   agent._handle_weather_change)
+The workbench backend adds:
 
-Benefits:
-* **Decoupling**: Publishers don't need to know about subscribers
-* **Scalability**: Easy to add new event handlers
-* **Flexibility**: Dynamic subscription and unsubscription
-* **Debugging**: Centralized event logging and monitoring
+* catalog extraction for builtin and custom definitions
+* config snapshot storage and validation
+* graph generation for workflow-agent-state relationships
+* runtime preflight checks
+* run lifecycle control
+* artifact persistence for logs, trajectories, spatial snapshots, and workflow
+  state diffs
 
-State Machine Workflows
-~~~~~~~~~~~~~~~~~~~~~~~~
+The backend is exposed through a FastAPI app.
 
-Complex processes managed through state machines:
+Current API groups include:
 
-.. code-block:: python
+* ``/api/catalog/*``
+* ``/api/registry/*``
+* ``/api/configs/*``
+* ``/api/runs/*``
+* ``/api/agents/*``
+* ``/api/workflows/*``
+* ``/api/templates/*``
+* ``/api/traffic/*``
+* ``/api`` entity endpoints
+* ``/api/runtime/reset``
+* ``/api/health``
+* ``/ws``
 
-   class InspectionWorkflow(Workflow):
-       def _setup_transitions(self):
-           sm = self.status_machine
-           
-           sm.add_transition('start', 'idle', 'moving',
-                           task_suggestion={'task_class': 'MoveToTask'})
-           
-           sm.add_transition('arrive', 'moving', 'inspecting',
-                           trigger=StateTrigger(self.owner, 'position'))
+Frontend Layer
+--------------
 
-Benefits:
-* **Clarity**: Clear representation of process states and transitions
-* **Robustness**: Explicit handling of all possible states
-* **Monitoring**: Easy to track process progress
-* **Debugging**: Clear state history for troubleshooting
+The frontend is a five-page developer workbench:
 
-Resource Management Pattern
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* ``Overview``
+* ``Class Catalog``
+* ``Workflow Studio``
+* ``Run Console``
+* ``Trajectories & Logs``
 
-Dynamic allocation and contention handling:
+It is intentionally 2D only.
 
-.. code-block:: python
+Key frontend behaviors:
 
-   # Request resource
-   landing_spot = env.landing_manager.request_resource(
-       agent_id=drone.id,
-       resource_type='landing_pad',
-       location=(100, 100),
-       duration=300
-   )
-   
-   # Use resource
-   if landing_spot:
-       drone.execute_task('LandingTask', landing_spot=landing_spot)
+* form/table editing is the source of truth
+* the relation graph is for inspection, highlighting, zoom, and pan inside the graph canvas
+* ``Run Console`` handles active runtime control
+* ``Trajectories & Logs`` handles persisted historical run inspection
+* the UI supports ``zh-CN`` and ``en-US``
 
-Benefits:
-* **Realism**: Models real-world resource constraints
-* **Fairness**: Configurable allocation policies
-* **Efficiency**: Optimal resource utilization
-* **Monitoring**: Resource usage tracking and analytics
+Control and Update Channels
+---------------------------
 
-Data Flow Architecture
-----------------------
+The current split is:
 
-The system follows a clear data flow pattern:
+* REST for commands and config requests
+* WebSocket for state and log pushes
 
-.. code-block:: text
+REST is authoritative for:
 
-   External Data → DataProviders → Events → Agents → Components → Tasks
-                                     ↓
-   Statistics ← Collectors ← Events ← State Changes ← Task Execution
+* save
+* validate
+* preflight
+* start
+* pause
+* resume
+* reset
+* delete run
 
-1. **Data Ingestion**: DataProviders load external data
-2. **Event Generation**: Data changes trigger simulation events
-3. **Agent Decision**: Agents process events and make decisions
-4. **Task Execution**: Components execute tasks based on agent decisions
-5. **State Updates**: Task execution updates agent and resource states
-6. **Event Propagation**: State changes trigger new events
-7. **Data Collection**: Statistics collectors gather simulation data
+Runtime preflight is the run-start gate. Warnings remain visible in diagnostics, but only preflight errors block ``POST /api/runs``.
 
-Event System Architecture
--------------------------
+WebSocket is used for:
 
-The event system is central to system communication:
+* ``sim_status``
+* ``workflow_state_diff``
+* ``spatial_snapshot``
+* ``log_event``
 
-.. code-block:: text
+Configuration and Runtime Storage
+---------------------------------
 
-   ┌─────────────────────────────────────────────────────────────┐
-   │                    Event Registry                           │
-   ├─────────────────────────────────────────────────────────────┤
-   │  Source ID → Event Name → [Subscriber List]                 │
-   │                                                             │
-   │  Methods:                                                   │
-   │  - register_event(source_id, event_name)                    │
-   │  - subscribe(source_id, event_name, listener_id, callback)  │
-   │  - trigger_event(source_id, event_name, data)               │
-   │  - unsubscribe(source_id, event_name, listener_id)          │
-   └─────────────────────────────────────────────────────────────┘
+The current persistence model is layered:
 
-Event Types:
-* **Agent Events**: State changes, task lifecycle
-* **Component Events**: Performance metrics, errors
-* **Workflow Events**: State machine transitions
-* **System Events**: Resource allocation, environment updates
-* **External Events**: Weather changes, traffic updates
+* config snapshots under ``runtime/aeroagentsim/configs/``
+* run artifacts under ``runtime/aeroagentsim/runs/<run_id>/``
+* custom definition files under ``registry/aeroagentsim/``
 
-State Management Architecture
-----------------------------
+SQLite is used as a lightweight index/cache layer rather than the primary
+historical store.
 
-Structured state management with validation:
-
-.. code-block:: text
-
-   ┌─────────────────────────────────────────────────────────────┐
-   │                  Agent State System                         │
-   ├─────────────────────────────────────────────────────────────┤
-   │  State Templates (Class Level)                              │
-   │  ├─ Key → {type, required, validator, description}          │
-   │                                                             │
-   │  Agent State (Instance Level)                               │
-   │  ├─ Key → Value                                             │
-   │                                                             │
-   │  Composite State Access                                     │
-   │  ├─ agent.state['battery_level']                            │
-   │  ├─ agent.get_state('charging_station.status')              │
-   └─────────────────────────────────────────────────────────────┘
-
-Features:
-* **Type Safety**: Automatic type validation
-* **Required Fields**: Enforcement of required state attributes
-* **Custom Validation**: User-defined validation functions
-* **Composite Access**: Access to possessed object states
-* **Change Tracking**: Automatic event triggering on state changes
-
-Performance Considerations
--------------------------
-
-The architecture is designed for performance and scalability:
-
-Efficient Event Processing
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* **Event Batching**: Multiple events processed together
-* **Lazy Evaluation**: Events only processed when needed
-* **Selective Subscription**: Agents only subscribe to relevant events
-* **Event Filtering**: Early filtering of irrelevant events
-
-Optimized State Management
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* **Minimal State**: Only essential state is maintained
-* **State Caching**: Frequently accessed state is cached
-* **Lazy State Updates**: State only updated when changed
-* **Efficient Validation**: Fast validation for common cases
-
-Resource Optimization
-~~~~~~~~~~~~~~~~~~~~~
-
-* **Resource Pooling**: Reuse of common resources
-* **Spatial Indexing**: Efficient spatial queries for location-based operations
-* **Memory Management**: Automatic cleanup of unused resources
-* **Parallel Processing**: Multi-threaded execution where possible
-
-Extensibility Points
+Visualization Model
 -------------------
 
-The architecture provides multiple extension points:
+The repository no longer ships a 3D page set.
 
-Custom Agents
-~~~~~~~~~~~~~
+The current visualization model includes:
 
-.. code-block:: python
+* live 2D markers in ``Run Console``
+* historical 2D trajectory replay in ``Trajectories & Logs``
+* a workflow-agent-state relation graph in ``Workflow Studio``
 
-   class CustomAgent(Agent):
-       def _process_custom_logic(self):
-           # Custom decision logic
-           pass
+Supported coordinate modes:
 
-Custom Components
-~~~~~~~~~~~~~~~~~
+* ``simulation_plane``
+* ``geo_osm``
 
-.. code-block:: python
+Extension Model
+---------------
 
-   class CustomComponent(Component):
-       def _calculate_performance_metrics(self):
-           # Custom performance calculation
-           return {'custom_metric': value}
+Custom ``agent``, ``task``, and ``workflow`` definitions are file-backed and
+declarative. They are loaded from ``registry/aeroagentsim/``, validated, and
+compiled into backend proxy/adaptor objects that still run through the
+``airfogsim`` execution model.
 
-Custom Workflows
-~~~~~~~~~~~~~~~~
+This means:
 
-.. code-block:: python
+* the frontend can extend definitions without uploading Python code
+* runtime execution still stays inside controlled backend abstractions
 
-   class CustomWorkflow(Workflow):
-       def _setup_transitions(self):
-           # Custom state machine
-           pass
+What Changed From Legacy Docs
+-----------------------------
 
-Custom DataProviders
-~~~~~~~~~~~~~~~~~~~~
+The current architecture differs from older docs in these ways:
 
-.. code-block:: python
+* there is no exported ``Dashboard`` class in ``airfogsim.visualization``
+* the integration layer is no longer a dashboard embedding model
+* the frontend is no longer a 3D monitoring UI
+* registry files and config snapshots are now first-class architectural parts
+* historical run inspection is organized by ``run_id``
+* legacy ``/api/simulation/*`` endpoints are intentionally disabled with ``410``
 
-   class CustomDataProvider(DataProvider):
-       def load_data(self):
-           # Custom data loading
-           pass
+Related Docs
+------------
 
-For detailed implementation guides, see the specific development guides for each component type.
+* ``README.md``
+* ``INSTALL.md``
+* ``docs/getting_started.rst``
+* ``docs/user_guide.rst``
+* ``src/airfogsim/docs/en/architecture.md``

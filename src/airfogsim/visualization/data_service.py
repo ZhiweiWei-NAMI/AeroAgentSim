@@ -1,4 +1,6 @@
 import sqlite3
+import os
+from pathlib import Path
 from airfogsim.utils.logging_config import get_logger
 from typing import Dict, List, Any, Optional, Tuple
 
@@ -21,24 +23,29 @@ class SimulationDataService:
     管理数据库连接并提供对各个数据存储类的访问。
     """
 
-    def __init__(self, db_path="lowspace_sim.db"):
+    def __init__(self, db_path=None):
         """
         初始化数据服务
 
         Args:
             db_path: 数据库路径。
         """
-        self.db_path = db_path
+        default_path = Path(__file__).resolve().parents[3] / "runtime" / "aeroagentsim" / "lowspace_sim.db"
+        resolved_path = Path(
+            db_path or os.getenv("AEROAGENTSIM_DB_PATH") or default_path
+        )
+        resolved_path.parent.mkdir(parents=True, exist_ok=True)
+        self.db_path = str(resolved_path)
         self.conn = None
         try:
             # 设置 check_same_thread=False 允许在不同线程访问同一个连接
             # 注意：SQLite 本身不是线程安全的，在多线程环境中需要确保适当的锁定机制
-            self.conn = sqlite3.connect(db_path, check_same_thread=False)
-            logger.info(f"Database connection established to {db_path}")
+            self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+            logger.info(f"Database connection established to {self.db_path}")
             self._initialize_stores()
             self._initialize_db_tables()
         except sqlite3.Error as e:
-            logger.error(f"Error connecting to database {db_path}: {e}")
+            logger.error(f"Error connecting to database {self.db_path}: {e}")
             # Propagate the error or handle it as needed
             raise
 
@@ -189,16 +196,17 @@ class SimulationDataService:
             # Decide if partial clearing requires rollback or specific handling
             raise
 
-    def close(self):
+    def close(self, log_close: bool = True):
         """关闭数据库连接"""
         if self.conn:
             try:
                 self.conn.close()
-                logger.info("Database connection closed.")
+                if log_close:
+                    logger.info("Database connection closed.")
                 self.conn = None
             except sqlite3.Error as e:
                 logger.error(f"Error closing database connection: {e}")
 
     def __del__(self):
         """确保在对象销毁时关闭连接"""
-        self.close()
+        self.close(log_close=False)

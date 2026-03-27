@@ -60,6 +60,26 @@ class DroneAgentMeta(TerminalAgentMeta):
         mcs.register_template(cls, 'external_force', (tuple, list), False,
                               lambda v: len(v) == 3 and all(isinstance(i, (int, float)) for i in v),
                             "无人机受外力影响的3D向量 (fx, fy, fz)")
+        
+        # 功耗状态模板 - 由各种Task产生
+        mcs.register_template(cls, 'mobility_power_consumption', float, False,
+                            lambda p: p >= 0 if p is not None else True,
+                            "移动功耗 (W) - 由MoveToTask产生")
+        mcs.register_template(cls, 'computing_power_consumption', float, False,
+                            lambda p: p >= 0 if p is not None else True,
+                            "计算功耗 (W) - 由ComputeTask产生")
+        mcs.register_template(cls, 'relay_power_consumption', float, False,
+                            lambda p: p >= 0 if p is not None else True,
+                            "中继功耗 (W) - 由DataRelayTask产生")
+        mcs.register_template(cls, 'logistics_power_consumption', float, False,
+                            lambda p: p >= 0 if p is not None else True,
+                            "物流功耗 (W) - 由LogisticsTask产生")
+        mcs.register_template(cls, 'inspection_power_consumption', float, False,
+                            lambda p: p >= 0 if p is not None else True,
+                            "巡检功耗 (W) - 由InspectionTask产生")
+        mcs.register_template(cls, 'communication_power', float, False,
+                            lambda p: p >= 0 if p is not None else True,
+                            "通信功耗 (W) - 由CommunicationComponent产生")
 
         return cls
 
@@ -86,11 +106,21 @@ class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):
             altitude=properties.get('altitude', 0.0),
             battery_capacity=properties.get('battery_capacity', 5000.0),
             charge_cycles=properties.get('charge_cycles', 0),
-            external_force=properties.get('external_force', (0, 0, 0))
+            external_force=properties.get('external_force', (0, 0, 0)),
+            # 功耗状态初始化 - 由各种Task和Component产生和更新
+            mobility_power_consumption=properties.get('mobility_power_consumption', 0.0),
+            computing_power_consumption=properties.get('computing_power_consumption', 0.0),
+            relay_power_consumption=properties.get('relay_power_consumption', 0.0),
+            logistics_power_consumption=properties.get('logistics_power_consumption', 0.0),
+            inspection_power_consumption=properties.get('inspection_power_consumption', 0.0),
+            communication_power=properties.get('communication_power', 0.0)
         )
 
         # 初始化 LLM 客户端，传入环境实例
         self.llm_client = None
+        
+        # 可嵌入的任务规划器回调接口
+        self.task_planner_callback = None
 
     def register_event_listeners(self):
         """注册无人机需要监听的事件"""
@@ -105,7 +135,7 @@ class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):
     def _check_agent_status(self):
         """检查无人机状态"""
         # 检查电量并返回状态
-        return self._check_battery_level()
+        return self.check_battery_level()
 
     def _process_custom_logic(self):
         """执行无人机特定的逻辑"""
@@ -126,12 +156,56 @@ class DroneAgent(TerminalAgent, metaclass=DroneAgentMeta):
                     self.update_state('status', 'active')
                 break
 
+        # 如果设置了任务规划器回调，则调用它进行运行时规划
+        if self.task_planner_callback:
+            try:
+                suggested_tasks = self.task_planner_callback(self)
+                if suggested_tasks:
+                    self._process_suggested_tasks(suggested_tasks)
+            except Exception as e:
+                logger.error(f"时间 {self.env.now}: 无人机 {self.id} 任务规划器回调执行失败: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
+        
         # 无人机特定的逻辑，如使用LLM进行任务规划等
         # 这里可以添加更多无人机特有的功能
 
+    def set_task_planner_callback(self, callback):
+        """
+        设置任务规划器回调函数。
+        
+        Args:
+            callback: 回调函数，接收agent作为参数，返回建议的任务列表
+                     函数签名: callback(agent) -> List[Task]
+        """
+        self.task_planner_callback = callback
+        logger.info(f"时间 {self.env.now}: 无人机 {self.id} 设置了任务规划器回调")
+    
+    def _process_suggested_tasks(self, suggested_tasks):
+        """
+        处理规划器建议的任务。
+        
+        Args:
+            suggested_tasks: 建议的任务列表
+        """
+        if not suggested_tasks:
+            return
+            
+        for task in suggested_tasks:
+            if hasattr(task, 'id') and hasattr(task, 'priority'):
+                # 检查任务是否已经在队列中或正在执行
+                if not self._is_task_queued_or_executing(task.id):
+                    self.task_queue.append(task)
+                    logger.info(f"时间 {self.env.now}: 无人机 {self.id} 添加规划建议任务 {task.id} 到队列")
+                else:
+                    logger.debug(f"时间 {self.env.now}: 无人机 {self.id} 跳过重复任务 {task.id}")
+            else:
+                logger.warning(f"时间 {self.env.now}: 无人机 {self.id} 收到无效的建议任务: {task}")
+        
+        # 重新排序任务队列
+        self.task_queue.sort(key=lambda t: getattr(t, 'priority', 0), reverse=True)
 
-
-    def _check_battery_level(self):
+    def check_battery_level(self):
         """检查电池电量并决定是否需要终止当前任务"""
         battery_level = self.get_state('battery_level')
         status = self.get_state('status')

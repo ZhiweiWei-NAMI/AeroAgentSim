@@ -40,6 +40,7 @@ class Task:
         self.target_state = target_state or {}
         self.properties = properties or {}
         self.refresh_interval = self.properties.get('refresh_interval', env.visual_interval) # s
+        self.task_class = self.__class__.__name__
 
         # 任务优先级和抢占属性
         priority_str = self.properties.get('priority', 'normal')
@@ -114,8 +115,16 @@ class Task:
         )
 
         try:
+            # 获取任务超时时间（从properties中获取，默认为无限大）
+            task_timeout = self.properties.get('timeout', float('inf'))
+            
             # --- Main Execution Loop ---
             while self.progress < 1.0:
+                # 检查任务是否超时
+                if env.now - self.start_time > task_timeout:
+                    self.fail(f"Task timeout after {task_timeout} seconds")
+                    break
+                    
                 remaining_time = self.estimate_remaining_time(self.current_metrics)
                 # print(f"DEBUG Task {self.id} progress {self.progress:.2f}, est remaining: {remaining_time:.2f}")
 
@@ -289,7 +298,7 @@ class Task:
         self.status = TaskStatus.COMPLETED
         self.end_time = self.env.now
         self.progress = 1.0
-        self.result = {"status": "completed", "time": self.end_time}
+        self.result = {"status": "completed", "time": self.end_time, "workflow_id":self.workflow_id, 'task_class': self.__class__.__name__}
         # print(f"时间 {timestamp}: Task {self.id} ({self.name}) completed.")
 
         # 调用对象操作方法
@@ -302,7 +311,7 @@ class Task:
         self.status = TaskStatus.FAILED
         self.end_time = self.env.now
         self.failure_reason = reason
-        self.result = {"status": "failed", "reason": reason, "time": self.end_time}
+        self.result = {"status": "failed", "reason": reason, "time": self.end_time, "workflow_id":self.workflow_id, 'task_class': self.__class__.__name__}
         # print(f"时间 {timestamp}: Task {self.id} ({self.name}) failed: {reason}")
 
         # 调用对象操作方法
@@ -313,7 +322,7 @@ class Task:
         self.status = TaskStatus.CANCELED
         self.end_time = timestamp
         self.failure_reason = reason # Use failure_reason for cancel reason too?
-        self.result = {"status": "canceled", "reason": reason, "time": self.end_time}
+        self.result = {"status": "canceled", "reason": reason, "time": self.end_time, "workflow_id":self.workflow_id, 'task_class': self.__class__.__name__}
         # print(f"时间 {timestamp}: Task {self.id} ({self.name}) canceled: {reason}")
 
         # 调用对象操作方法

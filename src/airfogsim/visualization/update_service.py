@@ -3,7 +3,7 @@ import time
 import threading
 import math
 import random
-from typing import Dict, List, Any, Optional, Set, Deque, TYPE_CHECKING
+from typing import Dict, List, Any, Optional, Set, TYPE_CHECKING
 
 # Forward declaration for type hinting
 if TYPE_CHECKING:
@@ -18,7 +18,12 @@ logger = get_logger(__name__)
 class UpdateService:
     """处理仿真更新和前端通信的服务"""
     
-    def __init__(self, data_service: SimulationDataService, simulation_manager: 'SimulationManager'):
+    def __init__(
+        self,
+        data_service: SimulationDataService,
+        simulation_manager: 'SimulationManager',
+        run_repository=None,
+    ):
         """初始化更新服务
         
         Args:
@@ -27,6 +32,7 @@ class UpdateService:
         """
         self.data_service = data_service
         self.simulation_manager = simulation_manager
+        self.run_repository = run_repository
         
         # 添加消息队列，用于线程间通信
         self.update_queue = queue.Queue()
@@ -40,6 +46,7 @@ class UpdateService:
         self.active_drones: Set[str] = set()
         self.active_vehicles: Set[str] = set()
         self.active_agents: Dict[str, Any] = {}
+        self._workflow_state_cache: Dict[str, Any] = {}
         
         # 注意：simulation_time 和 simulation_status 现在从 self.simulation_manager 获取
     
@@ -49,6 +56,20 @@ class UpdateService:
         Args:添加到队列的更新数据
         """
         try:
+            normalized = dict(update_data)
+            if self.run_repository and self.run_repository.active_run_id:
+                normalized.setdefault("run_id", self.run_repository.active_run_id)
+            if normalized.get("type") == "sim_event":
+                normalized = {
+                    **normalized,
+                    "type": "log_event",
+                    "source": normalized.get("source", "SimulationSystem"),
+                    "message": normalized.get("message", ""),
+                    "level": normalized.get("level", "info"),
+                }
+
+            self._persist_runtime_artifacts(normalized)
+
             # 如果队列接近最大容量，移除一些旧消息
             if self.update_queue.qsize() > self.max_queue_size * 0.9:
                 # 尝试清理队列，防止内存溢出
@@ -59,7 +80,7 @@ class UpdateService:
                     pass
             
             # 添加新的更新数据到队列
-            self.update_queue.put_nowait(update_data)
+            self.update_queue.put_nowait(normalized)
         except Exception as e:
             logger.error(f"添加更新到队列时出错: {str(e)}")
     
@@ -137,12 +158,19 @@ class UpdateService:
         """更新前端数据"""
         # 更新无人机状态
         self._update_drone_states()
+        self._update_workflow_states()
+
+        spatial_snapshot = self._build_spatial_snapshot()
+        if spatial_snapshot:
+            self.add_update(spatial_snapshot)
         
         # 准备状态更新数据
         update_data = {
             "type": "sim_status", # 注意：这个状态更新现在由 SimulationManager._notify_status_change 发送
             "status": self.simulation_manager.simulation_status,
-            "time": self.simulation_manager.simulation_time
+            "time": self.simulation_manager.simulation_time,
+            "speed": self.simulation_manager.simulation_speed,
+            "run_id": self.run_repository.active_run_id if self.run_repository else None,
         }
         
         # 将更新放入队列
@@ -169,7 +197,168 @@ class UpdateService:
                     )
                 except Exception as e:
                     logger.warning(f"更新无人机 {agent_id} 状态时出错: {str(e)}")
-        
+
+    def _update_workflow_states(self):
+        for workflow_id, workflow in self.simulation_manager.active_workflows.items():
+            try:
+                owner = getattr(workflow, "owner", None)
+                agent_id = getattr(owner, "id", None)
+                current_state = getattr(workflow.status_machine, "state", None)
+                workflow_status = getattr(getattr(workflow, "status", None), "name", "unknown")
+                current_task = workflow.get_current_suggested_task() if hasattr(workflow, "get_current_suggested_task") else None
+                current_task_name = current_task.get("task_name") if current_task else None
+                details = workflow.get_details() if hasattr(workflow, "get_details") else {}
+
+                self.data_service.update_workflow(
+                    workflow_id=workflow_id,
+                    name=getattr(workflow, "name", workflow_id),
+                    type_=workflow.__class__.__name__,
+                    agent_id=agent_id,
+                    status=workflow_status.lower(),
+                    details=details,
+                )
+
+                snapshot = (workflow_status, current_state, current_task_name)
+                if self._workflow_state_cache.get(workflow_id) == snapshot:
+                    continue
+
+                self._workflow_state_cache[workflow_id] = snapshot
+                self.add_update(
+                    {
+                        "type": "workflow_state_diff",
+                        "workflow_id": workflow_id,
+                        "agent_id": agent_id,
+                        "workflow_name": getattr(workflow, "name", workflow_id),
+                        "workflow_type": workflow.__class__.__name__,
+                        "status": workflow_status.lower(),
+                        "state": current_state,
+                        "current_task": current_task_name,
+                        "details": details,
+                        "time": self.simulation_manager.simulation_time,
+                    }
+                )
+            except Exception as exc:
+                logger.warning(f"更新工作流 {workflow_id} 状态时出错: {exc}")
+
+    def _build_spatial_snapshot(self) -> Optional[Dict[str, Any]]:
+        coordinate_mode = self.simulation_manager.config.get("coordinate_mode", "simulation_plane")
+        traffic = self.simulation_manager.config.get("traffic", {}) or {}
+        center = traffic.get("center_coordinates", {}) or {}
+        workflow_by_agent = {}
+        for workflow_id, workflow in self.simulation_manager.active_workflows.items():
+            owner = getattr(workflow, "owner", None)
+            if owner is not None:
+                workflow_by_agent[getattr(owner, "id", None)] = (workflow_id, workflow)
+
+        agents_payload = []
+        xs = []
+        ys = []
+        for agent_id, agent in self.active_agents.items():
+            try:
+                position = list(agent.get_state("position") or [0.0, 0.0, 0.0])
+                while len(position) < 3:
+                    position.append(0.0)
+                workflow_info = workflow_by_agent.get(agent_id)
+                current_workflow = None
+                current_task = None
+                if workflow_info:
+                    current_workflow = workflow_info[0]
+                    workflow = workflow_info[1]
+                    task = workflow.get_current_suggested_task() if hasattr(workflow, "get_current_suggested_task") else None
+                    current_task = task.get("task_name") if task else None
+
+                status = "idle"
+                if hasattr(agent, "has_state") and agent.has_state("status"):
+                    status = agent.get_state("status")
+                elif hasattr(agent, "has_state") and agent.has_state("moving_status"):
+                    status = agent.get_state("moving_status")
+
+                display_position = self._project_position(position, coordinate_mode, center)
+                xs.append(display_position[1])
+                ys.append(display_position[0])
+
+                agents_payload.append(
+                    {
+                        "agent_id": agent_id,
+                        "agent_type": agent.__class__.__name__,
+                        "position": position,
+                        "display_position": display_position,
+                        "altitude": position[2],
+                        "status": status,
+                        "current_workflow": current_workflow,
+                        "current_task": current_task,
+                        "color": self._agent_color(agent, status),
+                        "recent_log": self.run_repository.get_recent_log_message(agent_id)
+                        if self.run_repository
+                        else None,
+                    }
+                )
+            except Exception as exc:
+                logger.warning(f"生成空间快照时处理智能体 {agent_id} 失败: {exc}")
+
+        return {
+            "type": "spatial_snapshot",
+            "run_id": self.run_repository.active_run_id if self.run_repository else None,
+            "timestamp": self.simulation_manager.simulation_time,
+            "coordinate_mode": coordinate_mode,
+            "bounds": {
+                "min_lat": min(ys) if ys else 0.0,
+                "max_lat": max(ys) if ys else 0.0,
+                "min_lng": min(xs) if xs else 0.0,
+                "max_lng": max(xs) if xs else 0.0,
+            },
+            "agents": agents_payload,
+        }
+
+    def _project_position(self, position, coordinate_mode: str, center: Dict[str, Any]):
+        x, y, _z = position
+        if coordinate_mode == "geo_osm":
+            center_lat = float(center.get("lat", 0.0))
+            center_lon = float(center.get("lon", 0.0))
+            if abs(x) <= 180 and abs(y) <= 90 and center_lat == 0.0 and center_lon == 0.0:
+                return [y, x]
+            lat = center_lat + (y / 111320.0)
+            lon_divisor = 111320.0 * max(math.cos(math.radians(lat)), 0.1)
+            lon = center_lon + (x / lon_divisor)
+            return [lat, lon]
+        return [y, x]
+
+    def _agent_color(self, agent: Any, status: str) -> str:
+        battery = None
+        try:
+            if hasattr(agent, "has_state") and agent.has_state("battery_level"):
+                battery = float(agent.get_state("battery_level"))
+        except Exception:
+            battery = None
+
+        lowered_status = (status or "").lower()
+        if "charg" in lowered_status:
+            return "#27ae60"
+        if battery is not None and battery < 20:
+            return "#d94841"
+        if battery is not None and battery < 40:
+            return "#ef8b17"
+        if "move" in lowered_status:
+            return "#2f6fed"
+        return "#4d5b7c"
+
+    def _persist_runtime_artifacts(self, update_data: Dict[str, Any]) -> None:
+        if not self.run_repository or not self.run_repository.active_run_id:
+            return
+        update_type = update_data.get("type")
+        if update_type == "sim_status":
+            self.run_repository.update_status(
+                update_data.get("status", "unknown"),
+                float(update_data.get("time", 0.0)),
+                float(update_data.get("speed", self.simulation_manager.simulation_speed)),
+            )
+        elif update_type == "log_event":
+            self.run_repository.append_log(update_data)
+        elif update_type == "workflow_state_diff":
+            self.run_repository.record_workflow_state(update_data)
+        elif update_type == "spatial_snapshot":
+            self.run_repository.record_spatial_snapshot(update_data)
+    
     def register_agent(self, agent_id: str, agent: Any, is_drone: bool = False):
         """注册智能体到更新服务
         
@@ -199,3 +388,4 @@ class UpdateService:
         self.active_agents.clear()
         self.active_drones.clear()
         self.active_vehicles.clear()
+        self._workflow_state_cache.clear()

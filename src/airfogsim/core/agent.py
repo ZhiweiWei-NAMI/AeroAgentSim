@@ -527,7 +527,7 @@ class Agent(metaclass=AgentMeta):
 
     def _handle_workflow_assigned(self, _):
         """处理工作流分配事件"""
-        self._process_workflow_tasks()
+        pass
 
     def _handle_visual_update(self, _):
         """处理环境更新事件"""
@@ -596,7 +596,25 @@ class Agent(metaclass=AgentMeta):
         - 代理特定的状态更新
         - 特殊资源管理
         """
-        pass
+        
+        if self.llm_client and self.llm_client.is_available():
+            queuing_tasks = self.llm_client.analyze_agent_tasks(self)
+        else:
+            queuing_tasks = self._process_workflow_tasks()
+        
+        # 将任务添加到队列
+        for task_info in queuing_tasks:
+            # 检查是否已经有相同的任务在队列中或正在执行
+            self.add_task_to_queue(
+                priority=task_info.get('priority', None),
+                preemptive=task_info.get('preemptive', False),
+                component_name=task_info['component'],
+                task_name=task_info['task_name'],
+                task_class=task_info['task_class'],
+                target_state=task_info.get('target_state'),
+                properties=task_info.get('properties'),
+                workflow_id=task_info.get('workflow_id')
+            )
 
     def cleanup(self):
         """清理代理资源，包括取消事件监听和触发器"""
@@ -615,36 +633,19 @@ class Agent(metaclass=AgentMeta):
         # 获取活跃的工作流
         active_workflows = self.get_active_workflows()
         if not active_workflows:
-            return
-
+            return []
+        if len(self.task_queue) > 0 or self.managed_tasks:
+            return []
         # 从每个工作流获取建议任务
         tasks_to_execute = []
         for workflow in active_workflows:
-            # 获取工作流ID
-            workflow_id = workflow.id
-
             # 获取工作流建议的任务
             suggested_task = workflow.get_current_suggested_task()
             if suggested_task:
                 # 确保任务有工作流ID
-                if 'workflow_id' not in suggested_task:
-                    suggested_task['workflow_id'] = workflow_id
                 tasks_to_execute.append(suggested_task)
-
-        # 将任务添加到队列
-        for task_info in tasks_to_execute:
-            # 检查是否已经有相同的任务在队列中或正在执行
-            if not (self._is_task_in_queue(task_info) or self._is_task_being_executed(task_info)):
-                self.add_task_to_queue(
-                    priority=task_info.get('priority'),
-                    preemptive=task_info.get('preemptive', False),
-                    component_name=task_info['component'],
-                    task_name=task_info['task_name'],
-                    task_class=task_info['task_class'],
-                    target_state=task_info.get('target_state'),
-                    properties=task_info.get('properties'),
-                    workflow_id=task_info.get('workflow_id')
-                )
+                break
+        return tasks_to_execute
 
     def _is_task_in_queue(self, task_info):
         """检查任务是否已经在队列中"""
@@ -737,69 +738,18 @@ class Agent(metaclass=AgentMeta):
         logger.info(f"时间 {self.env.now}: 代理 {self.id} 添加任务 '{task_name}' 到队列")
 
     def _sort_task_queue(self):
-        """
-        按优先级和工作流开始时间排序任务队列
-
-        排序规则：
-        1. 首先按任务优先级排序（高优先级在前）
-        2. 在优先级相同的情况下，按工作流开始时间排序（先开始的工作流先执行）
-        """
-        from airfogsim.core.enums import TaskPriority
-
-        # 如果队列为空，直接返回
-        if not self.task_queue:
-            return
-
-        # 获取工作流开始时间的字典
-        workflow_start_times = {}
-        if hasattr(self.env, 'workflow_manager'):
-            for workflow_id, workflow in self.env.workflow_manager.workflows.items():
-                workflow_start_times[workflow_id] = workflow.start_time or float('inf')
-
-        # 为每个任务计算优先级和工作流开始时间
-        task_sort_info = []
-        for task_info in self.task_queue:
-            # 获取任务优先级
-            priority_str = task_info.get('properties', {}).get('priority', 'normal')
-
-            # 将优先级字符串转换为数值
-            priority_value = 0  # 默认优先级为0（最低）
-            if isinstance(priority_str, str):
-                # 使用TaskPriority的from_string方法转换
-                priority_enum = TaskPriority.from_string(priority_str)
-                priority_value = priority_enum.value
-            elif isinstance(priority_str, TaskPriority):
-                # 如果已经是枚举对象，直接获取值
-                priority_value = priority_str.value
-            elif isinstance(priority_str, int):
-                # 如果是整数，直接使用
-                priority_value = priority_str
-
-            # 获取工作流开始时间
-            workflow_id = task_info.get('workflow_id')
-            workflow_start_time = workflow_start_times.get(workflow_id, task_info.get('added_time', float('inf')))
-
-            # 将任务信息、优先级和工作流开始时间一起保存
-            task_sort_info.append((task_info, priority_value, workflow_start_time, workflow_id))
-
-        # 按优先级和工作流开始时间排序
-        # 先按优先级排序（高优先级在前），然后按工作流开始时间排序（先开始的在前），最后按工作流ID排序
-        task_sort_info.sort(key=lambda x: (-x[1], x[2], x[3]))
-
-        # 更新任务队列
-        self.task_queue = [task_info for task_info, _, _, _ in task_sort_info]
+        pass
 
     def _process_task_queue(self):
         """处理任务队列"""
         # 如果没有任务，直接返回
         if not self.task_queue:
             return
+        if self.managed_tasks:
+            return
         to_execute_tasks = []
         queuing_tasks = []
-        if self.llm_client and self.llm_client.is_available():
-            to_execute_tasks, queuing_tasks = self.llm_client.analyze_agent_tasks(self)
-        else:
-            to_execute_tasks, queuing_tasks = self._default_policy()
+        to_execute_tasks, queuing_tasks = self._default_policy()
 
         self.task_queue = queuing_tasks
         # 遍历任务队列（已按优先级排序）
@@ -839,19 +789,9 @@ class Agent(metaclass=AgentMeta):
         self._sort_task_queue()
 
     def _default_policy(self):
-        # 获取任务队列中与正在执行的任务同属于同一工作流的任务
-        workflow_id = self.task_queue[0]['workflow_id']
-        # 先判断是否有preemptive任务，如果有，先执行
-        is_preemptive = False
-        for task_info in self.task_queue:
-            if task_info['properties'].get('preemptive', False):
-                workflow_id = task_info['workflow_id']
-                is_preemptive = True
-                break
-        if len(self.managed_tasks) > 0 and not is_preemptive:
-            workflow_id = list(self.managed_tasks.values())[0]['task'].workflow_id
-        to_execute_tasks = [task for task in self.task_queue if task['workflow_id'] == workflow_id]
-        queuing_tasks = [task for task in self.task_queue if task not in to_execute_tasks]
+        # 获取第一个任务作为执行的任务
+        to_execute_tasks = [self.task_queue[0]]
+        queuing_tasks = self.task_queue[1:]
         return to_execute_tasks, queuing_tasks
 
     def _execute_queued_task(self, task_info):
@@ -1063,8 +1003,6 @@ class Agent(metaclass=AgentMeta):
             else:
                 # 如果没有事件要监听，等待一段时间
                 yield self.env.timeout(self.scheduling_interval)
-
-            self._process_workflow_tasks()
             # 执行代理特定的逻辑
             self._process_custom_logic()
 
@@ -1095,8 +1033,6 @@ class Agent(metaclass=AgentMeta):
                                              properties=properties, task_id=task_id)
         task_id = task.id
 
-        self.trigger_event('task_started', {'task_id': task_id, 'task_name': task_name, 'time': self.env.now})
-
         # Start component execution and monitor it
         component_exec_proc = component.execute_task(task)
         monitor_proc = self.env.process(self._monitor_task_execution(task, component_exec_proc))
@@ -1110,6 +1046,8 @@ class Agent(metaclass=AgentMeta):
             'start_time': self.env.now
         }
 
+
+        self.trigger_event('task_started', {'task_id': task_id, 'task_name': task_name, 'time': self.env.now})
         # Return the task object immediately, not waiting for completion
         return task
 

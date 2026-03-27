@@ -1,0 +1,69 @@
+{
+  "id": "custom_inspection_flow",
+  "version": "1.0.0",
+  "schema_version": "2026-03-27",
+  "source": "custom",
+  "display_name": {
+    "zh_CN": "自定义巡检流",
+    "en_US": "Custom Inspection Flow"
+  },
+  "description": {
+    "zh_CN": "注册式巡检工作流",
+    "en_US": "Registry-defined inspection workflow"
+  },
+  "created_at": "2026-03-27T01:47:54.477787+00:00",
+  "updated_at": "2026-03-27T01:47:54.477787+00:00",
+  "enabled": true,
+  "kind": "workflows",
+  "adapter_type": "inspection",
+  "property_templates": {
+    "inspection_points": {
+      "key": "inspection_points",
+      "value_type": "list",
+      "required": true,
+      "default": null,
+      "description": "Inspection points"
+    }
+  },
+  "states": [
+    "custom_start",
+    "completed"
+  ],
+  "start_state": "custom_start",
+  "trigger_conditions": [],
+  "task_bindings": [
+    {
+      "workflow_state": "custom_start",
+      "component": "MoveToComponent",
+      "task_class": null,
+      "task_name": "Custom Move",
+      "task_ref": {
+        "kind": "tasks",
+        "definition_id": "custom_move_task",
+        "version": "1.0.0",
+        "source": "custom",
+        "adapter_type": null
+      },
+      "produced_states": [
+        "position"
+      ],
+      "target_state": {
+        "position": [
+          1,
+          1,
+          1
+        ]
+      },
+      "properties": {},
+      "binding_status": null
+    }
+  ],
+  "critical_path": [
+    "custom_start",
+    "completed"
+  ],
+  "supported_agent_types": [
+    "DroneAgent"
+  ],
+  "registry_dependencies": []
+}

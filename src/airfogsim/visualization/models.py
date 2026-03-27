@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional, Tuple
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # 数据模型
 class DroneState(BaseModel):
@@ -20,30 +20,30 @@ class VehicleState(BaseModel):
 class WorkflowConfig(BaseModel):
     name: str
     type: str
-    parameters: Dict[str, Any]
+    parameters: Dict[str, Any] = Field(default_factory=dict)
     agent_id: Optional[str] = None
 
 class AgentConfig(BaseModel):
     name: str
     type: str
-    initial_position: List[float] = [0, 0, 0]
+    initial_position: List[float] = Field(default_factory=lambda: [0, 0, 0])
     initial_battery: float = 100.0
-    components: List[str] = []
-    properties: Dict[str, Any] = {}
+    components: List[str] = Field(default_factory=list)
+    properties: Dict[str, Any] = Field(default_factory=dict)
 
 class AirspaceConfig(BaseModel):
     x_range: Tuple[float, float]
     y_range: Tuple[float, float]
     altitude_range: Tuple[float, float]
     max_capacity: int
-    attributes: Dict[str, Any] = {}
+    attributes: Dict[str, Any] = Field(default_factory=dict)
 
 class FrequencyConfig(BaseModel):
     frequency_range: Tuple[float, float]
     bandwidth: float
     max_users: int
     power_limit: float
-    attributes: Dict[str, Any] = {}
+    attributes: Dict[str, Any] = Field(default_factory=dict)
 
 class LandingSpotConfig(BaseModel):
     location: Tuple[float, float, float]
@@ -51,14 +51,15 @@ class LandingSpotConfig(BaseModel):
     max_capacity: int
     has_charging: bool = False
     has_data_transfer: bool = False
-    attributes: Dict[str, Any] = {}
+    attributes: Dict[str, Any] = Field(default_factory=dict)
 
 class EnvironmentConfig(BaseModel):
-    airspaces: List[AirspaceConfig] = []
-    frequencies: List[FrequencyConfig] = []
-    landing_spots: List[LandingSpotConfig] = []
-    agents: List[Dict[str, Any]] = []
-    workflows: List[Dict[str, Any]] = []
+    airspaces: List[AirspaceConfig] = Field(default_factory=list)
+    frequencies: List[FrequencyConfig] = Field(default_factory=list)
+    landing_spots: List[LandingSpotConfig] = Field(default_factory=list)
+    traffic: Dict[str, Any] = Field(default_factory=dict)
+    agents: List[Dict[str, Any]] = Field(default_factory=list)
+    workflows: List[Dict[str, Any]] = Field(default_factory=list)
     simulation_time: Optional[float] = 0.0
     simulation_speed: Optional[float] = 1.0
 

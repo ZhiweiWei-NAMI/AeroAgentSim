@@ -40,7 +40,9 @@ async def create_workflow(workflow: WorkflowConfig):
             "name": workflow.name,
             "type": workflow.type,
             "agent_id": workflow.agent_id,
-            "details": workflow.parameters
+            "details": workflow.parameters,
+            "properties": workflow.parameters,
+            **workflow.parameters,
         }
         workflow_id = await sim_integration.add_workflow(workflow_config)
         return {"status": "success", "workflow_id": workflow_id}

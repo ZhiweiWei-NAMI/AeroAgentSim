@@ -38,6 +38,15 @@ class TaskManager:
         self.env.event_registry.get_event(self.id, 'task_recommended')
         self.env.event_registry.get_event(self.id, 'task_selected')
 
+    def clear_registered_task_classes(self) -> None:
+        """
+        清空所有注册的任务类
+        """
+        self.registered_task_classes.clear()
+        self.task_metrics_map.clear()
+        self.task_states_map.clear()
+        logger.info(f"时间 {self.env.now}: 任务管理器清空所有注册的任务类")
+
     def register_task_class(self, task_class: Type[Task]) -> None:
         """
         注册任务类
@@ -51,6 +60,16 @@ class TaskManager:
         self.task_states_map[task_name] = set(task_class.PRODUCED_STATES)
         logger.info(f"时间 {self.env.now}: 任务管理器注册任务类 {task_name}")
 
+    def register_task_classes(self, task_classes: List[Type[Task]]) -> None:
+        """
+        注册多个任务类
+
+        Args:
+            task_classes: 任务类列表
+        """
+        for task_class in task_classes:
+            self.register_task_class(task_class)
+
     def get_task_class(self, task_class_name: str) -> Optional[Type[Task]]:
         """
         获取任务类
@@ -62,6 +81,15 @@ class TaskManager:
             任务类或None（如果未找到）
         """
         return self.registered_task_classes.get(task_class_name)
+    
+    def get_all_task_classes_dict(self) -> Dict[str, Type[Task]]:
+        """
+        获取所有注册的任务类字典
+
+        Returns:
+            任务类名称到任务类的映射
+        """
+        return self.registered_task_classes.copy()
 
     def get_all_task_classes(self) -> List[Type[Task]]:
         """
@@ -105,17 +133,17 @@ class TaskManager:
         elif workflow:
             # 从工作流状态机获取可能的下一个状态
             transitions = workflow.status_machine._get_current_transitions()
-            for trigger, next_status in transitions:
+            for trigger, next_status, description in transitions:
                 # 分析触发器，提取可能需要的状态
                 if isinstance(trigger, StateTrigger):
                     # 处理状态触发器
-                    if hasattr(trigger, 'agent_id') and trigger.agent_id == agent.id:
+                    if hasattr(trigger, 'agent_id') and (trigger.agent_id == agent.id or trigger.source_id == "*"):
                         if hasattr(trigger, 'state_key') and trigger.state_key:
                             needed_states.add(trigger.state_key)
 
                 elif isinstance(trigger, EventTrigger):
                     # 处理事件触发器
-                    if hasattr(trigger, 'source_id') and trigger.source_id == agent.id:
+                    if hasattr(trigger, 'source_id') and (trigger.source_id == agent.id or trigger.source_id == "*"):
                         if hasattr(trigger, 'value_key') and trigger.value_key:
                             # 处理嵌套键，如 'data.position'
                             parts = trigger.value_key.split('.')

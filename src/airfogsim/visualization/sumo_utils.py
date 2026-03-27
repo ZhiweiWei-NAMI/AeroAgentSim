@@ -6,6 +6,7 @@ import os
 import sys
 import time
 import signal
+import subprocess
 from typing import Optional
 from airfogsim.utils.logging_config import get_logger
 

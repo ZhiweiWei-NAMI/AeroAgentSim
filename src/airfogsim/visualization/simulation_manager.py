@@ -12,6 +12,7 @@ from simpy.core import StopSimulation
 # Assuming PausableEnvironment is in environment.py
 from .environment import PausableEnvironment
 # Assuming setup functions are in setup.py
+from airfogsim.agent.drone import DroneAgent
 from .setup import setup_environment_resources, create_agent_from_config, create_workflow_from_config
 # Assuming UpdateService handles queueing
 from .update_service import UpdateService
@@ -120,7 +121,6 @@ class SimulationManager:
         sumo_enabled = traffic_config and traffic_config.get("source") == "sumo"
         self.sumo_process = None # Ensure reset before attempting start
 
-        print(traffic_config)
         if sumo_enabled:
             sumo_cfg = traffic_config.get("sumo_config", {})
             sumocfg_path = sumo_cfg.get("config_file")
@@ -206,13 +206,19 @@ class SimulationManager:
                 agent = create_agent_from_config(self.env, agent_config, self._log_sim_event, self.update_service.data_service)
                 if agent:
                     self.active_agents[agent.id] = agent
-                    if agent_config.get("type") == "drone":
+                    if isinstance(agent, DroneAgent):
                         self.active_drones.add(agent.id)
             except Exception as e:
                  self._log_sim_event("AgentManager", f"创建智能体 (config: {agent_config.get('id', 'N/A')}) 失败: {e}", "error")
                  agent_creation_failed = True # Mark failure but continue setup
 
         self._log_sim_event("SimulationManager", f"创建了 {len(self.active_agents)} 个智能体")
+        if self.config.get("agents") and not self.active_agents:
+            self._log_sim_event("SimulationManager", "未能创建任何智能体，仿真设置失败", "error")
+            self.simulation_status = "ERROR"
+            self._notify_status_change()
+            terminate_sumo(self.sumo_process)
+            return False
         if agent_creation_failed:
              self._log_sim_event("SimulationManager", "一个或多个智能体创建失败", "warning")
              # Decide if this constitutes a full setup failure
@@ -245,6 +251,12 @@ class SimulationManager:
                 self._log_sim_event("WorkflowManager", f"跳过工作流创建：找不到智能体 {agent_id}", "warning")
 
         self._log_sim_event("SimulationManager", f"创建了 {len(self.active_workflows)} 个工作流")
+        if self.config.get("workflows") and not self.active_workflows:
+            self._log_sim_event("SimulationManager", "未能创建任何工作流，仿真设置失败", "error")
+            self.simulation_status = "ERROR"
+            self._notify_status_change()
+            terminate_sumo(self.sumo_process)
+            return False
         if workflow_creation_failed:
             self._log_sim_event("SimulationManager", "一个或多个工作流创建失败", "warning")
             # Decide if this constitutes a full setup failure
@@ -294,8 +306,9 @@ class SimulationManager:
             if self.simulation_status == "RUNNING":
                 for workflow_id, workflow in self.active_workflows.items():
                     try:
-                        # Assuming workflow.start() returns a generator for simpy process
-                        self.env.process(workflow.start())
+                        workflow_process = workflow.start()
+                        if workflow_process is None:
+                            raise RuntimeError("workflow.start() returned no process")
                         self._log_sim_event("WorkflowManager", f"工作流 '{workflow_id}' 已启动")
                     except Exception as e:
                         self._log_sim_event("WorkflowManager", f"启动工作流 '{workflow_id}' 失败: {e}", "error")
@@ -367,11 +380,15 @@ class SimulationManager:
 
     def _notify_status_change(self):
         """通知前端仿真状态、时间和速度的变化"""
+        run_id = None
+        if self.update_service and getattr(self.update_service, "run_repository", None):
+            run_id = self.update_service.run_repository.active_run_id
         status_data = {
             "type": "sim_status",
             "status": self.simulation_status,
             "time": self.simulation_time,
-            "speed": self.simulation_speed
+            "speed": self.simulation_speed,
+            "run_id": run_id,
         }
         self.update_service.add_update(status_data)
         logger.debug(f"Status Change Notified: {self.simulation_status} @ {self.simulation_time:.2f} (Speed: {self.simulation_speed}x)")
