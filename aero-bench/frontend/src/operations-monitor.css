@@ -1,0 +1,648 @@
+.operations-monitor {
+  --op-bg: color-mix(in srgb, var(--surface-panel, #0b1c28) 94%, transparent);
+  --op-bg-strong: color-mix(in srgb, var(--surface-panel-strong, #0e2432) 97%, transparent);
+  --op-line: var(--border-default, rgba(132, 181, 201, 0.32));
+  --op-line-strong: var(--border-strong, rgba(103, 211, 230, 0.58));
+  --op-text: var(--ink-default, #d8e8ee);
+  --op-muted: var(--ink-muted, #91aab7);
+  --op-accent: var(--accent-primary, #66d9ed);
+  --op-normal: var(--status-positive, #68dda9);
+  --op-warning: var(--status-warning, #f4c66f);
+  --op-critical: var(--status-danger, #ff9292);
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  grid-template: auto minmax(0, 1fr) auto / minmax(238px, 290px) minmax(280px, 1fr) minmax(250px, 304px);
+  gap: 10px;
+  padding: 10px;
+  color: var(--op-text);
+  font: var(--type-control, 12px)/1.4 var(--font-sans, sans-serif);
+  pointer-events: none;
+}
+
+.operations-monitor button,
+.operations-monitor summary,
+.operations-monitor [role="button"] {
+  font: inherit;
+}
+
+.operations-monitor button:focus-visible,
+.operations-monitor summary:focus-visible,
+.operations-monitor [role="button"]:focus-visible,
+.operations-monitor-map:focus-visible {
+  outline: 2px solid var(--op-accent);
+  outline-offset: 2px;
+}
+
+.operations-monitor-header,
+.operations-monitor-sidebar,
+.operations-monitor-spatial,
+.operations-monitor-events {
+  pointer-events: auto;
+  border: 1px solid var(--op-line);
+  border-radius: var(--radius-panel, 8px);
+  background: var(--op-bg);
+  box-shadow: var(--shadow-panel, 0 12px 32px rgba(0, 0, 0, 0.28));
+  backdrop-filter: blur(10px);
+}
+
+.operations-monitor-header {
+  grid-area: 1 / 2;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 7px 12px;
+  white-space: nowrap;
+}
+
+.operations-monitor-source {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--op-text);
+  font-weight: 650;
+  text-overflow: ellipsis;
+}
+
+.operations-monitor-clock {
+  margin-left: auto;
+  color: var(--op-accent);
+  font-family: var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+.operations-monitor-clock-state {
+  padding: 2px 7px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--radius-pill, 999px);
+  color: var(--op-muted);
+  font-size: var(--type-caption, 11px);
+}
+
+.operations-monitor-clock-state[data-clock-state="playing"] {
+  border-color: color-mix(in srgb, var(--op-normal) 55%, transparent);
+  color: var(--op-normal);
+}
+
+.operations-monitor-body {
+  display: contents;
+}
+
+.operations-monitor-sidebar {
+  grid-area: 1 / 3 / 3;
+  align-self: start;
+  max-height: 100%;
+  overflow: auto;
+}
+
+.operations-monitor-disclosure > summary,
+.operations-monitor-events > summary {
+  padding: 9px 11px;
+  color: var(--op-text);
+  cursor: pointer;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.operations-monitor-disclosure > summary {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--op-bg-strong);
+}
+
+.operations-monitor-fleet {
+  display: grid;
+  gap: 2px;
+  max-height: min(25vh, 180px);
+  padding: 0 5px 6px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.operations-monitor-fleet-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 6px;
+  width: 100%;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control, 4px);
+  background: transparent;
+  color: var(--op-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.operations-monitor-fleet-row:hover {
+  background: var(--surface-hover, #153747);
+}
+
+.operations-monitor-fleet-row[aria-pressed="true"] {
+  border-color: var(--op-accent);
+  background: color-mix(in srgb, var(--op-accent) 13%, transparent);
+}
+
+.operations-monitor-fleet-row[data-group-start="true"] {
+  margin-top: 3px;
+}
+
+.operations-monitor-fleet-row[data-group-start="true"]::before {
+  content: attr(data-group-label);
+  grid-column: 1 / -1;
+  padding: 2px 1px 1px;
+  color: var(--op-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+
+.operations-monitor-fleet-symbol {
+  align-self: center;
+  color: var(--op-accent);
+  font: 18px/1 var(--font-mono, monospace);
+  text-align: center;
+}
+
+.operations-monitor-fleet-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.operations-monitor-fleet-copy strong,
+.operations-monitor-fleet-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operations-monitor-fleet-copy small {
+  color: var(--op-muted);
+  font-size: var(--type-caption, 11px);
+}
+
+.operations-monitor-detail {
+  padding: 10px;
+  border-top: 1px solid var(--op-line);
+}
+
+.operations-monitor-detail h3,
+.operations-monitor-spatial h3 {
+  margin: 0;
+  color: var(--ink-strong, #edf7fa);
+  font-size: var(--type-body, 13px);
+}
+
+.operations-monitor-detail-kind,
+.operations-monitor-preview-meta,
+.operations-monitor-map-legend {
+  margin: 3px 0 8px;
+  color: var(--op-muted);
+  font-size: var(--type-caption, 11px);
+}
+
+.operations-monitor-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.operations-monitor-status {
+  min-width: 0;
+  padding: 3px 5px;
+  overflow: hidden;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-control, 4px);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operations-monitor .is-normal { color: var(--op-normal); }
+.operations-monitor .is-warning { color: var(--op-warning); }
+.operations-monitor .is-critical { color: var(--op-critical); }
+.operations-monitor .is-unknown { color: var(--op-muted); }
+
+.operations-monitor-facts {
+  display: grid;
+  grid-template-columns: minmax(68px, auto) minmax(0, 1fr);
+  gap: 3px 9px;
+  margin: 8px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.operations-monitor-facts dt {
+  color: var(--op-muted);
+}
+
+.operations-monitor-facts dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.operations-monitor-camera-actions,
+.operations-monitor-preview-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.operations-monitor-camera-actions button,
+.operations-monitor-preview-controls button,
+.operations-monitor-map-header button {
+  padding: 5px 7px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--radius-control, 4px);
+  background: var(--surface-control, #102a39);
+  color: var(--op-text);
+  cursor: pointer;
+}
+
+.operations-monitor-footprint-state,
+.operations-monitor-map-event-state {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--op-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operations-monitor-map-event-state[hidden] {
+  display: none;
+}
+
+.operations-monitor-footprint-state[data-state="available"] {
+  color: var(--op-normal);
+}
+
+.operations-monitor-footprint-state[data-state="unavailable"] {
+  color: var(--op-warning);
+}
+
+.operations-monitor-camera-actions button[aria-pressed="true"] {
+  border-color: var(--op-accent);
+  color: var(--op-accent);
+}
+
+.operations-monitor button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.operations-monitor-camera-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin: 0 -10px -10px;
+  padding: 0 10px 10px;
+  background: var(--op-bg-strong);
+}
+
+.operations-monitor-preview {
+  position: relative;
+  display: grid;
+  aspect-ratio: 16 / 9;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--op-line);
+  border-radius: var(--radius-control, 4px);
+  background: #03080d;
+}
+
+.operations-monitor-preview[hidden] {
+  display: none;
+}
+
+.operations-monitor-preview > canvas,
+.operations-monitor-preview > video,
+.operations-monitor-preview > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.operations-monitor-preview-placeholder {
+  color: var(--op-muted);
+}
+
+.operations-monitor-preview:has(canvas, video, img) .operations-monitor-preview-placeholder {
+  display: none;
+}
+
+.operations-monitor-spatial {
+  grid-area: 2 / 1;
+  align-self: end;
+  overflow: hidden;
+}
+
+.operations-monitor-map-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 4px;
+}
+
+.operations-monitor-map-header button {
+  margin-left: auto;
+  padding-block: 3px;
+  font-size: var(--type-caption, 11px);
+}
+
+.operations-monitor-map {
+  display: block;
+  width: 100%;
+  max-height: min(35vh, 230px);
+  touch-action: none;
+}
+
+.operations-monitor-map-background {
+  fill: color-mix(in srgb, var(--surface-canvas, #050c13) 87%, transparent);
+  stroke: none;
+}
+
+.operations-monitor-map-polygon {
+  fill: rgba(111, 143, 157, 0.08);
+  stroke: rgba(159, 191, 203, 0.45);
+  stroke-width: 1.2;
+}
+
+.operations-monitor-map-polygon[data-kind="restricted"] {
+  fill: color-mix(in srgb, var(--op-critical) 10%, transparent);
+  stroke: var(--op-critical);
+  stroke-dasharray: 6 4;
+}
+
+.operations-monitor-map-polygon[data-kind="facility"] {
+  fill: color-mix(in srgb, var(--op-accent) 9%, transparent);
+  stroke: color-mix(in srgb, var(--op-accent) 55%, transparent);
+}
+
+.operations-monitor-map-route {
+  fill: none;
+  stroke: rgba(142, 178, 191, 0.5);
+  stroke-width: 1.5;
+}
+
+.operations-monitor-map-route.is-selected {
+  stroke: var(--op-accent);
+  stroke-width: 2.5;
+}
+
+.operations-monitor-map-footprint {
+  fill: color-mix(in srgb, var(--op-accent) 10%, transparent);
+  stroke: var(--op-accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  cursor: grab;
+  touch-action: none;
+}
+
+.operations-monitor-map-footprint:active {
+  cursor: grabbing;
+}
+
+.operations-monitor-map-observer {
+  cursor: grab;
+  touch-action: none;
+}
+
+.operations-monitor-map-observer:active {
+  cursor: grabbing;
+}
+
+.operations-monitor-map-observer circle {
+  fill: color-mix(in srgb, var(--surface-canvas, #050c13) 76%, transparent);
+  stroke: var(--op-accent);
+  stroke-width: 2;
+  stroke-dasharray: 2 2;
+}
+
+.operations-monitor-map-observer-direction {
+  fill: var(--op-accent);
+  stroke: var(--surface-canvas, #050c13);
+  stroke-width: 1;
+}
+
+.operations-monitor-map-marker,
+.operations-monitor-map-event {
+  cursor: pointer;
+}
+
+.operations-monitor-map-marker-halo {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 2;
+}
+
+.operations-monitor-map-marker-shape {
+  fill: var(--surface-panel-strong, #0e2432);
+  stroke: var(--op-text);
+  stroke-width: 1.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.operations-monitor-map-marker[data-kind="uav"] .operations-monitor-map-marker-shape {
+  stroke: var(--op-accent);
+}
+
+.operations-monitor-map-marker.is-selected .operations-monitor-map-marker-halo {
+  fill: color-mix(in srgb, var(--op-accent) 14%, transparent);
+  stroke: var(--op-accent);
+}
+
+.operations-monitor-map-marker-label {
+  fill: var(--op-text);
+  paint-order: stroke;
+  stroke: rgba(2, 8, 13, 0.9);
+  stroke-width: 3px;
+  font-size: 11px;
+}
+
+.operations-monitor-map-event path {
+  fill: var(--op-muted);
+  stroke: #1b1310;
+  stroke-width: 1;
+}
+
+.operations-monitor-map-event[data-severity="warning"] path {
+  fill: var(--op-warning);
+}
+
+.operations-monitor-map-event[data-severity="critical"] path {
+  fill: var(--op-critical);
+}
+
+.operations-monitor-map-event text {
+  fill: #17100e;
+  font-size: 10px;
+  font-weight: 800;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.operations-monitor-map-north,
+.operations-monitor-map-scale-label {
+  fill: var(--op-text);
+  font: 11px var(--font-mono, monospace);
+}
+
+.operations-monitor-map-scale {
+  stroke: var(--op-text);
+  stroke-width: 2;
+}
+
+.operations-monitor-map-legend {
+  margin: 3px 8px 7px;
+  line-height: 1.6;
+}
+
+.operations-monitor-events {
+  grid-area: 3 / 1 / auto / 4;
+  align-self: end;
+  min-width: 0;
+}
+
+.operations-monitor-event-list {
+  display: grid;
+  grid-auto-columns: minmax(260px, 1fr);
+  grid-auto-flow: column;
+  gap: 6px;
+  max-height: 162px;
+  padding: 0 8px 8px;
+  overflow: auto;
+}
+
+.operations-monitor-event {
+  min-width: 0;
+  border: 1px solid var(--op-line);
+  border-left: 3px solid var(--op-muted);
+  border-radius: var(--radius-control, 4px);
+  background: color-mix(in srgb, var(--surface-control, #102a39) 70%, transparent);
+}
+
+.operations-monitor-event[data-severity="warning"] { border-left-color: var(--op-warning); }
+.operations-monitor-event[data-severity="critical"] { border-left-color: var(--op-critical); }
+.operations-monitor-event[data-severity="info"] { border-left-color: var(--status-info, #8caeff); }
+.operations-monitor-event[data-resolution="resolved"] { opacity: 0.68; }
+
+.operations-monitor-event-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  width: 100%;
+  padding: 7px;
+  border: 0;
+  background: transparent;
+  color: var(--op-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.operations-monitor-event-main[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--op-accent) 12%, transparent);
+}
+
+.operations-monitor-event-severity {
+  align-self: start;
+  padding: 1px 5px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill, 999px);
+  color: var(--op-muted);
+  font-size: 10px;
+}
+
+.operations-monitor-event[data-severity="warning"] .operations-monitor-event-severity { color: var(--op-warning); }
+.operations-monitor-event[data-severity="critical"] .operations-monitor-event-severity { color: var(--op-critical); }
+.operations-monitor-event[data-severity="info"] .operations-monitor-event-severity { color: var(--status-info, #8caeff); }
+
+.operations-monitor-event-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.operations-monitor-event-copy small {
+  color: var(--op-muted);
+  font-size: var(--type-caption, 11px);
+}
+
+.operations-monitor-event-evidence {
+  padding: 0 7px 6px;
+  color: var(--op-muted);
+  font-size: var(--type-caption, 11px);
+}
+
+.operations-monitor-event-evidence summary {
+  cursor: pointer;
+}
+
+.operations-monitor-event-evidence p {
+  margin: 4px 0 0;
+}
+
+.operations-monitor-empty {
+  margin: 0;
+  padding: 8px;
+  color: var(--op-muted);
+}
+
+.operations-monitor-events-more {
+  display: block;
+  margin: 0 auto 8px;
+  padding: 4px 10px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--radius-control, 4px);
+  background: var(--surface-control, #102a39);
+  color: var(--op-text);
+  cursor: pointer;
+}
+
+.operations-monitor-events-more[hidden] {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .operations-monitor {
+    grid-template-columns: minmax(210px, 252px) minmax(220px, 1fr) minmax(220px, 260px);
+  }
+  .operations-monitor-map-marker-label { display: none; }
+}
+
+@media (max-width: 820px) {
+  .operations-monitor {
+    grid-template: auto minmax(0, 1fr) auto / minmax(180px, 238px) 1fr;
+  }
+  .operations-monitor-header { grid-area: 1 / 1 / auto / 3; }
+  .operations-monitor-sidebar { grid-area: 2 / 2; }
+  .operations-monitor-spatial { grid-area: 2 / 1; }
+  .operations-monitor-events { grid-area: 3 / 1 / auto / 3; }
+  .operations-monitor-status-grid { grid-template-columns: 1fr; }
+}
+
+/* Viewer chrome shares the map with the monitor. The chrome header and scene toggle occupy
+   the top-right corner above the sidebar; the legend, collapsed city controls and minimized
+   PFD occupy a bottom band below the event strip. The scenario badges move from the top
+   centre, where the monitor clock sits, into that band beside the legend. */
+.map:has(> .viewer-chrome-header) .operations-monitor { padding-bottom: 58px; }
+.map:has(> .viewer-chrome-header) .map-stats {
+  top: auto;
+  bottom: 16px;
+  left: 86px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  max-width: calc(100% - 86px - 252px);
+  transform: none;
+}
+.map:has(> .viewer-chrome-header) .operations-monitor-sidebar { margin-top: 40px; max-height: calc(100% - 40px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .operations-monitor * { scroll-behavior: auto !important; }
+}

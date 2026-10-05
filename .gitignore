@@ -86,3 +86,11 @@ frontend/yarn-error.log*
 
 # Generated standalone authoring route, built from console-prototype source
 /frontend/public/configuration/
+
+# --- AERO-BENCH source/config export (aero-bench/) ---
+# The upstream ignore patterns above (runtime/, data/, examples/, *.log,
+# frontend/build/, frontend/node_modules/, ...) target THIS repository's own
+# runtime state. The exported AERO-BENCH snapshot is first-party source and is
+# exempted from those patterns so its checked-in tree stays complete.
+!/aero-bench/
+!/aero-bench/**/

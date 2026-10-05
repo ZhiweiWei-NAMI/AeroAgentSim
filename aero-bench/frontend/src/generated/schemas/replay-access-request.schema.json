@@ -1,0 +1,1 @@
+{"$id":"urn:aero-bench:schema:replay-access-request","$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"properties":{"schema_version":{"const":"aero-bench.replay-access-request/v1","title":"Schema Version","type":"string"}},"required":["schema_version"],"title":"ReplayAccessRequest","type":"object"}

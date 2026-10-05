@@ -1,0 +1,4824 @@
+{
+  "schema_version": "aeroagentsim.bench-export.manifest/v1",
+  "generated_utc": "2026-10-05T02:30:00Z",
+  "what_this_is": "Curated first-party snapshot of AERO_BENCH source, configuration, tests, docs and build recipes for the monorepo folder aero-bench/ of ZhiweiWei-NAMI/AeroAgentSim. It is a copy, not a git merge: it carries NO AERO_BENCH commit history.",
+  "snapshot": {
+    "has_git_history": false,
+    "source_repository": "AERO_BENCH (private working repository)",
+    "source_branch": "repair/inspection-v1-r5",
+    "source_commit": "ea295073cdd310a31fa2e29317a3571bc716bb87",
+    "source_commit_subject": "Integrate frontend performance and stack work with pending platform changes",
+    "source_commit_time": "2026-10-03T08:16:52-07:00",
+    "dirty_file_provenance": {
+      "tracked_modifications_vs_head": 0,
+      "untracked_paths": 1339,
+      "untracked_breakdown_note": "All 1339 dirty paths are untracked evidence/dataset working files under validation/, frontend/public/ and frontend/validation/. None is part of this export except the host/ example, whose files were also untracked in the source workspace and are published here deliberately as the P02 host-mount example.",
+      "host_example_provenance": "validation/p02-parcel-host/host/ (untracked working tree in the source workspace, files dated 2026-10-05, copied unmodified except the two sanitizations declared under sanitizations)"
+    },
+    "export_tree_digest": {
+      "method": "sha256 over 'sha256sum <newline-separated sorted (by path) file paths>  <hash>' listing of every file",
+      "list_digest_sha256": "b99eabac43415270ab61f86b177822d4c50402ae6afe066cb0b83f8f0b8e9920",
+      "file_count": 1175,
+      "total_bytes": 21505931,
+      "note": "digest covers the curated payload before EXPORT_MANIFEST.json/EXPORT_README.md were added; those two files are listed below with their sizes"
+    }
+  },
+  "included_categories": {
+    "python-runtime (aero_bench/)": 200,
+    "python-tests (tests/)": 209,
+    "build-and-validation-tools (tools/)": 53,
+    "container-build-recipes (containers/)": 67,
+    "generated-schemas (schemas/)": 46,
+    "architecture-and-validation-docs (docs/)": 35,
+    "viewer-typescript-source (frontend/src, scripts, shared, e2e, config)": 543,
+    "p02-parcel-host-example (host/)": 17,
+    "root-config (README.md, AGENTS.md, pyproject.toml)": 3
+  },
+  "exclusions": [
+    {
+      "category": "frontend/public/ models, building renders, OSM packs (1685 tracked files, ~100 MB+)",
+      "reason": "Raw datasets/maps/assets without known public redistribution rights; the project's own asset ledger records public_redistribution_authorized: false."
+    },
+    {
+      "category": "frontend/design/ reference renders (4 PNG)",
+      "reason": "Design-reference images, asset category as above; not needed to run the code."
+    },
+    {
+      "category": "frontend/assets/incoming/ download inventories",
+      "reason": "Third-party download metadata including an external share URL for the Baidu city package; distribution of the link is not authorized by the exclusion policy."
+    },
+    {
+      "category": "releases/ (inspection-v1: resolved-run, truth, sealed evidence, image locks, viewer screenshots)",
+      "reason": "Contains verifier-private truth and sealed runtime evidence; publishing it would misrepresent the private run as reproducible without benchmark-owned digest-pinned images, and it is not first-party source/config."
+    },
+    {
+      "category": "validation/ run evidence (logs, reports, screenshots, containers, checkpoints)",
+      "reason": "Run logs/evidence, raw datasets and working-session records are excluded by policy; no known redistribution rights for generated datasets."
+    },
+    {
+      "category": "Host demo screenshots bench-motion original caption",
+      "reason": "The transient real-replay caption in the original bench-motion-zh.png header was cropped out; see sanitizations."
+    },
+    {
+      "category": "Session/workflow docs (city-platform-handoff, city-platform-delivery-status, frontend-backend-coordination, city-platform-next-job, city-platform-work-allocation, project-owner-handoff-20261002, project-owner-takeover-20261001, ui-calibration-handoff-20261001, ui-calibration-dsh-review-20261001)",
+      "reason": "Session-specific records naming local workspace paths and model-assistant session details; omitting them is the conservative choice for a public export."
+    },
+    {
+      "category": "20260927204532136.zip, AERO_BENCH_ARCHITECTURE_KIT_20260828/, _receipts/, _tickets/, .claude/, .agents/, .codex/, node_modules/, frontend/dist/, caches",
+      "reason": "Archives, internal kits, assistant/session installation and session storage, build outputs and caches are all excluded by policy."
+    },
+    {
+      "category": ".github workflows",
+      "reason": "None exist in the source repository; nothing to export."
+    }
+  ],
+  "sanitizations": [
+    {
+      "file": "docs/AGENT_INSPECTION_RUNTIME.md",
+      "change": "Dropped the --model-https-proxy http://100.64.153.244:10809 example line; replaced the literal /home/weizhiwei/.codex/auth.json with /path/to/model-auth.json."
+    },
+    {
+      "file": "docs/MODEL_CALLS.md",
+      "change": "Replaced the local codex install path /home/weizhiwei/.local/bin/codex with '(local install path omitted in this export)'; replaced the local dsh worktree path with 'a dedicated local worktree (path omitted in this export)'."
+    },
+    {
+      "file": "docs/VALIDATION.md",
+      "change": "Replaced the literal /mnt/data2/weizhiwei/AERO_WORLD workspace path with 'the separate AERO_WORLD workspace'."
+    },
+    {
+      "file": "docs/city-authoring-stage1-operations.md",
+      "change": "Replaced the literal user-network address https://100.64.131.244:5209 with <authoring-host-address>."
+    },
+    {
+      "file": "frontend/src/city-water-material.test.ts",
+      "change": "Replaced the absolute reference-colors path with a workspace-relative path."
+    },
+    {
+      "file": "docs/ui-calibration-delivery-20261001.en.md",
+      "change": "Replaced a link to an omitted session doc with an inline note."
+    },
+    {
+      "file": "five more docs",
+      "change": "Replaced links to omitted session docs with inline notes naming the omission."
+    },
+    {
+      "file": "host/screenshots/bench-motion-zh.png",
+      "change": "Cropped the 96px header strip that displayed the transient real-replay caption; the exported image (1600x1613) shows the same demo fallback state without the misleading caption. capture.json retains realBenchMotion: false."
+    }
+  ],
+  "licensing": {
+    "aero-bench-export": "First-party AERO_BENCH material is published here as-is, expressly authorized by the author; no license file is invented for it and no third-party rights are claimed.",
+    "host/ (P02 parcel host-mount example)": "Apache-2.0. host/LICENSE is the unmodified license of the P02 parcel prototype checkout (validation/p02-parcel-host/source @ 15f473a4dc0ed4f80e3000b0acef6e875c617393). Reused prototype code in host/*.js carries per-file attribution comments; the Apache-2.0 NOTICE requirements are honored by those headers. PR9/PR10 public prototype sources are not part of this export beyond this attribution.",
+    "no_other_license_files": "The source repository contains no LICENSE file at its root or in exported directories; none was added."
+  },
+  "screenshot_status": {
+    "all_demo": true,
+    "real_bench_motion": false,
+    "real_atlas_evidence": false,
+    "visual_acceptance_claimed": false,
+    "gallery_note": "All screenshots under host/screenshots/ show authored demo/fixture evidence. They are NOT evidence of a real BENCH or Atlas run, and none is a visual-acceptance claim. The bench-motion-zh.png caption strip was cropped in this export to avoid implying real replay evidence; capture.json records realBenchMotion: false with the reason."
+  },
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "bytes": 8118
+    },
+    {
+      "path": "EXPORT_MANIFEST.json",
+      "bytes": 115544,
+      "note": "this manifest (size recorded post-write)"
+    },
+    {
+      "path": "EXPORT_README.md",
+      "bytes": 9674
+    },
+    {
+      "path": "README.md",
+      "bytes": 12438
+    },
+    {
+      "path": "aero_bench/__init__.py",
+      "bytes": 481
+    },
+    {
+      "path": "aero_bench/agent/__init__.py",
+      "bytes": 171
+    },
+    {
+      "path": "aero_bench/agent/bridge.py",
+      "bytes": 30169
+    },
+    {
+      "path": "aero_bench/agent/codex_driver.py",
+      "bytes": 49243
+    },
+    {
+      "path": "aero_bench/agent/driver_entrypoint.py",
+      "bytes": 23314
+    },
+    {
+      "path": "aero_bench/agent/inspection_reference.py",
+      "bytes": 17534
+    },
+    {
+      "path": "aero_bench/agent/model_proxy.py",
+      "bytes": 39291
+    },
+    {
+      "path": "aero_bench/agent/runtime.py",
+      "bytes": 19851
+    },
+    {
+      "path": "aero_bench/agent/session_contracts.py",
+      "bytes": 21831
+    },
+    {
+      "path": "aero_bench/artifacts/__init__.py",
+      "bytes": 368
+    },
+    {
+      "path": "aero_bench/artifacts/contracts.py",
+      "bytes": 11652
+    },
+    {
+      "path": "aero_bench/authoring/__init__.py",
+      "bytes": 851
+    },
+    {
+      "path": "aero_bench/authoring/api.py",
+      "bytes": 19668
+    },
+    {
+      "path": "aero_bench/authoring/city_inspection_registration.py",
+      "bytes": 22769
+    },
+    {
+      "path": "aero_bench/authoring/city_native_registration.py",
+      "bytes": 77608
+    },
+    {
+      "path": "aero_bench/authoring/compilation_contracts.py",
+      "bytes": 3002
+    },
+    {
+      "path": "aero_bench/authoring/compiler.py",
+      "bytes": 7144
+    },
+    {
+      "path": "aero_bench/authoring/draft_compiler.py",
+      "bytes": 24603
+    },
+    {
+      "path": "aero_bench/authoring/logistics_arrivals_registration.py",
+      "bytes": 6906
+    },
+    {
+      "path": "aero_bench/authoring/native_registry.py",
+      "bytes": 38229
+    },
+    {
+      "path": "aero_bench/authoring/order_events.py",
+      "bytes": 7213
+    },
+    {
+      "path": "aero_bench/authoring/presentation.py",
+      "bytes": 25817
+    },
+    {
+      "path": "aero_bench/authoring/publication.py",
+      "bytes": 57672
+    },
+    {
+      "path": "aero_bench/authoring/publication_evidence.py",
+      "bytes": 18494
+    },
+    {
+      "path": "aero_bench/authoring/reference_registration.py",
+      "bytes": 8114
+    },
+    {
+      "path": "aero_bench/authoring/selection.py",
+      "bytes": 16357
+    },
+    {
+      "path": "aero_bench/authoring/source_import.py",
+      "bytes": 6295
+    },
+    {
+      "path": "aero_bench/authoring/sources.json",
+      "bytes": 953
+    },
+    {
+      "path": "aero_bench/authoring/traffic_events.py",
+      "bytes": 3333
+    },
+    {
+      "path": "aero_bench/authoring/traffic_preview.py",
+      "bytes": 2582
+    },
+    {
+      "path": "aero_bench/authoring/traffic_preview_contracts.py",
+      "bytes": 4112
+    },
+    {
+      "path": "aero_bench/authoring/traffic_preview_jobs.py",
+      "bytes": 29287
+    },
+    {
+      "path": "aero_bench/authoring/traffic_preview_profiles.json",
+      "bytes": 9038
+    },
+    {
+      "path": "aero_bench/authoring/urban_network.py",
+      "bytes": 15598
+    },
+    {
+      "path": "aero_bench/authoring/workspace.py",
+      "bytes": 16473
+    },
+    {
+      "path": "aero_bench/config/__init__.py",
+      "bytes": 725
+    },
+    {
+      "path": "aero_bench/config/__main__.py",
+      "bytes": 66
+    },
+    {
+      "path": "aero_bench/config/cli.py",
+      "bytes": 1874
+    },
+    {
+      "path": "aero_bench/config/loader.py",
+      "bytes": 9088
+    },
+    {
+      "path": "aero_bench/config/models.py",
+      "bytes": 30656
+    },
+    {
+      "path": "aero_bench/config/resolver.py",
+      "bytes": 40484
+    },
+    {
+      "path": "aero_bench/control/__init__.py",
+      "bytes": 1541
+    },
+    {
+      "path": "aero_bench/control/cli.py",
+      "bytes": 9019
+    },
+    {
+      "path": "aero_bench/control/client.py",
+      "bytes": 15883
+    },
+    {
+      "path": "aero_bench/control/contracts.py",
+      "bytes": 6479
+    },
+    {
+      "path": "aero_bench/control/manager.py",
+      "bytes": 33238
+    },
+    {
+      "path": "aero_bench/control/sealed_replay.py",
+      "bytes": 23527
+    },
+    {
+      "path": "aero_bench/control/server.py",
+      "bytes": 37556
+    },
+    {
+      "path": "aero_bench/executor/__init__.py",
+      "bytes": 739
+    },
+    {
+      "path": "aero_bench/executor/contracts.py",
+      "bytes": 13043
+    },
+    {
+      "path": "aero_bench/executor/docker.py",
+      "bytes": 138765
+    },
+    {
+      "path": "aero_bench/executor/facility_world.py",
+      "bytes": 22770
+    },
+    {
+      "path": "aero_bench/executor/kubernetes.py",
+      "bytes": 34716
+    },
+    {
+      "path": "aero_bench/executor/planning.py",
+      "bytes": 15767
+    },
+    {
+      "path": "aero_bench/gateway/__init__.py",
+      "bytes": 1218
+    },
+    {
+      "path": "aero_bench/gateway/contracts.py",
+      "bytes": 6372
+    },
+    {
+      "path": "aero_bench/gateway/dispatcher.py",
+      "bytes": 76124
+    },
+    {
+      "path": "aero_bench/gateway/service.py",
+      "bytes": 30333
+    },
+    {
+      "path": "aero_bench/providers/__init__.py",
+      "bytes": 2420
+    },
+    {
+      "path": "aero_bench/providers/contracts.py",
+      "bytes": 1815
+    },
+    {
+      "path": "aero_bench/providers/inspection_business/__init__.py",
+      "bytes": 939
+    },
+    {
+      "path": "aero_bench/providers/inspection_business/config.py",
+      "bytes": 1082
+    },
+    {
+      "path": "aero_bench/providers/inspection_business/protocol.py",
+      "bytes": 1175
+    },
+    {
+      "path": "aero_bench/providers/inspection_business/provider.py",
+      "bytes": 41240
+    },
+    {
+      "path": "aero_bench/providers/logistics_business/__init__.py",
+      "bytes": 1719
+    },
+    {
+      "path": "aero_bench/providers/logistics_business/adapter.py",
+      "bytes": 4655
+    },
+    {
+      "path": "aero_bench/providers/logistics_business/config.py",
+      "bytes": 11398
+    },
+    {
+      "path": "aero_bench/providers/logistics_business/protocol.py",
+      "bytes": 1692
+    },
+    {
+      "path": "aero_bench/providers/logistics_business/provider.py",
+      "bytes": 61238
+    },
+    {
+      "path": "aero_bench/providers/logistics_business/queries.py",
+      "bytes": 4967
+    },
+    {
+      "path": "aero_bench/providers/logistics_business/scheduled_arrivals.py",
+      "bytes": 1224
+    },
+    {
+      "path": "aero_bench/providers/ns3/__init__.py",
+      "bytes": 1774
+    },
+    {
+      "path": "aero_bench/providers/ns3/config.py",
+      "bytes": 2457
+    },
+    {
+      "path": "aero_bench/providers/ns3/preflight.py",
+      "bytes": 2106
+    },
+    {
+      "path": "aero_bench/providers/ns3/protocol.py",
+      "bytes": 1000
+    },
+    {
+      "path": "aero_bench/providers/ns3/provider.py",
+      "bytes": 58142
+    },
+    {
+      "path": "aero_bench/providers/px4_gazebo/__init__.py",
+      "bytes": 1186
+    },
+    {
+      "path": "aero_bench/providers/px4_gazebo/config.py",
+      "bytes": 13262
+    },
+    {
+      "path": "aero_bench/providers/px4_gazebo/observations.py",
+      "bytes": 11422
+    },
+    {
+      "path": "aero_bench/providers/px4_gazebo/preflight.py",
+      "bytes": 1770
+    },
+    {
+      "path": "aero_bench/providers/px4_gazebo/protocol.py",
+      "bytes": 756
+    },
+    {
+      "path": "aero_bench/providers/px4_gazebo/provider.py",
+      "bytes": 132975
+    },
+    {
+      "path": "aero_bench/providers/px4_gazebo/sealed_motion.py",
+      "bytes": 13350
+    },
+    {
+      "path": "aero_bench/providers/registry.py",
+      "bytes": 18606
+    },
+    {
+      "path": "aero_bench/providers/rpc.py",
+      "bytes": 16325
+    },
+    {
+      "path": "aero_bench/providers/stages.py",
+      "bytes": 2714
+    },
+    {
+      "path": "aero_bench/providers/sumo/__init__.py",
+      "bytes": 922
+    },
+    {
+      "path": "aero_bench/providers/sumo/config.py",
+      "bytes": 3176
+    },
+    {
+      "path": "aero_bench/providers/sumo/preflight.py",
+      "bytes": 1658
+    },
+    {
+      "path": "aero_bench/providers/sumo/protocol.py",
+      "bytes": 735
+    },
+    {
+      "path": "aero_bench/providers/sumo/provider.py",
+      "bytes": 33580
+    },
+    {
+      "path": "aero_bench/providers/sumo/restriction_evidence.py",
+      "bytes": 4966
+    },
+    {
+      "path": "aero_bench/providers/sumo/restriction_verifier.py",
+      "bytes": 16034
+    },
+    {
+      "path": "aero_bench/providers/sumo/scene.py",
+      "bytes": 16003
+    },
+    {
+      "path": "aero_bench/providers/sumo/verifier_workload.py",
+      "bytes": 1344
+    },
+    {
+      "path": "aero_bench/providers/world_scene/__init__.py",
+      "bytes": 983
+    },
+    {
+      "path": "aero_bench/providers/world_scene/config.py",
+      "bytes": 763
+    },
+    {
+      "path": "aero_bench/providers/world_scene/preflight.py",
+      "bytes": 2395
+    },
+    {
+      "path": "aero_bench/providers/world_scene/protocol.py",
+      "bytes": 691
+    },
+    {
+      "path": "aero_bench/providers/world_scene/provider.py",
+      "bytes": 18210
+    },
+    {
+      "path": "aero_bench/runner/__init__.py",
+      "bytes": 943
+    },
+    {
+      "path": "aero_bench/runner/cli.py",
+      "bytes": 980
+    },
+    {
+      "path": "aero_bench/runner/contracts.py",
+      "bytes": 8304
+    },
+    {
+      "path": "aero_bench/runner/execution.py",
+      "bytes": 26526
+    },
+    {
+      "path": "aero_bench/runner/session.py",
+      "bytes": 27711
+    },
+    {
+      "path": "aero_bench/runtime/__init__.py",
+      "bytes": 4268
+    },
+    {
+      "path": "aero_bench/runtime/barrier.py",
+      "bytes": 12465
+    },
+    {
+      "path": "aero_bench/runtime/bootstrap.py",
+      "bytes": 17433
+    },
+    {
+      "path": "aero_bench/runtime/contracts.py",
+      "bytes": 34287
+    },
+    {
+      "path": "aero_bench/runtime/control.py",
+      "bytes": 5324
+    },
+    {
+      "path": "aero_bench/runtime/events.py",
+      "bytes": 19708
+    },
+    {
+      "path": "aero_bench/runtime/evidence.py",
+      "bytes": 41236
+    },
+    {
+      "path": "aero_bench/runtime/harness.py",
+      "bytes": 91489
+    },
+    {
+      "path": "aero_bench/runtime/hooks.py",
+      "bytes": 2471
+    },
+    {
+      "path": "aero_bench/runtime/internal_commands.py",
+      "bytes": 18648
+    },
+    {
+      "path": "aero_bench/runtime/ledger.py",
+      "bytes": 32119
+    },
+    {
+      "path": "aero_bench/runtime/lifecycle.py",
+      "bytes": 1726
+    },
+    {
+      "path": "aero_bench/runtime/scene_history.py",
+      "bytes": 18521
+    },
+    {
+      "path": "aero_bench/runtime/scene_state.py",
+      "bytes": 19655
+    },
+    {
+      "path": "aero_bench/runtime/sealed_motion.py",
+      "bytes": 8110
+    },
+    {
+      "path": "aero_bench/runtime/service.py",
+      "bytes": 42132
+    },
+    {
+      "path": "aero_bench/serialization.py",
+      "bytes": 391
+    },
+    {
+      "path": "aero_bench/tasks/__init__.py",
+      "bytes": 73
+    },
+    {
+      "path": "aero_bench/tasks/inspection/__init__.py",
+      "bytes": 5593
+    },
+    {
+      "path": "aero_bench/tasks/inspection/bounds.py",
+      "bytes": 10350
+    },
+    {
+      "path": "aero_bench/tasks/inspection/business.py",
+      "bytes": 18542
+    },
+    {
+      "path": "aero_bench/tasks/inspection/contracts.py",
+      "bytes": 59498
+    },
+    {
+      "path": "aero_bench/tasks/inspection/formal_v2_contracts.py",
+      "bytes": 43653
+    },
+    {
+      "path": "aero_bench/tasks/inspection/formal_v2_sealed.py",
+      "bytes": 71763
+    },
+    {
+      "path": "aero_bench/tasks/inspection/formal_v2_verifier.py",
+      "bytes": 54353
+    },
+    {
+      "path": "aero_bench/tasks/inspection/image_evidence.py",
+      "bytes": 5382
+    },
+    {
+      "path": "aero_bench/tasks/inspection/integration.py",
+      "bytes": 30832
+    },
+    {
+      "path": "aero_bench/tasks/inspection/model_gateway_evidence.py",
+      "bytes": 74796
+    },
+    {
+      "path": "aero_bench/tasks/inspection/observation.py",
+      "bytes": 4890
+    },
+    {
+      "path": "aero_bench/tasks/inspection/payloads.py",
+      "bytes": 2413
+    },
+    {
+      "path": "aero_bench/tasks/inspection/runtime_hook.py",
+      "bytes": 39720
+    },
+    {
+      "path": "aero_bench/tasks/inspection/sealed_evidence.py",
+      "bytes": 86169
+    },
+    {
+      "path": "aero_bench/tasks/inspection/verifier.py",
+      "bytes": 56061
+    },
+    {
+      "path": "aero_bench/tasks/logistics/__init__.py",
+      "bytes": 2957
+    },
+    {
+      "path": "aero_bench/tasks/logistics/airspace_events.py",
+      "bytes": 37804
+    },
+    {
+      "path": "aero_bench/tasks/logistics/authoring.py",
+      "bytes": 4365
+    },
+    {
+      "path": "aero_bench/tasks/logistics/bundle_builder.py",
+      "bytes": 22736
+    },
+    {
+      "path": "aero_bench/tasks/logistics/contracts.py",
+      "bytes": 14417
+    },
+    {
+      "path": "aero_bench/tasks/logistics/dwell_eligibility.py",
+      "bytes": 41524
+    },
+    {
+      "path": "aero_bench/tasks/logistics/energy.py",
+      "bytes": 19391
+    },
+    {
+      "path": "aero_bench/tasks/logistics/facilities.py",
+      "bytes": 14272
+    },
+    {
+      "path": "aero_bench/tasks/logistics/facility_catalog.py",
+      "bytes": 4312
+    },
+    {
+      "path": "aero_bench/tasks/logistics/facility_geometry.py",
+      "bytes": 13187
+    },
+    {
+      "path": "aero_bench/tasks/logistics/facility_physics.py",
+      "bytes": 51963
+    },
+    {
+      "path": "aero_bench/tasks/logistics/facility_presence.py",
+      "bytes": 29895
+    },
+    {
+      "path": "aero_bench/tasks/logistics/facility_world.py",
+      "bytes": 22266
+    },
+    {
+      "path": "aero_bench/tasks/logistics/fleet.py",
+      "bytes": 16230
+    },
+    {
+      "path": "aero_bench/tasks/logistics/integration.py",
+      "bytes": 13254
+    },
+    {
+      "path": "aero_bench/tasks/logistics/observation_ingress.py",
+      "bytes": 28836
+    },
+    {
+      "path": "aero_bench/tasks/logistics/order_arrivals.py",
+      "bytes": 51452
+    },
+    {
+      "path": "aero_bench/tasks/logistics/orders.py",
+      "bytes": 37782
+    },
+    {
+      "path": "aero_bench/tasks/logistics/physical_observations.py",
+      "bytes": 66159
+    },
+    {
+      "path": "aero_bench/tasks/logistics/resources.py",
+      "bytes": 34389
+    },
+    {
+      "path": "aero_bench/tasks/logistics/runtime_airspace.py",
+      "bytes": 11928
+    },
+    {
+      "path": "aero_bench/tasks/logistics/runtime_bindings.py",
+      "bytes": 24356
+    },
+    {
+      "path": "aero_bench/tasks/logistics/runtime_hook.py",
+      "bytes": 23346
+    },
+    {
+      "path": "aero_bench/tasks/logistics/sealed_observations.py",
+      "bytes": 14095
+    },
+    {
+      "path": "aero_bench/tasks/logistics_arrivals/__init__.py",
+      "bytes": 69
+    },
+    {
+      "path": "aero_bench/tasks/logistics_arrivals/agent.py",
+      "bytes": 1809
+    },
+    {
+      "path": "aero_bench/tasks/logistics_arrivals/bundle.py",
+      "bytes": 15920
+    },
+    {
+      "path": "aero_bench/tasks/logistics_arrivals/contracts.py",
+      "bytes": 654
+    },
+    {
+      "path": "aero_bench/tasks/logistics_arrivals/domain.py",
+      "bytes": 1635
+    },
+    {
+      "path": "aero_bench/tasks/logistics_arrivals/integration.py",
+      "bytes": 6609
+    },
+    {
+      "path": "aero_bench/tasks/logistics_arrivals/verifier.py",
+      "bytes": 16717
+    },
+    {
+      "path": "aero_bench/tasks/logistics_arrivals/workload.py",
+      "bytes": 5222
+    },
+    {
+      "path": "aero_bench/tasks/registry.py",
+      "bytes": 1181
+    },
+    {
+      "path": "aero_bench/tasks/urban_recovery_demo/__init__.py",
+      "bytes": 1768
+    },
+    {
+      "path": "aero_bench/tasks/urban_recovery_demo/contracts.py",
+      "bytes": 12032
+    },
+    {
+      "path": "aero_bench/tasks/urban_recovery_demo/goals.py",
+      "bytes": 1038
+    },
+    {
+      "path": "aero_bench/tasks/urban_recovery_demo/integration.py",
+      "bytes": 32393
+    },
+    {
+      "path": "aero_bench/tasks/urban_recovery_demo/participant.py",
+      "bytes": 54692
+    },
+    {
+      "path": "aero_bench/tasks/urban_recovery_demo/planner.py",
+      "bytes": 11187
+    },
+    {
+      "path": "aero_bench/tasks/urban_recovery_demo/provenance.py",
+      "bytes": 4182
+    },
+    {
+      "path": "aero_bench/tasks/urban_recovery_demo/runtime_hook.py",
+      "bytes": 18326
+    },
+    {
+      "path": "aero_bench/tasks/urban_recovery_demo/verifier.py",
+      "bytes": 163407
+    },
+    {
+      "path": "aero_bench/trace/__init__.py",
+      "bytes": 1763
+    },
+    {
+      "path": "aero_bench/trace/contracts.py",
+      "bytes": 48261
+    },
+    {
+      "path": "aero_bench/trace/projector.py",
+      "bytes": 53934
+    },
+    {
+      "path": "aero_bench/trace/vocabulary.py",
+      "bytes": 1109
+    },
+    {
+      "path": "aero_bench/verifier/__init__.py",
+      "bytes": 558
+    },
+    {
+      "path": "aero_bench/verifier/contracts.py",
+      "bytes": 4784
+    },
+    {
+      "path": "aero_bench/verifier/output.py",
+      "bytes": 22441
+    },
+    {
+      "path": "aero_bench/verifier/streaming.py",
+      "bytes": 5134
+    },
+    {
+      "path": "aero_bench/world/__init__.py",
+      "bytes": 2165
+    },
+    {
+      "path": "aero_bench/world/alignment.py",
+      "bytes": 15068
+    },
+    {
+      "path": "aero_bench/world/building_render_merge.py",
+      "bytes": 65703
+    },
+    {
+      "path": "aero_bench/world/contracts.py",
+      "bytes": 74528
+    },
+    {
+      "path": "aero_bench/world/frame_math.py",
+      "bytes": 28330
+    },
+    {
+      "path": "aero_bench/world/frames.py",
+      "bytes": 15313
+    },
+    {
+      "path": "aero_bench/world/ground_roads.py",
+      "bytes": 33147
+    },
+    {
+      "path": "aero_bench/world/resolved.py",
+      "bytes": 110627
+    },
+    {
+      "path": "aero_bench/world/road_width_catalog.py",
+      "bytes": 24985
+    },
+    {
+      "path": "aero_bench/world/scene_authoring.py",
+      "bytes": 55874
+    },
+    {
+      "path": "aero_bench/world/scene_compiler.py",
+      "bytes": 102040
+    },
+    {
+      "path": "aero_bench/world/workload_scenario.py",
+      "bytes": 122321
+    },
+    {
+      "path": "containers/README.md",
+      "bytes": 5523
+    },
+    {
+      "path": "containers/agent-bridge/Dockerfile",
+      "bytes": 896
+    },
+    {
+      "path": "containers/codex-driver/Dockerfile",
+      "bytes": 1114
+    },
+    {
+      "path": "containers/harness/Dockerfile",
+      "bytes": 1328
+    },
+    {
+      "path": "containers/harness/entrypoint.py",
+      "bytes": 378
+    },
+    {
+      "path": "containers/harness/requirements.in",
+      "bytes": 50
+    },
+    {
+      "path": "containers/harness/requirements.lock",
+      "bytes": 1284
+    },
+    {
+      "path": "containers/harness/selfcheck.py",
+      "bytes": 580
+    },
+    {
+      "path": "containers/inspection-business/Dockerfile",
+      "bytes": 2140
+    },
+    {
+      "path": "containers/inspection-business/entrypoint.py",
+      "bytes": 359
+    },
+    {
+      "path": "containers/inspection-business/requirements.in",
+      "bytes": 50
+    },
+    {
+      "path": "containers/inspection-business/requirements.lock",
+      "bytes": 24935
+    },
+    {
+      "path": "containers/inspection-business/selfcheck.py",
+      "bytes": 39704
+    },
+    {
+      "path": "containers/inspection-business/service.py",
+      "bytes": 67805
+    },
+    {
+      "path": "containers/inspection-reference/Dockerfile",
+      "bytes": 908
+    },
+    {
+      "path": "containers/inspection-verifier/Dockerfile",
+      "bytes": 1065
+    },
+    {
+      "path": "containers/inspection-verifier/entrypoint.py",
+      "bytes": 12912
+    },
+    {
+      "path": "containers/inspection-verifier/selfcheck.py",
+      "bytes": 1337
+    },
+    {
+      "path": "containers/logistics-business/Dockerfile",
+      "bytes": 2207
+    },
+    {
+      "path": "containers/logistics-business/arrivals-verifier/Dockerfile",
+      "bytes": 894
+    },
+    {
+      "path": "containers/logistics-business/clock-agent/Dockerfile",
+      "bytes": 866
+    },
+    {
+      "path": "containers/logistics-business/entrypoint.py",
+      "bytes": 359
+    },
+    {
+      "path": "containers/logistics-business/requirements.in",
+      "bytes": 50
+    },
+    {
+      "path": "containers/logistics-business/requirements.lock",
+      "bytes": 24935
+    },
+    {
+      "path": "containers/logistics-business/selfcheck.py",
+      "bytes": 48626
+    },
+    {
+      "path": "containers/logistics-business/service.py",
+      "bytes": 99539
+    },
+    {
+      "path": "containers/ns3/Dockerfile",
+      "bytes": 2332
+    },
+    {
+      "path": "containers/ns3/aero-ns3-provider.cc",
+      "bytes": 51760
+    },
+    {
+      "path": "containers/ns3/aero-ns3-selfcheck.cc",
+      "bytes": 11726
+    },
+    {
+      "path": "containers/ns3/server.py",
+      "bytes": 194136
+    },
+    {
+      "path": "containers/px4-gazebo/Dockerfile",
+      "bytes": 18171
+    },
+    {
+      "path": "containers/px4-gazebo/entrypoint.py",
+      "bytes": 357
+    },
+    {
+      "path": "containers/px4-gazebo/identity.json",
+      "bytes": 1487
+    },
+    {
+      "path": "containers/px4-gazebo/inject_contact_sensors.py",
+      "bytes": 2515
+    },
+    {
+      "path": "containers/px4-gazebo/mavlink-offline-python.patch",
+      "bytes": 829
+    },
+    {
+      "path": "containers/px4-gazebo/mavsdk-incoming-heartbeat-timeout.patch",
+      "bytes": 38220
+    },
+    {
+      "path": "containers/px4-gazebo/patch_camera_model.py",
+      "bytes": 4669
+    },
+    {
+      "path": "containers/px4-gazebo/plugins/airspace_transition/CMakeLists.txt",
+      "bytes": 1381
+    },
+    {
+      "path": "containers/px4-gazebo/plugins/airspace_transition/README.md",
+      "bytes": 2016
+    },
+    {
+      "path": "containers/px4-gazebo/plugins/airspace_transition/src/AirspaceTransition.cc",
+      "bytes": 12072
+    },
+    {
+      "path": "containers/px4-gazebo/pymavlink-build-requirements.lock",
+      "bytes": 1097
+    },
+    {
+      "path": "containers/px4-gazebo/requirements.in",
+      "bytes": 15
+    },
+    {
+      "path": "containers/px4-gazebo/requirements.lock",
+      "bytes": 6349
+    },
+    {
+      "path": "containers/px4-gazebo/selfcheck.py",
+      "bytes": 10492
+    },
+    {
+      "path": "containers/px4-gazebo/service.py",
+      "bytes": 475897
+    },
+    {
+      "path": "containers/readiness_probe.py",
+      "bytes": 17399
+    },
+    {
+      "path": "containers/selfcheck_scenario.py",
+      "bytes": 14368
+    },
+    {
+      "path": "containers/sumo/Dockerfile",
+      "bytes": 1821
+    },
+    {
+      "path": "containers/sumo/README.md",
+      "bytes": 1965
+    },
+    {
+      "path": "containers/sumo/entrypoint.py",
+      "bytes": 359
+    },
+    {
+      "path": "containers/sumo/requirements.in",
+      "bytes": 35
+    },
+    {
+      "path": "containers/sumo/requirements.lock",
+      "bytes": 1592
+    },
+    {
+      "path": "containers/sumo/restriction-verifier/Dockerfile",
+      "bytes": 1060
+    },
+    {
+      "path": "containers/sumo/selfcheck.py",
+      "bytes": 49842
+    },
+    {
+      "path": "containers/sumo/service.py",
+      "bytes": 109889
+    },
+    {
+      "path": "containers/urban-recovery-participant/Dockerfile",
+      "bytes": 1105
+    },
+    {
+      "path": "containers/urban-recovery-participant/entrypoint.py",
+      "bytes": 1914
+    },
+    {
+      "path": "containers/urban-recovery-verifier/Dockerfile",
+      "bytes": 999
+    },
+    {
+      "path": "containers/urban-recovery-verifier/entrypoint.py",
+      "bytes": 18728
+    },
+    {
+      "path": "containers/world-scene/Dockerfile",
+      "bytes": 2040
+    },
+    {
+      "path": "containers/world-scene/README.md",
+      "bytes": 3036
+    },
+    {
+      "path": "containers/world-scene/entrypoint.py",
+      "bytes": 359
+    },
+    {
+      "path": "containers/world-scene/requirements.in",
+      "bytes": 17
+    },
+    {
+      "path": "containers/world-scene/requirements.lock",
+      "bytes": 9695
+    },
+    {
+      "path": "containers/world-scene/selfcheck.py",
+      "bytes": 22414
+    },
+    {
+      "path": "containers/world-scene/service.py",
+      "bytes": 59988
+    },
+    {
+      "path": "containers/world-scene/stage_runtime.py",
+      "bytes": 1867
+    },
+    {
+      "path": "docs/AGENT_INSPECTION_E2E_PLAN.md",
+      "bytes": 4881
+    },
+    {
+      "path": "docs/AGENT_INSPECTION_PERFORMANCE_MODEL.md",
+      "bytes": 18576
+    },
+    {
+      "path": "docs/AGENT_INSPECTION_RUNTIME.md",
+      "bytes": 10164
+    },
+    {
+      "path": "docs/AGENT_SUBMISSIONS.md",
+      "bytes": 2604
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "bytes": 9268
+    },
+    {
+      "path": "docs/CITY_OPERATIONS_ARCHITECTURE.md",
+      "bytes": 35901
+    },
+    {
+      "path": "docs/CITY_VISUAL_PIPELINE.md",
+      "bytes": 11540
+    },
+    {
+      "path": "docs/MODEL_CALLS.md",
+      "bytes": 5997
+    },
+    {
+      "path": "docs/SOL_REVIEW.md",
+      "bytes": 3732
+    },
+    {
+      "path": "docs/VALIDATION.md",
+      "bytes": 22653
+    },
+    {
+      "path": "docs/WORLD_PERFORMANCE_MODEL.md",
+      "bytes": 12180
+    },
+    {
+      "path": "docs/backend-track-b-validation.en.md",
+      "bytes": 27759
+    },
+    {
+      "path": "docs/city-authoring-plan.md",
+      "bytes": 31474
+    },
+    {
+      "path": "docs/city-authoring-stage1-operations.md",
+      "bytes": 6292
+    },
+    {
+      "path": "docs/city-draft-compiler-boundary.en.md",
+      "bytes": 12197
+    },
+    {
+      "path": "docs/city-platform-implementation-plan.en.md",
+      "bytes": 38647
+    },
+    {
+      "path": "docs/frontend-worker-editor-20260930.en.md",
+      "bytes": 11239
+    },
+    {
+      "path": "docs/frontend-worker-ground-20260930.en.md",
+      "bytes": 21659
+    },
+    {
+      "path": "docs/frontend-worker-ground-a1-20260930.en.md",
+      "bytes": 16908
+    },
+    {
+      "path": "docs/frontend-worker-visual-20260930.en.md",
+      "bytes": 10500
+    },
+    {
+      "path": "docs/incident-logistics-public-record-proposal.en.md",
+      "bytes": 5907
+    },
+    {
+      "path": "docs/inspection-reference-performance-model.en.md",
+      "bytes": 12149
+    },
+    {
+      "path": "docs/ui-calibration-baseline-20261001.en.md",
+      "bytes": 14962
+    },
+    {
+      "path": "docs/ui-calibration-browser-baseline-20261001.en.md",
+      "bytes": 13592
+    },
+    {
+      "path": "docs/ui-calibration-camera-20261001.en.md",
+      "bytes": 5630
+    },
+    {
+      "path": "docs/ui-calibration-camera-integration-review-20261001.en.md",
+      "bytes": 11720
+    },
+    {
+      "path": "docs/ui-calibration-data-20261001.en.md",
+      "bytes": 6069
+    },
+    {
+      "path": "docs/ui-calibration-delivery-20261001.en.md",
+      "bytes": 7789
+    },
+    {
+      "path": "docs/ui-calibration-monitor-20261001.en.md",
+      "bytes": 7406
+    },
+    {
+      "path": "docs/ui-calibration-references-20261001.en.md",
+      "bytes": 11083
+    },
+    {
+      "path": "docs/ui-calibration-replay-gate-addendum-20261002.en.md",
+      "bytes": 2764
+    },
+    {
+      "path": "docs/ui-calibration-takeover-backend-gates-20261001.en.md",
+      "bytes": 7189
+    },
+    {
+      "path": "docs/ui-calibration-takeover-frontend-gates-20261001.en.md",
+      "bytes": 2676
+    },
+    {
+      "path": "docs/urban-engineering-ablation.md",
+      "bytes": 7745
+    },
+    {
+      "path": "docs/urban-native-physics-evidence.md",
+      "bytes": 4548
+    },
+    {
+      "path": "frontend/.gitignore",
+      "bytes": 69
+    },
+    {
+      "path": "frontend/README.md",
+      "bytes": 27436
+    },
+    {
+      "path": "frontend/asset-library-ledger.json",
+      "bytes": 1388489
+    },
+    {
+      "path": "frontend/asset-library.html",
+      "bytes": 6605
+    },
+    {
+      "path": "frontend/city-studio.html",
+      "bytes": 6411
+    },
+    {
+      "path": "frontend/e2e/fixtures/public-trace-v3.json",
+      "bytes": 12714
+    },
+    {
+      "path": "frontend/e2e/fixtures/public-trace.json",
+      "bytes": 1486
+    },
+    {
+      "path": "frontend/e2e/viewer.spec.ts",
+      "bytes": 1910
+    },
+    {
+      "path": "frontend/e2e/workspace-traces.spec.ts",
+      "bytes": 4898
+    },
+    {
+      "path": "frontend/index.html",
+      "bytes": 1110
+    },
+    {
+      "path": "frontend/package-lock.json",
+      "bytes": 74784
+    },
+    {
+      "path": "frontend/package.json",
+      "bytes": 815
+    },
+    {
+      "path": "frontend/scripts/asset-library.mjs",
+      "bytes": 26002
+    },
+    {
+      "path": "frontend/scripts/asset-library.test.mjs",
+      "bytes": 10265
+    },
+    {
+      "path": "frontend/scripts/audit-city-asset-ledger.mjs",
+      "bytes": 22306
+    },
+    {
+      "path": "frontend/scripts/audit-city-collisions.py",
+      "bytes": 12400
+    },
+    {
+      "path": "frontend/scripts/audit-city-ground-cover-live.mjs",
+      "bytes": 30858
+    },
+    {
+      "path": "frontend/scripts/audit-city-road-preview.py",
+      "bytes": 48488
+    },
+    {
+      "path": "frontend/scripts/audit-city-road-triangulation.mjs",
+      "bytes": 2680
+    },
+    {
+      "path": "frontend/scripts/audit-sumo-canonical-motion-v2.py",
+      "bytes": 44101
+    },
+    {
+      "path": "frontend/scripts/audit-sumo-canonical-motion-v3.py",
+      "bytes": 1597
+    },
+    {
+      "path": "frontend/scripts/audit-sumo-rendered-footprints.py",
+      "bytes": 22785
+    },
+    {
+      "path": "frontend/scripts/audit_native_road_physical.py",
+      "bytes": 10233
+    },
+    {
+      "path": "frontend/scripts/author-ground-city-streets.py",
+      "bytes": 13934
+    },
+    {
+      "path": "frontend/scripts/authoring-multisource-e2e.mjs",
+      "bytes": 7966
+    },
+    {
+      "path": "frontend/scripts/authoring-pack-vite.config.mjs",
+      "bytes": 377
+    },
+    {
+      "path": "frontend/scripts/authoring-studio-e2e.mjs",
+      "bytes": 16625
+    },
+    {
+      "path": "frontend/scripts/bake-bicycle-alpha.py",
+      "bytes": 617
+    },
+    {
+      "path": "frontend/scripts/benchmark-city-playback.mjs",
+      "bytes": 5591
+    },
+    {
+      "path": "frontend/scripts/benchmark-city-uav-rgb.mjs",
+      "bytes": 8296
+    },
+    {
+      "path": "frontend/scripts/build-bigcity-library.py",
+      "bytes": 5730
+    },
+    {
+      "path": "frontend/scripts/build-building-render-runtime.py",
+      "bytes": 115188
+    },
+    {
+      "path": "frontend/scripts/build-building-render-source-context.py",
+      "bytes": 11669
+    },
+    {
+      "path": "frontend/scripts/build-c2239-library.py",
+      "bytes": 5083
+    },
+    {
+      "path": "frontend/scripts/build-canonical-city-flight.py",
+      "bytes": 2622
+    },
+    {
+      "path": "frontend/scripts/build-city-asset-ledger.mjs",
+      "bytes": 22614
+    },
+    {
+      "path": "frontend/scripts/build-city-building-placements.py",
+      "bytes": 26199
+    },
+    {
+      "path": "frontend/scripts/build-city-effective-fixtures.py",
+      "bytes": 1681
+    },
+    {
+      "path": "frontend/scripts/build-city-road-preview.py",
+      "bytes": 55157
+    },
+    {
+      "path": "frontend/scripts/build-city-static-fixture-clearance.py",
+      "bytes": 7370
+    },
+    {
+      "path": "frontend/scripts/build-city-uav-lods.py",
+      "bytes": 16901
+    },
+    {
+      "path": "frontend/scripts/build-ground-city-network.py",
+      "bytes": 14473
+    },
+    {
+      "path": "frontend/scripts/build-ground-streets-closed-loop.py",
+      "bytes": 6206
+    },
+    {
+      "path": "frontend/scripts/build-incoming-unity-library.py",
+      "bytes": 16730
+    },
+    {
+      "path": "frontend/scripts/build-osm2world-pack.mjs",
+      "bytes": 10925
+    },
+    {
+      "path": "frontend/scripts/build-planned-city-flight.py",
+      "bytes": 2003
+    },
+    {
+      "path": "frontend/scripts/build-px4-city-preview.py",
+      "bytes": 3848
+    },
+    {
+      "path": "frontend/scripts/build-selected-static-roads.py",
+      "bytes": 22634
+    },
+    {
+      "path": "frontend/scripts/build-sumo-city-preview-census-v3.py",
+      "bytes": 4373
+    },
+    {
+      "path": "frontend/scripts/build-sumo-city-preview.py",
+      "bytes": 56852
+    },
+    {
+      "path": "frontend/scripts/build-uav-previews.py",
+      "bytes": 27380
+    },
+    {
+      "path": "frontend/scripts/build-urban-ground-network.py",
+      "bytes": 16995
+    },
+    {
+      "path": "frontend/scripts/capture-building-nearview.mjs",
+      "bytes": 97264
+    },
+    {
+      "path": "frontend/scripts/capture-building-nearview.test.mjs",
+      "bytes": 22868
+    },
+    {
+      "path": "frontend/scripts/capture-building-render-scene.mjs",
+      "bytes": 6400
+    },
+    {
+      "path": "frontend/scripts/capture-city-canonical-ground.mjs",
+      "bytes": 13968
+    },
+    {
+      "path": "frontend/scripts/capture-city-canonical-ground.test.mjs",
+      "bytes": 3950
+    },
+    {
+      "path": "frontend/scripts/capture-city-glass.mjs",
+      "bytes": 6210
+    },
+    {
+      "path": "frontend/scripts/capture-city-native-presentation-build.mjs",
+      "bytes": 3733
+    },
+    {
+      "path": "frontend/scripts/capture-city-native-presentation-build.test.mjs",
+      "bytes": 1125
+    },
+    {
+      "path": "frontend/scripts/capture-city-native-presentation-stream-diagnostic.mjs",
+      "bytes": 6935
+    },
+    {
+      "path": "frontend/scripts/capture-city-native-presentation.mjs",
+      "bytes": 51186
+    },
+    {
+      "path": "frontend/scripts/capture-city-native-presentation.test.mjs",
+      "bytes": 7855
+    },
+    {
+      "path": "frontend/scripts/capture-city-platform-acceptance.mjs",
+      "bytes": 54282
+    },
+    {
+      "path": "frontend/scripts/capture-city-platform-acceptance.test.mjs",
+      "bytes": 1264
+    },
+    {
+      "path": "frontend/scripts/capture-city-reference.mjs",
+      "bytes": 5174
+    },
+    {
+      "path": "frontend/scripts/capture-city-region-switch.mjs",
+      "bytes": 12399
+    },
+    {
+      "path": "frontend/scripts/capture-city-roads.mjs",
+      "bytes": 8915
+    },
+    {
+      "path": "frontend/scripts/capture-city-studio-v3-roundtrip.mjs",
+      "bytes": 26375
+    },
+    {
+      "path": "frontend/scripts/capture-city-traffic-preview-live.mjs",
+      "bytes": 17025
+    },
+    {
+      "path": "frontend/scripts/capture-city-vegetation-weather.mjs",
+      "bytes": 9234
+    },
+    {
+      "path": "frontend/scripts/capture-city-video.mjs",
+      "bytes": 24588
+    },
+    {
+      "path": "frontend/scripts/capture-editor-environment.mjs",
+      "bytes": 14714
+    },
+    {
+      "path": "frontend/scripts/capture-stage1-preview.mjs",
+      "bytes": 7712
+    },
+    {
+      "path": "frontend/scripts/capture-stage1-weather.mjs",
+      "bytes": 7540
+    },
+    {
+      "path": "frontend/scripts/capture-uav-thumbnails.mjs",
+      "bytes": 1880
+    },
+    {
+      "path": "frontend/scripts/capture-weather-lighting.mjs",
+      "bytes": 11885
+    },
+    {
+      "path": "frontend/scripts/check-source-message-overlap.mjs",
+      "bytes": 12591
+    },
+    {
+      "path": "frontend/scripts/city-asset-ledger.test.mjs",
+      "bytes": 7679
+    },
+    {
+      "path": "frontend/scripts/city-reference-e2e.mjs",
+      "bytes": 20296
+    },
+    {
+      "path": "frontend/scripts/city_authored_ground_streets.py",
+      "bytes": 23503
+    },
+    {
+      "path": "frontend/scripts/city_crossing_groups.py",
+      "bytes": 18796
+    },
+    {
+      "path": "frontend/scripts/city_effective_fixtures.py",
+      "bytes": 7621
+    },
+    {
+      "path": "frontend/scripts/city_environment_assets.py",
+      "bytes": 3822
+    },
+    {
+      "path": "frontend/scripts/city_environment_source.py",
+      "bytes": 14967
+    },
+    {
+      "path": "frontend/scripts/city_fixture_geometry.py",
+      "bytes": 8262
+    },
+    {
+      "path": "frontend/scripts/city_ground_fleet.py",
+      "bytes": 1732
+    },
+    {
+      "path": "frontend/scripts/city_ground_junction_completion.py",
+      "bytes": 16343
+    },
+    {
+      "path": "frontend/scripts/city_motion_continuity.py",
+      "bytes": 7076
+    },
+    {
+      "path": "frontend/scripts/city_motion_obstacles.py",
+      "bytes": 14225
+    },
+    {
+      "path": "frontend/scripts/city_native_route_capabilities.py",
+      "bytes": 4174
+    },
+    {
+      "path": "frontend/scripts/city_native_signals.py",
+      "bytes": 3741
+    },
+    {
+      "path": "frontend/scripts/city_pedestrian_connections.py",
+      "bytes": 35108
+    },
+    {
+      "path": "frontend/scripts/city_pedestrian_sidewalks.py",
+      "bytes": 14247
+    },
+    {
+      "path": "frontend/scripts/city_planned_flight.py",
+      "bytes": 4430
+    },
+    {
+      "path": "frontend/scripts/city_preview_coordinates.py",
+      "bytes": 28611
+    },
+    {
+      "path": "frontend/scripts/city_preview_scene.py",
+      "bytes": 2728
+    },
+    {
+      "path": "frontend/scripts/city_road_physical_clearance.py",
+      "bytes": 12099
+    },
+    {
+      "path": "frontend/scripts/city_road_topology.py",
+      "bytes": 2683
+    },
+    {
+      "path": "frontend/scripts/city_street_lamps.py",
+      "bytes": 15477
+    },
+    {
+      "path": "frontend/scripts/city_street_markings.py",
+      "bytes": 44779
+    },
+    {
+      "path": "frontend/scripts/city_street_surfaces.py",
+      "bytes": 18840
+    },
+    {
+      "path": "frontend/scripts/city_surface_identity.py",
+      "bytes": 3830
+    },
+    {
+      "path": "frontend/scripts/classify-city-ground.py",
+      "bytes": 33213
+    },
+    {
+      "path": "frontend/scripts/complete-ground-city-crossings.py",
+      "bytes": 9725
+    },
+    {
+      "path": "frontend/scripts/complete-ground-city-sidewalks.py",
+      "bytes": 9258
+    },
+    {
+      "path": "frontend/scripts/convert-c2239-browser.mjs",
+      "bytes": 2127
+    },
+    {
+      "path": "frontend/scripts/convert-c2239-browser.ts",
+      "bytes": 3072
+    },
+    {
+      "path": "frontend/scripts/convert-quark-neutral-cad.py",
+      "bytes": 22639
+    },
+    {
+      "path": "frontend/scripts/export-bicycle-man34-bike-only.mjs",
+      "bytes": 12761
+    },
+    {
+      "path": "frontend/scripts/export-car6-prefab-glb.cjs",
+      "bytes": 14236
+    },
+    {
+      "path": "frontend/scripts/export-hellfire-preview.py",
+      "bytes": 6587
+    },
+    {
+      "path": "frontend/scripts/extract-video-contact-sheet.mjs",
+      "bytes": 3915
+    },
+    {
+      "path": "frontend/scripts/incoming-car6-material-map.json",
+      "bytes": 2072
+    },
+    {
+      "path": "frontend/scripts/incoming-reviewed-models.json",
+      "bytes": 7361
+    },
+    {
+      "path": "frontend/scripts/inspect-osm2world-composition.mjs",
+      "bytes": 2003
+    },
+    {
+      "path": "frontend/scripts/measure-city-reflection-probes.mjs",
+      "bytes": 33789
+    },
+    {
+      "path": "frontend/scripts/measure-scene-load.mjs",
+      "bytes": 2877
+    },
+    {
+      "path": "frontend/scripts/optimize-city-models.py",
+      "bytes": 7376
+    },
+    {
+      "path": "frontend/scripts/osm2world-pack-order.mjs",
+      "bytes": 1658
+    },
+    {
+      "path": "frontend/scripts/prepare-ground-city-sources.py",
+      "bytes": 1819
+    },
+    {
+      "path": "frontend/scripts/profile-city-frame.mjs",
+      "bytes": 46223
+    },
+    {
+      "path": "frontend/scripts/profile-city-frame.test.mjs",
+      "bytes": 1755
+    },
+    {
+      "path": "frontend/scripts/profile-city-load.mjs",
+      "bytes": 22551
+    },
+    {
+      "path": "frontend/scripts/profile-city-load.test.mjs",
+      "bytes": 8856
+    },
+    {
+      "path": "frontend/scripts/refine-ground-network-physical.py",
+      "bytes": 17356
+    },
+    {
+      "path": "frontend/scripts/refresh-city-road-preview.py",
+      "bytes": 2360
+    },
+    {
+      "path": "frontend/scripts/report_ground_road_scope.py",
+      "bytes": 9240
+    },
+    {
+      "path": "frontend/scripts/requirements-asset-conversion.txt",
+      "bytes": 96
+    },
+    {
+      "path": "frontend/scripts/selected-facility-capabilities-e2e.mjs",
+      "bytes": 50278
+    },
+    {
+      "path": "frontend/scripts/selected-rooftop-e2e.mjs",
+      "bytes": 38151
+    },
+    {
+      "path": "frontend/scripts/selected-stage2-e2e.mjs",
+      "bytes": 12362
+    },
+    {
+      "path": "frontend/scripts/selected-stage3-authoring-e2e.mjs",
+      "bytes": 7031
+    },
+    {
+      "path": "frontend/scripts/summarize-uav-conversions.py",
+      "bytes": 7549
+    },
+    {
+      "path": "frontend/scripts/test-osm2world-pack-order.mjs",
+      "bytes": 1767
+    },
+    {
+      "path": "frontend/scripts/test_audit_city_collisions.py",
+      "bytes": 1097
+    },
+    {
+      "path": "frontend/scripts/test_audit_city_road_preview.py",
+      "bytes": 6665
+    },
+    {
+      "path": "frontend/scripts/test_audit_native_road_physical.py",
+      "bytes": 2319
+    },
+    {
+      "path": "frontend/scripts/test_audit_sumo_canonical_motion_v2.py",
+      "bytes": 17653
+    },
+    {
+      "path": "frontend/scripts/test_audit_sumo_rendered_footprints.py",
+      "bytes": 15849
+    },
+    {
+      "path": "frontend/scripts/test_build_bigcity_library.py",
+      "bytes": 1480
+    },
+    {
+      "path": "frontend/scripts/test_build_building_render_runtime.py",
+      "bytes": 30139
+    },
+    {
+      "path": "frontend/scripts/test_build_building_render_source_context.py",
+      "bytes": 4375
+    },
+    {
+      "path": "frontend/scripts/test_build_city_building_placements.py",
+      "bytes": 7193
+    },
+    {
+      "path": "frontend/scripts/test_build_city_road_preview.py",
+      "bytes": 16960
+    },
+    {
+      "path": "frontend/scripts/test_build_city_static_fixture_clearance.py",
+      "bytes": 4255
+    },
+    {
+      "path": "frontend/scripts/test_build_ground_city_network.py",
+      "bytes": 9371
+    },
+    {
+      "path": "frontend/scripts/test_build_incoming_unity_library.py",
+      "bytes": 6712
+    },
+    {
+      "path": "frontend/scripts/test_build_selected_static_roads.py",
+      "bytes": 8479
+    },
+    {
+      "path": "frontend/scripts/test_build_sumo_city_preview.py",
+      "bytes": 12767
+    },
+    {
+      "path": "frontend/scripts/test_build_uav_previews.py",
+      "bytes": 5864
+    },
+    {
+      "path": "frontend/scripts/test_build_urban_ground_network.py",
+      "bytes": 6700
+    },
+    {
+      "path": "frontend/scripts/test_city_authored_ground_streets.py",
+      "bytes": 10723
+    },
+    {
+      "path": "frontend/scripts/test_city_crossing_groups.py",
+      "bytes": 5614
+    },
+    {
+      "path": "frontend/scripts/test_city_effective_fixtures.py",
+      "bytes": 5165
+    },
+    {
+      "path": "frontend/scripts/test_city_environment_source.py",
+      "bytes": 10046
+    },
+    {
+      "path": "frontend/scripts/test_city_fixture_geometry.py",
+      "bytes": 3668
+    },
+    {
+      "path": "frontend/scripts/test_city_ground_junction_completion.py",
+      "bytes": 13525
+    },
+    {
+      "path": "frontend/scripts/test_city_motion_continuity.py",
+      "bytes": 3520
+    },
+    {
+      "path": "frontend/scripts/test_city_motion_obstacles.py",
+      "bytes": 7286
+    },
+    {
+      "path": "frontend/scripts/test_city_motion_road_gate.py",
+      "bytes": 6200
+    },
+    {
+      "path": "frontend/scripts/test_city_native_route_capabilities.py",
+      "bytes": 3866
+    },
+    {
+      "path": "frontend/scripts/test_city_native_signals.py",
+      "bytes": 1735
+    },
+    {
+      "path": "frontend/scripts/test_city_pedestrian_connections.py",
+      "bytes": 24191
+    },
+    {
+      "path": "frontend/scripts/test_city_pedestrian_sidewalks.py",
+      "bytes": 6577
+    },
+    {
+      "path": "frontend/scripts/test_city_planned_flight.py",
+      "bytes": 2340
+    },
+    {
+      "path": "frontend/scripts/test_city_preview_coordinates.py",
+      "bytes": 17633
+    },
+    {
+      "path": "frontend/scripts/test_city_road_physical_clearance.py",
+      "bytes": 7269
+    },
+    {
+      "path": "frontend/scripts/test_city_road_topology.py",
+      "bytes": 2194
+    },
+    {
+      "path": "frontend/scripts/test_city_street_lamps.py",
+      "bytes": 6119
+    },
+    {
+      "path": "frontend/scripts/test_city_street_markings.py",
+      "bytes": 19246
+    },
+    {
+      "path": "frontend/scripts/test_city_street_surfaces.py",
+      "bytes": 11091
+    },
+    {
+      "path": "frontend/scripts/test_city_surface_identity.py",
+      "bytes": 2109
+    },
+    {
+      "path": "frontend/scripts/test_classify_city_ground.py",
+      "bytes": 21953
+    },
+    {
+      "path": "frontend/scripts/test_complete_ground_city_crossings.py",
+      "bytes": 2814
+    },
+    {
+      "path": "frontend/scripts/test_optimize_city_models.py",
+      "bytes": 2545
+    },
+    {
+      "path": "frontend/scripts/test_report_ground_road_scope.py",
+      "bytes": 9651
+    },
+    {
+      "path": "frontend/scripts/u-capture-temp.mjs",
+      "bytes": 1756
+    },
+    {
+      "path": "frontend/scripts/uav-mesh-previews.json",
+      "bytes": 2705
+    },
+    {
+      "path": "frontend/scripts/uav-preview-models.json",
+      "bytes": 5702
+    },
+    {
+      "path": "frontend/scripts/verify-city-lighting-demo.mjs",
+      "bytes": 8731
+    },
+    {
+      "path": "frontend/scripts/verify-city-loading.mjs",
+      "bytes": 4965
+    },
+    {
+      "path": "frontend/scripts/verify-city-motion-demo.mjs",
+      "bytes": 4823
+    },
+    {
+      "path": "frontend/scripts/verify-city-pedestrian-lighting.mjs",
+      "bytes": 3117
+    },
+    {
+      "path": "frontend/scripts/verify-city-streets-citizens.mjs",
+      "bytes": 4427
+    },
+    {
+      "path": "frontend/scripts/verify-city-traffic-rules.mjs",
+      "bytes": 3696
+    },
+    {
+      "path": "frontend/scripts/verify-city-workspace.mjs",
+      "bytes": 22413
+    },
+    {
+      "path": "frontend/scripts/verify-osm2world-selection.mjs",
+      "bytes": 3152
+    },
+    {
+      "path": "frontend/scripts/verify-osm2world.mjs",
+      "bytes": 4114
+    },
+    {
+      "path": "frontend/scripts/verify-scene-asset.mjs",
+      "bytes": 4125
+    },
+    {
+      "path": "frontend/scripts/workspace-traces.mjs",
+      "bytes": 23592
+    },
+    {
+      "path": "frontend/scripts/workspace-traces.test.mjs",
+      "bytes": 22768
+    },
+    {
+      "path": "frontend/shared/json-bytes.d.mts",
+      "bytes": 260
+    },
+    {
+      "path": "frontend/shared/json-bytes.mjs",
+      "bytes": 3302
+    },
+    {
+      "path": "frontend/src/agent-console.test.ts",
+      "bytes": 4077
+    },
+    {
+      "path": "frontend/src/agent-console.ts",
+      "bytes": 4256
+    },
+    {
+      "path": "frontend/src/app.native-favicon.test.ts",
+      "bytes": 730
+    },
+    {
+      "path": "frontend/src/app.native-presentation.test.ts",
+      "bytes": 8499
+    },
+    {
+      "path": "frontend/src/app.native-replay-access.test.ts",
+      "bytes": 13348
+    },
+    {
+      "path": "frontend/src/app.replay-lifecycle.test.ts",
+      "bytes": 9164
+    },
+    {
+      "path": "frontend/src/app.smoke.test.ts",
+      "bytes": 5333
+    },
+    {
+      "path": "frontend/src/app.ts",
+      "bytes": 155937
+    },
+    {
+      "path": "frontend/src/app.workspace-trace-request.test.ts",
+      "bytes": 5544
+    },
+    {
+      "path": "frontend/src/asset-library.css",
+      "bytes": 14746
+    },
+    {
+      "path": "frontend/src/asset-library.ts",
+      "bytes": 47413
+    },
+    {
+      "path": "frontend/src/asset-resolver.test.ts",
+      "bytes": 7263
+    },
+    {
+      "path": "frontend/src/asset-resolver.ts",
+      "bytes": 6977
+    },
+    {
+      "path": "frontend/src/available-content.test.ts",
+      "bytes": 831
+    },
+    {
+      "path": "frontend/src/available-content.ts",
+      "bytes": 881
+    },
+    {
+      "path": "frontend/src/city-advertising.test.ts",
+      "bytes": 1023
+    },
+    {
+      "path": "frontend/src/city-advertising.ts",
+      "bytes": 10386
+    },
+    {
+      "path": "frontend/src/city-algorithm-panel.test.ts",
+      "bytes": 4254
+    },
+    {
+      "path": "frontend/src/city-algorithm-panel.ts",
+      "bytes": 10791
+    },
+    {
+      "path": "frontend/src/city-asset-cache.test.ts",
+      "bytes": 11968
+    },
+    {
+      "path": "frontend/src/city-asset-cache.ts",
+      "bytes": 8902
+    },
+    {
+      "path": "frontend/src/city-audited-traffic.test.ts",
+      "bytes": 9818
+    },
+    {
+      "path": "frontend/src/city-audited-traffic.ts",
+      "bytes": 6104
+    },
+    {
+      "path": "frontend/src/city-authored-landscape.test.ts",
+      "bytes": 16873
+    },
+    {
+      "path": "frontend/src/city-authored-landscape.ts",
+      "bytes": 30344
+    },
+    {
+      "path": "frontend/src/city-authoring-api.test.ts",
+      "bytes": 21117
+    },
+    {
+      "path": "frontend/src/city-authoring-api.ts",
+      "bytes": 42616
+    },
+    {
+      "path": "frontend/src/city-building-batch.test.ts",
+      "bytes": 48666
+    },
+    {
+      "path": "frontend/src/city-building-batch.ts",
+      "bytes": 18210
+    },
+    {
+      "path": "frontend/src/city-building-facade.test.ts",
+      "bytes": 7072
+    },
+    {
+      "path": "frontend/src/city-building-facade.ts",
+      "bytes": 17955
+    },
+    {
+      "path": "frontend/src/city-building-renders.test.ts",
+      "bytes": 46343
+    },
+    {
+      "path": "frontend/src/city-building-renders.ts",
+      "bytes": 67651
+    },
+    {
+      "path": "frontend/src/city-building-shape.test.ts",
+      "bytes": 10380
+    },
+    {
+      "path": "frontend/src/city-building-shape.ts",
+      "bytes": 8361
+    },
+    {
+      "path": "frontend/src/city-building-source-context.test.ts",
+      "bytes": 14593
+    },
+    {
+      "path": "frontend/src/city-building-source-context.ts",
+      "bytes": 15045
+    },
+    {
+      "path": "frontend/src/city-character.test.ts",
+      "bytes": 724
+    },
+    {
+      "path": "frontend/src/city-character.ts",
+      "bytes": 1052
+    },
+    {
+      "path": "frontend/src/city-compile-panel.test.ts",
+      "bytes": 9830
+    },
+    {
+      "path": "frontend/src/city-compile-panel.ts",
+      "bytes": 10690
+    },
+    {
+      "path": "frontend/src/city-cyclist.test.ts",
+      "bytes": 4644
+    },
+    {
+      "path": "frontend/src/city-cyclist.ts",
+      "bytes": 8635
+    },
+    {
+      "path": "frontend/src/city-day-sky.test.ts",
+      "bytes": 3818
+    },
+    {
+      "path": "frontend/src/city-day-sky.ts",
+      "bytes": 5386
+    },
+    {
+      "path": "frontend/src/city-draft-environment.test.ts",
+      "bytes": 4768
+    },
+    {
+      "path": "frontend/src/city-draft-environment.ts",
+      "bytes": 4528
+    },
+    {
+      "path": "frontend/src/city-environment.test.ts",
+      "bytes": 31869
+    },
+    {
+      "path": "frontend/src/city-environment.ts",
+      "bytes": 59791
+    },
+    {
+      "path": "frontend/src/city-event-panel.test.ts",
+      "bytes": 8321
+    },
+    {
+      "path": "frontend/src/city-event-panel.ts",
+      "bytes": 21512
+    },
+    {
+      "path": "frontend/src/city-event-timeline.test.ts",
+      "bytes": 4006
+    },
+    {
+      "path": "frontend/src/city-event-timeline.ts",
+      "bytes": 6130
+    },
+    {
+      "path": "frontend/src/city-facade-pane-profile.test.ts",
+      "bytes": 8354
+    },
+    {
+      "path": "frontend/src/city-facade-pane-profile.ts",
+      "bytes": 7018
+    },
+    {
+      "path": "frontend/src/city-facade-window-lights.test.ts",
+      "bytes": 5067
+    },
+    {
+      "path": "frontend/src/city-facade-window-lights.ts",
+      "bytes": 6684
+    },
+    {
+      "path": "frontend/src/city-facility-models.test.ts",
+      "bytes": 22641
+    },
+    {
+      "path": "frontend/src/city-facility-models.ts",
+      "bytes": 36016
+    },
+    {
+      "path": "frontend/src/city-grass-clumps.test.ts",
+      "bytes": 10072
+    },
+    {
+      "path": "frontend/src/city-grass-clumps.ts",
+      "bytes": 17416
+    },
+    {
+      "path": "frontend/src/city-ground-cover.test.ts",
+      "bytes": 20821
+    },
+    {
+      "path": "frontend/src/city-ground-cover.ts",
+      "bytes": 26232
+    },
+    {
+      "path": "frontend/src/city-ground-material-rules.test.ts",
+      "bytes": 31004
+    },
+    {
+      "path": "frontend/src/city-ground-material-rules.ts",
+      "bytes": 33662
+    },
+    {
+      "path": "frontend/src/city-hotspot-equivalence.test.ts",
+      "bytes": 23132
+    },
+    {
+      "path": "frontend/src/city-landscape-panel.test.ts",
+      "bytes": 11592
+    },
+    {
+      "path": "frontend/src/city-landscape-panel.ts",
+      "bytes": 15132
+    },
+    {
+      "path": "frontend/src/city-lighting-calibration.test.ts",
+      "bytes": 12171
+    },
+    {
+      "path": "frontend/src/city-lighting-calibration.ts",
+      "bytes": 18670
+    },
+    {
+      "path": "frontend/src/city-lighting.test.ts",
+      "bytes": 1299
+    },
+    {
+      "path": "frontend/src/city-lighting.ts",
+      "bytes": 1280
+    },
+    {
+      "path": "frontend/src/city-local-reflections.test.ts",
+      "bytes": 14259
+    },
+    {
+      "path": "frontend/src/city-local-reflections.ts",
+      "bytes": 11367
+    },
+    {
+      "path": "frontend/src/city-operations-preview.test.ts",
+      "bytes": 12695
+    },
+    {
+      "path": "frontend/src/city-operations-preview.ts",
+      "bytes": 41448
+    },
+    {
+      "path": "frontend/src/city-perf-overlay.test.ts",
+      "bytes": 9659
+    },
+    {
+      "path": "frontend/src/city-perf-overlay.ts",
+      "bytes": 10790
+    },
+    {
+      "path": "frontend/src/city-presentation.test.ts",
+      "bytes": 18200
+    },
+    {
+      "path": "frontend/src/city-presentation.ts",
+      "bytes": 104890
+    },
+    {
+      "path": "frontend/src/city-preview-scenes.test.ts",
+      "bytes": 5171
+    },
+    {
+      "path": "frontend/src/city-preview-scenes.ts",
+      "bytes": 8387
+    },
+    {
+      "path": "frontend/src/city-region-selector.css",
+      "bytes": 2325
+    },
+    {
+      "path": "frontend/src/city-region-selector.test.ts",
+      "bytes": 7840
+    },
+    {
+      "path": "frontend/src/city-region-selector.ts",
+      "bytes": 27670
+    },
+    {
+      "path": "frontend/src/city-render-weather-controls.test.ts",
+      "bytes": 2348
+    },
+    {
+      "path": "frontend/src/city-render-weather-controls.ts",
+      "bytes": 3062
+    },
+    {
+      "path": "frontend/src/city-rendering.test.ts",
+      "bytes": 3407
+    },
+    {
+      "path": "frontend/src/city-rendering.ts",
+      "bytes": 1945
+    },
+    {
+      "path": "frontend/src/city-road-assets.test.ts",
+      "bytes": 12600
+    },
+    {
+      "path": "frontend/src/city-road-assets.ts",
+      "bytes": 16269
+    },
+    {
+      "path": "frontend/src/city-roads.test.ts",
+      "bytes": 26100
+    },
+    {
+      "path": "frontend/src/city-roads.ts",
+      "bytes": 57824
+    },
+    {
+      "path": "frontend/src/city-runtime-panel.test.ts",
+      "bytes": 7534
+    },
+    {
+      "path": "frontend/src/city-runtime-panel.ts",
+      "bytes": 12072
+    },
+    {
+      "path": "frontend/src/city-scene-config.test.ts",
+      "bytes": 10812
+    },
+    {
+      "path": "frontend/src/city-scene-config.ts",
+      "bytes": 10184
+    },
+    {
+      "path": "frontend/src/city-selected-dispatch-route.ts",
+      "bytes": 6142
+    },
+    {
+      "path": "frontend/src/city-selected-dispatch.test.ts",
+      "bytes": 50352
+    },
+    {
+      "path": "frontend/src/city-selected-dispatch.ts",
+      "bytes": 60087
+    },
+    {
+      "path": "frontend/src/city-selected-draft.test.ts",
+      "bytes": 6243
+    },
+    {
+      "path": "frontend/src/city-selected-draft.ts",
+      "bytes": 22368
+    },
+    {
+      "path": "frontend/src/city-selected-fleet-assets.test.ts",
+      "bytes": 1629
+    },
+    {
+      "path": "frontend/src/city-selected-fleet-assets.ts",
+      "bytes": 2166
+    },
+    {
+      "path": "frontend/src/city-selected-fleet-panel.test.ts",
+      "bytes": 11554
+    },
+    {
+      "path": "frontend/src/city-selected-fleet-panel.ts",
+      "bytes": 19960
+    },
+    {
+      "path": "frontend/src/city-selected-logistics-draft.test.ts",
+      "bytes": 17201
+    },
+    {
+      "path": "frontend/src/city-selected-logistics-draft.ts",
+      "bytes": 23361
+    },
+    {
+      "path": "frontend/src/city-selected-logistics-panel.test.ts",
+      "bytes": 20231
+    },
+    {
+      "path": "frontend/src/city-selected-logistics-panel.ts",
+      "bytes": 41947
+    },
+    {
+      "path": "frontend/src/city-selected-order-generator.test.ts",
+      "bytes": 2642
+    },
+    {
+      "path": "frontend/src/city-selected-order-generator.ts",
+      "bytes": 4379
+    },
+    {
+      "path": "frontend/src/city-selected-placement.test.ts",
+      "bytes": 24544
+    },
+    {
+      "path": "frontend/src/city-selected-placement.ts",
+      "bytes": 30275
+    },
+    {
+      "path": "frontend/src/city-selected-rooftop.test.ts",
+      "bytes": 18290
+    },
+    {
+      "path": "frontend/src/city-selected-rooftop.ts",
+      "bytes": 29482
+    },
+    {
+      "path": "frontend/src/city-selected-route-planner.test.ts",
+      "bytes": 3743
+    },
+    {
+      "path": "frontend/src/city-selected-route-planner.ts",
+      "bytes": 10708
+    },
+    {
+      "path": "frontend/src/city-selected-scenario.test.ts",
+      "bytes": 8066
+    },
+    {
+      "path": "frontend/src/city-selected-scenario.ts",
+      "bytes": 19282
+    },
+    {
+      "path": "frontend/src/city-selected-snapping.test.ts",
+      "bytes": 11757
+    },
+    {
+      "path": "frontend/src/city-selected-snapping.ts",
+      "bytes": 11329
+    },
+    {
+      "path": "frontend/src/city-selected-spatial-panel.test.ts",
+      "bytes": 12836
+    },
+    {
+      "path": "frontend/src/city-selected-spatial-panel.ts",
+      "bytes": 45576
+    },
+    {
+      "path": "frontend/src/city-shadow-pass.test.ts",
+      "bytes": 4913
+    },
+    {
+      "path": "frontend/src/city-shadow-pass.ts",
+      "bytes": 2996
+    },
+    {
+      "path": "frontend/src/city-sidewalk-height.test.ts",
+      "bytes": 3769
+    },
+    {
+      "path": "frontend/src/city-sidewalk-height.ts",
+      "bytes": 5587
+    },
+    {
+      "path": "frontend/src/city-spatial-panel.test.ts",
+      "bytes": 10339
+    },
+    {
+      "path": "frontend/src/city-spatial-panel.ts",
+      "bytes": 33590
+    },
+    {
+      "path": "frontend/src/city-spatial-road-clearance.test.ts",
+      "bytes": 4142
+    },
+    {
+      "path": "frontend/src/city-spatial-road-clearance.ts",
+      "bytes": 11892
+    },
+    {
+      "path": "frontend/src/city-static-fixture-clearance.test.ts",
+      "bytes": 10095
+    },
+    {
+      "path": "frontend/src/city-static-fixture-clearance.ts",
+      "bytes": 11351
+    },
+    {
+      "path": "frontend/src/city-static-obstacles.test.ts",
+      "bytes": 1431
+    },
+    {
+      "path": "frontend/src/city-static-obstacles.ts",
+      "bytes": 2471
+    },
+    {
+      "path": "frontend/src/city-street-clearance.test.ts",
+      "bytes": 4618
+    },
+    {
+      "path": "frontend/src/city-street-clearance.ts",
+      "bytes": 12764
+    },
+    {
+      "path": "frontend/src/city-studio.css",
+      "bytes": 33319
+    },
+    {
+      "path": "frontend/src/city-studio.test.ts",
+      "bytes": 8636
+    },
+    {
+      "path": "frontend/src/city-studio.ts",
+      "bytes": 105221
+    },
+    {
+      "path": "frontend/src/city-subsystem-lighting.ts",
+      "bytes": 2572
+    },
+    {
+      "path": "frontend/src/city-surface-identity.test.ts",
+      "bytes": 2234
+    },
+    {
+      "path": "frontend/src/city-surface-identity.ts",
+      "bytes": 4830
+    },
+    {
+      "path": "frontend/src/city-surface-wetness.test.ts",
+      "bytes": 6736
+    },
+    {
+      "path": "frontend/src/city-surface-wetness.ts",
+      "bytes": 4750
+    },
+    {
+      "path": "frontend/src/city-terrain-completion.test.ts",
+      "bytes": 6793
+    },
+    {
+      "path": "frontend/src/city-terrain-completion.ts",
+      "bytes": 8970
+    },
+    {
+      "path": "frontend/src/city-terrain-detail.test.ts",
+      "bytes": 15285
+    },
+    {
+      "path": "frontend/src/city-terrain-detail.ts",
+      "bytes": 13851
+    },
+    {
+      "path": "frontend/src/city-terrain-materials.test.ts",
+      "bytes": 28726
+    },
+    {
+      "path": "frontend/src/city-terrain-materials.ts",
+      "bytes": 24814
+    },
+    {
+      "path": "frontend/src/city-terrain-surfaces.test.ts",
+      "bytes": 15064
+    },
+    {
+      "path": "frontend/src/city-terrain-surfaces.ts",
+      "bytes": 14475
+    },
+    {
+      "path": "frontend/src/city-terrain-transitions.test.ts",
+      "bytes": 35691
+    },
+    {
+      "path": "frontend/src/city-terrain-transitions.ts",
+      "bytes": 35602
+    },
+    {
+      "path": "frontend/src/city-traffic-preview-api.test.ts",
+      "bytes": 13050
+    },
+    {
+      "path": "frontend/src/city-traffic-preview-api.ts",
+      "bytes": 20263
+    },
+    {
+      "path": "frontend/src/city-traffic-preview-panel.test.ts",
+      "bytes": 15433
+    },
+    {
+      "path": "frontend/src/city-traffic-preview-panel.ts",
+      "bytes": 16807
+    },
+    {
+      "path": "frontend/src/city-traffic-replay.test.ts",
+      "bytes": 4628
+    },
+    {
+      "path": "frontend/src/city-traffic-replay.ts",
+      "bytes": 2245
+    },
+    {
+      "path": "frontend/src/city-traffic-shadow.ts",
+      "bytes": 12671
+    },
+    {
+      "path": "frontend/src/city-vegetation-binding.test.ts",
+      "bytes": 2552
+    },
+    {
+      "path": "frontend/src/city-vegetation-binding.ts",
+      "bytes": 1967
+    },
+    {
+      "path": "frontend/src/city-vegetation-layer.test.ts",
+      "bytes": 42506
+    },
+    {
+      "path": "frontend/src/city-vegetation-layer.ts",
+      "bytes": 24349
+    },
+    {
+      "path": "frontend/src/city-vegetation-wind.test.ts",
+      "bytes": 7772
+    },
+    {
+      "path": "frontend/src/city-vegetation-wind.ts",
+      "bytes": 6771
+    },
+    {
+      "path": "frontend/src/city-vehicle-merge.test.ts",
+      "bytes": 51055
+    },
+    {
+      "path": "frontend/src/city-vehicle-merge.ts",
+      "bytes": 6004
+    },
+    {
+      "path": "frontend/src/city-water-material.test.ts",
+      "bytes": 7475
+    },
+    {
+      "path": "frontend/src/city-water-material.ts",
+      "bytes": 8510
+    },
+    {
+      "path": "frontend/src/city-water-surface.test.ts",
+      "bytes": 12710
+    },
+    {
+      "path": "frontend/src/city-water-surface.ts",
+      "bytes": 16427
+    },
+    {
+      "path": "frontend/src/city-weather-calibration.ts",
+      "bytes": 2680
+    },
+    {
+      "path": "frontend/src/city-weather-sky-environment.test.ts",
+      "bytes": 9076
+    },
+    {
+      "path": "frontend/src/city-weather-sky-environment.ts",
+      "bytes": 5360
+    },
+    {
+      "path": "frontend/src/city-weather.test.ts",
+      "bytes": 8500
+    },
+    {
+      "path": "frontend/src/city-weather.ts",
+      "bytes": 18888
+    },
+    {
+      "path": "frontend/src/city-window-detail.test.ts",
+      "bytes": 3207
+    },
+    {
+      "path": "frontend/src/city-window-detail.ts",
+      "bytes": 3263
+    },
+    {
+      "path": "frontend/src/city-window-geometry.test.ts",
+      "bytes": 12462
+    },
+    {
+      "path": "frontend/src/city-window-geometry.ts",
+      "bytes": 27037
+    },
+    {
+      "path": "frontend/src/city-workspace-config.test.ts",
+      "bytes": 17054
+    },
+    {
+      "path": "frontend/src/city-workspace-config.ts",
+      "bytes": 27167
+    },
+    {
+      "path": "frontend/src/city-workspace-geometry.test.ts",
+      "bytes": 11747
+    },
+    {
+      "path": "frontend/src/city-workspace-geometry.ts",
+      "bytes": 37037
+    },
+    {
+      "path": "frontend/src/city-workspace-integration.test.ts",
+      "bytes": 1656
+    },
+    {
+      "path": "frontend/src/city-workspace-orders-panel.test.ts",
+      "bytes": 13029
+    },
+    {
+      "path": "frontend/src/city-workspace-orders-panel.ts",
+      "bytes": 37227
+    },
+    {
+      "path": "frontend/src/city-workspace-selected-import-panel.test.ts",
+      "bytes": 6333
+    },
+    {
+      "path": "frontend/src/city-workspace-selected-import-panel.ts",
+      "bytes": 6012
+    },
+    {
+      "path": "frontend/src/city-workspace-selected-import.test.ts",
+      "bytes": 7781
+    },
+    {
+      "path": "frontend/src/city-workspace-selected-import.ts",
+      "bytes": 6133
+    },
+    {
+      "path": "frontend/src/contract-validators.test.ts",
+      "bytes": 1180
+    },
+    {
+      "path": "frontend/src/control-replay-source.test.ts",
+      "bytes": 6464
+    },
+    {
+      "path": "frontend/src/control-replay-source.ts",
+      "bytes": 4743
+    },
+    {
+      "path": "frontend/src/entity-visuals.test.ts",
+      "bytes": 2444
+    },
+    {
+      "path": "frontend/src/entity-visuals.ts",
+      "bytes": 3183
+    },
+    {
+      "path": "frontend/src/env.d.ts",
+      "bytes": 38
+    },
+    {
+      "path": "frontend/src/event-channels.test.ts",
+      "bytes": 4259
+    },
+    {
+      "path": "frontend/src/event-channels.ts",
+      "bytes": 6926
+    },
+    {
+      "path": "frontend/src/evidence-state.css",
+      "bytes": 2308
+    },
+    {
+      "path": "frontend/src/evidence-state.test.ts",
+      "bytes": 2273
+    },
+    {
+      "path": "frontend/src/evidence-state.ts",
+      "bytes": 3428
+    },
+    {
+      "path": "frontend/src/generated/aero-bench-contracts.ts",
+      "bytes": 101904
+    },
+    {
+      "path": "frontend/src/generated/contract-validators.ts",
+      "bytes": 13397
+    },
+    {
+      "path": "frontend/src/generated/schemas/aero-bench-contracts.schema.json",
+      "bytes": 161054
+    },
+    {
+      "path": "frontend/src/generated/schemas/agent-driver-config.schema.json",
+      "bytes": 2019
+    },
+    {
+      "path": "frontend/src/generated/schemas/agent-interaction.schema.json",
+      "bytes": 4892
+    },
+    {
+      "path": "frontend/src/generated/schemas/agent-session-manifest.schema.json",
+      "bytes": 4967
+    },
+    {
+      "path": "frontend/src/generated/schemas/agent-session.schema.json",
+      "bytes": 3228
+    },
+    {
+      "path": "frontend/src/generated/schemas/agent-tool-execution-result.schema.json",
+      "bytes": 3376
+    },
+    {
+      "path": "frontend/src/generated/schemas/authoring-error-response.schema.json",
+      "bytes": 675
+    },
+    {
+      "path": "frontend/src/generated/schemas/city-compilation-result.schema.json",
+      "bytes": 2603
+    },
+    {
+      "path": "frontend/src/generated/schemas/city-compile-request.schema.json",
+      "bytes": 13652
+    },
+    {
+      "path": "frontend/src/generated/schemas/city-workspace.schema.json",
+      "bytes": 13114
+    },
+    {
+      "path": "frontend/src/generated/schemas/control-catalog.schema.json",
+      "bytes": 1693
+    },
+    {
+      "path": "frontend/src/generated/schemas/control-error-response.schema.json",
+      "bytes": 655
+    },
+    {
+      "path": "frontend/src/generated/schemas/control-stream-event.schema.json",
+      "bytes": 18637
+    },
+    {
+      "path": "frontend/src/generated/schemas/model-interaction.schema.json",
+      "bytes": 1927
+    },
+    {
+      "path": "frontend/src/generated/schemas/native-scene-catalog.schema.json",
+      "bytes": 15069
+    },
+    {
+      "path": "frontend/src/generated/schemas/network-mailbox-observation.schema.json",
+      "bytes": 1997
+    },
+    {
+      "path": "frontend/src/generated/schemas/public-replay-index.schema.json",
+      "bytes": 1672
+    },
+    {
+      "path": "frontend/src/generated/schemas/public-replay-manifest.schema.json",
+      "bytes": 1576
+    },
+    {
+      "path": "frontend/src/generated/schemas/public-run-event-stream-event.schema.json",
+      "bytes": 4184
+    },
+    {
+      "path": "frontend/src/generated/schemas/public-scenario.schema.json",
+      "bytes": 24728
+    },
+    {
+      "path": "frontend/src/generated/schemas/public-trace.schema.json",
+      "bytes": 50942
+    },
+    {
+      "path": "frontend/src/generated/schemas/replay-access-request.schema.json",
+      "bytes": 337
+    },
+    {
+      "path": "frontend/src/generated/schemas/replay-access-response.schema.json",
+      "bytes": 1023
+    },
+    {
+      "path": "frontend/src/generated/schemas/resolved-run.schema.json",
+      "bytes": 52578
+    },
+    {
+      "path": "frontend/src/generated/schemas/resolved-scenario.schema.json",
+      "bytes": 38921
+    },
+    {
+      "path": "frontend/src/generated/schemas/run-event.schema.json",
+      "bytes": 8223
+    },
+    {
+      "path": "frontend/src/generated/schemas/run-status-response.schema.json",
+      "bytes": 7550
+    },
+    {
+      "path": "frontend/src/generated/schemas/run-transition-event.schema.json",
+      "bytes": 3430
+    },
+    {
+      "path": "frontend/src/generated/schemas/runtime-control-request.schema.json",
+      "bytes": 440
+    },
+    {
+      "path": "frontend/src/generated/schemas/runtime-control-response.schema.json",
+      "bytes": 8143
+    },
+    {
+      "path": "frontend/src/generated/schemas/scene-state-stream-event.schema.json",
+      "bytes": 11988
+    },
+    {
+      "path": "frontend/src/generated/schemas/scene-state.schema.json",
+      "bytes": 11591
+    },
+    {
+      "path": "frontend/src/generated/schemas/start-run-request.schema.json",
+      "bytes": 496
+    },
+    {
+      "path": "frontend/src/generated/schemas/start-run-response.schema.json",
+      "bytes": 32742
+    },
+    {
+      "path": "frontend/src/generated/schemas/state-sample.schema.json",
+      "bytes": 7200
+    },
+    {
+      "path": "frontend/src/generated/schemas/traffic-preview-job.schema.json",
+      "bytes": 2898
+    },
+    {
+      "path": "frontend/src/generated/schemas/traffic-preview-profile-catalog.schema.json",
+      "bytes": 1378
+    },
+    {
+      "path": "frontend/src/generated/schemas/traffic-preview-request.schema.json",
+      "bytes": 13742
+    },
+    {
+      "path": "frontend/src/generated/schemas/urban-airspace-transition.schema.json",
+      "bytes": 1477
+    },
+    {
+      "path": "frontend/src/generated/schemas/urban-applied-wrench.schema.json",
+      "bytes": 1115
+    },
+    {
+      "path": "frontend/src/generated/schemas/urban-camera-frame.schema.json",
+      "bytes": 2225
+    },
+    {
+      "path": "frontend/src/generated/schemas/urban-engine-window.schema.json",
+      "bytes": 1579
+    },
+    {
+      "path": "frontend/src/generated/schemas/urban-recovery-demo-package.schema.json",
+      "bytes": 4731
+    },
+    {
+      "path": "frontend/src/i18n.test.ts",
+      "bytes": 1695
+    },
+    {
+      "path": "frontend/src/i18n.ts",
+      "bytes": 37244
+    },
+    {
+      "path": "frontend/src/interaction-timeline.ts",
+      "bytes": 6242
+    },
+    {
+      "path": "frontend/src/json-bytes.test.ts",
+      "bytes": 1997
+    },
+    {
+      "path": "frontend/src/loading-progress.test.ts",
+      "bytes": 2881
+    },
+    {
+      "path": "frontend/src/loading-progress.ts",
+      "bytes": 2880
+    },
+    {
+      "path": "frontend/src/main.ts",
+      "bytes": 2151
+    },
+    {
+      "path": "frontend/src/map.authored-landscape.test.ts",
+      "bytes": 14375
+    },
+    {
+      "path": "frontend/src/map.horizon.test.ts",
+      "bytes": 6822
+    },
+    {
+      "path": "frontend/src/map.native-presentation.test.ts",
+      "bytes": 7482
+    },
+    {
+      "path": "frontend/src/map.observation.test.ts",
+      "bytes": 6347
+    },
+    {
+      "path": "frontend/src/map.preview-scenes.test.ts",
+      "bytes": 4857
+    },
+    {
+      "path": "frontend/src/map.t23-probe.test.ts",
+      "bytes": 15406
+    },
+    {
+      "path": "frontend/src/map.test.ts",
+      "bytes": 18428
+    },
+    {
+      "path": "frontend/src/map.ts",
+      "bytes": 225879
+    },
+    {
+      "path": "frontend/src/material-finishes.test.ts",
+      "bytes": 1477
+    },
+    {
+      "path": "frontend/src/material-finishes.ts",
+      "bytes": 4484
+    },
+    {
+      "path": "frontend/src/native-city-presentation.test.ts",
+      "bytes": 19312
+    },
+    {
+      "path": "frontend/src/native-city-presentation.ts",
+      "bytes": 62959
+    },
+    {
+      "path": "frontend/src/native-reference-scene.test.ts",
+      "bytes": 8493
+    },
+    {
+      "path": "frontend/src/native-reference-scene.ts",
+      "bytes": 6749
+    },
+    {
+      "path": "frontend/src/observation-camera-sensors.test.ts",
+      "bytes": 5522
+    },
+    {
+      "path": "frontend/src/observation-camera-sensors.ts",
+      "bytes": 7049
+    },
+    {
+      "path": "frontend/src/observation-camera.test.ts",
+      "bytes": 8825
+    },
+    {
+      "path": "frontend/src/observation-camera.ts",
+      "bytes": 9488
+    },
+    {
+      "path": "frontend/src/operations-data.test.ts",
+      "bytes": 10256
+    },
+    {
+      "path": "frontend/src/operations-data.ts",
+      "bytes": 10970
+    },
+    {
+      "path": "frontend/src/operations-monitor.css",
+      "bytes": 15679
+    },
+    {
+      "path": "frontend/src/operations-monitor.test.ts",
+      "bytes": 23883
+    },
+    {
+      "path": "frontend/src/operations-monitor.ts",
+      "bytes": 54770
+    },
+    {
+      "path": "frontend/src/osm2world/assets.test.ts",
+      "bytes": 2759
+    },
+    {
+      "path": "frontend/src/osm2world/assets.ts",
+      "bytes": 2886
+    },
+    {
+      "path": "frontend/src/osm2world/mesh.test.ts",
+      "bytes": 1717
+    },
+    {
+      "path": "frontend/src/osm2world/mesh.ts",
+      "bytes": 1868
+    },
+    {
+      "path": "frontend/src/osm2world/pack-loader.ts",
+      "bytes": 3739
+    },
+    {
+      "path": "frontend/src/osm2world/pack.test.ts",
+      "bytes": 5894
+    },
+    {
+      "path": "frontend/src/osm2world/pack.ts",
+      "bytes": 13404
+    },
+    {
+      "path": "frontend/src/osm2world/projection.test.ts",
+      "bytes": 3164
+    },
+    {
+      "path": "frontend/src/osm2world/projection.ts",
+      "bytes": 2223
+    },
+    {
+      "path": "frontend/src/osm2world/runtime.test.ts",
+      "bytes": 2669
+    },
+    {
+      "path": "frontend/src/osm2world/runtime.ts",
+      "bytes": 3124
+    },
+    {
+      "path": "frontend/src/osm2world/source.test.ts",
+      "bytes": 2197
+    },
+    {
+      "path": "frontend/src/osm2world/source.ts",
+      "bytes": 11047
+    },
+    {
+      "path": "frontend/src/replay-events.test.ts",
+      "bytes": 1172
+    },
+    {
+      "path": "frontend/src/replay-events.ts",
+      "bytes": 1054
+    },
+    {
+      "path": "frontend/src/replay-loader.test.ts",
+      "bytes": 8358
+    },
+    {
+      "path": "frontend/src/replay-loader.ts",
+      "bytes": 21007
+    },
+    {
+      "path": "frontend/src/run-control.test.ts",
+      "bytes": 19338
+    },
+    {
+      "path": "frontend/src/run-control.ts",
+      "bytes": 25803
+    },
+    {
+      "path": "frontend/src/run-store.test.ts",
+      "bytes": 9620
+    },
+    {
+      "path": "frontend/src/run-store.ts",
+      "bytes": 15624
+    },
+    {
+      "path": "frontend/src/source-message-placement.test.ts",
+      "bytes": 8824
+    },
+    {
+      "path": "frontend/src/source-message-placement.ts",
+      "bytes": 5458
+    },
+    {
+      "path": "frontend/src/state/camera.test.ts",
+      "bytes": 1262
+    },
+    {
+      "path": "frontend/src/state/camera.ts",
+      "bytes": 1336
+    },
+    {
+      "path": "frontend/src/state/context-menu.test.ts",
+      "bytes": 1294
+    },
+    {
+      "path": "frontend/src/state/context-menu.ts",
+      "bytes": 1317
+    },
+    {
+      "path": "frontend/src/state/hover.test.ts",
+      "bytes": 1130
+    },
+    {
+      "path": "frontend/src/state/hover.ts",
+      "bytes": 664
+    },
+    {
+      "path": "frontend/src/state/layers.test.ts",
+      "bytes": 4281
+    },
+    {
+      "path": "frontend/src/state/layers.ts",
+      "bytes": 5890
+    },
+    {
+      "path": "frontend/src/state/observable.ts",
+      "bytes": 677
+    },
+    {
+      "path": "frontend/src/state/playback-clock.ts",
+      "bytes": 1915
+    },
+    {
+      "path": "frontend/src/state/replay.test.ts",
+      "bytes": 6544
+    },
+    {
+      "path": "frontend/src/state/replay.ts",
+      "bytes": 6028
+    },
+    {
+      "path": "frontend/src/state/selection.test.ts",
+      "bytes": 1698
+    },
+    {
+      "path": "frontend/src/state/selection.ts",
+      "bytes": 711
+    },
+    {
+      "path": "frontend/src/state/target.ts",
+      "bytes": 957
+    },
+    {
+      "path": "frontend/src/strict-json.test.ts",
+      "bytes": 1186
+    },
+    {
+      "path": "frontend/src/strict-json.ts",
+      "bytes": 3473
+    },
+    {
+      "path": "frontend/src/styles.css",
+      "bytes": 69774
+    },
+    {
+      "path": "frontend/src/telemetry-hud.test.ts",
+      "bytes": 3458
+    },
+    {
+      "path": "frontend/src/telemetry-hud.ts",
+      "bytes": 25583
+    },
+    {
+      "path": "frontend/src/telemetry-panel.test.ts",
+      "bytes": 4434
+    },
+    {
+      "path": "frontend/src/telemetry-panel.ts",
+      "bytes": 14970
+    },
+    {
+      "path": "frontend/src/terminal-dock.test.ts",
+      "bytes": 5563
+    },
+    {
+      "path": "frontend/src/terminal-dock.ts",
+      "bytes": 8498
+    },
+    {
+      "path": "frontend/src/testing/indexed-replay-fixture.ts",
+      "bytes": 5642
+    },
+    {
+      "path": "frontend/src/testing/terrain-surface-fixture.ts",
+      "bytes": 2717
+    },
+    {
+      "path": "frontend/src/testing/trace-v3-fixture.ts",
+      "bytes": 11741
+    },
+    {
+      "path": "frontend/src/trace-lifecycle.test.ts",
+      "bytes": 1769
+    },
+    {
+      "path": "frontend/src/trace.test.ts",
+      "bytes": 6179
+    },
+    {
+      "path": "frontend/src/trace.ts",
+      "bytes": 12726
+    },
+    {
+      "path": "frontend/src/ui.ts",
+      "bytes": 2572
+    },
+    {
+      "path": "frontend/src/verified-bytes.test.ts",
+      "bytes": 11375
+    },
+    {
+      "path": "frontend/src/verified-bytes.ts",
+      "bytes": 4720
+    },
+    {
+      "path": "frontend/src/view-model.test.ts",
+      "bytes": 7986
+    },
+    {
+      "path": "frontend/src/view-model.ts",
+      "bytes": 12685
+    },
+    {
+      "path": "frontend/src/viewer-chrome-entry.ts",
+      "bytes": 317
+    },
+    {
+      "path": "frontend/src/viewer-chrome-tokens.test.ts",
+      "bytes": 1928
+    },
+    {
+      "path": "frontend/src/viewer-chrome.test.ts",
+      "bytes": 12085
+    },
+    {
+      "path": "frontend/src/viewer-chrome.ts",
+      "bytes": 8825
+    },
+    {
+      "path": "frontend/src/vite-env.d.ts",
+      "bytes": 38
+    },
+    {
+      "path": "frontend/src/workspace-traces.test.ts",
+      "bytes": 1310
+    },
+    {
+      "path": "frontend/src/workspace-traces.ts",
+      "bytes": 4322
+    },
+    {
+      "path": "frontend/tsconfig.json",
+      "bytes": 619
+    },
+    {
+      "path": "frontend/vite.config.ts",
+      "bytes": 1875
+    },
+    {
+      "path": "frontend/vitest.config.ts",
+      "bytes": 157
+    },
+    {
+      "path": "host/LICENSE",
+      "bytes": 11344
+    },
+    {
+      "path": "host/README.md",
+      "bytes": 10201
+    },
+    {
+      "path": "host/adapter.js",
+      "bytes": 42759
+    },
+    {
+      "path": "host/demo.js",
+      "bytes": 15829
+    },
+    {
+      "path": "host/host.test.js",
+      "bytes": 32504
+    },
+    {
+      "path": "host/i18n.js",
+      "bytes": 13791
+    },
+    {
+      "path": "host/index.html",
+      "bytes": 2002
+    },
+    {
+      "path": "host/mount.js",
+      "bytes": 17590
+    },
+    {
+      "path": "host/package.json",
+      "bytes": 417
+    },
+    {
+      "path": "host/scene.js",
+      "bytes": 9046
+    },
+    {
+      "path": "host/screenshots/bench-motion-zh.png",
+      "bytes": 186978
+    },
+    {
+      "path": "host/screenshots/capture.json",
+      "bytes": 1583
+    },
+    {
+      "path": "host/screenshots/host-demo-en.png",
+      "bytes": 226596
+    },
+    {
+      "path": "host/screenshots/host-demo-zh.png",
+      "bytes": 233223
+    },
+    {
+      "path": "host/server.mjs",
+      "bytes": 2230
+    },
+    {
+      "path": "host/styles.css",
+      "bytes": 10824
+    },
+    {
+      "path": "host/view.js",
+      "bytes": 13111
+    },
+    {
+      "path": "pyproject.toml",
+      "bytes": 762
+    },
+    {
+      "path": "schemas/README.md",
+      "bytes": 734
+    },
+    {
+      "path": "schemas/generated/aero-bench-contracts.schema.json",
+      "bytes": 161054
+    },
+    {
+      "path": "schemas/generated/agent-driver-config.schema.json",
+      "bytes": 2019
+    },
+    {
+      "path": "schemas/generated/agent-interaction.schema.json",
+      "bytes": 4892
+    },
+    {
+      "path": "schemas/generated/agent-session-manifest.schema.json",
+      "bytes": 4967
+    },
+    {
+      "path": "schemas/generated/agent-session.schema.json",
+      "bytes": 3228
+    },
+    {
+      "path": "schemas/generated/agent-tool-execution-result.schema.json",
+      "bytes": 3376
+    },
+    {
+      "path": "schemas/generated/authoring-error-response.schema.json",
+      "bytes": 675
+    },
+    {
+      "path": "schemas/generated/city-compilation-result.schema.json",
+      "bytes": 2603
+    },
+    {
+      "path": "schemas/generated/city-compile-request.schema.json",
+      "bytes": 13652
+    },
+    {
+      "path": "schemas/generated/city-workspace.schema.json",
+      "bytes": 13114
+    },
+    {
+      "path": "schemas/generated/control-api.openapi.json",
+      "bytes": 228908
+    },
+    {
+      "path": "schemas/generated/control-catalog.schema.json",
+      "bytes": 1693
+    },
+    {
+      "path": "schemas/generated/control-error-response.schema.json",
+      "bytes": 655
+    },
+    {
+      "path": "schemas/generated/control-stream-event.schema.json",
+      "bytes": 18637
+    },
+    {
+      "path": "schemas/generated/manifest.json",
+      "bytes": 22977
+    },
+    {
+      "path": "schemas/generated/model-interaction.schema.json",
+      "bytes": 1927
+    },
+    {
+      "path": "schemas/generated/native-scene-catalog.schema.json",
+      "bytes": 15069
+    },
+    {
+      "path": "schemas/generated/network-mailbox-observation.schema.json",
+      "bytes": 1997
+    },
+    {
+      "path": "schemas/generated/public-replay-index.schema.json",
+      "bytes": 1672
+    },
+    {
+      "path": "schemas/generated/public-replay-manifest.schema.json",
+      "bytes": 1576
+    },
+    {
+      "path": "schemas/generated/public-run-event-stream-event.schema.json",
+      "bytes": 4184
+    },
+    {
+      "path": "schemas/generated/public-scenario.schema.json",
+      "bytes": 24728
+    },
+    {
+      "path": "schemas/generated/public-trace.schema.json",
+      "bytes": 50942
+    },
+    {
+      "path": "schemas/generated/replay-access-request.schema.json",
+      "bytes": 337
+    },
+    {
+      "path": "schemas/generated/replay-access-response.schema.json",
+      "bytes": 1023
+    },
+    {
+      "path": "schemas/generated/resolved-run.schema.json",
+      "bytes": 52578
+    },
+    {
+      "path": "schemas/generated/resolved-scenario.schema.json",
+      "bytes": 38921
+    },
+    {
+      "path": "schemas/generated/run-event.schema.json",
+      "bytes": 8223
+    },
+    {
+      "path": "schemas/generated/run-status-response.schema.json",
+      "bytes": 7550
+    },
+    {
+      "path": "schemas/generated/run-transition-event.schema.json",
+      "bytes": 3430
+    },
+    {
+      "path": "schemas/generated/runtime-control-request.schema.json",
+      "bytes": 440
+    },
+    {
+      "path": "schemas/generated/runtime-control-response.schema.json",
+      "bytes": 8143
+    },
+    {
+      "path": "schemas/generated/scene-state-stream-event.schema.json",
+      "bytes": 11988
+    },
+    {
+      "path": "schemas/generated/scene-state.schema.json",
+      "bytes": 11591
+    },
+    {
+      "path": "schemas/generated/start-run-request.schema.json",
+      "bytes": 496
+    },
+    {
+      "path": "schemas/generated/start-run-response.schema.json",
+      "bytes": 32742
+    },
+    {
+      "path": "schemas/generated/state-sample.schema.json",
+      "bytes": 7200
+    },
+    {
+      "path": "schemas/generated/traffic-preview-job.schema.json",
+      "bytes": 2898
+    },
+    {
+      "path": "schemas/generated/traffic-preview-profile-catalog.schema.json",
+      "bytes": 1378
+    },
+    {
+      "path": "schemas/generated/traffic-preview-request.schema.json",
+      "bytes": 13742
+    },
+    {
+      "path": "schemas/generated/urban-airspace-transition.schema.json",
+      "bytes": 1477
+    },
+    {
+      "path": "schemas/generated/urban-applied-wrench.schema.json",
+      "bytes": 1115
+    },
+    {
+      "path": "schemas/generated/urban-camera-frame.schema.json",
+      "bytes": 2225
+    },
+    {
+      "path": "schemas/generated/urban-engine-window.schema.json",
+      "bytes": 1579
+    },
+    {
+      "path": "schemas/generated/urban-recovery-demo-package.schema.json",
+      "bytes": 4731
+    },
+    {
+      "path": "tests/__init__.py",
+      "bytes": 37
+    },
+    {
+      "path": "tests/agent/__init__.py",
+      "bytes": 1
+    },
+    {
+      "path": "tests/agent/support.py",
+      "bytes": 1964
+    },
+    {
+      "path": "tests/agent/test_astra_low_runtime.py",
+      "bytes": 15631
+    },
+    {
+      "path": "tests/agent/test_bridge.py",
+      "bytes": 21892
+    },
+    {
+      "path": "tests/agent/test_bridge_formal.py",
+      "bytes": 7789
+    },
+    {
+      "path": "tests/agent/test_codex_driver.py",
+      "bytes": 15159
+    },
+    {
+      "path": "tests/agent/test_driver_entrypoint.py",
+      "bytes": 11995
+    },
+    {
+      "path": "tests/agent/test_model_proxy.py",
+      "bytes": 14050
+    },
+    {
+      "path": "tests/agent/test_session_contracts.py",
+      "bytes": 5747
+    },
+    {
+      "path": "tests/authoring/test_city_inspection_registration.py",
+      "bytes": 11375
+    },
+    {
+      "path": "tests/authoring/test_city_native_registration.py",
+      "bytes": 22830
+    },
+    {
+      "path": "tests/authoring/test_draft_compiler.py",
+      "bytes": 31630
+    },
+    {
+      "path": "tests/authoring/test_order_events.py",
+      "bytes": 4031
+    },
+    {
+      "path": "tests/authoring/test_presentation.py",
+      "bytes": 11164
+    },
+    {
+      "path": "tests/authoring/test_publication.py",
+      "bytes": 17187
+    },
+    {
+      "path": "tests/authoring/test_publication_evidence.py",
+      "bytes": 18575
+    },
+    {
+      "path": "tests/authoring/test_replay_access_generation.py",
+      "bytes": 1894
+    },
+    {
+      "path": "tests/authoring/test_selection_compiler.py",
+      "bytes": 11752
+    },
+    {
+      "path": "tests/authoring/test_source_import.py",
+      "bytes": 1192
+    },
+    {
+      "path": "tests/authoring/test_urban_network.py",
+      "bytes": 7199
+    },
+    {
+      "path": "tests/conftest.py",
+      "bytes": 309
+    },
+    {
+      "path": "tests/executor/__init__.py",
+      "bytes": 0
+    },
+    {
+      "path": "tests/executor/logistics_package_fixture.py",
+      "bytes": 42940
+    },
+    {
+      "path": "tests/executor/test_executor_facility_world.py",
+      "bytes": 13871
+    },
+    {
+      "path": "tests/executor/test_executor_logistics_world_end_to_end.py",
+      "bytes": 19104
+    },
+    {
+      "path": "tests/executor/test_logistics_bundle_builder.py",
+      "bytes": 19783
+    },
+    {
+      "path": "tests/executor/test_logistics_world_config_pinning.py",
+      "bytes": 14413
+    },
+    {
+      "path": "tests/executor/test_px4_gazebo_bundle_world.py",
+      "bytes": 19683
+    },
+    {
+      "path": "tests/providers/__init__.py",
+      "bytes": 0
+    },
+    {
+      "path": "tests/providers/container_lifecycle.py",
+      "bytes": 4482
+    },
+    {
+      "path": "tests/providers/ns3_support.py",
+      "bytes": 4939
+    },
+    {
+      "path": "tests/providers/sumo_support.py",
+      "bytes": 1990
+    },
+    {
+      "path": "tests/providers/test_builtin_registry.py",
+      "bytes": 8276
+    },
+    {
+      "path": "tests/providers/test_container_lifecycle.py",
+      "bytes": 4129
+    },
+    {
+      "path": "tests/providers/test_inspection_business_container_integration.py",
+      "bytes": 22761
+    },
+    {
+      "path": "tests/providers/test_inspection_business_provider.py",
+      "bytes": 24375
+    },
+    {
+      "path": "tests/providers/test_inspection_business_service.py",
+      "bytes": 45455
+    },
+    {
+      "path": "tests/providers/test_logistics_business_observations.py",
+      "bytes": 38220
+    },
+    {
+      "path": "tests/providers/test_logistics_business_provider.py",
+      "bytes": 53365
+    },
+    {
+      "path": "tests/providers/test_logistics_business_registration.py",
+      "bytes": 14646
+    },
+    {
+      "path": "tests/providers/test_logistics_business_service.py",
+      "bytes": 116356
+    },
+    {
+      "path": "tests/providers/test_logistics_scheduled_arrivals.py",
+      "bytes": 10892
+    },
+    {
+      "path": "tests/providers/test_ns3_frame_limit.py",
+      "bytes": 2214
+    },
+    {
+      "path": "tests/providers/test_ns3_provider.py",
+      "bytes": 21971
+    },
+    {
+      "path": "tests/providers/test_ns3_service.py",
+      "bytes": 33967
+    },
+    {
+      "path": "tests/providers/test_ns3_session_token.py",
+      "bytes": 4979
+    },
+    {
+      "path": "tests/providers/test_provider_probe.py",
+      "bytes": 3218
+    },
+    {
+      "path": "tests/providers/test_px4_camera_capture.py",
+      "bytes": 19976
+    },
+    {
+      "path": "tests/providers/test_px4_command_audit_journal.py",
+      "bytes": 17326
+    },
+    {
+      "path": "tests/providers/test_px4_contact_stream.py",
+      "bytes": 4137
+    },
+    {
+      "path": "tests/providers/test_px4_engineering_horizon.py",
+      "bytes": 8785
+    },
+    {
+      "path": "tests/providers/test_px4_flight_observations.py",
+      "bytes": 10420
+    },
+    {
+      "path": "tests/providers/test_px4_gazebo_config.py",
+      "bytes": 6216
+    },
+    {
+      "path": "tests/providers/test_px4_multi_vehicle_command_dispatch.py",
+      "bytes": 12042
+    },
+    {
+      "path": "tests/providers/test_px4_physical_completion.py",
+      "bytes": 77001
+    },
+    {
+      "path": "tests/providers/test_px4_pose_stream.py",
+      "bytes": 3974
+    },
+    {
+      "path": "tests/providers/test_px4_provider_command_lifecycle.py",
+      "bytes": 75670
+    },
+    {
+      "path": "tests/providers/test_px4_sealed_motion.py",
+      "bytes": 9646
+    },
+    {
+      "path": "tests/providers/test_px4_world_control.py",
+      "bytes": 7896
+    },
+    {
+      "path": "tests/providers/test_registry.py",
+      "bytes": 16726
+    },
+    {
+      "path": "tests/providers/test_rpc.py",
+      "bytes": 10065
+    },
+    {
+      "path": "tests/providers/test_runtime_stage_registry.py",
+      "bytes": 2310
+    },
+    {
+      "path": "tests/providers/test_sumo_container_integration.py",
+      "bytes": 13997
+    },
+    {
+      "path": "tests/providers/test_sumo_provider.py",
+      "bytes": 9671
+    },
+    {
+      "path": "tests/providers/test_sumo_restriction_verifier.py",
+      "bytes": 11525
+    },
+    {
+      "path": "tests/providers/test_sumo_restrictions.py",
+      "bytes": 7667
+    },
+    {
+      "path": "tests/providers/test_sumo_service_contract.py",
+      "bytes": 17405
+    },
+    {
+      "path": "tests/providers/test_sumo_session_token.py",
+      "bytes": 5469
+    },
+    {
+      "path": "tests/providers/test_sumo_snapshot_signals.py",
+      "bytes": 3753
+    },
+    {
+      "path": "tests/providers/test_urban_engineering_traffic.py",
+      "bytes": 639
+    },
+    {
+      "path": "tests/providers/test_world_scene_config.py",
+      "bytes": 2132
+    },
+    {
+      "path": "tests/providers/test_world_scene_container_integration.py",
+      "bytes": 3272
+    },
+    {
+      "path": "tests/providers/test_world_scene_preflight.py",
+      "bytes": 3145
+    },
+    {
+      "path": "tests/providers/test_world_scene_provider.py",
+      "bytes": 16282
+    },
+    {
+      "path": "tests/providers/test_world_scene_registry.py",
+      "bytes": 506
+    },
+    {
+      "path": "tests/providers/test_world_scene_service.py",
+      "bytes": 11506
+    },
+    {
+      "path": "tests/runtime/test_agent_turns.py",
+      "bytes": 38020
+    },
+    {
+      "path": "tests/runtime/test_harness_bootstrap.py",
+      "bytes": 14430
+    },
+    {
+      "path": "tests/runtime/test_harness_service.py",
+      "bytes": 36799
+    },
+    {
+      "path": "tests/runtime/test_runtime_stage_bootstrap.py",
+      "bytes": 2569
+    },
+    {
+      "path": "tests/runtime/test_runtime_stage_evidence.py",
+      "bytes": 12002
+    },
+    {
+      "path": "tests/runtime/test_scene_state.py",
+      "bytes": 3786
+    },
+    {
+      "path": "tests/runtime/test_sealed_motion.py",
+      "bytes": 4082
+    },
+    {
+      "path": "tests/support.py",
+      "bytes": 35368
+    },
+    {
+      "path": "tests/tasks/__init__.py",
+      "bytes": 35
+    },
+    {
+      "path": "tests/tasks/fixtures/logistics_facility_geometry/frontend_pads_fixture.json",
+      "bytes": 11711
+    },
+    {
+      "path": "tests/tasks/fixtures/logistics_facility_geometry/generate_facility_pads_fixture.test.ts",
+      "bytes": 9787
+    },
+    {
+      "path": "tests/tasks/fixtures/logistics_facility_physics/frontend_facility_physics_fixture.json",
+      "bytes": 128730
+    },
+    {
+      "path": "tests/tasks/fixtures/logistics_facility_physics/generate_facility_physics_fixture.test.ts",
+      "bytes": 13015
+    },
+    {
+      "path": "tests/tasks/test_logistics_airspace_events.py",
+      "bytes": 20188
+    },
+    {
+      "path": "tests/tasks/test_logistics_arrivals_profile.py",
+      "bytes": 15515
+    },
+    {
+      "path": "tests/tasks/test_logistics_authoring.py",
+      "bytes": 10877
+    },
+    {
+      "path": "tests/tasks/test_logistics_dwell_eligibility.py",
+      "bytes": 27000
+    },
+    {
+      "path": "tests/tasks/test_logistics_energy.py",
+      "bytes": 19891
+    },
+    {
+      "path": "tests/tasks/test_logistics_energy_review.py",
+      "bytes": 19169
+    },
+    {
+      "path": "tests/tasks/test_logistics_facilities.py",
+      "bytes": 13391
+    },
+    {
+      "path": "tests/tasks/test_logistics_facility_geometry.py",
+      "bytes": 22691
+    },
+    {
+      "path": "tests/tasks/test_logistics_facility_physics.py",
+      "bytes": 57512
+    },
+    {
+      "path": "tests/tasks/test_logistics_facility_presence.py",
+      "bytes": 38964
+    },
+    {
+      "path": "tests/tasks/test_logistics_facility_world.py",
+      "bytes": 19197
+    },
+    {
+      "path": "tests/tasks/test_logistics_fleet.py",
+      "bytes": 15131
+    },
+    {
+      "path": "tests/tasks/test_logistics_order_arrivals.py",
+      "bytes": 60889
+    },
+    {
+      "path": "tests/tasks/test_logistics_orders.py",
+      "bytes": 27155
+    },
+    {
+      "path": "tests/tasks/test_logistics_package.py",
+      "bytes": 38141
+    },
+    {
+      "path": "tests/tasks/test_logistics_physical_observations.py",
+      "bytes": 51624
+    },
+    {
+      "path": "tests/tasks/test_logistics_resources.py",
+      "bytes": 27919
+    },
+    {
+      "path": "tests/tasks/test_logistics_runtime_airspace.py",
+      "bytes": 6331
+    },
+    {
+      "path": "tests/tasks/test_logistics_runtime_bindings.py",
+      "bytes": 58308
+    },
+    {
+      "path": "tests/tasks/test_logistics_runtime_hook.py",
+      "bytes": 67326
+    },
+    {
+      "path": "tests/tasks/test_logistics_sealed_observations.py",
+      "bytes": 10383
+    },
+    {
+      "path": "tests/test_artifact_seal.py",
+      "bytes": 7408
+    },
+    {
+      "path": "tests/test_audit_image_provenance.py",
+      "bytes": 19028
+    },
+    {
+      "path": "tests/test_authoring_api_traffic_preview.py",
+      "bytes": 7064
+    },
+    {
+      "path": "tests/test_city_workspace_backend.py",
+      "bytes": 15917
+    },
+    {
+      "path": "tests/test_config_cli.py",
+      "bytes": 1277
+    },
+    {
+      "path": "tests/test_config_loader.py",
+      "bytes": 6244
+    },
+    {
+      "path": "tests/test_config_resolver.py",
+      "bytes": 18172
+    },
+    {
+      "path": "tests/test_control_browser_preflight.py",
+      "bytes": 3362
+    },
+    {
+      "path": "tests/test_control_client_proxy.py",
+      "bytes": 1870
+    },
+    {
+      "path": "tests/test_control_indexed_public_assets.py",
+      "bytes": 13043
+    },
+    {
+      "path": "tests/test_control_manager_shutdown.py",
+      "bytes": 5580
+    },
+    {
+      "path": "tests/test_control_public_assets.py",
+      "bytes": 4381
+    },
+    {
+      "path": "tests/test_control_public_replay.py",
+      "bytes": 12808
+    },
+    {
+      "path": "tests/test_control_sealed_replay.py",
+      "bytes": 18387
+    },
+    {
+      "path": "tests/test_docker_timeout_diagnostics.py",
+      "bytes": 12482
+    },
+    {
+      "path": "tests/test_engineering_local_images.py",
+      "bytes": 9908
+    },
+    {
+      "path": "tests/test_executor_agent_driver.py",
+      "bytes": 4056
+    },
+    {
+      "path": "tests/test_executor_docker.py",
+      "bytes": 48552
+    },
+    {
+      "path": "tests/test_executor_materialization.py",
+      "bytes": 20884
+    },
+    {
+      "path": "tests/test_executor_protocol.py",
+      "bytes": 4797
+    },
+    {
+      "path": "tests/test_final_handoff.py",
+      "bytes": 14103
+    },
+    {
+      "path": "tests/test_formal_inspection_images.py",
+      "bytes": 10119
+    },
+    {
+      "path": "tests/test_gateway_dispatcher.py",
+      "bytes": 35906
+    },
+    {
+      "path": "tests/test_gateway_query.py",
+      "bytes": 12486
+    },
+    {
+      "path": "tests/test_gateway_service.py",
+      "bytes": 30061
+    },
+    {
+      "path": "tests/test_indexed_replay_publication.py",
+      "bytes": 7548
+    },
+    {
+      "path": "tests/test_inspection_bounds.py",
+      "bytes": 10960
+    },
+    {
+      "path": "tests/test_inspection_business.py",
+      "bytes": 22241
+    },
+    {
+      "path": "tests/test_inspection_delivery_ordering.py",
+      "bytes": 1465
+    },
+    {
+      "path": "tests/test_inspection_flight_summary.py",
+      "bytes": 3330
+    },
+    {
+      "path": "tests/test_inspection_formal_v2.py",
+      "bytes": 67982
+    },
+    {
+      "path": "tests/test_inspection_frame_authority.py",
+      "bytes": 1291
+    },
+    {
+      "path": "tests/test_inspection_frame_projection.py",
+      "bytes": 5265
+    },
+    {
+      "path": "tests/test_inspection_landing_v3.py",
+      "bytes": 2789
+    },
+    {
+      "path": "tests/test_inspection_model_evidence.py",
+      "bytes": 15865
+    },
+    {
+      "path": "tests/test_inspection_model_gateway_evidence.py",
+      "bytes": 44066
+    },
+    {
+      "path": "tests/test_inspection_observation.py",
+      "bytes": 12092
+    },
+    {
+      "path": "tests/test_inspection_reference.py",
+      "bytes": 15757
+    },
+    {
+      "path": "tests/test_inspection_release_lock.py",
+      "bytes": 1487
+    },
+    {
+      "path": "tests/test_inspection_runtime_hook.py",
+      "bytes": 16647
+    },
+    {
+      "path": "tests/test_inspection_verifier.py",
+      "bytes": 88538
+    },
+    {
+      "path": "tests/test_inspection_vertical_datum.py",
+      "bytes": 7450
+    },
+    {
+      "path": "tests/test_public_replay_audit.py",
+      "bytes": 4652
+    },
+    {
+      "path": "tests/test_public_verification_projection.py",
+      "bytes": 4944
+    },
+    {
+      "path": "tests/test_publish_city_region_preview.py",
+      "bytes": 16580
+    },
+    {
+      "path": "tests/test_readiness_probe.py",
+      "bytes": 10761
+    },
+    {
+      "path": "tests/test_run_agent_inspection_attempt.py",
+      "bytes": 11995
+    },
+    {
+      "path": "tests/test_run_stack.py",
+      "bytes": 15957
+    },
+    {
+      "path": "tests/test_runner.py",
+      "bytes": 50263
+    },
+    {
+      "path": "tests/test_runner_failure_records.py",
+      "bytes": 1734
+    },
+    {
+      "path": "tests/test_runtime_contracts.py",
+      "bytes": 23694
+    },
+    {
+      "path": "tests/test_scene_history_incremental.py",
+      "bytes": 4456
+    },
+    {
+      "path": "tests/test_strict_model_normalization.py",
+      "bytes": 17670
+    },
+    {
+      "path": "tests/test_trace_contracts.py",
+      "bytes": 7428
+    },
+    {
+      "path": "tests/test_trace_projector.py",
+      "bytes": 17307
+    },
+    {
+      "path": "tests/test_trace_traffic_lights.py",
+      "bytes": 3296
+    },
+    {
+      "path": "tests/test_traffic_preview_authoring.py",
+      "bytes": 4972
+    },
+    {
+      "path": "tests/test_traffic_preview_jobs.py",
+      "bytes": 14833
+    },
+    {
+      "path": "tests/test_urban_airspace_stream.py",
+      "bytes": 9893
+    },
+    {
+      "path": "tests/test_urban_engineering_participant.py",
+      "bytes": 9762
+    },
+    {
+      "path": "tests/test_urban_engineering_wiring.py",
+      "bytes": 15826
+    },
+    {
+      "path": "tests/test_urban_infrastructure_builder.py",
+      "bytes": 18253
+    },
+    {
+      "path": "tests/test_urban_participant_barrier_wait.py",
+      "bytes": 4560
+    },
+    {
+      "path": "tests/test_urban_recovery_airspace_verifier.py",
+      "bytes": 6143
+    },
+    {
+      "path": "tests/test_urban_recovery_builder.py",
+      "bytes": 6400
+    },
+    {
+      "path": "tests/test_urban_recovery_contracts.py",
+      "bytes": 3225
+    },
+    {
+      "path": "tests/test_urban_recovery_goals.py",
+      "bytes": 4486
+    },
+    {
+      "path": "tests/test_urban_recovery_inputs.py",
+      "bytes": 10971
+    },
+    {
+      "path": "tests/test_urban_recovery_network_verifier.py",
+      "bytes": 22355
+    },
+    {
+      "path": "tests/test_urban_recovery_participant.py",
+      "bytes": 11979
+    },
+    {
+      "path": "tests/test_urban_recovery_participant_lifecycle.py",
+      "bytes": 16672
+    },
+    {
+      "path": "tests/test_urban_recovery_physical_verifier.py",
+      "bytes": 19373
+    },
+    {
+      "path": "tests/test_urban_recovery_physics_verifier.py",
+      "bytes": 12204
+    },
+    {
+      "path": "tests/test_urban_recovery_planner.py",
+      "bytes": 1847
+    },
+    {
+      "path": "tests/test_urban_recovery_provenance.py",
+      "bytes": 8702
+    },
+    {
+      "path": "tests/test_urban_recovery_verifier.py",
+      "bytes": 26225
+    },
+    {
+      "path": "tests/test_verifier_contracts.py",
+      "bytes": 3940
+    },
+    {
+      "path": "tests/test_verifier_output.py",
+      "bytes": 18900
+    },
+    {
+      "path": "tests/test_verifier_streaming.py",
+      "bytes": 8398
+    },
+    {
+      "path": "tests/world/__init__.py",
+      "bytes": 56
+    },
+    {
+      "path": "tests/world/fixtures/aero-frame-golden-pyproj-3.6.1.json",
+      "bytes": 3196
+    },
+    {
+      "path": "tests/world/support.py",
+      "bytes": 43816
+    },
+    {
+      "path": "tests/world/test_alignment.py",
+      "bytes": 11172
+    },
+    {
+      "path": "tests/world/test_building_render_frame.py",
+      "bytes": 6893
+    },
+    {
+      "path": "tests/world/test_building_render_merge.py",
+      "bytes": 29171
+    },
+    {
+      "path": "tests/world/test_building_render_prototypes.py",
+      "bytes": 13128
+    },
+    {
+      "path": "tests/world/test_building_render_scaleout.py",
+      "bytes": 18207
+    },
+    {
+      "path": "tests/world/test_contracts.py",
+      "bytes": 19783
+    },
+    {
+      "path": "tests/world/test_frame_math.py",
+      "bytes": 15637
+    },
+    {
+      "path": "tests/world/test_frames.py",
+      "bytes": 11716
+    },
+    {
+      "path": "tests/world/test_ground_roads.py",
+      "bytes": 17769
+    },
+    {
+      "path": "tests/world/test_osm_mesh_layer.py",
+      "bytes": 1972
+    },
+    {
+      "path": "tests/world/test_resolved.py",
+      "bytes": 35203
+    },
+    {
+      "path": "tests/world/test_road_width_catalog.py",
+      "bytes": 21264
+    },
+    {
+      "path": "tests/world/test_runtime_stage_projection.py",
+      "bytes": 5497
+    },
+    {
+      "path": "tests/world/test_scene_authoring.py",
+      "bytes": 25510
+    },
+    {
+      "path": "tests/world/test_scene_compiler.py",
+      "bytes": 17722
+    },
+    {
+      "path": "tests/world/test_workload_scenario.py",
+      "bytes": 14163
+    },
+    {
+      "path": "tools/assess_city_native_registration.py",
+      "bytes": 5920
+    },
+    {
+      "path": "tools/audit_huangpu_native_execution.py",
+      "bytes": 17295
+    },
+    {
+      "path": "tools/audit_image_provenance.py",
+      "bytes": 31370
+    },
+    {
+      "path": "tools/audit_logistics_observations.py",
+      "bytes": 3014
+    },
+    {
+      "path": "tools/audit_public_replay.py",
+      "bytes": 8675
+    },
+    {
+      "path": "tools/audit_sealed_motion.py",
+      "bytes": 2153
+    },
+    {
+      "path": "tools/author_road_width_catalog.py",
+      "bytes": 4642
+    },
+    {
+      "path": "tools/author_urban_world_package.py",
+      "bytes": 4023
+    },
+    {
+      "path": "tools/build_agent_inspection_images.py",
+      "bytes": 21905
+    },
+    {
+      "path": "tools/build_agent_inspection_v1.py",
+      "bytes": 530
+    },
+    {
+      "path": "tools/build_final_handoff.py",
+      "bytes": 18374
+    },
+    {
+      "path": "tools/build_huangpu_native_inspection.py",
+      "bytes": 67101
+    },
+    {
+      "path": "tools/build_huangpu_native_world.py",
+      "bytes": 65509
+    },
+    {
+      "path": "tools/build_inspection_reference.py",
+      "bytes": 19005
+    },
+    {
+      "path": "tools/build_inspection_release_lock.py",
+      "bytes": 9031
+    },
+    {
+      "path": "tools/build_inspection_v1_bundle.py",
+      "bytes": 35080
+    },
+    {
+      "path": "tools/build_logistics_arrivals_images.py",
+      "bytes": 813
+    },
+    {
+      "path": "tools/build_logistics_bundle.py",
+      "bytes": 4947
+    },
+    {
+      "path": "tools/build_urban_engineering_images.py",
+      "bytes": 6147
+    },
+    {
+      "path": "tools/build_urban_infrastructure_inspection_v1.py",
+      "bytes": 116145
+    },
+    {
+      "path": "tools/build_urban_recovery_demo.py",
+      "bytes": 90599
+    },
+    {
+      "path": "tools/capture_urban_flight_report.mjs",
+      "bytes": 15793
+    },
+    {
+      "path": "tools/check_urban_engineering_replay.mjs",
+      "bytes": 4012
+    },
+    {
+      "path": "tools/compile_city_workspace.py",
+      "bytes": 1880
+    },
+    {
+      "path": "tools/compile_urban_scene.py",
+      "bytes": 4684
+    },
+    {
+      "path": "tools/export_sumo_trajectories.py",
+      "bytes": 18578
+    },
+    {
+      "path": "tools/generate_contracts.py",
+      "bytes": 49787
+    },
+    {
+      "path": "tools/merge_building_render_fragment.py",
+      "bytes": 9184
+    },
+    {
+      "path": "tools/model_huangpu_native_runtime_capacity.py",
+      "bytes": 41476
+    },
+    {
+      "path": "tools/osm2world/build.sh",
+      "bytes": 1466
+    },
+    {
+      "path": "tools/osm2world/participant.Dockerfile",
+      "bytes": 490
+    },
+    {
+      "path": "tools/osm2world/web-integration.patch",
+      "bytes": 6029
+    },
+    {
+      "path": "tools/plan_huangpu_native_execution.py",
+      "bytes": 7781
+    },
+    {
+      "path": "tools/prepare_urban_engineering_traffic.py",
+      "bytes": 9127
+    },
+    {
+      "path": "tools/probe_inspection_reference_network.py",
+      "bytes": 8235
+    },
+    {
+      "path": "tools/project_sealed_urban_replay.py",
+      "bytes": 3152
+    },
+    {
+      "path": "tools/publish_city_inspection_registration.py",
+      "bytes": 1857
+    },
+    {
+      "path": "tools/publish_city_region_preview.py",
+      "bytes": 44600
+    },
+    {
+      "path": "tools/rebind_huangpu_native_registration.py",
+      "bytes": 6894
+    },
+    {
+      "path": "tools/register_inspection_reference_scene.py",
+      "bytes": 1444
+    },
+    {
+      "path": "tools/run_agent_inspection_attempt.py",
+      "bytes": 19728
+    },
+    {
+      "path": "tools/run_docker_reference_smoke.py",
+      "bytes": 12336
+    },
+    {
+      "path": "tools/run_stack.py",
+      "bytes": 16114
+    },
+    {
+      "path": "tools/run_urban_recovery_ablation.py",
+      "bytes": 12265
+    },
+    {
+      "path": "tools/size_huangpu_native_artifacts.py",
+      "bytes": 22725
+    },
+    {
+      "path": "tools/summarize_inspection_flight.py",
+      "bytes": 6094
+    },
+    {
+      "path": "tools/validate_city_browser_flow.py",
+      "bytes": 29506
+    },
+    {
+      "path": "tools/validate_compiled_city_run.py",
+      "bytes": 6557
+    },
+    {
+      "path": "tools/validate_huangpu_native_provider_contracts.py",
+      "bytes": 19523
+    },
+    {
+      "path": "tools/validate_px4_lifecycle.py",
+      "bytes": 29216
+    },
+    {
+      "path": "tools/validate_sumo_formal.py",
+      "bytes": 5267
+    },
+    {
+      "path": "tools/verify_px4_lifecycle.py",
+      "bytes": 4876
+    },
+    {
+      "path": "tools/version_huangpu_native_runner.py",
+      "bytes": 4188
+    }
+  ]
+}

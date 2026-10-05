@@ -1,0 +1,58 @@
+{
+  "schema_version": "aero-bench.public-trace/v2",
+  "run_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "suite_id": "playwright.fixture",
+  "execution_scope": "formal_benchmark",
+  "phase": "sealed",
+  "time": {
+    "tick": 1,
+    "sim_time_ns": 100000000
+  },
+  "event_chain_root": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "world": null,
+  "map_layers": [],
+  "buildings": [],
+  "weather": [],
+  "entities": [
+    {
+      "kind": "uav",
+      "entity_id": "uav.alpha",
+      "authority_provider_id": "flight",
+      "tick": 1,
+      "sim_time_ns": 100000000,
+      "pose_wgs84": {
+        "longitude_deg": 121.5,
+        "latitude_deg": 31.2,
+        "altitude_m": 42.8
+      },
+      "orientation": null,
+      "state": "cruise",
+      "model_ref": null,
+      "public_properties": [],
+      "provenance": [
+        {
+          "artifact_id": "uav.alpha.provenance",
+          "selector": "artifacts/uav.alpha.provenance.json",
+          "digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "visibility": "public"
+        }
+      ],
+      "freshness": "current"
+    }
+  ],
+  "trajectories": [],
+  "regions": [],
+  "network_links": [],
+  "events": [],
+  "tool_receipts": [],
+  "provider_status": [
+    {
+      "provider_id": "flight",
+      "state": "ready",
+      "version": "1.0.0",
+      "implementation_kind": "production"
+    }
+  ],
+  "public_status": null,
+  "verifier_public": null
+}

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P02 · BENCH parcel host mount</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header class="app-header">
+  <div class="brand">
+    <span class="brand-mark">P<span>02</span></span>
+    <div><h1 id="app-title"></h1><p id="app-subtitle"></p></div>
+  </div>
+  <div class="header-right">
+    <span id="source-mode" class="prototype-pill"></span>
+    <div class="language-switch" aria-label="Language">
+      <button data-language="zh" aria-pressed="true">中文</button>
+      <button data-language="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+</header>
+<main>
+  <div class="fixture-notice">
+    <span class="notice-icon">◇</span>
+    <span id="fixture-note"></span>
+    <span class="run-label">HOST · ONE CLOCK · NO FIXTURE IMPORT</span>
+  </div>
+  <section class="transport">
+    <div class="transport-buttons">
+      <button id="play" class="play-button"></button>
+      <button id="reset"></button>
+    </div>
+    <div class="time-display"><strong id="time-value">00:00.0</strong><span id="tick-value"></span></div>
+    <div class="scrubber">
+      <div class="scrubber-heading"><label for="timeline" id="timeline-label"></label><span id="scrubber-span"></span></div>
+      <input id="timeline" type="range" min="0" max="83" step="1" value="0">
+    </div>
+  </section>
+  <div id="view"></div>
+  <section class="host-debug">
+    <div><span>SelectionState target</span><code id="selection-json">—</code></div>
+    <div><span>Selection context</span><code id="selection-context">—</code></div>
+  </section>
+  <footer class="app-footer">
+    <span>Host mount example · real BENCH motion via sealed SceneState · parcel/custody/Atlas evidence stays demo or unknown</span>
+    <span>Read-only view · host cursor owns the only clock</span>
+  </footer>
+</main>
+<script type="module" src="./demo.js"></script>
+</body>
+</html>

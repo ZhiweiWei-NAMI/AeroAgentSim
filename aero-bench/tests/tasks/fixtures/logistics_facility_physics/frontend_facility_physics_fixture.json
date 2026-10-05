@@ -1,0 +1,5136 @@
+{
+  "schema": "frontend_facility_physics_v1",
+  "frame": "scene_east_south_m",
+  "generated_at": "2026-09-29",
+  "frontend_commit": "2b95c64f096760a87a9212e4fed92b52fc6d3159",
+  "model_source_sha256": "83150bcb0228bf5f0636248f1246da742d788bd2d7b3ec2be45ab731df687e9d",
+  "route_source_sha256": "76ae198524c8943b72ed0c2c04d0cfe8e5be134756fedc5c1d77473377aca4f3",
+  "node_version": "v22.23.2",
+  "three_version": "0.185.1",
+  "cases": [
+    {
+      "case_id": "vp_ground_3pads_rot35",
+      "facility": {
+        "id": "vp-ground-3",
+        "name": "Ground Vertiport 3",
+        "kind": "vertiport",
+        "placement": "ground",
+        "buildingId": null,
+        "supportHeightM": null,
+        "position": {
+          "x": 125,
+          "z": -63
+        },
+        "rotationDeg": 35,
+        "widthM": 20,
+        "depthM": 20,
+        "heightM": 5,
+        "design": {
+          "widthM": 12,
+          "heightM": 4,
+          "depthM": 8
+        },
+        "landing": {
+          "parkingSlots": 3,
+          "movementsPerHour": 30
+        },
+        "cargo": null,
+        "charging": null
+      },
+      "local_pads": [
+        {
+          "x": -5.4,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        },
+        {
+          "x": 0,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        },
+        {
+          "x": 5.4,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "vp-ground-3",
+          "pad_index": 0,
+          "x": 120.62246507574753,
+          "y": 0.72,
+          "z": -59.83715508016123,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 35,
+          "frame": "scene_east_south_m"
+        },
+        {
+          "facility_id": "vp-ground-3",
+          "pad_index": 1,
+          "x": 125.04588611490809,
+          "y": 0.72,
+          "z": -62.93446783645688,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 35,
+          "frame": "scene_east_south_m"
+        },
+        {
+          "facility_id": "vp-ground-3",
+          "pad_index": 2,
+          "x": 129.46930715406864,
+          "y": 0.72,
+          "z": -66.03178059275253,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 35,
+          "frame": "scene_east_south_m"
+        }
+      ],
+      "bodies": [
+        {
+          "mesh": "raised landing deck",
+          "box_index": 0,
+          "world": {
+            "x": 125.04588611490809,
+            "y": 0.62,
+            "z": -62.93446783645688
+          },
+          "size_world": {
+            "x": 18.84,
+            "y": 0.2,
+            "z": 6.32
+          },
+          "yaw_deg": 35,
+          "design_size": 1.57,
+          "params_height": 0.05,
+          "params_depth": 0.79
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 1,
+          "world": {
+            "x": 116.50005677519252,
+            "y": 0.35,
+            "z": -60.07579665976366
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 35,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 2,
+          "world": {
+            "x": 119.43676812930987,
+            "y": 0.35,
+            "z": -55.881738193004026
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 35,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 3,
+          "world": {
+            "x": 121.80816202218519,
+            "y": 0.35,
+            "z": -63.79257196731844
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 35,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 4,
+          "world": {
+            "x": 124.74487337630254,
+            "y": 0.35,
+            "z": -59.5985135005588
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 35,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 5,
+          "world": {
+            "x": 118.90224578274065,
+            "y": 0.736,
+            "z": -58.63264456382404
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 35,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 6,
+          "world": {
+            "x": 119.41795455941033,
+            "y": 0.736,
+            "z": -61.557374373168116
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 35,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 7,
+          "world": {
+            "x": 122.3426843687544,
+            "y": 0.736,
+            "z": -61.041665596498426
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 35,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 8,
+          "world": {
+            "x": 121.82697559208472,
+            "y": 0.736,
+            "z": -58.11693578715435
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 35,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 9,
+          "world": {
+            "x": 119.47053251346614,
+            "y": 0.732,
+            "z": -59.030563216542575
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 35,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 10,
+          "world": {
+            "x": 121.77439763802893,
+            "y": 0.732,
+            "z": -60.64374694377989
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 35,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 11,
+          "world": {
+            "x": 120.62246507574753,
+            "y": 0.732,
+            "z": -59.83715508016123
+          },
+          "size_world": {
+            "x": 2.8125,
+            "y": 0.008,
+            "z": 0.325
+          },
+          "yaw_deg": 35,
+          "design_size": 0.234375,
+          "params_height": 0.002,
+          "params_depth": 0.040625
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 12,
+          "world": {
+            "x": 120.92347781435308,
+            "y": 0.35,
+            "z": -63.17310941605931
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 35,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 13,
+          "world": {
+            "x": 123.86018916847043,
+            "y": 0.35,
+            "z": -58.979050949299676
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 35,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 14,
+          "world": {
+            "x": 126.23158306134575,
+            "y": 0.35,
+            "z": -66.88988472361409
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 35,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 15,
+          "world": {
+            "x": 129.1682944154631,
+            "y": 0.35,
+            "z": -62.69582625685445
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 35,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 16,
+          "world": {
+            "x": 123.3256668219012,
+            "y": 0.736,
+            "z": -61.72995732011968
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 35,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 17,
+          "world": {
+            "x": 123.84137559857089,
+            "y": 0.736,
+            "z": -64.65468712946377
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 35,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 18,
+          "world": {
+            "x": 126.76610540791496,
+            "y": 0.736,
+            "z": -64.13897835279408
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 35,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 19,
+          "world": {
+            "x": 126.25039663124528,
+            "y": 0.736,
+            "z": -61.21424854345
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 35,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 20,
+          "world": {
+            "x": 123.89395355262668,
+            "y": 0.732,
+            "z": -62.127875972838225
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 35,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 21,
+          "world": {
+            "x": 126.19781867718947,
+            "y": 0.732,
+            "z": -63.74105970007554
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 35,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 22,
+          "world": {
+            "x": 125.04588611490809,
+            "y": 0.732,
+            "z": -62.93446783645688
+          },
+          "size_world": {
+            "x": 2.8125,
+            "y": 0.008,
+            "z": 0.325
+          },
+          "yaw_deg": 35,
+          "design_size": 0.234375,
+          "params_height": 0.002,
+          "params_depth": 0.040625
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 23,
+          "world": {
+            "x": 125.34689885351362,
+            "y": 0.35,
+            "z": -66.27042217235496
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 35,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 24,
+          "world": {
+            "x": 128.28361020763097,
+            "y": 0.35,
+            "z": -62.07636370559532
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 35,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 25,
+          "world": {
+            "x": 130.6550041005063,
+            "y": 0.35,
+            "z": -69.98719747990974
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 35,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 26,
+          "world": {
+            "x": 133.59171545462365,
+            "y": 0.35,
+            "z": -65.7931390131501
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 35,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 27,
+          "world": {
+            "x": 127.74908786106175,
+            "y": 0.736,
+            "z": -64.82727007641533
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 35,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 28,
+          "world": {
+            "x": 128.26479663773145,
+            "y": 0.736,
+            "z": -67.75199988575942
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 35,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 29,
+          "world": {
+            "x": 131.1895264470755,
+            "y": 0.736,
+            "z": -67.23629110908972
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 35,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 30,
+          "world": {
+            "x": 130.67381767040584,
+            "y": 0.736,
+            "z": -64.31156129974565
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 35,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 31,
+          "world": {
+            "x": 128.31737459178726,
+            "y": 0.732,
+            "z": -65.22518872913388
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 35,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 32,
+          "world": {
+            "x": 130.62123971635003,
+            "y": 0.732,
+            "z": -66.83837245637119
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 35,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 33,
+          "world": {
+            "x": 129.46930715406864,
+            "y": 0.732,
+            "z": -66.03178059275253
+          },
+          "size_world": {
+            "x": 2.8125,
+            "y": 0.008,
+            "z": 0.325
+          },
+          "yaw_deg": 35,
+          "design_size": 0.234375,
+          "params_height": 0.002,
+          "params_depth": 0.040625
+        }
+      ]
+    },
+    {
+      "case_id": "vp_ground_1pad_rot90",
+      "facility": {
+        "id": "vp-ground-1",
+        "name": "Ground Vertiport 1",
+        "kind": "vertiport",
+        "placement": "ground",
+        "buildingId": null,
+        "supportHeightM": null,
+        "position": {
+          "x": 12,
+          "z": -28
+        },
+        "rotationDeg": 90,
+        "widthM": 14,
+        "depthM": 10,
+        "heightM": 4.5,
+        "design": {
+          "widthM": 12,
+          "heightM": 4,
+          "depthM": 8
+        },
+        "landing": {
+          "parkingSlots": 1,
+          "movementsPerHour": 60
+        },
+        "cargo": null,
+        "charging": null
+      },
+      "local_pads": [
+        {
+          "x": 0,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "vp-ground-1",
+          "pad_index": 0,
+          "x": 12.08,
+          "y": 0.72,
+          "z": -28,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 90,
+          "frame": "scene_east_south_m"
+        }
+      ],
+      "bodies": [
+        {
+          "mesh": "raised landing deck",
+          "box_index": 0,
+          "world": {
+            "x": 12.08,
+            "y": 0.62,
+            "z": -28
+          },
+          "size_world": {
+            "x": 8.04,
+            "y": 0.2,
+            "z": 6.32
+          },
+          "yaw_deg": 90,
+          "design_size": 0.6699999999999999,
+          "params_height": 0.05,
+          "params_depth": 0.79
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 1,
+          "world": {
+            "x": 9.52,
+            "y": 0.35,
+            "z": -24.76
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 90,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 2,
+          "world": {
+            "x": 14.639999999999999,
+            "y": 0.35,
+            "z": -24.759999999999998
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 90,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 3,
+          "world": {
+            "x": 9.520000000000001,
+            "y": 0.35,
+            "z": -31.240000000000002
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 90,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 4,
+          "world": {
+            "x": 14.64,
+            "y": 0.35,
+            "z": -31.24
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 90,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 5,
+          "world": {
+            "x": 12.08,
+            "y": 0.736,
+            "z": -25.9
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 90,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 6,
+          "world": {
+            "x": 9.98,
+            "y": 0.736,
+            "z": -28
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 90,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 7,
+          "world": {
+            "x": 12.08,
+            "y": 0.736,
+            "z": -30.1
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 90,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 8,
+          "world": {
+            "x": 14.18,
+            "y": 0.736,
+            "z": -28
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 90,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 9,
+          "world": {
+            "x": 12.08,
+            "y": 0.732,
+            "z": -26.59375
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 90,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 10,
+          "world": {
+            "x": 12.08,
+            "y": 0.732,
+            "z": -29.40625
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 90,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 11,
+          "world": {
+            "x": 12.08,
+            "y": 0.732,
+            "z": -28
+          },
+          "size_world": {
+            "x": 2.8125,
+            "y": 0.008,
+            "z": 0.325
+          },
+          "yaw_deg": 90,
+          "design_size": 0.234375,
+          "params_height": 0.002,
+          "params_depth": 0.040625
+        }
+      ]
+    },
+    {
+      "case_id": "vp_rooftop_2pads_support150_rot90",
+      "facility": {
+        "id": "vp-rooftop-2",
+        "name": "Rooftop Vertiport 2",
+        "kind": "vertiport",
+        "placement": "rooftop",
+        "buildingId": "building.42",
+        "supportHeightM": 150,
+        "position": {
+          "x": 10,
+          "z": -20
+        },
+        "rotationDeg": 90,
+        "widthM": 20,
+        "depthM": 20,
+        "heightM": 5,
+        "design": {
+          "widthM": 12,
+          "heightM": 4,
+          "depthM": 8
+        },
+        "landing": {
+          "parkingSlots": 2,
+          "movementsPerHour": 15
+        },
+        "cargo": null,
+        "charging": null
+      },
+      "local_pads": [
+        {
+          "x": -2.7,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        },
+        {
+          "x": 2.7,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "vp-rooftop-2",
+          "pad_index": 0,
+          "x": 10.08,
+          "y": 150.72,
+          "z": -17.3,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 90,
+          "frame": "scene_east_south_m"
+        },
+        {
+          "facility_id": "vp-rooftop-2",
+          "pad_index": 1,
+          "x": 10.08,
+          "y": 150.72,
+          "z": -22.7,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 90,
+          "frame": "scene_east_south_m"
+        }
+      ],
+      "bodies": [
+        {
+          "mesh": "raised landing deck",
+          "box_index": 0,
+          "world": {
+            "x": 10.08,
+            "y": 150.62,
+            "z": -20
+          },
+          "size_world": {
+            "x": 13.440000000000001,
+            "y": 0.2,
+            "z": 6.32
+          },
+          "yaw_deg": 90,
+          "design_size": 1.12,
+          "params_height": 0.05,
+          "params_depth": 0.79
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 1,
+          "world": {
+            "x": 7.519999999999999,
+            "y": 150.35,
+            "z": -14.06
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 90,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 2,
+          "world": {
+            "x": 12.639999999999999,
+            "y": 150.35,
+            "z": -14.059999999999999
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 90,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 3,
+          "world": {
+            "x": 7.52,
+            "y": 150.35,
+            "z": -20.54
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 90,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 4,
+          "world": {
+            "x": 12.64,
+            "y": 150.35,
+            "z": -20.54
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 90,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 5,
+          "world": {
+            "x": 10.079999999999998,
+            "y": 150.736,
+            "z": -15.2
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 90,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 6,
+          "world": {
+            "x": 7.9799999999999995,
+            "y": 150.736,
+            "z": -17.3
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 90,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 7,
+          "world": {
+            "x": 10.08,
+            "y": 150.736,
+            "z": -19.4
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 90,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 8,
+          "world": {
+            "x": 12.18,
+            "y": 150.736,
+            "z": -17.3
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 90,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 9,
+          "world": {
+            "x": 10.079999999999998,
+            "y": 150.732,
+            "z": -15.89375
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 90,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 10,
+          "world": {
+            "x": 10.08,
+            "y": 150.732,
+            "z": -18.70625
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 90,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 11,
+          "world": {
+            "x": 10.08,
+            "y": 150.732,
+            "z": -17.3
+          },
+          "size_world": {
+            "x": 2.8125,
+            "y": 0.008,
+            "z": 0.325
+          },
+          "yaw_deg": 90,
+          "design_size": 0.234375,
+          "params_height": 0.002,
+          "params_depth": 0.040625
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 12,
+          "world": {
+            "x": 7.52,
+            "y": 150.35,
+            "z": -19.46
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 90,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 13,
+          "world": {
+            "x": 12.64,
+            "y": 150.35,
+            "z": -19.46
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 90,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 14,
+          "world": {
+            "x": 7.520000000000001,
+            "y": 150.35,
+            "z": -25.94
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 90,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 15,
+          "world": {
+            "x": 12.64,
+            "y": 150.35,
+            "z": -25.939999999999998
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 90,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 16,
+          "world": {
+            "x": 10.08,
+            "y": 150.736,
+            "z": -20.6
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 90,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 17,
+          "world": {
+            "x": 7.98,
+            "y": 150.736,
+            "z": -22.7
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 90,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 18,
+          "world": {
+            "x": 10.080000000000002,
+            "y": 150.736,
+            "z": -24.8
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 90,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 19,
+          "world": {
+            "x": 12.18,
+            "y": 150.736,
+            "z": -22.7
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 90,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 20,
+          "world": {
+            "x": 10.08,
+            "y": 150.732,
+            "z": -21.29375
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 90,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 21,
+          "world": {
+            "x": 10.08,
+            "y": 150.732,
+            "z": -24.10625
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 90,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 22,
+          "world": {
+            "x": 10.08,
+            "y": 150.732,
+            "z": -22.7
+          },
+          "size_world": {
+            "x": 2.8125,
+            "y": 0.008,
+            "z": 0.325
+          },
+          "yaw_deg": 90,
+          "design_size": 0.234375,
+          "params_height": 0.002,
+          "params_depth": 0.040625
+        }
+      ]
+    },
+    {
+      "case_id": "vp_rooftop_1pad_support150_rot30",
+      "facility": {
+        "id": "vp-rooftop-1",
+        "name": "Rooftop Vertiport 1",
+        "kind": "vertiport",
+        "placement": "rooftop",
+        "buildingId": "building.7",
+        "supportHeightM": 150,
+        "position": {
+          "x": 204,
+          "z": 118
+        },
+        "rotationDeg": 30,
+        "widthM": 14,
+        "depthM": 10,
+        "heightM": 4.5,
+        "design": {
+          "widthM": 12,
+          "heightM": 4,
+          "depthM": 8
+        },
+        "landing": {
+          "parkingSlots": 1,
+          "movementsPerHour": 45
+        },
+        "cargo": null,
+        "charging": null
+      },
+      "local_pads": [
+        {
+          "x": 0,
+          "y": 0.72,
+          "z": 0.08,
+          "widthM": 4.2,
+          "depthM": 4.2
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "vp-rooftop-1",
+          "pad_index": 0,
+          "x": 204.04,
+          "y": 150.72,
+          "z": 118.06928203230275,
+          "width_m": 4.2,
+          "depth_m": 4.2,
+          "rotation_deg": 30,
+          "frame": "scene_east_south_m"
+        }
+      ],
+      "bodies": [
+        {
+          "mesh": "raised landing deck",
+          "box_index": 0,
+          "world": {
+            "x": 204.04,
+            "y": 150.62,
+            "z": 118.06928203230275
+          },
+          "size_world": {
+            "x": 8.04,
+            "y": 0.2,
+            "z": 6.32
+          },
+          "yaw_deg": 30,
+          "design_size": 0.6699999999999999,
+          "params_height": 0.05,
+          "params_depth": 0.79
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 1,
+          "world": {
+            "x": 199.9540776917384,
+            "y": 150.35,
+            "z": 117.4722569986146
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 30,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 2,
+          "world": {
+            "x": 202.5140776917384,
+            "y": 150.35,
+            "z": 121.90630706599092
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 30,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 3,
+          "world": {
+            "x": 205.56592230826158,
+            "y": 150.35,
+            "z": 114.23225699861459
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 30,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing deck support",
+          "box_index": 4,
+          "world": {
+            "x": 208.12592230826158,
+            "y": 150.35,
+            "z": 118.66630706599092
+          },
+          "size_world": {
+            "x": 0.41999999999999993,
+            "y": 0.42,
+            "z": 0.28
+          },
+          "yaw_deg": 30,
+          "design_size": 0.034999999999999996,
+          "params_height": 0.105,
+          "params_depth": 0.035
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 5,
+          "world": {
+            "x": 202.2213466520527,
+            "y": 150.736,
+            "z": 119.11928203230275
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 30,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 6,
+          "world": {
+            "x": 202.99,
+            "y": 150.736,
+            "z": 116.25062868435543
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 30,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 7,
+          "world": {
+            "x": 205.85865334794732,
+            "y": 150.736,
+            "z": 117.01928203230275
+          },
+          "size_world": {
+            "x": 0.07200000000000001,
+            "y": 0.008,
+            "z": 4.2
+          },
+          "yaw_deg": 30,
+          "design_size": 0.006,
+          "params_height": 0.002,
+          "params_depth": 0.525
+        },
+        {
+          "mesh": "landing clearance boundary",
+          "box_index": 8,
+          "world": {
+            "x": 205.09,
+            "y": 150.736,
+            "z": 119.88793538025007
+          },
+          "size_world": {
+            "x": 4.2,
+            "y": 0.008,
+            "z": 0.048
+          },
+          "yaw_deg": 30,
+          "design_size": 0.35000000000000003,
+          "params_height": 0.002,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 9,
+          "world": {
+            "x": 202.82215177592812,
+            "y": 150.732,
+            "z": 118.77240703230275
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 30,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 10,
+          "world": {
+            "x": 205.25784822407186,
+            "y": 150.732,
+            "z": 117.36615703230275
+          },
+          "size_world": {
+            "x": 0.48750000000000004,
+            "y": 0.008,
+            "z": 3.45
+          },
+          "yaw_deg": 30,
+          "design_size": 0.040625,
+          "params_height": 0.002,
+          "params_depth": 0.43125
+        },
+        {
+          "mesh": "H landing mark",
+          "box_index": 11,
+          "world": {
+            "x": 204.04,
+            "y": 150.732,
+            "z": 118.06928203230275
+          },
+          "size_world": {
+            "x": 2.8125,
+            "y": 0.008,
+            "z": 0.325
+          },
+          "yaw_deg": 30,
+          "design_size": 0.234375,
+          "params_height": 0.002,
+          "params_depth": 0.040625
+        }
+      ]
+    },
+    {
+      "case_id": "hub_ground_2pads_rot30",
+      "facility": {
+        "id": "hub-ground-2",
+        "name": "Cargo Hub 2",
+        "kind": "hub",
+        "placement": "ground",
+        "buildingId": null,
+        "supportHeightM": null,
+        "position": {
+          "x": 30,
+          "z": -40
+        },
+        "rotationDeg": 30,
+        "widthM": 18,
+        "depthM": 14,
+        "heightM": 5.2,
+        "design": {
+          "widthM": 14,
+          "heightM": 5,
+          "depthM": 11
+        },
+        "landing": {
+          "parkingSlots": 2,
+          "movementsPerHour": 20
+        },
+        "cargo": {
+          "storageCapacityKg": 10000,
+          "throughputPerHourKg": 10000
+        },
+        "charging": null
+      },
+      "local_pads": [
+        {
+          "x": -2.98,
+          "y": 3.3625,
+          "z": -1.155,
+          "widthM": 4.76,
+          "depthM": 4.4
+        },
+        {
+          "x": 2.98,
+          "y": 3.3625,
+          "z": -1.155,
+          "widthM": 4.76,
+          "depthM": 4.4
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "hub-ground-2",
+          "pad_index": 0,
+          "x": 26.841744296722375,
+          "y": 3.3625,
+          "z": -39.510259341371025,
+          "width_m": 4.76,
+          "depth_m": 4.4,
+          "rotation_deg": 30,
+          "frame": "scene_east_south_m"
+        },
+        {
+          "facility_id": "hub-ground-2",
+          "pad_index": 1,
+          "x": 32.00325570327763,
+          "y": 3.3625,
+          "z": -42.49025934137103,
+          "width_m": 4.76,
+          "depth_m": 4.4,
+          "rotation_deg": 30,
+          "frame": "scene_east_south_m"
+        }
+      ],
+      "bodies": [
+        {
+          "mesh": "sorting hall",
+          "box_index": 0,
+          "world": {
+            "x": 29.4225,
+            "y": 1.675,
+            "z": -41.00025934137103
+          },
+          "size_world": {
+            "x": 16.04,
+            "y": 2.9,
+            "z": 6.82
+          },
+          "yaw_deg": 30,
+          "design_size": 1.1457142857142857,
+          "params_height": 0.58,
+          "params_depth": 0.62
+        },
+        {
+          "mesh": "sorting hall roof",
+          "box_index": 1,
+          "world": {
+            "x": 29.4225,
+            "y": 3.25,
+            "z": -41.00025934137103
+          },
+          "size_world": {
+            "x": 16.88,
+            "y": 0.22499999999999998,
+            "z": 7.37
+          },
+          "yaw_deg": 30,
+          "design_size": 1.2057142857142857,
+          "params_height": 0.045,
+          "params_depth": 0.67
+        },
+        {
+          "mesh": "loading dock",
+          "box_index": 2,
+          "world": {
+            "x": 31.65,
+            "y": 0.39,
+            "z": -37.142116167511354
+          },
+          "size_world": {
+            "x": 16.18,
+            "y": 0.275,
+            "z": 2.09
+          },
+          "yaw_deg": 30,
+          "design_size": 1.1557142857142857,
+          "params_height": 0.055,
+          "params_depth": 0.18999999999999997
+        },
+        {
+          "mesh": "loading canopy",
+          "box_index": 3,
+          "world": {
+            "x": 31.705,
+            "y": 3.2,
+            "z": -37.04685337309506
+          },
+          "size_world": {
+            "x": 16.32,
+            "y": 0.125,
+            "z": 1.98
+          },
+          "yaw_deg": 30,
+          "design_size": 1.1657142857142857,
+          "params_height": 0.025,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "canopy light strip",
+          "box_index": 4,
+          "world": {
+            "x": 32.2275,
+            "y": 3.125,
+            "z": -36.14185682614033
+          },
+          "size_world": {
+            "x": 16.459999999999997,
+            "y": 0.045,
+            "z": 0.09899999999999999
+          },
+          "yaw_deg": 30,
+          "design_size": 1.1757142857142855,
+          "params_height": 0.009,
+          "params_depth": 0.009
+        },
+        {
+          "mesh": "loading bay 1",
+          "box_index": 5,
+          "world": {
+            "x": 28.493141756343928,
+            "y": 1.825,
+            "z": -36.449955037816316
+          },
+          "size_world": {
+            "x": 2.6,
+            "y": 2.6,
+            "z": 0.09899999999999999
+          },
+          "yaw_deg": 30,
+          "design_size": 0.18571428571428572,
+          "params_height": 0.52,
+          "params_depth": 0.009
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 6,
+          "world": {
+            "x": 28.52614175634393,
+            "y": 1.1,
+            "z": -36.392797361166544
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 7,
+          "world": {
+            "x": 28.52614175634393,
+            "y": 1.6,
+            "z": -36.392797361166544
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 8,
+          "world": {
+            "x": 28.52614175634393,
+            "y": 2.1,
+            "z": -36.392797361166544
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 9,
+          "world": {
+            "x": 28.52614175634393,
+            "y": 2.6,
+            "z": -36.392797361166544
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "bay status lamp",
+          "box_index": 10,
+          "world": {
+            "x": 28.537141756343928,
+            "y": 3.12,
+            "z": -36.373744802283284
+          },
+          "size_world": {
+            "x": 0.168,
+            "y": 0.1,
+            "z": 0.077
+          },
+          "yaw_deg": 30,
+          "design_size": 0.012,
+          "params_height": 0.02,
+          "params_depth": 0.007
+        },
+        {
+          "mesh": "loading bay 2",
+          "box_index": 11,
+          "world": {
+            "x": 31.1605,
+            "y": 1.825,
+            "z": -37.989955037816316
+          },
+          "size_world": {
+            "x": 2.6,
+            "y": 2.6,
+            "z": 0.09899999999999999
+          },
+          "yaw_deg": 30,
+          "design_size": 0.18571428571428572,
+          "params_height": 0.52,
+          "params_depth": 0.009
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 12,
+          "world": {
+            "x": 31.1935,
+            "y": 1.1,
+            "z": -37.93279736116654
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 13,
+          "world": {
+            "x": 31.1935,
+            "y": 1.6,
+            "z": -37.93279736116654
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 14,
+          "world": {
+            "x": 31.1935,
+            "y": 2.1,
+            "z": -37.93279736116654
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 15,
+          "world": {
+            "x": 31.1935,
+            "y": 2.6,
+            "z": -37.93279736116654
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "bay status lamp",
+          "box_index": 16,
+          "world": {
+            "x": 31.2045,
+            "y": 3.12,
+            "z": -37.91374480228329
+          },
+          "size_world": {
+            "x": 0.168,
+            "y": 0.1,
+            "z": 0.077
+          },
+          "yaw_deg": 30,
+          "design_size": 0.012,
+          "params_height": 0.02,
+          "params_depth": 0.007
+        },
+        {
+          "mesh": "loading bay 3",
+          "box_index": 17,
+          "world": {
+            "x": 33.827858243656074,
+            "y": 1.825,
+            "z": -39.529955037816315
+          },
+          "size_world": {
+            "x": 2.6,
+            "y": 2.6,
+            "z": 0.09899999999999999
+          },
+          "yaw_deg": 30,
+          "design_size": 0.18571428571428572,
+          "params_height": 0.52,
+          "params_depth": 0.009
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 18,
+          "world": {
+            "x": 33.86085824365607,
+            "y": 1.1,
+            "z": -39.47279736116654
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 19,
+          "world": {
+            "x": 33.86085824365607,
+            "y": 1.6,
+            "z": -39.47279736116654
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 20,
+          "world": {
+            "x": 33.86085824365607,
+            "y": 2.1,
+            "z": -39.47279736116654
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 21,
+          "world": {
+            "x": 33.86085824365607,
+            "y": 2.6,
+            "z": -39.47279736116654
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "bay status lamp",
+          "box_index": 22,
+          "world": {
+            "x": 33.87185824365607,
+            "y": 3.12,
+            "z": -39.45374480228329
+          },
+          "size_world": {
+            "x": 0.168,
+            "y": 0.1,
+            "z": 0.077
+          },
+          "yaw_deg": 30,
+          "design_size": 0.012,
+          "params_height": 0.02,
+          "params_depth": 0.007
+        },
+        {
+          "mesh": "dispatch office",
+          "box_index": 23,
+          "world": {
+            "x": 33.54538981333848,
+            "y": 1.44,
+            "z": -44.07920471066061
+          },
+          "size_world": {
+            "x": 2.8,
+            "y": 1.55,
+            "z": 2.64
+          },
+          "yaw_deg": 30,
+          "design_size": 0.19999999999999998,
+          "params_height": 0.31,
+          "params_depth": 0.24000000000000002
+        },
+        {
+          "mesh": "office mullion",
+          "box_index": 24,
+          "world": {
+            "x": 32.33295424804027,
+            "y": 1.45,
+            "z": -43.37920471066061
+          },
+          "size_world": {
+            "x": 0.126,
+            "y": 1.85,
+            "z": 2.8600000000000003
+          },
+          "yaw_deg": 30,
+          "design_size": 0.009,
+          "params_height": 0.37,
+          "params_depth": 0.26
+        },
+        {
+          "mesh": "office mullion",
+          "box_index": 25,
+          "world": {
+            "x": 34.757825378636696,
+            "y": 1.45,
+            "z": -44.77920471066061
+          },
+          "size_world": {
+            "x": 0.126,
+            "y": 1.85,
+            "z": 2.8600000000000003
+          },
+          "yaw_deg": 30,
+          "design_size": 0.009,
+          "params_height": 0.37,
+          "params_depth": 0.26
+        },
+        {
+          "mesh": "office roof",
+          "box_index": 26,
+          "world": {
+            "x": 33.54538981333848,
+            "y": 2.335,
+            "z": -44.07920471066061
+          },
+          "size_world": {
+            "x": 3.36,
+            "y": 0.135,
+            "z": 3.08
+          },
+          "yaw_deg": 30,
+          "design_size": 0.24,
+          "params_height": 0.027,
+          "params_depth": 0.28
+        },
+        {
+          "mesh": "parcel locker 1",
+          "box_index": 27,
+          "world": {
+            "x": 34.92601159160339,
+            "y": 1.1749999999999998,
+            "z": -41.82789764466969
+          },
+          "size_world": {
+            "x": 1,
+            "y": 1.7999999999999998,
+            "z": 0.6
+          },
+          "yaw_deg": 30,
+          "design_size": 0.07142857142857142,
+          "params_height": 0.36,
+          "params_depth": 0.05454545454545454
+        },
+        {
+          "mesh": "locker screen",
+          "box_index": 28,
+          "world": {
+            "x": 35.096511591603395,
+            "y": 1.85,
+            "z": -41.5325829819792
+          },
+          "size_world": {
+            "x": 0.49000000000000005,
+            "y": 0.20500000000000002,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.035,
+          "params_height": 0.041,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "locker door seam",
+          "box_index": 29,
+          "world": {
+            "x": 35.096511591603395,
+            "y": 0.95,
+            "z": -41.5325829819792
+          },
+          "size_world": {
+            "x": 0.77,
+            "y": 0.03,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.055,
+          "params_height": 0.006,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "parcel locker 2",
+          "box_index": 30,
+          "world": {
+            "x": 35.586011591603395,
+            "y": 1.1749999999999998,
+            "z": -40.684744111674235
+          },
+          "size_world": {
+            "x": 1,
+            "y": 1.7999999999999998,
+            "z": 0.6
+          },
+          "yaw_deg": 30,
+          "design_size": 0.07142857142857142,
+          "params_height": 0.36,
+          "params_depth": 0.05454545454545454
+        },
+        {
+          "mesh": "locker screen",
+          "box_index": 31,
+          "world": {
+            "x": 35.75651159160339,
+            "y": 1.85,
+            "z": -40.38942944898374
+          },
+          "size_world": {
+            "x": 0.49000000000000005,
+            "y": 0.20500000000000002,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.035,
+          "params_height": 0.041,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "locker door seam",
+          "box_index": 32,
+          "world": {
+            "x": 35.75651159160339,
+            "y": 0.95,
+            "z": -40.38942944898374
+          },
+          "size_world": {
+            "x": 0.77,
+            "y": 0.03,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.055,
+          "params_height": 0.006,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "parcel locker 3",
+          "box_index": 33,
+          "world": {
+            "x": 36.24601159160339,
+            "y": 1.1749999999999998,
+            "z": -39.54159057867878
+          },
+          "size_world": {
+            "x": 1,
+            "y": 1.7999999999999998,
+            "z": 0.6
+          },
+          "yaw_deg": 30,
+          "design_size": 0.07142857142857142,
+          "params_height": 0.36,
+          "params_depth": 0.05454545454545454
+        },
+        {
+          "mesh": "locker screen",
+          "box_index": 34,
+          "world": {
+            "x": 36.416511591603395,
+            "y": 1.85,
+            "z": -39.24627591598828
+          },
+          "size_world": {
+            "x": 0.49000000000000005,
+            "y": 0.20500000000000002,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.035,
+          "params_height": 0.041,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "locker door seam",
+          "box_index": 35,
+          "world": {
+            "x": 36.416511591603395,
+            "y": 0.95,
+            "z": -39.24627591598828
+          },
+          "size_world": {
+            "x": 0.77,
+            "y": 0.03,
+            "z": 0.033
+          },
+          "yaw_deg": 30,
+          "design_size": 0.055,
+          "params_height": 0.006,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "dock lane stripe",
+          "box_index": 36,
+          "world": {
+            "x": 27.691501295336963,
+            "y": 0.195,
+            "z": -33.078437045683316
+          },
+          "size_world": {
+            "x": 0.098,
+            "y": 0.015,
+            "z": 0.77
+          },
+          "yaw_deg": 30,
+          "design_size": 0.007,
+          "params_height": 0.003,
+          "params_depth": 0.07
+        },
+        {
+          "mesh": "dock lane stripe",
+          "box_index": 37,
+          "world": {
+            "x": 29.388911086754465,
+            "y": 0.195,
+            "z": -34.05843704568332
+          },
+          "size_world": {
+            "x": 0.098,
+            "y": 0.015,
+            "z": 0.77
+          },
+          "yaw_deg": 30,
+          "design_size": 0.007,
+          "params_height": 0.003,
+          "params_depth": 0.07
+        },
+        {
+          "mesh": "dock lane stripe",
+          "box_index": 38,
+          "world": {
+            "x": 31.086320878171964,
+            "y": 0.195,
+            "z": -35.03843704568332
+          },
+          "size_world": {
+            "x": 0.098,
+            "y": 0.015,
+            "z": 0.77
+          },
+          "yaw_deg": 30,
+          "design_size": 0.007,
+          "params_height": 0.003,
+          "params_depth": 0.07
+        },
+        {
+          "mesh": "dock lane stripe",
+          "box_index": 39,
+          "world": {
+            "x": 32.78373066958947,
+            "y": 0.195,
+            "z": -36.018437045683314
+          },
+          "size_world": {
+            "x": 0.098,
+            "y": 0.015,
+            "z": 0.77
+          },
+          "yaw_deg": 30,
+          "design_size": 0.007,
+          "params_height": 0.003,
+          "params_depth": 0.07
+        },
+        {
+          "mesh": "roof landing guide",
+          "box_index": 40,
+          "world": {
+            "x": 24.78060383571541,
+            "y": 3.375,
+            "z": -38.32025934137103
+          },
+          "size_world": {
+            "x": 0.07,
+            "y": 0.015,
+            "z": 4.4
+          },
+          "yaw_deg": 30,
+          "design_size": 0.005,
+          "params_height": 0.003,
+          "params_depth": 0.4
+        },
+        {
+          "mesh": "roof landing guide",
+          "box_index": 41,
+          "world": {
+            "x": 25.741744296722374,
+            "y": 3.375,
+            "z": -41.415515229696794
+          },
+          "size_world": {
+            "x": 4.76,
+            "y": 0.015,
+            "z": 0.055
+          },
+          "yaw_deg": 30,
+          "design_size": 0.33999999999999997,
+          "params_height": 0.003,
+          "params_depth": 0.005
+        },
+        {
+          "mesh": "roof landing guide",
+          "box_index": 42,
+          "world": {
+            "x": 28.902884757729336,
+            "y": 3.375,
+            "z": -40.70025934137103
+          },
+          "size_world": {
+            "x": 0.07,
+            "y": 0.015,
+            "z": 4.4
+          },
+          "yaw_deg": 30,
+          "design_size": 0.005,
+          "params_height": 0.003,
+          "params_depth": 0.4
+        },
+        {
+          "mesh": "roof landing guide",
+          "box_index": 43,
+          "world": {
+            "x": 27.941744296722373,
+            "y": 3.375,
+            "z": -37.60500345304526
+          },
+          "size_world": {
+            "x": 4.76,
+            "y": 0.015,
+            "z": 0.055
+          },
+          "yaw_deg": 30,
+          "design_size": 0.33999999999999997,
+          "params_height": 0.003,
+          "params_depth": 0.005
+        },
+        {
+          "mesh": "roof H mark",
+          "box_index": 44,
+          "world": {
+            "x": 25.29588895096715,
+            "y": 3.375,
+            "z": -38.61775934137103
+          },
+          "size_world": {
+            "x": 0.6187999999999999,
+            "y": 0.015,
+            "z": 4.048000000000001
+          },
+          "yaw_deg": 30,
+          "design_size": 0.044199999999999996,
+          "params_height": 0.003,
+          "params_depth": 0.36800000000000005
+        },
+        {
+          "mesh": "roof H mark",
+          "box_index": 45,
+          "world": {
+            "x": 28.387599642477596,
+            "y": 3.375,
+            "z": -40.40275934137102
+          },
+          "size_world": {
+            "x": 0.6187999999999999,
+            "y": 0.015,
+            "z": 4.048000000000001
+          },
+          "yaw_deg": 30,
+          "design_size": 0.044199999999999996,
+          "params_height": 0.003,
+          "params_depth": 0.36800000000000005
+        },
+        {
+          "mesh": "roof H mark",
+          "box_index": 46,
+          "world": {
+            "x": 26.84174429672237,
+            "y": 3.375,
+            "z": -39.510259341371025
+          },
+          "size_world": {
+            "x": 3.5700000000000003,
+            "y": 0.015,
+            "z": 0.48619999999999997
+          },
+          "yaw_deg": 30,
+          "design_size": 0.255,
+          "params_height": 0.003,
+          "params_depth": 0.044199999999999996
+        },
+        {
+          "mesh": "roof landing guide",
+          "box_index": 47,
+          "world": {
+            "x": 29.942115242270663,
+            "y": 3.375,
+            "z": -41.300259341371024
+          },
+          "size_world": {
+            "x": 0.07,
+            "y": 0.015,
+            "z": 4.4
+          },
+          "yaw_deg": 30,
+          "design_size": 0.005,
+          "params_height": 0.003,
+          "params_depth": 0.4
+        },
+        {
+          "mesh": "roof landing guide",
+          "box_index": 48,
+          "world": {
+            "x": 30.903255703277626,
+            "y": 3.375,
+            "z": -44.39551522969679
+          },
+          "size_world": {
+            "x": 4.76,
+            "y": 0.015,
+            "z": 0.055
+          },
+          "yaw_deg": 30,
+          "design_size": 0.33999999999999997,
+          "params_height": 0.003,
+          "params_depth": 0.005
+        },
+        {
+          "mesh": "roof landing guide",
+          "box_index": 49,
+          "world": {
+            "x": 34.06439616428459,
+            "y": 3.375,
+            "z": -43.68025934137103
+          },
+          "size_world": {
+            "x": 0.07,
+            "y": 0.015,
+            "z": 4.4
+          },
+          "yaw_deg": 30,
+          "design_size": 0.005,
+          "params_height": 0.003,
+          "params_depth": 0.4
+        },
+        {
+          "mesh": "roof landing guide",
+          "box_index": 50,
+          "world": {
+            "x": 33.103255703277625,
+            "y": 3.375,
+            "z": -40.58500345304526
+          },
+          "size_world": {
+            "x": 4.76,
+            "y": 0.015,
+            "z": 0.055
+          },
+          "yaw_deg": 30,
+          "design_size": 0.33999999999999997,
+          "params_height": 0.003,
+          "params_depth": 0.005
+        },
+        {
+          "mesh": "roof H mark",
+          "box_index": 51,
+          "world": {
+            "x": 30.457400357522403,
+            "y": 3.375,
+            "z": -41.597759341371024
+          },
+          "size_world": {
+            "x": 0.6187999999999999,
+            "y": 0.015,
+            "z": 4.048000000000001
+          },
+          "yaw_deg": 30,
+          "design_size": 0.044199999999999996,
+          "params_height": 0.003,
+          "params_depth": 0.36800000000000005
+        },
+        {
+          "mesh": "roof H mark",
+          "box_index": 52,
+          "world": {
+            "x": 33.54911104903285,
+            "y": 3.375,
+            "z": -43.38275934137103
+          },
+          "size_world": {
+            "x": 0.6187999999999999,
+            "y": 0.015,
+            "z": 4.048000000000001
+          },
+          "yaw_deg": 30,
+          "design_size": 0.044199999999999996,
+          "params_height": 0.003,
+          "params_depth": 0.36800000000000005
+        },
+        {
+          "mesh": "roof H mark",
+          "box_index": 53,
+          "world": {
+            "x": 32.00325570327763,
+            "y": 3.375,
+            "z": -42.49025934137103
+          },
+          "size_world": {
+            "x": 3.5700000000000003,
+            "y": 0.015,
+            "z": 0.48619999999999997
+          },
+          "yaw_deg": 30,
+          "design_size": 0.255,
+          "params_height": 0.003,
+          "params_depth": 0.044199999999999996
+        }
+      ]
+    },
+    {
+      "case_id": "hub_ground_1pad_rot0",
+      "facility": {
+        "id": "hub-ground-1",
+        "name": "Cargo Hub 1",
+        "kind": "hub",
+        "placement": "ground",
+        "buildingId": null,
+        "supportHeightM": null,
+        "position": {
+          "x": -8,
+          "z": 66
+        },
+        "rotationDeg": 0,
+        "widthM": 18,
+        "depthM": 14,
+        "heightM": 5.2,
+        "design": {
+          "widthM": 14,
+          "heightM": 5,
+          "depthM": 11
+        },
+        "landing": {
+          "parkingSlots": 1,
+          "movementsPerHour": 40
+        },
+        "cargo": {
+          "storageCapacityKg": 10000,
+          "throughputPerHourKg": 10000
+        },
+        "charging": null
+      },
+      "local_pads": [
+        {
+          "x": 0,
+          "y": 3.3625,
+          "z": -1.155,
+          "widthM": 4.76,
+          "depthM": 4.4
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "hub-ground-1",
+          "pad_index": 0,
+          "x": -8,
+          "y": 3.3625,
+          "z": 64.845,
+          "width_m": 4.76,
+          "depth_m": 4.4,
+          "rotation_deg": 0,
+          "frame": "scene_east_south_m"
+        }
+      ],
+      "bodies": [
+        {
+          "mesh": "sorting hall",
+          "box_index": 0,
+          "world": {
+            "x": -8,
+            "y": 1.675,
+            "z": 64.845
+          },
+          "size_world": {
+            "x": 10.08,
+            "y": 2.9,
+            "z": 6.82
+          },
+          "yaw_deg": 0,
+          "design_size": 0.72,
+          "params_height": 0.58,
+          "params_depth": 0.62
+        },
+        {
+          "mesh": "sorting hall roof",
+          "box_index": 1,
+          "world": {
+            "x": -8,
+            "y": 3.25,
+            "z": 64.845
+          },
+          "size_world": {
+            "x": 10.92,
+            "y": 0.22499999999999998,
+            "z": 7.37
+          },
+          "yaw_deg": 0,
+          "design_size": 0.78,
+          "params_height": 0.045,
+          "params_depth": 0.67
+        },
+        {
+          "mesh": "loading dock",
+          "box_index": 2,
+          "world": {
+            "x": -8,
+            "y": 0.39,
+            "z": 69.3
+          },
+          "size_world": {
+            "x": 10.22,
+            "y": 0.275,
+            "z": 2.09
+          },
+          "yaw_deg": 0,
+          "design_size": 0.7300000000000001,
+          "params_height": 0.055,
+          "params_depth": 0.18999999999999997
+        },
+        {
+          "mesh": "loading canopy",
+          "box_index": 3,
+          "world": {
+            "x": -8,
+            "y": 3.2,
+            "z": 69.41
+          },
+          "size_world": {
+            "x": 10.36,
+            "y": 0.125,
+            "z": 1.98
+          },
+          "yaw_deg": 0,
+          "design_size": 0.74,
+          "params_height": 0.025,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "canopy light strip",
+          "box_index": 4,
+          "world": {
+            "x": -8,
+            "y": 3.125,
+            "z": 70.455
+          },
+          "size_world": {
+            "x": 10.5,
+            "y": 0.045,
+            "z": 0.09899999999999999
+          },
+          "yaw_deg": 0,
+          "design_size": 0.75,
+          "params_height": 0.009,
+          "params_depth": 0.009
+        },
+        {
+          "mesh": "loading bay 1",
+          "box_index": 5,
+          "world": {
+            "x": -11.08,
+            "y": 1.825,
+            "z": 68.321
+          },
+          "size_world": {
+            "x": 2.6,
+            "y": 2.6,
+            "z": 0.09899999999999999
+          },
+          "yaw_deg": 0,
+          "design_size": 0.18571428571428572,
+          "params_height": 0.52,
+          "params_depth": 0.009
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 6,
+          "world": {
+            "x": -11.08,
+            "y": 1.1,
+            "z": 68.387
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 7,
+          "world": {
+            "x": -11.08,
+            "y": 1.6,
+            "z": 68.387
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 8,
+          "world": {
+            "x": -11.08,
+            "y": 2.1,
+            "z": 68.387
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 9,
+          "world": {
+            "x": -11.08,
+            "y": 2.6,
+            "z": 68.387
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "bay status lamp",
+          "box_index": 10,
+          "world": {
+            "x": -11.08,
+            "y": 3.12,
+            "z": 68.409
+          },
+          "size_world": {
+            "x": 0.168,
+            "y": 0.1,
+            "z": 0.077
+          },
+          "yaw_deg": 0,
+          "design_size": 0.012,
+          "params_height": 0.02,
+          "params_depth": 0.007
+        },
+        {
+          "mesh": "loading bay 2",
+          "box_index": 11,
+          "world": {
+            "x": -8,
+            "y": 1.825,
+            "z": 68.321
+          },
+          "size_world": {
+            "x": 2.6,
+            "y": 2.6,
+            "z": 0.09899999999999999
+          },
+          "yaw_deg": 0,
+          "design_size": 0.18571428571428572,
+          "params_height": 0.52,
+          "params_depth": 0.009
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 12,
+          "world": {
+            "x": -8,
+            "y": 1.1,
+            "z": 68.387
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 13,
+          "world": {
+            "x": -8,
+            "y": 1.6,
+            "z": 68.387
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 14,
+          "world": {
+            "x": -8,
+            "y": 2.1,
+            "z": 68.387
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 15,
+          "world": {
+            "x": -8,
+            "y": 2.6,
+            "z": 68.387
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "bay status lamp",
+          "box_index": 16,
+          "world": {
+            "x": -8,
+            "y": 3.12,
+            "z": 68.409
+          },
+          "size_world": {
+            "x": 0.168,
+            "y": 0.1,
+            "z": 0.077
+          },
+          "yaw_deg": 0,
+          "design_size": 0.012,
+          "params_height": 0.02,
+          "params_depth": 0.007
+        },
+        {
+          "mesh": "loading bay 3",
+          "box_index": 17,
+          "world": {
+            "x": -4.92,
+            "y": 1.825,
+            "z": 68.321
+          },
+          "size_world": {
+            "x": 2.6,
+            "y": 2.6,
+            "z": 0.09899999999999999
+          },
+          "yaw_deg": 0,
+          "design_size": 0.18571428571428572,
+          "params_height": 0.52,
+          "params_depth": 0.009
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 18,
+          "world": {
+            "x": -4.92,
+            "y": 1.1,
+            "z": 68.387
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 19,
+          "world": {
+            "x": -4.92,
+            "y": 1.6,
+            "z": 68.387
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 20,
+          "world": {
+            "x": -4.92,
+            "y": 2.1,
+            "z": 68.387
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "loading shutter seam",
+          "box_index": 21,
+          "world": {
+            "x": -4.92,
+            "y": 2.6,
+            "z": 68.387
+          },
+          "size_world": {
+            "x": 2.236,
+            "y": 0.02,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.15971428571428573,
+          "params_height": 0.004,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "bay status lamp",
+          "box_index": 22,
+          "world": {
+            "x": -4.92,
+            "y": 3.12,
+            "z": 68.409
+          },
+          "size_world": {
+            "x": 0.168,
+            "y": 0.1,
+            "z": 0.077
+          },
+          "yaw_deg": 0,
+          "design_size": 0.012,
+          "params_height": 0.02,
+          "params_depth": 0.007
+        },
+        {
+          "mesh": "dispatch office",
+          "box_index": 23,
+          "world": {
+            "x": -4.359999999999999,
+            "y": 1.44,
+            "z": 64.24
+          },
+          "size_world": {
+            "x": 2.8,
+            "y": 1.55,
+            "z": 2.64
+          },
+          "yaw_deg": 0,
+          "design_size": 0.19999999999999998,
+          "params_height": 0.31,
+          "params_depth": 0.24000000000000002
+        },
+        {
+          "mesh": "office mullion",
+          "box_index": 24,
+          "world": {
+            "x": -5.76,
+            "y": 1.45,
+            "z": 64.24
+          },
+          "size_world": {
+            "x": 0.126,
+            "y": 1.85,
+            "z": 2.8600000000000003
+          },
+          "yaw_deg": 0,
+          "design_size": 0.009,
+          "params_height": 0.37,
+          "params_depth": 0.26
+        },
+        {
+          "mesh": "office mullion",
+          "box_index": 25,
+          "world": {
+            "x": -2.96,
+            "y": 1.45,
+            "z": 64.24
+          },
+          "size_world": {
+            "x": 0.126,
+            "y": 1.85,
+            "z": 2.8600000000000003
+          },
+          "yaw_deg": 0,
+          "design_size": 0.009,
+          "params_height": 0.37,
+          "params_depth": 0.26
+        },
+        {
+          "mesh": "office roof",
+          "box_index": 26,
+          "world": {
+            "x": -4.359999999999999,
+            "y": 2.335,
+            "z": 64.24
+          },
+          "size_world": {
+            "x": 3.36,
+            "y": 0.135,
+            "z": 3.08
+          },
+          "yaw_deg": 0,
+          "design_size": 0.24,
+          "params_height": 0.027,
+          "params_depth": 0.28
+        },
+        {
+          "mesh": "parcel locker 1",
+          "box_index": 27,
+          "world": {
+            "x": -3.96,
+            "y": 1.1749999999999998,
+            "z": 66.88
+          },
+          "size_world": {
+            "x": 1,
+            "y": 1.7999999999999998,
+            "z": 0.6
+          },
+          "yaw_deg": 0,
+          "design_size": 0.07142857142857142,
+          "params_height": 0.36,
+          "params_depth": 0.05454545454545454
+        },
+        {
+          "mesh": "locker screen",
+          "box_index": 28,
+          "world": {
+            "x": -3.96,
+            "y": 1.85,
+            "z": 67.221
+          },
+          "size_world": {
+            "x": 0.49000000000000005,
+            "y": 0.20500000000000002,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.035,
+          "params_height": 0.041,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "locker door seam",
+          "box_index": 29,
+          "world": {
+            "x": -3.96,
+            "y": 0.95,
+            "z": 67.221
+          },
+          "size_world": {
+            "x": 0.77,
+            "y": 0.03,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.055,
+          "params_height": 0.006,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "parcel locker 2",
+          "box_index": 30,
+          "world": {
+            "x": -3.96,
+            "y": 1.1749999999999998,
+            "z": 68.2
+          },
+          "size_world": {
+            "x": 1,
+            "y": 1.7999999999999998,
+            "z": 0.6
+          },
+          "yaw_deg": 0,
+          "design_size": 0.07142857142857142,
+          "params_height": 0.36,
+          "params_depth": 0.05454545454545454
+        },
+        {
+          "mesh": "locker screen",
+          "box_index": 31,
+          "world": {
+            "x": -3.96,
+            "y": 1.85,
+            "z": 68.541
+          },
+          "size_world": {
+            "x": 0.49000000000000005,
+            "y": 0.20500000000000002,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.035,
+          "params_height": 0.041,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "locker door seam",
+          "box_index": 32,
+          "world": {
+            "x": -3.96,
+            "y": 0.95,
+            "z": 68.541
+          },
+          "size_world": {
+            "x": 0.77,
+            "y": 0.03,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.055,
+          "params_height": 0.006,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "parcel locker 3",
+          "box_index": 33,
+          "world": {
+            "x": -3.96,
+            "y": 1.1749999999999998,
+            "z": 69.52
+          },
+          "size_world": {
+            "x": 1,
+            "y": 1.7999999999999998,
+            "z": 0.6
+          },
+          "yaw_deg": 0,
+          "design_size": 0.07142857142857142,
+          "params_height": 0.36,
+          "params_depth": 0.05454545454545454
+        },
+        {
+          "mesh": "locker screen",
+          "box_index": 34,
+          "world": {
+            "x": -3.96,
+            "y": 1.85,
+            "z": 69.861
+          },
+          "size_world": {
+            "x": 0.49000000000000005,
+            "y": 0.20500000000000002,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.035,
+          "params_height": 0.041,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "locker door seam",
+          "box_index": 35,
+          "world": {
+            "x": -3.96,
+            "y": 0.95,
+            "z": 69.861
+          },
+          "size_world": {
+            "x": 0.77,
+            "y": 0.03,
+            "z": 0.033
+          },
+          "yaw_deg": 0,
+          "design_size": 0.055,
+          "params_height": 0.006,
+          "params_depth": 0.003
+        },
+        {
+          "mesh": "dock lane stripe",
+          "box_index": 36,
+          "world": {
+            "x": -13.46,
+            "y": 0.195,
+            "z": 70.84
+          },
+          "size_world": {
+            "x": 0.098,
+            "y": 0.015,
+            "z": 0.77
+          },
+          "yaw_deg": 0,
+          "design_size": 0.007,
+          "params_height": 0.003,
+          "params_depth": 0.07
+        },
+        {
+          "mesh": "dock lane stripe",
+          "box_index": 37,
+          "world": {
+            "x": -11.5,
+            "y": 0.195,
+            "z": 70.84
+          },
+          "size_world": {
+            "x": 0.098,
+            "y": 0.015,
+            "z": 0.77
+          },
+          "yaw_deg": 0,
+          "design_size": 0.007,
+          "params_height": 0.003,
+          "params_depth": 0.07
+        },
+        {
+          "mesh": "dock lane stripe",
+          "box_index": 38,
+          "world": {
+            "x": -9.54,
+            "y": 0.195,
+            "z": 70.84
+          },
+          "size_world": {
+            "x": 0.098,
+            "y": 0.015,
+            "z": 0.77
+          },
+          "yaw_deg": 0,
+          "design_size": 0.007,
+          "params_height": 0.003,
+          "params_depth": 0.07
+        },
+        {
+          "mesh": "dock lane stripe",
+          "box_index": 39,
+          "world": {
+            "x": -7.58,
+            "y": 0.195,
+            "z": 70.84
+          },
+          "size_world": {
+            "x": 0.098,
+            "y": 0.015,
+            "z": 0.77
+          },
+          "yaw_deg": 0,
+          "design_size": 0.007,
+          "params_height": 0.003,
+          "params_depth": 0.07
+        },
+        {
+          "mesh": "roof landing guide",
+          "box_index": 40,
+          "world": {
+            "x": -10.379999999999999,
+            "y": 3.375,
+            "z": 64.845
+          },
+          "size_world": {
+            "x": 0.07,
+            "y": 0.015,
+            "z": 4.4
+          },
+          "yaw_deg": 0,
+          "design_size": 0.005,
+          "params_height": 0.003,
+          "params_depth": 0.4
+        },
+        {
+          "mesh": "roof landing guide",
+          "box_index": 41,
+          "world": {
+            "x": -8,
+            "y": 3.375,
+            "z": 62.644999999999996
+          },
+          "size_world": {
+            "x": 4.76,
+            "y": 0.015,
+            "z": 0.055
+          },
+          "yaw_deg": 0,
+          "design_size": 0.33999999999999997,
+          "params_height": 0.003,
+          "params_depth": 0.005
+        },
+        {
+          "mesh": "roof landing guide",
+          "box_index": 42,
+          "world": {
+            "x": -5.62,
+            "y": 3.375,
+            "z": 64.845
+          },
+          "size_world": {
+            "x": 0.07,
+            "y": 0.015,
+            "z": 4.4
+          },
+          "yaw_deg": 0,
+          "design_size": 0.005,
+          "params_height": 0.003,
+          "params_depth": 0.4
+        },
+        {
+          "mesh": "roof landing guide",
+          "box_index": 43,
+          "world": {
+            "x": -8,
+            "y": 3.375,
+            "z": 67.045
+          },
+          "size_world": {
+            "x": 4.76,
+            "y": 0.015,
+            "z": 0.055
+          },
+          "yaw_deg": 0,
+          "design_size": 0.33999999999999997,
+          "params_height": 0.003,
+          "params_depth": 0.005
+        },
+        {
+          "mesh": "roof H mark",
+          "box_index": 44,
+          "world": {
+            "x": -9.785,
+            "y": 3.375,
+            "z": 64.845
+          },
+          "size_world": {
+            "x": 0.6187999999999999,
+            "y": 0.015,
+            "z": 4.048000000000001
+          },
+          "yaw_deg": 0,
+          "design_size": 0.044199999999999996,
+          "params_height": 0.003,
+          "params_depth": 0.36800000000000005
+        },
+        {
+          "mesh": "roof H mark",
+          "box_index": 45,
+          "world": {
+            "x": -6.215,
+            "y": 3.375,
+            "z": 64.845
+          },
+          "size_world": {
+            "x": 0.6187999999999999,
+            "y": 0.015,
+            "z": 4.048000000000001
+          },
+          "yaw_deg": 0,
+          "design_size": 0.044199999999999996,
+          "params_height": 0.003,
+          "params_depth": 0.36800000000000005
+        },
+        {
+          "mesh": "roof H mark",
+          "box_index": 46,
+          "world": {
+            "x": -8,
+            "y": 3.375,
+            "z": 64.845
+          },
+          "size_world": {
+            "x": 3.5700000000000003,
+            "y": 0.015,
+            "z": 0.48619999999999997
+          },
+          "yaw_deg": 0,
+          "design_size": 0.255,
+          "params_height": 0.003,
+          "params_depth": 0.044199999999999996
+        }
+      ]
+    },
+    {
+      "case_id": "ch_ground_3pads_rot30",
+      "facility": {
+        "id": "ch-ground-3",
+        "name": "Charger 3",
+        "kind": "charger",
+        "placement": "ground",
+        "buildingId": null,
+        "supportHeightM": null,
+        "position": {
+          "x": 50,
+          "z": -60
+        },
+        "rotationDeg": 30,
+        "widthM": 10,
+        "depthM": 8,
+        "heightM": 3.2,
+        "design": {
+          "widthM": 10,
+          "heightM": 3.2,
+          "depthM": 8
+        },
+        "landing": null,
+        "cargo": null,
+        "charging": {
+          "slots": 3,
+          "powerW": 5000,
+          "priceAmount": 1.2,
+          "priceCurrency": "CNY",
+          "priceUnit": "kWh"
+        }
+      },
+      "local_pads": [
+        {
+          "x": -3,
+          "y": 0.12,
+          "z": 1,
+          "widthM": 2.2,
+          "depthM": 2.2
+        },
+        {
+          "x": 0,
+          "y": 0.12,
+          "z": 1,
+          "widthM": 2.2,
+          "depthM": 2.2
+        },
+        {
+          "x": 3,
+          "y": 0.12,
+          "z": 1,
+          "widthM": 2.2,
+          "depthM": 2.2
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "ch-ground-3",
+          "pad_index": 0,
+          "x": 47.901923788646684,
+          "y": 0.12,
+          "z": -57.63397459621556,
+          "width_m": 2.2,
+          "depth_m": 2.2,
+          "rotation_deg": 30,
+          "frame": "scene_east_south_m"
+        },
+        {
+          "facility_id": "ch-ground-3",
+          "pad_index": 1,
+          "x": 50.5,
+          "y": 0.12,
+          "z": -59.13397459621556,
+          "width_m": 2.2,
+          "depth_m": 2.2,
+          "rotation_deg": 30,
+          "frame": "scene_east_south_m"
+        },
+        {
+          "facility_id": "ch-ground-3",
+          "pad_index": 2,
+          "x": 53.098076211353316,
+          "y": 0.12,
+          "z": -60.63397459621556,
+          "width_m": 2.2,
+          "depth_m": 2.2,
+          "rotation_deg": 30,
+          "frame": "scene_east_south_m"
+        }
+      ],
+      "bodies": [
+        {
+          "mesh": "drone charging pad 1",
+          "box_index": 0,
+          "world": {
+            "x": 47.901923788646684,
+            "y": 0.07,
+            "z": -57.63397459621556
+          },
+          "size_world": {
+            "x": 2.6,
+            "y": 0.1,
+            "z": 2.6
+          },
+          "yaw_deg": 30,
+          "design_size": 0.26,
+          "params_height": 0.03125,
+          "params_depth": 0.325
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 1,
+          "world": {
+            "x": 46.9492958444838,
+            "y": 0.128,
+            "z": -57.08397459621556
+          },
+          "size_world": {
+            "x": 0.06,
+            "y": 0.009600000000000001,
+            "z": 2.2
+          },
+          "yaw_deg": 30,
+          "design_size": 0.006,
+          "params_height": 0.003,
+          "params_depth": 0.275
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 2,
+          "world": {
+            "x": 47.35192378864669,
+            "y": 0.128,
+            "z": -58.58660254037844
+          },
+          "size_world": {
+            "x": 2.2,
+            "y": 0.009600000000000001,
+            "z": 0.048
+          },
+          "yaw_deg": 30,
+          "design_size": 0.22000000000000003,
+          "params_height": 0.003,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 3,
+          "world": {
+            "x": 48.85455173280957,
+            "y": 0.128,
+            "z": -58.18397459621556
+          },
+          "size_world": {
+            "x": 0.06,
+            "y": 0.009600000000000001,
+            "z": 2.2
+          },
+          "yaw_deg": 30,
+          "design_size": 0.006,
+          "params_height": 0.003,
+          "params_depth": 0.275
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 4,
+          "world": {
+            "x": 48.45192378864668,
+            "y": 0.128,
+            "z": -56.68134665205268
+          },
+          "size_world": {
+            "x": 2.2,
+            "y": 0.009600000000000001,
+            "z": 0.048
+          },
+          "yaw_deg": 30,
+          "design_size": 0.22000000000000003,
+          "params_height": 0.003,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "charging contact bar",
+          "box_index": 5,
+          "world": {
+            "x": 47.901923788646684,
+            "y": 0.128,
+            "z": -57.63397459621556
+          },
+          "size_world": {
+            "x": 1,
+            "y": 0.009600000000000001,
+            "z": 0.112
+          },
+          "yaw_deg": 30,
+          "design_size": 0.1,
+          "params_height": 0.003,
+          "params_depth": 0.014
+        },
+        {
+          "mesh": "charging contact bar",
+          "box_index": 6,
+          "world": {
+            "x": 47.901923788646684,
+            "y": 0.128,
+            "z": -57.63397459621556
+          },
+          "size_world": {
+            "x": 0.14,
+            "y": 0.009600000000000001,
+            "z": 0.8
+          },
+          "yaw_deg": 30,
+          "design_size": 0.014,
+          "params_height": 0.003,
+          "params_depth": 0.1
+        },
+        {
+          "mesh": "charger control pedestal 1",
+          "box_index": 7,
+          "world": {
+            "x": 46.88192378864668,
+            "y": 0.7360000000000001,
+            "z": -59.40066641993582
+          },
+          "size_world": {
+            "x": 0.5,
+            "y": 1.1199999999999999,
+            "z": 0.416
+          },
+          "yaw_deg": 30,
+          "design_size": 0.05,
+          "params_height": 0.35,
+          "params_depth": 0.052
+        },
+        {
+          "mesh": "charger status display",
+          "box_index": 8,
+          "world": {
+            "x": 46.99392378864668,
+            "y": 1.024,
+            "z": -59.2066767294881
+          },
+          "size_world": {
+            "x": 0.36,
+            "y": 0.256,
+            "z": 0.032
+          },
+          "yaw_deg": 30,
+          "design_size": 0.036,
+          "params_height": 0.08,
+          "params_depth": 0.004
+        },
+        {
+          "mesh": "drone charging pad 2",
+          "box_index": 9,
+          "world": {
+            "x": 50.5,
+            "y": 0.07,
+            "z": -59.13397459621556
+          },
+          "size_world": {
+            "x": 2.6,
+            "y": 0.1,
+            "z": 2.6
+          },
+          "yaw_deg": 30,
+          "design_size": 0.26,
+          "params_height": 0.03125,
+          "params_depth": 0.325
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 10,
+          "world": {
+            "x": 49.547372055837116,
+            "y": 0.128,
+            "z": -58.58397459621556
+          },
+          "size_world": {
+            "x": 0.06,
+            "y": 0.009600000000000001,
+            "z": 2.2
+          },
+          "yaw_deg": 30,
+          "design_size": 0.006,
+          "params_height": 0.003,
+          "params_depth": 0.275
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 11,
+          "world": {
+            "x": 49.95,
+            "y": 0.128,
+            "z": -60.08660254037844
+          },
+          "size_world": {
+            "x": 2.2,
+            "y": 0.009600000000000001,
+            "z": 0.048
+          },
+          "yaw_deg": 30,
+          "design_size": 0.22000000000000003,
+          "params_height": 0.003,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 12,
+          "world": {
+            "x": 51.452627944162884,
+            "y": 0.128,
+            "z": -59.68397459621556
+          },
+          "size_world": {
+            "x": 0.06,
+            "y": 0.009600000000000001,
+            "z": 2.2
+          },
+          "yaw_deg": 30,
+          "design_size": 0.006,
+          "params_height": 0.003,
+          "params_depth": 0.275
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 13,
+          "world": {
+            "x": 51.05,
+            "y": 0.128,
+            "z": -58.18134665205268
+          },
+          "size_world": {
+            "x": 2.2,
+            "y": 0.009600000000000001,
+            "z": 0.048
+          },
+          "yaw_deg": 30,
+          "design_size": 0.22000000000000003,
+          "params_height": 0.003,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "charging contact bar",
+          "box_index": 14,
+          "world": {
+            "x": 50.5,
+            "y": 0.128,
+            "z": -59.13397459621556
+          },
+          "size_world": {
+            "x": 1,
+            "y": 0.009600000000000001,
+            "z": 0.112
+          },
+          "yaw_deg": 30,
+          "design_size": 0.1,
+          "params_height": 0.003,
+          "params_depth": 0.014
+        },
+        {
+          "mesh": "charging contact bar",
+          "box_index": 15,
+          "world": {
+            "x": 50.5,
+            "y": 0.128,
+            "z": -59.13397459621556
+          },
+          "size_world": {
+            "x": 0.14,
+            "y": 0.009600000000000001,
+            "z": 0.8
+          },
+          "yaw_deg": 30,
+          "design_size": 0.014,
+          "params_height": 0.003,
+          "params_depth": 0.1
+        },
+        {
+          "mesh": "charger control pedestal 2",
+          "box_index": 16,
+          "world": {
+            "x": 49.48,
+            "y": 0.7360000000000001,
+            "z": -60.90066641993582
+          },
+          "size_world": {
+            "x": 0.5,
+            "y": 1.1199999999999999,
+            "z": 0.416
+          },
+          "yaw_deg": 30,
+          "design_size": 0.05,
+          "params_height": 0.35,
+          "params_depth": 0.052
+        },
+        {
+          "mesh": "charger status display",
+          "box_index": 17,
+          "world": {
+            "x": 49.592,
+            "y": 1.024,
+            "z": -60.7066767294881
+          },
+          "size_world": {
+            "x": 0.36,
+            "y": 0.256,
+            "z": 0.032
+          },
+          "yaw_deg": 30,
+          "design_size": 0.036,
+          "params_height": 0.08,
+          "params_depth": 0.004
+        },
+        {
+          "mesh": "drone charging pad 3",
+          "box_index": 18,
+          "world": {
+            "x": 53.098076211353316,
+            "y": 0.07,
+            "z": -60.63397459621556
+          },
+          "size_world": {
+            "x": 2.6,
+            "y": 0.1,
+            "z": 2.6
+          },
+          "yaw_deg": 30,
+          "design_size": 0.26,
+          "params_height": 0.03125,
+          "params_depth": 0.325
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 19,
+          "world": {
+            "x": 52.14544826719043,
+            "y": 0.128,
+            "z": -60.08397459621556
+          },
+          "size_world": {
+            "x": 0.06,
+            "y": 0.009600000000000001,
+            "z": 2.2
+          },
+          "yaw_deg": 30,
+          "design_size": 0.006,
+          "params_height": 0.003,
+          "params_depth": 0.275
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 20,
+          "world": {
+            "x": 52.54807621135332,
+            "y": 0.128,
+            "z": -61.58660254037844
+          },
+          "size_world": {
+            "x": 2.2,
+            "y": 0.009600000000000001,
+            "z": 0.048
+          },
+          "yaw_deg": 30,
+          "design_size": 0.22000000000000003,
+          "params_height": 0.003,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 21,
+          "world": {
+            "x": 54.0507041555162,
+            "y": 0.128,
+            "z": -61.18397459621556
+          },
+          "size_world": {
+            "x": 0.06,
+            "y": 0.009600000000000001,
+            "z": 2.2
+          },
+          "yaw_deg": 30,
+          "design_size": 0.006,
+          "params_height": 0.003,
+          "params_depth": 0.275
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 22,
+          "world": {
+            "x": 53.64807621135331,
+            "y": 0.128,
+            "z": -59.68134665205268
+          },
+          "size_world": {
+            "x": 2.2,
+            "y": 0.009600000000000001,
+            "z": 0.048
+          },
+          "yaw_deg": 30,
+          "design_size": 0.22000000000000003,
+          "params_height": 0.003,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "charging contact bar",
+          "box_index": 23,
+          "world": {
+            "x": 53.098076211353316,
+            "y": 0.128,
+            "z": -60.63397459621556
+          },
+          "size_world": {
+            "x": 1,
+            "y": 0.009600000000000001,
+            "z": 0.112
+          },
+          "yaw_deg": 30,
+          "design_size": 0.1,
+          "params_height": 0.003,
+          "params_depth": 0.014
+        },
+        {
+          "mesh": "charging contact bar",
+          "box_index": 24,
+          "world": {
+            "x": 53.098076211353316,
+            "y": 0.128,
+            "z": -60.63397459621556
+          },
+          "size_world": {
+            "x": 0.14,
+            "y": 0.009600000000000001,
+            "z": 0.8
+          },
+          "yaw_deg": 30,
+          "design_size": 0.014,
+          "params_height": 0.003,
+          "params_depth": 0.1
+        },
+        {
+          "mesh": "charger control pedestal 3",
+          "box_index": 25,
+          "world": {
+            "x": 52.07807621135331,
+            "y": 0.7360000000000001,
+            "z": -62.40066641993582
+          },
+          "size_world": {
+            "x": 0.5,
+            "y": 1.1199999999999999,
+            "z": 0.416
+          },
+          "yaw_deg": 30,
+          "design_size": 0.05,
+          "params_height": 0.35,
+          "params_depth": 0.052
+        },
+        {
+          "mesh": "charger status display",
+          "box_index": 26,
+          "world": {
+            "x": 52.190076211353315,
+            "y": 1.024,
+            "z": -62.2066767294881
+          },
+          "size_world": {
+            "x": 0.36,
+            "y": 0.256,
+            "z": 0.032
+          },
+          "yaw_deg": 30,
+          "design_size": 0.036,
+          "params_height": 0.08,
+          "params_depth": 0.004
+        },
+        {
+          "mesh": "equipment canopy column",
+          "box_index": 27,
+          "world": {
+            "x": 44.59609076372691,
+            "y": 1.2800000000000002,
+            "z": -60.759845356715715
+          },
+          "size_world": {
+            "x": 0.22999999999999998,
+            "y": 2.368,
+            "z": 0.184
+          },
+          "yaw_deg": 30,
+          "design_size": 0.023,
+          "params_height": 0.74,
+          "params_depth": 0.023
+        },
+        {
+          "mesh": "equipment canopy column",
+          "box_index": 28,
+          "world": {
+            "x": 45.31609076372691,
+            "y": 1.2800000000000002,
+            "z": -59.512768775266125
+          },
+          "size_world": {
+            "x": 0.22999999999999998,
+            "y": 2.368,
+            "z": 0.184
+          },
+          "yaw_deg": 30,
+          "design_size": 0.023,
+          "params_height": 0.74,
+          "params_depth": 0.023
+        },
+        {
+          "mesh": "equipment canopy column",
+          "box_index": 29,
+          "world": {
+            "x": 52.04390923627309,
+            "y": 1.2800000000000002,
+            "z": -65.05984535671571
+          },
+          "size_world": {
+            "x": 0.22999999999999998,
+            "y": 2.368,
+            "z": 0.184
+          },
+          "yaw_deg": 30,
+          "design_size": 0.023,
+          "params_height": 0.74,
+          "params_depth": 0.023
+        },
+        {
+          "mesh": "equipment canopy column",
+          "box_index": 30,
+          "world": {
+            "x": 52.763909236273086,
+            "y": 1.2800000000000002,
+            "z": -63.81276877526612
+          },
+          "size_world": {
+            "x": 0.22999999999999998,
+            "y": 2.368,
+            "z": 0.184
+          },
+          "yaw_deg": 30,
+          "design_size": 0.023,
+          "params_height": 0.74,
+          "params_depth": 0.023
+        },
+        {
+          "mesh": "solar equipment canopy",
+          "box_index": 31,
+          "world": {
+            "x": 48.68,
+            "y": 2.5280000000000005,
+            "z": -62.28630706599092
+          },
+          "size_world": {
+            "x": 9.1,
+            "y": 0.128,
+            "z": 1.92
+          },
+          "yaw_deg": 30,
+          "design_size": 0.91,
+          "params_height": 0.04,
+          "params_depth": 0.24
+        },
+        {
+          "mesh": "canopy illuminated fascia",
+          "box_index": 32,
+          "world": {
+            "x": 49.164,
+            "y": 2.4416,
+            "z": -61.44799447512758
+          },
+          "size_world": {
+            "x": 8.9,
+            "y": 0.038400000000000004,
+            "z": 0.072
+          },
+          "yaw_deg": 30,
+          "design_size": 0.89,
+          "params_height": 0.012,
+          "params_depth": 0.009
+        },
+        {
+          "mesh": "solar panel",
+          "box_index": 33,
+          "world": {
+            "x": 46.081923788646684,
+            "y": 2.6144,
+            "z": -60.78630706599092
+          },
+          "size_world": {
+            "x": 1.7000000000000002,
+            "y": 0.0288,
+            "z": 1.44
+          },
+          "yaw_deg": 30,
+          "design_size": 0.17,
+          "params_height": 0.009,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel divider",
+          "box_index": 34,
+          "world": {
+            "x": 46.818045381863456,
+            "y": 2.6176,
+            "z": -61.211307065990916
+          },
+          "size_world": {
+            "x": 0.05,
+            "y": 0.0352,
+            "z": 1.44
+          },
+          "yaw_deg": 30,
+          "design_size": 0.005,
+          "params_height": 0.011,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel",
+          "box_index": 35,
+          "world": {
+            "x": 47.81397459621556,
+            "y": 2.6144,
+            "z": -61.78630706599092
+          },
+          "size_world": {
+            "x": 1.7000000000000002,
+            "y": 0.0288,
+            "z": 1.44
+          },
+          "yaw_deg": 30,
+          "design_size": 0.17,
+          "params_height": 0.009,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel divider",
+          "box_index": 36,
+          "world": {
+            "x": 48.55009618943233,
+            "y": 2.6176,
+            "z": -62.211307065990916
+          },
+          "size_world": {
+            "x": 0.05,
+            "y": 0.0352,
+            "z": 1.44
+          },
+          "yaw_deg": 30,
+          "design_size": 0.005,
+          "params_height": 0.011,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel",
+          "box_index": 37,
+          "world": {
+            "x": 49.54602540378444,
+            "y": 2.6144,
+            "z": -62.78630706599092
+          },
+          "size_world": {
+            "x": 1.7000000000000002,
+            "y": 0.0288,
+            "z": 1.44
+          },
+          "yaw_deg": 30,
+          "design_size": 0.17,
+          "params_height": 0.009,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel divider",
+          "box_index": 38,
+          "world": {
+            "x": 50.28214699700121,
+            "y": 2.6176,
+            "z": -63.211307065990916
+          },
+          "size_world": {
+            "x": 0.05,
+            "y": 0.0352,
+            "z": 1.44
+          },
+          "yaw_deg": 30,
+          "design_size": 0.005,
+          "params_height": 0.011,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel",
+          "box_index": 39,
+          "world": {
+            "x": 51.278076211353316,
+            "y": 2.6144,
+            "z": -63.78630706599092
+          },
+          "size_world": {
+            "x": 1.7000000000000002,
+            "y": 0.0288,
+            "z": 1.44
+          },
+          "yaw_deg": 30,
+          "design_size": 0.17,
+          "params_height": 0.009,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel divider",
+          "box_index": 40,
+          "world": {
+            "x": 52.01419780457009,
+            "y": 2.6176,
+            "z": -64.21130706599092
+          },
+          "size_world": {
+            "x": 0.05,
+            "y": 0.0352,
+            "z": 1.44
+          },
+          "yaw_deg": 30,
+          "design_size": 0.005,
+          "params_height": 0.011,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "power conversion cabinet",
+          "box_index": 41,
+          "world": {
+            "x": 51.79769145362398,
+            "y": 1.056,
+            "z": -64.08630706599092
+          },
+          "size_world": {
+            "x": 1,
+            "y": 1.7920000000000003,
+            "z": 0.64
+          },
+          "yaw_deg": 30,
+          "design_size": 0.1,
+          "params_height": 0.56,
+          "params_depth": 0.08
+        },
+        {
+          "mesh": "power cabinet status strip",
+          "box_index": 42,
+          "world": {
+            "x": 51.96569145362398,
+            "y": 1.6960000000000002,
+            "z": -63.795322530319346
+          },
+          "size_world": {
+            "x": 0.8,
+            "y": 0.0576,
+            "z": 0.032
+          },
+          "yaw_deg": 30,
+          "design_size": 0.08,
+          "params_height": 0.018,
+          "params_depth": 0.004
+        },
+        {
+          "mesh": "station wayfinding pylon",
+          "box_index": 43,
+          "world": {
+            "x": 53.423716857408415,
+            "y": 1.536,
+            "z": -63.26994845223857
+          },
+          "size_world": {
+            "x": 0.6,
+            "y": 2.72,
+            "z": 0.6
+          },
+          "yaw_deg": 30,
+          "design_size": 0.06,
+          "params_height": 0.85,
+          "params_depth": 0.075
+        },
+        {
+          "mesh": "station wayfinding light",
+          "box_index": 44,
+          "world": {
+            "x": 53.423716857408415,
+            "y": 2.4320000000000004,
+            "z": -63.26994845223857
+          },
+          "size_world": {
+            "x": 0.55,
+            "y": 0.44800000000000006,
+            "z": 0.624
+          },
+          "yaw_deg": 30,
+          "design_size": 0.055,
+          "params_height": 0.14,
+          "params_depth": 0.078
+        }
+      ]
+    },
+    {
+      "case_id": "ch_ground_1pad_rot90",
+      "facility": {
+        "id": "ch-ground-1",
+        "name": "Charger 1",
+        "kind": "charger",
+        "placement": "ground",
+        "buildingId": null,
+        "supportHeightM": null,
+        "position": {
+          "x": -40,
+          "z": 5
+        },
+        "rotationDeg": 90,
+        "widthM": 10,
+        "depthM": 8,
+        "heightM": 3.2,
+        "design": {
+          "widthM": 10,
+          "heightM": 3.2,
+          "depthM": 8
+        },
+        "landing": null,
+        "cargo": null,
+        "charging": {
+          "slots": 1,
+          "powerW": 7500,
+          "priceAmount": 0.8,
+          "priceCurrency": "USD",
+          "priceUnit": "kWh"
+        }
+      },
+      "local_pads": [
+        {
+          "x": 0,
+          "y": 0.12,
+          "z": 1,
+          "widthM": 2.2,
+          "depthM": 2.2
+        }
+      ],
+      "pads": [
+        {
+          "facility_id": "ch-ground-1",
+          "pad_index": 0,
+          "x": -39,
+          "y": 0.12,
+          "z": 5,
+          "width_m": 2.2,
+          "depth_m": 2.2,
+          "rotation_deg": 90,
+          "frame": "scene_east_south_m"
+        }
+      ],
+      "bodies": [
+        {
+          "mesh": "drone charging pad 1",
+          "box_index": 0,
+          "world": {
+            "x": -39,
+            "y": 0.07,
+            "z": 5
+          },
+          "size_world": {
+            "x": 2.6,
+            "y": 0.1,
+            "z": 2.6
+          },
+          "yaw_deg": 90,
+          "design_size": 0.26,
+          "params_height": 0.03125,
+          "params_depth": 0.325
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 1,
+          "world": {
+            "x": -39,
+            "y": 0.128,
+            "z": 6.1000000000000005
+          },
+          "size_world": {
+            "x": 0.06,
+            "y": 0.009600000000000001,
+            "z": 2.2
+          },
+          "yaw_deg": 90,
+          "design_size": 0.006,
+          "params_height": 0.003,
+          "params_depth": 0.275
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 2,
+          "world": {
+            "x": -40.1,
+            "y": 0.128,
+            "z": 5
+          },
+          "size_world": {
+            "x": 2.2,
+            "y": 0.009600000000000001,
+            "z": 0.048
+          },
+          "yaw_deg": 90,
+          "design_size": 0.22000000000000003,
+          "params_height": 0.003,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 3,
+          "world": {
+            "x": -39,
+            "y": 0.128,
+            "z": 3.9000000000000004
+          },
+          "size_world": {
+            "x": 0.06,
+            "y": 0.009600000000000001,
+            "z": 2.2
+          },
+          "yaw_deg": 90,
+          "design_size": 0.006,
+          "params_height": 0.003,
+          "params_depth": 0.275
+        },
+        {
+          "mesh": "charging clearance boundary",
+          "box_index": 4,
+          "world": {
+            "x": -37.9,
+            "y": 0.128,
+            "z": 5.000000000000001
+          },
+          "size_world": {
+            "x": 2.2,
+            "y": 0.009600000000000001,
+            "z": 0.048
+          },
+          "yaw_deg": 90,
+          "design_size": 0.22000000000000003,
+          "params_height": 0.003,
+          "params_depth": 0.006
+        },
+        {
+          "mesh": "charging contact bar",
+          "box_index": 5,
+          "world": {
+            "x": -39,
+            "y": 0.128,
+            "z": 5
+          },
+          "size_world": {
+            "x": 1,
+            "y": 0.009600000000000001,
+            "z": 0.112
+          },
+          "yaw_deg": 90,
+          "design_size": 0.1,
+          "params_height": 0.003,
+          "params_depth": 0.014
+        },
+        {
+          "mesh": "charging contact bar",
+          "box_index": 6,
+          "world": {
+            "x": -39,
+            "y": 0.128,
+            "z": 5
+          },
+          "size_world": {
+            "x": 0.14,
+            "y": 0.009600000000000001,
+            "z": 0.8
+          },
+          "yaw_deg": 90,
+          "design_size": 0.014,
+          "params_height": 0.003,
+          "params_depth": 0.1
+        },
+        {
+          "mesh": "charger control pedestal 1",
+          "box_index": 7,
+          "world": {
+            "x": -41.04,
+            "y": 0.7360000000000001,
+            "z": 5
+          },
+          "size_world": {
+            "x": 0.5,
+            "y": 1.1199999999999999,
+            "z": 0.416
+          },
+          "yaw_deg": 90,
+          "design_size": 0.05,
+          "params_height": 0.35,
+          "params_depth": 0.052
+        },
+        {
+          "mesh": "charger status display",
+          "box_index": 8,
+          "world": {
+            "x": -40.816,
+            "y": 1.024,
+            "z": 5
+          },
+          "size_world": {
+            "x": 0.36,
+            "y": 0.256,
+            "z": 0.032
+          },
+          "yaw_deg": 90,
+          "design_size": 0.036,
+          "params_height": 0.08,
+          "params_depth": 0.004
+        },
+        {
+          "mesh": "equipment canopy column",
+          "box_index": 9,
+          "world": {
+            "x": -43.36,
+            "y": 1.2800000000000002,
+            "z": 9.299999999999999
+          },
+          "size_world": {
+            "x": 0.22999999999999998,
+            "y": 2.368,
+            "z": 0.184
+          },
+          "yaw_deg": 90,
+          "design_size": 0.023,
+          "params_height": 0.74,
+          "params_depth": 0.023
+        },
+        {
+          "mesh": "equipment canopy column",
+          "box_index": 10,
+          "world": {
+            "x": -41.92,
+            "y": 1.2800000000000002,
+            "z": 9.3
+          },
+          "size_world": {
+            "x": 0.22999999999999998,
+            "y": 2.368,
+            "z": 0.184
+          },
+          "yaw_deg": 90,
+          "design_size": 0.023,
+          "params_height": 0.74,
+          "params_depth": 0.023
+        },
+        {
+          "mesh": "equipment canopy column",
+          "box_index": 11,
+          "world": {
+            "x": -43.36,
+            "y": 1.2800000000000002,
+            "z": 0.6999999999999993
+          },
+          "size_world": {
+            "x": 0.22999999999999998,
+            "y": 2.368,
+            "z": 0.184
+          },
+          "yaw_deg": 90,
+          "design_size": 0.023,
+          "params_height": 0.74,
+          "params_depth": 0.023
+        },
+        {
+          "mesh": "equipment canopy column",
+          "box_index": 12,
+          "world": {
+            "x": -41.92,
+            "y": 1.2800000000000002,
+            "z": 0.7000000000000002
+          },
+          "size_world": {
+            "x": 0.22999999999999998,
+            "y": 2.368,
+            "z": 0.184
+          },
+          "yaw_deg": 90,
+          "design_size": 0.023,
+          "params_height": 0.74,
+          "params_depth": 0.023
+        },
+        {
+          "mesh": "solar equipment canopy",
+          "box_index": 13,
+          "world": {
+            "x": -42.64,
+            "y": 2.5280000000000005,
+            "z": 4.999999999999999
+          },
+          "size_world": {
+            "x": 9.1,
+            "y": 0.128,
+            "z": 1.92
+          },
+          "yaw_deg": 90,
+          "design_size": 0.91,
+          "params_height": 0.04,
+          "params_depth": 0.24
+        },
+        {
+          "mesh": "canopy illuminated fascia",
+          "box_index": 14,
+          "world": {
+            "x": -41.672,
+            "y": 2.4416,
+            "z": 5
+          },
+          "size_world": {
+            "x": 8.9,
+            "y": 0.038400000000000004,
+            "z": 0.072
+          },
+          "yaw_deg": 90,
+          "design_size": 0.89,
+          "params_height": 0.012,
+          "params_depth": 0.009
+        },
+        {
+          "mesh": "solar panel",
+          "box_index": 15,
+          "world": {
+            "x": -42.64,
+            "y": 2.6144,
+            "z": 8
+          },
+          "size_world": {
+            "x": 1.7000000000000002,
+            "y": 0.0288,
+            "z": 1.44
+          },
+          "yaw_deg": 90,
+          "design_size": 0.17,
+          "params_height": 0.009,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel divider",
+          "box_index": 16,
+          "world": {
+            "x": -42.64,
+            "y": 2.6176,
+            "z": 7.149999999999999
+          },
+          "size_world": {
+            "x": 0.05,
+            "y": 0.0352,
+            "z": 1.44
+          },
+          "yaw_deg": 90,
+          "design_size": 0.005,
+          "params_height": 0.011,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel",
+          "box_index": 17,
+          "world": {
+            "x": -42.64,
+            "y": 2.6144,
+            "z": 5.999999999999999
+          },
+          "size_world": {
+            "x": 1.7000000000000002,
+            "y": 0.0288,
+            "z": 1.44
+          },
+          "yaw_deg": 90,
+          "design_size": 0.17,
+          "params_height": 0.009,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel divider",
+          "box_index": 18,
+          "world": {
+            "x": -42.64,
+            "y": 2.6176,
+            "z": 5.1499999999999995
+          },
+          "size_world": {
+            "x": 0.05,
+            "y": 0.0352,
+            "z": 1.44
+          },
+          "yaw_deg": 90,
+          "design_size": 0.005,
+          "params_height": 0.011,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel",
+          "box_index": 19,
+          "world": {
+            "x": -42.64,
+            "y": 2.6144,
+            "z": 3.999999999999999
+          },
+          "size_world": {
+            "x": 1.7000000000000002,
+            "y": 0.0288,
+            "z": 1.44
+          },
+          "yaw_deg": 90,
+          "design_size": 0.17,
+          "params_height": 0.009,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel divider",
+          "box_index": 20,
+          "world": {
+            "x": -42.64,
+            "y": 2.6176,
+            "z": 3.1499999999999995
+          },
+          "size_world": {
+            "x": 0.05,
+            "y": 0.0352,
+            "z": 1.44
+          },
+          "yaw_deg": 90,
+          "design_size": 0.005,
+          "params_height": 0.011,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel",
+          "box_index": 21,
+          "world": {
+            "x": -42.64,
+            "y": 2.6144,
+            "z": 1.9999999999999996
+          },
+          "size_world": {
+            "x": 1.7000000000000002,
+            "y": 0.0288,
+            "z": 1.44
+          },
+          "yaw_deg": 90,
+          "design_size": 0.17,
+          "params_height": 0.009,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "solar panel divider",
+          "box_index": 22,
+          "world": {
+            "x": -42.64,
+            "y": 2.6176,
+            "z": 1.1499999999999995
+          },
+          "size_world": {
+            "x": 0.05,
+            "y": 0.0352,
+            "z": 1.44
+          },
+          "yaw_deg": 90,
+          "design_size": 0.005,
+          "params_height": 0.011,
+          "params_depth": 0.18
+        },
+        {
+          "mesh": "power conversion cabinet",
+          "box_index": 23,
+          "world": {
+            "x": -42.64,
+            "y": 1.056,
+            "z": 1.4
+          },
+          "size_world": {
+            "x": 1,
+            "y": 1.7920000000000003,
+            "z": 0.64
+          },
+          "yaw_deg": 90,
+          "design_size": 0.1,
+          "params_height": 0.56,
+          "params_depth": 0.08
+        },
+        {
+          "mesh": "power cabinet status strip",
+          "box_index": 24,
+          "world": {
+            "x": -42.304,
+            "y": 1.6960000000000002,
+            "z": 1.4
+          },
+          "size_world": {
+            "x": 0.8,
+            "y": 0.0576,
+            "z": 0.032
+          },
+          "yaw_deg": 90,
+          "design_size": 0.08,
+          "params_height": 0.018,
+          "params_depth": 0.004
+        },
+        {
+          "mesh": "station wayfinding pylon",
+          "box_index": 25,
+          "world": {
+            "x": -41.12,
+            "y": 1.536,
+            "z": 0.39999999999999947
+          },
+          "size_world": {
+            "x": 0.6,
+            "y": 2.72,
+            "z": 0.6
+          },
+          "yaw_deg": 90,
+          "design_size": 0.06,
+          "params_height": 0.85,
+          "params_depth": 0.075
+        },
+        {
+          "mesh": "station wayfinding light",
+          "box_index": 26,
+          "world": {
+            "x": -41.12,
+            "y": 2.4320000000000004,
+            "z": 0.39999999999999947
+          },
+          "size_world": {
+            "x": 0.55,
+            "y": 0.44800000000000006,
+            "z": 0.624
+          },
+          "yaw_deg": 90,
+          "design_size": 0.055,
+          "params_height": 0.14,
+          "params_depth": 0.078
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 8aadc9a..8a14552 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -29,7 +29,12 @@ set(EXAMPLE_HEADER ${CMAKE_CURRENT_BINARY_DIR}/include/mavlink/${MAVLINK_DIALECT
+
+ add_custom_command(OUTPUT ${EXAMPLE_HEADER}
+     COMMAND ${Python_EXECUTABLE}
+-        -m pip install -r pymavlink/requirements.txt --upgrade -t ${CMAKE_CURRENT_BINARY_DIR}/pip-dependencies/
++        -m pip install
++        --require-hashes
++        --no-index
++        --find-links=/opt/sources/pymavlink-wheels
++        -r /opt/sources/pymavlink-build-requirements.lock
++        --target ${CMAKE_CURRENT_BINARY_DIR}/pip-dependencies/
+         COMMAND ${CMAKE_COMMAND} -E env "PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}/pip-dependencies/" ${Python_EXECUTABLE}
+         -m pymavlink.tools.mavgen
+         --lang=C

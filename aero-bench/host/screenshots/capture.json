@@ -1,0 +1,40 @@
+{
+  "capturedAt": "2026-10-05T09:06:50.093Z",
+  "tool": "playwright (existing frontend/node_modules + cached chromium); no installs, no new external models",
+  "base": "http://127.0.0.1:4418",
+  "allScreenshotsUse": "DEMO feed: authored demo motion + labelled demo parcel/custody/rule evidence (authority host-demo-evidence)",
+  "realBenchMotion": false,
+  "realBenchMotionReason": "no sealed public replay artifact exists in this workspace; the ?source= loader reports the missing source and falls back to the demo feed (visible in the source-mode bar of bench-motion-zh.png)",
+  "files": {
+    "host-demo-zh.png": {
+      "language": "zh",
+      "tick": 44,
+      "stale": null,
+      "selection": "parcel.p1042",
+      "generation": 1,
+      "epoch": "demo.epoch.1",
+      "ruleTruth": "真",
+      "stateBanner": "悬停等待",
+      "identityComplete": true,
+      "evidence": "demo"
+    },
+    "host-demo-en.png": {
+      "language": "en",
+      "tick": 44,
+      "ruleTruth": "True",
+      "stateBanner": "Holding position",
+      "custody": "Custody confirmedCurrent custodian @ 00:29.0",
+      "evidence": "demo"
+    },
+    "bench-motion-zh.png": {
+      "language": "zh",
+      "sourceMode": "真实回放加载失败：Failed to fetch dynamically imported module: http://127.0.0.1:4418/@bench/trace.ts（演示证据继续可用）",
+      "tick": 0,
+      "ownsCursor": true,
+      "evidence": "demo (fallback; no replay artifact available)"
+    }
+  },
+  "pageErrors": [
+    "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ]
+}
