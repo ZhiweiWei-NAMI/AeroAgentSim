@@ -52,6 +52,35 @@ export const HOST_DEMO_AUTHORITY = 'host-demo-evidence';
  */
 export const UNKNOWN_IDENTITY = 'UNKNOWN';
 
+/**
+ * Typed feed-identity markers for the scene-state feed (PR12 truth-in-source
+ * pass). 'demo' marks an authored feed (demo.motion samples); 'bench' is set
+ * only by an actual sealed BENCH replay loader. The view renders the fed
+ * identity verbatim; nothing infers it from ids, digests or provider names.
+ */
+export const FEED_MOTION_DEMO = 'demo';
+export const FEED_MOTION_BENCH = 'bench';
+
+/**
+ * Explicit causal response reference, carried on an event record when — and
+ * only when — the source declares one. Fields (all optional, all typed):
+ * - response_rule_id: the rule this event claims to respond to (exact string)
+ * - response_flip_time_seconds: the truth-flip instant it claims to answer
+ * Ingestion validates the shape and preserves both fields verbatim. Nothing
+ * infers causality from event kind, timing or proximity; the view may present
+ * an event as a rule response only when it declares a matching explicit
+ * reference (see view.js). Absent fields render as an unbound response.
+ */
+export const EVENT_RESPONSE_REF_FIELDS = ['response_rule_id', 'response_flip_time_seconds'];
+
+function optionalTimeString(value, what) {
+  if (value === undefined || value === null) return null;
+  if (!Number.isFinite(value)) {
+    throw new TypeError(`${what} must be a finite number of seconds when supplied`);
+  }
+  return value;
+}
+
 const isPlainObject = value =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -488,6 +517,15 @@ function assertEventEvidence(event) {
     throw new TypeError(`event ${event.event_id} entity_ids must be an array`);
   }
   for (const id of event.entity_ids) contractEntityId(id);
+  // Explicit causal reference (typed, optional, preserved verbatim). An event
+  // without one is never presented as a rule response; see EVENT_RESPONSE_REF_FIELDS.
+  const responseRuleId = event.response_rule_id;
+  if (responseRuleId !== undefined && responseRuleId !== null &&
+      (typeof responseRuleId !== 'string' || !responseRuleId.trim())) {
+    throw new TypeError(`event ${event.event_id} response_rule_id must be a nonempty string when supplied`);
+  }
+  const responseFlip = optionalTimeString(
+    event.response_flip_time_seconds, `event ${event.event_id} response_flip_time_seconds`);
   return Object.freeze({
     id: event.event_id,
     time: event.time_seconds,
@@ -497,6 +535,8 @@ function assertEventEvidence(event) {
     from: event.from_id ?? null,
     to: event.to_id ?? null,
     dependsOn: Array.isArray(event.depends_on) ? Object.freeze([...event.depends_on]) : null,
+    responseRuleId: responseRuleId ?? null,
+    responseFlipTime: responseFlip,
     provenance: event.provenance ?? 'demo',
     authority: event.authority ?? HOST_DEMO_AUTHORITY,
   });
@@ -863,6 +903,9 @@ export function projectHostViewFrame(scene, frameEvidence, ruleEvidence, options
   const networkUsable = networkRecord !== null && frameEvidence.context.runId === scene.runId &&
     isAvailable(networkRecord, scene);
 
+  // Events of this frame's evidence commit, projected once for both the
+  // explicit-response lookup and the frame's event list.
+  const frameEvents = [...(frameEvidence?.events ?? new Map()).values()];
   const frame = {
     schemaVersion: VIEW_FRAME_SCHEMA,
     // Actual declared identity only; UNKNOWN when undeclared.
@@ -875,19 +918,43 @@ export function projectHostViewFrame(scene, frameEvidence, ruleEvidence, options
     timeSeconds: scene.simTimeNs / 1e9,
     provenance: 'host-projection',
     authority: HOST_DEMO_AUTHORITY,
+    // Typed feed identity for the motion feed, declared by the caller (the
+    // demo page marks its authored feed FEED_MOTION_DEMO; a sealed replay
+    // loader marks FEED_MOTION_BENCH). Never inferred from ids or digests.
+    feedMotion: options.feedMotion === FEED_MOTION_DEMO || options.feedMotion === FEED_MOTION_BENCH
+      ? options.feedMotion
+      : UNKNOWN_IDENTITY,
+    // Explicit availability of parcel/custody evidence, separate from the
+    // motion feed identity: a real-BENCH feed may still have no parcel
+    // evidence at this boundary (it stays unknown, never relabelled).
+    parcelEvidenceKnown: (frameEvidence?.parcels ?? new Map()).size > 0,
     readiness: {
       motion: 'reported',
       network: networkUsable ? 'demo' : 'missing',
       business: 'missing',
     },
-    motionSource: 'bench-scene-state',
+    // (The former frame.motionSource string was superseded by the typed
+    // feedMotion above, which never claims bench for a demo feed.)
     identityComplete: scene.contextDeclared,
+    // The event that explicitly declares itself a response to THIS rule's
+    // flip: response_rule_id must equal the presented rule id and the
+    // declared flip instant must match the rule's lastFlip. Causality is the
+    // source's explicit declaration only — kind, ordering, timing and
+    // proximity infer nothing. null renders as an unbound response (UNKNOWN).
+    ruleResponse: (() => {
+      if (!ruleUsable || ruleRecord.id === null || ruleRecord.lastFlip === null) return null;
+      return frameEvents.find(event =>
+        event.responseRuleId === ruleRecord.id &&
+        event.responseFlipTime !== null &&
+        event.responseFlipTime === ruleRecord.lastFlip &&
+        event.time >= ruleRecord.lastFlip) ?? null;
+    })(),
     entities,
     parcels,
     unresolvedParcelIds,
     routes: frameEvidence?.routes ?? null,
     activeRoute: options.activeRoute ?? null,
-    events: [...(frameEvidence?.events ?? new Map()).values()],
+    events: frameEvents,
     script: options.script ?? [],
     network: networkUsable
       ? {

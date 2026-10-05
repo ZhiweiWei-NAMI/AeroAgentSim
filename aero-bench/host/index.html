@@ -15,8 +15,8 @@
   <div class="header-right">
     <span id="source-mode" class="prototype-pill"></span>
     <div class="language-switch" aria-label="Language">
-      <button data-language="zh" aria-pressed="true">中文</button>
-      <button data-language="en" aria-pressed="false">EN</button>
+      <button data-language="zh" aria-pressed="true" aria-label="中文">中文</button>
+      <button data-language="en" aria-pressed="false" aria-label="English (EN)">EN</button>
     </div>
   </div>
 </header>
@@ -24,12 +24,12 @@
   <div class="fixture-notice">
     <span class="notice-icon">◇</span>
     <span id="fixture-note"></span>
-    <span class="run-label">HOST · ONE CLOCK · NO FIXTURE IMPORT</span>
+    <span id="run-label" class="run-label">HOST · ONE CLOCK · SOURCE PENDING</span>
   </div>
   <section class="transport">
     <div class="transport-buttons">
       <button id="play" class="play-button"></button>
-      <button id="reset"></button>
+      <button id="reset" type="button"><span class="button-icon" aria-hidden="true">⏮</span><span id="reset-text">回到起点</span></button>
     </div>
     <div class="time-display"><strong id="time-value">00:00.0</strong><span id="tick-value"></span></div>
     <div class="scrubber">
@@ -43,8 +43,8 @@
     <div><span>Selection context</span><code id="selection-context">—</code></div>
   </section>
   <footer class="app-footer">
-    <span>Host mount example · real BENCH motion via sealed SceneState · parcel/custody/Atlas evidence stays demo or unknown</span>
-    <span>Read-only view · host cursor owns the only clock</span>
+    <span id="footer-source"></span>
+    <span id="footer-clock">Read-only view · host cursor owns the only clock</span>
   </footer>
 </main>
 <script type="module" src="./demo.js"></script>

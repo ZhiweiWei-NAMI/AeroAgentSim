@@ -1,4 +1,4 @@
-# P02 · Isolated BENCH host mounting patch (PR10 revision)
+# P02 · Isolated BENCH host mounting patch (PR12 revision)
 
 An isolated host that mounts the delivered P02 parcel view
 (`validation/p02-parcel-host/source/frontend/parcel-prototype`, commit
@@ -17,7 +17,7 @@ revision of this README mis-cited MIT; the source license is Apache-2.0).
 ```bash
 cd aero-bench/host
 npm start          # http://localhost:4407 (loopback only)
-npm test           # 23 focused node:test regressions
+npm test           # 31 focused node:test regressions
 ```
 
 `npm test` resolves `jsdom` from `aero-bench/frontend/node_modules`
@@ -67,6 +67,53 @@ clone. This export does not include node_modules or prebuilt browser assets.
   from its declared carrier renders with `attachmentInconsistent: true` and no
   attachment instead of rejecting the frame.
 - **Attribution corrected**: Apache-2.0 (was mis-cited MIT), `LICENSE` added.
+
+## What the PR12 revision changed
+
+- **Truth-in-source labelling**: the motion feed carries a typed identity
+  (`FEED_MOTION_DEMO` / `FEED_MOTION_BENCH` / UNKNOWN), declared by the page
+  (`host.view.setFeedMotion`) and never inferred from ids, provider names or
+  digests. The fixture banner, header source badge, run label and footer all
+  render from the ACTUAL feed: the demo page labels everything demo
+  (`demo.motion`), an embedded host declares its BENCH motion source, and an
+  undeclared source renders UNKNOWN. Parcel-evidence status is separate from
+  motion identity (`parcelEvidenceKnown`; a real-BENCH feed has none at this
+  boundary). The former `fixtureNote` that unconditionally claimed real BENCH
+  motion was removed. The scene badge motion text is localized (the raw
+  `motionSourceMixed` key is never displayed).
+- **Explicit causal response only**: events may declare
+  `response_rule_id` + `response_flip_time_seconds` (typed, validated at
+  ingestion, preserved verbatim). The projection exposes `frame.ruleResponse`
+  only when an event explicitly references the PRESENTED rule id AND its
+  declared flip instant equals the rule's `lastFlip` and the response time is
+  not earlier than that flip; kind, ordering, timing
+  and proximity infer nothing. Without such a declaration the response chain
+  node renders its unbound label (zh 响应未绑定 / en Response unbound) while
+  unrelated recent events stay listed in the ledger. The demo ledger declares
+  no causal reference, so the demo page honestly shows an unbound response.
+- **Attachment id shown once**: when the carrier's display name equals its id
+  the attachment cell renders the id once instead of `id · id`, without
+  breaking the id into separate words.
+- **Visible, localized reset control**: the reset button now always has a
+  visible icon + label (`#reset-text`) and an accessible name
+  (`t('resetAccessKey')`), refreshed on language change together with every
+  other feed-status surface.
+- **Accessible language switch**: both language buttons carry `aria-pressed`
+  reflecting the actual page language, re-applied from `pageshow` (bfcache
+  safe), plus explicit `aria-label`s.
+- **Narrow-screen readable cargo IDs**: on ≤850 px viewports stable-ID chips
+  are overlaid on the scene in screen space, using the REAL projected
+  coordinates of drawn entities (viewBox→client mapping incl. letterboxing);
+  unplaced parcels anchor to the explicit unknown list. Chips are select
+  buttons (`data-select`, `aria-pressed`) feeding the same exact-id selection.
+  Screen-space labels are placed without overlapping one another, with a
+  leader to the unchanged source marker. The language controls stay on one line.
+  No coordinate or custody value is fabricated; >850 px renders no overlay.
+- **Collision-aware parcel callout**: the P-1042 callout tries right, left,
+  above, below in PROJECTED space against already-placed label rectangles and
+  takes the first non-colliding slot (desktop tick-44 now places it left of
+  the parcel instead of over the locker label). Presentation only — no data
+  coordinate or custody value changes.
 
 ## Host API
 
@@ -131,6 +178,13 @@ host.getSelection();            // exact run/epoch/revision/frame/generation con
    nothing; an unresolvable custodian renders unknown with the declared value
    still visible (`custodianDeclared`).
 10. Wrong-context evidence is a non-join (not a stale flag) and never renders.
+11. The motion feed identity is typed declared input (`feedMotion`); an
+    undeclared or unknown value renders UNKNOWN, never a real-looking source.
+12. A response binds only to an explicit causal reference
+    (`response_rule_id` + `response_flip_time_seconds` matching the presented
+    rule's flip and response time at or after that flip); otherwise the response node shows its unbound label while
+    recent events stay in the ledger as records.
+13. Clearing selection and an empty frame render without a null-item crash.
 
 ## Demo feed and evidence labelling
 
@@ -138,9 +192,12 @@ The default page feed is DEMO data: authored demo motion (one state per
 second over 0–84 s, including tick 0) plus demo parcel/custody/rule evidence
 carrying `authority: 'host-demo-evidence'` and `demo.*` source pointers. The
 demo scene context is declared explicitly, so all joins are actual-identity.
-`?source=<sealed replay JSON>` is the real-motion path: it parses the sealed
-public trace with the BENCH frontend's own `parsePublicTraceBytes` (SHA-256
-verification) and supplies only motion plus explicitly empty evidence.
+The standalone server does not provide BENCH's TypeScript public-trace parser.
+`?source=<replay JSON>` therefore reports an explicit unavailable-loader error,
+with empty UNKNOWN state; it does not replace the requested source with the
+demo. To show authoritative motion, embed `mountParcelHost` inside BENCH and
+supply actual `SceneState` frames and the host-owned cursor. That live path is
+not demonstrated by these screenshots.
 
 ## Unsupported live sources (precise)
 
@@ -170,8 +227,8 @@ mode, attributes, contacts), stage barriers and receipts. It does NOT publish:
 6. **Model dimensions** — `model_asset_id` is not geometry; body dimensions
    stay null/unknown.
 7. **Sealed replay artifact** — no sealed public replay file exists in this
-   workspace, so no screenshot shows real BENCH motion; the `?source=` path
-   is implemented but unexercised against a real artifact.
+   workspace, so no screenshot shows real BENCH motion. The standalone
+   `?source=` loader is unavailable; the embedded mount API accepts supplied frames.
 
 ## Screenshots
 
@@ -179,25 +236,33 @@ mode, attributes, contacts), stage barriers and receipts. It does NOT publish:
 Chromium (no installs). All four shots are actual page captures of the same
 demo state — demo feed, tick 44, `parcel.p1042` selected (degradation window:
 rule truth 真/True, parcel 悬停等待/Holding position, custodian
-`uav.delivery.alpha`) — under the PR12 light presentation. Regenerate them
-with `node capture.mjs` after installing the sibling frontend dependencies
+`uav.delivery.alpha`, response node unbound/未绑定) — under the PR12 light
+presentation with source-truthful labels. Regenerate them with
+`node capture.mjs` after installing the sibling frontend dependencies
 (or set `P02_PLAYWRIGHT_MODULE` explicitly to an existing Playwright package).
-It starts the host's loopback server on 127.0.0.1 and
-stops it afterward; the capture script installs nothing:
+It starts the host's loopback server on 127.0.0.1 and stops it afterward; the
+capture script installs nothing:
 
 - `host-demo-zh.png` — zh, desktop viewport 1600×1000 @2x
 - `host-demo-en.png` — en, desktop viewport 1600×1000 @2x
-- `host-demo-zh-mobile.png` — zh, mobile viewport 390×844 @2x
-- `host-demo-en-mobile.png` — en, mobile viewport 390×844 @2x
+- `host-demo-zh-mobile.png` — zh, mobile viewport 390×844 @2x (screen-space
+  stable-ID chips overlay the letterboxed scene; single-line language controls)
+- `host-demo-en-mobile.png` — en, mobile viewport 390×844 @2x (same chips)
 - `capture.json` — machine-readable capture record written by `capture.mjs`
-  (tool, per-file page state read back from the live DOM, `pageErrors`,
+  (tool, per-file page state read back from the live DOM — source
+  banner/badge/run-label/footer, `feedMotion`, response node state, visible
+  reset control with its accessible name, `aria-pressed` of both language
+  buttons with measured text-line counts, narrow-screen label bounds and
+  overlap pairs — plus `pageErrors`,
   `realBenchMotion: false` with the reason, and pending visual acceptance)
 
 The earlier `bench-motion-zh.png` (the `?source=` surface with the
 missing-source fallback active, sanitized in the previous export) was removed;
-the `?source=` real-motion path remains implemented but unexercised against a
-real artifact, so no screenshot claims it.
+the standalone `?source=` loader now reports its missing integration explicitly,
+so no screenshot claims real motion.
 
-All screenshots show demo/fixture evidence only. None is real BENCH or Atlas
-runtime evidence. None is visual acceptance: visual acceptance of the PR12
-light style is pending with the parent review.
+All screenshots show demo/fixture evidence only (motion included: the demo
+feed's motion samples are authored `demo.motion` data, labelled as such in the
+banner, source badge, run label, footer and scene badge). None is real BENCH
+or Atlas runtime evidence. None is visual acceptance: visual acceptance of the
+PR12 fixes is pending with the parent review.

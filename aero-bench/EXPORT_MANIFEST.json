@@ -1,6 +1,6 @@
 {
   "schema_version": "aeroagentsim.bench-export.manifest/v1",
-  "generated_utc": "2026-10-05T10:45:20.945804+00:00",
+  "generated_utc": "2026-10-05T11:34:41.330685+00:00",
   "what_this_is": "Curated first-party snapshot of AERO_BENCH source, configuration, tests, docs and build recipes for the monorepo folder aero-bench/ of ZhiweiWei-NAMI/AeroAgentSim. It is a copy, not a git merge: it carries NO AERO_BENCH commit history.",
   "snapshot": {
     "has_git_history": false,
@@ -105,6 +105,10 @@
     {
       "file": "host/ styles, scene, capture driver, screenshots and gallery",
       "change": "Original light presentation pass; four actual demo screenshots; portable explicit Playwright dependency selection. State/evidence/UNKNOWN/single host clock unchanged."
+    },
+    {
+      "file": "host/adapter.js, view.js, demo.js, styles.css, host.test.js, capture.mjs and screenshots",
+      "change": "Focused PR12 corrections: visible reset, one-line language controls, mobile stable-ID labels without overlap, duplicate attachment removal, demo-source status on all surfaces, and explicit response reference with response time at or after the flip. Empty selection/frames are safe. The standalone public-trace loader reports unavailability instead of substituting demo motion. 31 focused tests pass; four actual demo screenshots recaptured; parent visual review pending."
     }
   ],
   "licensing": {
@@ -113,13 +117,16 @@
     "no_other_license_files": "The source repository contains no LICENSE file at its root or in exported directories; none was added."
   },
   "screenshot_status": {
-    "all_demo": true,
-    "real_bench_motion": false,
-    "real_atlas_evidence": false,
-    "visual_acceptance_claimed": false,
-    "gallery_note": "Four actual zh/en desktop/mobile captures of labelled demo/fixture evidence, light PR12 style. No real BENCH motion, Atlas runtime or visual acceptance is claimed.",
-    "presentation": "white/light-gray panels, bright-blue scene; original styling, no WareTrack assets/code",
-    "parent_visual_review": "pending"
+    "source": "Authored demo.motion frames and labelled demo parcel/rule evidence only; no real BENCH or Atlas execution claim.",
+    "capture_record": "host/screenshots/capture.json",
+    "views": [
+      "host-demo-zh.png",
+      "host-demo-en.png",
+      "host-demo-zh-mobile.png",
+      "host-demo-en-mobile.png"
+    ],
+    "focused_tests_passed": 31,
+    "visual_acceptance": "pending_parent_review"
   },
   "files": [
     {
@@ -128,11 +135,11 @@
     },
     {
       "path": "EXPORT_MANIFEST.json",
-      "bytes": 115409
+      "bytes": 115962
     },
     {
       "path": "EXPORT_README.md",
-      "bytes": 10158
+      "bytes": 10778
     },
     {
       "path": "README.md",
@@ -3524,31 +3531,31 @@
     },
     {
       "path": "host/README.md",
-      "bytes": 10950
+      "bytes": 15423
     },
     {
       "path": "host/adapter.js",
-      "bytes": 42759
+      "bytes": 46482
     },
     {
       "path": "host/capture.mjs",
-      "bytes": 6503
+      "bytes": 10647
     },
     {
       "path": "host/demo.js",
-      "bytes": 15829
+      "bytes": 16805
     },
     {
       "path": "host/host.test.js",
-      "bytes": 32504
+      "bytes": 42375
     },
     {
       "path": "host/i18n.js",
-      "bytes": 13791
+      "bytes": 16185
     },
     {
       "path": "host/index.html",
-      "bytes": 2002
+      "bytes": 2091
     },
     {
       "path": "host/mount.js",
@@ -3560,27 +3567,27 @@
     },
     {
       "path": "host/scene.js",
-      "bytes": 9248
+      "bytes": 11116
     },
     {
       "path": "host/screenshots/capture.json",
-      "bytes": 3167
+      "bytes": 12771
     },
     {
       "path": "host/screenshots/host-demo-en-mobile.png",
-      "bytes": 544419
+      "bytes": 576996
     },
     {
       "path": "host/screenshots/host-demo-en.png",
-      "bytes": 561110
+      "bytes": 568911
     },
     {
       "path": "host/screenshots/host-demo-zh-mobile.png",
-      "bytes": 510229
+      "bytes": 544646
     },
     {
       "path": "host/screenshots/host-demo-zh.png",
-      "bytes": 562014
+      "bytes": 578115
     },
     {
       "path": "host/server.mjs",
@@ -3588,11 +3595,11 @@
     },
     {
       "path": "host/styles.css",
-      "bytes": 12343
+      "bytes": 14079
     },
     {
       "path": "host/view.js",
-      "bytes": 13111
+      "bytes": 20603
     },
     {
       "path": "pyproject.toml",
@@ -4832,5 +4839,5 @@
     }
   ],
   "file_count": 1177,
-  "total_bytes": 23047812
+  "total_bytes": 23186251
 }

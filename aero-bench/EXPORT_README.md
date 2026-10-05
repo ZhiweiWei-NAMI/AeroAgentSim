@@ -156,6 +156,15 @@ demo-vs-real-motion boundary. **The host clock is supplied by BENCH** (the host
 replay cursor); the demo page's transport controls drive only the local view
 cursor, never a simulation.
 
+The focused PR12 correction adds visible reset controls, single-line language
+switches, readable mobile IDs, nonoverlapping labels and honest source status.
+A causal response needs an explicit reference to the shown flip and a response
+time at or after it. Unrelated custody records remain in the ledger; they are
+not displayed as causal responses. All 31 focused host tests pass.
+The standalone host has no BENCH public-trace loader: `?source=` fails visibly
+instead of substituting demo data. Actual frames must enter through the embedded
+mount API. Screenshots remain demo-only and await the parent's visual review.
+
 ## Screenshots (demo/fixture only)
 
 All images below are **authored demo/fixture screenshots of the P02 host-mount

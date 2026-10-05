@@ -25,6 +25,8 @@ main{max-width:1660px;padding:0 30px 25px;margin:0 auto}
 .transport{display:flex;align-items:center;gap:18px;padding:16px 18px;border:1px solid var(--border);border-radius:10px;background:var(--surface);margin-bottom:18px;flex-wrap:wrap}
 .transport-buttons{display:flex;gap:9px}
 .play-button{min-width:96px;font-weight:600}
+#reset{display:inline-flex;align-items:center}
+.button-icon{margin-right:6px}
 .time-display{display:flex;flex-direction:column;min-width:110px}
 .time-display strong{font-size:21px;font-variant-numeric:tabular-nums;color:var(--ink)}
 .time-display span{font-size:10px;color:var(--muted-2);letter-spacing:.05em}
@@ -44,6 +46,16 @@ main{max-width:1660px;padding:0 30px 25px;margin:0 auto}
 .scene-badge-divider{opacity:.5}
 .status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block}
 .scene-footer{position:absolute;left:14px;bottom:12px;font-size:9px;color:var(--muted-2)}
+/* Screen-space stable-ID chips over the letterboxed scene (max-width:850px
+   only). Real projected coordinates; nothing about the data changes. */
+.scene-label-overlay{position:absolute;inset:0;pointer-events:none;display:none}
+.scene-label-overlay.active{display:block}
+.scene-label-chip{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;display:flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:6px;background:#fffffff2;padding:3px 7px;font-size:10px;line-height:1.2;text-align:left;box-shadow:0 1px 2px #0f27401a}
+.scene-label-chip b{font-size:10px;color:var(--ink);white-space:nowrap}
+.scene-label-chip code{font-size:9px;color:#1d4ed8;white-space:nowrap}
+.scene-label-chip.selected{border-color:var(--accent);background:var(--accent-soft)}
+.scene-label-chip.parcel b{color:#8a611b}
+.scene-label-chip.unknown{border-style:dashed;border-color:#d9c1a1;background:#fdf6e6f2}
 .workflow{display:flex;border-top:1px solid var(--border)}
 .workflow-step{flex:1;border:0;border-right:1px solid var(--border-soft);border-radius:0;background:var(--surface-alt);color:var(--muted);display:flex;flex-direction:column;gap:3px;align-items:flex-start;padding:11px 12px;font-size:10px;line-height:1.5}
 .workflow-step:last-child{border-right:0}
@@ -120,3 +132,11 @@ main{max-width:1660px;padding:0 30px 25px;margin:0 auto}
 
 /* PR10: visible incomplete-identity notice (epoch/generation UNKNOWN). */
 .identity-note{margin:0 0 14px;padding:10px 14px;border:1px solid #f0dcae;border-radius:8px;background:#fdf6e6;color:#8a611b;font-size:11px;line-height:1.6}
+
+/* Readable controls and IDs, independent of the SVG's letterbox scale. */
+.language-switch{flex-shrink:0}
+.language-switch button{min-width:42px;flex-shrink:0;white-space:nowrap;word-break:normal;overflow-wrap:normal;writing-mode:horizontal-tb;display:inline-flex;justify-content:center;align-items:center}
+.state-fields [data-field="attachment"] dd{word-break:normal;overflow-wrap:normal;white-space:nowrap;overflow-x:auto}
+.scene-label-chip{transform:none;flex-direction:column;align-items:flex-start;gap:1px;font-size:12px;max-width:190px}
+.scene-label-chip b,.scene-label-chip code{font-size:12px;line-height:1.35}
+.scene-label-leader{position:absolute;height:1px;background:#2563eb88;transform-origin:0 0;pointer-events:none}

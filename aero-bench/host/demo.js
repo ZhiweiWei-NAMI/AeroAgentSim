@@ -18,6 +18,7 @@
 // of the AERO-BENCH workspace.
 import { mountParcelHost } from './mount.js';
 import { translator } from './i18n.js';
+import { FEED_MOTION_DEMO, FEED_MOTION_BENCH, UNKNOWN_IDENTITY } from './adapter.js';
 
 const APP_RUN_ID = 'a'.repeat(64);
 const APP_SCENARIO = 'b'.repeat(64);
@@ -251,32 +252,12 @@ function pushDemoTimeline() {
 }
 
 // ---------------------------------------------------------------------
-// Feed B: real BENCH motion from a sealed public replay (?source=...).
-// Parcel/custody/Atlas evidence stays explicitly unavailable in this mode:
-// the public contract publishes none of it, so nothing is invented here.
-// The empty frame evidence carries the real trace's run identity so the
-// evidence context stays exact; epoch/generation remain undeclared (UNKNOWN).
+// The standalone server cannot import BENCH's TypeScript replay parser.
+// Authoritative frames must be supplied through the embedded host mount API.
+// A requested source fails explicitly rather than substituting demo motion.
 // ---------------------------------------------------------------------
-async function loadRealReplay(url) {
-  const traceMod = await import('/@bench/trace.ts');
-  const { parsePublicTraceBytes } = traceMod;
-  const bytes = await (await fetch(url)).arrayBuffer();
-  const trace = parsePublicTraceBytes(bytes);
-  const ticks = [...new Set(trace.scene_states.map(s => s.at.tick))].sort((a, b) => a - b);
-  const byTick = new Map(trace.scene_states.map(s => [s.at.tick, s]));
-  for (const tick of ticks) {
-    const state = byTick.get(tick);
-    host.pushSceneState(state);
-    // No parcel/rule evidence exists in the public contract: leave the
-    // production parcel input unavailable and the panels unknown.
-    host.setEvidence({
-      schema_version: 'p02.parcel-host.frame-evidence/v2',
-      context: { run_id: trace.run_id, epoch: 'UNKNOWN', generation: 'UNKNOWN', revision: 'UNKNOWN' },
-      evidence: { parcels: [], stations: [], events: [] },
-    });
-  }
-  document.getElementById('source-mode').textContent =
-    language === 'zh' ? `来源：真实 BENCH 回放 · ${ticks.length} 帧 · run ${trace.run_id.slice(0, 8)}` : `Source: real BENCH replay · ${ticks.length} frames · run ${trace.run_id.slice(0, 8)}`;
+async function loadRealReplay() {
+  throw new Error('Standalone host has no BENCH public-trace loader; supply authoritative frames through mountParcelHost inside BENCH.');
 }
 
 // ---------------------------------------------------------------------
@@ -301,17 +282,50 @@ function cursorChanged() {
   const playing = cursor.isPlaying?.() ?? false;
   playButton.textContent = playing ? `Ⅱ ${t('pause')}` : `▶ ${t('play')}`;
 }
+// Reset control: localized visible label + accessible name (refreshed on
+// language change by applySourceStatus).
+const resetButton = document.getElementById('reset');
+
+// One place applies the ACTUAL feed source status to every surface that
+// names it: the view's feed pills, the fixture banner, the header source
+// badge, the run label and the footer line. Nothing infers the feed identity;
+// each feed declares its own typed value (FEED_MOTION_DEMO / FEED_MOTION_BENCH
+// / UNKNOWN_IDENTITY).
+function applySourceStatus(feed) {
+  const noteKey = feed === FEED_MOTION_BENCH ? 'fixtureNoteBench'
+    : feed === FEED_MOTION_DEMO ? 'fixtureNoteDemo'
+    : 'fixtureNoteUnknown';
+  const badgeKey = feed === FEED_MOTION_BENCH ? 'sourceBadgeBench'
+    : feed === FEED_MOTION_DEMO ? 'sourceBadgeDemo'
+    : 'sourceBadgeUnknown';
+  const footerKey = feed === FEED_MOTION_BENCH ? 'footerSourceBench'
+    : feed === FEED_MOTION_DEMO ? 'footerSourceDemo'
+    : 'footerSourceUnknown';
+  host.view.setFeedMotion(feed);
+  document.getElementById('fixture-note').textContent = t(noteKey);
+  document.getElementById('footer-source').textContent = t(footerKey);
+  document.getElementById('reset-text').textContent = t('reset');
+  resetButton.setAttribute('aria-label', t('resetAccessKey'));
+  document.getElementById('run-label').textContent =
+    feed === FEED_MOTION_BENCH ? 'HOST · ONE CLOCK · HOST-DECLARED BENCH MOTION'
+      : feed === FEED_MOTION_DEMO ? 'HOST · ONE CLOCK · DEMO FEED'
+      : 'HOST · ONE CLOCK · SOURCE UNDECLARED';
+  if (feed !== FEED_MOTION_BENCH) {
+    document.getElementById('source-mode').textContent = t(badgeKey);
+  }
+}
+
 // UI transport controls drive only an OWNED cursor; an externally supplied
 // cursor is displayed but never driven from here (its owner controls it).
 if (host.ownsCursor) {
   host.cursor.subscribe(cursorChanged);
   playButton.addEventListener('click', () => host.cursor.togglePlay());
-  document.getElementById('reset').addEventListener('click', () => host.cursor.seek(0));
+  resetButton.addEventListener('click', () => host.cursor.seek(0));
   timeline.addEventListener('input', e => host.cursor.seek(Number(e.target.value)));
 } else {
   host.activeCursor.subscribe(cursorChanged);
   playButton.disabled = true;
-  document.getElementById('reset').disabled = true;
+  resetButton.disabled = true;
   timeline.disabled = true;
 }
 document.querySelectorAll('[data-language]').forEach(button =>
@@ -321,7 +335,18 @@ document.querySelectorAll('[data-language]').forEach(button =>
     location.assign(url);
   }));
 
-document.getElementById('fixture-note').textContent = t('fixtureNote');
+// Accessible language state: both buttons carry aria-pressed, reflecting the
+// page's actual language. Re-applied from pageshow so a bfcache restore of a
+// stale DOM cannot leave a wrong pressed state.
+function syncLanguageButtons() {
+  document.querySelectorAll('[data-language]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.language === language));
+    button.setAttribute('aria-label', button.dataset.language === 'zh' ? '中文' : 'English (EN)');
+  });
+}
+syncLanguageButtons();
+window.addEventListener('pageshow', syncLanguageButtons);
+
 document.getElementById('app-title').textContent = t('title');
 document.getElementById('app-subtitle').textContent = t('subtitle');
 document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
@@ -329,15 +354,17 @@ document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
 // Boot: default to the demo feed; ?source=<replay> switches to real motion.
 const sourceUrl = new URLSearchParams(location.search).get('source');
 if (sourceUrl) {
+  applySourceStatus(UNKNOWN_IDENTITY);
   loadRealReplay(sourceUrl).catch(error => {
     document.getElementById('source-mode').textContent =
-      language === 'zh' ? `真实回放加载失败：${error.message}（演示证据继续可用）` : `Real replay failed to load: ${error.message} (demo evidence continues)`;
-    pushDemoTimeline();
+      language === 'zh'
+        ? `真实回放加载失败：${error.message}（未加载任何回放）`
+        : `Real replay failed to load: ${error.message} (no replay loaded)`;
+    // Explicit source failure leaves an empty UNKNOWN view; no demo substitution.
   });
 } else {
   pushDemoTimeline();
-  document.getElementById('source-mode').textContent =
-    language === 'zh' ? '来源：演示包裹证据（非真实 BENCH 数据）· 运动为演示样本' : 'Source: demo parcel evidence (not real BENCH data) · motion is demo-sampled';
+  applySourceStatus(FEED_MOTION_DEMO);
 }
 cursorChanged();
 window.__parcelHost = host; // test hook

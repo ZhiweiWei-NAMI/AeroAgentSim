@@ -83,14 +83,39 @@ function vehicleGlyph(entity, selected, kind) {
   return pick(entity.id, body, selected);
 }
 
-function parcelGlyph(parcel, selected) {
+function parcelGlyph(parcel, selected, options = {}) {
   const [e, n, u] = parcel.position;
   const inactive = parcel.custodyKnown === false || parcel.state === 'unknown';
   let body = box(e - 0.8, n - 0.7, u, 1.6, 1.4, 1.25, inactive ? ['#f3e4cf', '#d9c1a1', '#c4a986'] : ['#ffd88a', '#f0a63c', '#d98f24']);
   const [x, y] = project([e, n, u + 1.25]);
   body += `<path d="M${(x - 5).toFixed(2)} ${(y - 1).toFixed(2)}l9 -3" stroke="#a5712c" stroke-width="2"/>`;
   body += marker([e, n, u + 1.7], parcel.id, selected);
-  body += `<g pointer-events="none"><rect x="${(x + 12).toFixed(2)}" y="${(y - 27).toFixed(2)}" width="${Math.max(66, String(parcel.label).length * 8)}" height="21" rx="5" fill="#ffffff" stroke="#9dbdd8"/><text x="${(x + 12 + Math.max(66, String(parcel.label).length * 8) / 2).toFixed(2)}" y="${(y - 12).toFixed(2)}" text-anchor="middle" fill="#1d4ed8" font-size="11" font-weight="600">${escapeHtml(parcel.label)}</text><path d="M${(x + 13).toFixed(2)} ${(y - 8).toFixed(2)}l-9 8" stroke="#9dbdd8" stroke-width="1.5"/></g>`;
+  // Stable cargo-ID callout. Placement is collision-aware in PROJECTED space
+  // (real coordinates of this frame's already-drawn labels; data positions
+  // and custody are never touched): it tries right, left, above, below and
+  // takes the first slot whose rectangle does not overlap an occupied label
+  // rect, then records its own rect. Presentation only — never a coordinate
+  // or custody claim.
+  const text = String(parcel.label ?? parcel.id);
+  const width = Math.max(66, text.length * 8) + 4;
+  const height = 21;
+  const slots = [
+    { dx: 12, dy: -27, anchorX: x + 12 + width / 2, textY: y - 12, tail: `M${(x + 13).toFixed(2)} ${(y - 8).toFixed(2)}l-9 8` },
+    { dx: -12 - width, dy: -27, anchorX: x - 12 - width / 2, textY: y - 12, tail: `M${(x - 13).toFixed(2)} ${(y - 8).toFixed(2)}l9 8` },
+    { dx: -width / 2, dy: -62, anchorX: x, textY: y - 47, tail: `M${x.toFixed(2)} ${(y - 30).toFixed(2)}l0 9` },
+    { dx: -width / 2, dy: 16, anchorX: x, textY: y + 31, tail: `M${x.toFixed(2)} ${(y + 13).toFixed(2)}l0 -9` },
+  ];
+  const occupied = options.labelRects ?? [];
+  const collides = r => occupied.some(o =>
+    r.x < o.x + o.w && r.x + r.w > o.x && r.y < o.y + o.h && r.y + r.h > o.y);
+  let chosen = slots[0];
+  for (const slot of slots) {
+    if (!collides({ x: x + slot.dx, y: y + slot.dy, w: width, h: height })) { chosen = slot; break; }
+  }
+  occupied.push({ x: x + chosen.dx, y: y + chosen.dy, w: width, h: height });
+  const rectX = x + chosen.dx;
+  const rectY = y + chosen.dy;
+  body += `<g pointer-events="none"><rect x="${rectX.toFixed(2)}" y="${rectY.toFixed(2)}" width="${width.toFixed(2)}" height="${height}" rx="5" fill="#ffffff" stroke="#9dbdd8"/><text x="${chosen.anchorX.toFixed(2)}" y="${chosen.textY.toFixed(2)}" text-anchor="middle" fill="#1d4ed8" font-size="11" font-weight="600">${escapeHtml(text)}</text><path d="${chosen.tail}" stroke="#9dbdd8" stroke-width="1.5"/></g>`;
   return pick(parcel.id, body, selected);
 }
 
@@ -111,14 +136,22 @@ export function renderScene(frame, { t, selectedId = null, follow = false, entit
       body += `<path d="${path(frame.routes[frame.activeRoute])}" fill="none" stroke="#12996e" stroke-width="3" stroke-dasharray="7 5" opacity=".85"/>`;
     }
   }
+  // Occupied projected-space label rectangles, filled as glyphs draw so the
+  // collision-aware parcel callout avoids entity labels already placed.
+  const labelRects = [];
   for (const entity of drawableEntities.filter(e => e.kind === 'station')) {
     body += stationGlyph(entity, selectedId);
+    const [e, n, u] = entity.position;
+    const [lx, ly] = project([e, n, (u ?? 0) + 3]);
+    labelRects.push({ x: lx - 45, y: ly - 6, w: 90, h: 16 });
   }
   for (const entity of drawableEntities.filter(e => e.kind !== 'station')) {
     body += vehicleGlyph(entity, selectedId, entityKind(entity.id));
+    const [lx, ly] = project(entity.position);
+    labelRects.push({ x: lx - 45, y: ly + 18, w: 90, h: 16 });
   }
   for (const parcel of frame.parcels.filter(p2 => p2.position !== null)) {
-    body += parcelGlyph(parcel, selectedId);
+    body += parcelGlyph(parcel, selectedId, { labelRects });
   }
   // Explicitly report declared-but-unplaced parcels on the canvas.
   for (const id of frame.unresolvedParcelIds ?? []) {

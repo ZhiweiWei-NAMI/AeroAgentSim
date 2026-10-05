@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const hostRoot = path.dirname(fileURLToPath(import.meta.url));
-const workspaceRoot = path.resolve(hostRoot, '..', '..', '..');
+const workspaceRoot = path.resolve(hostRoot, '..');
 const require = createRequire(path.join(workspaceRoot, 'frontend', 'package.json'));
 const { JSDOM } = require('jsdom');
 
@@ -626,4 +626,185 @@ test('ingestion rejects contract violations exactly once, at ingest time', () =>
   // Scene context bound to a different run is rejected at ingest.
   assert.throws(() => ingestSceneState(sceneState({ tick: 1, ns: 1e9, ids: IDS }),
     { ...SCENE_CTX, run_id: RUN_B }), /context run\/scenario identity differs/);
+});
+
+// ---------------------------------------------------------------------------
+// PR12 reviewer fixes: source truth, explicit causal response, view surfaces
+// ---------------------------------------------------------------------------
+
+const { FEED_MOTION_DEMO, FEED_MOTION_BENCH } = await import('./adapter.js');
+
+test('feedMotion is typed declared input: demo/bench pass through, anything else is UNKNOWN', () => {
+  const scene = ingestSceneState(sceneState({ tick: 1, ns: 1e9, ids: IDS }), SCENE_CTX);
+  const evidence = ingestFrameEvidence(frameEvidence(EVIDENCE_CTX, { tick: 1 }));
+  const demoFrame = projectHostViewFrame(scene, evidence, null, { feedMotion: FEED_MOTION_DEMO });
+  assert.equal(demoFrame.feedMotion, FEED_MOTION_DEMO);
+  const benchFrame = projectHostViewFrame(scene, evidence, null, { feedMotion: FEED_MOTION_BENCH });
+  assert.equal(benchFrame.feedMotion, FEED_MOTION_BENCH);
+  // Undeclared or bogus values never become a real-looking identity.
+  assert.equal(projectHostViewFrame(scene, evidence, null).feedMotion, UNKNOWN_IDENTITY);
+  assert.equal(projectHostViewFrame(scene, evidence, null, { feedMotion: 'bench' + 'x' }).feedMotion, UNKNOWN_IDENTITY);
+  // Parcel-evidence availability is its own flag, independent of motion.
+  assert.equal(demoFrame.parcelEvidenceKnown, true);
+  const empty = ingestFrameEvidence({
+    schema_version: HOST_FRAME_EVIDENCE_SCHEMA,
+    context: EVIDENCE_CTX,
+    evidence: { parcels: [], stations: [], events: [] },
+  });
+  assert.equal(projectHostViewFrame(scene, empty, null, { feedMotion: FEED_MOTION_BENCH }).parcelEvidenceKnown, false);
+});
+
+test('response binds ONLY to an explicit causal reference; recent events never substitute', () => {
+  const scene = ingestSceneState(sceneState({ tick: 44, ns: 44e9, ids: IDS }), SCENE_CTX);
+  // The demo-shaped ledger: custody receipts at 6/29s, rule flip at 38s. No
+  // event declares a causal reference, so the response stays unbound even
+  // though events exist near the flip.
+  const evidence = ingestFrameEvidence(frameEvidence(EVIDENCE_CTX, { tick: 44 }));
+  const rule = ingestRuleEvidence(ruleEvidence(EVIDENCE_CTX, true));
+  const frame = projectHostViewFrame(scene, evidence, rule);
+  assert.equal(frame.rule.lastFlip, 38);
+  assert.ok(frame.events.length >= 1, 'recent events exist');
+  assert.equal(frame.ruleResponse, null, 'no inferred response without an explicit reference');
+  // An event that explicitly references THIS rule flip binds.
+  const explicit = ingestFrameEvidence({
+    schema_version: HOST_FRAME_EVIDENCE_SCHEMA,
+    context: EVIDENCE_CTX,
+    evidence: {
+      parcels: [], stations: [],
+      events: [{
+        event_id: 'e.hold.response', time_seconds: 39, label_key: 'wait_receipt', kind: 'response',
+        entity_ids: ['parcel.p1042'],
+        response_rule_id: 'demo.delivery-link-degraded', response_flip_time_seconds: 38,
+      }],
+    },
+  });
+  const bound = projectHostViewFrame(scene, explicit, rule);
+  assert.equal(bound.ruleResponse?.id, 'e.hold.response', 'explicit reference binds the response');
+  // A reference to a DIFFERENT rule or flip time does not bind.
+  const wrongFlip = ingestFrameEvidence({
+    schema_version: HOST_FRAME_EVIDENCE_SCHEMA,
+    context: EVIDENCE_CTX,
+    evidence: {
+      parcels: [], stations: [],
+      events: [{
+        event_id: 'e.other.flip', time_seconds: 39, label_key: 'wait_receipt', kind: 'response',
+        entity_ids: ['parcel.p1042'],
+        response_rule_id: 'demo.delivery-link-degraded', response_flip_time_seconds: 54,
+      }],
+    },
+  });
+  assert.equal(projectHostViewFrame(scene, wrongFlip, rule).ruleResponse, null, 'flip mismatch does not bind');
+  // A malformed explicit reference is rejected at ingest, not coerced.
+  assert.throws(() => ingestFrameEvidence({
+    schema_version: HOST_FRAME_EVIDENCE_SCHEMA,
+    context: EVIDENCE_CTX,
+    evidence: {
+      parcels: [], stations: [],
+      events: [{ event_id: 'e.bad', time_seconds: 1, label_key: 'x',
+        entity_ids: ['parcel.p1042'], response_flip_time_seconds: 'soon' }],
+    },
+  }), /response_flip_time_seconds/);
+});
+
+test('view: response node shows the unbound label without an explicit causal reference', () => {
+  const dom = new JSDOM('<div id="root"></div>');
+  const root = dom.window.document.getElementById('root');
+  const host = mountParcelHost(root, { createCursor: true, sceneContext: SCENE_CTX });
+  host.pushSceneState(sceneState({ tick: 44, ns: 44e9, ids: IDS }));
+  host.setEvidence(frameEvidence(EVIDENCE_CTX, { tick: 44 }));
+  host.setRuleEvidence(ruleEvidence(EVIDENCE_CTX, true));
+  assert.ok(root.textContent.includes('响应未绑定'), 'zh unbound response label renders');
+  host.setLanguage('en');
+  assert.ok(root.textContent.includes('Response unbound'), 'en unbound response label renders');
+  host.destroy();
+});
+
+test('view: attachment shows the carrier id once when its display name equals the id', () => {
+  const dom = new JSDOM('<div id="root"></div>');
+  const root = dom.window.document.getElementById('root');
+  const host = mountParcelHost(root, { createCursor: true, sceneContext: SCENE_CTX });
+  host.pushSceneState(sceneState({ tick: 1, ns: 1e9, ids: IDS }));
+  host.setEvidence(frameEvidence(EVIDENCE_CTX, { tick: 1 }));
+  host.selectTarget('parcel.p1042');
+  const dd = [...root.querySelectorAll('.state-fields dd')];
+  const occurrences = dd.map(node => node.textContent).filter(text => text.includes('uav.delivery.alpha'));
+  // The custody row shows the custodian id; the attachment row must show the
+  // carrier exactly once (no "uav.delivery.alpha · uav.delivery.alpha").
+  for (const text of occurrences) {
+    assert.ok(!text.includes('uav.delivery.alpha · uav.delivery.alpha'), 'no duplicated id pair');
+  }
+  assert.ok(occurrences.some(text => text === 'uav.delivery.alpha'), 'single plain-id rendering present');
+  host.destroy();
+});
+
+test('view: motion badge text is localized, never the raw motionSourceMixed key', () => {
+  const dom = new JSDOM('<div id="root"></div>');
+  const root = dom.window.document.getElementById('root');
+  const host = mountParcelHost(root, { createCursor: true, sceneContext: SCENE_CTX });
+  host.pushSceneState(sceneState({ tick: 44, ns: 44e9, ids: IDS }));
+  host.setEvidence(frameEvidence(EVIDENCE_CTX, { tick: 44 }));
+  host.view.setFeedMotion(FEED_MOTION_DEMO);
+  assert.ok(root.textContent.includes('运动：演示样本（demo.motion）'), 'zh localized demo motion badge');
+  assert.ok(root.textContent.includes('包裹证据：演示（未接入真实来源）'), 'parcel fixture source remains separate');
+  assert.ok(!root.textContent.includes('motionSourceMixed'), 'raw key never displayed');
+  host.setLanguage('en');
+  assert.ok(root.textContent.includes('Motion: demo samples'), 'en localized demo badge');
+  host.view.setFeedMotion(FEED_MOTION_BENCH);
+  assert.ok(root.textContent.includes('Motion: real BENCH SceneState'), 'en localized bench badge');
+  host.destroy();
+});
+
+test('view: screen-space label chips cover every drawable id on narrow screens (jsdom)', () => {
+  const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>');
+  const win = dom.window;
+  // jsdom lacks matchMedia; provide the narrow-screen answer deterministically.
+  win.matchMedia = query => ({ matches: query.includes('max-width:850px'), media: query });
+  const root = win.document.getElementById('root');
+  // getBoundingClientRect is all-zero in jsdom; the chips still render with
+  // computed positions (verification here is coverage, not pixel truth).
+  const host = mountParcelHost(root, { createCursor: true, sceneContext: SCENE_CTX });
+  host.pushSceneState(sceneState({ tick: 44, ns: 44e9, ids: IDS }));
+  host.setEvidence(frameEvidence(EVIDENCE_CTX, { tick: 44 }));
+  const chips = [...root.querySelectorAll('.scene-label-chip')];
+  const chipIds = chips.map(chip => chip.dataset.select);
+  for (const id of [...IDS, 'locker']) {
+    assert.ok(chipIds.includes(id), `chip present for ${id}`);
+  }
+  assert.ok(chips.every(chip => chip.getAttribute('aria-pressed') !== null), 'chips expose selection state');
+  const parcelChip = chips.find(chip => chip.dataset.select === 'parcel.p1042');
+  assert.ok(parcelChip?.textContent.includes('parcel.p1042'), 'parcel chip shows the stable id');
+  host.destroy();
+});
+
+
+test('an explicit response cannot precede the trigger it references', () => {
+  const scene = ingestSceneState(sceneState({ tick: 44, ns: 44e9, ids: IDS }), SCENE_CTX);
+  const rule = ingestRuleEvidence(ruleEvidence(EVIDENCE_CTX, true));
+  const evidence = ingestFrameEvidence({
+    schema_version: HOST_FRAME_EVIDENCE_SCHEMA, context: EVIDENCE_CTX,
+    evidence: { parcels: [], stations: [], events: [{
+      event_id: 'early.claim', time_seconds: 29, label_key: 'receipt_uav',
+      kind: 'custody', entity_ids: ['parcel.p1042'],
+      response_rule_id: 'demo.delivery-link-degraded', response_flip_time_seconds: 38,
+    }] },
+  });
+  assert.equal(projectHostViewFrame(scene, evidence, rule).ruleResponse, null);
+});
+
+test('clearing selection and empty frames render without a null-item crash', async () => {
+  const dom = new JSDOM('<div id="root"></div>');
+  const root = dom.window.document.getElementById('root');
+  const host = mountParcelHost(root, { createCursor: true, sceneContext: SCENE_CTX });
+  host.pushSceneState(sceneState({ tick: 44, ns: 44e9, ids: IDS }));
+  host.setEvidence(frameEvidence(EVIDENCE_CTX, { tick: 44 }));
+  assert.doesNotThrow(() => host.view.clearSelection());
+  assert.equal(host.view.getSelection(), null);
+  host.destroy();
+  const { mountParcelView } = await import('./view.js');
+  const view = mountParcelView(root);
+  assert.doesNotThrow(() => view.setFrame({
+    parcels: [], entities: [], events: [], script: [], unresolvedParcelIds: [],
+    timeSeconds: 0, frameKey: 'empty', rule: null,
+  }));
+  view.destroy();
 });
