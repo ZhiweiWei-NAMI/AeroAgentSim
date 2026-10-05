@@ -1,0 +1,17 @@
+# Server next slice: native BENCH runtime + P08 graph
+
+Use the current server AeroBench checkout and its existing original GLB city, PX4/Gazebo provider, registered task and allowed assets. The reviewed public snapshot is `2abd1108f36449eca22041472296d42b925668d0`; reconcile affected source against the current server without rolling back newer work. Do not change publication/export machinery.
+
+Implement now:
+
+1. Locate the existing P01 fixed-rule evaluator under `/mnt/data2/weizhiwei/AERO_WORLD/Dataset/world_model/rule_factor_graph/`. The known `predicate_trajectory_models.py` is a model file; identify the actual evaluator entry. Compare a small compatible subset of P08's 265 predicate/258 rule definitions to P01's reported 72 contracts/91 fields by exact AST, role, units and time semantics. Reuse its fixed operator library; do not create a second ad hoc threshold engine.
+2. Create explicit versioned graph-to-BENCH bindings for one existing run, entity, agent, task and policy. Add new runtime facts/attempts/receipts alongside immutable P08 source records. Do not overwrite source fixtures or treat them as observed.
+3. Project the actual closed `SceneState` and command lifecycle into the graph. Use `HarnessCoordinator`'s native motion → network → business ordering. Preserve the existing `InspectionRuntimeHook` using composition; only one hook can be installed. Queue policy responses for the next participant turn rather than waiting for another barrier inside the hook.
+4. Mount the graph panel next to the current `PublicTraceMap`. Keep `app.ts:currentMapScene()` and `renderMap()`, the native GLB loader, camera and city meshes. One host snapshot controls the graph, business task view and aircraft. Connect city↔graph selection through the exact manifest. A graph click must not issue a flight command.
+5. Execute one supported native flight/inspection operation through `AgentContext`/`GatewayClient`, showing its actual moving mesh, sample evidence and receipt chain in the graph. Add one genuinely evaluated compatible P08 rule with causal workflow response through the existing participant. Preserve false/unknown and explain unsupported mappings. Do not report integration solely from a badge or fixture.
+
+Use server-side semantic history rather than the 240-frame UI buffer. Keep decimal-string nanoseconds in semantic output. BENCH public SceneState does not supply P08 lifecycle generation/epoch; bind these explicitly rather than inventing them from names. Actor-visible observations must stay within the native grants, separate from omniscient inspection evidence.
+
+Suggested P08 case for the subsequent complete business chain is `city.w17.s03`: its source rule is `gte(view_count, 3)` and its behavior requests three independently positioned captures. The excerpt contains exact nodes/edges. Native inspection currently has one required observation per work order, so the three-view capture-set aggregation is a small explicit task-package extension, not a rename of three callback invocations. For the immediate increment, select an existing genuinely compatible P01/P08 binding after comparison instead of forcing this case if it needs more work.
+
+Return one actual run's IDs, native command/receipt/sample references, chosen rule/field mapping and evaluator version, original-city screenshot, sealed replay, and a short list of remaining unsupported scenario primitives. Expand to all four domains and all 35 source workflows incrementally; this first operation does not complete that final scope.

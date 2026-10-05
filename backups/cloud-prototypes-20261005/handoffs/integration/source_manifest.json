@@ -1,0 +1,331 @@
+{
+  "handoff_version": "0.2.0",
+  "review_date": "2026-10-05",
+  "bench_export_commit": "2abd1108f36449eca22041472296d42b925668d0",
+  "bench_upstream_provenance_commit": "ea295073cdd310a31fa2e29317a3571bc716bb87",
+  "aeroagentsim_local_commit": "68b3d4a65799008e8d3ae0f175faf64d9ef60b44",
+  "bench_reviewed_sources": [
+    {
+      "path": "aero-bench/AGENTS.md",
+      "git_blob_sha": "aad16b481c537f67126684b2ec8ca8b383d485d1",
+      "review_copy_sha256": "9c23f80ceeac03953d968dbc9474c92d1e93cb53bcd75e3aa0139476641f446a",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/AGENTS.md"
+    },
+    {
+      "path": "aero-bench/aero_bench/agent/inspection_reference.py",
+      "git_blob_sha": "b5b4584f579aa144f9acc005d1b3c0bcb27f0612",
+      "review_copy_sha256": "ab83b5a16046f85117484f4b0960f8251c46d38f77c033b5f166a9c88bc75c1b",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/agent/inspection_reference.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/agent/runtime.py",
+      "git_blob_sha": "252b1e23fbb5b0ef612ef86366d6b2d8f0586e4b",
+      "review_copy_sha256": "251ccb1c0397feb6646e77a4472f3a2ef754e595765b37308438533c58e24bd5",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/agent/runtime.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/authoring/compilation_contracts.py",
+      "git_blob_sha": "7c5c73af42effc2dee5d451cf78b3344fce43088",
+      "review_copy_sha256": "d52363f49747398a52f2bd9851d043de791588d558702c929bc321a854acdc75",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/authoring/compilation_contracts.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/authoring/compiler.py",
+      "git_blob_sha": "07c932966966b439adfa52eadf8967fd798ff07c",
+      "review_copy_sha256": "1b7f73e257f6857d33113c1fb8fd63aff375fd2bab42f663b3801f812eb8d671",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/authoring/compiler.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/authoring/draft_compiler.py",
+      "git_blob_sha": "1b64624f6fdfe16cb39bff1b95d969291e82b848",
+      "review_copy_sha256": "e0b49500ca99db18073a79edd26c6f0d77c0cf19e97b4dd3397243ab0b6dfbe5",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/authoring/draft_compiler.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/gateway/contracts.py",
+      "git_blob_sha": "cbe400ab33bd83b64138c2da0ffa4867dde72e45",
+      "review_copy_sha256": "6d3e15fa0e8fa007f1bcb0cb222f87e28596f8cabe8dfaadc6e389402f42d78a",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/gateway/contracts.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/providers/contracts.py",
+      "git_blob_sha": "a43bd28088f647ae9bc378af34307fe1be2eab8d",
+      "review_copy_sha256": "cf2a789eecbbe2c10edc3d9c29aff251113697db05f89b497407ab7c0c77906c",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/providers/contracts.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/providers/inspection_business/provider.py",
+      "git_blob_sha": "00a897f1bf59962cf2f19426806b39fe23d11aad",
+      "review_copy_sha256": "8545a8be0bcbabab33e05458b3ac884f6ac666aa424618ec3caa8ccb1276ec4d",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/providers/inspection_business/provider.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/providers/px4_gazebo/observations.py",
+      "git_blob_sha": "78edb5cb3a9765dc782be68aa6c0a01fde8c9241",
+      "review_copy_sha256": "d9ccb0705eb24e673f9d8d986d5535e71e431e87023412dbbed53f88f960bbce",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/providers/px4_gazebo/observations.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/providers/px4_gazebo/protocol.py",
+      "git_blob_sha": "644c1e27291ad4b1f7493ddc1a2b4a9c00f2ca5c",
+      "review_copy_sha256": "57bcb1059ff3e656bb7731b8ab96663d1a68a39e5355b372b8b6c4e6381495ae",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/providers/px4_gazebo/protocol.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/providers/px4_gazebo/provider.py",
+      "git_blob_sha": "99034b620d90dd8f64cb3eb4c7a374a770aac5c7",
+      "review_copy_sha256": "a49db216fc63c704f355ac55746441c4a09a879bd93ed6f636b37deb25569cab",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/providers/px4_gazebo/provider.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/runtime/contracts.py",
+      "git_blob_sha": "14295754a5e69721e1caa6a66bcef930ad9933aa",
+      "review_copy_sha256": "649f96cd26beef899d4912bc8de7b79dc8da0259dbcb646e0e11a2eea6a7750d",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/runtime/contracts.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/runtime/harness.py",
+      "git_blob_sha": "09907e27cd474dd3ef73b662056d74c3cef31b35",
+      "review_copy_sha256": "3bfad4912346c8b58e8fd46bc3b87ca497f0a492081bc00f4e08a4d4b5cf2cb1",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/runtime/harness.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/runtime/hooks.py",
+      "git_blob_sha": "ff909d6e11b50f63f4b327780c82c5ca3751de67",
+      "review_copy_sha256": "f15f31ab66eec21dcad91ce20c9b20eb735c95f87943f87b2b2b09dcb9be5338",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/runtime/hooks.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/runtime/scene_state.py",
+      "git_blob_sha": "70b84705527e60cd8d591b0c299334202cead51f",
+      "review_copy_sha256": "9fa4811a835f0558cbcad54b59ab1b9de340bd9ca440dd12488af2a3dd877cf8",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/runtime/scene_state.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/tasks/inspection/contracts.py",
+      "git_blob_sha": "62ded70cb0d661a71112fd5e8bc7e7411599759c",
+      "review_copy_sha256": "d4126c2d8f4b5544cdaa40312bcbb42b8def5de7f86b480ffa965c80b74181b8",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/tasks/inspection/contracts.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/tasks/inspection/integration.py",
+      "git_blob_sha": "68171d8d567dc7ac0748b5d94afb807b191d4e7d",
+      "review_copy_sha256": "71066480bbe84b2c0326c0fa025012b0092d4f2fbb6f66c6b47d8b0686b81bd0",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/tasks/inspection/integration.py"
+    },
+    {
+      "path": "aero-bench/aero_bench/tasks/inspection/runtime_hook.py",
+      "git_blob_sha": "0b366477474196a747b24d4b184eb39851294147",
+      "review_copy_sha256": "273a7bae5115c55b1dd421e53c022f0ab6fe3d35d0e2317da2a6c2c7bfe503f1",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/aero_bench/tasks/inspection/runtime_hook.py"
+    },
+    {
+      "path": "aero-bench/frontend/src/app.ts",
+      "git_blob_sha": "5451d725664690c1a802e28f637212c364f6493a",
+      "review_copy_sha256": "b91ca518e0dc076385b2217e1a77968cc0a5853ffccc6c192bca71420b056fe8",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/frontend/src/app.ts"
+    },
+    {
+      "path": "aero-bench/frontend/src/city-presentation.ts",
+      "git_blob_sha": "6f794166726b416b64aa43748bc361b7823133f6",
+      "review_copy_sha256": "85cf0479c0a0e849b17199ccd7ba1a086959c4a0701ff80f2dd2d49d0999ef87",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/frontend/src/city-presentation.ts"
+    },
+    {
+      "path": "aero-bench/frontend/src/city-runtime-panel.ts",
+      "git_blob_sha": "f81fff2bc1794ed4396bad43fefb1820dfb211f4",
+      "review_copy_sha256": "b3461170bb19d33c2351735c02eb9338af42b13dbf2ceb56fc16ea51d6333238",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/frontend/src/city-runtime-panel.ts"
+    },
+    {
+      "path": "aero-bench/frontend/src/map.ts",
+      "git_blob_sha": "f22b6b6f4123cfdc3d8c32cce209fe642c3a1cf6",
+      "review_copy_sha256": "5c5fa226bafd1c89159cf9986d9d34554da7fbfc1f55564db7a947e90fe3cdfa",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/frontend/src/map.ts"
+    },
+    {
+      "path": "aero-bench/frontend/src/native-city-presentation.ts",
+      "git_blob_sha": "85380a8c2b19a08535250c22922c00f7976af39e",
+      "review_copy_sha256": "37da07e9fd9a6729defc43524ed535f8e97e0b5f2e3cf289cb622602146d1a5f",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/frontend/src/native-city-presentation.ts"
+    },
+    {
+      "path": "aero-bench/frontend/src/run-control.ts",
+      "git_blob_sha": "8b57c5f306a1811c541f3f78862b6621d1596968",
+      "review_copy_sha256": "3864d809a0fa9dad503ed36307977baad8804d003f0165b24f28ad3ca3d54c94",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/frontend/src/run-control.ts"
+    },
+    {
+      "path": "aero-bench/frontend/src/run-store.ts",
+      "git_blob_sha": "879ed976229cc40d52fd0e5a3b0ab888950f74c8",
+      "review_copy_sha256": "c939ed2b28afcfc964e7f95273a04bbc877fd50ae73b767a4bae5670d99ec182",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/frontend/src/run-store.ts"
+    },
+    {
+      "path": "aero-bench/frontend/src/state/replay.ts",
+      "git_blob_sha": "79e1bd8c8f3e08a4c05bb2ad0d9a7bde7f1b90ef",
+      "review_copy_sha256": "5f65f6e66657828812adcecdbe510ec547ab46c8e6f087716e5c62156855ed6c",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/frontend/src/state/replay.ts"
+    },
+    {
+      "path": "aero-bench/frontend/src/state/selection.ts",
+      "git_blob_sha": "5b9239f41595fc0ebee6a831f84ff05660fa0071",
+      "review_copy_sha256": "56dbba54ab09039d0459fc671470dedaf5de587525130e19538a61fa103bc4f2",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/frontend/src/state/selection.ts"
+    },
+    {
+      "path": "aero-bench/frontend/src/strict-json.ts",
+      "git_blob_sha": "6c0febc68cdb493f311075ce42bccb16e1ebc336",
+      "review_copy_sha256": "1e40157f279fe7db5bf9f0e8ab447e9f5b538d77e83edb4f43680ffc7a1dda02",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/frontend/src/strict-json.ts"
+    },
+    {
+      "path": "aero-bench/frontend/src/trace.ts",
+      "git_blob_sha": "3d63ce885c812559df4cfee051964f472847346b",
+      "review_copy_sha256": "b8fbfe0bc5e01f330bfa7b2809326b72eea3cc28c9bc7cf7ad52b16f7aaf03d3",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/frontend/src/trace.ts"
+    },
+    {
+      "path": "aero-bench/frontend/src/view-model.ts",
+      "git_blob_sha": "5b8ba44c7b81ef22e409ae6b1320d62c2229869c",
+      "review_copy_sha256": "58cc740a85dc5b77ac61f83edc9dfeb55943b8f683154ac2387131499bb85ffe",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/frontend/src/view-model.ts"
+    },
+    {
+      "path": "aero-bench/host/README.md",
+      "git_blob_sha": "95fd5c7c4ce235051af59261382aa57a9ab6c91a",
+      "review_copy_sha256": "e8fadc7fa77c9213fa56f7d7a2d7da0c3fab0372b448abf43430895113e45f5c",
+      "url": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/blob/2abd1108f36449eca22041472296d42b925668d0/aero-bench/host/README.md"
+    }
+  ],
+  "p08": {
+    "schema_version": "p08.typed-graph/v1",
+    "node_count": 20201,
+    "edge_count": 64978,
+    "kind_counts": {
+      "node_type": 1586,
+      "expression_type": 184,
+      "evidence_source": 225,
+      "entity_type": 444,
+      "entity": 691,
+      "agent": 110,
+      "task": 442,
+      "arbitration_policy": 16,
+      "spatial_zone": 45,
+      "constraint_check_result": 937,
+      "strategy_invocation": 340,
+      "command_attempt": 340,
+      "command_lifecycle_receipt": 67,
+      "behavior_execution": 386,
+      "evaluation_binding": 227,
+      "event_occurrence": 340,
+      "module_execution": 525,
+      "relation_instance": 49,
+      "material_transformation": 2,
+      "module": 490,
+      "request": 231,
+      "objective": 278,
+      "strategy_definition": 150,
+      "decision": 479,
+      "command_definition": 379,
+      "behavior_definition": 572,
+      "capability_declaration": 398,
+      "resource": 216,
+      "state_specification": 1382,
+      "fact": 2025,
+      "constraint_definition": 675,
+      "check_binding": 1030,
+      "parameter_definition": 240,
+      "predicate_definition": 265,
+      "rule_definition": 258,
+      "expression": 1183,
+      "predicate_result": 220,
+      "event_definition": 353,
+      "feedback_policy": 265,
+      "scenario_definition": 502,
+      "relation_definition": 84,
+      "lease_request": 46,
+      "lease_approval": 46,
+      "space_time_allocation": 46,
+      "paired_observation": 3,
+      "delivery_receipt": 194,
+      "review_signature_record": 3,
+      "longitudinal_observation": 1,
+      "future_followup_attempt": 1,
+      "sample_collection_record": 9,
+      "custody_and_responsibility_handover": 1,
+      "business_order": 8,
+      "capability_claim": 8,
+      "command_receipt": 273,
+      "predicate_evaluation": 252,
+      "passenger_itinerary": 2,
+      "passenger_manifest_entry": 3,
+      "passenger_leg": 2,
+      "human_actor": 14,
+      "effect_evaluation_result": 90,
+      "prepared_input": 90,
+      "constraint_check": 132,
+      "compute_job_resource_binding": 11,
+      "engineering_review_record": 1,
+      "baseline_revision_acceptance_requirement": 1,
+      "artifact_version_binding": 1,
+      "human_review_record": 1,
+      "artifact_change_record": 1,
+      "authority_record": 27,
+      "check_result": 171,
+      "predicate_expectation": 108,
+      "time_context": 16,
+      "migration_record": 1,
+      "accounting_record": 2,
+      "source_record": 4,
+      "link_configuration": 1
+    },
+    "files": [
+      {
+        "path": "data/graph.json",
+        "sha256": "900f9d725b220727b66609bc31bb9e448f92177959c4b07b0ecb4a5f9d0026de"
+      },
+      {
+        "path": "data/scenarios/city.w17.json",
+        "sha256": "32e8c8a6c0b8f6226c4e9d420a258d50ca770f39ffa51eec40163800109c52cb"
+      },
+      {
+        "path": "spec/CONTRACT.md",
+        "sha256": "8427012def4a7e34028c0c38bd5677da4fe0a3319386c2254af81af381f240fe"
+      },
+      {
+        "path": "spec/node-type-registry.json",
+        "sha256": "f131a87e99e2ea6b5e70c05d46c6596202f6a0d11e316866d2020adeec4d6415"
+      },
+      {
+        "path": "spec/relation-registry.json",
+        "sha256": "1b1c820d2b880bc0112ae8db96bd7ca9c5cd2a1c36a25aa835f2b77dc6415ad4"
+      },
+      {
+        "path": "ui/app.js",
+        "sha256": "ab196500f60ed04c3b97ff4d5d7b4ff8a322a9c0a06892fa9a4d76440ff993a4"
+      },
+      {
+        "path": "ui/model.js",
+        "sha256": "f73e67100982b570ba091d9266e447ffda7ded6862e3ce37b41ef44cfbd8d54f"
+      },
+      {
+        "path": "ui/renderer.js",
+        "sha256": "936adca42664501c40adaca54f6c0aeba5efd6010d6a1b8c19e858cd80592dec"
+      }
+    ]
+  },
+  "p01": {
+    "provenance": "Supplied current server status; not independently inspected during this review",
+    "executable_contracts": 72,
+    "families": 12,
+    "typed_bound_fields": 91,
+    "p08_overlap": "not_established",
+    "source_version": null,
+    "server_directory": "/mnt/data2/weizhiwei/AERO_WORLD/Dataset/world_model/rule_factor_graph/",
+    "known_model_file": "predicate_trajectory_models.py",
+    "fixed_evaluator_entrypoint": "server_coordinator_to_identify"
+  },
+  "execution_status": "source_review_only_no_native_run_no_server_mutation",
+  "original_1686_catalog_recovery": "blocked_not_claimed"
+}
