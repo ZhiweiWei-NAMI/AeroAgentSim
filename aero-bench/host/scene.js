@@ -5,8 +5,10 @@
 // stations, buildings, trees, roads and "SMART PARK" caption — is intentionally
 // NOT reused: host-supplied geometry alone is drawn. The drawing helpers that
 // remain (projection, isometric box, path, pick, marker, label) come from the
-// prototype with attribution.
-import { escapeHtml, h, project, isoBox } from './adapter.js';
+// prototype with attribution. PR12: light presentation pass — the same
+// host-supplied geometry in a bright blue WareTrack-inspired palette on a
+// light ground; structure, picks, markers and data unchanged.
+import { escapeHtml, project, isoBox } from './adapter.js';
 
 const f = n => Number(n.toFixed(2));
 const p = v => project(v).map(n => n.toFixed(2)).join(',');
@@ -21,33 +23,33 @@ function box(e, n, u, w, d, hgt, colors, extra = '') {
 function marker(position, id, selected) {
   if (selected !== id) return '';
   const [x, y] = project(position);
-  return `<g pointer-events="none"><ellipse cx="${x.toFixed(2)}" cy="${(y + 4).toFixed(2)}" rx="22" ry="9" fill="none" stroke="#e19228" stroke-width="2"/><path d="M${x.toFixed(2)} ${(y - 22).toFixed(2)}v-16" stroke="#bd761c" stroke-width="2"/><circle cx="${x.toFixed(2)}" cy="${(y - 42).toFixed(2)}" r="5" fill="#e8a13b" stroke="#fff" stroke-width="2"/></g>`;
+  return `<g pointer-events="none"><ellipse cx="${x.toFixed(2)}" cy="${(y + 4).toFixed(2)}" rx="22" ry="9" fill="none" stroke="#2563eb" stroke-width="2"/><path d="M${x.toFixed(2)} ${(y - 22).toFixed(2)}v-16" stroke="#1d4ed8" stroke-width="2"/><circle cx="${x.toFixed(2)}" cy="${(y - 42).toFixed(2)}" r="5" fill="#2563eb" stroke="#fff" stroke-width="2"/></g>`;
 }
 
-function label(position, title, subtitle = '', color = '#425363') {
+function label(position, title, subtitle = '', color = '#33414d') {
   const [x, y] = project(position);
-  return `<g class="scene-label" pointer-events="none"><text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" fill="${color}" font-size="14" font-weight="650">${escapeHtml(title)}</text>${subtitle ? `<text x="${x.toFixed(2)}" y="${(y + 18).toFixed(2)}" text-anchor="middle" fill="#6e7c89" font-size="10">${escapeHtml(subtitle)}</text>` : ''}</g>`;
+  return `<g class="scene-label" pointer-events="none"><text x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" fill="${color}" font-size="14" font-weight="650">${escapeHtml(title)}</text>${subtitle ? `<text x="${x.toFixed(2)}" y="${(y + 18).toFixed(2)}" text-anchor="middle" fill="#93a4b3" font-size="10">${escapeHtml(subtitle)}</text>` : ''}</g>`;
 }
 
 function pick(id, body, selected) {
   return `<g data-entity-id="${escapeHtml(id)}" class="scene-object ${selected === id ? 'selected' : ''}" role="img" aria-label="${escapeHtml(id)}">${body}</g>`;
 }
 
-/** Empty ground plane: neutral grid only, no authored park content. */
+/** Bright blue ground plane: host-supplied geometry only, no authored park. */
 function hostGround() {
-  let s = `<defs><pattern id="host-grid" width="36" height="36" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#bdc7cf"/></pattern></defs>`;
-  s += `<rect width="1100" height="680" fill="#eef2f3"/>`;
-  s += `<rect width="1100" height="680" fill="url(#host-grid)" opacity=".33"/>`;
-  s += `<g class="scene-compass" transform="translate(44 602)"><path d="M0 24v-24l-4 9m4-9 4 9M0 24h28l-9-4m9 4-9 4" stroke="#8a9eaa" stroke-width="1.5" fill="none"/><text x="-4" y="-8" font-size="11" fill="#667c8b">N</text><text x="33" y="29" font-size="11" fill="#667c8b">E</text></g>`;
+  let s = `<defs><pattern id="host-grid" width="36" height="36" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#a9c8e8"/></pattern></defs>`;
+  s += `<rect width="1100" height="680" fill="#e8f2fd"/>`;
+  s += `<rect width="1100" height="680" fill="url(#host-grid)" opacity=".35"/>`;
+  s += `<g class="scene-compass" transform="translate(44 602)"><path d="M0 24v-24l-4 9m4-9 4 9M0 24h28l-9-4m9 4-9 4" stroke="#6d93b8" stroke-width="1.5" fill="none"/><text x="-4" y="-8" font-size="11" fill="#4d759c">N</text><text x="33" y="29" font-size="11" fill="#4d759c">E</text></g>`;
   return s;
 }
 
 function stationGlyph(station, selected) {
   const [e, n, u] = station.position;
-  let body = `<ellipse cx="${project([e, n, 0])[0].toFixed(2)}" cy="${project([e, n, 0])[1].toFixed(2)}" rx="17" ry="7" fill="#59778228"/>`;
-  body += box(e - 2.2, n - 2.2, u, 4.4, 4.4, 1.6, ['#c7d6dc', '#9fb4bd', '#8aa3ad']);
+  let body = `<ellipse cx="${project([e, n, 0])[0].toFixed(2)}" cy="${project([e, n, 0])[1].toFixed(2)}" rx="17" ry="7" fill="#2f7fd820"/>`;
+  body += box(e - 2.2, n - 2.2, u, 4.4, 4.4, 1.6, ['#cfe4f6', '#8db8dc', '#6ba3cf']);
   body += marker([e, n, (u ?? 0) + 2.2], station.id, selected);
-  body += `<text x="${project([e, n, u + 3])[0].toFixed(2)}" y="${(project([e, n, u + 3])[1] + 4).toFixed(2)}" text-anchor="middle" font-size="11" fill="#496579">${escapeHtml(station.label)}</text>`;
+  body += `<text x="${project([e, n, u + 3])[0].toFixed(2)}" y="${(project([e, n, u + 3])[1] + 4).toFixed(2)}" text-anchor="middle" font-size="11" fill="#33586e">${escapeHtml(station.label)}</text>`;
   return pick(station.id, body, selected);
 }
 
@@ -55,40 +57,40 @@ function vehicleGlyph(entity, selected, kind) {
   const [e, n, u] = entity.position;
   let body = '';
   const [sx, sy] = project([e, n, 0]);
-  body += `<ellipse cx="${sx.toFixed(2)}" cy="${sy.toFixed(2)}" rx="${kind === 'uav' ? 20 : 17}" ry="7" fill="#59778228"/>`;
+  body += `<ellipse cx="${sx.toFixed(2)}" cy="${sy.toFixed(2)}" rx="${kind === 'uav' ? 20 : 17}" ry="7" fill="#2f7fd820"/>`;
   if (kind === 'ugv') {
-    body += box(e - 2.5, n - 1.5, Math.max(u - 0.5, 0), 5, 3, 0.85, ['#e8edef', '#7796a6', '#9eafb9']);
-    body += box(e - 2.5, n - 1.5, Math.max(u - 0.5, 0) + 0.85, 1.3, 3, 1.4, ['#d5e0e5', '#668ba0', '#acc1cd']);
+    body += box(e - 2.5, n - 1.5, Math.max(u - 0.5, 0), 5, 3, 0.85, ['#ffffff', '#9dbdd8', '#bcd5ea']);
+    body += box(e - 2.5, n - 1.5, Math.max(u - 0.5, 0) + 0.85, 1.3, 3, 1.4, ['#dbeefe', '#79a6d0', '#a4c8e6']);
     for (const offset of [-1.7, 1.5]) {
       const [x, y] = project([e + offset, n - 1.5, 0.5]);
-      body += `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="5" fill="#34495a"/><circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="2" fill="#7897a9"/>`;
+      body += `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="5" fill="#2c4a63"/><circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="2" fill="#7fa6c6"/>`;
     }
   } else if (kind === 'uav') {
     const [x, y] = project(entity.position);
-    body += `<path d="M${sx.toFixed(2)} ${sy.toFixed(2)}L${x.toFixed(2)} ${y.toFixed(2)}" stroke="#8da8b2" stroke-width="1" stroke-dasharray="3 5"/>`;
+    body += `<path d="M${sx.toFixed(2)} ${sy.toFixed(2)}L${x.toFixed(2)} ${y.toFixed(2)}" stroke="#8fb4d4" stroke-width="1" stroke-dasharray="3 5"/>`;
     for (const [de, dn] of [[-3, -2], [-3, 2], [3, -2], [3, 2]]) {
       const [a, b] = project([e + de, n + dn, u]);
-      body += `<path d="M${x.toFixed(2)} ${y.toFixed(2)}L${a.toFixed(2)} ${b.toFixed(2)}" stroke="#536b7a" stroke-width="4"/><ellipse cx="${a.toFixed(2)}" cy="${b.toFixed(2)}" rx="12" ry="4.8" fill="#91acb06b" stroke="#3d6978" stroke-width="1.6"/>`;
+      body += `<path d="M${x.toFixed(2)} ${y.toFixed(2)}L${a.toFixed(2)} ${b.toFixed(2)}" stroke="#4e7ba3" stroke-width="4"/><ellipse cx="${a.toFixed(2)}" cy="${b.toFixed(2)}" rx="12" ry="4.8" fill="#a5c9e86b" stroke="#2f7fd8" stroke-width="1.6"/>`;
     }
-    body += box(e - 1.2, n - 1, Math.max(u - 0.25, 0), 2.4, 2, 0.65, ['#eff5f4', '#75949d', '#a0b9c0']);
+    body += box(e - 1.2, n - 1, Math.max(u - 0.25, 0), 2.4, 2, 0.65, ['#f2f9ff', '#7aa6cd', '#a8cae6']);
   } else {
     // Facility kind without a specialised glyph: an explicit host marker.
-    body += `<circle cx="${sx.toFixed(2)}" cy="${sy.toFixed(2)}" r="6" fill="#4c8c9d" stroke="#fff" stroke-width="1.5"/>`;
+    body += `<circle cx="${sx.toFixed(2)}" cy="${sy.toFixed(2)}" r="6" fill="#2f7fd8" stroke="#fff" stroke-width="1.5"/>`;
   }
   body += marker(entity.position, entity.id, selected);
   const [lx, ly] = project([e, n, u]);
-  body += `<text x="${lx.toFixed(2)}" y="${(ly + 29).toFixed(2)}" text-anchor="middle" font-size="11" fill="#496579">${escapeHtml(entity.label ?? entity.id)}</text>`;
+  body += `<text x="${lx.toFixed(2)}" y="${(ly + 29).toFixed(2)}" text-anchor="middle" font-size="11" fill="#33586e">${escapeHtml(entity.label ?? entity.id)}</text>`;
   return pick(entity.id, body, selected);
 }
 
 function parcelGlyph(parcel, selected) {
   const [e, n, u] = parcel.position;
   const inactive = parcel.custodyKnown === false || parcel.state === 'unknown';
-  let body = box(e - 0.8, n - 0.7, u, 1.6, 1.4, 1.25, inactive ? ['#d2b895', '#bda180', '#ac9070'] : ['#facb7d', '#dfaa55', '#c58b3d']);
+  let body = box(e - 0.8, n - 0.7, u, 1.6, 1.4, 1.25, inactive ? ['#f3e4cf', '#d9c1a1', '#c4a986'] : ['#ffd88a', '#f0a63c', '#d98f24']);
   const [x, y] = project([e, n, u + 1.25]);
-  body += `<path d="M${(x - 5).toFixed(2)} ${(y - 1).toFixed(2)}l9 -3" stroke="#96703c" stroke-width="2"/>`;
+  body += `<path d="M${(x - 5).toFixed(2)} ${(y - 1).toFixed(2)}l9 -3" stroke="#a5712c" stroke-width="2"/>`;
   body += marker([e, n, u + 1.7], parcel.id, selected);
-  body += `<g pointer-events="none"><rect x="${(x + 12).toFixed(2)}" y="${(y - 27).toFixed(2)}" width="${Math.max(66, String(parcel.label).length * 8)}" height="21" rx="5" fill="#203546"/><text x="${(x + 12 + Math.max(66, String(parcel.label).length * 8) / 2).toFixed(2)}" y="${(y - 12).toFixed(2)}" text-anchor="middle" fill="#fff1db" font-size="11" font-weight="600">${escapeHtml(parcel.label)}</text><path d="M${(x + 13).toFixed(2)} ${(y - 8).toFixed(2)}l-9 8" stroke="#203546" stroke-width="1.5"/></g>`;
+  body += `<g pointer-events="none"><rect x="${(x + 12).toFixed(2)}" y="${(y - 27).toFixed(2)}" width="${Math.max(66, String(parcel.label).length * 8)}" height="21" rx="5" fill="#ffffff" stroke="#9dbdd8"/><text x="${(x + 12 + Math.max(66, String(parcel.label).length * 8) / 2).toFixed(2)}" y="${(y - 12).toFixed(2)}" text-anchor="middle" fill="#1d4ed8" font-size="11" font-weight="600">${escapeHtml(parcel.label)}</text><path d="M${(x + 13).toFixed(2)} ${(y - 8).toFixed(2)}l-9 8" stroke="#9dbdd8" stroke-width="1.5"/></g>`;
   return pick(parcel.id, body, selected);
 }
 
@@ -103,10 +105,10 @@ export function renderScene(frame, { t, selectedId = null, follow = false, entit
   const drawableEntities = frame.entities.filter(e => e.position !== null);
   if (frame.routes) {
     for (const key of Object.keys(frame.routes)) {
-      body += `<path d="${path(frame.routes[key])}" fill="none" stroke="#6eacb3" stroke-width="2" stroke-dasharray="6 6" opacity=".55"/>`;
+      body += `<path d="${path(frame.routes[key])}" fill="none" stroke="#7fb2e0" stroke-width="2" stroke-dasharray="6 6" opacity=".8"/>`;
     }
     if (frame.activeRoute && frame.routes[frame.activeRoute]) {
-      body += `<path d="${path(frame.routes[frame.activeRoute])}" fill="none" stroke="#4e9a83" stroke-width="3" stroke-dasharray="7 5" opacity=".85"/>`;
+      body += `<path d="${path(frame.routes[frame.activeRoute])}" fill="none" stroke="#12996e" stroke-width="3" stroke-dasharray="7 5" opacity=".85"/>`;
     }
   }
   for (const entity of drawableEntities.filter(e => e.kind === 'station')) {
@@ -121,7 +123,7 @@ export function renderScene(frame, { t, selectedId = null, follow = false, entit
   // Explicitly report declared-but-unplaced parcels on the canvas.
   for (const id of frame.unresolvedParcelIds ?? []) {
     const [x, y] = [80, 46 + 22 * (frame.unresolvedParcelIds.indexOf(id) + 1)];
-    body += `<g pointer-events="none" class="unresolved-parcel"><rect x="${x - 12}" y="${y - 13}" width="150" height="18" rx="4" fill="#f3e8d8" stroke="#bda180"/><text x="${x - 4}" y="${y}" font-size="10" fill="#7c5f36">${escapeHtml(t('parcelUnknown'))} · ${escapeHtml(id)}</text></g>`;
+    body += `<g pointer-events="none" class="unresolved-parcel"><rect x="${x - 12}" y="${y - 13}" width="150" height="18" rx="4" fill="#fdf6e6" stroke="#d9c1a1"/><text x="${x - 4}" y="${y}" font-size="10" fill="#8a611b">${escapeHtml(t('parcelUnknown'))} · ${escapeHtml(id)}</text></g>`;
   }
   const selected = [...frame.parcels, ...frame.entities].find(e => e.id === selectedId && e.position !== null);
   let viewBox = '-10 30 1100 650';

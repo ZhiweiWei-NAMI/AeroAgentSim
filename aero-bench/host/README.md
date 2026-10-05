@@ -176,18 +176,28 @@ mode, attributes, contacts), stage barriers and receipts. It does NOT publish:
 ## Screenshots
 
 `host/screenshots/`, captured with the existing Playwright install and cached
-Chromium (no installs):
+Chromium (no installs). All four shots are actual page captures of the same
+demo state — demo feed, tick 44, `parcel.p1042` selected (degradation window:
+rule truth 真/True, parcel 悬停等待/Holding position, custodian
+`uav.delivery.alpha`) — under the PR12 light presentation. Regenerate them
+with `node capture.mjs` after installing the sibling frontend dependencies
+(or set `P02_PLAYWRIGHT_MODULE` explicitly to an existing Playwright package).
+It starts the host's loopback server on 127.0.0.1 and
+stops it afterward; the capture script installs nothing:
 
-- `host-demo-zh.png` — demo feed, tick 44 (degradation window, rule truth
-  真, parcel holding, custodian uav.delivery.alpha), zh
-- `host-demo-en.png` — same state, en (True / Holding position)
-- `bench-motion-zh.png` — the `?source=` surface with the missing-source
-  fallback active: NOT real BENCH motion. In this public export the original
-  capture was sanitized by cropping off the header strip that contained the
-  transient real-replay caption text; the remaining image shows the same
-  demo-evidence fallback state, nothing more.
-- `capture.json` — machine-readable capture record (tool, state per
-  screenshot, `realBenchMotion: false` and the reason)
+- `host-demo-zh.png` — zh, desktop viewport 1600×1000 @2x
+- `host-demo-en.png` — en, desktop viewport 1600×1000 @2x
+- `host-demo-zh-mobile.png` — zh, mobile viewport 390×844 @2x
+- `host-demo-en-mobile.png` — en, mobile viewport 390×844 @2x
+- `capture.json` — machine-readable capture record written by `capture.mjs`
+  (tool, per-file page state read back from the live DOM, `pageErrors`,
+  `realBenchMotion: false` with the reason, and pending visual acceptance)
+
+The earlier `bench-motion-zh.png` (the `?source=` surface with the
+missing-source fallback active, sanitized in the previous export) was removed;
+the `?source=` real-motion path remains implemented but unexercised against a
+real artifact, so no screenshot claims it.
 
 All screenshots show demo/fixture evidence only. None is real BENCH or Atlas
-runtime evidence, and none is visual acceptance.
+runtime evidence. None is visual acceptance: visual acceptance of the PR12
+light style is pending with the parent review.

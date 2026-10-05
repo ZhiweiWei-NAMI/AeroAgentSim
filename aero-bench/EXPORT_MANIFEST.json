@@ -1,6 +1,6 @@
 {
   "schema_version": "aeroagentsim.bench-export.manifest/v1",
-  "generated_utc": "2026-10-05T09:55:37.819717+00:00",
+  "generated_utc": "2026-10-05T10:45:20.945804+00:00",
   "what_this_is": "Curated first-party snapshot of AERO_BENCH source, configuration, tests, docs and build recipes for the monorepo folder aero-bench/ of ZhiweiWei-NAMI/AeroAgentSim. It is a copy, not a git merge: it carries NO AERO_BENCH commit history.",
   "snapshot": {
     "has_git_history": false,
@@ -24,7 +24,7 @@
     "generated-schemas (schemas/)": 46,
     "architecture-and-validation-docs (docs/)": 35,
     "viewer-typescript-source (frontend/src, scripts, shared, e2e, config)": 543,
-    "p02-parcel-host-example (host/)": 16,
+    "p02-parcel-host-example (host/)": 19,
     "root-config (README.md, AGENTS.md, pyproject.toml)": 3
   },
   "exclusions": [
@@ -101,6 +101,10 @@
     {
       "file": "EXPORT_README.md and host/README.md",
       "change": "Corrected fresh-clone dependency prerequisites and the exported host working directory; retained demo-only screenshot status."
+    },
+    {
+      "file": "host/ styles, scene, capture driver, screenshots and gallery",
+      "change": "Original light presentation pass; four actual demo screenshots; portable explicit Playwright dependency selection. State/evidence/UNKNOWN/single host clock unchanged."
     }
   ],
   "licensing": {
@@ -113,7 +117,9 @@
     "real_bench_motion": false,
     "real_atlas_evidence": false,
     "visual_acceptance_claimed": false,
-    "gallery_note": "The retained zh/en screenshots show authored demo/fixture evidence only. No real BENCH motion, Atlas evaluation or visual acceptance is claimed."
+    "gallery_note": "Four actual zh/en desktop/mobile captures of labelled demo/fixture evidence, light PR12 style. No real BENCH motion, Atlas runtime or visual acceptance is claimed.",
+    "presentation": "white/light-gray panels, bright-blue scene; original styling, no WareTrack assets/code",
+    "parent_visual_review": "pending"
   },
   "files": [
     {
@@ -122,11 +128,11 @@
     },
     {
       "path": "EXPORT_MANIFEST.json",
-      "bytes": 114711
+      "bytes": 115409
     },
     {
       "path": "EXPORT_README.md",
-      "bytes": 9558
+      "bytes": 10158
     },
     {
       "path": "README.md",
@@ -3518,11 +3524,15 @@
     },
     {
       "path": "host/README.md",
-      "bytes": 10260
+      "bytes": 10950
     },
     {
       "path": "host/adapter.js",
       "bytes": 42759
+    },
+    {
+      "path": "host/capture.mjs",
+      "bytes": 6503
     },
     {
       "path": "host/demo.js",
@@ -3550,19 +3560,27 @@
     },
     {
       "path": "host/scene.js",
-      "bytes": 9046
+      "bytes": 9248
     },
     {
       "path": "host/screenshots/capture.json",
-      "bytes": 1219
+      "bytes": 3167
+    },
+    {
+      "path": "host/screenshots/host-demo-en-mobile.png",
+      "bytes": 544419
     },
     {
       "path": "host/screenshots/host-demo-en.png",
-      "bytes": 226596
+      "bytes": 561110
+    },
+    {
+      "path": "host/screenshots/host-demo-zh-mobile.png",
+      "bytes": 510229
     },
     {
       "path": "host/screenshots/host-demo-zh.png",
-      "bytes": 233223
+      "bytes": 562014
     },
     {
       "path": "host/server.mjs",
@@ -3570,7 +3588,7 @@
     },
     {
       "path": "host/styles.css",
-      "bytes": 10824
+      "bytes": 12343
     },
     {
       "path": "host/view.js",
@@ -4813,6 +4831,6 @@
       "bytes": 4188
     }
   ],
-  "file_count": 1174,
-  "total_bytes": 21317699
+  "file_count": 1177,
+  "total_bytes": 23047812
 }

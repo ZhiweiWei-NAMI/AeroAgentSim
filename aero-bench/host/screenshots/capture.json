@@ -1,33 +1,79 @@
 {
-  "capturedAt": "2026-10-05T09:06:50.093Z",
-  "tool": "playwright (existing frontend/node_modules + cached chromium); no installs, no new external models",
-  "base": "http://127.0.0.1:4418",
-  "allScreenshotsUse": "DEMO feed: authored demo motion + labelled demo parcel/custody/rule evidence (authority host-demo-evidence)",
-  "realBenchMotion": false,
-  "realBenchMotionReason": "At capture time the standalone host could not load the requested replay module; the retained screenshots show labelled demo evidence. No real replay is claimed.",
+  "base": "http://127.0.0.1:4493",
+  "tick": 44,
   "files": {
     "host-demo-zh.png": {
       "language": "zh",
+      "mobile": false,
       "tick": 44,
-      "stale": null,
       "selection": "parcel.p1042",
-      "generation": 1,
-      "epoch": "demo.epoch.1",
+      "timeText": "00:44.0",
+      "tickText": "帧 44 / 85",
+      "selectedJson": "{\"kind\":\"entity\",\"id\":\"parcel.p1042\"}",
+      "sourceMode": "来源：演示包裹证据（非真实 BENCH 数据）· 运动为演示样本",
       "ruleTruth": "真",
       "stateBanner": "悬停等待",
-      "identityComplete": true,
-      "evidence": "demo"
+      "sceneBackground": "rgb(232, 242, 253)",
+      "rootBackground": "rgba(0, 0, 0, 0)",
+      "selectedMarker": true,
+      "identityNotePresent": false
+    },
+    "host-demo-zh-mobile.png": {
+      "language": "zh",
+      "mobile": true,
+      "tick": 44,
+      "selection": "parcel.p1042",
+      "timeText": "00:44.0",
+      "tickText": "帧 44 / 85",
+      "selectedJson": "{\"kind\":\"entity\",\"id\":\"parcel.p1042\"}",
+      "sourceMode": "来源：演示包裹证据（非真实 BENCH 数据）· 运动为演示样本",
+      "ruleTruth": "真",
+      "stateBanner": "悬停等待",
+      "sceneBackground": "rgb(232, 242, 253)",
+      "rootBackground": "rgba(0, 0, 0, 0)",
+      "selectedMarker": true,
+      "identityNotePresent": false
     },
     "host-demo-en.png": {
       "language": "en",
+      "mobile": false,
       "tick": 44,
+      "selection": "parcel.p1042",
+      "timeText": "00:44.0",
+      "tickText": "Tick 44 / 85",
+      "selectedJson": "{\"kind\":\"entity\",\"id\":\"parcel.p1042\"}",
+      "sourceMode": "Source: demo parcel evidence (not real BENCH data) · motion is demo-sampled",
       "ruleTruth": "True",
       "stateBanner": "Holding position",
-      "custody": "Custody confirmedCurrent custodian @ 00:29.0",
-      "evidence": "demo"
+      "sceneBackground": "rgb(232, 242, 253)",
+      "rootBackground": "rgba(0, 0, 0, 0)",
+      "selectedMarker": true,
+      "identityNotePresent": false
+    },
+    "host-demo-en-mobile.png": {
+      "language": "en",
+      "mobile": true,
+      "tick": 44,
+      "selection": "parcel.p1042",
+      "timeText": "00:44.0",
+      "tickText": "Tick 44 / 85",
+      "selectedJson": "{\"kind\":\"entity\",\"id\":\"parcel.p1042\"}",
+      "sourceMode": "Source: demo parcel evidence (not real BENCH data) · motion is demo-sampled",
+      "ruleTruth": "True",
+      "stateBanner": "Holding position",
+      "sceneBackground": "rgb(232, 242, 253)",
+      "rootBackground": "rgba(0, 0, 0, 0)",
+      "selectedMarker": true,
+      "identityNotePresent": false
     }
   },
-  "pageErrors": [
-    "console: Failed to load resource: the server responded with a status of 404 (Not Found)"
-  ]
+  "pageErrors": [],
+  "capturedAt": "2026-10-05T10:44:03.926Z",
+  "startedAt": "2026-10-05T10:43:58.308Z",
+  "tool": "playwright (existing frontend/node_modules + cached chromium); no installs",
+  "demoFeed": "authored demo motion + labelled demo parcel/custody/rule evidence (authority host-demo-evidence)",
+  "evidence": "fixture-only: labelled demo host evidence; no real BENCH motion and no Atlas runtime evidence in any capture",
+  "realBenchMotion": false,
+  "realBenchMotionReason": "No sealed public replay artifact exists in this export; captures show the demo feed only.",
+  "visualAcceptance": "pending — captures are actual page states, but visual acceptance of the PR12 light style belongs to the parent review"
 }

@@ -169,6 +169,8 @@ machine-readable capture record is
 | --- | --- |
 | [host-demo-zh.png](host/screenshots/host-demo-zh.png) | Demo feed, tick 44, zh — demo parcel/custody/rule evidence (rule truth 真, parcel holding, custodian `uav.delivery.alpha`) |
 | [host-demo-en.png](host/screenshots/host-demo-en.png) | Same demo state, en (True / Holding position) |
+| [host-demo-zh-mobile.png](host/screenshots/host-demo-zh-mobile.png) | Same demo state, zh, mobile 390×844 viewport |
+| [host-demo-en-mobile.png](host/screenshots/host-demo-en-mobile.png) | Same demo state, en, mobile 390×844 viewport |
 
 The upstream P02 source packages (PR9/PR10 prototype checkout and the
 predicate-binding prototype) are **not** redistributed here; `host/` carries
@@ -187,3 +189,5 @@ the attribution and license requirements instead.
 See [`EXPORT_MANIFEST.json`](EXPORT_MANIFEST.json) for the current file list,
 per-file byte sizes, total export size and exclusion reasons. The source Git
 commit identifies the snapshot; the uploaded branch retains its commit history.
+
+The current PR12 presentation uses independently authored white/light-gray panels and a bright blue scene palette. WareTrack supplied aesthetic direction only; no WareTrack code/assets were copied. The four screenshots retain labelled demo evidence. Visual acceptance remains pending parent review. The capture driver is [host/capture.mjs](host/capture.mjs).
