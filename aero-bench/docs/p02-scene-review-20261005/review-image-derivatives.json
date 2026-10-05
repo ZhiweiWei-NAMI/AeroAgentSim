@@ -1,0 +1,296 @@
+[
+  {
+    "source": "integrated-v6-default-zh.png",
+    "source_sha256": "9d243c05ec1166fd7c7c21c2f5726d7a062d8d193cc63732e00f90b93e6e2c0f",
+    "review": "integrated-v6-default-zh-review.jpg",
+    "review_sha256": "cde6c17e0cd8c929baaaed1664e1d9696cb9f82b5422e52ede82a7889cf5ef0a",
+    "source_bytes": 667783,
+    "review_bytes": 310755,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  },
+  {
+    "source": "integrated-v6-selected-zh.png",
+    "source_sha256": "5d317aec8f784874adce198baaeff61ff580c7ea74160386a67b01ca475a2310",
+    "review": "integrated-v6-selected-zh-review.jpg",
+    "review_sha256": "b388ceb4ac9dc44884656712a4e57b8df64fa33788a151608b99c9d6ed7ca6d2",
+    "source_bytes": 726889,
+    "review_bytes": 367025,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  },
+  {
+    "source": "integrated-v6-selected-en.png",
+    "source_sha256": "7aa014f699057be90e68e87aa210ea8247b2344caaef46ff8adab08ff41d1443",
+    "review": "integrated-v6-selected-en-review.jpg",
+    "review_sha256": "9788545eeb96e4d97ba19b9dd63c5ba6d8a86e18b0690d5bc1b7199742c829b6",
+    "source_bytes": 724726,
+    "review_bytes": 382794,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  },
+  {
+    "source": "integrated-v6-follow-start-en.png",
+    "source_sha256": "c1e80ea5c6f70cb8d962e152db75470b93db2fb3078f1cbe0f590815eef6f3e2",
+    "review": "integrated-v6-follow-start-en-review.jpg",
+    "review_sha256": "beb2ba4b83e5de1260d287c1ce5766bdb50d710ad681d5d150abee00f240dba0",
+    "source_bytes": 1845579,
+    "review_bytes": 526575,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  },
+  {
+    "source": "integrated-v6-follow-moved-en.png",
+    "source_sha256": "0c98cee87631f9ba10a0bdba99b60f7fe2d51aae333f57caa5f7666763151bba",
+    "review": "integrated-v6-follow-moved-en-review.jpg",
+    "review_sha256": "5d00b47a62b11048eefb7452c3c68a4348f1f13e18c0f7d1e495c433f955173f",
+    "source_bytes": 1604434,
+    "review_bytes": 503612,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  },
+  {
+    "source": "integrated-v6-follow-backward-en.png",
+    "source_sha256": "c1e80ea5c6f70cb8d962e152db75470b93db2fb3078f1cbe0f590815eef6f3e2",
+    "review": "integrated-v6-follow-backward-en-review.jpg",
+    "review_sha256": "beb2ba4b83e5de1260d287c1ce5766bdb50d710ad681d5d150abee00f240dba0",
+    "source_bytes": 1845579,
+    "review_bytes": 526575,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  },
+  {
+    "source": "integrated-v6-seek-zero-en.png",
+    "source_sha256": "a2da64202ce2bbba63ae120f4e2fd32f7edc08a2a5b6613414c3f56e492ba9c3",
+    "review": "integrated-v6-seek-zero-en-review.jpg",
+    "review_sha256": "76fa27c3916835ccc90bdc4aaac6e7a82160fd22d9e0a346f652c11ba86f0c58",
+    "source_bytes": 717490,
+    "review_bytes": 378034,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  },
+  {
+    "source": "integrated-v7-default-zh.png",
+    "source_sha256": "d48e61c353f45eb4f619bb5ca2a03f4e92db03c6eae2e4384360e06cee579030",
+    "review": "integrated-v7-default-zh-review.jpg",
+    "review_sha256": "7a0ff8815cccd92839692d7fdc89a7107081c4d896ec9b06b4b304790e0dc111",
+    "source_bytes": 668534,
+    "review_bytes": 311354,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  },
+  {
+    "source": "integrated-v7-selected-zh.png",
+    "source_sha256": "b3f06957e8ae8b02e629958414ac2c28bf94c64fe8131ec9464dd1e5aed5ef1f",
+    "review": "integrated-v7-selected-zh-review.jpg",
+    "review_sha256": "ee57c1c05d732426106d5ef4b34ea86bb907cbd0369b748f5d8ea28f4ed144c7",
+    "source_bytes": 727441,
+    "review_bytes": 367524,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  },
+  {
+    "source": "integrated-v7-selected-en.png",
+    "source_sha256": "bc4d646f5632238d99f57f993a822e3a58a1b179df019000bdae9ee28ef8d1d0",
+    "review": "integrated-v7-selected-en-review.jpg",
+    "review_sha256": "1ea18b3e66cafe9cd3af331b2a3ccbf830e8a66477d86f2c30a1739798f298e7",
+    "source_bytes": 725190,
+    "review_bytes": 383326,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  },
+  {
+    "source": "integrated-v7-follow-start-en.png",
+    "source_sha256": "13108b99366ca81773e34b2334a640f34c5a26614ac48c10e6f9309c1f762f31",
+    "review": "integrated-v7-follow-start-en-review.jpg",
+    "review_sha256": "f47c2ea7a85f3e7cbcce49dad01de07ae160952edb3eb5409a752f5cc1697366",
+    "source_bytes": 1845962,
+    "review_bytes": 526967,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  },
+  {
+    "source": "integrated-v7-follow-moved-en.png",
+    "source_sha256": "dea2dadde7f82a493b6c59a81103d4d6d1d92f930cbfec9ef2b180f926c3211b",
+    "review": "integrated-v7-follow-moved-en-review.jpg",
+    "review_sha256": "acc81071cbc802bda49f7572f2afa5f480fd1314ba2fcfc83b043eeb4ee696e7",
+    "source_bytes": 1602637,
+    "review_bytes": 502402,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  },
+  {
+    "source": "integrated-v7-follow-backward-en.png",
+    "source_sha256": "13108b99366ca81773e34b2334a640f34c5a26614ac48c10e6f9309c1f762f31",
+    "review": "integrated-v7-follow-backward-en-review.jpg",
+    "review_sha256": "f47c2ea7a85f3e7cbcce49dad01de07ae160952edb3eb5409a752f5cc1697366",
+    "source_bytes": 1845962,
+    "review_bytes": 526967,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  },
+  {
+    "source": "integrated-v7-seek-zero-en.png",
+    "source_sha256": "f6766afad57e3f49f2b5ca823df243c713d96eec2b0173e4561dbe8db74a1887",
+    "review": "integrated-v7-seek-zero-en-review.jpg",
+    "review_sha256": "216eeba9dd7b7811eefd7c1bb8d24a80c4104b1351cf2222b409468a5a1a7aa2",
+    "source_bytes": 718237,
+    "review_bytes": 377177,
+    "source_size": [
+      1600,
+      1000
+    ],
+    "review_size": [
+      1600,
+      1000
+    ],
+    "format": "JPEG",
+    "quality": 90,
+    "subsampling": 0,
+    "resize": false,
+    "scope": "Same captured pixels, lossy JPEG compression only; original PNG retained"
+  }
+]

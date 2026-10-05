@@ -41,3 +41,19 @@ Follow/seek operation evidence: [start5s](integrated-v6-follow-start-en.png), [f
 **Remaining failures:** destination facility has no bound map position; native UAV replay asset is a JSON symbol rather than an aircraft GLB; at20s v6 still pins the parcel to the old carrier after authored facility custody. That last source defect was subsequently fixed, but this gallery intentionally preserves the captured pre-fix evidence. A separate aircraft marker, correct custody anchoring, and source snapshot will be captured next. Configuration edit/save/readback on the same run source remains unproved. No final visual acceptance is claimed.
 
 Image/capture hashes, exact trace/config paths and bounded operation records are in `integrated-v6-provenance.json`. Renderer dirty-source hashes were not frozen before this v6 capture and are explicitly unavailable; the source HEAD does not falsely identify a clean checkout. No model or map assets are uploaded.
+
+## Browser screenshot review copies under1MiB
+
+Original PNG files are retained. The `*-review.jpg` copies keep1600×1000 pixels; there is **no resizing or redraw**. JPEG quality90, no chroma subsampling, is lossy compression only. Every copy is below1MiB. [Derivative manifest](review-image-derivatives.json) records original/copy hashes, sizes and encoding.
+
+Review v6 follow pixels: [start5s](integrated-v6-follow-start-en-review.jpg), [forward20s](integrated-v6-follow-moved-en-review.jpg), [backward5s](integrated-v6-follow-backward-en-review.jpg).
+
+## Integrated review v7 — custody placement correction, in progress
+
+![v7 default Chinese](integrated-v7-default-zh-review.jpg)
+
+![v7 English inspector and separate aircraft marker](integrated-v7-selected-en-review.jpg)
+
+Follow evidence: [start5s](integrated-v7-follow-start-en-review.jpg), [forward20s](integrated-v7-follow-moved-en-review.jpg), [backward5s](integrated-v7-follow-backward-en-review.jpg), [seek zero](integrated-v7-seek-zero-en-review.jpg). At20s the authored record places custody with `facility.liede`. That facility has no position in this actual scene, so the parcel is **not placed** at its old carrier. The independent blue aircraft icon remains at the replay aircraft position. Destination remains unlocated; no coordinates are invented.
+
+Original PNGs use the corresponding filenames without `-review.jpg`, with `.png`. [v7 provenance](integrated-v7-provenance.json) includes the dirty-source hashes frozen before capture. UAV native replay is a JSON symbol, not an aircraft GLB; the screen-space icon does not claim a new model binding. This remains a business association fixture over original BENCH city/GLB replay, not physical cargo delivery. Configuration/run-source wiring and final parent pixel acceptance remain open.
