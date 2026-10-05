@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+let JSDOM;try{({JSDOM}=await import('jsdom'));}catch{({JSDOM}=await import('/workspace/shared/AeroAgentSim-workbench/frontend/console-prototype/node_modules/jsdom/lib/api.js'));}
+globalThis.__P08_TEST__=true;
+const {createApp}=await import('../app.js');
+const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+class Renderer{constructor(){this.camera={}}setScene(scene){this.scene=scene}setSelection(s){this.selection=s}setMode(flat){this.flat=flat}fit(){}zoom(){}schedule(){}destroy(){}}
+const root=new URL('../../',import.meta.url);
+const fetchImpl=async(url,{signal}={})=>{if(signal?.aborted)throw new DOMException('aborted','AbortError');const pathname=new URL(url).pathname.slice(1);try{const content=await readFile(new URL(pathname,root),'utf8');return{ok:true,json:async()=>JSON.parse(content)}}catch{return{ok:false,status:404}}};
+const dom=new JSDOM(html,{url:'http://p08.test/ui/'}),document=dom.window.document,$=id=>document.getElementById(id),app=createApp({document,fetchImpl,Renderer,manifestURL:'http://p08.test/data/manifest.json'});
+const change=(id,value)=>{$(id).value=value;$(id).dispatchEvent(new dom.window.Event('change',{bubbles:true}))};
+const waitFor=async fn=>{for(let i=0;i<300;i++){if(fn())return;await new Promise(r=>setTimeout(r,10));}assert.fail('condition timed out')};
+await app.start();await waitFor(()=>app.state.searchReady);
+test('default is a connected authored case, full counts and all 75 cases readable',()=>{assert.equal(app.state.loaded[0].scenario.id,'ag.a01');assert.equal($('scenario').options.length,75);assert.match($('accepted-count').textContent,/20,201/);assert.match($('catalog-counts').textContent,/35.*226.*20/);assert.ok(app.state.scene.edges.length);assert.equal(app.state.results.length,20201);assert.equal($('results').children.length,40);});
+test('select rule exposes exact native AST, source location and no evaluator claim',async()=>{const n=[...app.state.index.nodes.values()].find(n=>n.kind==='rule_definition');await app.selectNode(n.id);assert.match($('detail').textContent,/definition_ast/);assert.match($('detail').textContent,/applicability_ast/);assert.match($('detail').textContent,/args/);assert.match($('detail').textContent,/not_executed/);assert.ok($('detail').querySelector('[data-edge]'));});
+test('expression nodes expose native ast_value and exact source AST path',async()=>{const n=[...app.state.index.nodes.values()].find(n=>n.kind==='expression');await app.selectNode(n.id);assert.match($('detail').textContent,/ast_value/);assert.ok($('detail').textContent.includes(n.payload.ast_path));});
+test('edge inspector shows true source to target, role and exact raw edge',()=>{const e=app.state.scene.edges[0];app.selectEdge(e.id);assert.match($('detail').textContent,/source → target/);assert.equal($('detail').querySelector('[data-node]').dataset.node,e.source);assert.match($('detail').textContent,new RegExp(e.relation));});
+test('step filter restricts node scene without inventing linked nodes',()=>{$('global-search').checked=false;change('step','0');const allowed=new Set(app.state.steps[0].node_ids);app.state.focus=null;app.render();assert.ok(app.state.scene.nodes.every(n=>allowed.has(n.id)));assert.ok(app.state.scene.nodes.length<=120);$('clear-filters').click();});
+test('global index selection fetches target source case and preserves exact ID',async()=>{const node=app.state.searchIndex.find(n=>n.case_ids.includes('MI20'));assert.ok(node);await app.selectNode(node.id);assert.equal(app.state.loaded[0].scenario.id,'MI20');assert.equal(app.state.selected.id,node.id);assert.ok($('detail').textContent.includes(node.id));});
+test('global index pagination is independent of canvas projection',()=>{$('global-search').checked=true;app.state.page=0;app.render();const first=$('results').firstElementChild.dataset.result;$('next-page').click();assert.equal(app.state.page,1);assert.notEqual($('results').firstElementChild.dataset.result,first);$('previous-page').click();assert.equal(app.state.page,0);});
+test('error on failed case load keeps previous complete graph',async()=>{const id=app.state.loaded[0].scenario.id,scenario=app.state.scenarios.find(s=>s.id==='ag.a01'),path=scenario.path;scenario.path='does-not-exist.json';await app.loadCases(['ag.a01']);assert.equal(app.state.loaded[0].scenario.id,id);assert.equal($('error').hidden,false);scenario.path=path;});

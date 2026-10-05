@@ -1,0 +1,12 @@
+{
+  "scope": "Offline artifact byte/source/CSP inspection only; no real browser or pixel-render evidence.",
+  "html_sha256": "cfa6fc4c010d05781b864906b8d819d4053b26c7273f0ecda820326908bc11f1",
+  "bytes": 35236782,
+  "embedded_files": 103,
+  "embedded_scenes": 75,
+  "graph_sha256": "900f9d725b220727b66609bc31bb9e448f92177959c4b07b0ecb4a5f9d0026de",
+  "all_embedded_bytes_match_current_sources": true,
+  "errors": [],
+  "elapsed_seconds": 1.016,
+  "roundtrip_boundary": "Original-document byte reconstruction uses the accompanying ZIP source snapshots; they are not duplicated in this standalone HTML."
+}

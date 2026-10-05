@@ -1,0 +1,13 @@
+✔ actual data: counts, global coverage, raw unknown/AST inspection and exact edge drilldown (433.306222ms)
+✔ actual global index result loads exact other case and keeps inspected original payload (272.11469ms)
+✔ newer navigation wins if older request resolves after abort (17.737378ms)
+✔ cancelled load keeps last complete graph and can retry (15.235655ms)
+✔ failed case load is surfaced and never replaces current graph with partial data (13.28445ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1352.401329

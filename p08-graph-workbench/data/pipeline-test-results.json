@@ -1,0 +1,12 @@
+{
+  "scope": "offline_pipeline_preservation_identity_types_and_time_only",
+  "passed": true,
+  "tests_run": 16,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "graph_sha256": "900f9d725b220727b66609bc31bb9e448f92177959c4b07b0ecb4a5f9d0026de",
+  "native_execution": false,
+  "simulator_execution": false,
+  "real_host_verified": false
+}

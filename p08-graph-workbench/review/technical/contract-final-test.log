@@ -1,0 +1,15 @@
+test_absent_identity_never_proves_equivalence (__main__.ContractAcceptance.test_absent_identity_never_proves_equivalence) ... ok
+test_argument_direction_profiles_are_not_casefolded (__main__.ContractAcceptance.test_argument_direction_profiles_are_not_casefolded) ... ok
+test_definition_equal_explicit_semantics_can_merge (__main__.ContractAcceptance.test_definition_equal_explicit_semantics_can_merge) ... ok
+test_definition_near_misses_never_merge (__main__.ContractAcceptance.test_definition_near_misses_never_merge) ... ok
+test_exact_lifecycle_reference_includes_all_axes_without_coercion (__main__.ContractAcceptance.test_exact_lifecycle_reference_includes_all_axes_without_coercion) ... ok
+test_json_values_are_type_strict (__main__.ContractAcceptance.test_json_values_are_type_strict) ... ok
+test_missing_or_null_revision_never_proves_equivalence (__main__.ContractAcceptance.test_missing_or_null_revision_never_proves_equivalence) ... ok
+test_runtime_and_definition_admission_relations_differ (__main__.ContractAcceptance.test_runtime_and_definition_admission_relations_differ) ... ok
+test_state_fact_and_definition_attempt_kinds_are_distinct (__main__.ContractAcceptance.test_state_fact_and_definition_attempt_kinds_are_distinct) ... ok
+test_unknown_relation_is_not_truth_or_permission (__main__.ContractAcceptance.test_unknown_relation_is_not_truth_or_permission) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.001s
+
+OK

@@ -1,0 +1,204 @@
+{
+  "schema_version": "p08.contract-validation/v1",
+  "counts": {
+    "nodes": 20201,
+    "edges": 64978,
+    "errors": 0,
+    "warnings": 0,
+    "readiness_gap_records": 2028,
+    "ast_ordered_slots": 878,
+    "ast_missing_slot_edges": 0
+  },
+  "preservation_contract_valid": true,
+  "native_rule_execution": "not_run_unverified",
+  "real_backend": "not_run_unverified",
+  "scope": "Graph shape, canonical kind/level, typed endpoint signatures, explicit roles and exact AST slot structure. No rule truth, legal applicability, real grant or physical outcome evaluated.",
+  "errors": [],
+  "warnings": [],
+  "readiness_gap_counts": {
+    "EXECUTION_EVIDENCE_NOT_ESTABLISHED": 2028
+  },
+  "readiness_gap_examples": [
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:f3204857960b06d49f6f0cc6",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:0dc708ba10f424f0ed0d9628",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:8edf9ba82a7c7d13cabeb874",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:6b1f4088f3fd6cc0d7c45db7",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:067345ec4981cfe9e5cc7686",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:a200bb59a7fd7bfbb076fc52",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:9057c92edf2de2db76de7758",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:b44d8c53e75a547f3911c6bb",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:5b1c77b7cd9a065e509d5559",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:5c9b78feb23f9a0a9a32e8b3",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:a703a82767cf729d03878081",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:d304079f8d4a8672d167a6a8",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:19ef857555c72c1520b084d3",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:821e2e61b44d793421421793",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:ef30afaa43e740a90da7b1c2",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:57e8ba35685706d9b1c4ded9",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:9c3f0af9f0c4ac6f145e97a5",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:90cc932d3bbf5f0aa2cd122c",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:dd7a5301fd4c3e9f752c50ce",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:5d7e89b7f9731f82ec0f67f1",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:d7105d60b4aa82da55247177",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:967c1b151313af9ae3b3c276",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:5feb8f63796458ec5fe982ce",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:467b06543043b5a701ee08cf",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:17c08bc5fd2108d12d17dff4",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:0f25abc5cb265399333551d6",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:f3353b77d3d67980c58f6fc7",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:f983c601097622e23963805d",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:6a1e053d070346f8850ef5e0",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    },
+    {
+      "code": "EXECUTION_EVIDENCE_NOT_ESTABLISHED",
+      "record_id": "n:925b99720cf601c773e95ed3",
+      "message": "Imported authored record is not proof of native evaluation, actual occurrence, enforcement or physical effect.",
+      "path": null
+    }
+  ],
+  "graph_sha256": "900f9d725b220727b66609bc31bb9e448f92177959c4b07b0ecb4a5f9d0026de"
+}

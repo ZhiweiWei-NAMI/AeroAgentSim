@@ -1,0 +1,119 @@
+{
+  "schema": "p08.domain-resolution-ledger/v1",
+  "updated_at_utc": "2026-10-05T13:19:41.217387+00:00",
+  "issues": [
+    {
+      "id": "DOM-MIG-001",
+      "severity": "migration_semantics",
+      "owner": "build_p08_instance_pipeline + define_p08_semantic_contract",
+      "finding": "Initial importer passed canonical_kind arguments in reverse order and omitted relation context required by contract API.",
+      "counterexample": "collection=None and raw command must remain command_attempt, not unresolved/missing_kind; overloaded frozen/runtime edges need artifact and endpoint kinds.",
+      "status": "resolved_verified",
+      "resolution": "Importer now uses contract-aware kinds/levels/relation context; selected graph outputs independently verified.",
+      "verification": [
+        "G-kind-ag.a01.s03.command-attempt",
+        "G-kind-ag.a01.s03.mix-lineage",
+        "G-kind-A29.step01.command01"
+      ],
+      "evidence": "regression-results.json"
+    },
+    {
+      "id": "DOM-ID-002",
+      "severity": "identity_soundness",
+      "owner": "define_p08_semantic_contract",
+      "finding": "exact_ref_key accepted complete dictionaries whose required identity values were all null.",
+      "counterexample": {
+        "run_id": null,
+        "epoch": null,
+        "id": null,
+        "generation": null,
+        "ref_type": null
+      },
+      "initial_observation": "C02 failed in independent run with 36 PASS / 2 FAIL.",
+      "status": "resolved_verified",
+      "resolution": "Null/empty/invalid exact-identity members rejected; known epoch/generation types retained without coercion.",
+      "verification": [
+        "C01_identity_preserves_generation_type",
+        "C02_unknown_identity_is_not_equivalence"
+      ],
+      "evidence": "regression-results.json"
+    },
+    {
+      "id": "DOM-ID-003",
+      "severity": "definition_equivalence",
+      "owner": "define_p08_semantic_contract + build_p08_instance_pipeline",
+      "finding": "definition_merge_compatible accepted matching definitions with unknown scope or null identifier.",
+      "counterexample": {
+        "namespace": "a",
+        "id": "f",
+        "revision": "v1",
+        "scope": null,
+        "definition": {
+          "unit": "m"
+        }
+      },
+      "initial_observation": "C04 failed in independent run with 36 PASS / 2 FAIL.",
+      "status": "resolved_verified",
+      "resolution": "Unknown scope/identity/revision cannot prove semantic equality. Importer retains all 20,201 source node occurrences; no semantic merges on current source.",
+      "verification": [
+        "C03_definition_revision_scope_units_exact",
+        "C04_unknown_scope_prevents_definition_merge"
+      ],
+      "evidence": "regression-results.json"
+    },
+    {
+      "id": "DOM-COV-004",
+      "severity": "coverage_claim_boundary",
+      "owner": "domain reviewer + UI + pipeline",
+      "finding": "All 90 city normal branches share one sentence; A29/A30/A34 activity phase descriptions are generic. Presence/count is not domain-tested branch coverage.",
+      "status": "mitigated_with_explicit_scope",
+      "resolution": "Added source-linked ledger for 35 activities / 226 steps / 20 machine cases and 140 independent domain-specific challenge designs; each remains specified_not_executed.",
+      "verification": [
+        "D16_branch_template_does_not_count_as_domain_test"
+      ],
+      "evidence": [
+        "coverage-ledger.json",
+        "adversarial-scenarios.json"
+      ],
+      "remaining": "Native implementations and executable positive/negative domain fixtures have not been validated."
+    },
+    {
+      "id": "DOM-ROLE-005",
+      "severity": "native_binding_gap",
+      "owner": "future domain adapter / command-authority owner",
+      "finding": "The narrow physical mixer correction is verified, but this cannot certify every human/equipment command route. A09 step05 still targets the terminal as request interface while the human and passive sampling tools are separately declared.",
+      "status": "preserved_explicit_gap_not_reinterpreted",
+      "resolution": "Source says passive tools are not autonomous command recipients and needs named operator/fixture execution binding. P08 must preserve this gap and avoid presenting the terminal as proven physical sampler.",
+      "evidence": {
+        "artifact": "agriculture/agriculture-instances.json",
+        "pointer": "/activities/6/steps/4",
+        "refs": [
+          "ag.a09.s05.command",
+          "ag.a09.s05.behavior.perform",
+          "ag.a09.s05.entity.hardware.sampler"
+        ]
+      },
+      "remaining": "Exact native physical/human routing and independently observed collection evidence."
+    }
+  ],
+  "verification": {
+    "status": "PASS_WITH_UNRUN_NATIVE_DOMAIN_TESTS",
+    "counts": {
+      "PASS": 38,
+      "FAIL": 0,
+      "NOT_RUN": 0
+    },
+    "artifact_sha256": {
+      "review/domain/test_domain_invariants.py": "2b838bcb2f764e1533bd88b185e911d2444b8d868d883e60ac02587edcc483f9",
+      "spec/contract.py": "c90718c826b5f005180e1cfd7a977ad574d20ffc1df6ac1e92a7a76241739dc6",
+      "pipeline/import_catalogs.py": "625a5df0da7276c430084932b76e02e010efc5bad9216520c9484494fa978877",
+      "data/graph.json": "914c9c219a358318505aad7c45ca68712b9cc9687b8d86b18d9380838d4252d0"
+    },
+    "unrun_validation_stages": {
+      "native_predicate_engine": "not_run",
+      "simulator_domain_execution": "not_run",
+      "live_host_physical_evidence": "not_run",
+      "real_legal_applicability": "not_verified"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{"benchmark":"model_only_no_render","source_nodes":20000,"source_edges":64000,"visible_nodes":600,"visible_edges":132,"elapsed_ms":130.61}
+✔ parallel edge occurrences and self-loops survive indexing without endpoint dedup (1.445834ms)
+✔ edge payload, direction, relation and role survive scene projection exactly (0.31302ms)
+✔ filtering away middle nodes does not synthesize shortcut edges (0.947665ms)
+✔ bounded preview reports total matching nodes and exact omitted edge counts (0.256115ms)
+✔ scene retains selected focus outside filter and makes override explicit (0.18611ms)
+✔ every source node kind and edge relation is cataloged even outside visible cap (2.030254ms)
+✔ unknown, missing, null and false values are retained distinctly (0.354823ms)
+✔ shared canonical nodes do not import another case edge into selected case (0.283656ms)
+✔ same canonical ID cannot silently mask differing semantic level or identity (0.39917ms)
+✔ dangling endpoints are diagnosed without creating entity nodes (0.304068ms)
+✔ large multi-kind graph indexing and bounded projections are finite (159.058764ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 262.780225

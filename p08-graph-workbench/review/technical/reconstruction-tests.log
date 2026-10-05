@@ -1,0 +1,21 @@
+test_alias_snapshot_hash_is_verified (__main__.ReconstructionAcceptance.test_alias_snapshot_hash_is_verified) ... FAIL
+test_explicit_null_and_false_are_distinct (__main__.ReconstructionAcceptance.test_explicit_null_and_false_are_distinct) ... ok
+test_missing_pointer_is_rejected (__main__.ReconstructionAcceptance.test_missing_pointer_is_rejected) ... ok
+test_pointer_escaping_and_ordered_literal_types_roundtrip (__main__.ReconstructionAcceptance.test_pointer_escaping_and_ordered_literal_types_roundtrip) ... ok
+test_recover_artifact_is_byte_exact (__main__.ReconstructionAcceptance.test_recover_artifact_is_byte_exact) ... ok
+test_tampered_alias_digest_is_rejected (__main__.ReconstructionAcceptance.test_tampered_alias_digest_is_rejected) ... ok
+test_tampered_snapshot_is_rejected (__main__.ReconstructionAcceptance.test_tampered_snapshot_is_rejected) ... ok
+
+======================================================================
+FAIL: test_alias_snapshot_hash_is_verified (__main__.ReconstructionAcceptance.test_alias_snapshot_hash_is_verified)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/shared/p08-graph-workbench/review/technical/test_reconstruction_acceptance.py", line 23, in test_alias_snapshot_hash_is_verified
+    with self.assertRaises(ValueError):recover_occurrence(alias,self.root)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.002s
+
+FAILED (failures=1)

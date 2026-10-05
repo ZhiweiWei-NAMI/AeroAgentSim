@@ -1,0 +1,82 @@
+{
+  "schema_version": "p08.canonical-identity-policy/v1",
+  "storage_identity": {
+    "node": "n: + first24hex(sha256(canonical JSON [occurrence, artifact relative path, exact JSON pointer])) unless explicit proven-definition key applies",
+    "edge": "e: + first24hex(sha256(canonical JSON [artifact relative path, exact JSON pointer]))",
+    "source_occurrence": "occ: + first24hex(sha256(canonical JSON [artifact relative path, exact JSON pointer]))",
+    "collision_rule": "Validate uniqueness in each graph. A truncated-hash collision is an error, never a merge.",
+    "graph_revision": "Manifest of source artifact hashes plus contract/schema version. Storage ID stability does not establish lifecycle or native revision equivalence."
+  },
+  "lifecycle_identity": {
+    "members": [
+      "run_id",
+      "epoch",
+      "id",
+      "generation",
+      "ref_type"
+    ],
+    "type_exact": true,
+    "known_required": true,
+    "null_is_identity": false,
+    "opaque_id": true,
+    "generation_zero_allowed": true,
+    "integer_and_string_distinct": true,
+    "unknown_policy": "No exact join until all members are explicitly known. Preserve source object unchanged."
+  },
+  "definition_equivalence": {
+    "required": [
+      "matching canonical kind",
+      "both semantic_level=definition",
+      "nonempty explicit namespace",
+      "same exact opaque definition id",
+      "known explicit version/revision with original JSON type",
+      "nonempty explicit scope",
+      "exact semantic body including all AST/order/parameters/controls"
+    ],
+    "missing_revision_or_scope": "Keep distinct; immutable file bytes alone prove duplicate source content, not the same semantic definition revision.",
+    "non_equivalence": [
+      "same display label",
+      "same endpoints",
+      "same quantity value",
+      "same field name across clocks or subjects",
+      "same lifecycle ID with different generation",
+      "matching null metadata"
+    ],
+    "migration_alias_is_record_merge": false
+  },
+  "edge_identity": {
+    "directed_multigraph": true,
+    "parallel_edges_preserved": true,
+    "same_endpoints_dedup": false,
+    "role_cardinality_scope": [
+      "relation definition revision",
+      "binding or attempt",
+      "ordered endpoint role",
+      "validity interval",
+      "clock domain"
+    ],
+    "edge_duplicate_id": "error"
+  },
+  "time": {
+    "ns": "signed decimal string; preserve precision",
+    "clock_mapping": "explicit source mapping only",
+    "valid_vs_available": "independent axes",
+    "availability_cutoff": "retain separately from sample, receipt and occurrence time",
+    "interpolation": "no invented interpolation",
+    "absent_time": "explicit missing, never query time or zero"
+  },
+  "provenance": {
+    "classes": [
+      "source_document",
+      "authored_synthetic",
+      "fixture_execution",
+      "simulation",
+      "measured",
+      "estimated",
+      "native_evaluation",
+      "unknown"
+    ],
+    "no_promotion": true,
+    "proof_scope": "exact evidence type and record provenance, never source-link shape alone"
+  }
+}

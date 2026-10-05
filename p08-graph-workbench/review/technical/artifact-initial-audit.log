@@ -1,0 +1,24 @@
+{
+  "scope": "Independent code/data acceptance; browser rendering not asserted.",
+  "graph_sha256": "6b4c0bd838fa0c784b3f663fb27af494e028c816988529dfe7100f256da7a480",
+  "counts": {
+    "graph_nodes": 20201,
+    "graph_edges": 64978,
+    "quarantined_edges": 0,
+    "aliases": 85179,
+    "merged_node_groups": 0,
+    "independent_source_occurrences": 83874
+  },
+  "all_data_checks_pass": true,
+  "elapsed_seconds": 9.119
+}
+PASS immutable_source_documents_byte_exact covered= 7 failures= 0
+PASS exhaustive_independent_stage1_occurrence_coverage covered= 83874 failures= 0
+PASS all_alias_pointers_resolve_and_reverse_exactly covered= 85179 failures= 0
+PASS canonical_payloads_preserve_raw_record_exactly covered= 85179 failures= 0
+PASS raw_edge_direction_and_endpoints_preserved covered= 64978 failures= 0
+PASS parallel_edge_occurrences_not_deduplicated covered= 64978 failures= 0
+PASS merged_definition_aliases_have_explicit_revision covered= 0 failures= 0
+PASS exact_35_activity_226_step_coverage covered= 226 failures= 0
+PASS argument_direction_semantics_mapped_by_verified_source_profile covered= 878 failures= 0
+PASS state_fact_and_definition_instance_type_distinction covered= 4616 failures= 0
