@@ -1,5 +1,6 @@
 const messages = {
   'en-US': {
+    navConfigurationAuthoring: 'Configuration authoring · Fixture',
     appTitle: 'AeroAgentSim Control Plane',
     appSubtitle: 'Developer Workbench',
     footer: 'AeroAgentSim Workbench',
@@ -213,6 +214,7 @@ const messages = {
     localeEn: 'English',
   },
   'zh-CN': {
+    navConfigurationAuthoring: '配置创作 · Fixture',
     appTitle: 'AeroAgentSim 控制台',
     appSubtitle: '开发者工作台',
     footer: 'AeroAgentSim 工作台',

@@ -22,6 +22,7 @@ Welcome to the AeroAgentSim documentation hub.
 
 - [English Architecture](../src/aeroagentsim/docs/en/architecture.md)
 - [Chinese Architecture](../src/aeroagentsim/docs/cn/architecture.md)
+- [External Observation Integration Foundation](integration_foundation.md)
 - [Examples README](../src/aeroagentsim/examples/README.md)
 
 ## Current Workbench Scope
