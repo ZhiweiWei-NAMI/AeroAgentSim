@@ -15,13 +15,14 @@ revision of this README mis-cited MIT; the source license is Apache-2.0).
 ## Run
 
 ```bash
-cd validation/p02-parcel-host/host
+cd aero-bench/host
 npm start          # http://localhost:4407 (loopback only)
 npm test           # 23 focused node:test regressions
 ```
 
-`npm test` resolves `jsdom` from the existing `frontend/node_modules` tree of
-the base workspace (devDependency jsdom 30.1.2). Nothing is installed.
+`npm test` resolves `jsdom` from `aero-bench/frontend/node_modules`
+(devDependency jsdom 30.1.2). Install the Viewer dependencies first in a fresh
+clone. This export does not include node_modules or prebuilt browser assets.
 
 ## What the PR10 revision changed
 

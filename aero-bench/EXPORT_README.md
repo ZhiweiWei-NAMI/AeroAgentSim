@@ -52,9 +52,9 @@ Recorded in full in `EXPORT_MANIFEST.json` (`exclusions`). Headlines:
   caches, `node_modules/`, build outputs — assistant/session installation and
   build/cache outputs.
 
-Files that were kept but needed small edits for publication are listed under
-`sanitizations` in the manifest (removed local paths/host addresses, cropped
-screenshot caption strip, replaced links to omitted docs).
+Files that needed edits for publication are listed under `sanitizations` in
+the manifest. The list describes removed private configuration by category
+without repeating its values. Links to omitted documents are identified.
 
 ## Licensing
 
@@ -81,9 +81,9 @@ screenshot caption strip, replaced links to omitted docs).
   **built from source by the checked-in Dockerfiles**; no prebuilt image or
   registry artifact is distributed with this export, and there are no
   credentials, tokens or private endpoints anywhere in the tree.
-- No network access is required to inspect the code or run the unit test
-  suites; container image builds do fetch upstream sources by digest/tag, as
-  declared in each Dockerfile.
+- Source inspection needs no network access. Install dependencies before
+  running tests; integration tests can require images or assets not included
+  here. Container builds fetch the upstream sources declared in each Dockerfile.
 
 ## Quick start
 
@@ -141,14 +141,14 @@ for this export**.
 
 ### 5. P02 parcel host-mount example (`host/`)
 
-An isolated, dependency-free example (Node ≥ 22, no npm install) that mounts
-the P02 parcel view inside BENCH integration boundaries with one host-owned
-replay clock:
+An isolated example that mounts the P02 parcel view inside BENCH integration
+boundaries with one host-owned replay clock. The demo server uses Node ≥ 22
+built-ins; tests additionally require the Viewer's installed jsdom dependency:
 
 ```bash
 cd aero-bench/host
 npm start           # http://localhost:4407 (loopback only)
-npm test            # 23 focused node:test regressions (resolves jsdom from frontend/node_modules)
+npm test            # resolves jsdom from frontend/node_modules; install Viewer deps first
 ```
 
 `host/README.md` documents the full host API, evidence rules and the
@@ -169,7 +169,6 @@ machine-readable capture record is
 | --- | --- |
 | [host-demo-zh.png](host/screenshots/host-demo-zh.png) | Demo feed, tick 44, zh — demo parcel/custody/rule evidence (rule truth 真, parcel holding, custodian `uav.delivery.alpha`) |
 | [host-demo-en.png](host/screenshots/host-demo-en.png) | Same demo state, en (True / Holding position) |
-| [bench-motion-zh.png](host/screenshots/bench-motion-zh.png) | The `?source=` surface with the missing-source fallback active — demo evidence only; in this export the transient real-replay caption strip was cropped out of the original capture |
 
 The upstream P02 source packages (PR9/PR10 prototype checkout and the
 predicate-binding prototype) are **not** redistributed here; `host/` carries
@@ -185,6 +184,6 @@ the attribution and license requirements instead.
 - This export was produced by copying selected first-party files only; the
   original repository, its history and all existing branches are untouched.
 
-See [`EXPORT_MANIFEST.json`](EXPORT_MANIFEST.json) for the exact 1175-file list
-with per-file byte sizes (21,505,931 bytes including this manifest and
-README), the curated-payload tree digest, and every exclusion reason.
+See [`EXPORT_MANIFEST.json`](EXPORT_MANIFEST.json) for the current file list,
+per-file byte sizes, total export size and exclusion reasons. The source Git
+commit identifies the snapshot; the uploaded branch retains its commit history.

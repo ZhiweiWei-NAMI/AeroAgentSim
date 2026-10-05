@@ -4,7 +4,7 @@
   "base": "http://127.0.0.1:4418",
   "allScreenshotsUse": "DEMO feed: authored demo motion + labelled demo parcel/custody/rule evidence (authority host-demo-evidence)",
   "realBenchMotion": false,
-  "realBenchMotionReason": "no sealed public replay artifact exists in this workspace; the ?source= loader reports the missing source and falls back to the demo feed (visible in the source-mode bar of bench-motion-zh.png)",
+  "realBenchMotionReason": "At capture time the standalone host could not load the requested replay module; the retained screenshots show labelled demo evidence. No real replay is claimed.",
   "files": {
     "host-demo-zh.png": {
       "language": "zh",
@@ -25,13 +25,6 @@
       "stateBanner": "Holding position",
       "custody": "Custody confirmedCurrent custodian @ 00:29.0",
       "evidence": "demo"
-    },
-    "bench-motion-zh.png": {
-      "language": "zh",
-      "sourceMode": "真实回放加载失败：Failed to fetch dynamically imported module: http://127.0.0.1:4418/@bench/trace.ts（演示证据继续可用）",
-      "tick": 0,
-      "ownsCursor": true,
-      "evidence": "demo (fallback; no replay artifact available)"
     }
   },
   "pageErrors": [

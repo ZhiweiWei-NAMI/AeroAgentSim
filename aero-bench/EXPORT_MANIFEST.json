@@ -1,6 +1,6 @@
 {
   "schema_version": "aeroagentsim.bench-export.manifest/v1",
-  "generated_utc": "2026-10-05T02:30:00Z",
+  "generated_utc": "2026-10-05T09:55:37.819717+00:00",
   "what_this_is": "Curated first-party snapshot of AERO_BENCH source, configuration, tests, docs and build recipes for the monorepo folder aero-bench/ of ZhiweiWei-NAMI/AeroAgentSim. It is a copy, not a git merge: it carries NO AERO_BENCH commit history.",
   "snapshot": {
     "has_git_history": false,
@@ -13,14 +13,7 @@
       "tracked_modifications_vs_head": 0,
       "untracked_paths": 1339,
       "untracked_breakdown_note": "All 1339 dirty paths are untracked evidence/dataset working files under validation/, frontend/public/ and frontend/validation/. None is part of this export except the host/ example, whose files were also untracked in the source workspace and are published here deliberately as the P02 host-mount example.",
-      "host_example_provenance": "validation/p02-parcel-host/host/ (untracked working tree in the source workspace, files dated 2026-10-05, copied unmodified except the two sanitizations declared under sanitizations)"
-    },
-    "export_tree_digest": {
-      "method": "sha256 over 'sha256sum <newline-separated sorted (by path) file paths>  <hash>' listing of every file",
-      "list_digest_sha256": "b99eabac43415270ab61f86b177822d4c50402ae6afe066cb0b83f8f0b8e9920",
-      "file_count": 1175,
-      "total_bytes": 21505931,
-      "note": "digest covers the curated payload before EXPORT_MANIFEST.json/EXPORT_README.md were added; those two files are listed below with their sizes"
+      "host_example_provenance": "The source host example is an untracked first-party prototype. The export carries the publication edits listed below; the original workspace is unchanged."
     }
   },
   "included_categories": {
@@ -31,7 +24,7 @@
     "generated-schemas (schemas/)": 46,
     "architecture-and-validation-docs (docs/)": 35,
     "viewer-typescript-source (frontend/src, scripts, shared, e2e, config)": 543,
-    "p02-parcel-host-example (host/)": 17,
+    "p02-parcel-host-example (host/)": 16,
     "root-config (README.md, AGENTS.md, pyproject.toml)": 3
   },
   "exclusions": [
@@ -56,10 +49,6 @@
       "reason": "Run logs/evidence, raw datasets and working-session records are excluded by policy; no known redistribution rights for generated datasets."
     },
     {
-      "category": "Host demo screenshots bench-motion original caption",
-      "reason": "The transient real-replay caption in the original bench-motion-zh.png header was cropped out; see sanitizations."
-    },
-    {
       "category": "Session/workflow docs (city-platform-handoff, city-platform-delivery-status, frontend-backend-coordination, city-platform-next-job, city-platform-work-allocation, project-owner-handoff-20261002, project-owner-takeover-20261001, ui-calibration-handoff-20261001, ui-calibration-dsh-review-20261001)",
       "reason": "Session-specific records naming local workspace paths and model-assistant session details; omitting them is the conservative choice for a public export."
     },
@@ -70,24 +59,28 @@
     {
       "category": ".github workflows",
       "reason": "None exist in the source repository; nothing to export."
+    },
+    {
+      "category": "host/screenshots/bench-motion-zh.png",
+      "reason": "Removed from the active export: its filename could imply real replay evidence, while the captured source failed and only demo evidence was shown. Original upload remains in Git history."
     }
   ],
   "sanitizations": [
     {
       "file": "docs/AGENT_INSPECTION_RUNTIME.md",
-      "change": "Dropped the --model-https-proxy http://100.64.153.244:10809 example line; replaced the literal /home/weizhiwei/.codex/auth.json with /path/to/model-auth.json."
+      "change": "Removed a private proxy example and replaced a local credential-file path with a placeholder. No removed value is repeated in this manifest."
     },
     {
       "file": "docs/MODEL_CALLS.md",
-      "change": "Replaced the local codex install path /home/weizhiwei/.local/bin/codex with '(local install path omitted in this export)'; replaced the local dsh worktree path with 'a dedicated local worktree (path omitted in this export)'."
+      "change": "Replaced local executable and worktree paths with descriptive placeholders."
     },
     {
       "file": "docs/VALIDATION.md",
-      "change": "Replaced the literal /mnt/data2/weizhiwei/AERO_WORLD workspace path with 'the separate AERO_WORLD workspace'."
+      "change": "Replaced the local AERO_WORLD workspace path with a descriptive reference."
     },
     {
       "file": "docs/city-authoring-stage1-operations.md",
-      "change": "Replaced the literal user-network address https://100.64.131.244:5209 with <authoring-host-address>."
+      "change": "Replaced a private authoring endpoint with a placeholder."
     },
     {
       "file": "frontend/src/city-water-material.test.ts",
@@ -102,8 +95,12 @@
       "change": "Replaced links to omitted session docs with inline notes naming the omission."
     },
     {
-      "file": "host/screenshots/bench-motion-zh.png",
-      "change": "Cropped the 96px header strip that displayed the transient real-replay caption; the exported image (1600x1613) shows the same demo fallback state without the misleading caption. capture.json retains realBenchMotion: false."
+      "file": "EXPORT_MANIFEST.json",
+      "change": "Removed redundant payload digest metadata and private configuration literals from publication notes. Traceability uses source and uploaded Git commits."
+    },
+    {
+      "file": "EXPORT_README.md and host/README.md",
+      "change": "Corrected fresh-clone dependency prerequisites and the exported host working directory; retained demo-only screenshot status."
     }
   ],
   "licensing": {
@@ -116,7 +113,7 @@
     "real_bench_motion": false,
     "real_atlas_evidence": false,
     "visual_acceptance_claimed": false,
-    "gallery_note": "All screenshots under host/screenshots/ show authored demo/fixture evidence. They are NOT evidence of a real BENCH or Atlas run, and none is a visual-acceptance claim. The bench-motion-zh.png caption strip was cropped in this export to avoid implying real replay evidence; capture.json records realBenchMotion: false with the reason."
+    "gallery_note": "The retained zh/en screenshots show authored demo/fixture evidence only. No real BENCH motion, Atlas evaluation or visual acceptance is claimed."
   },
   "files": [
     {
@@ -125,12 +122,11 @@
     },
     {
       "path": "EXPORT_MANIFEST.json",
-      "bytes": 115544,
-      "note": "this manifest (size recorded post-write)"
+      "bytes": 114711
     },
     {
       "path": "EXPORT_README.md",
-      "bytes": 9674
+      "bytes": 9558
     },
     {
       "path": "README.md",
@@ -3522,7 +3518,7 @@
     },
     {
       "path": "host/README.md",
-      "bytes": 10201
+      "bytes": 10260
     },
     {
       "path": "host/adapter.js",
@@ -3557,12 +3553,8 @@
       "bytes": 9046
     },
     {
-      "path": "host/screenshots/bench-motion-zh.png",
-      "bytes": 186978
-    },
-    {
       "path": "host/screenshots/capture.json",
-      "bytes": 1583
+      "bytes": 1219
     },
     {
       "path": "host/screenshots/host-demo-en.png",
@@ -4820,5 +4812,7 @@
       "path": "tools/version_huangpu_native_runner.py",
       "bytes": 4188
     }
-  ]
+  ],
+  "file_count": 1174,
+  "total_bytes": 21317699
 }
