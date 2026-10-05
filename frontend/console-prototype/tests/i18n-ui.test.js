@@ -33,6 +33,12 @@ test('bilingual workflow preserves typed values, modal edits and replay identity
     }
     assert.equal($('[data-action="help"]').getAttribute('aria-label'), 'View mode information');
   });
+  await t.test('versions heading follows both language switches',()=>{
+    click('[data-nav="versions"]'); assert.equal($('h1').textContent.trim(),'Configuration versions');
+    change('#locale','zh-CN');assert.equal($('h1').textContent.trim(),'配置版本');
+    change('#locale','en-US');assert.equal($('h1').textContent.trim(),'Configuration versions');
+    click('[data-nav="configuration"]');
+  });
   await t.test('entity modal retains unsaved numbers, validation error and focus through switching', () => {
     click('[data-tab="entities"]'); click('[data-action="entity-edit"]');
     $('#entity-east').value = '123.45'; $('#entity-id').value = 'INVALID ID';

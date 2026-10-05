@@ -196,6 +196,10 @@ export function validateNetworkStudy(study, radioProfiles = []) {
   const errors = [], warnings = [];
   const error = (path, message) => errors.push({ path: `network.study${path ? `.${path}` : ''}`, message });
   const warn = (path, message) => warnings.push({ path: `network.study${path ? `.${path}` : ''}`, message });
+  // Warn on retained/imported radios even when no study has been applied.
+  (Array.isArray(radioProfiles) ? radioProfiles : []).forEach((radio, index) => {
+    if (radio?.frequency_ghz >= 5.15 && radio.frequency_ghz <= 5.35) warnings.push({path: `network.radio_profiles[${index}].frequency_ghz`, message: 'This indoor-restricted frequency family is not an outdoor-UAV default; check applicable radio rules and device category separately.'});
+  });
   if (study === undefined) return { valid: true, errors, warnings };
   if (!record(study)) { error('', 'Study must be an object when present.'); return { valid: false, errors, warnings }; }
   const object = (value, path) => { if (!record(value)) { error(path, 'Must be an object.'); return {}; } return value; };
@@ -252,7 +256,6 @@ export function validateNetworkStudy(study, radioProfiles = []) {
   if (queue.max_delay_ms > traffic.observation_ttl_ms) warn('queue.max_delay_ms', 'Queue lifetime exceeds observation TTL. Late delivery is possible; TTL failure must not be relabeled RF loss.');
   if (Number.isFinite(traffic.offered_load_mbps) && traffic.offered_load_mbps >= phy.nominal_rate_mbps) warn('traffic.offered_load_mbps', 'Per-source offered load meets/exceeds nominal PHY rate before MAC/IP overhead or multi-source contention. This does not predict actual goodput.');
   if (study.profile_id === 'R0') warn('propagation.reference_loss_db', 'R0 deliberately preserves the historical frequency-mismatched reference loss for paired reproduction.');
-  if (radio?.frequency_ghz >= 5.15 && radio.frequency_ghz <= 5.35) warn('radio_profile_id', 'This indoor-restricted frequency family is not an outdoor-UAV default; check applicable radio rules and device category separately.');
   if (Array.isArray(study.research_hints) && study.research_hints.length) warn('research_hints', 'Geometry/PHY/channel/hardware research hints remain unimplemented; profile selection does not enable those capabilities.');
   return { valid: errors.length === 0, errors, warnings };
 }

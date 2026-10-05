@@ -17,9 +17,10 @@ test('catalogue contains versioned R0–R5, public references and no executable/
   assert.equal(Object.isFrozen(STUDY_PROFILES[0].study.phy), true);
 });
 
-test('study stays optional and synthetic radio is unchanged until explicit Apply', () => {
+test('new fixture matches R1 radio inputs without claiming an applied study', () => {
   assert.equal(DEFAULT_CONFIG.network.study, undefined);
-  assert.equal(DEFAULT_CONFIG.network.radio_profiles[0].frequency_ghz, 5.2);
+  const {id,...radio}=DEFAULT_CONFIG.network.radio_profiles[0];
+  assert.deepEqual(radio,STUDY_PROFILES.find(p=>p.id==='R1').radio);
   assert.equal(validateConfig(DEFAULT_CONFIG).valid, true);
   assert.equal(validateNetworkStudy(undefined).valid, true);
   assert.deepEqual(studyFieldRows(DEFAULT_CONFIG), []);
@@ -28,6 +29,7 @@ test('study stays optional and synthetic radio is unchanged until explicit Apply
 
 test('Apply changes only chosen radio and study, returning detached exact diff', () => {
   const input = clone(DEFAULT_CONFIG);
+  input.network.radio_profiles[0].frequency_ghz=5.2;
   input.network.radio_profiles.push({ ...input.network.radio_profiles[0], id: 'keep-other' });
   const result = applyStudyProfile(input, 'R1');
   assert.deepEqual(result.diff, diffConfig(input, result.config));
@@ -199,3 +201,5 @@ test('analytical preview guards huge finite inputs and never emits Infinity or N
   assert.equal(invalid.free_space_reference_loss_db, null);
   assert.equal(invalid.integrated_noise_dbm, null);
 });
+
+test('legacy frequency caution does not require an applied study',()=>{const result=validateNetworkStudy(undefined,[{frequency_ghz:5.2}]);assert.equal(result.valid,true);assert.equal(result.warnings[0].path,'network.radio_profiles[0].frequency_ghz');assert.match(result.warnings[0].message,/not an outdoor-UAV default/);});
