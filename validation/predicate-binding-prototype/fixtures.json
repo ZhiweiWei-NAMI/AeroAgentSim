@@ -1,0 +1,1165 @@
+{
+  "schema": "fixture.binding-adapter/v1",
+  "scope": "hypothetical fixtures only; no live provider or controller",
+  "objects": [
+    {
+      "ref": {
+        "run_id": "fixture.binding.run",
+        "epoch": "epoch.1",
+        "id": "parcel.1",
+        "generation": 1,
+        "ref_type": "object"
+      },
+      "kind": "parcel",
+      "lifetime": {
+        "start_ns": 0,
+        "end_ns": 100000000000
+      },
+      "capabilities": [
+        {
+          "name": "pose",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "parcel.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        }
+      ]
+    },
+    {
+      "ref": {
+        "run_id": "fixture.binding.run",
+        "epoch": "epoch.1",
+        "id": "ugv.01",
+        "generation": 1,
+        "ref_type": "object"
+      },
+      "kind": "ugv",
+      "lifetime": {
+        "start_ns": 0,
+        "end_ns": 100000000000
+      },
+      "capabilities": [
+        {
+          "name": "pose",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "ugv.01",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        },
+        {
+          "name": "ground_velocity",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "ugv.01",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        },
+        {
+          "name": "responsible_custody",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "ugv.01",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        }
+      ]
+    },
+    {
+      "ref": {
+        "run_id": "fixture.binding.run",
+        "epoch": "epoch.1",
+        "id": "uav.1",
+        "generation": 1,
+        "ref_type": "object"
+      },
+      "kind": "uav",
+      "lifetime": {
+        "start_ns": 0,
+        "end_ns": 100000000000
+      },
+      "capabilities": [
+        {
+          "name": "pose",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "uav.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        },
+        {
+          "name": "ground_velocity",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "uav.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        },
+        {
+          "name": "responsible_custody",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "uav.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        }
+      ]
+    },
+    {
+      "ref": {
+        "run_id": "fixture.binding.run",
+        "epoch": "epoch.1",
+        "id": "pad.1",
+        "generation": 1,
+        "ref_type": "object"
+      },
+      "kind": "facility",
+      "lifetime": {
+        "start_ns": 0,
+        "end_ns": 100000000000
+      },
+      "capabilities": [
+        {
+          "name": "pose",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "pad.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        },
+        {
+          "name": "responsible_custody",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "pad.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        }
+      ]
+    },
+    {
+      "ref": {
+        "run_id": "fixture.binding.run",
+        "epoch": "epoch.1",
+        "id": "human.1",
+        "generation": 1,
+        "ref_type": "object"
+      },
+      "kind": "human",
+      "lifetime": {
+        "start_ns": 0,
+        "end_ns": 100000000000
+      },
+      "capabilities": [
+        {
+          "name": "pose",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "human.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        },
+        {
+          "name": "ground_velocity",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "human.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        },
+        {
+          "name": "responsible_custody",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "human.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        }
+      ]
+    },
+    {
+      "ref": {
+        "run_id": "fixture.binding.run",
+        "epoch": "epoch.1",
+        "id": "link.1",
+        "generation": 1,
+        "ref_type": "object"
+      },
+      "kind": "network_resource",
+      "lifetime": {
+        "start_ns": 0,
+        "end_ns": 100000000000
+      },
+      "capabilities": [
+        {
+          "name": "directional_link_metrics",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "link.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        }
+      ]
+    },
+    {
+      "ref": {
+        "run_id": "fixture.binding.run",
+        "epoch": "epoch.1",
+        "id": "queue.1",
+        "generation": 1,
+        "ref_type": "object"
+      },
+      "kind": "compute_resource",
+      "lifetime": {
+        "start_ns": 0,
+        "end_ns": 100000000000
+      },
+      "capabilities": [
+        {
+          "name": "queue_metrics",
+          "issuer": "fixture-provider",
+          "scope": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "queue.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "revision": "v1"
+        }
+      ]
+    },
+    {
+      "ref": {
+        "run_id": "fixture.binding.run",
+        "epoch": "epoch.1",
+        "id": "queue.1",
+        "generation": 2,
+        "ref_type": "object"
+      },
+      "kind": "compute_resource",
+      "lifetime": {
+        "start_ns": 0,
+        "end_ns": 100000000000
+      },
+      "capabilities": []
+    }
+  ],
+  "cases": [
+    {
+      "id": "same_pipeline_parcel",
+      "audit_case_id": "seven_entity_kinds",
+      "expected": false,
+      "query": {
+        "event_ns": 5000000000,
+        "evidence_domain": "provider.commit",
+        "available_ns": 500,
+        "commit": 5,
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1"
+      },
+      "binding": {
+        "binding_id": "binding.parcel.1",
+        "target_id": "hu.predicate.actor_moving",
+        "target_revision": "atlas.observable_v2.fixture-pinned",
+        "roles": {
+          "actor": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "parcel.1",
+            "generation": 1,
+            "ref_type": "object"
+          }
+        },
+        "requirements": [
+          {
+            "role": "actor",
+            "kinds": [
+              "parcel"
+            ],
+            "capabilities": [],
+            "capability_issuers": [
+              "fixture-provider"
+            ]
+          }
+        ],
+        "selectors": [
+          {
+            "field_id": "hu.actor.speed_mps",
+            "holder": {
+              "run_id": "fixture.binding.run",
+              "epoch": "epoch.1",
+              "id": "parcel.1",
+              "generation": 1,
+              "ref_type": "object"
+            },
+            "quantity": "hu.actor.speed_mps",
+            "dtype": "number",
+            "unit": "m/s",
+            "allowed_authorities": [
+              "fixture-provider"
+            ],
+            "allowed_provenances": [
+              "hypothetical"
+            ],
+            "frame_ref": null,
+            "relation_schema": null,
+            "endpoints": {}
+          }
+        ],
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1",
+        "binding_epoch": "1",
+        "evaluation_revision": "1",
+        "parameters": {},
+        "distinct_roles": []
+      },
+      "cells": [
+        {
+          "cell_id": "cell.parcel.1.hu.actor.speed_mps",
+          "holder": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "parcel.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "quantity": "hu.actor.speed_mps",
+          "value": 0,
+          "dtype": "number",
+          "unit": "m/s",
+          "sample_ns": 0,
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "evidence_domain": "provider.commit",
+          "observation_commit": 1,
+          "available_after_commit": 1,
+          "available_ns": 100,
+          "authority": "fixture-provider",
+          "source_ref": "source.parcel.1",
+          "provenance": "hypothetical",
+          "revision": "1",
+          "frame_ref": null,
+          "supersedes": [],
+          "unavailable_reason": null
+        }
+      ]
+    },
+    {
+      "id": "same_pipeline_ugv",
+      "audit_case_id": "seven_entity_kinds",
+      "expected": true,
+      "query": {
+        "event_ns": 5000000000,
+        "evidence_domain": "provider.commit",
+        "available_ns": 500,
+        "commit": 5,
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1"
+      },
+      "binding": {
+        "binding_id": "binding.ugv.01",
+        "target_id": "hu.predicate.actor_moving",
+        "target_revision": "atlas.observable_v2.fixture-pinned",
+        "roles": {
+          "actor": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "ugv.01",
+            "generation": 1,
+            "ref_type": "object"
+          }
+        },
+        "requirements": [
+          {
+            "role": "actor",
+            "kinds": [
+              "ugv"
+            ],
+            "capabilities": [],
+            "capability_issuers": [
+              "fixture-provider"
+            ]
+          }
+        ],
+        "selectors": [
+          {
+            "field_id": "hu.actor.speed_mps",
+            "holder": {
+              "run_id": "fixture.binding.run",
+              "epoch": "epoch.1",
+              "id": "ugv.01",
+              "generation": 1,
+              "ref_type": "object"
+            },
+            "quantity": "hu.actor.speed_mps",
+            "dtype": "number",
+            "unit": "m/s",
+            "allowed_authorities": [
+              "fixture-provider"
+            ],
+            "allowed_provenances": [
+              "hypothetical"
+            ],
+            "frame_ref": null,
+            "relation_schema": null,
+            "endpoints": {}
+          }
+        ],
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1",
+        "binding_epoch": "1",
+        "evaluation_revision": "1",
+        "parameters": {},
+        "distinct_roles": []
+      },
+      "cells": [
+        {
+          "cell_id": "cell.ugv.01.hu.actor.speed_mps",
+          "holder": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "ugv.01",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "quantity": "hu.actor.speed_mps",
+          "value": 1,
+          "dtype": "number",
+          "unit": "m/s",
+          "sample_ns": 0,
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "evidence_domain": "provider.commit",
+          "observation_commit": 1,
+          "available_after_commit": 1,
+          "available_ns": 100,
+          "authority": "fixture-provider",
+          "source_ref": "source.ugv.01",
+          "provenance": "hypothetical",
+          "revision": "1",
+          "frame_ref": null,
+          "supersedes": [],
+          "unavailable_reason": null
+        }
+      ]
+    },
+    {
+      "id": "same_pipeline_uav",
+      "audit_case_id": "seven_entity_kinds",
+      "expected": true,
+      "query": {
+        "event_ns": 5000000000,
+        "evidence_domain": "provider.commit",
+        "available_ns": 500,
+        "commit": 5,
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1"
+      },
+      "binding": {
+        "binding_id": "binding.uav.1",
+        "target_id": "hu.predicate.actor_moving",
+        "target_revision": "atlas.observable_v2.fixture-pinned",
+        "roles": {
+          "actor": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "uav.1",
+            "generation": 1,
+            "ref_type": "object"
+          }
+        },
+        "requirements": [
+          {
+            "role": "actor",
+            "kinds": [
+              "uav"
+            ],
+            "capabilities": [],
+            "capability_issuers": [
+              "fixture-provider"
+            ]
+          }
+        ],
+        "selectors": [
+          {
+            "field_id": "hu.actor.speed_mps",
+            "holder": {
+              "run_id": "fixture.binding.run",
+              "epoch": "epoch.1",
+              "id": "uav.1",
+              "generation": 1,
+              "ref_type": "object"
+            },
+            "quantity": "hu.actor.speed_mps",
+            "dtype": "number",
+            "unit": "m/s",
+            "allowed_authorities": [
+              "fixture-provider"
+            ],
+            "allowed_provenances": [
+              "hypothetical"
+            ],
+            "frame_ref": null,
+            "relation_schema": null,
+            "endpoints": {}
+          }
+        ],
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1",
+        "binding_epoch": "1",
+        "evaluation_revision": "1",
+        "parameters": {},
+        "distinct_roles": []
+      },
+      "cells": [
+        {
+          "cell_id": "cell.uav.1.hu.actor.speed_mps",
+          "holder": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "uav.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "quantity": "hu.actor.speed_mps",
+          "value": 1,
+          "dtype": "number",
+          "unit": "m/s",
+          "sample_ns": 0,
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "evidence_domain": "provider.commit",
+          "observation_commit": 1,
+          "available_after_commit": 1,
+          "available_ns": 100,
+          "authority": "fixture-provider",
+          "source_ref": "source.uav.1",
+          "provenance": "hypothetical",
+          "revision": "1",
+          "frame_ref": null,
+          "supersedes": [],
+          "unavailable_reason": null
+        }
+      ]
+    },
+    {
+      "id": "same_pipeline_facility",
+      "audit_case_id": "seven_entity_kinds",
+      "expected": false,
+      "query": {
+        "event_ns": 5000000000,
+        "evidence_domain": "provider.commit",
+        "available_ns": 500,
+        "commit": 5,
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1"
+      },
+      "binding": {
+        "binding_id": "binding.pad.1",
+        "target_id": "hu.predicate.actor_moving",
+        "target_revision": "atlas.observable_v2.fixture-pinned",
+        "roles": {
+          "actor": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "pad.1",
+            "generation": 1,
+            "ref_type": "object"
+          }
+        },
+        "requirements": [
+          {
+            "role": "actor",
+            "kinds": [
+              "facility"
+            ],
+            "capabilities": [],
+            "capability_issuers": [
+              "fixture-provider"
+            ]
+          }
+        ],
+        "selectors": [
+          {
+            "field_id": "hu.actor.speed_mps",
+            "holder": {
+              "run_id": "fixture.binding.run",
+              "epoch": "epoch.1",
+              "id": "pad.1",
+              "generation": 1,
+              "ref_type": "object"
+            },
+            "quantity": "hu.actor.speed_mps",
+            "dtype": "number",
+            "unit": "m/s",
+            "allowed_authorities": [
+              "fixture-provider"
+            ],
+            "allowed_provenances": [
+              "hypothetical"
+            ],
+            "frame_ref": null,
+            "relation_schema": null,
+            "endpoints": {}
+          }
+        ],
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1",
+        "binding_epoch": "1",
+        "evaluation_revision": "1",
+        "parameters": {},
+        "distinct_roles": []
+      },
+      "cells": [
+        {
+          "cell_id": "cell.pad.1.hu.actor.speed_mps",
+          "holder": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "pad.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "quantity": "hu.actor.speed_mps",
+          "value": 0,
+          "dtype": "number",
+          "unit": "m/s",
+          "sample_ns": 0,
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "evidence_domain": "provider.commit",
+          "observation_commit": 1,
+          "available_after_commit": 1,
+          "available_ns": 100,
+          "authority": "fixture-provider",
+          "source_ref": "source.pad.1",
+          "provenance": "hypothetical",
+          "revision": "1",
+          "frame_ref": null,
+          "supersedes": [],
+          "unavailable_reason": null
+        }
+      ]
+    },
+    {
+      "id": "same_pipeline_human",
+      "audit_case_id": "seven_entity_kinds",
+      "expected": true,
+      "query": {
+        "event_ns": 5000000000,
+        "evidence_domain": "provider.commit",
+        "available_ns": 500,
+        "commit": 5,
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1"
+      },
+      "binding": {
+        "binding_id": "binding.human.1",
+        "target_id": "hu.predicate.actor_moving",
+        "target_revision": "atlas.observable_v2.fixture-pinned",
+        "roles": {
+          "actor": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "human.1",
+            "generation": 1,
+            "ref_type": "object"
+          }
+        },
+        "requirements": [
+          {
+            "role": "actor",
+            "kinds": [
+              "human"
+            ],
+            "capabilities": [],
+            "capability_issuers": [
+              "fixture-provider"
+            ]
+          }
+        ],
+        "selectors": [
+          {
+            "field_id": "hu.actor.speed_mps",
+            "holder": {
+              "run_id": "fixture.binding.run",
+              "epoch": "epoch.1",
+              "id": "human.1",
+              "generation": 1,
+              "ref_type": "object"
+            },
+            "quantity": "hu.actor.speed_mps",
+            "dtype": "number",
+            "unit": "m/s",
+            "allowed_authorities": [
+              "fixture-provider"
+            ],
+            "allowed_provenances": [
+              "hypothetical"
+            ],
+            "frame_ref": null,
+            "relation_schema": null,
+            "endpoints": {}
+          }
+        ],
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1",
+        "binding_epoch": "1",
+        "evaluation_revision": "1",
+        "parameters": {},
+        "distinct_roles": []
+      },
+      "cells": [
+        {
+          "cell_id": "cell.human.1.hu.actor.speed_mps",
+          "holder": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "human.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "quantity": "hu.actor.speed_mps",
+          "value": 1,
+          "dtype": "number",
+          "unit": "m/s",
+          "sample_ns": 0,
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "evidence_domain": "provider.commit",
+          "observation_commit": 1,
+          "available_after_commit": 1,
+          "available_ns": 100,
+          "authority": "fixture-provider",
+          "source_ref": "source.human.1",
+          "provenance": "hypothetical",
+          "revision": "1",
+          "frame_ref": null,
+          "supersedes": [],
+          "unavailable_reason": null
+        }
+      ]
+    },
+    {
+      "id": "same_pipeline_network_resource",
+      "audit_case_id": "seven_entity_kinds",
+      "expected": true,
+      "query": {
+        "event_ns": 5000000000,
+        "evidence_domain": "provider.commit",
+        "available_ns": 500,
+        "commit": 5,
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1"
+      },
+      "binding": {
+        "binding_id": "binding.link.1",
+        "target_id": "machine_network.transport.packet_loss",
+        "target_revision": "atlas.observable_v2.fixture-pinned",
+        "roles": {
+          "actor": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "link.1",
+            "generation": 1,
+            "ref_type": "object"
+          }
+        },
+        "requirements": [
+          {
+            "role": "actor",
+            "kinds": [
+              "network_resource"
+            ],
+            "capabilities": [],
+            "capability_issuers": [
+              "fixture-provider"
+            ]
+          }
+        ],
+        "selectors": [
+          {
+            "field_id": "mn.flow.sent_eligible",
+            "holder": {
+              "run_id": "fixture.binding.run",
+              "epoch": "epoch.1",
+              "id": "link.1",
+              "generation": 1,
+              "ref_type": "object"
+            },
+            "quantity": "mn.flow.sent_eligible",
+            "dtype": "integer",
+            "unit": "count",
+            "allowed_authorities": [
+              "fixture-provider"
+            ],
+            "allowed_provenances": [
+              "hypothetical"
+            ],
+            "frame_ref": null,
+            "relation_schema": null,
+            "endpoints": {}
+          },
+          {
+            "field_id": "mn.flow.lost_after_tmax",
+            "holder": {
+              "run_id": "fixture.binding.run",
+              "epoch": "epoch.1",
+              "id": "link.1",
+              "generation": 1,
+              "ref_type": "object"
+            },
+            "quantity": "mn.flow.lost_after_tmax",
+            "dtype": "integer",
+            "unit": "count",
+            "allowed_authorities": [
+              "fixture-provider"
+            ],
+            "allowed_provenances": [
+              "hypothetical"
+            ],
+            "frame_ref": null,
+            "relation_schema": null,
+            "endpoints": {}
+          }
+        ],
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1",
+        "binding_epoch": "1",
+        "evaluation_revision": "1",
+        "parameters": {},
+        "distinct_roles": []
+      },
+      "cells": [
+        {
+          "cell_id": "cell.link.1.mn.flow.sent_eligible",
+          "holder": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "link.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "quantity": "mn.flow.sent_eligible",
+          "value": 100,
+          "dtype": "integer",
+          "unit": "count",
+          "sample_ns": 0,
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "evidence_domain": "provider.commit",
+          "observation_commit": 1,
+          "available_after_commit": 1,
+          "available_ns": 100,
+          "authority": "fixture-provider",
+          "source_ref": "source.link.1",
+          "provenance": "hypothetical",
+          "revision": "1",
+          "frame_ref": null,
+          "supersedes": [],
+          "unavailable_reason": null
+        },
+        {
+          "cell_id": "cell.link.1.mn.flow.lost_after_tmax",
+          "holder": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "link.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "quantity": "mn.flow.lost_after_tmax",
+          "value": 20,
+          "dtype": "integer",
+          "unit": "count",
+          "sample_ns": 0,
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "evidence_domain": "provider.commit",
+          "observation_commit": 1,
+          "available_after_commit": 1,
+          "available_ns": 100,
+          "authority": "fixture-provider",
+          "source_ref": "source.link.1",
+          "provenance": "hypothetical",
+          "revision": "1",
+          "frame_ref": null,
+          "supersedes": [],
+          "unavailable_reason": null
+        }
+      ]
+    },
+    {
+      "id": "same_pipeline_compute_resource",
+      "audit_case_id": "seven_entity_kinds",
+      "expected": true,
+      "query": {
+        "event_ns": 5000000000,
+        "evidence_domain": "provider.commit",
+        "available_ns": 500,
+        "commit": 5,
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1"
+      },
+      "binding": {
+        "binding_id": "binding.queue.1",
+        "target_id": "machine_network.queue.compute_backlog",
+        "target_revision": "atlas.observable_v2.fixture-pinned",
+        "roles": {
+          "actor": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "queue.1",
+            "generation": 1,
+            "ref_type": "object"
+          }
+        },
+        "requirements": [
+          {
+            "role": "actor",
+            "kinds": [
+              "compute_resource"
+            ],
+            "capabilities": [],
+            "capability_issuers": [
+              "fixture-provider"
+            ]
+          }
+        ],
+        "selectors": [
+          {
+            "field_id": "mn.queue.pending_request_count",
+            "holder": {
+              "run_id": "fixture.binding.run",
+              "epoch": "epoch.1",
+              "id": "queue.1",
+              "generation": 1,
+              "ref_type": "object"
+            },
+            "quantity": "mn.queue.pending_request_count",
+            "dtype": "integer",
+            "unit": "count",
+            "allowed_authorities": [
+              "fixture-provider"
+            ],
+            "allowed_provenances": [
+              "hypothetical"
+            ],
+            "frame_ref": null,
+            "relation_schema": null,
+            "endpoints": {}
+          }
+        ],
+        "scenario_revision": "fixture.v1",
+        "observation_policy": "after_barrier",
+        "policy_revision": "v1",
+        "binding_epoch": "1",
+        "evaluation_revision": "1",
+        "parameters": {},
+        "distinct_roles": []
+      },
+      "cells": [
+        {
+          "cell_id": "cell.queue.1.mn.queue.pending_request_count",
+          "holder": {
+            "run_id": "fixture.binding.run",
+            "epoch": "epoch.1",
+            "id": "queue.1",
+            "generation": 1,
+            "ref_type": "object"
+          },
+          "quantity": "mn.queue.pending_request_count",
+          "value": 20,
+          "dtype": "integer",
+          "unit": "count",
+          "sample_ns": 0,
+          "valid": {
+            "start_ns": 0,
+            "end_ns": 100000000000
+          },
+          "evidence_domain": "provider.commit",
+          "observation_commit": 1,
+          "available_after_commit": 1,
+          "available_ns": 100,
+          "authority": "fixture-provider",
+          "source_ref": "source.queue.1",
+          "provenance": "hypothetical",
+          "revision": "1",
+          "frame_ref": null,
+          "supersedes": [],
+          "unavailable_reason": null
+        }
+      ]
+    }
+  ],
+  "audit_inputs": {
+    "IC09": {
+      "missing_custody": {
+        "dt.handoff.transfer_id": "tx.1",
+        "dt.handoff.release_transfer_id": "tx.1",
+        "dt.handoff.accept_transfer_id": "tx.1",
+        "dt.handoff.payload_id": "parcel.p1",
+        "dt.handoff.received_payload_id": "parcel.p1",
+        "dt.handoff.release_status": "FINISHED",
+        "dt.handoff.acquire_status": "FINISHED",
+        "dt.handoff.reported_custodian": null,
+        "dt.role.carrier_actor_id": "warehouse",
+        "dt.role.receiver_actor_id": "ugv.1"
+      },
+      "known_bad_payload": {
+        "dt.handoff.transfer_id": "tx.1",
+        "dt.handoff.release_transfer_id": "tx.1",
+        "dt.handoff.accept_transfer_id": "tx.1",
+        "dt.handoff.payload_id": "parcel.p1",
+        "dt.handoff.received_payload_id": "parcel.other",
+        "dt.handoff.release_status": "FINISHED",
+        "dt.handoff.acquire_status": "FINISHED",
+        "dt.handoff.reported_custodian": null,
+        "dt.role.carrier_actor_id": "warehouse",
+        "dt.role.receiver_actor_id": "ugv.1"
+      }
+    }
+  },
+  "audit_sources": [
+    "entity_contracts.md",
+    "interaction_conflicts.md",
+    "causal_alignment.md"
+  ]
+}
