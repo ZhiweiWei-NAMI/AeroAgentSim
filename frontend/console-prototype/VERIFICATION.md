@@ -1,26 +1,28 @@
 # Verification checkpoint — 2026-10-05
 
-## Passed
+The continuation preserves native delivery `a0d1d0a` and the independently authored Python adapter slice. Final visual acceptance remains pending review.
 
-Executed with Node.js 24.19.0:
+## Automated checks
 
-- `npm run check`: JavaScript syntax plus static module-import and asset closure
-- `npm test`: 77 passing tests, zero failures
-- `npm run build`: complete static distribution
+- Console syntax/import/asset closure: passed.
+- Console Node tests: 86 passed, including bilingual modal, draft, variant, selection-lock and revision-key behavior.
+- Independent Python adapter and browser-export contracts: 113 passed; the previous 109 tests remain, plus four console-to-Python integration cases.
+- Relevant existing registry/compiler, run-repository and runtime-diagnostics tests: seven passed; combined Python verification: 120 passed.
+- Existing React frontend: seven suites / 17 tests passed; production build passed with existing unused-function and outdated-browser-data warnings.
+- Python Black/Flake8 and Git whitespace checks: passed.
 
-Test coverage includes 33 configuration/normalization/cursor cases, 14 network-study cases, runtime/persistence/fixture edge cases, and 12 DOM-emulated workflow subtests. The total includes the workflow parent test.
+## Actual browser evidence
 
-The DOM workflow exercises all six configuration categories, validation, saved versions/diff/restore/cancel, entity edit/rejection, explicit research-profile Apply, nullable workload fields, fixture creation, shared cursor/entity evidence, deliberate unavailable samples and playback interruption on navigation.
+Chromium, using the installed `/usr/bin/chromium`, runs the checked-in `scripts/browser-qa.cjs`. Both Chinese and English are exercised at 1440×900 and 390×844. Each combination captures six actual screenshots: scenario, entity editor, network profiles, profile diff, versions, and locked replay gap evidence. Full-page images retain the viewport width; dialogs use viewport screenshots to show fixed headers and footers. The output manifest records the tested commit, locale, viewport, scenario and filenames.
 
-Security/correctness review prompted fixes for invalid-draft preservation, malformed saved-run isolation, entity-expansion caps, local-only serving, restricted static paths, whole-step time boundaries, large-number overflow, unsupported JSON nonfinite values and unverified barrier readiness.
+The browser checks save/load and actual import/export downloads, invalid time and entity IDs, invalid import, profile Cancel/Apply, independent R3/R4 variants, Close/Escape, repeated Prepare, navigation during playback, null-motion gap seek, language switching inside dialogs and replay, and selection locks across marker clicks, language changes and reload. It checks document overflow and dialog footer clipping and records console, page, request and HTTP failures. No lifecycle/source requests are allowed. Five text/primary-control contrast samples per combination must be at least 4.5; this is a targeted contrast check.
 
-## Not passed or not run
+Actual browser-downloaded neutral observation bundles have also been accepted by the Python indexed reader: all 61 frame-byte hashes match in each bundle, and UAV position/velocity at 25 seconds remain null. The Node fixture export is separately covered by the Python test suite.
 
-- Real-browser visual/responsive verification: not completed. The local cloud-browser preview was blocked with `ERR_BLOCKED_BY_CLIENT`; this restriction was respected.
-- Screenshots: none captured or claimed.
-- Chinese/English language switch: not implemented at this checkpoint. The current authored interface is Chinese with technical English. Full language switching is mandatory continuation work.
-- BENCH renderer mounting, actual replay shards/live SSE, SUMO/ns-3 execution and Atlas runtime evaluation: not run and not claimed.
-- Existing repository-wide Python/frontend checks: not run by this standalone local prototype. Run them after integration as appropriate.
-- CI or merge readiness: not established by this checkpoint.
+Browser findings fixed during continuation include hidden mobile navigation, mobile modal footer clipping, missing replay route restoration, reentrant DOM rendering on blur/language changes, and faint small explanatory text.
 
-The prototype is a tested local source checkpoint, not final product acceptance. Final acceptance requires completed bilingual UI, real desktop/mobile browser screenshots, interaction verification and visual review approval.
+## Limits and acceptance
+
+BENCH renderer mounting, authenticated live SSE, native sealed replay readers, SUMO/ns-3 execution, native Atlas evaluation and real predicate/event parity are not connected or tested. Body extents remain unavailable; clearance is unknown. Cargo identity/custody/location is reserved for the separately developed native parcel prototype and is not inferred from a carrier.
+
+The PR stays a draft. Actual screenshot files and the interaction report must be reviewed by the coordinating task/user; passing these checks is not visual approval or authorization to merge.

@@ -9,12 +9,14 @@
     "start": "node server.mjs",
     "test": "node --test tests/*.test.js",
     "check": "node --check src/app.js && node --check src/runtime.js && node --check src/config.js && node --check server.mjs && node scripts/check-assets.mjs",
-    "build": "node scripts/build.mjs"
+    "build": "node scripts/build.mjs",
+    "browser:qa": "node scripts/browser-qa.cjs"
   },
   "engines": {
     "node": ">=24.15.0"
   },
   "devDependencies": {
-    "jsdom": "^30.1.2"
+    "jsdom": "^30.1.2",
+    "playwright": "1.62.1"
   }
 }

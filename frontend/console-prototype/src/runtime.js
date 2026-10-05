@@ -1,3 +1,4 @@
+import { projectObservation, viewKey, seekObservation } from './observation-contract.js';
 import {clone,validateConfig,compileConfig,diffConfig} from './config.js';
 
 export const STORAGE_KEY='aero-console.workspace.v1';
@@ -38,7 +39,7 @@ export function loadWorkspace(storage,fallback){
     const draft=renderableDraft(saved.draft)?clone(saved.draft):clone(fallback);
     const skipped=(saved.versions?.length||0)-versions.length+(saved.runs?.length||0)-runs.length;
     const warning=skipped?`已跳过 ${skipped} 条损坏记录，保留其余有效版本与运行。`:validateConfig(draft).valid&&renderableDraft(saved.draft)?null:'已保留版本与运行记录。草稿有待修正字段或结构，请检查配置。';
-    return {draft,versions,runs,warning};
+    return {draft,versions,runs,warning,view:saved.view && typeof saved.view==='object' ? saved.view : null};
   }catch{return {draft:clone(fallback),versions:[],runs:[],warning:'本地保存内容无法读取，已打开默认配置。原始存储未覆盖。'};}
 }
 export function createVersion(config,versions,note=''){const checked=validateConfig(config);if(!checked.valid)throw new Error('Fix validation errors before saving a version.');return {id:`version-${Date.now()}-${versions.length+1}`,number:versions.length+1,created_at:new Date().toISOString(),note:note||'配置快照',config:clone(config)};}
@@ -64,9 +65,16 @@ export async function createFixtureRun(config){
     const frame={schema_version:'aero-console.fixture-frame/v1',tick,sim_time_ns:(BigInt(tick)*BigInt(config.scenario.step_ms)*1_000_000n).toString(),relative_time_s:elapsed,entities,stages:{motion:'fixture',network:'unavailable',compute:'unavailable',semantics:'not_evaluated'}};
     frame.hash=await sha256(frame);frames.push(frame);
   }
-  return {schema_version:'aero-console.fixture-run/v1',integrity:'generated-local-not-authenticated',id:`fixture-${Date.now()}`,mode:'synthetic-fixture',status:'sealed',created_at:new Date().toISOString(),name:snapshot.metadata.name,config_digest:digest,config:snapshot,manifest_revision:1,epoch:'fixture-epoch-1',evaluation_revision:null,compiler:compiled,frames,events:[{tick:frames[0].tick,type:'fixture.prepared',message:'Configuration frozen; authored replay snapshots prepared.'},...(frames.some(f=>f.entities.some(e=>e.validity==='unavailable'))?[{tick:frames.find(f=>f.entities.some(e=>e.validity==='unavailable')).tick,type:'evidence.gap',message:'Authored UAV evidence gap. Missing values stay unknown.'}]:[]),{tick:frames.at(-1).tick,type:'fixture.sealed',message:'Fixture record sealed locally. No external simulation was started.'}],source_cursor:null,host_contract:{physical_authority:'AERO_BENCH (not connected)',renderer_host:'BENCH Three.js (not mounted)',clock:'view-cursor-only',atlas:'not connected'},duration_s:frames.at(-1).relative_time_s,requested_duration_s:config.scenario.duration_s,fixture_window_s:duration,truncated:config.scenario.duration_s>duration};
+  const run = {schema_version:'aero-console.fixture-run/v1',integrity:'generated-local-not-authenticated',id:`fixture-${globalThis.crypto.randomUUID()}`,mode:'synthetic-fixture',status:'sealed',created_at:new Date().toISOString(),name:snapshot.metadata.name,config_digest:digest,config:snapshot,manifest_revision:1,epoch:'fixture-epoch-1',evaluation_revision:null,compiler:compiled,frames,events:[{tick:frames[0].tick,type:'fixture.prepared',message:'Configuration frozen; authored replay snapshots prepared.'},...(frames.some(f=>f.entities.some(e=>e.validity==='unavailable'))?[{tick:frames.find(f=>f.entities.some(e=>e.validity==='unavailable')).tick,type:'evidence.gap',message:'Authored UAV evidence gap. Missing values stay unknown.'}]:[]),{tick:frames.at(-1).tick,type:'fixture.sealed',message:'Fixture record sealed locally. No external simulation was started.'}],source_cursor:null,host_contract:{physical_authority:'AERO_BENCH (not connected)',renderer_host:'BENCH Three.js (not mounted)',clock:'view-cursor-only',atlas:'not connected'},duration_s:frames.at(-1).relative_time_s,requested_duration_s:config.scenario.duration_s,fixture_window_s:duration,truncated:config.scenario.duration_s>duration};
+  for (const frame of frames) frame.observation_hash = await sha256(projectObservation(run, frame));
+  return run;
 }
-export function seekFrame(run,seconds){if(!run||!run.frames.length)return null;const clamped=Math.min(Math.max(0,seconds),run.frames.at(-1).relative_time_s);let result=run.frames[0];for(const frame of run.frames){if(frame.relative_time_s>clamped)break;result=frame;}return result;}
-export function selectionKey(run,frame,entityId){return {attachment_id:run.id,run_id:run.id,epoch:run.epoch,manifest_revision:run.manifest_revision,frame_sequence:frame.tick,frame_hash:frame.hash,evaluation_revision:run.evaluation_revision,binding_epoch:'unbound',entity_id:entityId};}
-export function semanticEvidence(config,frame,entityId){return config.semantics.bindings.filter(b=>b.entity_id===entityId).map(binding=>({binding_id:binding.id,target:binding.target,truth:'unknown',reason:'Atlas runtime is not connected; no evaluation has been executed.',parameters:clone(binding.parameters),frame_tick:frame.tick,frame_hash:frame.hash,evidence:frame.entities.find(e=>e.entity_id===entityId)||null}));}
+export function seekFrame(run,seconds){return seekObservation(run,seconds).frame;}
+export function selectionKey(run,frame,entityId){return {schema:'aeroagentsim.selection/v1',view_key:viewKey(run,frame),kind:'entity',entity_ids:[entityId],binding_id:null,state_id:null,target_id:null,graph_node_id:null};}
+export function exportObservations(run){
+  const artifacts=Object.fromEntries(run.frames.map(frame=>[`frame_${frame.tick}`,projectObservation(run,frame)]));
+  return {schema:'aeroagentsim.synthetic-fixture/v1',description:'Console-authored neutral observations; not a BENCH trace and no Atlas evaluation.',
+    manifest:{schema:'aeroagentsim.replay-index/v1',run:viewKey(run,run.frames[0]).frame.run,engine_origin_ns:'0',bounds:{start_ns:run.frames[0].sim_time_ns,end_ns:run.frames.at(-1).sim_time_ns},gaps:[],index:run.frames.map(frame=>({artifact_id:`frame_${frame.tick}`,sha256:frame.observation_hash,frame_seq:frame.tick,sim_time_ns:frame.sim_time_ns,stage_evidence_key:`fixture.motion.${frame.tick}`})),provenance:{source:'console.synthetic',is_actual_bench_data:false,body_extents:'not_supplied'}},artifacts};
+}
+export function semanticEvidence(config,frame,entityId){return config.semantics.bindings.filter(b=>b.entity_id===entityId).map(binding=>({binding_id:binding.id,target:binding.target,truth:null,reason:'Atlas runtime is not connected; no evaluation has been executed.',parameters:clone(binding.parameters),frame_tick:frame.tick,frame_hash:frame.hash,evidence:frame.entities.find(e=>e.entity_id===entityId)||null}));}
 export function versionDiff(config,version){return version?diffConfig(version.config,config):[];}

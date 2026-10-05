@@ -364,3 +364,27 @@ pre.code-preview { max-height: 540px; overflow: auto; margin: 0; padding: 18px 2
 .study-profile-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.study-profile{display:flex;flex-direction:column;padding:14px;border:1px solid var(--line);background:#fcfdfd;border-radius:6px}.study-profile.active{border-color:#62b9ab;background:#f4fbf8}.study-profile-id{font-size:11px;font-weight:650;color:var(--accent);letter-spacing:1px}.study-profile>strong{font-size:12px;margin-top:9px}.study-profile>p{font-size:10px;color:#7f8e97;line-height:1.65;margin:7px 0 14px;flex:1}.study-profile>.button{font-size:10px}.study-change-list{max-height:50vh;overflow:auto;margin-top:15px}.metric-strip{margin:0 0 20px;background:#f8fafb;border-radius:6px;overflow:hidden}.metric em{font-size:10px;font-style:normal;font-weight:400}.derived-grid{display:grid;grid-template-columns:1fr 1fr;margin-top:22px;gap:12px}.derived-grid>div{padding:14px;background:#f5f9f9;border-radius:6px;display:grid;gap:7px}.derived-grid small{font-size:10px;color:#768994}.derived-grid strong{font-size:17px;font-weight:600;color:#356d6a}.derived-grid span{font-size:9px;color:#81949c}.source-reference-list{display:grid;grid-template-columns:1fr 1fr;gap:13px}.source-reference-list a{font-size:10.5px}.source-reference-list small{display:block;color:#83919b;font-size:9.5px;margin-top:4px}.study-profile .badge{font-size:8px;padding:1px 4px}
 @media(max-width:1200px){.study-profile-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:580px){.study-profile-grid,.derived-grid,.source-reference-list{grid-template-columns:1fr}.study-profile{padding:13px}.metric strong{font-size:17px}.study-profile>p{font-size:11px}.study-profile>.button{min-height:36px}}
 .study-profile select{padding:5px;border:1px solid var(--line);background:#fff;color:var(--ink-secondary);border-radius:4px;font-size:10px;margin-bottom:10px;max-width:100%}.research-hint{padding:13px;border:1px solid var(--line-soft);border-radius:5px;margin:10px 0 18px}.research-hint>strong{font-size:11px;margin-right:10px}.research-hint p{font-size:10px;color:var(--ink-muted);margin:8px 0}.research-hint pre{font-size:9px}
+
+.locale-picker{display:flex;align-items:center;gap:6px;font-size:11px;flex-shrink:0;color:var(--ink-secondary)}
+.locale-picker select{background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:6px;min-height:32px}
+.modal .locale-picker{margin-left:auto;margin-right:10px}
+.panel-title,.panel-description,.page-description,.field-hint,.notice,.nav-label,.workspace-footer{overflow-wrap:anywhere}
+.study-profile .button{white-space:normal}
+.scene-entity:focus-visible{outline:2px solid #168f8c;outline-offset:4px}
+@media(max-width:580px){
+  .topbar{height:auto;min-height:52px;padding:10px 15px;flex-wrap:wrap;gap:8px}
+  .topbar-actions{gap:8px}.topbar-actions .mode-pill{font-size:9px}
+  .locale-picker{font-size:10px}.locale-picker>span{display:none}
+  .nav-label{font-size:9px;line-height:1.35}.nav-button{padding:8px 3px}
+  .modal h2{font-size:14px}.modal .locale-picker{margin-right:4px}
+  .timeline .row{flex-wrap:wrap}.timeline .row .spacer{display:none}
+  .replay-toolbar .button{white-space:normal}
+  .coordinate-card .mono{white-space:normal;overflow-wrap:anywhere}
+}
+
+@media(max-width:580px){.nav-label{display:block}.nav-button{flex-direction:column;justify-content:flex-start;gap:5px;min-height:59px}.modal{display:flex;flex-direction:column;overflow:hidden}.modal-body{overflow-y:auto;min-height:0}.modal-footer,.modal>.panel-header{flex-shrink:0}}
+
+.selection-lock{display:flex;align-items:center;gap:8px;margin-top:10px}.source-pointer{display:block;font-size:9px;overflow-wrap:anywhere;color:var(--ink-secondary)}.rule-parameters{font-size:10px;color:var(--ink-secondary)}.rule-parameters .code-preview{max-height:100px}.semantic-card>strong{overflow-wrap:anywhere;font-size:11px}
+
+/* Keep small explanatory copy readable against the white authoring surface. */
+.field-hint,.panel-description,.page-description,.study-profile>p{color:#526b7d}

@@ -2,7 +2,7 @@
 
 ## Intended host
 
-AERO_BENCH remains the physical authority and production Three.js monitoring host. AeroAgentSim owns configuration and provider-neutral contracts. Atlas receives normalized evidence and binding-isolated evaluation contexts. The fixture console is a standalone authoring/replay harness until mounted into that host.
+AERO_BENCH remains the physical authority and production Three.js monitoring host. AeroAgentSim owns configuration and provider-neutral contracts. Atlas receives normalized evidence and binding-isolated evaluation contexts. The fixture console is linked from the existing workbench at `/configuration/index.html`; this full-page authoring route remains separate from the future private monitoring component mount.
 
 ## Files
 
@@ -11,6 +11,8 @@ AERO_BENCH remains the physical authority and production Three.js monitoring hos
 - `src/runtime.js`: browser workspace persistence, version snapshots, bounded authored fixture preparation, seek and shared selection/evidence keys
 - `src/app.js`: presentation and user workflows
 - `src/style.css`: responsive interface styles, local system fonts
+- `src/i18n.js` / `src/translations.js`: persisted Chinese/English authored UI copy; interpolated user values and source titles remain unchanged
+- `src/observation-contract.js`: fixture-to-neutral observation projection, nested revision keys and exact/previous seek boundaries
 
 The runtime imports no simulator global state, native run repository, source artifact path reader or external connection client. There are no calls to `/api/runs`, TraCI, SimPy or ns-3.
 
@@ -36,7 +38,9 @@ Actual authenticated fetch SSE and sealed replay ingestion are future adapters. 
 
 ## Host view/evaluator seam
 
-The selection key includes attachment, run, epoch, manifest revision, frame sequence/hash, evaluation revision and bound entity. The fixture has no evaluation revision because Atlas was not executed.
+The selection uses `aeroagentsim.selection/v1`, with a nested Python-compatible `ViewKey`: attachment/run/epoch/manifest, frame sequence and observation-byte hash, stage evidence key, evaluation revision and binding epoch. The fixture explicitly uses `not-evaluated`; this is a display revision token, not a native Atlas result. Rule truth is null. Entity locks persist with the run epoch and manifest revision and do not substitute previous values during evidence gaps.
+
+The observation export is accepted by the independent Python `ReadOnlyReplay` through an injected opaque `MappingArtifactReader`. It does not use `/api/runs` or a guessed native replay schema. Every exported observation hash covers the exact canonical UTF-8 bytes checked by that reader. Gaps in entity motion remain explicit null values inside complete frames; the fixture does not invent a global source gap.
 
 For real integration, the host supplies an immutable coherent frame to a component-level `setFrame(frame, selectionKey)` boundary. A versioned `selectTarget`/`selectBinding` selection store must drive renderer highlighting, exact state inputs, thresholds and rule/evidence panels. Stale responses must be discarded after seek, run, epoch or revision changes. It must not invoke fixture loading or simulator commands.
 

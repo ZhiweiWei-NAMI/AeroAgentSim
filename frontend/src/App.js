@@ -95,6 +95,9 @@ function AppShell() {
                 <Link to={item.key}>{item.label}</Link>
               </Menu.Item>
             ))}
+            <Menu.Item key="configuration-authoring" icon={<AppstoreOutlined />}>
+              <a href={`${process.env.PUBLIC_URL || ''}/configuration/index.html`}>{t('navConfigurationAuthoring')}</a>
+            </Menu.Item>
           </Menu>
 
           <div className="workbench-sider-footer">
