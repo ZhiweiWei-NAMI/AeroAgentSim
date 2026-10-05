@@ -1,0 +1,14 @@
+# Restoration inputs and generated outputs are outside this source backup.
+/data/
+/spec/
+/review/
+/qa/
+node_modules/
+__pycache__/
+*.pyc
+*.zip
+*.tar
+*.gz
+ui/P08-native-star-offline.html
+ui/offline-build-report.json
+package-report.json
