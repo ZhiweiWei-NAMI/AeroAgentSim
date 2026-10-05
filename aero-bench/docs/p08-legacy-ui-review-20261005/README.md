@@ -23,3 +23,5 @@ The500px graph target is met in portrait390×844. Landscape does not claim500px 
 `browser-report.json` records drag rotation, Shift pan, wheel zoom, keyboard rotation/search/Escape, node/edge inspection, drawer toggles, exact scroll/canvas sizes and computed legend fill/border colors. The hollow predicate legend intentionally uses a colored border with transparent fill. Page errors and failed requests are empty. Ten focused code tests pass.
 
 Independent pixel review passes viewport containment, notice, colored legend and centering within this scope. Dense initial labels and a selected-edge tooltip that covers an endpoint remain follow-up items; no final whole-P08 acceptance is claimed. `independent-pixel-review.json` preserves that review. Parent visual review is still required. Exact source/image hashes are in `provenance.json`.
+
+The bounded follow-up is available in [v9](v9/README.md), with actual new images, source patches and independent review. The earlier remaining-label/tooltip findings above refer to the preserved earlier captures.

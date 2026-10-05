@@ -1,0 +1,81 @@
+{
+  "scope": "Published legacy dataset / UI-only visual review; original catalog and accepted13 cases UNLOADED; no provider acceptance.",
+  "ui_commit": "4f9adf6e8b851d3a7b1086fba3d297f1620607a2",
+  "legacy_commit": "7ca57707930fc45fdc1d48f32c6470beabf33bb8",
+  "review": "independent-review.json",
+  "screenshots": "Actual Chromium captures, deviceScaleFactor1, no redraw, crop or image modification.",
+  "files": {
+    "initial-legacy-desktop.png": {
+      "bytes": 545316,
+      "sha256": "067094ec9ce684e5dbbde70411e51c7185a41f3948ff837a965a977b3274b870"
+    },
+    "viewport-390x844.png": {
+      "bytes": 114781,
+      "sha256": "f8ed7e816a3f19c49ed74f86300418cda8b04cc48a1e4220b0dc94a3ae29414c"
+    },
+    "viewport-844x390.png": {
+      "bytes": 100288,
+      "sha256": "5aca2ed066aa85b8671cd42710c7bcb652acb8a8d3c1ffaab32c345c27a18dab"
+    },
+    "mobile-details-open.png": {
+      "bytes": 101644,
+      "sha256": "118f169572a9055ff51e904228a823b4f142bc9a2b88669704973a9f0f9b4955"
+    },
+    "viewport-1280x720.png": {
+      "bytes": 222648,
+      "sha256": "c29af568dedc1c131c69711220e236e94b3f7d4df4f3219417a32711b365f273"
+    },
+    "selected-rule-desktop.png": {
+      "bytes": 316303,
+      "sha256": "e9e53534f015affebe18ccd1ef1b49699ef0c4a921fea33fb6299f2cf38cf70a"
+    },
+    "independent-review.json": {
+      "bytes": 4774,
+      "sha256": "2b8f51be5cabfb1541d00e72179122fec5b2830f92da645dccd85fbcd5edaae8"
+    },
+    "legacy-mobile.png": {
+      "bytes": 114803,
+      "sha256": "c60749ba00c59dbf8e90ccac47e4f85a9b357e82a4309bd43dd06251c16dccc7"
+    },
+    "selected-edge-desktop.png": {
+      "bytes": 322541,
+      "sha256": "75533a1bfc5939881d0e683936b76bab53a673cbfccddfe5ba049449130934b7"
+    },
+    "browser-report.json": {
+      "bytes": 11082,
+      "sha256": "54bf6c8036ed5d83ed369cafaa5247edb0e0801a574d33d3867b8d208e506cab"
+    },
+    "tests/projection-fit.test.mjs": {
+      "bytes": 1427,
+      "sha256": "50e6e7ec6b7677f199e56f66a8b541cbe3855acaf348e0a5b09b7ceefb2a6b94"
+    },
+    "tests/layout.test.mjs": {
+      "bytes": 1087,
+      "sha256": "c0d666504cf217686dc97635e6685e7cc8de92612fe8f77210ec18742a0b8d7f"
+    },
+    "tests/source-smoke.test.mjs": {
+      "bytes": 5735,
+      "sha256": "ba941f6d3cdba7ac999a5837799a1c28e39ac8159ed3541ed4cf48be7e38ea0e"
+    },
+    "source/qa-entry.js": {
+      "bytes": 4944,
+      "sha256": "40827242bf73aa8ead308ea84d5405b8867baaea02737b9607eda0ccf2af083a"
+    },
+    "source/renderer.js": {
+      "bytes": 17006,
+      "sha256": "32ea017fed88da97b1d3438231b6fc8309e733309d17a2abc5ae2863f13212b1"
+    },
+    "source/app.js": {
+      "bytes": 47907,
+      "sha256": "e12f60dc963a1277a1018c087abfadba67dcb73b776e202e75477af9f53edd20"
+    },
+    "source/layout.js": {
+      "bytes": 1415,
+      "sha256": "c67422e1503814588b7ce51d926276a650dde39a6ddbb85b5ae11455e06bd2f7"
+    },
+    "source/styles.css": {
+      "bytes": 22331,
+      "sha256": "eeaeda11c5a8211226d9e9990eac5ea6690cff1957baf1f346af99cbcb47fe77"
+    }
+  }
+}
