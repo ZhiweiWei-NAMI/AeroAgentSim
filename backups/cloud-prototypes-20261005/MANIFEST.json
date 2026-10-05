@@ -5,7 +5,7 @@
   "stable_commit": "68b3d4a65799008e8d3ae0f175faf64d9ef60b44",
   "integration_document_source_commit": "ed2dc9a11873971774b0b4dbdf097efefe2cb128",
   "file_count": 89,
-  "total_bytes": 1917845,
+  "total_bytes": 1918516,
   "files": [
     {
       "path": "backups/cloud-prototypes-20261005/README.md",
@@ -69,9 +69,9 @@
     },
     {
       "path": "backups/cloud-prototypes-20261005/handoffs/p09-enhancement/REVIEW.md",
-      "bytes": 19837,
-      "sha256": "4115829759482b2c3ed24fff15972842dacd11f79e49618a4bf6cab935a51fe7",
-      "git_blob_sha1": "b372f0b7d7360212e09bf6b968bbc2f64b067aa0"
+      "bytes": 20508,
+      "sha256": "7d3f4f05078e0b1f4cb59526466a05f7e8c915e245ef7864f0bb4fc41a788127",
+      "git_blob_sha1": "40265d9faae3c2eb05cd8b680659a26e3da1defd"
     },
     {
       "path": "backups/cloud-prototypes-20261005/p01-candidate-research/proposal_zh.md",
@@ -544,5 +544,6 @@
   ],
   "handoff_addition_parent_commit": "8aa1aab96a33b5bcac8c6d25250a505ded05d053",
   "handoff_addition_status": "8 curated project handoff files; source review and proposal, no native run, server mutation, collection or training",
-  "p09_causal_revision_parent_commit": "fb1b48c646ce50b7e86e6ac7bb01c65159686a93"
+  "p09_causal_revision_parent_commit": "fb1b48c646ce50b7e86e6ac7bb01c65159686a93",
+  "p09_planned_hold_correction_parent_commit": "59e82464d70e426de17860e2b2120a9815e88775"
 }
