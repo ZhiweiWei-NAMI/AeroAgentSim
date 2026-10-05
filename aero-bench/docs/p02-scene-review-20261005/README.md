@@ -1,11 +1,27 @@
-# P02 scene review
+# P02 existing BENCH scene review
 
-This is the existing AERO_BENCH city/GLB renderer, captured before the current business-UI integration edits. It is an engineering/authoring preview, not a formal live run. The screenshot shows actual server model assets loaded by the existing renderer; no model or map assets are included in this delivery.
+The existing BENCH GLB/city renderer is retained. These project-scene screenshots contain no account data, credentials, private host addresses or personal data. Original model/map assets and raw trace files are not included.
 
-![Original existing BENCH city and GLB scene](original-bench-glb-complete-desktop.png)
+## Original scene
 
-Source HEAD: `ea295073cdd310a31fa2e29317a3571bc716bb87`. Entry: `frontend/index.html` → `frontend/src/main.ts` → `PublicTraceApp` → `PublicTraceMap`. Model loaders: `frontend/src/entity-visuals.ts` and `frontend/src/city-asset-cache.ts`. Scene configuration: `frontend/public/city-presentation/jingan-engineering-preview-v3.json`. Exact dirty-file hashes at capture were not retained; the HEAD identifies source provenance and does not assert a clean checkout.
+![Original BENCH scene](original-bench-glb-complete-desktop.png)
 
-The integrated business view is **IN_PROGRESS**. Its source patch has not yet produced a completed capture, so this gallery contains no image claiming that integration is finished. Parent pixel review remains required.
+Original source HEAD: `ea295073cdd310a31fa2e29317a3571bc716bb87`. Entry: `frontend/index.html` → `frontend/src/main.ts` → `PublicTraceApp` → `PublicTraceMap`. Asset loaders: `entity-visuals.ts` and `city-asset-cache.ts`. Scene configuration: `frontend/public/city-presentation/jingan-engineering-preview-v3.json`.
 
-`screenshot-provenance.json` records the PNG checksum, original file timestamps, scene source and publication scope. This delivery includes only the PNG and these two explanation files. It uploads no account information, credentials, private host URLs, raw traces, models or maps.
+## Current integrated view, v5
+
+**IN PROGRESS; parent pixel review required.** This is sealed flight replay with explicitly authored business associations. Parcel/order/custody labels do not establish physical cargo transport or delivery.
+
+![Light default view, Chinese](integrated-v5-default-zh.png)
+
+![Selected entity and business inspector, English](integrated-v5-selected-en.png)
+
+![Selected entity, Chinese](integrated-v5-selected-zh.png)
+
+![Seek to zero, English; future association cleared](integrated-v5-seek-zero-en.png)
+
+The elevated task-region camera exposes streets/intersections. White/light surfaces, English content, a shared selected-frame business selector and seek clearing were checked. Each screenshot is1600×1000; the body matches the viewport. Current left/right association at cursor10 uses the same order, parcel, carrier/custody and destination, and both panes identify it as authored/nonphysical.
+
+Independent pixel review still finds a large parcel label obscuring the carrier marker, business details pushing telemetry below the visible right-pane section, and truncated English status chips. These images are review evidence, not final visual acceptance. City ground/material quality and broader provider/Atlas activities remain separate unfinished work.
+
+`integrated-v5-provenance.json` records image hashes, source HEAD plus dirty-file hashes, scene/trace/business-source paths and remaining limits. It does not assert that the dirty server source was a clean checkout or that every provider integration is complete.

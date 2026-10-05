@@ -1,0 +1,69 @@
+{
+  "schema_version": "p02.private-assets-public-scene-review/v5",
+  "status": "IN_PROGRESS_PARENT_PIXEL_REVIEW_REQUIRED",
+  "server_source_HEAD": "ea295073cdd310a31fa2e29317a3571bc716bb87",
+  "source_worktree": "dirty; exact listed source hashes identify capture code, not clean HEAD",
+  "frontend_source_sha256": {
+    "frontend/src/app.ts": "a9f7efee181bca6027ff05dd231b0ff3119404e810cd18d456ca6142204c590a",
+    "frontend/src/i18n.ts": "32cc7b3fb162f7662caf34da51baeb0afe434baaf2d7767013509626eedc97bb",
+    "frontend/src/main.ts": "dbb51c103ec4e5892de1a249abae0ea1d2831838dc6386a6795aaf967c7be30e",
+    "frontend/src/map.ts": "91cd0d7aad107ecf53e8458e6333ac111353b61a190628c4fe617dbb109e181b",
+    "frontend/src/operations-monitor.css": "337d79493992e5ba25a1556fab6277f3c9099c54786bdb6486cce2b3d1346599",
+    "frontend/src/operations-monitor.ts": "630647ee9bb7ae9852952765e978f5169fca5eb240003a8d0d351e4e4a5c9edf",
+    "frontend/src/viewer-chrome.ts": "fedc49bef9ab5eec9363e69287d8d4069a605cf5b420b370776bcf6a37ec76d0",
+    "frontend/src/p02-entity-overlays.ts": "6a73c0d83f2416b7ccc46ec3541cb249bd42c5980f26372a3c88b979b3fae515",
+    "frontend/src/p02-view.css": "5c6e0ec5eb47d1376ae8d880b3d8993a1e8d7910ea1835788fdf69b357c908cd"
+  },
+  "images": {
+    "integrated-v5-default-zh.png": {
+      "sha256": "dfb0293277f4544fd63f1c8b33d03c03ed86471e50de0b2afafdb20eda011999",
+      "bytes": 577645,
+      "scope": "original BENCH GLB/city with authored business associations; not physical cargo evidence"
+    },
+    "integrated-v5-selected-zh.png": {
+      "sha256": "fd23e83ef623af7c74656cf14d4a0fbc059c4252d5a6427772e8a5272d8f60ec",
+      "bytes": 633630,
+      "scope": "original BENCH GLB/city with authored business associations; not physical cargo evidence"
+    },
+    "integrated-v5-selected-en.png": {
+      "sha256": "d9a8534d59911d6dc1712b0e18687f8977dafcda12661ee3cd71db143a8c0a93",
+      "bytes": 632620,
+      "scope": "original BENCH GLB/city with authored business associations; not physical cargo evidence"
+    },
+    "integrated-v5-seek-zero-en.png": {
+      "sha256": "91ef7a42a2637d1edafa1d20055f1de64b00d7bccd4582a2559db78306f44775",
+      "bytes": 639559,
+      "scope": "original BENCH GLB/city with authored business associations; not physical cargo evidence"
+    }
+  },
+  "viewport_px": [
+    1600,
+    1000
+  ],
+  "render_entry": "frontend/index.html -> frontend/src/main.ts -> PublicTraceApp -> PublicTraceMap",
+  "scene_configuration": "frontend/public/city-presentation/jingan-engineering-preview-v3.json",
+  "trace_source": "validation/platform-plan-20261001/W1-I5/runs-v8/c69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba/public/public-trace.json",
+  "business_association_source": "frontend/public/p02-business-identities/demo.json; aero_bench/tasks/logistics/orders.py",
+  "business_authority": "Explicit authored fixture association; no inference from proximity and no physical custody/delivery claim",
+  "excluded": "Original GLB/map assets, raw traces, account data, private addresses and credentials are not published",
+  "verification": {
+    "sceneReady": true,
+    "texturesReady": true,
+    "skyReady": true,
+    "body_dimensions_px": [
+      1600,
+      1000
+    ],
+    "left_right_selected_frame": "order.inspection-overlay.1 / parcel.order.inspection-overlay.1 / uav.inspector / facility.liede / picked_up / cursor10",
+    "seek_zero": "both panels clear future association"
+  },
+  "remaining_pixel_findings": [
+    "large parcel screen-space label obscures carrier marker",
+    "business fields push physical telemetry below visible right-pane section",
+    "English connectivity/health chips truncate values"
+  ],
+  "runtime_limitations": [
+    "Replay observation asset requests include net::ERR_ABORTED during seek; no observed GLB load error",
+    "This is replay plus authored business overlay, not all low-altitude activity integration or final acceptance"
+  ]
+}
