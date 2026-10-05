@@ -706,6 +706,42 @@ test('response binds ONLY to an explicit causal reference; recent events never s
   }), /response_flip_time_seconds/);
 });
 
+test('explicit response time is bounded by the flip and current frame, inclusive', () => {
+  // Tick identity is not elapsed seconds; the frame clock is nanoseconds.
+  const scene = ingestSceneState(sceneState({ tick: 44, ns: 39_250_000_000, ids: IDS }), SCENE_CTX);
+  const rule = ingestRuleEvidence(ruleEvidence(EVIDENCE_CTX, true));
+  for (const [time, binds] of [
+    [37.999999999, false],
+    [38, true],
+    [39.25, true],
+    [39.250000001, false],
+    [44, false],
+  ]) {
+    const evidence = ingestFrameEvidence({
+      schema_version: HOST_FRAME_EVIDENCE_SCHEMA,
+      context: EVIDENCE_CTX,
+      evidence: {
+        at_tick: 44, parcels: [], stations: [],
+        events: [{
+          event_id: 'e.explicit.response', time_seconds: time, label_key: 'wait_receipt', kind: 'response',
+          entity_ids: ['parcel.p1042'],
+          response_rule_id: 'demo.delivery-link-degraded', response_flip_time_seconds: 38,
+        }],
+      },
+    });
+    const frame = projectHostViewFrame(scene, evidence, rule);
+    assert.equal(frame.timeSeconds, 39.25);
+    assert.equal(frame.ruleResponse?.id ?? null, binds ? 'e.explicit.response' : null,
+      `response at ${time}s must ${binds ? 'bind' : 'stay unbound'} at frame time 39.25s`);
+    assert.equal(frame.events[0].time, time, 'the declared event remains in the ledger');
+    if (time === 39.250000001) {
+      const nextScene = ingestSceneState(sceneState({ tick: 45, ns: 39_250_000_001, ids: IDS }), SCENE_CTX);
+      assert.equal(projectHostViewFrame(nextScene, evidence, rule).ruleResponse?.id, 'e.explicit.response',
+        'the future event binds when the presented clock reaches its declared time');
+    }
+  }
+});
+
 test('view: response node shows the unbound label without an explicit causal reference', () => {
   const dom = new JSDOM('<div id="root"></div>');
   const root = dom.window.document.getElementById('root');

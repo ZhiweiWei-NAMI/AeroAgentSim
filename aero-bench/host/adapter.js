@@ -938,8 +938,9 @@ export function projectHostViewFrame(scene, frameEvidence, ruleEvidence, options
     identityComplete: scene.contextDeclared,
     // The event that explicitly declares itself a response to THIS rule's
     // flip: response_rule_id must equal the presented rule id and the
-    // declared flip instant must match the rule's lastFlip. Causality is the
-    // source's explicit declaration only — kind, ordering, timing and
+    // declared flip instant must match the rule's lastFlip, with response
+    // time in [lastFlip, current frame time] (seconds; scene clock is ns).
+    // Causality is the source's explicit declaration only — kind, ordering, timing and
     // proximity infer nothing. null renders as an unbound response (UNKNOWN).
     ruleResponse: (() => {
       if (!ruleUsable || ruleRecord.id === null || ruleRecord.lastFlip === null) return null;
@@ -947,7 +948,8 @@ export function projectHostViewFrame(scene, frameEvidence, ruleEvidence, options
         event.responseRuleId === ruleRecord.id &&
         event.responseFlipTime !== null &&
         event.responseFlipTime === ruleRecord.lastFlip &&
-        event.time >= ruleRecord.lastFlip) ?? null;
+        event.time >= ruleRecord.lastFlip &&
+        event.time <= scene.simTimeNs / 1e9) ?? null;
     })(),
     entities,
     parcels,
