@@ -1,5 +1,6 @@
 // Independently authored UI translations. IDs, units, source titles and user values are never translated.
 export const UI_PAIRS = [
+  ["统一配置图", "Unified graph"],
   ["仿真配置", "Simulation configuration"],
   ["运行管理", "Run management"],
   ["回放与证据", "Replay and evidence"],

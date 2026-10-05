@@ -5,6 +5,7 @@
  */
 
 import { validateNetworkStudy, deriveStudyQuantities } from './network-study.js';
+import { DEFAULT_GRAPH, validateGraph } from './graph-config.js';
 
 export const CONFIG_SCHEMA = 'aero-console.config/v1';
 export const INITIAL_SOURCE_CURSOR = Object.freeze({
@@ -56,6 +57,9 @@ export const DEFAULT_CONFIG = {
     execution: 'not_connected',
     bindings: [{ id: 'moving-alpha', target: 'hu.predicate.actor_moving', entity_id: 'uav-alpha', parameters: {} }],
   },
+  // One authored graph is versioned/exported with the surrounding scene.
+  // Legacy configurations without this field remain untouched until explicitly adopted.
+  graph: clone(DEFAULT_GRAPH),
   provenance: {
     kind: 'authored_synthetic',
     source: 'independent-console-demo',
@@ -158,7 +162,7 @@ export function validateConfig(config) {
     }
   };
   const c = object(config, '$');
-  keys(c, '', ['schema_version', 'metadata', 'scenario', 'entities', 'mobility', 'network', 'compute', 'semantics', 'provenance']);
+  keys(c, '', ['schema_version', 'metadata', 'scenario', 'entities', 'mobility', 'network', 'compute', 'semantics', 'graph', 'provenance']);
   choice(c.schema_version, 'schema_version', [CONFIG_SCHEMA]);
   const m = object(c.metadata, 'metadata');
   keys(m, 'metadata', ['id', 'name', 'version', 'description']);
@@ -327,6 +331,12 @@ export function validateConfig(config) {
     if (typeof b.target === 'string' && /pair|conflict/.test(b.target)) warn(`${path}.target`, 'Pair/clearance targets require explicit relational bindings and body geometry. This single-actor plan does not supply them.');
   });
   warn('semantics.execution', 'Atlas is not connected. Bindings are desired configuration only; no predicates or events have been evaluated.');
+  if (own(c, 'graph')) {
+    const graphValidation = validateGraph(c.graph, c);
+    const scoped = item => ({ ...item, path: item.path === '$' ? 'graph' : `graph.${item.path}` });
+    errors.push(...graphValidation.errors.map(scoped));
+    warnings.push(...graphValidation.warnings.map(scoped));
+  }
   const provenance = object(c.provenance, 'provenance');
   if (typeof provenance.kind !== 'string' || !provenance.kind.trim()) error('provenance.kind', 'Declare the source kind, such as authored_synthetic.');
   return { valid: errors.length === 0, errors, warnings };
@@ -377,6 +387,10 @@ export function compileConfig(config) {
     diagnostics.push({ severity: 'warning', code: 'network_study_not_executable', path: 'network.study', message: 'Research design is retained without execution. No calibrated propagation, PHY, traffic, queue, geometry or antenna backend has been supplied.' });
     for (const hint of c.network.study.research_hints) diagnostics.push({ severity: 'warning', code: 'unsupported_study_hint', path: 'network.study.research_hints', message: `${hint.label ?? hint.id ?? 'Model hint'} remains unimplemented.` });
   }
+  if (own(c, 'graph')) {
+    mappings.push({ source: 'graph', target: 'unified_graph', status: 'static_checked', conversion: 'Exact typed graph retained; fixture bindings are separate from real module connections.' });
+    diagnostics.push({ severity: 'info', code: 'graph_static_only', path: 'graph', message: 'Unified graph checked at authoring time. Fixture execution and real module connection are separate evidence stages.' });
+  }
   const manifest = {
     schema_version: 'aero-console.desired-plan/v1',
     artifact_kind: 'desired_configuration_plan',
@@ -416,6 +430,7 @@ export function compileConfig(config) {
     compute: { ...c.compute, connection_status: 'local_demonstration' },
     semantics: { ...c.semantics, evaluated_count: 0 },
     provenance: c.provenance,
+    ...(own(c, 'graph') ? { unified_graph: c.graph } : {}),
     source_mapping: mappings,
     unsupported: ['BENCH resolved scenario emission', 'SUMO/ns3 live execution', 'external compute provider execution', 'Atlas runtime evaluation', 'mobile body extents and pair clearance', 'measured network/compute telemetry', ...(c.network.study ? ['network research profile execution and calibration', ...c.network.study.research_hints.map(hint => hint.label ?? hint.id ?? 'research model')] : [])],
     source_cursor: clone(INITIAL_SOURCE_CURSOR),

@@ -1,0 +1,576 @@
+diff --git a/frontend/console-prototype/src/graph-config.js b/frontend/console-prototype/src/graph-config.js
+index a923ef7..a5da22e 100644
+--- a/frontend/console-prototype/src/graph-config.js
++++ b/frontend/console-prototype/src/graph-config.js
+@@ -1219,6 +1219,10 @@ export const GRAPH_SCHEMA = {
+         },
+         "label_zh": {
+           "type": "string"
++        },
++        "availability_fact_id": {
++          "type": "string",
++          "pattern": "^[a-z][a-z0-9_.-]*$"
+         }
+       },
+       "required": [
+@@ -2084,6 +2088,32 @@ export const GRAPH_SCHEMA = {
+             "pattern": "^[a-z][a-z0-9_.-]*$"
+           },
+           "uniqueItems": true
++        },
++        "resource_admission": {
++          "type": "object",
++          "properties": {
++            "mode": {
++              "const": "atomic_declared_order"
++            },
++            "task_order": {
++              "type": "array",
++              "items": {
++                "type": "string",
++                "pattern": "^[a-z][a-z0-9_.-]*$"
++              },
++              "uniqueItems": true
++            },
++            "at_ns": {
++              "type": "string",
++              "pattern": "^(0|[1-9][0-9]*)$"
++            }
++          },
++          "required": [
++            "mode",
++            "task_order",
++            "at_ns"
++          ],
++          "additionalProperties": false
+         }
+       },
+       "required": [
+@@ -5575,6 +5605,7 @@ export function graphNodes(graph) {
+ 
+ const REFERENCE_FIELDS = {
+   zone_id: 'spatial_zones', request_id: 'lease_requests', approval_id: 'lease_approvals', authority_agent_id: 'agents', authority_agent_ids: 'agents', sender_entity_id: 'entities', receiver_entity_id: 'entities', command_id: 'commands', evidence_fact_ids: 'facts', evidence_receipt_ids: 'delivery_receipts', required_receipt_ids: 'delivery_receipts', required_allocation_ids: 'space_time_allocations', lease_request_ids: 'lease_requests', lease_approval_ids: 'lease_approvals', allocation_ids: 'space_time_allocations', delivery_receipt_ids: 'delivery_receipts',
++  availability_fact_id: 'facts', task_order: 'tasks',
+   entity_id: 'entities', entity_ids: 'entities', target_entity_ids: 'entities', owner_entity_id: 'entities',
+   field_id: 'fields', field_ids: 'fields', producer_module_id: 'modules', module_ids: 'modules',
+   source_id: 'sources', strategy_id: 'strategies', observable_fact_ids: 'facts', input_fact_ids: 'facts', fact_ids: 'facts',
+@@ -5626,7 +5657,7 @@ export const GRAPH_EDGE_CONTRACTS = {
+   READS: { from: ['admission_checks', 'predicates', 'modules'], to: ['facts', 'fields'] },
+   USES: { from: ['admission_checks', 'rules'], to: ['constraints', 'parameter_definitions'] },
+   UPDATES: { from: ['modules'], to: ['facts', 'fields'] },
+-  EVIDENCED_BY: { from: ['events', 'facts', 'delivery_receipts', 'lease_approvals'], to: ['facts', 'admission_checks', 'sources', 'delivery_receipts'] },
++  EVIDENCED_BY: { from: ['events', 'facts', 'delivery_receipts', 'lease_approvals', 'resources'], to: ['facts', 'admission_checks', 'sources', 'delivery_receipts'] },
+   FEEDS_BACK: { from: ['events'], to: ['agents'] },
+   BASED_ON: { from: ['constraints', 'predicate_results'], to: ['sources', 'facts'] },
+   WAITS_FOR: { from: ['behaviors'], to: ['behaviors'] },
+@@ -5714,13 +5745,15 @@ export function graphEdges(graph) {
+     const scopeMatch = reference.path.match(/\.(reads|writes|controls)\[(\d+)\]/);
+     const timelineMatch = reference.path.match(/\.admission_timeline\[(\d+)\]/);
+     const timelineStep = timelineMatch ? list(record.admission_timeline)[Number(timelineMatch[1])] : null;
++    const resourceStep = reference.relation === 'resource_admission.task_order' ? record.resource_admission : null;
+     const scoped = scopeMatch ? record[scopeMatch[1]]?.[Number(scopeMatch[2])] : null;
+     const specificScope = list(scoped?.entity_ids).length ? scoped.entity_ids : record.entity_ids || record.target_entity_ids || (record.entity_id ? [record.entity_id] : []);
+-    edges.push({ id: derivedId('reference', reference.source, reference.path, relation), source: reverse ? reference.target : reference.source, target: reverse ? reference.source : reference.target, relation, role, condition: record.composition?.mode === 'conditional' ? 'predicate result must be known and match the authored condition' : null, time: timelineStep?.at_ns || record.valid_time_ns || null, scope: specificScope, version: graph?.schema_version || null, source_id: record.source_id || null, origin: 'typed_reference', path: reference.path, order: reference.relation === 'composition.behavior_ids' ? list(record.composition?.behavior_ids).indexOf(reference.target) : null });
++    edges.push({ id: derivedId('reference', reference.source, reference.path, relation), source: reverse ? reference.target : reference.source, target: reverse ? reference.source : reference.target, relation, role, condition: record.composition?.mode === 'conditional' ? 'predicate result must be known and match the authored condition' : null, time: timelineStep?.at_ns || resourceStep?.at_ns || record.valid_time_ns || null, scope: specificScope, version: graph?.schema_version || null, source_id: record.source_id || null, origin: 'typed_reference', path: reference.path, order: reference.relation === 'composition.behavior_ids' ? list(record.composition?.behavior_ids).indexOf(reference.target) : null });
+   };
+   for (const reference of references(graph)) {
+     const kind = nodes.get(reference.source)?.collection, key = reference.relation;
+     const fallback = {
++      'resources:availability_fact_id': 'EVIDENCED_BY', 'scenarios:resource_admission.task_order': 'SELECTS_TASK',
+       'spatial_zones:authority_agent_ids': 'MANAGED_BY', 'lease_requests:agent_id': 'REQUESTED_BY', 'lease_requests:zone_id': 'REQUESTS_ZONE',
+       'lease_approvals:request_id': 'DECIDES_REQUEST', 'lease_approvals:authority_agent_id': 'APPROVED_BY', 'lease_approvals:evidence_receipt_ids': 'EVIDENCED_BY',
+       'space_time_allocations:approval_id': 'ALLOCATED_UNDER', 'space_time_allocations:zone_id': 'ALLOCATES_ZONE',
+@@ -5901,6 +5934,18 @@ export function validateGraph(graph, config) {
+       }
+     });
+   });
++  // A configured state scope selects one producer even when no sample exists yet.
++  const authorityScopes = new Map();
++  each('modules', (module, path) => {
++    module.writes.forEach((scope, index) => {
++      for (const entityId of scope.entity_ids) for (const fieldId of scope.field_ids) {
++        const key = JSON.stringify([entityId, fieldId]);
++        const entry = authorityScopes.get(key) || { entityId, fieldId, producers: new Set(), paths: [] };
++        entry.producers.add(module.id); entry.paths.push(`${path}.writes[${index}]`); authorityScopes.set(key, entry);
++      }
++    });
++  });
++  for (const entry of authorityScopes.values()) if (entry.producers.size > 1) error('E_MULTIPLE_STATE_AUTHORITIES', entry.paths[0], `State scope ${entry.entityId}.${entry.fieldId} has multiple selected producers: ${[...entry.producers].join(', ')}. An explicit authority handover is not implemented; no last-writer-wins selection is permitted.`, entry.entityId);
+   each('facts', (fact, path) => {
+     const field = maps.fields.get(fact.field_id), entity = maps.entities.get(fact.entity_id), type = maps.entity_types.get(entity?.type_id);
+     if (field) {
+@@ -5961,6 +6006,12 @@ export function validateGraph(graph, config) {
+   };
+   each('tasks', (task, path) => { claims(task, path); });
+   each('resources', (resource, path) => {
++    if (resource.availability_fact_id) {
++      const fact = maps.facts.get(resource.availability_fact_id), field = maps.fields.get(fact?.field_id);
++      if (fact && fact.entity_id !== resource.owner_entity_id) error('E_RESOURCE_AVAILABILITY_SCOPE', `${path}.availability_fact_id`, 'Resource availability must bind a timed fact on this resource owner.');
++      if (fact && (!field || !['number','integer'].includes(field.value_type) || fact.unit !== resource.unit)) error('E_RESOURCE_AVAILABILITY_TYPE', `${path}.availability_fact_id`, 'Availability must be a numeric fact with the declared capacity unit.');
++      if (fact && fact.value !== null && (!Number.isFinite(fact.value) || fact.value < 0 || fact.value > resource.capacity)) error('E_RESOURCE_AVAILABILITY_BOUNDS', `${path}.availability_fact_id`, 'Available amount must be nonnegative and no greater than declared capacity.');
++    }
+     if (!resource.constraint_ids.length) error('E_MISSING_CONSTRAINT', `${path}.constraint_ids`, 'Resource capacity needs a declared constraint.');
+     if (!UNITS.has(resource.unit)) error('E_UNKNOWN_UNIT', `${path}.unit`, `Unsupported capacity unit ${resource.unit}.`);
+   });
+@@ -5996,7 +6047,15 @@ export function validateGraph(graph, config) {
+   each('scenarios', (scenario, path) => {
+     const totals = new Map();
+     for (const id of scenario.task_ids) for (const claim of maps.tasks.get(id)?.resource_claims || []) totals.set(claim.resource_id, (totals.get(claim.resource_id) || 0) + claim.amount);
+-    for (const [id, amount] of totals) if (amount > maps.resources.get(id)?.capacity) error('E_RESOURCE_OVERCOMMIT', `${path}.task_ids`, `Concurrent fixture tasks claim ${amount} of ${id}, beyond capacity ${maps.resources.get(id).capacity}.`);
++    if (scenario.resource_admission) {
++      const order = scenario.resource_admission.task_order;
++      if (order.length !== scenario.task_ids.length || scenario.task_ids.some(id => !order.includes(id))) error('E_RESOURCE_ADMISSION_ORDER', `${path}.resource_admission.task_order`, 'Atomic fixture admission must explicitly order exactly the proposed scenario tasks.');
++      if (BigInt(scenario.resource_admission.at_ns) > BigInt(scenario.observed_at_ns)) warn('W_RESOURCE_ADMISSION_FUTURE', `${path}.resource_admission.at_ns`, 'Resource admission is scheduled after the scenario observation cutoff; it remains UNKNOWN until then.');
++    }
++    for (const [id, amount] of totals) if (amount > maps.resources.get(id)?.capacity) {
++      if (scenario.resource_admission) warn('W_RESOURCE_CONTENTION', `${path}.task_ids`, `Proposed tasks contend for ${id}: ${amount} requested versus capacity ${maps.resources.get(id).capacity}. The explicit fixture admission order will not admit all requests.`);
++      else error('E_RESOURCE_OVERCOMMIT', `${path}.task_ids`, `Concurrent fixture tasks claim ${amount} of ${id}, beyond capacity ${maps.resources.get(id).capacity}.`);
++    }
+     for (const id of scenario.decision_ids) {
+       const decision = maps.decisions.get(id);
+       if (decision && (!scenario.task_ids.includes(decision.task_id) || decision.command_ids.some(commandId => !scenario.command_ids.includes(commandId)))) error('E_SCENARIO_BINDING', `${path}.decision_ids`, 'Scenario omits a selected decision’s task or command.');
+@@ -6008,6 +6067,8 @@ export function validateGraph(graph, config) {
+   });
+   validateExtendedGraph(graph, maps, error, warn);
+   validateSpatialContracts(graph, maps, error, warn);
++  warn('W_IDENTITY_SCOPE_UNVERIFIED', 'facts', 'Static authoring IDs have no native run/epoch/generation binding. Fixture checks cannot establish cross-run authority.');
++  warn('W_ENFORCEMENT_UNVERIFIED', 'constraints', 'Constraint declarations and bounded fixture results do not verify enforcement by real execution modules.');
+   warn('W_FIXTURE_ONLY', 'provenance', 'Every binding is fixture/stub. Static checking is not fixture execution or a real backend connection.');
+   return finish();
+ }
+diff --git a/frontend/console-prototype/src/graph-runtime.js b/frontend/console-prototype/src/graph-runtime.js
+index fc6ca83..eb74ae8 100644
+--- a/frontend/console-prototype/src/graph-runtime.js
++++ b/frontend/console-prototype/src/graph-runtime.js
+@@ -28,6 +28,9 @@ export function resolveGraphFact(graph, { entity_id, field_id, fact_ids, at_ns,
+   const field = list(graph?.fields).find(field => field.id === field_id);
+   if (!field || newest.unit !== field.unit || newest.frame !== field.frame) return { ...base, fact_id: newest.id, evidence, reason: 'field_context_mismatch' };
+   if (!list(graph?.sources).some(source => source.id === newest.source_id && source.kind === 'authored_fixture')) return { ...base, fact_id: newest.id, evidence, reason: 'source_mismatch' };
++  const producers = list(graph?.modules).filter(module => list(module?.writes).some(scope => list(scope?.entity_ids).includes(entity_id) && list(scope?.field_ids).includes(field_id)));
++  if (producers.length !== 1) return { ...base, fact_id: newest.id, evidence, reason: producers.length ? 'conflicting_authority' : 'missing_authority' };
++  if (newest.producer_module_id !== producers[0].id) return { ...base, fact_id: newest.id, evidence, reason: 'authority_mismatch' };
+   return { ...base, status: 'AVAILABLE', value: clone(newest.value), fact_id: newest.id, evidence, reason: null };
+ }
+ 
+@@ -60,7 +63,8 @@ export function executeGraphFixture(graph, scenarioId, options = {}) {
+   const at = options.at_ns ?? scenario.observed_at_ns;
+   if (!isNs(at)) return { ...base, error: 'invalid_time' };
+   const timeline = [...scenario.admission_timeline].sort((a, b) => BigInt(a.at_ns) < BigInt(b.at_ns) ? -1 : BigInt(a.at_ns) > BigInt(b.at_ns) ? 1 : 0).filter(step => BigInt(step.at_ns) <= BigInt(at));
+-  const startAt = timeline[0]?.at_ns || at;
++  const startCandidates = [timeline[0]?.at_ns, scenario.resource_admission?.at_ns].filter(time => isNs(time) && BigInt(time) <= BigInt(at));
++  const startAt = startCandidates.length ? startCandidates.reduce((a,b) => BigInt(a) < BigInt(b) ? a : b) : at;
+   const result = { ...base, status: 'fixture_executed', stages: { schema: 'static_checked', facts: 'fixture_resolved', strategy: 'authored_decision_replay', command: 'composition_resolved', admission: scenario.admission_timeline.length ? 'fixture_checked' : 'not_executed', modules: 'not_executed', predicates: 'not_executed', actuators: 'not_executed' }, at_ns: at, label: scenario.label, readiness: { ...base.readiness, fixture_executed: true } };
+   const trace = (kind, nodeId, message, atNs = startAt, evidenceIds = []) => result.trace.push({ step: result.trace.length, kind, node_id: nodeId, message, at_ns: atNs, evidence_ids: [...evidenceIds], scope: 'fixture_only' });
+   const scopes = new Map();
+@@ -105,6 +109,24 @@ export function executeGraphFixture(graph, scenarioId, options = {}) {
+   }
+   result.resource_usage = [...usage.values()];
+   for (const command of result.commands) command.behavior_peak_demand = commandResourceDemand(graph, command.id);
++  result.resource_admission = executeResourceAdmission(graph, scenario.id, { at_ns: at });
++  if (scenario.resource_admission) for (const command of result.commands) {
++    command.resource_admission = { request_id: null, verdict: 'UNKNOWN', at_ns: scenario.resource_admission.at_ns };
++    command.acceptance = 'fixture_resource_unknown';
++    for (const behavior of result.behaviors.filter(behavior => behavior.command_id === command.id)) { behavior.resource_admission = clone(command.resource_admission); behavior.status = 'fixture_resource_unknown'; }
++  }
++  const applyResourceAdmission = () => {
++    for (const command of result.commands) {
++      const admission = result.resource_admission.requests.find(request => request.task_id === command.task_id);
++      command.resource_admission = admission ? { request_id: admission.id, verdict: admission.verdict, at_ns: admission.at_ns } : { request_id: null, verdict: 'UNKNOWN', at_ns: scenario.resource_admission.at_ns };
++      command.acceptance = admission?.verdict === 'ADMITTED' ? 'authored_fixture_dispatch' : admission?.verdict === 'REJECTED' ? 'fixture_resource_rejected' : 'fixture_resource_unknown';
++      for (const behavior of result.behaviors.filter(behavior => behavior.command_id === command.id)) {
++        behavior.resource_admission = clone(command.resource_admission);
++        if (!['fixture_paused','fixture_aborted','fixture_replan_requested'].includes(behavior.status)) behavior.status = admission?.verdict === 'REJECTED' ? 'fixture_resource_rejected' : admission?.verdict === 'UNKNOWN' || !admission ? 'fixture_resource_unknown' : 'fixture_partial_admission';
++      }
++    }
++    for (const request of result.resource_admission.requests) trace('resource_bundle_checked', request.task_id, `Explicit authored request order ${request.order}: ${request.verdict}. Reservation is fixture-only; no physical charging or occupancy is established.`, request.at_ns, request.evidence_ids);
++  };
+   const emitted = new Set();
+   const emitEvent = (id, time, evidenceIds, checkResult = null) => {
+     const definition = nodes[id], key = `${id}@${time}`;
+@@ -124,7 +146,12 @@ export function executeGraphFixture(graph, scenarioId, options = {}) {
+     }
+   };
+   for (const id of scenario.event_ids) if (!nodes[id].trigger) emitEvent(id, startAt, nodes[id].fact_ids);
+-  for (const [index, step] of timeline.entries()) {
++  const scheduledSteps = [...timeline];
++  if (scenario.resource_admission && BigInt(scenario.resource_admission.at_ns) <= BigInt(at)) scheduledSteps.push({ at_ns: scenario.resource_admission.at_ns, resource_marker: true });
++  scheduledSteps.sort((a,b) => BigInt(a.at_ns) < BigInt(b.at_ns) ? -1 : BigInt(a.at_ns) > BigInt(b.at_ns) ? 1 : a.resource_marker ? -1 : b.resource_marker ? 1 : 0);
++  const checkedIds = new Set();
++  for (const step of scheduledSteps) {
++    if (step.resource_marker) { applyResourceAdmission(); continue; }
+     for (const id of step.updated_fact_ids) {
+       const fact = nodes[id];
+       if (BigInt(fact.valid_time_ns) <= BigInt(step.at_ns) && BigInt(fact.available_time_ns) <= BigInt(step.at_ns)) {
+@@ -134,7 +161,8 @@ export function executeGraphFixture(graph, scenarioId, options = {}) {
+     }
+     for (const checkId of step.check_ids) {
+       const check = nodes[checkId], record = evaluateFixtureAdmission(graph, checkId, { fact_ids: scenario.fact_ids, at_ns: step.at_ns, source_id: options.source_id });
+-      record.phase = index === 0 ? 'start' : 'continue';
++      record.phase = checkedIds.has(checkId) ? 'continue' : 'start';
++      checkedIds.add(checkId);
+       result.check_results.push(record);
+       trace('admission_checked', checkId, `Bounded fixture admission: ${record.verdict}. Actual feasibility, permission and suitability remain UNKNOWN.`, step.at_ns, record.evidence.map(evidence => evidence.fact_id));
+       for (const behaviorId of check.behavior_ids) {
+@@ -151,10 +179,12 @@ export function executeGraphFixture(graph, scenarioId, options = {}) {
+           behavior.admission.constraint_verdict = constraintVerdict;
+           behavior.admission.prerequisite_verdict = prerequisiteVerdict;
+           behavior.admission.at_ns = step.at_ns;
+-          behavior.admission.verdict = [constraintVerdict, prerequisiteVerdict].includes('BLOCK') ? 'BLOCK' : constraintVerdict === 'UNKNOWN' || prerequisiteVerdict === 'UNKNOWN' || behavior.condition_result === 'UNKNOWN' ? 'UNKNOWN' : 'PERMIT';
++          const resourceVerdict = behavior.resource_admission?.verdict;
++          behavior.admission.resource_verdict = resourceVerdict || 'NOT_APPLICABLE';
++          behavior.admission.verdict = [constraintVerdict, prerequisiteVerdict].includes('BLOCK') || resourceVerdict === 'REJECTED' ? 'BLOCK' : constraintVerdict === 'UNKNOWN' || prerequisiteVerdict === 'UNKNOWN' || resourceVerdict === 'UNKNOWN' || behavior.condition_result === 'UNKNOWN' ? 'UNKNOWN' : 'PERMIT';
+           // A later check cannot silently undo a declared pause/abort/replan response.
+           if (!['fixture_paused','fixture_aborted','fixture_replan_requested'].includes(behavior.status)) {
+-            behavior.status = prerequisiteVerdict === 'BLOCK' ? 'fixture_prerequisite_blocked'
++            behavior.status = resourceVerdict === 'REJECTED' ? 'fixture_resource_rejected' : resourceVerdict === 'UNKNOWN' ? 'fixture_resource_unknown' : prerequisiteVerdict === 'BLOCK' ? 'fixture_prerequisite_blocked'
+               : constraintVerdict === 'BLOCK' ? 'fixture_blocked'
+                 : prerequisiteVerdict === 'UNKNOWN' ? 'fixture_prerequisite_unknown'
+                   : behavior.condition_result === 'UNKNOWN' ? 'waiting_unknown_condition'
+@@ -211,3 +241,39 @@ export function resolveBehaviorPrerequisites(graph, behaviorId, at_ns) {
+   result.reason = checks.length ? 'declared_prerequisites_only_not_actual_permission' : 'not_applicable';
+   return result;
+ }
++
++/** Atomic, one-shot fixture reservation. Explicit ordering is authored policy, never inferred priority. */
++export function executeResourceAdmission(graph, scenarioId, { at_ns } = {}) {
++  const scenario = list(graph?.scenarios).find(record => record?.id === scenarioId), policy = scenario?.resource_admission;
++  const result = { record_kind: 'fixture_resource_admission', scenario_id: scenarioId, status: 'not_configured', at_ns: policy?.at_ns || at_ns || null, policy: policy ? clone(policy) : null, snapshots: [], requests: [], reservations: [], actual_reservations: false, actual_occupancy_verified: false, assessments: unknown(), boundary: 'One-shot atomic fixture bundle admission against timed available-quantity evidence. No physical occupancy, durable authority, lease priority, energy transfer or actual charging is established.' };
++  if (!scenario || !policy) return result;
++  const validation = validateGraph(graph);
++  if (!validation.valid) return { ...result, status: 'blocked_invalid_graph', validation };
++  if (at_ns !== undefined && (!isNs(at_ns) || BigInt(at_ns) < BigInt(policy.at_ns))) return { ...result, status: 'not_yet_available' };
++  const time = policy.at_ns, nodes = indexOf(graph), resources = new Map(), budgets = new Map();
++  for (const taskId of policy.task_order) for (const claim of nodes[taskId].resource_claims) resources.set(claim.resource_id, nodes[claim.resource_id]);
++  for (const [resourceId, resource] of resources) {
++    const anchor = nodes[resource.availability_fact_id];
++    const observation = anchor ? resolveGraphFact(graph, { entity_id: resource.owner_entity_id, field_id: anchor.field_id, fact_ids: scenario.fact_ids, at_ns: time }) : { status: 'UNKNOWN', value: null, reason: 'missing_availability_binding', evidence: null, fact_id: null };
++    const usable = observation.status === 'AVAILABLE' && Number.isFinite(observation.value) && observation.value >= 0 && observation.value <= resource.capacity;
++    const snapshot = { resource_id: resourceId, declared_capacity: resource.capacity, unit: resource.unit, available_amount: usable ? observation.value : null, status: usable ? 'AVAILABLE' : 'UNKNOWN', reason: usable ? null : observation.reason || 'invalid_available_quantity', observation, reserved_in_fixture: 0, remaining_after_fixture: usable ? observation.value : null };
++    result.snapshots.push(snapshot); budgets.set(resourceId, snapshot);
++  }
++  result.status = 'fixture_executed';
++  for (const [order, taskId] of policy.task_order.entries()) {
++    const task = nodes[taskId], amounts = new Map();
++    for (const claim of task.resource_claims) amounts.set(claim.resource_id, (amounts.get(claim.resource_id) || 0) + claim.amount);
++    const before = Object.fromEntries([...amounts.keys()].map(id => [id, budgets.get(id)?.remaining_after_fixture ?? null]));
++    const missing = [...amounts.keys()].filter(id => budgets.get(id)?.status !== 'AVAILABLE');
++    const insufficient = [...amounts].filter(([id, amount]) => budgets.get(id)?.status === 'AVAILABLE' && amount > budgets.get(id).remaining_after_fixture).map(([id]) => id);
++    const verdict = missing.length ? 'UNKNOWN' : insufficient.length ? 'REJECTED' : 'ADMITTED';
++    const request = { id: `fixture-resource-request-${scenarioId}-${order}`, task_id: taskId, agent_id: task.executor_agent_id, order, at_ns: time, verdict, claims: clone(task.resource_claims), before, after: { ...before }, reason: missing.length ? 'availability_unknown' : insufficient.length ? 'insufficient_available_bundle' : 'atomic_fixture_bundle_reserved', missing_resource_ids: missing, insufficient_resource_ids: insufficient, evidence_ids: [...amounts.keys()].map(id => budgets.get(id)?.observation.fact_id).filter(Boolean), actual_reservation: false };
++    if (verdict === 'ADMITTED') {
++      // Commit only after every resource is known and sufficient; never partially consume a rejected bundle.
++      for (const [id, amount] of amounts) { const budget = budgets.get(id); budget.remaining_after_fixture -= amount; budget.reserved_in_fixture += amount; request.after[id] = budget.remaining_after_fixture; }
++      result.reservations.push({ id: `fixture-reservation-${scenarioId}-${order}`, request_id: request.id, task_id: taskId, claims: clone(task.resource_claims), at_ns: time, record_kind: 'fixture_reservation_record', scope: 'fixture_only', actual_reservation: false });
++    }
++    result.requests.push(request);
++  }
++  return result;
++}
+diff --git a/frontend/console-prototype/src/graph-workbench.js b/frontend/console-prototype/src/graph-workbench.js
+index 6a48335..ef56724 100644
+--- a/frontend/console-prototype/src/graph-workbench.js
++++ b/frontend/console-prototype/src/graph-workbench.js
+@@ -1,5 +1,6 @@
++import { validateConfig } from './config.js';
+ import { getLocale } from './i18n.js';
+-import { GRAPH_COLLECTIONS, DEFAULT_GRAPH, graphNodes, graphEdges, validateGraph, inspectDefinitionAST } from './graph-config.js';
++import { GRAPH_COLLECTIONS, GRAPH_SCHEMA, GRAPH_EDGE_CONTRACTS, DEFAULT_GRAPH, graphNodes, graphEdges, validateGraph, inspectDefinitionAST } from './graph-config.js';
+ import { graphRelationLayers, graphDisplayEdges } from './graph-display.js';
+ import { executeGraphFixture } from './graph-runtime.js';
+ 
+@@ -21,6 +22,7 @@ const labelMap = {
+   charging: ['充电案例', 'Charging'], logistics: ['物流案例', 'Logistics'], 'comm-return': ['通信退化与返航', 'Communication degradation → return']
+ };
+ const collectionLabel = key => {
++  if(key==='edges') return copy('显式关系边','Authored edges');
+   if(key==='expressions') return copy('表达式节点（派生）','Expression nodes (derived)');
+   if(key==='expression_types') return copy('表达式类型（派生）','Expression types (derived)');
+   const collection = GRAPH_COLLECTIONS.find(item => item.key === key);
+@@ -182,7 +184,7 @@ export function createGraphWorkbench(hooks) {
+     const edge=current.displayEdges.find(item=>item.id===ui.edgeId)||current.edges.find(item=>item.id===ui.edgeId);
+     if(!edge) return '';
+     const metadata=[['role','角色','Role'],['condition','条件','Condition'],['time','时间','Time'],['scope','作用范围','Scope'],['version','版本','Version'],['source_id','来源','Source'],['origin','边的来源类型','Edge origin'],['path','声明路径','Declaration path'],['order','组合顺序索引','Composition order index']];
+-    return `<section class="gw-edge-inspector" aria-labelledby="gw-edge-title"><div class="gw-actions"><h3 id="gw-edge-title">${copy('有向类型边','Directed typed edge')} · ${esc(edge.relation)}</h3><button class="button small" data-gw-action="close-edge">${copy('关闭','Close')}</button></div><code>${esc(edge.id)}</code><div class="gw-edge-endpoints">${nodeButton(edge.source,'compact')}<span aria-hidden="true">→</span>${nodeButton(edge.target,'compact')}</div><dl class="gw-values">${metadata.map(([key,zh,en])=>`<dt>${copy(zh,en)}</dt><dd>${edge[key]===null||edge[key]===undefined?copy('未声明','Not declared'):esc(typeof edge[key]==='object'?json(edge[key]):edge[key])}</dd>`).join('')}</dl>${edge.display_bundle?`<section class="gw-bundle-origins"><h4>${copy('显示合并的两个原始声明','Two original declarations in this display bundle')}</h4><p>${copy('规范图和导出未改变；以下角色、路径、条件、时间、范围、版本和来源分别保留。','The canonical graph and export are unchanged. Each original retains its role, path, condition, time, scope, version and provenance.')}</p>${edge.origin_edges.map((origin,index)=>`<details open data-canonical-edge-id="${esc(origin.id)}"><summary>${index+1}. ${esc(origin.role)} · ${esc(origin.path)}</summary><code>${esc(edge.canonical_edge_ids[index])}</code><pre class="gw-json">${esc(json(origin))}</pre></details>`).join('')}</section>`:''}<p class="field-hint">${copy('每条边保留独立 ID。相同端点之间的不同条件和时态关系不会合并。仅审阅确认的声明镜像可在显示中折叠。','Every canonical edge keeps its own ID. Distinct conditions and temporal relationships are never merged. Only audited declaration mirrors may be collapsed for display.')}</p></section>`;
++    return `<section class="gw-edge-inspector" aria-labelledby="gw-edge-title"><div class="gw-actions"><h3 id="gw-edge-title">${copy('有向类型边','Directed typed edge')} · ${esc(edge.relation)}</h3><button class="button small" data-gw-action="close-edge">${copy('关闭','Close')}</button></div><code>${esc(edge.id)}</code>${records(current.graph.edges).some(item=>item.id===edge.id)?`<div class="gw-actions"><button class="button small" data-gw-action="edit-edge" data-id="${esc(edge.id)}">${copy('编辑显式边','Edit authored edge')}</button><button class="button small" data-gw-action="remove-edge" data-id="${esc(edge.id)}">${copy('移除显式边','Remove authored edge')}</button></div>`:''}<div class="gw-edge-endpoints">${nodeButton(edge.source,'compact')}<span aria-hidden="true">→</span>${nodeButton(edge.target,'compact')}</div><dl class="gw-values">${metadata.map(([key,zh,en])=>`<dt>${copy(zh,en)}</dt><dd>${edge[key]===null||edge[key]===undefined?copy('未声明','Not declared'):esc(typeof edge[key]==='object'?json(edge[key]):edge[key])}</dd>`).join('')}</dl>${edge.display_bundle?`<section class="gw-bundle-origins"><h4>${copy('显示合并的两个原始声明','Two original declarations in this display bundle')}</h4><p>${copy('规范图和导出未改变；以下角色、路径、条件、时间、范围、版本和来源分别保留。','The canonical graph and export are unchanged. Each original retains its role, path, condition, time, scope, version and provenance.')}</p>${edge.origin_edges.map((origin,index)=>`<details open data-canonical-edge-id="${esc(origin.id)}"><summary>${index+1}. ${esc(origin.role)} · ${esc(origin.path)}</summary><code>${esc(edge.canonical_edge_ids[index])}</code><pre class="gw-json">${esc(json(origin))}</pre></details>`).join('')}</section>`:''}<p class="field-hint">${copy('每条边保留独立 ID。相同端点之间的不同条件和时态关系不会合并。仅审阅确认的声明镜像可在显示中折叠。','Every canonical edge keeps its own ID. Distinct conditions and temporal relationships are never merged. Only audited declaration mirrors may be collapsed for display.')}</p></section>`;
+   }
+   function astTree(value, key='root') {
+     if(value===null||value===undefined) return `<li><span>${esc(key)}: ${copy('未知','Unknown')}</span></li>`;
+@@ -234,7 +236,7 @@ export function createGraphWorkbench(hooks) {
+     const readonly=entry.derived===true||entry.read_only===true;
+     const ownerRuleId=entry.owner_rule_id||entry.node.owner_rule_id||entry.node.rule_id;
+     const editId=readonly?ownerRuleId:entry.id;
+-    return `<section class="panel gw-inspection" aria-labelledby="gw-inspect-title"><header class="panel-header"><div><div class="eyebrow">${esc(collectionLabel(entry.collection))}</div><h2 id="gw-inspect-title">${esc(nodeLabel(entry.node,entry.collection))}</h2><code>${esc(entry.id)}</code></div><div class="gw-actions">${bridge ? `<button class="button small" data-gw-action="bridge" data-id="${esc(bridge)}" ${selection.locked&&selection.entityId!==bridge?'disabled':''}>${copy('同步场景选择','Select in scene')}</button>` : ''}${editId?`<button class="button small primary" data-gw-action="edit" data-id="${esc(editId)}">${readonly?copy('编辑所属规则','Edit owning rule'):copy('编辑记录','Edit record')}</button>`:''}</div></header><div class="panel-body"><div class="gw-record-status">${badge(readonly?copy('派生 · 只读','Derived · read only'):copy('已声明','Declared'),'blue')}${badge(relevant.length?copy('静态检查待修复','Static checks need repair'):copy('静态检查已完成','Static checked'),relevant.length?'red':'green')}${entry.node.binding ? badge(`${entry.node.binding.mode} · ${entry.node.binding.adapter}`) : ''}</div>${bridge ? `<p class="field-hint">${copy('场景显式映射','Explicit scene mapping')}: ${esc(bridge)} · ${selection.locked?copy('共享选择已锁定','Shared selection is locked'):copy('沿用现有共享选择与游标','Uses the existing shared selection and cursor')} · ${Number(selection.cursor||0).toFixed(1)} s</p>` : ''}${typedDetails(entry)}${section(copy('直接依赖图','Direct dependency graph'),`<div class="gw-dependency-map"><div class="gw-edge-column"><h4>${copy('引用本记录','Refers to this record')} <span>${incoming.length}</span></h4>${incoming.map(edge=>edgeCard(edge,'incoming')).join('')||empty()}</div><div class="gw-focus-node"><span class="gw-connector" aria-hidden="true">→</span>${nodeButton(entry.id,'central')}<span class="gw-connector" aria-hidden="true">→</span></div><div class="gw-edge-column"><h4>${copy('本记录引用','This record refers to')} <span>${outgoing.length}</span></h4>${outgoing.map(edge=>edgeCard(edge,'outgoing')).join('')||empty()}</div></div>`)}${edgeInspector()}<details class="gw-raw"><summary>${copy('完整类型化记录 / 绑定与来源','Complete typed record / bindings & sources')}</summary><pre class="gw-json">${esc(json(entry.node))}</pre></details></div></section>`;
++    return `<section class="panel gw-inspection" aria-labelledby="gw-inspect-title"><header class="panel-header"><div><div class="eyebrow">${esc(collectionLabel(entry.collection))}</div><h2 id="gw-inspect-title">${esc(nodeLabel(entry.node,entry.collection))}</h2><code>${esc(entry.id)}</code></div><div class="gw-actions">${bridge ? `<button class="button small" data-gw-action="bridge" data-id="${esc(bridge)}" ${selection.locked&&selection.entityId!==bridge?'disabled':''}>${copy('同步场景选择','Select in scene')}</button>` : ''}${!readonly?`<button class="button small" data-gw-action="duplicate" data-id="${esc(entry.id)}">${copy('复制为新记录','Duplicate')}</button><button class="button small" data-gw-action="remove" data-id="${esc(entry.id)}">${copy('移除记录','Remove')}</button>`:''}${editId?`<button class="button small primary" data-gw-action="edit" data-id="${esc(editId)}">${readonly?copy('编辑所属规则','Edit owning rule'):copy('编辑记录','Edit record')}</button>`:''}</div></header><div class="panel-body"><div class="gw-record-status">${badge(readonly?copy('派生 · 只读','Derived · read only'):copy('已声明','Declared'),'blue')}${badge(relevant.length?copy('静态检查待修复','Static checks need repair'):copy('静态检查已完成','Static checked'),relevant.length?'red':'green')}${entry.node.binding ? badge(`${entry.node.binding.mode} · ${entry.node.binding.adapter}`) : ''}</div>${bridge ? `<p class="field-hint">${copy('场景显式映射','Explicit scene mapping')}: ${esc(bridge)} · ${selection.locked?copy('共享选择已锁定','Shared selection is locked'):copy('沿用现有共享选择与游标','Uses the existing shared selection and cursor')} · ${Number(selection.cursor||0).toFixed(1)} s</p>` : ''}${typedDetails(entry)}${section(copy('直接依赖图','Direct dependency graph'),`<div class="gw-dependency-map"><div class="gw-edge-column"><h4>${copy('引用本记录','Refers to this record')} <span>${incoming.length}</span></h4>${incoming.map(edge=>edgeCard(edge,'incoming')).join('')||empty()}</div><div class="gw-focus-node"><span class="gw-connector" aria-hidden="true">→</span>${nodeButton(entry.id,'central')}<span class="gw-connector" aria-hidden="true">→</span></div><div class="gw-edge-column"><h4>${copy('本记录引用','This record refers to')} <span>${outgoing.length}</span></h4>${outgoing.map(edge=>edgeCard(edge,'outgoing')).join('')||empty()}</div></div>`)}${edgeInspector()}<details class="gw-raw"><summary>${copy('完整类型化记录 / 绑定与来源','Complete typed record / bindings & sources')}</summary><pre class="gw-json">${esc(json(entry.node))}</pre></details></div></section>`;
+   }
+   function diagnostics(validation) {
+     const issues=[...validation.errors,...validation.warnings];
+@@ -259,11 +261,101 @@ export function createGraphWorkbench(hooks) {
+     const result=current?ui.result:null;
+     return `<section class="panel gw-fixture"><header class="panel-header"><div><h2 class="panel-title">${copy('同一配置图的案例执行','Case execution from one configuration graph')}</h2><p class="panel-description">${copy('只执行本地声明解析与确定性样例，不启动 BENCH、Atlas 或物理动作。','Runs local declared-graph resolution and deterministic fixtures only; no BENCH, Atlas or physical actuation.')}</p></div></header><div class="panel-body"><p class="field-hint">${copy('案例按声明 observed_at_ns 执行，与回放查看游标独立；不会伪造游标与事实同步。','Cases execute at their declared observed_at_ns, independently of the replay view cursor; facts are not presented as cursor-synchronized evidence.')}</p><div class="gw-fixture-controls"><label for="gw-scenario">${copy('案例','Case')}</label><select id="gw-scenario" data-gw-field="scenario">${records(graph.scenarios).map(scenario=>`<option value="${esc(scenario.id)}" ${ui.scenarioId===scenario.id?'selected':''}>${esc(nodeLabel(scenario,'scenarios'))}</option>`).join('')}</select><button class="button primary" data-gw-action="execute" ${validation.valid?'':'disabled'}>${copy('运行本地案例','Run local case')}</button></div>${ui.result&&!current?`<div class="notice warning">${copy('配置已变更。上次案例结果已失效，请重新执行。','The configuration changed. The previous case result is stale; run it again.')}</div>`:''}${result?`<div class="gw-result" role="status"><h3>${copy('已执行案例','Executed case')}: ${esc(result.scenario_id)} · ${esc(result.at_ns)} ns</h3><div class="gw-record-status">${badge(copy('样例已执行','Fixture executed'),'green')}${badge(copy('谓词真值 UNKNOWN','Predicate truth UNKNOWN'),'amber')}${badge(copy('真实服务未连接','Real services disconnected'))}</div><div class="gw-result-summary"><div><strong>${list(result.decisions).length}</strong><span>${copy('决策记录','Decision records')}</span></div><div><strong>${list(result.events).length}</strong><span>${copy('事件记录','Event records')}</span></div><div><strong>${list(result.commands).length}</strong><span>${copy('命令声明','Command declarations')}</span></div><div><strong>${list(result.resource_usage).length}</strong><span>${copy('资源记录','Resource records')}</span></div></div><div class="gw-assessments">${['feasibility','permission','suitability'].map((key,index)=>`<span>${[copy('可行性','Feasibility'),copy('许可','Permission'),copy('适宜性','Suitability')][index]}: <strong>${esc(result.assessments?.[key]||'UNKNOWN')}</strong></span>`).join('')}</div>${fixtureEvidence(result)}<details open><summary>${copy('执行轨迹','Execution trace')}</summary>${traceTimeline(result)}</details><details><summary>${copy('完整结果（含行为、资源、事件与命令）','Complete result (behaviors, resources, events & commands)')}</summary><pre class="gw-json">${esc(json(result))}</pre></details></div>`:`<p class="field-hint">${copy('尚未执行当前配置。声明状态和静态检查不会自动升级为执行结果。','This graph has not been executed. Declarations and static checks do not become execution evidence automatically.')}</p>`}</div></section>`;
+   }
++  const authoredCollections=()=>[...GRAPH_COLLECTIONS,{key:'edges',label:'Authored edges',label_zh:'显式关系边'}].filter(item=>Array.isArray(model()?.graph[item.key]));
++  const collectionSchema=key=>{
++    const schema=GRAPH_SCHEMA.properties[key]?.items;
++    return schema?.$ref?GRAPH_SCHEMA.$defs[schema.$ref.split('/').at(-1)]:schema;
++  };
++  function uniqueId(base) {
++    const ids=new Set([...model().nodes.map(entry=>entry.id),...records(model().graph.edges).map(edge=>edge.id)]);
++    let candidate=base,index=2;while(ids.has(candidate))candidate=`${base}-${index++}`;return candidate;
++  }
++  function requiredShape(schema,depth=0) {
++    if(!schema||depth>12)return null;
++    if(schema.$ref)return requiredShape(GRAPH_SCHEMA.$defs[schema.$ref.split('/').at(-1)],depth+1);
++    if(Object.hasOwn(schema,'const'))return structuredClone(schema.const);
++    const types=list(schema.type).length?schema.type:[schema.type];
++    if(types.includes('null'))return null;
++    if(types.includes('object'))return Object.fromEntries(list(schema.required).map(key=>[key,requiredShape(schema.properties?.[key],depth+1)]));
++    if(types.includes('array'))return [];
++    if(types.includes('string'))return '';
++    return null;
++  }
++  function newRecord(collection) {
++    const value=requiredShape(collectionSchema(collection))||{};
++    value.id=uniqueId(`new-${collection.replaceAll('_','-').replace(/s$/,'')}`);
++    if(collection!=='edges')value.label='';
++    return value;
++  }
++  function openRecordEditor(collection,record,operation='update') {
++    if(ui.editor){ui.notice=copy('请先应用或取消正在编辑的记录。','Apply or cancel the open record before starting another.');return;}
++    ui.editor={id:record.id,collection,operation,text:json(record),baseGraph:json(model().graph),review:null,error:null,validation:null,referencePath:'',referenceId:'',drafts:{}};
++  }
++  function resetReview() {
++    if(ui.editor){ui.editor.review=null;ui.editor.validation=null;ui.editor.error=null;}
++  }
++  function pendingRecord() {
++    try {const value=JSON.parse(ui.editor.text);return value&&typeof value==='object'&&!Array.isArray(value)?value:null;}catch{return null;}
++  }
++  function changePending(key,value) {
++    const record=pendingRecord();if(!record){ui.editor.error=copy('先修复 JSON 格式，再使用字段选择器。','Repair the JSON before using field selectors.');return false;}
++    record[key]=value;ui.editor.text=json(record);resetReview();
++    const textarea=document.querySelector('#gw-record-json');if(textarea)textarea.value=ui.editor.text;
++    return true;
++  }
++  function recordOperations(editor) {
++    if(editor.operation==='transaction')return JSON.parse(editor.text);
++    if(editor.operation==='remove')return [{action:'remove',collection:editor.collection,id:editor.id}];
++    const record=JSON.parse(editor.text);
++    return [{action:editor.operation||'update',collection:editor.collection,...(editor.operation==='create'?{}:{id:editor.id}),record}];
++  }
++  function stageOperations(graph,operations) {
++    if(!Array.isArray(operations)||!operations.length||operations.length>200)throw new Error(copy('事务需要 1–200 个明确操作。','A transaction requires 1–200 explicit operations.'));
++    const next=structuredClone(graph),changes=[];
++    for(const [index,operation] of operations.entries()){
++      if(!operation||typeof operation!=='object'||Array.isArray(operation)||Object.keys(operation).some(key=>!['action','collection','id','record'].includes(key)))throw new Error(copy('事务操作只能包含 action、collection、id 与 record。','Transaction operations may contain only action, collection, id and record.'));
++      const {action,collection,record,id}=operation;
++      if(!authoredCollections().some(item=>item.key===collection))throw new Error(copy('只能编辑明确的人工编写集合；派生节点不可写入。','Only declared authored collections can be edited; derived nodes are read only.'));
++      if(!['create','update','remove'].includes(action))throw new Error(copy('事务 action 只能为 create、update 或 remove。','Transaction action must be create, update or remove.'));
++      const entryIndex=records(next[collection]).findIndex(entry=>entry.id===(action==='create'?record?.id:id));
++      const actualIndex=next[collection].findIndex(entry=>entry&&entry.id===(action==='create'?record?.id:id));
++      if(action!=='remove'&&(!record||typeof record!=='object'||Array.isArray(record)||typeof record.id!=='string'))throw new Error(copy('新增和更新操作需要带稳定 ID 的完整记录对象。','Create and update require a complete record object with a stable ID.'));
++      if(action==='update'&&record.id!==id)throw new Error(copy('稳定 ID 不可在此更改；引用关系必须保持明确。','The stable ID cannot be changed here; references must stay explicit.'));
++      if(action==='create'&&entryIndex>=0)throw new Error(copy('新增 ID 已存在。请使用新的唯一 ID。','The new ID already exists. Choose a unique ID.'));
++      if(action!=='create'&&actualIndex<0)throw new Error(copy('更新或移除的目标记录不存在。','The record targeted for update or removal does not exist.'));
++      const before=action==='create'?undefined:structuredClone(next[collection][actualIndex]);
++      if(action==='create')next[collection].push(structuredClone(record));
++      else if(action==='update')next[collection][actualIndex]=structuredClone(record);
++      else next[collection].splice(actualIndex,1);
++      changes.push({action,collection,id:action==='create'?record.id:id,before,after:action==='remove'?undefined:record,index});
++    }
++    return {graph:next,changes};
++  }
++  function edgeForm(record) {
++    const contract=GRAPH_EDGE_CONTRACTS[record.relation];
++    const candidates=side=>model().nodes.filter(entry=>!entry.derived&&!entry.read_only&&(/^[a-z][a-z0-9_.-]*$/).test(entry.id)&&(contract?.[side]==='*'||list(contract?.[side]).includes(entry.collection)));
++    const pick=(key,title,options)=>`<div class="field"><label for="gw-edge-${key}">${title}</label><select id="gw-edge-${key}" data-gw-field="edge-${key}"><option value="">${copy('请选择','Select a value')}</option>${options.map(item=>`<option value="${esc(item.value)}" ${record[key]===item.value?'selected':''}>${esc(item.label)}</option>`).join('')}${record[key]&&!options.some(item=>item.value===record[key])?`<option selected value="${esc(record[key])}">${esc(record[key])} · ${copy('不在允许范围','outside allowed scope')}</option>`:''}</select></div>`;
++    const text=(key,title,value=record[key]??'')=>`<div class="field"><label for="gw-edge-${key}">${title}</label><input id="gw-edge-${key}" data-gw-field="edge-${key}" value="${esc(value)}"></div>`;
++    return `<section class="gw-edge-form"><h3>${copy('类型边端点与角色','Typed edge endpoints & roles')}</h3><div class="form-grid">${pick('relation',copy('关系类型','Relation type'),Object.keys(GRAPH_EDGE_CONTRACTS).map(value=>({value,label:value})))}${contract?.roles?pick('role',copy('允许的角色','Allowed role'),contract.roles.map(value=>({value,label:value}))):text('role',copy('明确角色','Explicit role'))}${pick('source',copy('源节点','Source node'),candidates('from').map(entry=>({value:entry.id,label:`${collectionLabel(entry.collection)} · ${entry.id}`})))}${pick('target',copy('目标节点','Target node'),candidates('to').map(entry=>({value:entry.id,label:`${collectionLabel(entry.collection)} · ${entry.id}`})))}${pick('source_id',copy('证据 / 声明来源','Evidence / declaration source'),records(model().graph.sources).map(source=>({value:source.id,label:source.id})))}${text('time',copy('精确时间 ns（空白表示未声明）','Exact time ns (blank means undeclared)'))}${text('scope',copy('实体范围 ID（逗号分隔）','Entity scope IDs (comma separated)'),list(record.scope).join(', '))}${text('condition',copy('条件声明（空白表示无条件）','Condition declaration (blank means none)'))}</div><p class="field-hint">${copy('允许端点类型','Allowed endpoint kinds')}: ${esc(json(contract?.from??[]))} → ${esc(json(contract?.to??[]))}. ${copy('AST 派生关系通过所属规则维护。此表单只编辑显式声明边，不执行条件。','Derived AST relations are maintained through their owning rule. This form edits explicit edges only and does not evaluate conditions.')}</p></section>`;
++  }
++  const referenceCollections={entity_id:'entities',entity_ids:'entities',target_entity_ids:'entities',owner_entity_id:'entities',sender_entity_id:'entities',receiver_entity_id:'entities',strategy_id:'strategies',agent_id:'agents',authority_agent_id:'agents',authority_agent_ids:'agents',executor_agent_id:'agents',field_id:'fields',field_ids:'fields',producer_module_id:'modules',module_ids:'modules',source_id:'sources',observable_fact_ids:'facts',input_fact_ids:'facts',fact_ids:'facts',evidence_fact_ids:'facts',availability_fact_id:'facts',request_id:'lease_requests',request_ids:'requests',objective_ids:'objectives',decision_ids:'decisions',task_id:'tasks',task_ids:'tasks',command_id:'commands',command_ids:'commands',output_command_ids:'commands',constraint_id:'constraints',constraint_ids:'constraints',resource_id:'resources',rule_ids:'rules',predicate_id:'predicates',predicate_ids:'predicates',subpredicate_ids:'predicates',event_ids:'events',capability_ids:'capabilities',behavior_ids:'behaviors',arbitration_id:'arbitrations',zone_id:'spatial_zones',approval_id:'lease_approvals',evidence_receipt_ids:'delivery_receipts',parameter_ids:'parameter_definitions',relation_definition_ids:'relation_definitions'};
++  function referencePicker() {
++    const editor=ui.editor, path=editor.referencePath||'',last=path.split('.').filter(part=>!/^\d+$/.test(part)).at(-1);
++    const expected=last==='type_id'?(editor.collection==='entities'?'entity_types':'node_types'):referenceCollections[last];
++    const candidates=model().nodes.filter(entry=>!entry.derived&&(!expected||entry.collection===expected)&&(last!=='type_id'||entry.collection==='entity_types'||entry.node.collection===editor.collection));
++    return `<details class="gw-reference-picker"><summary>${copy('选择稳定引用','Choose a stable reference')}</summary><p class="field-hint">${copy('填写记录属性路径，例如 strategy_id、controls.0.entity_ids 或 composition.behavior_ids。数组属性追加 ID，标量属性替换 ID；只改变待审阅文本。','Enter a record path, such as strategy_id, controls.0.entity_ids or composition.behavior_ids. Array properties append IDs; scalar properties replace IDs. Only pending review text changes.')}</p><div class="form-grid"><div class="field"><label for="gw-reference-path">${copy('属性路径','Property path')}</label><input id="gw-reference-path" data-gw-field="reference-path" value="${esc(path)}"></div><div class="field"><label for="gw-reference-id">${expected?esc(collectionLabel(expected)):copy('已声明记录','Declared records')}</label><select id="gw-reference-id" data-gw-field="reference-id"><option value="">${copy('请选择','Select a value')}</option>${candidates.map(entry=>`<option value="${esc(entry.id)}" ${editor.referenceId===entry.id?'selected':''}>${esc(collectionLabel(entry.collection))} · ${esc(entry.id)}</option>`).join('')}</select></div></div><button class="button small" data-gw-action="insert-reference">${copy('插入待审阅记录','Insert into pending record')}</button></details>`;
++  }
++  function removalImpact(editor) {
++    if(editor.operation!=='remove')return '';
++    const touching=model().edges.filter(edge=>edge.source===editor.id||edge.target===editor.id);
++    return `<section class="gw-removal-impact"><h3>${copy('移除影响：保留所有依赖记录','Removal impact: all dependent records are retained')}</h3><p class="field-hint">${copy('只移除此记录，不级联删除。以下为关联规范边；校验会列出移除后所有断开的引用并阻止无效提交。','Only this record is removed; there is no cascading deletion. Related canonical edges are listed below. Validation reports every broken reference after removal and blocks invalid commits.')}</p>${touching.length?`<ul>${touching.map(edge=>`<li><code>${esc(edge.source)} → ${esc(edge.target)}</code><strong>${esc(edge.relation)}</strong><small>${esc(edge.path||'')} · ${esc(edge.role||'')}</small></li>`).join('')}</ul>`:`<p>${copy('没有关联规范边。仍需完整校验。','No related canonical edges. Full validation is still required.')}</p>`}</section>`;
++  }
++
+   function editorPanel() {
+-    const editor=ui.editor;
+-    if(!editor) return '';
+-    const changed=editor.review?.diff||[];
+-    return `<section class="panel gw-editor" aria-labelledby="gw-editor-title"><header class="panel-header"><div><h2 class="panel-title" id="gw-editor-title">${copy('结构化记录编辑','Structured record editor')} · ${esc(editor.id)}</h2><p class="panel-description">${copy('可编辑绑定、模块读写范围、智能体控制范围、策略输入输出、行为组合与法律约束引用。稳定 ID 保持不变。','Edit bindings, module read/write scopes, agent control scopes, strategy I/O, behavior composition and legal references. The stable ID is unchanged.')}</p></div><button class="button small" data-gw-action="cancel-edit">${copy('取消编辑','Cancel editing')}</button></header><div class="panel-body"><div class="field"><label for="gw-record-json">${copy('类型化记录 JSON','Typed record JSON')} <span>${esc(collectionLabel(editor.collection))}</span></label><textarea id="gw-record-json" data-gw-field="record" class="mono" rows="17" spellcheck="false" aria-describedby="gw-edit-hint">${esc(editor.text)}</textarea><p class="field-hint" id="gw-edit-hint">${copy('编辑内容在“应用”前不会写入草稿。先检查类型、引用、单位、控制权和读写冲突。','Pending edits do not change the draft until Apply. Review type, reference, unit, control-scope and read/write checks first.')}</p></div>${editor.error?`<div class="notice warning" role="alert">${esc(editor.error)}</div>`:''}${editor.validation?diagnostics(editor.validation):''}<div class="gw-actions"><button class="button" data-gw-action="review">${copy('静态校验并查看差异','Validate & review changes')}</button>${editor.review?`<button class="button primary" data-gw-action="apply" ${changed.length?'':'disabled'}>${copy('应用到共享草稿','Apply to shared draft')}</button>`:''}</div>${editor.review?`<div class="gw-change-review"><h3>${copy('应用前差异','Changes before Apply')} · ${changed.length}</h3>${changed.length ? changed.map(change=>`<div class="gw-diff"><code>${esc(change.path)}</code><div><span>− ${esc(json(change.before)??'(unset)')}</span><span>+ ${esc(json(change.after)??'(unset)')}</span></div></div>`).join('') : `<p>${copy('没有变更。','No changes.')}</p>`}</div>`:''}</div></section>`;
++    const editor=ui.editor;if(!editor)return '';
++    const changed=editor.review?.diff||[], operation=editor.operation||'update',record=pendingRecord();
++    const title={update:copy('结构化记录编辑','Structured record editor'),create:copy('新增记录','Create record'),remove:copy('移除记录审阅','Review record removal'),transaction:copy('原子事务编辑','Atomic transaction editor')}[operation];
++    return `<section class="panel gw-editor" aria-labelledby="gw-editor-title"><header class="panel-header"><div><h2 class="panel-title" id="gw-editor-title">${title} · ${esc(editor.id)}</h2><p class="panel-description">${copy('编辑保持稳定 ID；新增记录使用唯一 ID。只有完整候选配置通过校验后才可应用。','Edits preserve stable IDs; new records use unique IDs. Apply is available only after validating the complete candidate configuration.')}</p></div><button class="button small" data-gw-action="cancel-edit">${copy('取消编辑','Cancel editing')}</button></header><div class="panel-body">${operation==='create'?`<div class="field"><label for="gw-create-collection">${copy('记录集合 / 类型契约','Collection / type contract')}</label><select id="gw-create-collection" data-gw-field="create-collection">${authoredCollections().map(item=>`<option value="${esc(item.key)}" ${item.key===editor.collection?'selected':''}>${esc(collectionLabel(item.key))}</option>`).join('')}</select></div>`:''}${operation==='transaction'?`<div class="notice info">${copy('事务 JSON 是操作数组。action 为 create/update/remove；collection 为人工编写集合。新增需 record；更新需原始 id 与完整 record；移除需 id。全部操作一起校验、一起提交，不级联删除。','Transaction JSON is an operation array. action is create/update/remove; collection is an authored collection. Create needs record; update needs original id and complete record; remove needs id. All operations validate and commit together, without cascading deletion.')}</div>`:''}${removalImpact(editor)}${editor.collection==='edges'&&operation!=='remove'&&record?edgeForm(record):''}<div class="field"><label for="gw-record-json">${operation==='transaction'?copy('事务操作 JSON','Transaction operations JSON'):copy('类型化记录 JSON','Typed record JSON')} <span>${esc(collectionLabel(editor.collection))}</span></label><textarea id="gw-record-json" data-gw-field="record" class="mono" rows="17" spellcheck="false" ${operation==='remove'?'readonly':''} aria-describedby="gw-edit-hint">${esc(editor.text)}</textarea><p class="field-hint" id="gw-edit-hint">${copy('待审阅文本不会自动写入草稿。未知值必须明确填写；来源与许可不能由模板推断。','Pending text does not automatically change the draft. Unknown values must be supplied explicitly; templates do not establish provenance or permission.')}</p></div>${operation!=='remove'&&operation!=='transaction'&&editor.collection!=='edges'?referencePicker():''}${operation!=='transaction'?`<details class="gw-schema-hint"><summary>${copy('该集合的类型契约','Type contract for this collection')}</summary><pre class="gw-json">${esc(json(collectionSchema(editor.collection)))}</pre></details>`:''}${editor.error?`<div class="notice warning" role="alert">${esc(editor.error)}</div>`:''}${editor.validation?diagnostics(editor.validation):''}<div class="gw-actions"><button class="button" data-gw-action="review">${copy('静态校验并查看差异','Validate & review changes')}</button>${operation!=='transaction'?`<button class="button" data-gw-action="expand-transaction">${copy('扩展为多记录事务','Expand to multi-record transaction')}</button>`:''}${editor.review?`<button class="button primary" data-gw-action="apply" ${changed.length?'':'disabled'}>${copy('应用到共享草稿','Apply to shared draft')}</button>`:''}</div>${editor.review?`<div class="gw-change-review"><h3>${copy('应用前差异','Changes before Apply')} · ${changed.length}</h3>${changed.length?changed.map(change=>`<div class="gw-diff"><code>${esc(change.path)}</code><div><span>− ${esc(json(change.before)??'(unset)')}</span><span>+ ${esc(json(change.after)??'(unset)')}</span></div></div>`).join(''):`<p>${copy('没有变更。','No changes.')}</p>`}</div>`:''}</div></section>`;
+   }
+   function render() {
+     const current=model();
+@@ -272,37 +364,25 @@ export function createGraphWorkbench(hooks) {
+     const collections=[...GRAPH_COLLECTIONS,...[...new Set(nodes.map(node=>node.collection))].filter(key=>!GRAPH_COLLECTIONS.some(item=>item.key===key)).map(key=>({key}))];
+     const filtered=nodes.filter(entry=>(ui.collection==='all'||entry.collection===ui.collection) && `${entry.id} ${entry.node.label} ${nodeLabel(entry.node,entry.collection)}`.toLowerCase().includes(ui.query.toLowerCase()));
+     const executed=ui.result&&ui.resultGraph===graph;
+-    return `<div class="graph-workbench" data-graph-workbench><section class="gw-overview"><div><div class="eyebrow">UNIFIED CONFIGURATION GRAPH</div><h2>${copy('从事实到决策，审阅每一条依赖','Review every dependency, from fact to decision')}</h2><p>${copy('与场景表单共用一份草稿、版本和导出。点击类型或记录，追踪来源、模块、策略、行为与约束。','One draft, version history and export shared with the scene forms. Select a type or record to inspect sources, modules, strategies, behaviors and constraints.')}</p></div><span class="gw-node-total"><strong>${nodes.length}</strong>${copy('个配置图节点','configuration graph nodes')}</span></section><div class="gw-readiness" aria-label="${copy('证据成熟度','Evidence readiness')}"><div>${badge(copy('已声明','Declared'),'blue')}<span>${nodes.length} ${copy('条记录','records')}</span></div><div>${badge(copy('静态检查','Static checked'),validation.valid?'green':'red')}<span>${validation.errors.length} ${copy('错误','errors')}</span></div><div>${badge(copy('样例执行','Fixture executed'),executed?'green':'muted')}<span>${executed?esc(ui.result.scenario_id):copy('未执行当前配置','Current graph not executed')}</span></div><div>${badge(copy('真实连接','Real connected'))}<span>${copy('未连接 · 0','Disconnected · 0')}</span></div></div><div class="gw-layer-map">${[...layers,{title:['其他类型','Other types'],keys:collections.map(item=>item.key).filter(key=>!layers.some(layer=>layer.keys.includes(key)))}].filter(layer=>layer.keys.some(key=>collections.some(item=>item.key===key))).map(layer=>`<section><h3>${copy(...layer.title)}</h3>${layer.keys.filter(key=>collections.some(collection=>collection.key===key)).map(key=>`<button class="gw-collection-chip ${ui.collection===key?'active':''}" data-gw-action="collection" data-key="${key}" aria-pressed="${ui.collection===key}"><span>${esc(collectionLabel(key))}</span><strong>${nodes.filter(entry=>entry.collection===key).length}</strong></button>`).join('')}</section>`).join('')}</div><div class="gw-shared-selection"><strong>${copy('共享场景选择','Shared scene selection')}: ${esc(hooks.getSelection?.().entityId||copy('未选择','None'))}</strong><span>${copy('查看游标','View cursor')}: ${Number(hooks.getSelection?.().cursor||0).toFixed(1)} s</span><span>${hooks.getSelection?.().locked?copy('选择已锁定；配置检查不改变跟踪实体','Selection locked; configuration inspection does not change the tracked entity'):copy('点击场景关联实体同步选择','Select a scene-linked entity to update the shared selection')}</span></div><p class="gw-boundary-note">${copy('来源：独立人工样例。仅包含当前声明的目录子集；Atlas 未加载，不生成替代布尔真值。BENCH 仍是物理时钟与生产视图。','Source: independently authored fixtures. This is only the declared catalog subset; Atlas is not loaded and no substitute Boolean truth is computed. BENCH remains the physical clock and production view.')}</p>${ui.notice?`<div class="notice info" role="status">${esc(ui.notice)}</div>`:''}${editorPanel()}${relationReview()}${closedLoop()}<div class="gw-review-grid"><aside class="panel gw-inventory"><div class="panel-header"><h2 class="panel-title">${esc(ui.collection==='all'?copy('全部记录','All records'):collectionLabel(ui.collection))} <span>${filtered.length}</span></h2></div><div class="panel-body"><div class="field"><label for="gw-query">${copy('查找记录','Find a record')}</label><input id="gw-query" data-gw-field="query" type="search" value="${esc(ui.query)}" placeholder="${copy('名称或稳定 ID','Name or stable ID')}"></div><button class="gw-text-link" data-gw-action="collection" data-key="all">${copy('查看全部类型','Browse all types')}</button><div class="gw-node-list">${filtered.map(entry=>nodeButton(entry.id)).join('')||empty()}</div></div></aside>${inspection()}</div>${diagnostics(validation)}${fixturePanel()}</div>`;
++    return `<div class="graph-workbench" data-graph-workbench><section class="gw-overview"><div><div class="eyebrow">UNIFIED CONFIGURATION GRAPH</div><h2>${copy('从事实到决策，审阅每一条依赖','Review every dependency, from fact to decision')}</h2><p>${copy('与场景表单共用一份草稿、版本和导出。点击类型或记录，追踪来源、模块、策略、行为与约束。','One draft, version history and export shared with the scene forms. Select a type or record to inspect sources, modules, strategies, behaviors and constraints.')}</p></div><span class="gw-node-total"><strong>${nodes.length}</strong>${copy('个配置图节点','configuration graph nodes')}</span></section><div class="gw-readiness" aria-label="${copy('证据成熟度','Evidence readiness')}"><div>${badge(copy('已声明','Declared'),'blue')}<span>${nodes.length} ${copy('条记录','records')}</span></div><div>${badge(copy('静态检查','Static checked'),validation.valid?'green':'red')}<span>${validation.errors.length} ${copy('错误','errors')}</span></div><div>${badge(copy('样例执行','Fixture executed'),executed?'green':'muted')}<span>${executed?esc(ui.result.scenario_id):copy('未执行当前配置','Current graph not executed')}</span></div><div>${badge(copy('真实连接','Real connected'))}<span>${copy('未连接 · 0','Disconnected · 0')}</span></div></div><div class="gw-layer-map">${[...layers,{title:['其他类型','Other types'],keys:collections.map(item=>item.key).filter(key=>!layers.some(layer=>layer.keys.includes(key)))}].filter(layer=>layer.keys.some(key=>collections.some(item=>item.key===key))).map(layer=>`<section><h3>${copy(...layer.title)}</h3>${layer.keys.filter(key=>collections.some(collection=>collection.key===key)).map(key=>`<button class="gw-collection-chip ${ui.collection===key?'active':''}" data-gw-action="collection" data-key="${key}" aria-pressed="${ui.collection===key}"><span>${esc(collectionLabel(key))}</span><strong>${nodes.filter(entry=>entry.collection===key).length}</strong></button>`).join('')}</section>`).join('')}</div><div class="gw-shared-selection"><strong>${copy('共享场景选择','Shared scene selection')}: ${esc(hooks.getSelection?.().entityId||copy('未选择','None'))}</strong><span>${copy('查看游标','View cursor')}: ${Number(hooks.getSelection?.().cursor||0).toFixed(1)} s</span><span>${hooks.getSelection?.().locked?copy('选择已锁定；配置检查不改变跟踪实体','Selection locked; configuration inspection does not change the tracked entity'):copy('点击场景关联实体同步选择','Select a scene-linked entity to update the shared selection')}</span></div><p class="gw-boundary-note">${copy('来源：独立人工样例。仅包含当前声明的目录子集；Atlas 未加载，不生成替代布尔真值。BENCH 仍是物理时钟与生产视图。','Source: independently authored fixtures. This is only the declared catalog subset; Atlas is not loaded and no substitute Boolean truth is computed. BENCH remains the physical clock and production view.')}</p>${ui.notice?`<div class="notice info" role="status">${esc(ui.notice)}</div>`:''}<div class="gw-authoring-toolbar"><button class="button primary" data-gw-action="create">${copy('新增记录','Create record')}</button><button class="button" data-gw-action="create-edge">${copy('新增类型边','Create typed edge')}</button><button class="button" data-gw-action="new-transaction">${copy('原子事务编辑','Atomic transaction')}</button><span>${copy('所有操作先校验、审阅，再应用到共享草稿。','Every change is validated and reviewed before Apply to the shared draft.')}</span></div>${editorPanel()}${relationReview()}${closedLoop()}<div class="gw-review-grid"><aside class="panel gw-inventory"><div class="panel-header"><h2 class="panel-title">${esc(ui.collection==='all'?copy('全部记录','All records'):collectionLabel(ui.collection))} <span>${filtered.length}</span></h2></div><div class="panel-body"><div class="field"><label for="gw-query">${copy('查找记录','Find a record')}</label><input id="gw-query" data-gw-field="query" type="search" value="${esc(ui.query)}" placeholder="${copy('名称或稳定 ID','Name or stable ID')}"></div><button class="gw-text-link" data-gw-action="collection" data-key="all">${copy('查看全部类型','Browse all types')}</button><div class="gw-node-list">${filtered.map(entry=>nodeButton(entry.id)).join('')||empty()}</div></div></aside>${inspection()}</div>${diagnostics(validation)}${fixturePanel()}</div>`;
+   }
+   function captureEditor() {
+     const input=globalThis.document?.querySelector('#gw-record-json');
+     if(ui.editor&&input&&ui.editor.text!==input.value) {ui.editor.text=input.value;ui.editor.review=null;ui.editor.validation=null;ui.editor.error=null;}
+   }
+   function reviewEdit() {
+-    captureEditor();
+-    const editor=ui.editor, {graph,config}=model();
+-    if(!editor) return;
+-    editor.review=null;editor.validation=null;editor.error=null;
++    captureEditor();const editor=ui.editor,{graph,config}=model();if(!editor)return;
++    resetReview();
+     try {
+-      if(json(graph)!==editor.baseGraph) throw new Error(copy('草稿在编辑期间已改变。请取消后重新打开该记录，以免覆盖新改动。','The draft changed while this editor was open. Cancel and reopen the record to avoid overwriting newer changes.'));
+-      const candidate=JSON.parse(editor.text);
+-      const unsafe=value=>value&&typeof value==='object'&&(Object.keys(value).some(key=>['__proto__','constructor','prototype'].includes(key))||Object.values(value).some(unsafe));
+-      if(!candidate || Array.isArray(candidate) || typeof candidate!=='object' || unsafe(candidate)) throw new Error(copy('请输入不含危险键的 JSON 对象。','Use a JSON object without unsafe keys.'));
+-      if(candidate.id!==editor.id) throw new Error(copy('稳定 ID 不可在此更改；引用关系必须保持明确。','The stable ID cannot be changed here; references must stay explicit.'));
+-      const next=structuredClone(graph), index=next[editor.collection].findIndex(node=>node.id===editor.id);
+-      next[editor.collection][index]=candidate;
+-      editor.validation=validateGraph(next,{...config,graph:next});
+-      if(!editor.validation.valid) return;
+-      const before=graph[editor.collection][index];
+-      const diff=[];
+-      const visit=(oldValue,newValue,path)=>{
+-        if(json(oldValue)===json(newValue)) return;
+-        if(oldValue&&newValue&&typeof oldValue==='object'&&typeof newValue==='object'&&!Array.isArray(oldValue)&&!Array.isArray(newValue)) for(const key of new Set([...Object.keys(oldValue),...Object.keys(newValue)])) visit(oldValue[key],newValue[key],`${path}.${key}`);
+-        else diff.push({path,before:oldValue,after:newValue});
+-      };
+-      visit(before,candidate,`${editor.collection}.${editor.id}`);
+-      editor.review={graph:next,diff,text:editor.text};
+-    } catch(error) {editor.error=error instanceof SyntaxError?copy('JSON 格式无效，请检查引号、逗号与括号。','Invalid JSON. Check quotes, commas and brackets.'):error.message;}
++      if(json(graph)!==editor.baseGraph)throw new Error(copy('草稿在编辑期间已改变。请取消后重新打开记录，以免覆盖新改动。','The draft changed while this editor was open. Cancel and reopen to avoid overwriting newer changes.'));
++      const operations=recordOperations(editor),unsafe=value=>value&&typeof value==='object'&&(Object.keys(value).some(key=>['__proto__','constructor','prototype'].includes(key))||Object.values(value).some(unsafe));
++      if(unsafe(operations))throw new Error(copy('请输入不含危险键的 JSON 对象。','Use JSON objects without unsafe keys.'));
++      const staged=stageOperations(graph,operations),next=staged.graph;
++      editor.validation=validateConfig({...config,graph:next});if(!editor.validation.valid)return;
++      const diff=[],visit=(before,after,path)=>{if(json(before)===json(after))return;if(before&&after&&typeof before==='object'&&typeof after==='object'&&!Array.isArray(before)&&!Array.isArray(after))for(const key of new Set([...Object.keys(before),...Object.keys(after)]))visit(before[key],after[key],`${path}.${key}`);else diff.push({path,before,after});};
++      visit(graph,next,'graph');
++      editor.review={graph:next,diff,text:editor.text,baseConfig:json(config),operations};
++    }catch(error){editor.error=error instanceof SyntaxError?copy('JSON 格式无效，请检查引号、逗号与括号。','Invalid JSON. Check quotes, commas and brackets.'):error.message;}
+   }
+   function handleClick(event) {
+     const element=event.target.closest?.('[data-gw-action]');
+@@ -322,18 +402,40 @@ export function createGraphWorkbench(hooks) {
+     else if(action==='close-edge') ui.edgeId=null;
+     else if(action==='collection') {ui.collection=element.dataset.key;ui.query='';}
+     else if(action==='bridge') {hooks.selectEntity?.(element.dataset.id);return true;}
+-    else if(action==='edit') {
+-      if(ui.editor&&ui.editor.id!==element.dataset.id) {ui.notice=copy('请先应用或取消正在编辑的记录。','Apply or cancel the open record before editing another.');}
+-      else if(!ui.editor) {
+-        const entry=current.byId.get(element.dataset.id);
+-        if(!entry||entry.derived===true||entry.read_only===true||!Array.isArray(current.graph[entry.collection])) {ui.notice=copy('派生节点只读；请编辑所属规则。','Derived nodes are read only; edit the owning rule.');hooks.requestRender();return true;}
+-        ui.editor={id:entry.id,collection:entry.collection,text:json(entry.node),baseGraph:json(current.graph),review:null,error:null,validation:null};
+-      }
++    else if(['create','create-edge'].includes(action)) {
++      const collection=action==='create-edge'?'edges':authoredCollections().some(item=>item.key===ui.collection)?ui.collection:'sources';
++      openRecordEditor(collection,newRecord(collection),'create');
++    }
++    else if(action==='new-transaction') {
++      if(ui.editor)ui.notice=copy('请先应用或取消正在编辑的记录。','Apply or cancel the open record before starting another.');
++      else ui.editor={id:'transaction',collection:'transaction',operation:'transaction',text:'[]',baseGraph:json(current.graph),review:null,error:null,validation:null};
++    }
++    else if(['edit','duplicate','remove'].includes(action)) {
++      const entry=current.byId.get(element.dataset.id);
++      if(!entry||entry.derived===true||entry.read_only===true||!Array.isArray(current.graph[entry.collection]))ui.notice=copy('派生节点只读；请编辑所属规则。','Derived nodes are read only; edit the owning rule.');
++      else if(action==='duplicate'){const record=structuredClone(entry.node);record.id=uniqueId(`${record.id}-copy`);record.label=`${record.label} ${copy('（副本）','(copy)')}`;openRecordEditor(entry.collection,record,'create');}
++      else openRecordEditor(entry.collection,entry.node,action==='remove'?'remove':'update');
++    }
++    else if(['edit-edge','remove-edge'].includes(action)) {
++      const edge=records(current.graph.edges).find(item=>item.id===element.dataset.id);
++      if(edge)openRecordEditor('edges',edge,action==='remove-edge'?'remove':'update');
++    }
++    else if(action==='expand-transaction') {
++      try{const operations=recordOperations(ui.editor);ui.editor={...ui.editor,id:'transaction',collection:'transaction',operation:'transaction',text:json(operations)};resetReview();}catch{ui.editor.error=copy('先修复 JSON 格式，再扩展事务。','Repair the JSON before expanding the transaction.');}
++    }
++    else if(action==='insert-reference') {
++      const editor=ui.editor,record=pendingRecord(),keys=(editor?.referencePath||'').split('.');
++      try{
++        if(!record||!editor.referenceId||keys.some(key=>!key||['__proto__','constructor','prototype'].includes(key)))throw new Error(copy('请选择有效引用并填写明确属性路径。','Choose a valid reference and an explicit property path.'));
++        let target=record;for(const key of keys.slice(0,-1)){if(!target[key]||typeof target[key]!=='object')throw new Error(copy('父属性路径不存在。请先在 JSON 中声明该结构。','The parent path does not exist. Declare that structure in JSON first.'));target=target[key];}
++        const key=keys.at(-1);if(Array.isArray(target[key])){if(!target[key].includes(editor.referenceId))target[key].push(editor.referenceId);}else target[key]=editor.referenceId;
++        editor.text=json(record);resetReview();
++      }catch(error){editor.error=error.message;}
+     } else if(action==='cancel-edit') ui.editor=null;
+     else if(action==='review') reviewEdit();
+     else if(action==='apply') {
+       const editor=ui.editor;
+-      if(editor?.review&&editor.text===editor.review.text&&editor.baseGraph===json(current.graph)) {
++      if(editor?.review&&editor.text===editor.review.text&&editor.baseGraph===json(current.graph)&&editor.review.baseConfig===json(current.config)) {
+         const next=editor.review.graph;
+         ui.editor=null;ui.notice=copy('记录已应用到共享草稿；请保存版本以保留快照。','Record applied to the shared draft. Save a version to keep a snapshot.');
+         hooks.commitGraph(next);return true;
+@@ -354,6 +456,16 @@ export function createGraphWorkbench(hooks) {
+     const field=event.target.dataset?.gwField;
+     if(!field) return false;
+     if(field==='record') {captureEditor();return true;}
++    if(field==='create-collection') {
++      captureEditor();const editor=ui.editor;if(editor?.operation!=='create')return true;
++      editor.drafts[editor.collection]=editor.text;editor.collection=event.target.value;editor.text=editor.drafts[editor.collection]||json(newRecord(editor.collection));editor.id=JSON.parse(editor.text).id;resetReview();hooks.requestRender();return true;
++    }
++    if(field==='reference-path'){ui.editor.referencePath=event.target.value;if(event.type==='change')hooks.requestRender();return true;}
++    if(field==='reference-id'){ui.editor.referenceId=event.target.value;return true;}
++    if(field.startsWith('edge-')){
++      const key=field.slice(5),value=key==='scope'?event.target.value.split(',').map(id=>id.trim()).filter(Boolean):['time','condition'].includes(key)?event.target.value||null:event.target.value;
++      changePending(key,value);if(event.type==='change'&&['relation','source','target'].includes(key))hooks.requestRender();return true;
++    }
+     if(field==='query') {
+       const position=event.target.selectionStart;
+       ui.query=event.target.value;hooks.requestRender();
+diff --git a/frontend/console-prototype/src/schemas/unified-graph-v1.schema.json b/frontend/console-prototype/src/schemas/unified-graph-v1.schema.json
+index 65091eb..786def5 100644
+--- a/frontend/console-prototype/src/schemas/unified-graph-v1.schema.json
++++ b/frontend/console-prototype/src/schemas/unified-graph-v1.schema.json
+@@ -1216,6 +1216,10 @@
+         },
+         "label_zh": {
+           "type": "string"
++        },
++        "availability_fact_id": {
++          "type": "string",
++          "pattern": "^[a-z][a-z0-9_.-]*$"
+         }
+       },
+       "required": [
+@@ -2081,6 +2085,32 @@
+             "pattern": "^[a-z][a-z0-9_.-]*$"
+           },
+           "uniqueItems": true
++        },
++        "resource_admission": {
++          "type": "object",
++          "properties": {
++            "mode": {
++              "const": "atomic_declared_order"
++            },
++            "task_order": {
++              "type": "array",
++              "items": {
++                "type": "string",
++                "pattern": "^[a-z][a-z0-9_.-]*$"
++              },
++              "uniqueItems": true
++            },
++            "at_ns": {
++              "type": "string",
++              "pattern": "^(0|[1-9][0-9]*)$"
++            }
++          },
++          "required": [
++            "mode",
++            "task_order",
++            "at_ns"
++          ],
++          "additionalProperties": false
+         }
+       },
+       "required": [

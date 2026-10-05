@@ -1,5 +1,6 @@
 import { projectObservation, viewKey, seekObservation } from './observation-contract.js';
 import {clone,validateConfig,compileConfig,diffConfig} from './config.js';
+import {executeGraphFixture} from './graph-runtime.js';
 
 export const STORAGE_KEY='aero-console.workspace.v1';
 export const RUNTIME_SCHEMA='aero-console.workspace/v1';
@@ -66,6 +67,9 @@ export async function createFixtureRun(config){
     frame.hash=await sha256(frame);frames.push(frame);
   }
   const run = {schema_version:'aero-console.fixture-run/v1',integrity:'generated-local-not-authenticated',id:`fixture-${globalThis.crypto.randomUUID()}`,mode:'synthetic-fixture',status:'sealed',created_at:new Date().toISOString(),name:snapshot.metadata.name,config_digest:digest,config:snapshot,manifest_revision:1,epoch:'fixture-epoch-1',evaluation_revision:null,compiler:compiled,frames,events:[{tick:frames[0].tick,type:'fixture.prepared',message:'Configuration frozen; authored replay snapshots prepared.'},...(frames.some(f=>f.entities.some(e=>e.validity==='unavailable'))?[{tick:frames.find(f=>f.entities.some(e=>e.validity==='unavailable')).tick,type:'evidence.gap',message:'Authored UAV evidence gap. Missing values stay unknown.'}]:[]),{tick:frames.at(-1).tick,type:'fixture.sealed',message:'Fixture record sealed locally. No external simulation was started.'}],source_cursor:null,host_contract:{physical_authority:'AERO_BENCH (not connected)',renderer_host:'BENCH Three.js (not mounted)',clock:'view-cursor-only',atlas:'not connected'},duration_s:frames.at(-1).relative_time_s,requested_duration_s:config.scenario.duration_s,fixture_window_s:duration,truncated:config.scenario.duration_s>duration};
+  // Execute the frozen graph's declared fixtures once. Playback never reruns the
+  // editor validator or treats these checks as a connected-module simulation.
+  if (snapshot.graph) run.graph_fixtures = snapshot.graph.scenarios.map(scenario => executeGraphFixture(snapshot.graph, scenario.id));
   for (const frame of frames) frame.observation_hash = await sha256(projectObservation(run, frame));
   return run;
 }

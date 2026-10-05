@@ -1,0 +1,34 @@
+{
+  "status": "paused_by_latest_user_direction",
+  "stable_commit": "68b3d4a65799008e8d3ae0f175faf64d9ef60b44",
+  "working_copy": "/workspace/shared/AeroAgentSim-workbench",
+  "warning": "Current changes are unfinished and unverified; use the stable commit/package for instance enumeration.",
+  "modified_files": [
+    "src/graph-config.js",
+    "src/graph-runtime.js",
+    "src/schemas/unified-graph-v1.schema.json",
+    "src/graph-workbench.js"
+  ],
+  "new_files": [
+    "examples/charging-contention.config.json",
+    "verification/completeness-ledger.json",
+    "tests/completeness-ledger.test.js"
+  ],
+  "checks_completed": [
+    "Schema/runtime import and default/charging config smoke validation only",
+    "Charging contention smoke: one admitted/one rejected; unknown availability bothUNKNOWN",
+    "UI JavaScript syntax check only",
+    "Completeness-ledger structural tests3passed"
+  ],
+  "not_run": [
+    "New-batch focused regression suites",
+    "New-batch full suite/build",
+    "Actual browser verification"
+  ],
+  "unfinished": [
+    "Resource-admission interactions and regression coverage",
+    "Transactional authoring UI integration/styles/tests",
+    "Source/task/lease detail panels",
+    "Inventory regeneration and independent review"
+  ]
+}

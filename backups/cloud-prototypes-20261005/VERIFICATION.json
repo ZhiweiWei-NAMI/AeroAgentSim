@@ -1,0 +1,54 @@
+{
+  "checked_at_utc": "2026-10-05T14:30:00Z",
+  "stable_commit": "68b3d4a65799008e8d3ae0f175faf64d9ef60b44",
+  "runtime": {
+    "node": "v24.19.0",
+    "npm": "11.9.0",
+    "python": "3.12.14"
+  },
+  "stable_validation": {
+    "tests": 179,
+    "passed": 179,
+    "failed": 0,
+    "skipped": 0,
+    "syntax_and_asset_closure": "passed; 17 imports",
+    "build": "passed",
+    "dependency_source": "Existing local node_modules matched package.json/lockfile; npm ci not re-run in this backup check"
+  },
+  "wip": {
+    "patch_apply_check": "passed against stable snapshot",
+    "applied_to_stable": false,
+    "full_regression": "not run"
+  },
+  "emergency_rebuild": {
+    "dom_assertions": 4244,
+    "dom_errors": [],
+    "config_byte_identical": true,
+    "coverage_byte_identical": true,
+    "fixture_semantic_difference_only": [
+      "canonical_source_sha256"
+    ],
+    "raw_projection_semantic_difference_only": [
+      "exported_config.exported_at"
+    ],
+    "actual_browser_visual_qa": "not run",
+    "native_backend_or_physics": "not run"
+  },
+  "security_review": {
+    "new_content_reviewed": "Project source, authored fixtures, original reviews, candidate research, recovery support only",
+    "secret_pattern_findings": 0,
+    "excluded": [
+      "node_modules",
+      "cache",
+      "account state",
+      "private session data",
+      "third-party source/assets",
+      "server work directories",
+      "large generated P08 content"
+    ]
+  },
+  "publication": {
+    "method": "GitHub connector new snapshot commit",
+    "original_commit_preservation": "Original commit is provenance only; publish curated file snapshot without Git bundle or historical object upload."
+  }
+}

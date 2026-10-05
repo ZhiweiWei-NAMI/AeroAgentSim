@@ -1,3 +1,4 @@
+import { createGraphWorkbench } from './graph-workbench.js';
 import { t, html, message, getLocale, setLocale } from './i18n.js';
 import { STUDY_PROFILES, STUDY_FIELD_METADATA, STUDY_SOURCES, STUDY_EVIDENCE_CLASSES, studyFieldRows, deriveStudyQuantities, applyStudyProfile } from './network-study.js';
 import { DEFAULT_CONFIG, clone, validateConfig, diffConfig, compileConfig } from './config.js';
@@ -76,7 +77,7 @@ const icon = (name, size = 18) => {
   return html`<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes[name] || shapes.cube}</svg>`;
 };
 const nav = [['configuration', 'config', t('仿真配置')], ['runs', 'runs', t('运行管理')], ['replay', 'replay', t('回放与证据')], ['versions', 'versions', t('配置版本')], ['adapters', 'adapter', t('适配器与来源')]];
-const tabs = [['scenario', t('场景与时钟')], ['entities', t('实体编排')], ['mobility', t('移动模型')], ['network', t('网络配置')], ['compute', t('计算资源')], ['semantics', t('语义绑定')]];
+const tabs = [['graph', t('统一配置图')], ['scenario', t('场景与时钟')], ['entities', t('实体编排')], ['mobility', t('移动模型')], ['network', t('网络配置')], ['compute', t('计算资源')], ['semantics', t('语义绑定')]];
 const types = {
   uav: t('无人机'),
   vehicle: t('地面车辆'),
@@ -96,10 +97,26 @@ let rendering = false,
 function pathGet(path, obj = state.draft) {
   return path.split('.').reduce((o, k) => o?.[k], obj);
 }
+let authoringCache = null;
+function invalidateAuthoring() { authoringCache = null; graphWorkbench.invalidate(); }
+function authoringReview() {
+  if (!authoringCache || authoringCache.draft !== state.draft || authoringCache.version !== state.versions.at(-1)) {
+    authoringCache = { draft: state.draft, version: state.versions.at(-1), validation: validateConfig(state.draft), changes: state.versions.length ? diffConfig(state.versions.at(-1).config, state.draft).length : 0 };
+  }
+  return authoringCache;
+}
+const graphWorkbench = createGraphWorkbench({
+  getConfig: () => state.draft,
+  commitGraph(graph) { state.draft.graph = graph; invalidateAuthoring(); persist(); render(); },
+  requestRender: render,
+  getSelection: () => ({ entityId: state.selectedEntity, locked: state.selectionLocked, cursor: state.cursor }),
+  selectEntity(id) { if (state.selectionLocked && state.selectedEntity !== id) return; state.selectedEntity = id; persist(); render(); }
+});
 function pathSet(path, value) {
   const keys = path.split('.');
   let target = state.draft;
   for (const key of keys.slice(0, -1)) target = target[key];
+  if (target[keys.at(-1)] !== value) invalidateAuthoring();
   target[keys.at(-1)] = value;
 }
 function input(path, label, {
@@ -168,8 +185,7 @@ function render() {
   rendering = true;
   try {
     history.replaceState(null, '', '#' + state.page);
-    const validation = validateConfig(state.draft),
-      changes = state.versions.length ? diffConfig(state.versions.at(-1).config, state.draft).length : 0;
+    const { validation, changes } = authoringReview();
     $('#app').innerHTML = html`<div class="app-shell"><aside class="sidebar"><a class="brand" href="#configuration"><span class="brand-icon">${icon('uav', 24)}</span><span><span class="brand-name">AeroAgentSim</span><span class="brand-subtitle">SIMULATION CONSOLE</span></span></a><div class="project-switch"><span class="project-letter">A</span><span>低空协同仿真<span class="brand-subtitle">Local workspace</span></span><span class="subtle">⌄</span></div><div class="nav-group-label">工作空间</div><nav>${nav.map(([id, i, label]) => html`<button class="nav-button ${state.page === id ? 'active' : ''}" data-nav="${id}" aria-label="${t(label)}"><span class="nav-icon">${icon(i)}</span><span class="nav-label">${t(label)}</span>${id === 'runs' && state.runs.length ? html`<span class="nav-count">${state.runs.length}</span>` : ''}${id === 'versions' && state.versions.length ? html`<span class="nav-count">${state.versions.length}</span>` : ''}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="sidebar-note"><span class="status-dot"></span>本地 Fixture 工作区<p>配置可保存，示例可回放<br>外部仿真服务未连接</p></div><div class="sidebar-footer"><span class="avatar">AS</span><span>Integration workspace<small>配置契约 v1.0</small></span></div></div></aside><div class="workspace"><header class="topbar"><div class="breadcrumb">工作空间 <span>/</span> <strong>${t(nav.find(x => x[0] === state.page)?.[2])}</strong></div><div class="topbar-actions">${languagePicker()}<span class="mode-pill"><span class="status-dot"></span> Fixture mode</span><span class="topbar-divider"></span><span class="subtle">AeroAgentSim × BENCH × Atlas</span><button class="icon-button" data-action="help" aria-label="查看模式说明">${icon('info')}</button></div></header><main class="page"><div class="page-heading"><div><div class="eyebrow">${t(state.page === 'configuration' ? 'CONFIGURATION WORKSPACE' : state.page === 'runs' ? 'RUN LIFECYCLE' : state.page === 'replay' ? 'SYNCHRONIZED EVIDENCE' : state.page === 'versions' ? 'VERSION CONTROL' : 'INTEGRATION CONTRACTS')}</div><h1>${state.page === 'configuration' ? t('仿真配置') : t(nav.find(x => x[0] === state.page)?.[2])} ${state.page === 'configuration' ? badge(t('草稿'), 'blue') : ''}</h1><p class="page-description">${{
       configuration: t('从场景、实体到语义绑定，构建一份可追溯的仿真配置。'),
       runs: t('冻结配置快照，准备合成回放；真实运行由 BENCH 统一控制。'),
@@ -183,14 +199,15 @@ function render() {
   }
 }
 function configurationPage(validation, changes) {
-  return html`<div class="config-summary"><div class="config-summary-title">${icon('file', 20)}<span><strong>${esc(state.draft.metadata.name)}</strong><small class="mono">${esc(state.draft.metadata.id)} · ${esc(state.draft.schema_version)}</small></span></div><div class="config-summary-stats"><span><strong>${state.draft.entities.reduce((n, e) => n + e.count, 0)}</strong> 实体</span><span><strong>${state.draft.scenario.duration_s}</strong> s 时长</span><span><strong>${state.draft.scenario.step_ms}</strong> ms 步长</span>${badge(validation.valid ? t('结构校验通过') : html`${validation.errors.length} 项错误`, validation.valid ? 'green' : 'red')}</div></div><div class="tabs" role="tablist" aria-label="配置分类">${tabs.map(([id, label], i) => html`<button role="tab" aria-selected="${state.tab === id}" class="tab ${state.tab === id ? 'active' : ''}" data-tab="${id}"><span class="tab-number">0${i + 1}</span>${t(label)}</button>`).join('')}</div><div class="workspace-grid"><div class="editor-stack">${state.showValidation ? validationPanel(validation) : ''}${{
+  return html`<div class="config-summary"><div class="config-summary-title">${icon('file', 20)}<span><strong>${esc(state.draft.metadata.name)}</strong><small class="mono">${esc(state.draft.metadata.id)} · ${esc(state.draft.schema_version)}</small></span></div><div class="config-summary-stats"><span><strong>${state.draft.entities.reduce((n, e) => n + e.count, 0)}</strong> 实体</span><span><strong>${state.draft.scenario.duration_s}</strong> s 时长</span><span><strong>${state.draft.scenario.step_ms}</strong> ms 步长</span>${badge(validation.valid ? t('结构校验通过') : html`${validation.errors.length} 项错误`, validation.valid ? 'green' : 'red')}</div></div><div class="tabs" role="tablist" aria-label="配置分类">${tabs.map(([id, label], i) => html`<button role="tab" aria-selected="${state.tab === id}" class="tab ${state.tab === id ? 'active' : ''}" data-tab="${id}"><span class="tab-number">0${i + 1}</span>${t(label)}</button>`).join('')}</div><div class="workspace-grid ${state.tab === 'graph' ? 'graph-layout' : ''}"><div class="editor-stack">${state.showValidation ? validationPanel(validation) : ''}${{
+    graph: () => graphWorkbench.render(),
     scenario: scenarioPanel,
     entities: entitiesPanel,
     mobility: mobilityPanel,
     network: networkPanel,
     compute: computePanel,
     semantics: semanticsPanel
-  }[state.tab]()}</div><aside class="inspector">${inspector(validation, changes)}</aside></div>`;
+  }[state.tab]()}</div>${state.tab === 'graph' ? '' : html`<aside class="inspector">${inspector(validation, changes)}</aside>`}</div>`;
 }
 function inspector(validation, changes) {
   return panel(t('配置就绪检查'), t('每项能力单独报告状态'), html`<div class="readiness-list">${[[t('配置结构'), validation.valid ? t('有效') : t('待修复'), validation.valid], [t('实体标识与绑定'), validation.errors.some(e => e.path.includes('entit')) ? t('待修复') : t('已检查'), !validation.errors.some(e => e.path.includes('entit'))], [t('外部运行通道'), t('未连接'), false], [t('Atlas 执行器'), t('未加载'), false]].map(([label, value, ok]) => html`<div class="readiness-item"><span class="check-dot ${ok ? 'is-ready' : ''}">${ok ? '✓' : '·'}</span><span>${t(label)}</span>${badge(value, ok ? 'green' : 'muted')}</div>`).join('')}</div><div class="divider"></div><div class="key-value"><span>坐标系</span><strong>ENU · 米</strong></div><div class="key-value"><span>高度基准</span><strong>Local z</strong></div><div class="key-value"><span>配置来源</span><strong>人工合成示例</strong></div><div class="key-value"><span>版本状态</span><strong>${state.versions.length ? html`v${state.versions.at(-1).number} + ${changes} 处变更` : t('尚未保存版本')}</strong></div><div class="divider"></div><p class="field-hint">配置值是期望输入。配置带宽不等于实测吞吐；本地高度不自动解释为 AGL / AMSL。</p>${button(t('查看编译计划 ') + icon('arrow', 15), 'compile', 'full-width')}`) + panel(t('系统权责'), t('一份配置，一个物理时钟'), html`<div class="authority-row"><span class="authority-logo">A</span><div><strong>AeroAgentSim</strong><small>配置编排与适配契约</small></div></div><div class="authority-row"><span class="authority-logo">B</span><div><strong>AERO_BENCH</strong><small>物理运行 / Three.js 主视图</small></div></div><div class="authority-row"><span class="authority-logo">S</span><div><strong>Atlas</strong><small>状态、谓词与事件解释</small></div></div>`);
@@ -427,6 +444,8 @@ function bindingModal(index) {
 }
 let preparing = false;
 document.addEventListener('click', async event => {
+  if (graphWorkbench.handleClick(event)) return;
+  graphWorkbench.captureEditor();
   const navEl = event.target.closest('[data-nav]');
   if (navEl) {
     pause();
@@ -465,6 +484,7 @@ document.addEventListener('click', async event => {
         variant_id: el.dataset.variant || undefined
       });
       state.draft = result.config;
+      invalidateAuthoring();
       persist();
       closeModal();
       render();
@@ -489,6 +509,7 @@ document.addEventListener('click', async event => {
       }
       const version = createVersion(state.draft, state.versions);
       state.versions.push(version);
+      invalidateAuthoring();
       state.compare = version.id;
       persist();
       render();
@@ -630,6 +651,7 @@ document.addEventListener('click', async event => {
     if (action === 'version-load-confirm') {
       const v = state.versions.find(v => v.id === el.dataset.id);
       state.draft = clone(v.config);
+      invalidateAuthoring();
       state.compare = v.id;
       persist();
       closeModal();
@@ -670,6 +692,7 @@ document.addEventListener('click', async event => {
         return;
       }
       state.draft = next;
+      invalidateAuthoring();
       persist();
       closeModal();
       render();
@@ -685,6 +708,7 @@ document.addEventListener('click', async event => {
         return;
       }
       state.draft = next;
+      invalidateAuthoring();
       persist();
       closeModal();
       render();
@@ -692,6 +716,7 @@ document.addEventListener('click', async event => {
       return;
     }
     if (action === 'radio-add') {
+      invalidateAuthoring();
       state.draft.network.radio_profiles.push({
         id: html`radio-${Date.now().toString().slice(-6)}`,
         wifi_standard: '802.11ac',
@@ -705,6 +730,7 @@ document.addEventListener('click', async event => {
       return;
     }
     if (action === 'compute-add') {
+      invalidateAuthoring();
       state.draft.compute.profiles.push({
         id: html`compute-${Date.now().toString().slice(-6)}`,
         cpu_cores: 4,
@@ -727,6 +753,7 @@ document.addEventListener('click', async event => {
         return;
       }
       state.draft = next;
+      invalidateAuthoring();
       persist();
       render();
       return;
@@ -762,6 +789,7 @@ document.addEventListener('click', async event => {
         return;
       }
       state.draft = next;
+      invalidateAuthoring();
       persist();
       closeModal();
       render();
@@ -769,6 +797,7 @@ document.addEventListener('click', async event => {
       return;
     }
     if (action === 'binding-delete') {
+      invalidateAuthoring();
       state.draft.semantics.bindings.splice(Number(el.dataset.index), 1);
       persist();
       closeModal();
@@ -781,6 +810,7 @@ document.addEventListener('click', async event => {
   }
 });
 document.addEventListener('change', event => {
+  if (graphWorkbench.handleInput(event)) return;
   const el = event.target;
   if (el.dataset.locale !== undefined) {
     switchLanguage(el.value);
@@ -812,6 +842,7 @@ document.addEventListener('change', event => {
   }
 });
 document.addEventListener('input', event => {
+  if (graphWorkbench.handleInput(event)) return;
   if (event.target.id === 'timeline') {
     pause();
     state.cursor = Number(event.target.value);
@@ -968,6 +999,7 @@ function showImport(imported) {
   openModal(t('导入配置'), html`<p>即将载入 <strong>${esc(imported.metadata.name)}</strong>，包含 ${imported.entities.length} 个实体模板。</p><p>此操作替换工作草稿，保留已保存版本与运行记录。</p>`, html`${button(t('取消'), 'modal-close')}<button class="button primary" id="confirm-import">确认导入</button>`);
   $('#confirm-import').addEventListener('click', () => {
     state.draft = imported;
+    invalidateAuthoring();
     persist();
     closeModal();
     render();
@@ -978,6 +1010,7 @@ function languagePicker(id = 'locale') {
   return html`<label class="locale-picker" for="${id}"><span>${t('语言')}</span><select id="${id}" data-locale aria-label="${t('语言')}"><option value="zh-CN" ${getLocale() === 'zh-CN' ? 'selected' : ''}>中文</option><option value="en-US" ${getLocale() === 'en-US' ? 'selected' : ''}>English</option></select></label>`;
 }
 function switchLanguage(locale) {
+  graphWorkbench.captureEditor();
   if (switchingLanguage) return;
   switchingLanguage = true;
   try {
