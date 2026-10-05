@@ -76,6 +76,10 @@ const cases = [];
       assert.equal(await page.locator('[data-action="prepare"]').isDisabled(), true);
       await click('validate');
       assert.ok((await page.locator('.error-text').first().innerText()).length > 0);
+      await screenshot('validation');
+      const validationLayout=await page.locator('.validation-notice').evaluate(el=>({display:getComputedStyle(el).display,width:el.clientWidth,children:[...el.children].map(c=>({width:c.getBoundingClientRect().width,font:parseFloat(getComputedStyle(c).fontSize)}))}));
+      assert.equal(validationLayout.display,'block');
+      assert.ok(validationLayout.children.every(c=>c.width>=validationLayout.width-30));
       await field('#field-scenario-step_ms', 100);
       assert.equal(await page.locator('[data-action="prepare"]').isDisabled(), false);
       interactions.push('Save immutable baseline; invalid step disables prepare; recovery reenables it');
@@ -121,6 +125,7 @@ const cases = [];
       interactions.push('R1 Cancel leaves draft untouched; R4 5755-40 and R3 mcs7 Apply preserve exact units; nullable offered load remains null');
 
       await click('save'); await nav('versions');
+      assert.equal((await page.locator('h1').innerText()).trim(),locale==='en-US'?'Configuration versions':'配置版本');
       await screenshot('versions');
       const baseline = (await saved()).versions[0].id;
       await page.locator(`[data-action="version-load"][data-id="${baseline}"]`).click();
@@ -157,7 +162,7 @@ const cases = [];
       assert.equal((await saved()).runs.length, 1, 'Repeated Prepare must not duplicate a pending run');
       await click('run-open'); await page.selectOption('#entity-select', 'uav-alpha'); await click('selection-lock');
       assert.equal(await page.locator('#entity-select').isDisabled(), true);
-      await page.locator('[data-action="select-scene-entity"][data-id="uav-beta"]').click();
+      await page.locator('.scene-entity[data-action="select-scene-entity"][data-id="uav-beta"]').click();
       assert.equal(await page.inputValue('#entity-select'), 'uav-alpha');
       await page.locator('#timeline').evaluate(el => { el.value = '25'; el.dispatchEvent(new Event('input', { bubbles: true })); });
       const cursor = await page.locator('#cursor-label').innerText(), run = await page.inputValue('#run-select');
@@ -169,6 +174,16 @@ const cases = [];
       assert.equal(await page.locator('#selection-key').innerText(), evidence);
       assert.match(await page.locator('body').innerText(), /null/);
       assert.equal(await page.locator('[data-action="selection-lock"]').getAttribute('aria-pressed'), 'true');
+      const gap=page.locator('.scene-gap-notice');
+      assert.equal(await gap.isVisible(),true);
+      assert.ok(await gap.evaluate(el=>el.scrollWidth<=el.clientWidth));
+      if(viewport.width===390){
+        const labels=page.locator('.scene-label-button');
+        assert.equal(await labels.count(),(await saved()).runs[0].frames[0].entities.length);
+        assert.ok(await labels.first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=14));
+        await page.locator('.scene-label-button[data-id="uav-beta"]').click();
+        assert.equal(await page.inputValue('#entity-select'),'uav-alpha');
+      }
       await screenshot('replay-gap-evidence');
       await page.reload({waitUntil:'networkidle'});
       assert.equal(await page.inputValue('#entity-select'), 'uav-alpha');
@@ -190,7 +205,7 @@ const cases = [];
       assert.deepEqual(errors, []);
       cases.push({ viewport, locale, tested_commit: revision, baseURL, images, interactions, overflow, contrast, browser_errors: errors, request_count: requests.length, lifecycle_requests: forbidden, observations: observationPath });
       await context.close();
-      console.log(`${viewport.width}×${viewport.height} ${locale}: six screenshots; interaction assertions passed`);
+      console.log(`${viewport.width}×${viewport.height} ${locale}: seven screenshots; interaction assertions passed`);
     }
   } finally { await browser.close(); }
   await fs.writeFile(path.join(output, 'browser-results.json'), JSON.stringify({ tested_commit: revision, browser: 'Chromium', executablePath, cases }, null, 2));

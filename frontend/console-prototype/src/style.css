@@ -386,5 +386,22 @@ pre.code-preview { max-height: 540px; overflow: auto; margin: 0; padding: 18px 2
 
 .selection-lock{display:flex;align-items:center;gap:8px;margin-top:10px}.source-pointer{display:block;font-size:9px;overflow-wrap:anywhere;color:var(--ink-secondary)}.rule-parameters{font-size:10px;color:var(--ink-secondary)}.rule-parameters .code-preview{max-height:100px}.semantic-card>strong{overflow-wrap:anywhere;font-size:11px}
 
+.notice.validation-notice{display:block;font-size:12px;line-height:1.65}
+.validation-notice>strong{display:block}
+.validation-notice .validation-warning,.validation-notice .error-text{margin-top:8px;font-size:12px;word-break:normal}
+.validation-notice .mono{overflow-wrap:anywhere}
+.scene-caption{margin:0;padding:10px 12px;font-size:12px;color:var(--ink-secondary);line-height:1.6}
+.scene-gap-notice{display:block;margin:0 12px 12px;font-size:13px;overflow-wrap:break-word}
+.scene-entity-list{display:none}
+@media(max-width:580px){
+  .scene-preview .scene-label{display:none}
+  .scene-preview .scene-axis{font-size:28px}
+  .scene-entity-list{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:0 12px 12px}
+  .scene-label-button{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:9px 11px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink);font-size:14px;text-align:left}
+  .scene-label-button>span:first-child{min-width:0;overflow-wrap:anywhere}
+  .scene-label-button.selected{border-color:var(--accent);background:#edf8f5}
+  .scene-label-button .badge{font-size:11px}
+}
+
 /* Keep small explanatory copy readable against the white authoring surface. */
 .field-hint,.panel-description,.page-description,.study-profile>p{color:#526b7d}

@@ -38,7 +38,9 @@ export const DEFAULT_CONFIG = {
   network: {
     enabled: true,
     provider: 'local-demo',
-    radio_profiles: [{ id: 'demo-wifi', wifi_standard: '802.11ax', frequency_ghz: 5.2, channel_width_mhz: 40, tx_power_dbm: 18, rx_sensitivity_dbm: -88 }],
+    // New fixtures share R1 pilot radio inputs; saved/imported profiles are retained.
+    // This is an authored research choice, not regulatory or hardware approval.
+    radio_profiles: [{ id: 'demo-wifi', wifi_standard: '802.11n', frequency_ghz: 2.412, channel_width_mhz: 20, tx_power_dbm: 16, rx_sensitivity_dbm: -95 }],
     link: { configured_rate_mbps: 24, propagation_delay_ms: 2 },
   },
   compute: {
