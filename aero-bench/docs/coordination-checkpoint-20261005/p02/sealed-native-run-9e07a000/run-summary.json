@@ -51,7 +51,7 @@
       "rtf_export_mentions": 0
     }
   ],
-  "resolved_run_sha256": "32b014fb7ce767f305b90c607303afa523f5035fcb6d8814ac9af51ea4ccdce3",
+  "resolved_run_sha256": "33265b1978f2c076570ac0c54ca70c14b78cb06cadc427866a76458736fb7e88",
   "compiled_instruction_sha256": "c8c39380f2c0c31a3e34ff35bee48fff222b4a74a88aceda5232d701c274af82",
   "declared_clock": {
     "authority": "provider_barrier",
@@ -223,12 +223,12 @@
     "run_summary": false
   },
   "gaps": [
-    "Independent verifier verdict and normal public projection were not available at this check.",
+    "Original verifier failed before issuing goal verdict; normal same-run public map/GIF acceptance remains unfinished.",
     "Historical per-run Start ID was absent from prior receipts; this packet does not reconstruct credentials or claim reattachment.",
     "Actual Gazebo RTF was not exported in inspected public evidence."
   ],
   "scenario_identity": {
-    "scenario_digest": "d644f7701eb8d2631fa7611d8bb3134337586cebbf6e42f352d686744edceac1",
+    "scenario_digest": "5f3c7bd9de29d2e26e3d89972ad153de2aa09fa81d4187cf9d1fbee60f2d8c0d",
     "world_digest": "18e3ac14954a515f85e0753ba050452a58fe933cbcfd1923fcd65b51b4560eed"
   },
   "authoritative_terminal_event": [
@@ -244,5 +244,15 @@
     }
   ],
   "runtime_terminal_status": "run.completed at tick300/sim150s, independently bound to original ledger row163542",
-  "independent_verifier_status": "unavailable in exact same-run output paths at check"
+  "independent_verifier_status": "failed at wait_verifier, exit1: deployed AMSL-only adapter ignores declared ENU datum; independent same-seal re-evaluation pending",
+  "verifier_failure_receipt": "verifier-region-failure.json",
+  "resolved_run_source_correction": {
+    "previous_published_reference": "historical native-v7/resolved-run.json, run8af7b060..., seed20261001",
+    "previous_resolved_run_sha256": "32b014fb7ce767f305b90c607303afa523f5035fcb6d8814ac9af51ea4ccdce3",
+    "correction": "Exact compilation record for sealed run9e07a000..., seed20261002. Native command/pose evidence and verifier goals/config/region vertices unchanged.",
+    "compiled_record_source": "bundle/compiled-resolved-runs.json",
+    "identity_selection": "run_id exactly equals sealed runtime run_id",
+    "digest_encoding": "aero_bench.serialization.canonical_json_bytes(exact resolved-run record)"
+  },
+  "seed": 20261002
 }

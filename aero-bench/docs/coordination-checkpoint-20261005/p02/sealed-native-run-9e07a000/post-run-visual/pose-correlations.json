@@ -1,0 +1,86 @@
+{
+  "run_id": "9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd",
+  "assertions": [
+    {
+      "screenshot": "in-flight-tick120.png",
+      "tick": 120,
+      "sim_time_ns": 60000000000,
+      "entity_id": "uav.inspector",
+      "sample_digest": "ed0209bf7958d339d53072aa311df3ba182fd5f3ce19d8393312abc9f8a28312",
+      "authoritative_enu": {
+        "east_m": -510.1693798217268,
+        "north_m": -437.26391656248325,
+        "up_m": 3.545826224091761
+      },
+      "displayed_east_north_m": [
+        -510.17,
+        -437.26
+      ],
+      "pose_matches_to_2dp": true,
+      "sample_time_matches": true,
+      "resources_ready": true,
+      "body_fits": true
+    },
+    {
+      "screenshot": "in-flight-tick240.png",
+      "tick": 240,
+      "sim_time_ns": 120000000000,
+      "entity_id": "uav.inspector",
+      "sample_digest": "b7a694ffd69971c306dc72b3a78b6c10112edf9e4cb33211f4653880cfaf37d6",
+      "authoritative_enu": {
+        "east_m": -451.087824424625,
+        "north_m": -450.074674739974,
+        "up_m": 19.775268435959433
+      },
+      "displayed_east_north_m": [
+        -451.09,
+        -450.07
+      ],
+      "pose_matches_to_2dp": true,
+      "sample_time_matches": true,
+      "resources_ready": true,
+      "body_fits": true
+    },
+    {
+      "screenshot": "touchdown-tick300.png",
+      "tick": 300,
+      "sim_time_ns": 150000000000,
+      "entity_id": "uav.inspector",
+      "sample_digest": "341de0b05db8b63818aed9efa11ba1001f1a2abc09458a73ad5ff858c13e789d",
+      "authoritative_enu": {
+        "east_m": -450.09398125400963,
+        "north_m": -449.9704544811149,
+        "up_m": 0.13699987109567124
+      },
+      "displayed_east_north_m": [
+        -450.09,
+        -449.97
+      ],
+      "pose_matches_to_2dp": true,
+      "sample_time_matches": true,
+      "resources_ready": true,
+      "body_fits": true
+    },
+    {
+      "screenshot": "narrow-tick240.png",
+      "tick": 240,
+      "sim_time_ns": 120000000000,
+      "entity_id": "uav.inspector",
+      "sample_digest": "b7a694ffd69971c306dc72b3a78b6c10112edf9e4cb33211f4653880cfaf37d6",
+      "authoritative_enu": {
+        "east_m": -451.087824424625,
+        "north_m": -450.074674739974,
+        "up_m": 19.775268435959433
+      },
+      "displayed_east_north_m": [
+        -451.09,
+        -450.07
+      ],
+      "pose_matches_to_2dp": true,
+      "sample_time_matches": true,
+      "resources_ready": true,
+      "body_fits": true
+    }
+  ],
+  "altitude_note": "Viewer AGL is a distinct coordinate quantity from ENU up and was not equated."
+}

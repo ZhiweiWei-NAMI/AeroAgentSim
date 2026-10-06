@@ -1,0 +1,118 @@
+{
+  "schema_version": "p09.station-egress-congestion/v2-metadata-candidate",
+  "episode_id": "L6-4_v1__seed00",
+  "seed": 0,
+  "scenario_id": "L6-4_v1",
+  "source_refs": [
+    "Dataset/scenarios/L6_digital_layer/failure/L6-4_v1/event_script.json",
+    "Dataset/scenarios/L6_digital_layer/failure/L6-4_v1/scene_setup.json"
+  ],
+  "guard_version": null,
+  "healthy_control": false,
+  "event_times_ns": {
+    "lifecycle_takeoff_uav_digital_l6_4_v1": 3000000000,
+    "lifecycle_takeoff_uav_digital_l6_4_v1_secondary": 4000000000,
+    "wideband_jamming": 24000000000,
+    "multi_uav_hold_entry": 27500000000,
+    "multi_uav_safe_hold": 40500000000,
+    "lifecycle_landing_uav_digital_l6_4_v1_secondary": 56000000000,
+    "multi_uav_hold_entry:local:uav_digital_l6_4_v1": 27000000000,
+    "multi_uav_hold_entry:local:uav_digital_l6_4_v1_secondary": 27000000000,
+    "multi_uav_safe_hold:local:uav_digital_l6_4_v1": 40000000000,
+    "multi_uav_safe_hold:local:uav_digital_l6_4_v1_secondary": 40000000000,
+    "alternate_channel:local:uav_digital_l6_4_v1_secondary": 47000000000,
+    "p09.backup-rendezvous": 46000000000
+  },
+  "unfired_events": [
+    "alternate_channel",
+    "lifecycle_landing_uav_digital_l6_4_v1",
+    "alternate_channel:local:uav_digital_l6_4_v1"
+  ],
+  "pose_and_visual_differences_from_same_seed_source_replay": {
+    "uav_digital_l6_4_v1": {
+      "first_changed_tick": 461,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg"
+      ],
+      "before": {
+        "pos_enu": [
+          6638.475,
+          6530.137,
+          30.0
+        ],
+        "vel_mps": [
+          4.4,
+          3.2,
+          0.0
+        ],
+        "yaw_deg": 36.027373
+      },
+      "after": {
+        "pos_enu": [
+          6638.035,
+          6529.817,
+          30.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 45.0
+      }
+    },
+    "uav_digital_l6_4_v1_secondary": {
+      "first_changed_tick": 461,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg"
+      ],
+      "before": {
+        "pos_enu": [
+          6626.556739,
+          6538.07787,
+          50.0
+        ],
+        "vel_mps": [
+          -4.782609,
+          2.608696,
+          0.0
+        ],
+        "yaw_deg": 151.38954
+      },
+      "after": {
+        "pos_enu": [
+          6627.035,
+          6537.817,
+          50.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 45.0
+      }
+    }
+  },
+  "weather_changed": false,
+  "adoption_class": "A",
+  "published210_modified": false,
+  "collection_status": "one-shot collection pending final freeze",
+  "iteration_count": 5,
+  "backend": "p01.ns3.frozen-wifi/v8-switch-completion",
+  "duration_ticks": 900,
+  "motion_acquisition": {
+    "version": "p09.complete-admitted-landings/v1",
+    "nominal_duration_ticks": 900,
+    "landing_dwell_ticks": 5,
+    "extension_basis": "actual admitted landing motion terminal tick plus five original ticks; original speeds/routes unchanged"
+  },
+  "output_dir": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v1__seed00/adopted",
+  "motion_scope": "authored waypoint engine; not PX4 motion feedback",
+  "missing_event_disposition": "requires resolution before adoption",
+  "rf_weather_scope": "not amplified; dimensionless rain is not an observed mm/h rate"
+}

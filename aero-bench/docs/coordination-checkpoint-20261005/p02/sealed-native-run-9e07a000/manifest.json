@@ -3,33 +3,81 @@
   "run_id": "9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd",
   "compilation_id": "a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610",
   "files": {
-    "run-summary.json": {
-      "bytes": 9267,
-      "sha256": "a58f3a112f1845e370e2d479b848923b4cf1f5a2eac5aa969f7eb71cac219c30"
+    "README.md": {
+      "bytes": 3582,
+      "sha256": "525e414c017368f216280d0f2f5a0dba736d8171bbd1741789d886730f050c87"
+    },
+    "command-lifecycle-projections.jsonl": {
+      "bytes": 655842,
+      "sha256": "30a2b765d3106cbd073c0173e47ef5f1a8ce3571a4e02804052491c813a45965"
     },
     "commands.json": {
       "bytes": 217069,
       "sha256": "ee1d6676c2fdeef5967bffcbba8c5fc6095c5a4bc393be03ad8869b1fba294a2"
     },
-    "poses.json": {
-      "bytes": 16916,
-      "sha256": "19cda2074930d3e3d1ae41cb98fc78d3069ddcdd8070c4528fad9efb49c18d0b"
+    "compiled-instruction.md": {
+      "bytes": 738,
+      "sha256": "c8c39380f2c0c31a3e34ff35bee48fff222b4a74a88aceda5232d701c274af82"
     },
     "ledger-projection-summary.json": {
       "bytes": 6310,
       "sha256": "1606bf4bdd178626723e2e7e945959e6ea8a59f2f469ae59c43bd078af812424"
     },
-    "README.md": {
-      "bytes": 2468,
-      "sha256": "fed20c31063cc8b9519e47900aa7d9d202776cf1b085be0d585411ebf7a5ef3e"
+    "poses.json": {
+      "bytes": 16916,
+      "sha256": "19cda2074930d3e3d1ae41cb98fc78d3069ddcdd8070c4528fad9efb49c18d0b"
     },
-    "compiled-instruction.md": {
-      "bytes": 738,
-      "sha256": "c8c39380f2c0c31a3e34ff35bee48fff222b4a74a88aceda5232d701c274af82"
+    "post-run-visual/README.md": {
+      "bytes": 1727,
+      "sha256": "f9e6dbbbc54dd1511cd1800106be41fee3289058e833823b6c66edc2240bf5e5"
     },
-    "command-lifecycle-projections.jsonl": {
-      "bytes": 655842,
-      "sha256": "30a2b765d3106cbd073c0173e47ef5f1a8ce3571a4e02804052491c813a45965"
+    "post-run-visual/capture.mjs": {
+      "bytes": 5179,
+      "sha256": "333f402a51b2f711cbd3cc4cb42015b5f2efea4968e9f0f777c0b04b10273f6b"
+    },
+    "post-run-visual/in-flight-tick120.png": {
+      "bytes": 719888,
+      "sha256": "626e7900574f5fcea98cebfe546cfadeaa522a4e656052b641e8c48e8a0617b1"
+    },
+    "post-run-visual/in-flight-tick240.png": {
+      "bytes": 726854,
+      "sha256": "8ed19d459294c2ad66fec90bf77de66176686d1b44a5b97dce5b0fc44d899f62"
+    },
+    "post-run-visual/narrow-tick240.png": {
+      "bytes": 537957,
+      "sha256": "7081dab1ab49c62408e98f6315b9220c2315e5e3db13c8412de20a027b3f85f5"
+    },
+    "post-run-visual/pose-correlations.json": {
+      "bytes": 2559,
+      "sha256": "44415958fb74356de3cc5b8c4fcd50d04b5b103177515aff46f3e7866073d688"
+    },
+    "post-run-visual/same-run-post-run-replay.gif": {
+      "bytes": 5836722,
+      "sha256": "c769b2bbda7feeb7f711c185d6f3cddb882a8d118593170e3736bf23bfa263b0"
+    },
+    "post-run-visual/source-version.json": {
+      "bytes": 1210,
+      "sha256": "94a65ebf07664b24dda1c9654b3f902608dc2ffd9bf258527932d3efe2417a96"
+    },
+    "post-run-visual/touchdown-tick300.png": {
+      "bytes": 736612,
+      "sha256": "a5d21843f249f23a3fd3973e43548baf4821ab678869c21ca614744353b472f7"
+    },
+    "post-run-visual/visual-manifest.json": {
+      "bytes": 1546,
+      "sha256": "e0bc99c17966e00e586ae80b98c66a338420f1edc9c68987de317681ebd6ed92"
+    },
+    "post-run-visual/visual-receipt.json": {
+      "bytes": 184684,
+      "sha256": "77255cf67776605b54e43de09cf411cae6e13dd319c37d73befe5c56d16aca68"
+    },
+    "run-summary.json": {
+      "bytes": 10115,
+      "sha256": "6ac325adb310e9e6ad135b28afab5c7da71e4339699f42de275a7c25d655cba5"
+    },
+    "verifier-region-failure.json": {
+      "bytes": 14779,
+      "sha256": "c2329b447bd34fa51307231fa4b3d075ccd368e41b4a05ecb4619aa008536c76"
     }
   },
   "original_sources": {
@@ -37,5 +85,6 @@
     "poses_source": "d630bd581cf723d6b9a1963586285cb0e68ffc3869ca6ffa08ef1c2396310b88",
     "scene_history_sha256": "ef57ce2f1ffade55bb52f448a087c60d25b8750b873edd806de8d3176a9e74d0"
   },
-  "original_outputs_modified": false
+  "original_outputs_modified": false,
+  "updated_at_utc": "2026-10-06T07:31:56.995521+00:00"
 }

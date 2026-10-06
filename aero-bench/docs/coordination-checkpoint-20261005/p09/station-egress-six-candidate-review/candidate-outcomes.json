@@ -1,0 +1,87 @@
+{
+  "scope": "six station-egress candidates only",
+  "chain_complete": 5,
+  "cases": [
+    {
+      "episode_id": "L6-4_v1__seed00",
+      "seed": 0,
+      "original_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v1__seed00/adopted",
+      "executed_revision": "p09.station-egress-congestion/v2-metadata-candidate",
+      "unfired_events": [
+        "alternate_channel",
+        "lifecycle_landing_uav_digital_l6_4_v1",
+        "alternate_channel:local:uav_digital_l6_4_v1"
+      ],
+      "candidate_chain_complete": false,
+      "messages_submitted": 5,
+      "accepted_messages": 4,
+      "numeric_result_reused": false
+    },
+    {
+      "episode_id": "L6-4_v1__seed01",
+      "seed": 1,
+      "original_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v1__seed01/adopted",
+      "executed_revision": "p09.station-egress-congestion/v2-metadata-candidate",
+      "unfired_events": [],
+      "candidate_chain_complete": true,
+      "messages_submitted": 8,
+      "accepted_messages": 8,
+      "numeric_result_reused": false
+    },
+    {
+      "episode_id": "L6-4_v1__seed02",
+      "seed": 2,
+      "original_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_two_recipient_v1_representative/L6-4_v1__seed02/adopted",
+      "executed_revision": "p09.station-egress-congestion/v1-candidate",
+      "unfired_events": [],
+      "candidate_chain_complete": true,
+      "messages_submitted": 8,
+      "accepted_messages": 8,
+      "numeric_result_reused": true
+    },
+    {
+      "episode_id": "L6-4_v2__seed00",
+      "seed": 0,
+      "original_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v2__seed00/adopted",
+      "executed_revision": "p09.station-egress-congestion/v2-metadata-candidate",
+      "unfired_events": [],
+      "candidate_chain_complete": true,
+      "messages_submitted": 8,
+      "accepted_messages": 8,
+      "numeric_result_reused": false
+    },
+    {
+      "episode_id": "L6-4_v2__seed01",
+      "seed": 1,
+      "original_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v2__seed01/adopted",
+      "executed_revision": "p09.station-egress-congestion/v2-metadata-candidate",
+      "unfired_events": [],
+      "candidate_chain_complete": true,
+      "messages_submitted": 8,
+      "accepted_messages": 8,
+      "numeric_result_reused": false
+    },
+    {
+      "episode_id": "L6-4_v2__seed02",
+      "seed": 2,
+      "original_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v2__seed02/adopted",
+      "executed_revision": "p09.station-egress-congestion/v2-metadata-candidate",
+      "unfired_events": [],
+      "candidate_chain_complete": true,
+      "messages_submitted": 8,
+      "accepted_messages": 8,
+      "numeric_result_reused": false
+    }
+  ],
+  "published210_modified": false,
+  "adoption_status": "blocked by V1 seed00; external review pending",
+  "independent_source_review": {
+    "receipt_attempts": 135,
+    "received_attempts": 132,
+    "accepted_messages": 44,
+    "submitted_messages": 45,
+    "local_holds_with_strictly_available_observations": 12,
+    "landed_terminal_actors": 11,
+    "reviewer": "/root/p09_causal_crossreview"
+  }
+}

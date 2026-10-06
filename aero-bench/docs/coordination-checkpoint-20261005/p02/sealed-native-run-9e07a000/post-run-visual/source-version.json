@@ -1,0 +1,16 @@
+{
+  "head": "ea295073cdd310a31fa2e29317a3571bc716bb87",
+  "source_files": {
+    "frontend/src/app.ts": "1ae789aabf5a00013030773fec72f768500889595d4dd00078a836a5eaa56064",
+    "frontend/src/map.ts": "a12f0c88185775ecfdec84da3540ca6a8a20524e6b0e92251b495c39d930ddc0",
+    "frontend/src/control-asset-queue.ts": "2ab82a5c52897cb04cbf6ef085d35aafdc98acdb5bb0f765a4cd9eded1c3e05e",
+    "frontend/src/control-replay-source.ts": "022f9a12b026708efce54aba5e5ff8dab9e87a6999bd841b826750f348be4a3a",
+    "frontend/src/run-store.ts": "98cf8f50119f21e5d38c7d40b3102dfe3ba87fba961b7f1bffcb239bd71d9b93",
+    "frontend/src/run-start-identity.ts": "529ce7ecc523fc3659bf25d4882b68096442aa8e9d32f51b29e864ec238dae5f",
+    "frontend/src/city-studio.ts": "302b7f5fe680de610244da7c0659c90a5a4690e3413921cf0d0ea70e6d7bce7a",
+    "frontend/src/i18n.ts": "b46e8a0825797bad9df291566262de890d20149fe01d58fce1bd7eca7149e712",
+    "frontend/vite.config.ts": "054c5b1a0fec5a849b9007beff7078f47c3d4bb1a36f3c7684719f8369d5b487",
+    "frontend/scripts/workspace-traces.mjs": "025c6498fbd6ed1bbb3499dc49620e5b286811ad1f328d5269e6c7a2b3e34797"
+  },
+  "public_trace_sha256": "1262e9ed162a8c65b5965dbafdd9de4ed841164125b6f438e630193e9819bd59"
+}
