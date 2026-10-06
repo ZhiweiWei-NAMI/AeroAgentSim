@@ -1,0 +1,17 @@
+{
+  "schema_version": "p09.actual-archive-extraction-check/v1",
+  "archive": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/ue_input_overlay_v14.capture-window.tar.gz",
+  "extracted_root": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/ue_input_overlay_v14_capture_window_unpack_check/ue_input_overlay_v14",
+  "files_hash_matched": 1051,
+  "bytes_hash_matched": 10768689254,
+  "episodes_entry_checked": 36,
+  "all_ue_windows": [
+    0,
+    900
+  ],
+  "planned_capture_frames_per_episode": 181,
+  "elapsed_s": 27.49526180885732,
+  "new_simulations": 0,
+  "ue_run_claimed": false,
+  "story_acceptance_claimed": false
+}

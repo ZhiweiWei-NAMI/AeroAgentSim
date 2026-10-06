@@ -1,0 +1,37 @@
+{
+  "schema_version": "p09.ue-overlay-pull-entry/v2",
+  "archive": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/ue_input_overlay_v14.capture-window.tar.gz",
+  "bytes": 746214558,
+  "sha256": "8f52834c96660769633405988fb992308194e1bc493a3a074580d9745e8eea36",
+  "unpack_into_new_directory": true,
+  "ue_data_root": "ue_input_overlay_v14",
+  "ue_episode_entries": "capture_filtered_updates/<episode>/render_host_config.json",
+  "episodes": 36,
+  "selected_updates": 30,
+  "retained_same_old_peer_group": 6,
+  "tower_egress_selected": 0,
+  "capture_window": {
+    "tick_start": 0,
+    "tick_end": 900,
+    "duration_s": 90,
+    "capture_step_ticks": 5,
+    "capture_rate_hz": 2,
+    "planned_frames_per_episode": 181
+  },
+  "retained_extra_horizon_not_collectable": {
+    "L6-4_v1__seed00": [
+      90.1,
+      98.2
+    ],
+    "L6-4_v2__seed00": [
+      90.1,
+      92.8
+    ]
+  },
+  "technical_package_ready": true,
+  "final_ready": true,
+  "final_ready_scope": "Technical36 input files within original90s window; not full210/ARM scientific freeze or actual UE success.",
+  "collection_automatically_started": false,
+  "no_raw_sensor_payload": true,
+  "parent_presents_one_final_collection_decision": true
+}

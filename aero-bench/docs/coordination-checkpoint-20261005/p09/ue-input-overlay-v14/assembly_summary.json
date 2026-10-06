@@ -1,0 +1,207 @@
+{
+  "schema_version": "p09.ue-input-assembly-summary/v2",
+  "episodes_assembled": 36,
+  "selected_l6_2_v5": 6,
+  "selected_other_v13": 24,
+  "retained_same_old_peer_l6_4_group": 6,
+  "tower_egress_selected": 0,
+  "original210_overwritten": false,
+  "new_simulator_runs": 0,
+  "ue_capture_started": false,
+  "capture_contract": {
+    "tick_hz": 10,
+    "dt_s": 0.1,
+    "tick_start": 0,
+    "tick_end": 900,
+    "duration_s": 90,
+    "capture_step_ticks": 5,
+    "capture_rate_hz": 2,
+    "planned_frames_per_episode": 181,
+    "planned_frames_36_episode_grid": 6516,
+    "planned_not_already_collected": true
+  },
+  "numeric_projection": {
+    "all_recorded_truth_frames_before_partition": 32546,
+    "ue_truth_frames": 32436,
+    "ue_entity_rows": 1391374,
+    "recorded_pose_equality_checks": 90852
+  },
+  "unmet_old_peer_stories": [
+    {
+      "episode_id": "L6-4_v1__seed02",
+      "unfired_events": [
+        "multi_uav_hold_entry",
+        "multi_uav_safe_hold",
+        "alternate_channel",
+        "lifecycle_landing_uav_digital_l6_4_v1",
+        "lifecycle_landing_uav_digital_l6_4_v1_secondary",
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v1",
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v1_secondary",
+        "multi_uav_safe_hold:local:uav_digital_l6_4_v1",
+        "multi_uav_safe_hold:local:uav_digital_l6_4_v1_secondary",
+        "alternate_channel:local:uav_digital_l6_4_v1",
+        "alternate_channel:local:uav_digital_l6_4_v1_secondary"
+      ]
+    },
+    {
+      "episode_id": "L6-4_v2__seed02",
+      "unfired_events": [
+        "multi_uav_hold_entry",
+        "multi_uav_safe_hold",
+        "alternate_channel",
+        "lifecycle_landing_uav_digital_l6_4_v2",
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v2",
+        "multi_uav_safe_hold:local:uav_digital_l6_4_v2",
+        "alternate_channel:local:uav_digital_l6_4_v2"
+      ]
+    }
+  ],
+  "extended_records_excluded_from_ue_window": [
+    {
+      "episode_id": "L6-4_v1__seed00",
+      "missing_extended_background": {
+        "tick_start": 901,
+        "tick_end": 982,
+        "sim_time_start_s": 90.1,
+        "sim_time_end_s": 98.2,
+        "sources": [
+          "SUMO vehicle/light/incident observations",
+          "global-UAV background observations"
+        ],
+        "excluded_from_ue_capture": true
+      },
+      "byte_preserving_partitions": {
+        "truth_frames.jsonl": {
+          "original_bytes": 192761547,
+          "original_sha256": "16fdba316d6a0441f8f104b6bec6603ab4a27f2dcd6b99856990f4c350acfdb1",
+          "prefix_records": 901,
+          "suffix_records": 82,
+          "prefix_bytes": 187531377,
+          "suffix_bytes": 5230170,
+          "prefix_ticks": [
+            0,
+            900
+          ],
+          "suffix_ticks": [
+            901,
+            982
+          ],
+          "concatenation_matches_original_bytes": true
+        },
+        "trajectories.jsonl": {
+          "original_bytes": 121871269,
+          "original_sha256": "c0bc5a7db7e7a56174345bea0a2c42d66ea7909dc47e8e50d4e39e5fa82c1264",
+          "prefix_records": 43993,
+          "suffix_records": 1968,
+          "prefix_bytes": 119307460,
+          "suffix_bytes": 2563809,
+          "prefix_ticks": [
+            0,
+            900
+          ],
+          "suffix_ticks": [
+            901,
+            982
+          ],
+          "concatenation_matches_original_bytes": true
+        },
+        "weather_meta.jsonl": {
+          "original_bytes": 266283,
+          "original_sha256": "5babe26c999408daaefd565e68003d470f8c63fe2c4ec4f2760cd55f3c622e2f",
+          "prefix_records": 901,
+          "suffix_records": 82,
+          "prefix_bytes": 244061,
+          "suffix_bytes": 22222,
+          "prefix_ticks": [
+            0,
+            900
+          ],
+          "suffix_ticks": [
+            901,
+            982
+          ],
+          "concatenation_matches_original_bytes": true
+        }
+      }
+    },
+    {
+      "episode_id": "L6-4_v2__seed00",
+      "missing_extended_background": {
+        "tick_start": 901,
+        "tick_end": 928,
+        "sim_time_start_s": 90.1,
+        "sim_time_end_s": 92.8,
+        "sources": [
+          "SUMO vehicle/light/incident observations",
+          "global-UAV background observations"
+        ],
+        "excluded_from_ue_capture": true
+      },
+      "byte_preserving_partitions": {
+        "truth_frames.jsonl": {
+          "original_bytes": 181464660,
+          "original_sha256": "602dd02d0003487193594fd29a810c1f47ff7a2c25d266181eca3d4a5fefbfbc",
+          "prefix_records": 901,
+          "suffix_records": 28,
+          "prefix_bytes": 179680763,
+          "suffix_bytes": 1783897,
+          "prefix_ticks": [
+            0,
+            900
+          ],
+          "suffix_ticks": [
+            901,
+            928
+          ],
+          "concatenation_matches_original_bytes": true
+        },
+        "trajectories.jsonl": {
+          "original_bytes": 114169794,
+          "original_sha256": "c812192a9e42ac0327de63b2427f00425fa0bce36861d6d6c99cb65d63cfbdd5",
+          "prefix_records": 42449,
+          "suffix_records": 672,
+          "prefix_bytes": 113295686,
+          "suffix_bytes": 874108,
+          "prefix_ticks": [
+            0,
+            900
+          ],
+          "suffix_ticks": [
+            901,
+            928
+          ],
+          "concatenation_matches_original_bytes": true
+        },
+        "weather_meta.jsonl": {
+          "original_bytes": 251649,
+          "original_sha256": "c04bda483923725817338978e97e5360e38d1d17d5970766956a855460ac1ec8",
+          "prefix_records": 901,
+          "suffix_records": 28,
+          "prefix_bytes": 244061,
+          "suffix_bytes": 7588,
+          "prefix_ticks": [
+            0,
+            900
+          ],
+          "suffix_ticks": [
+            901,
+            928
+          ],
+          "concatenation_matches_original_bytes": true
+        }
+      }
+    }
+  ],
+  "sensor_binding_scope": "Existing UE rig/map/assets required. No new sensor calibration or actual RGB/LiDAR capture success asserted.",
+  "arm": {
+    "dependency_records": 143,
+    "not_direct_capture_episode_count": true,
+    "source_reference_reconciliation": "NOT_COMPLETED_BY_THIS_ASSEMBLY"
+  },
+  "original174": "Retained as original references; not certified finalC by this package.",
+  "final_ready": true,
+  "final_ready_scope": "Technical files/relative entries/recorded time support in original 0..90s capture window.",
+  "scientific_full_story_accepted": false,
+  "full210_and_ARM_freeze_claimed": false,
+  "collection_status": "Technical36 overlay ready in original90s window; no automated capture authorized or launched."
+}
