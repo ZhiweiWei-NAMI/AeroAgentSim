@@ -1,0 +1,8 @@
+{
+  "horizontal_clearance_m": 6,
+  "vertical_clearance_m": 5,
+  "fallback_height_m": 18,
+  "floor_height_m": 3.2,
+  "extra_aircraft_radius_m": null,
+  "extra_aircraft_radius_note": "No extra body radius exists in this checker."
+}
