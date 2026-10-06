@@ -1,0 +1,1054 @@
+{
+  "scope": "Exact missing operand supplement to prior v4 audit; no regeneration",
+  "revision": "p09.linked-native-causal/v4",
+  "episode_id": "X5_comm_failure_to_pad_contention__seed00",
+  "source_trajectory_ref": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed00/adopted/trajectories.jsonl",
+  "source_script_ref": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v4/X5_comm_failure_to_pad_contention__seed00/adopted/event_script.json",
+  "event": {
+    "event_id": "pad_priority_arbitration",
+    "trigger_ref": "x_guard_pad_priority_arbitration",
+    "priority": 4,
+    "max_fire_count": 1,
+    "actions": [
+      {
+        "type": "set_visual_state",
+        "action_id": "set_x5_pad_reserved",
+        "entity_id": "pad_x5_primary",
+        "visual_state": {
+          "mode": "reserved"
+        }
+      },
+      {
+        "type": "set_visual_state",
+        "action_id": "set_x5_uav_b_hold",
+        "entity_id": "uav_x5_second",
+        "visual_state": {
+          "mode": "hold"
+        }
+      },
+      {
+        "type": "set_runtime_state",
+        "action_id": "set_runtime_state_x5_comm_failure_to_pad_contention_pad_priority_arbitration_00",
+        "delay_ticks": 1,
+        "entity_id": "pad_x5_primary",
+        "runtime_state_schedule_profile_id": "l5_l6_x_runtime_state_schedule",
+        "runtime_state_schedule_semantics": "queued_after_event_actions_delay_ticks_0_next_tick",
+        "state_patch": {
+          "facility_state": {
+            "arbitration_active": true
+          }
+        }
+      },
+      {
+        "type": "set_runtime_state",
+        "action_id": "set_runtime_state_x5_comm_failure_to_pad_contention_pad_priority_arbitration_01",
+        "delay_ticks": 5,
+        "entity_id": "pad_x5_primary",
+        "runtime_state_schedule_profile_id": "l5_l6_x_runtime_state_schedule",
+        "runtime_state_schedule_semantics": "queued_after_event_actions_delay_ticks_0_next_tick",
+        "state_patch": {
+          "facility_state": {
+            "arbitration_winner_id": "uav_x5_priority",
+            "priority_granted": true,
+            "priority_granted_to": "uav_x5_priority"
+          }
+        }
+      }
+    ],
+    "intent": "arbitration",
+    "intent_stage": "04.arbitration",
+    "causal_chain_id": "X5_comm_failure_to_pad_contention.semantic_event_chain",
+    "causal_predecessor_intent": "pad_contention",
+    "target_roles": [
+      "landing_pad",
+      "mission_uav"
+    ],
+    "log_event": {
+      "topic": "evt_X5_comm_failure_to_pad_contention_pad_priority_arbitration",
+      "category": "infrastructure",
+      "title": "Priority arbitration reserves pad for first UAV",
+      "severity": "warning",
+      "overlay": "infrastructure",
+      "target_ids": [
+        "uav_x5_priority",
+        "uav_x5_second",
+        "pad_x5_primary"
+      ],
+      "intent": "arbitration",
+      "intent_stage": "04.arbitration",
+      "causal_chain_id": "X5_comm_failure_to_pad_contention.semantic_event_chain",
+      "causal_predecessor_intent": "pad_contention",
+      "target_roles": [
+        "landing_pad",
+        "mission_uav"
+      ]
+    }
+  },
+  "trigger": {
+    "trigger_id": "x_guard_pad_priority_arbitration",
+    "type": "composite",
+    "operator": "AND",
+    "children": [
+      "trig_pad_priority_arbitration",
+      "x_predecessor_pad_priority_arbitration"
+    ]
+  },
+  "exact_operand_rows": [
+    {
+      "source_line_number": 15035,
+      "exact_row": {
+        "tick": 556,
+        "entity_id": "pad_x5_primary",
+        "label_class": "landing_pad",
+        "asset_id": "facility.landing_pad.visible.v1",
+        "pos_enu": [
+          6631.659,
+          6527.241,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 90.924,
+        "state": "available",
+        "activity_type": "available",
+        "animation_hint": "available",
+        "posture": "standing",
+        "social_state": "solo",
+        "semantic_scope": {
+          "scope_type": "facility",
+          "scope_subtype": "landing_pad",
+          "ontology_class_id": "world:LandingPad",
+          "authority_id": "facility_scope_contract.v1",
+          "service_capacity": 1
+        },
+        "entity_kind": "facility.landing_pad",
+        "task_id": "pad_x5_primary.task",
+        "role": "semantic_facility",
+        "state_sequence": [
+          "available"
+        ],
+        "semantic_role": "available",
+        "activation_tick": 0,
+        "category": "facility",
+        "route_waypoints_enu_m": [],
+        "facility_state": {
+          "capacity": 1,
+          "requester_ids": [
+            "uav_x5_priority",
+            "uav_x5_second"
+          ],
+          "request_count": 2,
+          "allocation_failed": false,
+          "allocation_stale": true,
+          "arbitration_active": false,
+          "priority_granted": false,
+          "priority_granted_to": "none",
+          "arbitration_winner_id": "none"
+        }
+      }
+    },
+    {
+      "source_line_number": 15038,
+      "exact_row": {
+        "tick": 556,
+        "entity_id": "uav_x5_priority",
+        "label_class": "uav",
+        "asset_id": "uav.inspect.quad.v1",
+        "pos_enu": [
+          6638.046959,
+          6534.15801,
+          6.0
+        ],
+        "vel_mps": [
+          -0.277113,
+          -4.940722,
+          0.0
+        ],
+        "yaw_deg": -93.210221,
+        "state": "descending",
+        "activity_type": "descending",
+        "animation_hint": "descending",
+        "posture": "standing",
+        "social_state": "solo",
+        "task_id": "uav_x5_priority.task",
+        "role": "mission_uav",
+        "state_sequence": [
+          "landing_request"
+        ],
+        "semantic_role": "landing_request",
+        "uav_corridor_role": "mission_uav",
+        "uav_corridor": {
+          "assigned_altitude_m": 30.0,
+          "altitude_layers_m": [
+            30.0,
+            50.0,
+            80.0
+          ],
+          "used_lateral_bypass": false
+        },
+        "assigned_altitude_m": 30.0,
+        "ground_reference_z_m": 3.0,
+        "ground_reference_source": "home_hover_pose_origin_v1",
+        "lifecycle": {
+          "auto_lifecycle_applied": true,
+          "home_pad_entity_id": "pad_home_uav_x5_priority",
+          "home_hover_enu_m": [
+            6671.908,
+            6530.889,
+            3.0
+          ],
+          "mission_start_enu_m": [
+            6635.454,
+            6518.165,
+            28.5
+          ],
+          "requires_takeoff": true,
+          "requires_landing_or_terminal_resolution": true,
+          "assigned_altitude_m": 30.0,
+          "waypoint_repair_applied": true
+        },
+        "activation_tick": 0,
+        "category": "uav",
+        "route_waypoints_enu_m": [
+          [
+            6671.908,
+            6530.889,
+            24.0
+          ],
+          [
+            6635.454,
+            6518.165,
+            28.5
+          ],
+          [
+            6598.525,
+            6529.436,
+            33.0
+          ],
+          [
+            6601.213,
+            6577.361,
+            33.0
+          ],
+          [
+            6640.347,
+            6575.166,
+            6.0
+          ],
+          [
+            6637.659,
+            6527.241,
+            6.0
+          ],
+          [
+            6637.659,
+            6539.241,
+            6.0
+          ],
+          [
+            6631.659,
+            6539.241,
+            36.0
+          ],
+          [
+            6631.659,
+            6527.241,
+            36.0
+          ],
+          [
+            6671.908,
+            6530.889,
+            36.0
+          ],
+          [
+            6671.908,
+            6530.889,
+            3.0
+          ]
+        ],
+        "planned_route_waypoints_enu_m": [
+          [
+            6671.908,
+            6530.889,
+            24.0
+          ],
+          [
+            6635.454,
+            6518.165,
+            28.5
+          ],
+          [
+            6598.525,
+            6529.436,
+            33.0
+          ],
+          [
+            6601.213,
+            6577.361,
+            33.0
+          ],
+          [
+            6640.347,
+            6575.166,
+            6.0
+          ],
+          [
+            6637.659,
+            6527.241,
+            6.0
+          ],
+          [
+            6637.659,
+            6539.241,
+            6.0
+          ],
+          [
+            6631.659,
+            6539.241,
+            36.0
+          ],
+          [
+            6631.659,
+            6527.241,
+            36.0
+          ],
+          [
+            6671.908,
+            6530.889,
+            36.0
+          ],
+          [
+            6671.908,
+            6530.889,
+            3.0
+          ]
+        ],
+        "communication_state": {
+          "station_unavailable": false
+        }
+      }
+    },
+    {
+      "source_line_number": 15039,
+      "exact_row": {
+        "tick": 556,
+        "entity_id": "uav_x5_second",
+        "label_class": "uav",
+        "asset_id": "uav.airsim.flying_pawn.v1",
+        "pos_enu": [
+          6624.525,
+          6527.436,
+          34.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 114.443955,
+        "state": "airborne",
+        "activity_type": "airborne",
+        "animation_hint": "airborne",
+        "posture": "standing",
+        "social_state": "solo",
+        "task_id": "uav_x5_second.task",
+        "role": "mission_uav",
+        "state_sequence": [
+          "landing_request"
+        ],
+        "semantic_role": "landing_request",
+        "uav_corridor_role": "mission_uav",
+        "uav_corridor": {
+          "assigned_altitude_m": 50.0,
+          "altitude_layers_m": [
+            30.0,
+            50.0,
+            80.0
+          ],
+          "used_lateral_bypass": false
+        },
+        "assigned_altitude_m": 50.0,
+        "ground_reference_z_m": 3.0,
+        "ground_reference_source": "home_hover_pose_origin_v1",
+        "lifecycle": {
+          "auto_lifecycle_applied": true,
+          "home_pad_entity_id": "pad_home_uav_x5_second",
+          "home_hover_enu_m": [
+            6659.262,
+            6513.999,
+            3.0
+          ],
+          "mission_start_enu_m": [
+            6650.819,
+            6498.378,
+            27.5
+          ],
+          "requires_takeoff": true,
+          "requires_landing_or_terminal_resolution": true,
+          "assigned_altitude_m": 50.0,
+          "waypoint_repair_applied": true
+        },
+        "activation_tick": 0,
+        "category": "uav",
+        "route_waypoints_enu_m": [
+          [
+            6659.262,
+            6513.999,
+            24.0
+          ],
+          [
+            6650.819,
+            6498.378,
+            27.5
+          ],
+          [
+            6634.525,
+            6505.436,
+            31.0
+          ],
+          [
+            6624.525,
+            6527.436,
+            34.0
+          ],
+          [
+            6624.525,
+            6527.436,
+            50.0
+          ],
+          [
+            6650.525,
+            6541.436,
+            50.0
+          ],
+          [
+            6650.525,
+            6541.436,
+            36.0
+          ],
+          [
+            6659.262,
+            6513.999,
+            36.0
+          ],
+          [
+            6659.262,
+            6513.999,
+            3.0
+          ]
+        ],
+        "planned_route_waypoints_enu_m": [
+          [
+            6659.262,
+            6513.999,
+            24.0
+          ],
+          [
+            6650.819,
+            6498.378,
+            27.5
+          ],
+          [
+            6634.525,
+            6505.436,
+            31.0
+          ],
+          [
+            6624.525,
+            6527.436,
+            34.0
+          ],
+          [
+            6624.525,
+            6527.436,
+            50.0
+          ],
+          [
+            6650.525,
+            6541.436,
+            50.0
+          ],
+          [
+            6650.525,
+            6541.436,
+            36.0
+          ],
+          [
+            6659.262,
+            6513.999,
+            36.0
+          ],
+          [
+            6659.262,
+            6513.999,
+            3.0
+          ]
+        ],
+        "control_state": {
+          "diversion_active": false
+        },
+        "communication_state": {
+          "station_unavailable": false
+        }
+      }
+    },
+    {
+      "source_line_number": 15062,
+      "exact_row": {
+        "tick": 557,
+        "entity_id": "pad_x5_primary",
+        "label_class": "landing_pad",
+        "asset_id": "facility.landing_pad.visible.v1",
+        "pos_enu": [
+          6631.659,
+          6527.241,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 90.924,
+        "state": "available",
+        "activity_type": "available",
+        "animation_hint": "available",
+        "posture": "standing",
+        "social_state": "solo",
+        "semantic_scope": {
+          "scope_type": "facility",
+          "scope_subtype": "landing_pad",
+          "ontology_class_id": "world:LandingPad",
+          "authority_id": "facility_scope_contract.v1",
+          "service_capacity": 1
+        },
+        "entity_kind": "facility.landing_pad",
+        "task_id": "pad_x5_primary.task",
+        "role": "semantic_facility",
+        "state_sequence": [
+          "available"
+        ],
+        "semantic_role": "available",
+        "activation_tick": 0,
+        "category": "facility",
+        "route_waypoints_enu_m": [],
+        "facility_state": {
+          "capacity": 1,
+          "requester_ids": [
+            "uav_x5_priority",
+            "uav_x5_second"
+          ],
+          "request_count": 2,
+          "allocation_failed": false,
+          "allocation_stale": true,
+          "arbitration_active": false,
+          "priority_granted": false,
+          "priority_granted_to": "none",
+          "arbitration_winner_id": "none"
+        }
+      }
+    },
+    {
+      "source_line_number": 15065,
+      "exact_row": {
+        "tick": 557,
+        "entity_id": "uav_x5_priority",
+        "label_class": "uav",
+        "asset_id": "uav.inspect.quad.v1",
+        "pos_enu": [
+          6638.019247,
+          6533.663938,
+          6.0
+        ],
+        "vel_mps": [
+          -0.277113,
+          -4.940722,
+          0.0
+        ],
+        "yaw_deg": -93.210221,
+        "state": "descending",
+        "activity_type": "descending",
+        "animation_hint": "descending",
+        "posture": "standing",
+        "social_state": "solo",
+        "task_id": "uav_x5_priority.task",
+        "role": "mission_uav",
+        "state_sequence": [
+          "landing_request"
+        ],
+        "semantic_role": "landing_request",
+        "uav_corridor_role": "mission_uav",
+        "uav_corridor": {
+          "assigned_altitude_m": 30.0,
+          "altitude_layers_m": [
+            30.0,
+            50.0,
+            80.0
+          ],
+          "used_lateral_bypass": false
+        },
+        "assigned_altitude_m": 30.0,
+        "ground_reference_z_m": 3.0,
+        "ground_reference_source": "home_hover_pose_origin_v1",
+        "lifecycle": {
+          "auto_lifecycle_applied": true,
+          "home_pad_entity_id": "pad_home_uav_x5_priority",
+          "home_hover_enu_m": [
+            6671.908,
+            6530.889,
+            3.0
+          ],
+          "mission_start_enu_m": [
+            6635.454,
+            6518.165,
+            28.5
+          ],
+          "requires_takeoff": true,
+          "requires_landing_or_terminal_resolution": true,
+          "assigned_altitude_m": 30.0,
+          "waypoint_repair_applied": true
+        },
+        "activation_tick": 0,
+        "category": "uav",
+        "route_waypoints_enu_m": [
+          [
+            6671.908,
+            6530.889,
+            24.0
+          ],
+          [
+            6635.454,
+            6518.165,
+            28.5
+          ],
+          [
+            6598.525,
+            6529.436,
+            33.0
+          ],
+          [
+            6601.213,
+            6577.361,
+            33.0
+          ],
+          [
+            6640.347,
+            6575.166,
+            6.0
+          ],
+          [
+            6637.659,
+            6527.241,
+            6.0
+          ],
+          [
+            6637.659,
+            6539.241,
+            6.0
+          ],
+          [
+            6631.659,
+            6539.241,
+            36.0
+          ],
+          [
+            6631.659,
+            6527.241,
+            36.0
+          ],
+          [
+            6671.908,
+            6530.889,
+            36.0
+          ],
+          [
+            6671.908,
+            6530.889,
+            3.0
+          ]
+        ],
+        "planned_route_waypoints_enu_m": [
+          [
+            6671.908,
+            6530.889,
+            24.0
+          ],
+          [
+            6635.454,
+            6518.165,
+            28.5
+          ],
+          [
+            6598.525,
+            6529.436,
+            33.0
+          ],
+          [
+            6601.213,
+            6577.361,
+            33.0
+          ],
+          [
+            6640.347,
+            6575.166,
+            6.0
+          ],
+          [
+            6637.659,
+            6527.241,
+            6.0
+          ],
+          [
+            6637.659,
+            6539.241,
+            6.0
+          ],
+          [
+            6631.659,
+            6539.241,
+            36.0
+          ],
+          [
+            6631.659,
+            6527.241,
+            36.0
+          ],
+          [
+            6671.908,
+            6530.889,
+            36.0
+          ],
+          [
+            6671.908,
+            6530.889,
+            3.0
+          ]
+        ],
+        "communication_state": {
+          "station_unavailable": false
+        }
+      }
+    },
+    {
+      "source_line_number": 15066,
+      "exact_row": {
+        "tick": 557,
+        "entity_id": "uav_x5_second",
+        "label_class": "uav",
+        "asset_id": "uav.airsim.flying_pawn.v1",
+        "pos_enu": [
+          6624.525,
+          6527.436,
+          34.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 114.443955,
+        "state": "airborne",
+        "activity_type": "airborne",
+        "animation_hint": "airborne",
+        "posture": "standing",
+        "social_state": "solo",
+        "task_id": "uav_x5_second.task",
+        "role": "mission_uav",
+        "state_sequence": [
+          "landing_request"
+        ],
+        "semantic_role": "landing_request",
+        "uav_corridor_role": "mission_uav",
+        "uav_corridor": {
+          "assigned_altitude_m": 50.0,
+          "altitude_layers_m": [
+            30.0,
+            50.0,
+            80.0
+          ],
+          "used_lateral_bypass": false
+        },
+        "assigned_altitude_m": 50.0,
+        "ground_reference_z_m": 3.0,
+        "ground_reference_source": "home_hover_pose_origin_v1",
+        "lifecycle": {
+          "auto_lifecycle_applied": true,
+          "home_pad_entity_id": "pad_home_uav_x5_second",
+          "home_hover_enu_m": [
+            6659.262,
+            6513.999,
+            3.0
+          ],
+          "mission_start_enu_m": [
+            6650.819,
+            6498.378,
+            27.5
+          ],
+          "requires_takeoff": true,
+          "requires_landing_or_terminal_resolution": true,
+          "assigned_altitude_m": 50.0,
+          "waypoint_repair_applied": true
+        },
+        "activation_tick": 0,
+        "category": "uav",
+        "route_waypoints_enu_m": [
+          [
+            6659.262,
+            6513.999,
+            24.0
+          ],
+          [
+            6650.819,
+            6498.378,
+            27.5
+          ],
+          [
+            6634.525,
+            6505.436,
+            31.0
+          ],
+          [
+            6624.525,
+            6527.436,
+            34.0
+          ],
+          [
+            6624.525,
+            6527.436,
+            50.0
+          ],
+          [
+            6650.525,
+            6541.436,
+            50.0
+          ],
+          [
+            6650.525,
+            6541.436,
+            36.0
+          ],
+          [
+            6659.262,
+            6513.999,
+            36.0
+          ],
+          [
+            6659.262,
+            6513.999,
+            3.0
+          ]
+        ],
+        "planned_route_waypoints_enu_m": [
+          [
+            6659.262,
+            6513.999,
+            24.0
+          ],
+          [
+            6650.819,
+            6498.378,
+            27.5
+          ],
+          [
+            6634.525,
+            6505.436,
+            31.0
+          ],
+          [
+            6624.525,
+            6527.436,
+            34.0
+          ],
+          [
+            6624.525,
+            6527.436,
+            50.0
+          ],
+          [
+            6650.525,
+            6541.436,
+            50.0
+          ],
+          [
+            6650.525,
+            6541.436,
+            36.0
+          ],
+          [
+            6659.262,
+            6513.999,
+            36.0
+          ],
+          [
+            6659.262,
+            6513.999,
+            3.0
+          ]
+        ],
+        "control_state": {
+          "diversion_active": false
+        },
+        "communication_state": {
+          "station_unavailable": false
+        }
+      }
+    }
+  ],
+  "actual_admission_rows": [
+    {
+      "event_id": "pad_priority_arbitration",
+      "decision_tick": 559,
+      "allow": true,
+      "evidence": {
+        "requests": [
+          {
+            "allow": true,
+            "evidence": {
+              "message_id": "pad-request:uav_x5_priority",
+              "receipt": {
+                "schema_version": "p09.actual-downlink-command-receipt/v1",
+                "command_id": "pad-request:uav_x5_priority",
+                "packet_id": "packet-562",
+                "source_owner": "uav_x5_priority",
+                "source_epoch": 0,
+                "receiver_owner": "pad_x5_primary",
+                "receiver_epoch": 0,
+                "evidence_available_ns": 28000000000,
+                "decision_ns": 28100000000,
+                "send_ns": 28100000000,
+                "deadline_ns": 33100000000,
+                "action": "request_pad",
+                "receive_ns": 31103283785,
+                "accepted_ns": 31103283785,
+                "status": "accepted"
+              },
+              "current_receiver_epoch": 0,
+              "use_ns": 55900000000,
+              "service_policy": "accepted requests and allocation results persist until station_recovered revocation; transport deadline bounds delivery, not durable fact use",
+              "custody_claim": false
+            }
+          },
+          {
+            "allow": true,
+            "evidence": {
+              "message_id": "pad-request:uav_x5_second",
+              "receipt": {
+                "schema_version": "p09.actual-downlink-command-receipt/v1",
+                "command_id": "pad-request:uav_x5_second",
+                "packet_id": "packet-563",
+                "source_owner": "uav_x5_second",
+                "source_epoch": 0,
+                "receiver_owner": "pad_x5_primary",
+                "receiver_epoch": 0,
+                "evidence_available_ns": 28000000000,
+                "decision_ns": 28100000000,
+                "send_ns": 28100000000,
+                "deadline_ns": 33100000000,
+                "action": "request_pad",
+                "receive_ns": 30103348841,
+                "accepted_ns": 30103348841,
+                "status": "accepted"
+              },
+              "current_receiver_epoch": 0,
+              "use_ns": 55900000000,
+              "service_policy": "accepted requests and allocation results persist until station_recovered revocation; transport deadline bounds delivery, not durable fact use",
+              "custody_claim": false
+            }
+          }
+        ],
+        "service_policy": [
+          "uav_x5_priority",
+          "uav_x5_second"
+        ],
+        "custody_claim": false
+      }
+    },
+    {
+      "event_id": "pad_priority_arbitration",
+      "decision_tick": 560,
+      "allow": true,
+      "evidence": {
+        "requests": [
+          {
+            "allow": true,
+            "evidence": {
+              "message_id": "pad-request:uav_x5_priority",
+              "receipt": {
+                "schema_version": "p09.actual-downlink-command-receipt/v1",
+                "command_id": "pad-request:uav_x5_priority",
+                "packet_id": "packet-562",
+                "source_owner": "uav_x5_priority",
+                "source_epoch": 0,
+                "receiver_owner": "pad_x5_primary",
+                "receiver_epoch": 0,
+                "evidence_available_ns": 28000000000,
+                "decision_ns": 28100000000,
+                "send_ns": 28100000000,
+                "deadline_ns": 33100000000,
+                "action": "request_pad",
+                "receive_ns": 31103283785,
+                "accepted_ns": 31103283785,
+                "status": "accepted"
+              },
+              "current_receiver_epoch": 0,
+              "use_ns": 56000000000,
+              "service_policy": "accepted requests and allocation results persist until station_recovered revocation; transport deadline bounds delivery, not durable fact use",
+              "custody_claim": false
+            }
+          },
+          {
+            "allow": true,
+            "evidence": {
+              "message_id": "pad-request:uav_x5_second",
+              "receipt": {
+                "schema_version": "p09.actual-downlink-command-receipt/v1",
+                "command_id": "pad-request:uav_x5_second",
+                "packet_id": "packet-563",
+                "source_owner": "uav_x5_second",
+                "source_epoch": 0,
+                "receiver_owner": "pad_x5_primary",
+                "receiver_epoch": 0,
+                "evidence_available_ns": 28000000000,
+                "decision_ns": 28100000000,
+                "send_ns": 28100000000,
+                "deadline_ns": 33100000000,
+                "action": "request_pad",
+                "receive_ns": 30103348841,
+                "accepted_ns": 30103348841,
+                "status": "accepted"
+              },
+              "current_receiver_epoch": 0,
+              "use_ns": 56000000000,
+              "service_policy": "accepted requests and allocation results persist until station_recovered revocation; transport deadline bounds delivery, not durable fact use",
+              "custody_claim": false
+            }
+          }
+        ],
+        "service_policy": [
+          "uav_x5_priority",
+          "uav_x5_second"
+        ],
+        "custody_claim": false
+      }
+    }
+  ],
+  "offline_operand_recheck": [
+    {
+      "sample_tick": 556,
+      "available_ns": 55700000000,
+      "first_strictly_usable_tick": 558,
+      "distance_3d_m": 11.16472335195952,
+      "calculation": "offline recomputation from exact rows; not an additional observed metric"
+    },
+    {
+      "sample_tick": 557,
+      "available_ns": 55800000000,
+      "first_strictly_usable_tick": 559,
+      "distance_3d_m": 10.849279904807318,
+      "calculation": "offline recomputation from exact rows; not an additional observed metric"
+    }
+  ]
+}

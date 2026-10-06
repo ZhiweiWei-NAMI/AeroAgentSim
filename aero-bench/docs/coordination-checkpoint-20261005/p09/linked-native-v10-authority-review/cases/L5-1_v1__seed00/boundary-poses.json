@@ -1,0 +1,2346 @@
+{
+  "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v10/L5-1_v1__seed00/adopted/trajectories.jsonl",
+  "scope": "unchanged field projection of bound owner-local participants, actors, stations and pad at event ticks +/-2",
+  "rows": [
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 3,
+      "pos_enu": [
+        7306.104,
+        7267.596,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 4,
+      "pos_enu": [
+        7306.104,
+        7267.596,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 5,
+      "pos_enu": [
+        7306.104,
+        7267.596,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 6,
+      "pos_enu": [
+        7306.104,
+        7267.596,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 6,
+      "pos_enu": [
+        7162.0158,
+        7231.7,
+        0.0
+      ],
+      "vel_mps": [
+        7.998,
+        0.18,
+        0.0
+      ],
+      "yaw_deg": 1.28926,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 7,
+      "pos_enu": [
+        7306.104,
+        7267.596,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 7,
+      "pos_enu": [
+        7162.8156,
+        7231.718,
+        0.0
+      ],
+      "vel_mps": [
+        7.998,
+        0.18,
+        0.0
+      ],
+      "yaw_deg": 1.28926,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 28,
+      "pos_enu": [
+        7306.104,
+        7267.596,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 28,
+      "pos_enu": [
+        7179.6022,
+        7232.1204,
+        0.0
+      ],
+      "vel_mps": [
+        7.994,
+        0.218,
+        0.0
+      ],
+      "yaw_deg": 1.562095,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 29,
+      "pos_enu": [
+        7306.104,
+        7267.596,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 29,
+      "pos_enu": [
+        7180.4016,
+        7232.1422,
+        0.0
+      ],
+      "vel_mps": [
+        7.994,
+        0.218,
+        0.0
+      ],
+      "yaw_deg": 1.562095,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 30,
+      "pos_enu": [
+        7306.104,
+        7267.596,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 30,
+      "pos_enu": [
+        7181.201,
+        7232.164,
+        0.0
+      ],
+      "vel_mps": [
+        7.994,
+        0.218,
+        0.0
+      ],
+      "yaw_deg": 1.562095,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 31,
+      "pos_enu": [
+        7306.104,
+        7267.596,
+        3.5
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 31,
+      "pos_enu": [
+        7182.0006,
+        7232.186,
+        0.0
+      ],
+      "vel_mps": [
+        7.996,
+        0.22,
+        0.0
+      ],
+      "yaw_deg": 1.576025,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 32,
+      "pos_enu": [
+        7306.104,
+        7267.596,
+        4.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 35.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 32,
+      "pos_enu": [
+        7182.8002,
+        7232.208,
+        0.0
+      ],
+      "vel_mps": [
+        7.996,
+        0.22,
+        0.0
+      ],
+      "yaw_deg": 1.576025,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 173,
+      "pos_enu": [
+        7305.741,
+        7270.22,
+        32.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 97.876217,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 173,
+      "pos_enu": [
+        7288.3508,
+        7235.7336,
+        0.0
+      ],
+      "vel_mps": [
+        7.982,
+        0.184,
+        0.0
+      ],
+      "yaw_deg": 1.320541,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 174,
+      "pos_enu": [
+        7305.741,
+        7270.22,
+        32.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 97.876217,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 174,
+      "pos_enu": [
+        7289.149,
+        7235.752,
+        0.0
+      ],
+      "vel_mps": [
+        7.982,
+        0.184,
+        0.0
+      ],
+      "yaw_deg": 1.320541,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 175,
+      "pos_enu": [
+        7305.741,
+        7270.22,
+        32.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 97.876217,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 175,
+      "pos_enu": [
+        7289.9488,
+        7235.772,
+        0.0
+      ],
+      "vel_mps": [
+        7.998,
+        0.2,
+        0.0
+      ],
+      "yaw_deg": 1.432454,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 176,
+      "pos_enu": [
+        7305.741,
+        7270.22,
+        31.5
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -5.0
+      ],
+      "yaw_deg": 97.876217,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 176,
+      "pos_enu": [
+        7290.7486,
+        7235.792,
+        0.0
+      ],
+      "vel_mps": [
+        7.998,
+        0.2,
+        0.0
+      ],
+      "yaw_deg": 1.432454,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 177,
+      "pos_enu": [
+        7305.741,
+        7270.22,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -5.0
+      ],
+      "yaw_deg": 97.876217,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 177,
+      "pos_enu": [
+        7291.5484,
+        7235.812,
+        0.0
+      ],
+      "vel_mps": [
+        7.998,
+        0.2,
+        0.0
+      ],
+      "yaw_deg": 1.432454,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 178,
+      "pos_enu": [
+        7305.741,
+        7270.22,
+        30.5
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -5.0
+      ],
+      "yaw_deg": 97.876217,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 178,
+      "pos_enu": [
+        7292.3482,
+        7235.832,
+        0.0
+      ],
+      "vel_mps": [
+        7.998,
+        0.2,
+        0.0
+      ],
+      "yaw_deg": 1.432454,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 179,
+      "pos_enu": [
+        7305.741,
+        7270.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -5.0
+      ],
+      "yaw_deg": 97.876217,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 179,
+      "pos_enu": [
+        7293.148,
+        7235.852,
+        0.0
+      ],
+      "vel_mps": [
+        7.998,
+        0.2,
+        0.0
+      ],
+      "yaw_deg": 1.432454,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 180,
+      "pos_enu": [
+        7306.255286,
+        7270.505714,
+        30.0
+      ],
+      "vel_mps": [
+        5.142857,
+        2.857143,
+        0.0
+      ],
+      "yaw_deg": 29.054604,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 180,
+      "pos_enu": [
+        7293.9478,
+        7235.87,
+        0.0
+      ],
+      "vel_mps": [
+        7.998,
+        0.18,
+        0.0
+      ],
+      "yaw_deg": 1.28926,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 181,
+      "pos_enu": [
+        7306.769571,
+        7270.791429,
+        30.0
+      ],
+      "vel_mps": [
+        5.142857,
+        2.857143,
+        0.0
+      ],
+      "yaw_deg": 29.054604,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 181,
+      "pos_enu": [
+        7294.7476,
+        7235.888,
+        0.0
+      ],
+      "vel_mps": [
+        7.998,
+        0.18,
+        0.0
+      ],
+      "yaw_deg": 1.28926,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 182,
+      "pos_enu": [
+        7307.283857,
+        7271.077143,
+        30.0
+      ],
+      "vel_mps": [
+        5.142857,
+        2.857143,
+        0.0
+      ],
+      "yaw_deg": 29.054604,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 182,
+      "pos_enu": [
+        7295.5474,
+        7235.906,
+        0.0
+      ],
+      "vel_mps": [
+        7.998,
+        0.18,
+        0.0
+      ],
+      "yaw_deg": 1.28926,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 188,
+      "pos_enu": [
+        7310.369571,
+        7272.791429,
+        30.0
+      ],
+      "vel_mps": [
+        5.142857,
+        2.857143,
+        0.0
+      ],
+      "yaw_deg": 29.054604,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 188,
+      "pos_enu": [
+        7297.147,
+        7235.942,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.28926,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 189,
+      "pos_enu": [
+        7310.883857,
+        7273.077143,
+        30.0
+      ],
+      "vel_mps": [
+        5.142857,
+        2.857143,
+        0.0
+      ],
+      "yaw_deg": 29.054604,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 189,
+      "pos_enu": [
+        7297.147,
+        7235.942,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.28926,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 190,
+      "pos_enu": [
+        7311.398143,
+        7273.362857,
+        30.0
+      ],
+      "vel_mps": [
+        5.142857,
+        2.857143,
+        0.0
+      ],
+      "yaw_deg": 29.054604,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 190,
+      "pos_enu": [
+        7297.147,
+        7235.942,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.28926,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 191,
+      "pos_enu": [
+        7311.912429,
+        7273.648571,
+        30.0
+      ],
+      "vel_mps": [
+        5.142857,
+        2.857143,
+        0.0
+      ],
+      "yaw_deg": 29.054604,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 191,
+      "pos_enu": [
+        7297.147,
+        7235.942,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.28926,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 192,
+      "pos_enu": [
+        7312.426714,
+        7273.934286,
+        30.0
+      ],
+      "vel_mps": [
+        5.142857,
+        2.857143,
+        0.0
+      ],
+      "yaw_deg": 29.054604,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 192,
+      "pos_enu": [
+        7297.147,
+        7235.942,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.28926,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 218,
+      "pos_enu": [
+        7323.741,
+        7280.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 29.054604,
+      "label_class": "uav",
+      "state": "holding",
+      "activity_type": "holding"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 218,
+      "pos_enu": [
+        7297.147,
+        7235.942,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.28926,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 219,
+      "pos_enu": [
+        7323.741,
+        7280.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 29.054604,
+      "label_class": "uav",
+      "state": "holding",
+      "activity_type": "holding"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 219,
+      "pos_enu": [
+        7297.147,
+        7235.942,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.28926,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 220,
+      "pos_enu": [
+        7323.741,
+        7280.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 29.054604,
+      "label_class": "uav",
+      "state": "holding",
+      "activity_type": "holding"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 220,
+      "pos_enu": [
+        7297.147,
+        7235.942,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.28926,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 221,
+      "pos_enu": [
+        7323.936122,
+        7280.415122,
+        30.0
+      ],
+      "vel_mps": [
+        1.95122,
+        1.95122,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 221,
+      "pos_enu": [
+        7297.480611,
+        7235.950222,
+        0.0
+      ],
+      "vel_mps": [
+        3.336111,
+        0.082222,
+        0.0
+      ],
+      "yaw_deg": 1.411833,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 222,
+      "pos_enu": [
+        7324.131244,
+        7280.610244,
+        30.0
+      ],
+      "vel_mps": [
+        1.95122,
+        1.95122,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 222,
+      "pos_enu": [
+        7297.814222,
+        7235.958444,
+        0.0
+      ],
+      "vel_mps": [
+        3.336111,
+        0.082222,
+        0.0
+      ],
+      "yaw_deg": 1.411833,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 293,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 293,
+      "pos_enu": [
+        7321.147,
+        7236.52,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.411598,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 294,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 294,
+      "pos_enu": [
+        7321.147,
+        7236.52,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.411598,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 295,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 295,
+      "pos_enu": [
+        7321.147,
+        7236.52,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.411598,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 296,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 296,
+      "pos_enu": [
+        7321.147,
+        7236.52,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.411598,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 297,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 297,
+      "pos_enu": [
+        7321.147,
+        7236.52,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.411598,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 298,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 298,
+      "pos_enu": [
+        7321.147,
+        7236.52,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.411598,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 299,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 299,
+      "pos_enu": [
+        7321.147,
+        7236.52,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.411598,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 300,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 300,
+      "pos_enu": [
+        7321.147,
+        7236.52,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.411598,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 301,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 301,
+      "pos_enu": [
+        7321.44655,
+        7236.5271,
+        0.0
+      ],
+      "vel_mps": [
+        2.9955,
+        0.071,
+        0.0
+      ],
+      "yaw_deg": 1.357783,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 302,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 302,
+      "pos_enu": [
+        7321.7461,
+        7236.5342,
+        0.0
+      ],
+      "vel_mps": [
+        2.9955,
+        0.071,
+        0.0
+      ],
+      "yaw_deg": 1.357783,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 303,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 303,
+      "pos_enu": [
+        7322.04565,
+        7236.5413,
+        0.0
+      ],
+      "vel_mps": [
+        2.9955,
+        0.071,
+        0.0
+      ],
+      "yaw_deg": 1.357783,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 304,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 304,
+      "pos_enu": [
+        7322.3452,
+        7236.5484,
+        0.0
+      ],
+      "vel_mps": [
+        2.9955,
+        0.071,
+        0.0
+      ],
+      "yaw_deg": 1.357783,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 305,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 305,
+      "pos_enu": [
+        7322.64475,
+        7236.5555,
+        0.0
+      ],
+      "vel_mps": [
+        2.9955,
+        0.071,
+        0.0
+      ],
+      "yaw_deg": 1.357783,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 306,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 306,
+      "pos_enu": [
+        7322.9443,
+        7236.5626,
+        0.0
+      ],
+      "vel_mps": [
+        2.9955,
+        0.071,
+        0.0
+      ],
+      "yaw_deg": 1.357783,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 307,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 307,
+      "pos_enu": [
+        7323.24385,
+        7236.5697,
+        0.0
+      ],
+      "vel_mps": [
+        2.9955,
+        0.071,
+        0.0
+      ],
+      "yaw_deg": 1.357783,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 373,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 373,
+      "pos_enu": [
+        7341.142,
+        7236.98,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.370041,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 374,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 374,
+      "pos_enu": [
+        7341.142,
+        7236.98,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.370041,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 375,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 375,
+      "pos_enu": [
+        7341.142,
+        7236.98,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.370041,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 376,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 376,
+      "pos_enu": [
+        7341.142,
+        7236.98,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.370041,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 377,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 377,
+      "pos_enu": [
+        7341.142,
+        7236.98,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.370041,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 378,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 378,
+      "pos_enu": [
+        7341.142,
+        7236.98,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.370041,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 379,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 379,
+      "pos_enu": [
+        7341.142,
+        7236.98,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.370041,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 380,
+      "pos_enu": [
+        7331.741,
+        7288.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 45.0,
+      "label_class": "uav",
+      "state": "rain_caution_route",
+      "activity_type": "rain_caution_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 380,
+      "pos_enu": [
+        7341.142,
+        7236.98,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.370041,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 381,
+      "pos_enu": [
+        7331.195545,
+        7288.256364,
+        30.0
+      ],
+      "vel_mps": [
+        -5.454545,
+        0.363636,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "rain_recovery_route",
+      "activity_type": "rain_recovery_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 381,
+      "pos_enu": [
+        7341.686636,
+        7236.992,
+        0.0
+      ],
+      "vel_mps": [
+        5.446364,
+        0.12,
+        0.0
+      ],
+      "yaw_deg": 1.262197,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 382,
+      "pos_enu": [
+        7330.650091,
+        7288.292727,
+        30.0
+      ],
+      "vel_mps": [
+        -5.454545,
+        0.363636,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "rain_recovery_route",
+      "activity_type": "rain_recovery_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 382,
+      "pos_enu": [
+        7342.231273,
+        7237.004,
+        0.0
+      ],
+      "vel_mps": [
+        5.446364,
+        0.12,
+        0.0
+      ],
+      "yaw_deg": 1.262197,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 383,
+      "pos_enu": [
+        7330.104636,
+        7288.329091,
+        30.0
+      ],
+      "vel_mps": [
+        -5.454545,
+        0.363636,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "rain_recovery_route",
+      "activity_type": "rain_recovery_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 383,
+      "pos_enu": [
+        7342.775909,
+        7237.016,
+        0.0
+      ],
+      "vel_mps": [
+        5.446364,
+        0.12,
+        0.0
+      ],
+      "yaw_deg": 1.262197,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 384,
+      "pos_enu": [
+        7329.559182,
+        7288.365455,
+        30.0
+      ],
+      "vel_mps": [
+        -5.454545,
+        0.363636,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "rain_recovery_route",
+      "activity_type": "rain_recovery_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 384,
+      "pos_enu": [
+        7343.320545,
+        7237.028,
+        0.0
+      ],
+      "vel_mps": [
+        5.446364,
+        0.12,
+        0.0
+      ],
+      "yaw_deg": 1.262197,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 385,
+      "pos_enu": [
+        7329.013727,
+        7288.401818,
+        30.0
+      ],
+      "vel_mps": [
+        -5.454545,
+        0.363636,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "rain_recovery_route",
+      "activity_type": "rain_recovery_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 385,
+      "pos_enu": [
+        7343.865182,
+        7237.04,
+        0.0
+      ],
+      "vel_mps": [
+        5.446364,
+        0.12,
+        0.0
+      ],
+      "yaw_deg": 1.262197,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 386,
+      "pos_enu": [
+        7328.468273,
+        7288.438182,
+        30.0
+      ],
+      "vel_mps": [
+        -5.454545,
+        0.363636,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "rain_recovery_route",
+      "activity_type": "rain_recovery_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 386,
+      "pos_enu": [
+        7344.409818,
+        7237.052,
+        0.0
+      ],
+      "vel_mps": [
+        5.446364,
+        0.12,
+        0.0
+      ],
+      "yaw_deg": 1.262197,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 387,
+      "pos_enu": [
+        7327.922818,
+        7288.474545,
+        30.0
+      ],
+      "vel_mps": [
+        -5.454545,
+        0.363636,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "rain_recovery_route",
+      "activity_type": "rain_recovery_route"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 387,
+      "pos_enu": [
+        7344.954455,
+        7237.064,
+        0.0
+      ],
+      "vel_mps": [
+        5.446364,
+        0.12,
+        0.0
+      ],
+      "yaw_deg": 1.262197,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 463,
+      "pos_enu": [
+        7301.741,
+        7290.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "clear_weather_patrol",
+      "activity_type": "clear_weather_patrol"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 463,
+      "pos_enu": [
+        7365.136,
+        7237.52,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.316255,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 464,
+      "pos_enu": [
+        7301.741,
+        7290.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "clear_weather_patrol",
+      "activity_type": "clear_weather_patrol"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 464,
+      "pos_enu": [
+        7365.136,
+        7237.52,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.316255,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 465,
+      "pos_enu": [
+        7301.741,
+        7290.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "clear_weather_patrol",
+      "activity_type": "clear_weather_patrol"
+    },
+    {
+      "entity_id": "weather_car_l5_1_v1",
+      "tick": 465,
+      "pos_enu": [
+        7365.136,
+        7237.52,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 1.316255,
+      "label_class": "vehicle",
+      "state": "moving",
+      "activity_type": "moving"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 466,
+      "pos_enu": [
+        7301.741,
+        7290.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "clear_weather_patrol",
+      "activity_type": "clear_weather_patrol"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 467,
+      "pos_enu": [
+        7301.741,
+        7290.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "clear_weather_patrol",
+      "activity_type": "clear_weather_patrol"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 543,
+      "pos_enu": [
+        7301.741,
+        7290.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "clear_weather_patrol",
+      "activity_type": "clear_weather_patrol"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 544,
+      "pos_enu": [
+        7301.741,
+        7290.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "clear_weather_patrol",
+      "activity_type": "clear_weather_patrol"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 545,
+      "pos_enu": [
+        7301.741,
+        7290.22,
+        30.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "clear_weather_patrol",
+      "activity_type": "clear_weather_patrol"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 546,
+      "pos_enu": [
+        7301.741,
+        7290.22,
+        30.4
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        4.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_weather_l5_1_v1",
+      "tick": 547,
+      "pos_enu": [
+        7301.741,
+        7290.22,
+        30.8
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        4.0
+      ],
+      "yaw_deg": 176.185925,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    }
+  ]
+}

@@ -1,0 +1,5046 @@
+{
+  "source_path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v10/X5_comm_failure_to_pad_contention__seed00/adopted/trajectories.jsonl",
+  "scope": "unchanged field projection of bound owner-local participants, actors, stations and pad at event ticks +/-2",
+  "rows": [
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 28,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 28,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 28,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 60.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 28,
+      "pos_enu": [
+        6659.262,
+        6513.999,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 280.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 29,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 29,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 29,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 60.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 29,
+      "pos_enu": [
+        6659.262,
+        6513.999,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 280.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 30,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 30,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 30,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 60.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 30,
+      "pos_enu": [
+        6659.262,
+        6513.999,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 280.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 31,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 31,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 31,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        3.5
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 60.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 31,
+      "pos_enu": [
+        6659.262,
+        6513.999,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 280.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 32,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 32,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 32,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        4.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 60.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 32,
+      "pos_enu": [
+        6659.262,
+        6513.999,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 280.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 38,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 38,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 38,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        7.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 60.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 38,
+      "pos_enu": [
+        6659.262,
+        6513.999,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 280.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 39,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 39,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 39,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        7.5
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 60.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 39,
+      "pos_enu": [
+        6659.262,
+        6513.999,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 280.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 40,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 40,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 40,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        8.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 60.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 40,
+      "pos_enu": [
+        6659.262,
+        6513.999,
+        3.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 280.0,
+      "label_class": "uav",
+      "state": "preflight_on_pad",
+      "activity_type": "preflight_on_pad"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 41,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 41,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 41,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        8.5
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 60.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 41,
+      "pos_enu": [
+        6659.262,
+        6513.999,
+        3.5
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 280.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 42,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 42,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 42,
+      "pos_enu": [
+        6671.908,
+        6530.889,
+        9.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 60.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 42,
+      "pos_enu": [
+        6659.262,
+        6513.999,
+        4.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "yaw_deg": 280.0,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 218,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 218,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 218,
+      "pos_enu": [
+        6603.259487,
+        6527.991,
+        32.423077
+      ],
+      "vel_mps": [
+        -4.734487,
+        1.445,
+        0.576923
+      ],
+      "yaw_deg": 163.027429,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 218,
+      "pos_enu": [
+        6634.525,
+        6505.436,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 156.5794,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 219,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 219,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 219,
+      "pos_enu": [
+        6602.786038,
+        6528.1355,
+        32.480769
+      ],
+      "vel_mps": [
+        -4.734487,
+        1.445,
+        0.576923
+      ],
+      "yaw_deg": 163.027429,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 219,
+      "pos_enu": [
+        6634.525,
+        6505.436,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 156.5794,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 220,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 220,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 220,
+      "pos_enu": [
+        6602.31259,
+        6528.28,
+        32.538462
+      ],
+      "vel_mps": [
+        -4.734487,
+        1.445,
+        0.576923
+      ],
+      "yaw_deg": 163.027429,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 220,
+      "pos_enu": [
+        6634.525,
+        6505.436,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 156.5794,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 221,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 221,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 221,
+      "pos_enu": [
+        6601.839141,
+        6528.4245,
+        32.596154
+      ],
+      "vel_mps": [
+        -4.734487,
+        1.445,
+        0.576923
+      ],
+      "yaw_deg": 163.027429,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 221,
+      "pos_enu": [
+        6634.525,
+        6505.436,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 156.5794,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 222,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 222,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 222,
+      "pos_enu": [
+        6601.365692,
+        6528.569,
+        32.653846
+      ],
+      "vel_mps": [
+        -4.734487,
+        1.445,
+        0.576923
+      ],
+      "yaw_deg": 163.027429,
+      "label_class": "uav",
+      "state": "takeoff",
+      "activity_type": "takeoff"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 222,
+      "pos_enu": [
+        6634.525,
+        6505.436,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 156.5794,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 248,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 248,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 248,
+      "pos_enu": [
+        6598.525,
+        6529.436,
+        33.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 163.027429,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 248,
+      "pos_enu": [
+        6634.525,
+        6505.436,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 156.5794,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 249,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 249,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 249,
+      "pos_enu": [
+        6598.525,
+        6529.436,
+        33.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 163.027429,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 249,
+      "pos_enu": [
+        6634.525,
+        6505.436,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 156.5794,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 250,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 250,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 250,
+      "pos_enu": [
+        6598.525,
+        6529.436,
+        33.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 163.027429,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 250,
+      "pos_enu": [
+        6634.525,
+        6505.436,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 156.5794,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 251,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 251,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 251,
+      "pos_enu": [
+        6598.525,
+        6529.436,
+        33.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 163.027429,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 251,
+      "pos_enu": [
+        6634.525,
+        6505.436,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 156.5794,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 252,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 252,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 252,
+      "pos_enu": [
+        6598.525,
+        6529.436,
+        33.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 163.027429,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 252,
+      "pos_enu": [
+        6634.525,
+        6505.436,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 156.5794,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 278,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 278,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 278,
+      "pos_enu": [
+        6598.525,
+        6529.436,
+        33.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 163.027429,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 278,
+      "pos_enu": [
+        6634.525,
+        6505.436,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 156.5794,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 279,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 279,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 279,
+      "pos_enu": [
+        6598.525,
+        6529.436,
+        33.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 163.027429,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 279,
+      "pos_enu": [
+        6634.525,
+        6505.436,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 156.5794,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 280,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 280,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 280,
+      "pos_enu": [
+        6598.525,
+        6529.436,
+        33.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 163.027429,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 280,
+      "pos_enu": [
+        6634.525,
+        6505.436,
+        31.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 156.5794,
+      "label_class": "uav",
+      "state": "cruise",
+      "activity_type": "cruise"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 281,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 281,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 281,
+      "pos_enu": [
+        6598.552711,
+        6529.930072,
+        33.0
+      ],
+      "vel_mps": [
+        0.277113,
+        4.940722,
+        0.0
+      ],
+      "yaw_deg": 86.789779,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 281,
+      "pos_enu": [
+        6634.320918,
+        6505.88498,
+        31.061224
+      ],
+      "vel_mps": [
+        -2.040816,
+        4.489796,
+        0.612245
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 282,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 282,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 282,
+      "pos_enu": [
+        6598.580423,
+        6530.424144,
+        33.0
+      ],
+      "vel_mps": [
+        0.277113,
+        4.940722,
+        0.0
+      ],
+      "yaw_deg": 86.789779,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 282,
+      "pos_enu": [
+        6634.116837,
+        6506.333959,
+        31.122449
+      ],
+      "vel_mps": [
+        -2.040816,
+        4.489796,
+        0.612245
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 283,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 283,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 283,
+      "pos_enu": [
+        6598.608134,
+        6530.918216,
+        33.0
+      ],
+      "vel_mps": [
+        0.277113,
+        4.940722,
+        0.0
+      ],
+      "yaw_deg": 86.789779,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 283,
+      "pos_enu": [
+        6633.912755,
+        6506.782939,
+        31.183673
+      ],
+      "vel_mps": [
+        -2.040816,
+        4.489796,
+        0.612245
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 284,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 284,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 284,
+      "pos_enu": [
+        6598.635845,
+        6531.412289,
+        33.0
+      ],
+      "vel_mps": [
+        0.277113,
+        4.940722,
+        0.0
+      ],
+      "yaw_deg": 86.789779,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 284,
+      "pos_enu": [
+        6633.708673,
+        6507.231918,
+        31.244898
+      ],
+      "vel_mps": [
+        -2.040816,
+        4.489796,
+        0.612245
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 285,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 285,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 285,
+      "pos_enu": [
+        6598.663557,
+        6531.906361,
+        33.0
+      ],
+      "vel_mps": [
+        0.277113,
+        4.940722,
+        0.0
+      ],
+      "yaw_deg": 86.789779,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 285,
+      "pos_enu": [
+        6633.504592,
+        6507.680898,
+        31.306122
+      ],
+      "vel_mps": [
+        -2.040816,
+        4.489796,
+        0.612245
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 286,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 286,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 286,
+      "pos_enu": [
+        6598.691268,
+        6532.400433,
+        33.0
+      ],
+      "vel_mps": [
+        0.277113,
+        4.940722,
+        0.0
+      ],
+      "yaw_deg": 86.789779,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 286,
+      "pos_enu": [
+        6633.30051,
+        6508.129878,
+        31.367347
+      ],
+      "vel_mps": [
+        -2.040816,
+        4.489796,
+        0.612245
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 287,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 287,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 287,
+      "pos_enu": [
+        6598.718979,
+        6532.894505,
+        33.0
+      ],
+      "vel_mps": [
+        0.277113,
+        4.940722,
+        0.0
+      ],
+      "yaw_deg": 86.789779,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 287,
+      "pos_enu": [
+        6633.096429,
+        6508.578857,
+        31.428571
+      ],
+      "vel_mps": [
+        -2.040816,
+        4.489796,
+        0.612245
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 333,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 333,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 333,
+      "pos_enu": [
+        6599.993701,
+        6555.621825,
+        33.0
+      ],
+      "vel_mps": [
+        0.277113,
+        4.940722,
+        0.0
+      ],
+      "yaw_deg": 86.789779,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 333,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 334,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 334,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 334,
+      "pos_enu": [
+        6600.021412,
+        6556.115897,
+        33.0
+      ],
+      "vel_mps": [
+        0.277113,
+        4.940722,
+        0.0
+      ],
+      "yaw_deg": 86.789779,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 334,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 335,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 335,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 335,
+      "pos_enu": [
+        6600.049124,
+        6556.609969,
+        33.0
+      ],
+      "vel_mps": [
+        0.277113,
+        4.940722,
+        0.0
+      ],
+      "yaw_deg": 86.789779,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 335,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 336,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 336,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 336,
+      "pos_enu": [
+        6600.076835,
+        6557.104041,
+        33.0
+      ],
+      "vel_mps": [
+        0.277113,
+        4.940722,
+        0.0
+      ],
+      "yaw_deg": 86.789779,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 336,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 337,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 337,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 337,
+      "pos_enu": [
+        6600.104546,
+        6557.598113,
+        33.0
+      ],
+      "vel_mps": [
+        0.277113,
+        4.940722,
+        0.0
+      ],
+      "yaw_deg": 86.789779,
+      "label_class": "uav",
+      "state": "descending",
+      "activity_type": "descending"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 337,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 573,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 573,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 573,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 573,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 574,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 574,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 574,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 574,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 575,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 575,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 575,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 575,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 576,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 576,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 576,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 576,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 577,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 577,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 577,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 577,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 578,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 578,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 578,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 578,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 579,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 579,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 579,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 579,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 580,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "available",
+      "activity_type": "available"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 580,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 580,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 580,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 581,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 581,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 581,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 581,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 582,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 582,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 582,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 582,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 608,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 608,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 608,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 608,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 609,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 609,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 609,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 609,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 610,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 610,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 610,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 610,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 611,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 611,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 611,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 611,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        34.8
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        8.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 612,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 612,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 612,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 612,
+      "pos_enu": [
+        6624.525,
+        6527.436,
+        35.6
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        8.0
+      ],
+      "yaw_deg": 114.443955,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 653,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 653,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 653,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 653,
+      "pos_enu": [
+        6640.687162,
+        6536.138703,
+        50.0
+      ],
+      "vel_mps": [
+        7.027027,
+        3.783784,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 654,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 654,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 654,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 654,
+      "pos_enu": [
+        6641.389865,
+        6536.517081,
+        50.0
+      ],
+      "vel_mps": [
+        7.027027,
+        3.783784,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 655,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 655,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "failed",
+      "activity_type": "failed"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 655,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 655,
+      "pos_enu": [
+        6642.092568,
+        6536.895459,
+        50.0
+      ],
+      "vel_mps": [
+        7.027027,
+        3.783784,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 656,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 656,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 656,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 656,
+      "pos_enu": [
+        6642.79527,
+        6537.273838,
+        50.0
+      ],
+      "vel_mps": [
+        7.027027,
+        3.783784,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 657,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 657,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 657,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 657,
+      "pos_enu": [
+        6643.497973,
+        6537.652216,
+        50.0
+      ],
+      "vel_mps": [
+        7.027027,
+        3.783784,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 658,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 658,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 658,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 658,
+      "pos_enu": [
+        6644.200676,
+        6538.030595,
+        50.0
+      ],
+      "vel_mps": [
+        7.027027,
+        3.783784,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 659,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 659,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 659,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 659,
+      "pos_enu": [
+        6644.903378,
+        6538.408973,
+        50.0
+      ],
+      "vel_mps": [
+        7.027027,
+        3.783784,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 660,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 660,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 660,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 660,
+      "pos_enu": [
+        6645.606081,
+        6538.787351,
+        50.0
+      ],
+      "vel_mps": [
+        7.027027,
+        3.783784,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 661,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 661,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 661,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 661,
+      "pos_enu": [
+        6646.308784,
+        6539.16573,
+        50.0
+      ],
+      "vel_mps": [
+        7.027027,
+        3.783784,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 662,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 662,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 662,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 662,
+      "pos_enu": [
+        6647.011486,
+        6539.544108,
+        50.0
+      ],
+      "vel_mps": [
+        7.027027,
+        3.783784,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 688,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 688,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 688,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 688,
+      "pos_enu": [
+        6650.525,
+        6541.436,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 689,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 689,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 689,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 689,
+      "pos_enu": [
+        6650.525,
+        6541.436,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 690,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 690,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 690,
+      "pos_enu": [
+        6637.659,
+        6527.241,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -93.210221,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 690,
+      "pos_enu": [
+        6650.525,
+        6541.436,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 691,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 691,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 691,
+      "pos_enu": [
+        6637.659,
+        6528.041,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "yaw_deg": 90.0,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 691,
+      "pos_enu": [
+        6650.525,
+        6541.436,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 692,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 692,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 692,
+      "pos_enu": [
+        6637.659,
+        6528.841,
+        6.0
+      ],
+      "vel_mps": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "yaw_deg": 90.0,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 692,
+      "pos_enu": [
+        6650.525,
+        6541.436,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 743,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 743,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 743,
+      "pos_enu": [
+        6631.812846,
+        6539.241,
+        35.230769
+      ],
+      "vel_mps": [
+        -1.538462,
+        0.0,
+        7.692308
+      ],
+      "yaw_deg": 180.0,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 743,
+      "pos_enu": [
+        6650.525,
+        6541.436,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 744,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 744,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 744,
+      "pos_enu": [
+        6631.659,
+        6539.241,
+        36.0
+      ],
+      "vel_mps": [
+        -1.538462,
+        0.0,
+        7.692308
+      ],
+      "yaw_deg": 180.0,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 744,
+      "pos_enu": [
+        6650.525,
+        6541.436,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 745,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 745,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 745,
+      "pos_enu": [
+        6631.659,
+        6538.441,
+        36.0
+      ],
+      "vel_mps": [
+        0.0,
+        -8.0,
+        0.0
+      ],
+      "yaw_deg": -90.0,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 745,
+      "pos_enu": [
+        6650.525,
+        6541.436,
+        50.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "airborne",
+      "activity_type": "airborne"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 746,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 746,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 746,
+      "pos_enu": [
+        6631.659,
+        6537.641,
+        36.0
+      ],
+      "vel_mps": [
+        0.0,
+        -8.0,
+        0.0
+      ],
+      "yaw_deg": -90.0,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 746,
+      "pos_enu": [
+        6650.525,
+        6541.436,
+        49.263158
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -7.368421
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "pad_x5_primary",
+      "tick": 747,
+      "pos_enu": [
+        6631.659,
+        6527.241,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 90.924,
+      "label_class": "landing_pad",
+      "state": "reserved",
+      "activity_type": "reserved"
+    },
+    {
+      "entity_id": "tower_x5_comm",
+      "tick": 747,
+      "pos_enu": [
+        6634.427,
+        6522.465,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": 108.726,
+      "label_class": "radio_tower",
+      "state": "online",
+      "activity_type": "online"
+    },
+    {
+      "entity_id": "uav_x5_priority",
+      "tick": 747,
+      "pos_enu": [
+        6631.659,
+        6536.841,
+        36.0
+      ],
+      "vel_mps": [
+        0.0,
+        -8.0,
+        0.0
+      ],
+      "yaw_deg": -90.0,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    },
+    {
+      "entity_id": "uav_x5_second",
+      "tick": 747,
+      "pos_enu": [
+        6650.525,
+        6541.436,
+        48.526316
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -7.368421
+      ],
+      "yaw_deg": 28.300756,
+      "label_class": "uav",
+      "state": "return_to_pad",
+      "activity_type": "return_to_pad"
+    }
+  ]
+}
