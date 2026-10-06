@@ -3,7 +3,7 @@
   "source_native_actions": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed02/adopted/actions.json",
   "source_native_actions_sha256": "c864580fbd1be8286d7cf8b02d9defe6c393f25b339000d376cc237616ab1339",
   "exported_actions_sha256": "37befb66b3c868e9e724f043b2ddd046ddbde96553605418523f97ea7df62247",
-  "current_profile_sha256": "c0960baafeb36af1e698a49022be1c5f9df4a72ca4c95d287a11a0a28f23941f",
+  "current_profile_sha256": "01f9d0895d63501399e9055b1eedba575067f930dcf8e84e48db0b8a9b69e266",
   "annotations": [
     {
       "action_id": "move_uav_backup_loiter",

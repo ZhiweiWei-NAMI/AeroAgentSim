@@ -44,7 +44,7 @@ def adopt_backup_contact(script, profile, scene, *, root):
         'backup_station': profile['backup_station'],
         'backup_antenna_enu_m': [6248.051, 6127.613, 3.0],
         'contact_enu_m': [6308.0, 6134.0, 30.0],
-        'basis': 'unchanged-route native ARP cache drops and backup PREAMBLE_DETECT_FAILURE; no RF threshold/power change',
+        'basis': 'Legacy representative: three backup requests without native RX; adopted contact route has native request/response RX. Historical ARP/preamble cause is unverified: existing aggregate preamble rows are unjoined and precede the fault/requests; v10 request diagnostics were not persisted. No RF threshold/power change.',
         'rf_scope': 'same R1 ns-3 PHY/MAC; contact feasibility is measured by native request/response RX, not by a calculated range alone',
     }
     for action_id, (expected, revised) in paths.items():

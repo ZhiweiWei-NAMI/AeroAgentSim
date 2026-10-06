@@ -206,13 +206,13 @@
   },
   {
     "path": "L2-1_v2__seed00/adoption_profile.json",
-    "bytes": 8622,
-    "sha256": "872f21d9bc58ad389f43dec13b25dd6ef797c5239257cfd30261902bb38001cf"
+    "bytes": 8833,
+    "sha256": "8b41faf458a7538da02fec45b1de17fa3645ceea2d6887d982e32913399402b3"
   },
   {
     "path": "L2-1_v2__seed00/cached_clearance_provenance.json",
     "bytes": 3511,
-    "sha256": "c911cf9b7ed720f4bf1b7c7f0ca9a4ced3ca6bf5ec09d088c2939166a4e08ff0"
+    "sha256": "ce7b4fee0d406b43780406450c0526f4784ae6f489d86660f8ef85cedc5eacf5"
   },
   {
     "path": "L2-1_v2__seed00/causal_boundary_poses.json",
@@ -276,13 +276,13 @@
   },
   {
     "path": "L2-1_v2__seed01/adoption_profile.json",
-    "bytes": 8622,
-    "sha256": "a34fad0b728fc7f3915f7a53450289cbe375ad7399d8f312446a36b8122248ac"
+    "bytes": 8833,
+    "sha256": "8235b3671756d4ce77b833d1cedd6eb384008b231afd97736a5c127306a0b5ff"
   },
   {
     "path": "L2-1_v2__seed01/cached_clearance_provenance.json",
     "bytes": 3511,
-    "sha256": "fd4e927d0ee12307ec2a430cf394bfaeaba263a85e4817dedfb1c58514a5a83c"
+    "sha256": "20dff73742331fc188d51bc996ca3b81c933d3996d8e988284d01399655294e4"
   },
   {
     "path": "L2-1_v2__seed01/causal_boundary_poses.json",
@@ -346,13 +346,13 @@
   },
   {
     "path": "L2-1_v2__seed02/adoption_profile.json",
-    "bytes": 8622,
-    "sha256": "c0960baafeb36af1e698a49022be1c5f9df4a72ca4c95d287a11a0a28f23941f"
+    "bytes": 8833,
+    "sha256": "01f9d0895d63501399e9055b1eedba575067f930dcf8e84e48db0b8a9b69e266"
   },
   {
     "path": "L2-1_v2__seed02/cached_clearance_provenance.json",
     "bytes": 3511,
-    "sha256": "fbd26524989489b03ae8c4fb67a4c201b04cc81e2979fe2e7e7163365a242a1c"
+    "sha256": "92caf4982f30faf989e847f12fb88eaa2e5dc21a0543f54c4d56bb3bb890efe9"
   },
   {
     "path": "L2-1_v2__seed02/causal_boundary_poses.json",
@@ -1436,8 +1436,8 @@
   },
   {
     "path": "README.md",
-    "bytes": 5305,
-    "sha256": "2a765b3799e2925a9557ab4e52f7efa0e2be7cc1d805fbfac0ef421bd32986e5"
+    "bytes": 5660,
+    "sha256": "dc37ae5c4c9e1170a6f3c6c0d615ce0dc9d9fafc786031c9876a552fb8305e55"
   },
   {
     "path": "X1_rain_to_c2loss_to_forced_landing__seed00/actions.json",
@@ -1850,6 +1850,11 @@
     "sha256": "a742320575a0f43b094d20ed7b06aa226e9f30c268344340efd81b153deedf30"
   },
   {
+    "path": "diagnostic_attribution_limits.json",
+    "bytes": 1692,
+    "sha256": "f2e76c795638c2fdb638d4fbe339049be47a55d8c4781b23d852351037ab4969"
+  },
+  {
     "path": "focused_validation.json",
     "bytes": 672,
     "sha256": "794c4f04d50ebe0a903a12571c1517e3ced6fa3c4d950d328c2eb80458c07f67"
@@ -2191,8 +2196,8 @@
   },
   {
     "path": "source/linked_backup.py",
-    "bytes": 6982,
-    "sha256": "f870aad52930bd9c5134f39969410dbd87ba6a588f8f1b2ac8518772c4d082ec"
+    "bytes": 7193,
+    "sha256": "021079f825acd1dd63d36a49c1965bc5e1984739d2c981b6b8ebd0ff49f6cae3"
   },
   {
     "path": "source/linked_contract.py",
