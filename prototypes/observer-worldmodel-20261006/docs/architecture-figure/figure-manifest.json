@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-06",
+  "revision": "rule-memory-at-cutoff-added",
+  "source_spec_sha256": "65b2654ce15e8531d46b415aebcf94a8f4da381b22a8a3b9cca6d5e879c28c52",
+  "render": "Inkscape SVG to PNG; re-rendered after cutoff rule-memory correction",
+  "files": [
+    {
+      "name": "observer-worldmodel-contracts.png",
+      "bytes": 1048095,
+      "sha256": "dc5cd7303324e3704aee0ffda3bf4ec5485d754d049bf07ebb79f93e893bb3db"
+    },
+    {
+      "name": "observer-worldmodel-contracts.svg",
+      "bytes": 29207,
+      "sha256": "5208f3867723ae154bde453eacf451dfce42928016557b53afccaa0f1dc257a4"
+    },
+    {
+      "name": "observer-worldmodel-overview.png",
+      "bytes": 976991,
+      "sha256": "91a608da288250fd96972f029c03382f6db25198143734bef1fb07fb7661edf4"
+    },
+    {
+      "name": "observer-worldmodel-overview.svg",
+      "bytes": 64231,
+      "sha256": "01b8030fa698fe9abe15909debc010b5953837715c21b258413695e721dcba99"
+    },
+    {
+      "name": "panel-a-inputs.png",
+      "bytes": 225198,
+      "sha256": "3ebf26d6e2011189b763b90c54a4ceda06241fed8d43e0f50b033b5c29e73625"
+    },
+    {
+      "name": "panel-a-inputs.svg",
+      "bytes": 30530,
+      "sha256": "060d600e27d8fc81f05282c116c6e6aca5b78a6c625d7d51b111e6626a238514"
+    },
+    {
+      "name": "panel-b-joint-rollout.png",
+      "bytes": 191976,
+      "sha256": "1a89bce4e5450144802dee6cfc6463b23a92caf2e969ee19c94d61183118066b"
+    },
+    {
+      "name": "panel-b-joint-rollout.svg",
+      "bytes": 30532,
+      "sha256": "562ad1763da7fa6fe556224a4ea2f9b9f1a00194e40284627317846114e3a7ef"
+    },
+    {
+      "name": "panel-c-stage2.png",
+      "bytes": 192666,
+      "sha256": "8023f06943dd4b5ebe60f4eab65ec0be20160a29db0ff72962e13e8bf5c4489c"
+    },
+    {
+      "name": "panel-c-stage2.svg",
+      "bytes": 30530,
+      "sha256": "191f532511c3af04ac38bc0005c62cbe7dcb4ba3e480d6e2ff7bfc3324871e40"
+    },
+    {
+      "name": "panel-d-hybrid-loss.png",
+      "bytes": 181496,
+      "sha256": "8f39f074037702bb03d34661d79013bd9d6d142318b7a530755e0a1aa186f86e"
+    },
+    {
+      "name": "panel-d-hybrid-loss.svg",
+      "bytes": 30532,
+      "sha256": "1cf4f5bfc30d1dc85e971571af9364307a10a004fed373e601a68b792adbcf8d"
+    }
+  ]
+}
