@@ -1,6 +1,6 @@
 {
-  "status": "COUNT_CHECKPOINT_ONLY_PROVISIONAL",
-  "observed_at": "2026-10-06T06:41:29.948095-07:00",
+  "status": "EXTRACTION_CHECKPOINT_PROVISIONAL",
+  "observed_at_utc": "2026-10-06T13:50:44.024575+00:00",
   "identity_rows": 210,
   "dimension_rows": 1680,
   "consumer_counts": {
@@ -27,13 +27,17 @@
       "reason": "scalar model or typed state without a physical mechanism (root causal summary): comm/compute = 1.6.0 scalar model; GNSS/weather/facility = typed states; ns3/R1/v9/business candidates exist only as versioned outputs outside the formal 210"
     }
   },
-  "scope": "Metadata extraction engineering counts. Not 210 physics acceptance, not materialized adoption or actual capture consumption. Pending categories can overlap.",
+  "exact_metadata_mapping_counts": {
+    "canonical_episodes": 210,
+    "v14_source_entries": 36,
+    "low_load_reference_outputs": 210,
+    "business_reference_outputs": 12
+  },
+  "scope": "Named-source metadata extraction. Zero actual-consumer evidence is limited to this evidence scope, not a claim of no historical consumption. Neither output coverage nor configured references prove adoption or successful capture. Pending categories overlap and do not constitute fresh physical validation.",
   "open_output_items": [
-    "Canonical evidence index still includes ellipsis placeholders: explicitly unresolved, excluded from artifact/consumer proof.",
-    "Exact36 v14 /210 low-load /12 business source-manifest mappings remain pending follow-up by the same author.",
-    "same_run_capture_binding strings denote boundary/profile assertions, not actual capture receipts. Actual capture confirmation count remains0.",
-    "Source catalog current_adoption labels are documentary claims, not actual episode consumption.",
-    "Mechanism categories are source-based pending checks, not new per-episode physical validation."
+    "same_run_capture_binding boundary/profile strings are assertions, not actual capture receipts.",
+    "source catalog current_adoption labels are documentary, not runtime consumer proof.",
+    "author_result initial five_count_groups contain an earlier documentary-level presentation; coverage_summary tier_counts and explicit memberships are the current extracted counts."
   ],
   "effective_route": {
     "provider": "workbuddy",
@@ -42,11 +46,10 @@
     "reasoningEffort": "provider_default_omitted",
     "session_id": "6a42ae20-678b-4198-a7ef-977799519182"
   },
-  "script_write_time": "2026-10-06T06:37:12.320195-07:00",
   "source_files": [
     {
       "name": "extract_lineage.py",
-      "bytes": 53103
+      "bytes": 60934
     },
     {
       "name": "episode_identity_210.csv",
@@ -58,15 +61,15 @@
     },
     {
       "name": "source_version_catalog.json",
-      "bytes": 12037
+      "bytes": 13320
     },
     {
       "name": "existing_evidence_index.json",
-      "bytes": 346888
+      "bytes": 658915
     },
     {
       "name": "coverage_summary.json",
-      "bytes": 105972
+      "bytes": 106082
     },
     {
       "name": "next_checks.md",
@@ -78,7 +81,7 @@
     },
     {
       "name": "author_result.json",
-      "bytes": 10729
+      "bytes": 12002
     }
   ]
 }

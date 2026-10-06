@@ -12,6 +12,6 @@ Supplement labels carried: (1) v14 package label vs per-dimension producer_revis
 
 Desktop-owned files in this directory (intake_observations.json, route_receipt.json, coordinator_public.txt, assignment.txt) are not written by this leaf.
 
-## Coordinator count checkpoint
+## Coordinator fixed extraction snapshot
 
-This fixed snapshot publishes the requested first engineering checklist. See `coordinator_count_check.json` for reproduced counts and `complete_row_examples.json` for complete rows. There is no confirmed actual consumer example. Canonical ellipsis references and exact36/210/12 artifact mapping are explicitly pending and excluded from proof. Boundary/profile labels are not same-run capture receipts. The matrix and category membership do not certify all210 physical mechanisms or adoption. No original dataset, media, full map, credentials or large log payload is included.
+The exact metadata mappings now include 36 v14 source entries, 210 low-load reference outputs and 12 business reference outputs. Canonical paths contain no ellipsis placeholders. These are output/source mappings, not runtime adoption or capture evidence. The current consumer tiers and explicit pending memberships are in coverage_summary.json and coordinator_count_check.json. The author report retains an earlier documentary-level count presentation; use the fixed tier counts for actual-consumer reporting. No scientific acceptance, new simulation or capture is claimed.

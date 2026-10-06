@@ -37,7 +37,7 @@
   }
  },
  "count_group_3_actual_consumer_confirmed": {
-  "definition": "actual_consumer_confirmed counts ONLY rows with positive per-episode consumption evidence (an actual run/capture receipt naming the episode and artifact); configured pointers, path existence and corpus/contract claims are counted separately and NEVER enter this group",
+  "definition": "actual_consumer_confirmed counts ONLY rows with positive per-episode consumption evidence (an actual run/capture receipt naming the episode and artifact). Registry entries, contract statements and config pointers are NEVER actual runtime consumption: configured pointers, path existence, registry/contract/config-pointer claims are counted separately and NEVER enter this group",
   "tier_counts": {
    "actual_consumer_confirmed": {},
    "configured_pointer": {

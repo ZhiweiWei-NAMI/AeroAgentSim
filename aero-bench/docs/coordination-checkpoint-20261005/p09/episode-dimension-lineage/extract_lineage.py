@@ -170,6 +170,116 @@ for ep in ids:
         e[key] = os.path.exists(os.path.join(ROOT, p) if not p.startswith("/") else p)
     exist[ep] = e
 
+# --- exact per-episode mappings from parent-authorized named metadata --------
+# Three small named files (parent mechanical-inspection checklist; read this
+# session, structures verified, digest fields excluded from every export):
+#   /mnt/data1/.../p09/ue_input_overlay_v14/source_manifest.json  (36 entries)
+#   /mnt/data1/.../p09/compute_source_all210_v2_reference/batch_receipt.json (210)
+#   design/p09/compute_resource/business_group_batch_review.json  (12 runs)
+V14_SM = "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/ue_input_overlay_v14/source_manifest.json"
+LOW_LOAD_RC = "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/compute_source_all210_v2_reference/batch_receipt.json"
+BUSINESS_REVIEW = "design/p09/compute_resource/business_group_batch_review.json"
+
+# Canonical exact filenames per evidence-index key: no "...", no <episode>
+# templates in PER-EPISODE artifact refs.
+EXACT_FILES = {
+    "episode_manifest": "episode_manifest.json",
+    "trajectories": "trajectories.jsonl",
+    "truth_frames": "truth_frames.jsonl",
+    "weather_meta": "weather_meta.jsonl",
+    "render_host_config": "render_host_config.json",
+    "scene_occupancy": "scene_occupancy_manifest.json",
+    "event_occurrences": "event_occurrences.jsonl",
+    "communication_state": "communication_state.jsonl",
+    "compute_state": "compute_state.jsonl",
+    "domain_state": "domain_state_observations.jsonl",
+    "l0_state": "l0_predicate_state.jsonl",
+    "ccs_summary": "summary.json",
+    "ccs_manifest": "simulation_manifest.json",
+}
+EXACT_DIR = {"episode_manifest": BOUNDARY, "trajectories": BOUNDARY, "truth_frames": BOUNDARY,
+             "weather_meta": BOUNDARY, "render_host_config": BOUNDARY, "scene_occupancy": BOUNDARY,
+             "event_occurrences": OST, "communication_state": OST, "compute_state": OST,
+             "domain_state": OST, "l0_state": OST, "ccs_summary": CCS, "ccs_manifest": CCS}
+
+v14_manifest = jload(V14_SM)
+v14_entries = {e["episode_id"]: e for e in v14_manifest["episodes"]}
+assert len(v14_entries) == 36, f"v14 source_manifest must carry 36 episodes, got {len(v14_entries)}"
+low_load = jload(LOW_LOAD_RC)
+low_load_eps = {r["episode_id"]: r for r in low_load["episodes"]}
+assert len(low_load_eps) == 210, f"low-load batch_receipt must carry 210 mappings, got {len(low_load_eps)}"
+business_review = jload(BUSINESS_REVIEW)
+business_runs = business_review["actual_runs"]
+assert len(business_runs) == 12, f"business actual_runs must carry 12 exact outputs, got {len(business_runs)}"
+
+def strip_digests(obj):
+    if isinstance(obj, dict):
+        return {k: strip_digests(v) for k, v in obj.items() if "sha" not in k.lower() and "digest" not in k.lower() and "hash" not in k.lower()}
+    if isinstance(obj, list):
+        return [strip_digests(x) for x in obj]
+    return obj
+
+# v14 exact36: per-episode source/artifact refs from source_manifest entries.
+# The 6 receipt_replay entries omit source_output/metadata_revision/
+# physical_motion_scope; they are exported as "" (absent in source), not guessed.
+v14_exact = {}
+for ep, e in v14_entries.items():
+    v14_exact[ep] = {
+        "source_revision": e["source_revision"],
+        "metadata_revision": e.get("metadata_revision", ""),
+        "group": e["group"],
+        "adoption_status": e["adoption_status"],
+        "story_status": e["story_status"],
+        "duration_ticks": e["duration_ticks"],
+        "source_output": e.get("source_output", ""),
+        "current_trajectory": e["current_trajectory"],
+        "base_capture_dir": e["base_capture_dir"],
+        "ue_projection_status": e["ue_projection_status"],
+        "physical_motion_scope": e.get("physical_motion_scope", ""),
+        "files": [{"source": f["source"], "package_path": f["path"], "bytes": f["bytes"]}
+                  for f in e["files"]],
+        "file_count": len(e["files"]),
+    }
+
+# low-load exact210: per-episode run mapping (existence checked, NOT adoption)
+low_load_exact = {}
+for ep, r in low_load_eps.items():
+    out = r["output"]
+    assert ep in out, f"low-load output path does not name its episode: {out}"
+    low_load_exact[ep] = {
+        "output_dir": out,
+        "producer_version": low_load["producer_version"],
+        "profile_id": low_load["resolved_profile"]["profile_id"],
+        "tasks": r["tasks"],
+        "states": r["states"],
+        "owners": r["owners"],
+        "outcomes": r["outcomes"],
+        "artifact_bytes": r["artifact_bytes"],
+        "classification_if_adopted": r["classification_if_adopted"],
+        "adoption": "NOT_ADOPTED (adoption_configuration.json: LOW_LOAD_REFERENCE_ONLY, adopted_as_final_workload=false)",
+    }
+
+# business exact12: per-run exact output dirs
+business_exact = {}
+for r in business_runs:
+    out = r["output"]
+    assert r["episode_id"] in out, f"business output path does not name its episode: {out}"
+    business_exact.setdefault(r["episode_id"], []).append({
+        "regime": r["regime"],
+        "owner": r["owner"],
+        "mode": r["mode"],
+        "output_dir": out,
+        "tasks": r["tasks"],
+        "outcomes": r["outcomes"],
+        "actual_state_rows": r["actual_state_rows"],
+        "first_availability": r["first_availability"],
+        "five_artifact_bytes": r["five_artifact_bytes"],
+    })
+for _probe in (v14_exact, low_load_exact, business_exact):
+    assert "sha" not in json.dumps(_probe).lower() and "digest" not in json.dumps(_probe).lower(), \
+        "digest field leaked into exact-mapping export"
+
+
 # --- row builders -----------------------------------------------------------
 BUSINESS_EPS = ["L2-3_v1__seed00", "L2-3_v1__seed01", "L2-3_v1__seed02",
                 "L6-2_v1__seed00", "L6-2_v1__seed01", "L6-2_v1__seed02"]
@@ -460,10 +570,22 @@ catalog = {
     "versions": [
         {"label": "compute_comm:1.6.0", "producer": "aeroworld_discrete_compute_comm_sim", "scope": "all 210 (current adopted legacy supplement)", "adoption": "current_adoption", "paths": [f"{CCS}/<episode>/{{summary.json,simulation_manifest.json}}", f"{OST}/<episode>/{{communication_state,compute_state}}.jsonl"], "coverage_claim": "manifest-asserted + path-existence checked; field-observed only for representative episodes"},
         {"label": "domain_state:2.2.0", "producer": "aeroworld_domain_state_observation_sim", "scope": "all 210 (current adopted legacy supplement)", "adoption": "current_adoption", "paths": [f"{OST}/<episode>/domain_state_observations.jsonl"], "coverage_claim": "path-existence checked; per-family row presence not read"},
-        {"label": "capture_filtered_boundary(unversioned)", "producer": "server semantic pipeline + UE capture", "scope": "all 210", "adoption": "current_adoption", "paths": [f"{BOUNDARY}/<episode>/..."], "coverage_claim": "path-existence checked; newest boundary file 2026-09-24"},
-        {"label": "p09.ue-input-overlay/v14 (assembly v2, pull_entry v2)", "commit": "a9a6f8d87d86c410cd22f72f399abc3b09e942ab (parent-verified; not reverified here)", "scope": "36 episodes technical input, original 0..90s window", "adoption": "output_coverage_candidate", "paths": [f"{V14}/capture_filtered_updates/<episode>/render_host_config.json"], "coverage_claim": "episode_status.csv lists 36; path-existence checked; empty new event_realization = NOT_RECOMPUTED (not zero)"},
-        {"label": "compute_source_all210_v2_reference", "scope": "210 episodes", "adoption": "output_coverage_NOT_adopted", "paths": [f"{RT}/compute_source_all210_v2_reference/<episode>"], "coverage_claim": "adoption_configuration.json: LOW_LOAD_REFERENCE_ONLY, adopted_as_final_workload=false"},
-        {"label": "p09.compute.local-resource-fifo/v3 (business requests)", "scope": "6 episodes x normal/congested branches", "episodes": BUSINESS_EPS, "adoption": "candidate", "paths": [f"{RT}/compute_business_requests_v3_pilot", f"{RT}/compute_business_group_seeds_v3"], "coverage_claim": "receipts read; independent review verdict PASS_REPAIRED_CODE_AND_ACTUAL_TWELVE_RUNS"},
+        {"label": "capture_filtered_boundary(unversioned)", "producer": "server semantic pipeline + UE capture", "scope": "all 210", "adoption": "current_adoption",
+         "boundary_files": ["episode_manifest.json", "trajectories.jsonl", "truth_frames.jsonl", "weather_meta.jsonl", "render_host_config.json", "scene_occupancy_manifest.json"],
+         "paths": [f"{BOUNDARY}/<episode>/" + "{episode_manifest.json,trajectories.jsonl,truth_frames.jsonl,weather_meta.jsonl,render_host_config.json,scene_occupancy_manifest.json} (corpus layout; per-episode exact refs in existing_evidence_index.per_episode_canonical)"],
+         "coverage_claim": "path-existence checked per episode and file; newest boundary file 2026-09-24"},
+        {"label": "p09.ue-input-overlay/v14 (assembly v2, pull_entry v2)", "commit": "a9a6f8d87d86c410cd22f72f399abc3b09e942ab (parent-verified; not reverified here)", "scope": "36 episodes technical input, original 0..90s window", "adoption": "output_coverage_candidate",
+         "paths": [V14_SM, f"{V14}/capture_filtered_updates"],
+         "per_episode_refs": "existing_evidence_index.json -> v14_exact36_source_manifest.entries (exact source/artifact refs for all 36 episodes, digest fields excluded)",
+         "coverage_claim": "source_manifest.json read this session: 36 entries with exact source_output/current_trajectory/base_capture_dir and per-file source/package_path; original210_modified=false; empty new event_realization = NOT_RECOMPUTED (not zero)"},
+        {"label": "compute_source_all210_v2_reference", "scope": "210 episodes", "adoption": "output_coverage_NOT_adopted",
+         "paths": [LOW_LOAD_RC],
+         "per_episode_refs": "existing_evidence_index.json -> low_load_exact210_run_mappings.mappings (exact output dirs for all 210)",
+         "coverage_claim": "batch_receipt.json read this session: 210 exact run mappings (producer p09.compute.local-resource-fifo/v2, COMPLETED); LOW_LOAD_REFERENCE_ONLY, adopted_as_final_workload=false — coverage never adoption"},
+        {"label": "p09.compute.local-resource-fifo/v3 (business requests)", "scope": "6 episodes x normal/congested branches", "episodes": BUSINESS_EPS, "adoption": "candidate",
+         "paths": [BUSINESS_REVIEW, f"{RT}/compute_business_requests_v3_pilot", f"{RT}/compute_business_group_seeds_v3"],
+         "per_episode_refs": "existing_evidence_index.json -> business_exact12_run_outputs.runs (12 exact run output dirs)",
+         "coverage_claim": "receipts read; independent review verdict PASS_REPAIRED_CODE_AND_ACTUAL_TWELVE_RUNS; mechanism evidence only, not 210-wide adoption"},
         {"label": "receipt replay v4/v5 candidates", "scope": "L6-2 seed batch", "adoption": "plan_adopted_pending_combined_release_freeze (recapture required)", "episodes": sorted(plan_adopted.keys()), "paths": ["design/p09/source_group_plan/current_radio_checkpoint.md", f"{RT}/receipt_l6_2_seed_batch_v5_candidates", f"{RT}/receipt_l6_2_v2_seed00_v5_candidate"], "coverage_claim": "accepted_receipt_candidate=L6-2seed00receiptv4 (adoption_configuration.json); change-table recommendation A: planned new version, release_modified_by_this_work=False"},
         {"label": "ns3 versioned stack (R1 radio ns3.48 params; v7 training_r1; v8 linked; v9 reactive)", "scope": "versioned experiment dirs, not formal", "adoption": "candidate", "paths": ["aw_data/ns3_episode_v7_training_r1", "aw_data/ns3_episode_v8_linked_scenario", "aw_data/ns3_episode_v9_reactive_replay/L6-2_v1__seed00/reactive_replay/run1"], "coverage_claim": "v9 exists for 1 episode only; NOT promoted into formal 210"},
         {"label": "transported_q oracle diagnostic", "scope": "diagnostic only", "adoption": "oracle_diagnostic_NEVER_historical_input", "coverage_claim": "transported_q TRUE future + TRAIN-frozen Gaussian noise is oracle diagnostic, never a historical available prediction input"},
@@ -474,11 +596,15 @@ sizes["source_version_catalog.json"] = wbytes("source_version_catalog.json", jso
 evidence = {
     "schema_version": "p09.lineage.existing-evidence-index/v2",
     "status": "EXTRACTION_PROVISIONAL_NOT_ACCEPTANCE",
-    "per_episode_canonical": {ep: {k: (f"{BOUNDARY}/{ep}/..." if k in ("episode_manifest", "trajectories", "truth_frames", "weather_meta", "render_host_config", "scene_occupancy") else f"{OST}/{ep}/..." if k in ("event_occurrences", "communication_state", "compute_state", "domain_state", "l0_state") else f"{CCS}/{ep}/...") for k, v in exist[ep].items() if v and not k.startswith(("v14", "v2"))} for ep in ids},
+    "per_episode_canonical": {
+        ep: {k: (f"{EXACT_DIR[k]}/{ep}/{EXACT_FILES[k]}" if e else "") for k, e in exist[ep].items()
+             if e and not k.startswith(("v14", "v2"))}
+        for ep in ids
+    },
+    "per_episode_canonical_note": "every ref is the exact artifact path (path-existence checked this session); no '...' or <episode> templates in per-episode refs; version/adoption status lives in source_version_catalog.json, not here",
     "per_episode_existence_booleans": exist,
     "episode_specific_overlays": {
         "v14_capture_filtered_updates": v14_eps,
-        "v14_per_episode_projection_receipts": {ep: v14_files.get(ep, []) for ep in v14_eps},
         "v14_package_label": V14_LABEL,
         "v14_package_source_revision_values": v14_src_revs,
         "v14_package_metadata_revision_values": v14_meta_revs,
@@ -487,6 +613,25 @@ evidence = {
         "receipt_v5_candidates": ["L6-2_v1__seed00 (batch)", "L6-2_v2__seed00"],
         "charging_event_episodes_L2_3": ["L2-3_v1__seed00", "L2-3_v1__seed01", "L2-3_v1__seed02", "L2-3_v2__seed00", "L2-3_v2__seed01", "L2-3_v2__seed02"],
         "zero_event_L4_9": ["L4-9_v1__seed00", "L4-9_v1__seed01", "L4-9_v1__seed02", "L4-9_v2__seed00", "L4-9_v2__seed01", "L4-9_v2__seed02"],
+    },
+    "v14_exact36_source_manifest": {
+        "source_file": V14_SM,
+        "schema_version": v14_manifest["schema_version"],
+        "entries": v14_exact,
+        "note": "per-episode source/artifact refs exported verbatim from the parent-authorized source_manifest (36 entries); digest fields excluded; original210_modified=false, raw_rgb_lidar_copied=false, simulation_runs_started=0 per manifest header",
+    },
+    "low_load_exact210_run_mappings": {
+        "source_file": LOW_LOAD_RC,
+        "producer_version": low_load["producer_version"],
+        "status": low_load["status"],
+        "mappings": low_load_exact,
+        "note": "exact per-episode output dirs and run statistics for all 210; OUTPUT COVERAGE ONLY — adoption is NOT_ADOPTED (LOW_LOAD_REFERENCE_ONLY); never counted as current adopted supplement",
+    },
+    "business_exact12_run_outputs": {
+        "source_file": BUSINESS_REVIEW,
+        "verdict": business_review["verdict"],
+        "runs": business_exact,
+        "note": "12 exact run outputs across 6 episodes x 2 regimes (normal/congested); mode=reuse_executed_pilot; mechanism evidence only, not 210-wide adoption",
     },
     "named_documents_read": [
         "design/p09/source_group_plan/current_state_facts.md",
@@ -598,7 +743,7 @@ coverage = {
         "counts": path_exist_dims,
     },
     "count_group_3_actual_consumer_confirmed": {
-        "definition": "actual_consumer_confirmed counts ONLY rows with positive per-episode consumption evidence (an actual run/capture receipt naming the episode and artifact); configured pointers, path existence and corpus/contract claims are counted separately and NEVER enter this group",
+        "definition": "actual_consumer_confirmed counts ONLY rows with positive per-episode consumption evidence (an actual run/capture receipt naming the episode and artifact). Registry entries, contract statements and config pointers are NEVER actual runtime consumption: configured pointers, path existence, registry/contract/config-pointer claims are counted separately and NEVER enter this group",
         "tier_counts": tier_counts,
         "tier_memberships": {t: {d: {"count": len(eps), "episodes": eps} for d, eps in dims.items()} for t, dims in tier_members.items() if dims},
         "actual_consumer_confirmed": "0 rows (ACTUAL_RUN_RECEIPTS empty: no per-episode consumption receipt exists)",

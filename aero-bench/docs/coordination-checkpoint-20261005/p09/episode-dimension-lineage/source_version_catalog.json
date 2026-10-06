@@ -164,10 +164,18 @@
    "producer": "server semantic pipeline + UE capture",
    "scope": "all 210",
    "adoption": "current_adoption",
-   "paths": [
-    "aw_data/render_ready_episodes_capture_filtered/<episode>/..."
+   "boundary_files": [
+    "episode_manifest.json",
+    "trajectories.jsonl",
+    "truth_frames.jsonl",
+    "weather_meta.jsonl",
+    "render_host_config.json",
+    "scene_occupancy_manifest.json"
    ],
-   "coverage_claim": "path-existence checked; newest boundary file 2026-09-24"
+   "paths": [
+    "aw_data/render_ready_episodes_capture_filtered/<episode>/{episode_manifest.json,trajectories.jsonl,truth_frames.jsonl,weather_meta.jsonl,render_host_config.json,scene_occupancy_manifest.json} (corpus layout; per-episode exact refs in existing_evidence_index.per_episode_canonical)"
+   ],
+   "coverage_claim": "path-existence checked per episode and file; newest boundary file 2026-09-24"
   },
   {
    "label": "p09.ue-input-overlay/v14 (assembly v2, pull_entry v2)",
@@ -175,18 +183,21 @@
    "scope": "36 episodes technical input, original 0..90s window",
    "adoption": "output_coverage_candidate",
    "paths": [
-    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/ue_input_overlay_v14/capture_filtered_updates/<episode>/render_host_config.json"
+    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/ue_input_overlay_v14/source_manifest.json",
+    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/ue_input_overlay_v14/capture_filtered_updates"
    ],
-   "coverage_claim": "episode_status.csv lists 36; path-existence checked; empty new event_realization = NOT_RECOMPUTED (not zero)"
+   "per_episode_refs": "existing_evidence_index.json -> v14_exact36_source_manifest.entries (exact source/artifact refs for all 36 episodes, digest fields excluded)",
+   "coverage_claim": "source_manifest.json read this session: 36 entries with exact source_output/current_trajectory/base_capture_dir and per-file source/package_path; original210_modified=false; empty new event_realization = NOT_RECOMPUTED (not zero)"
   },
   {
    "label": "compute_source_all210_v2_reference",
    "scope": "210 episodes",
    "adoption": "output_coverage_NOT_adopted",
    "paths": [
-    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/compute_source_all210_v2_reference/<episode>"
+    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/compute_source_all210_v2_reference/batch_receipt.json"
    ],
-   "coverage_claim": "adoption_configuration.json: LOW_LOAD_REFERENCE_ONLY, adopted_as_final_workload=false"
+   "per_episode_refs": "existing_evidence_index.json -> low_load_exact210_run_mappings.mappings (exact output dirs for all 210)",
+   "coverage_claim": "batch_receipt.json read this session: 210 exact run mappings (producer p09.compute.local-resource-fifo/v2, COMPLETED); LOW_LOAD_REFERENCE_ONLY, adopted_as_final_workload=false — coverage never adoption"
   },
   {
    "label": "p09.compute.local-resource-fifo/v3 (business requests)",
@@ -201,10 +212,12 @@
    ],
    "adoption": "candidate",
    "paths": [
+    "design/p09/compute_resource/business_group_batch_review.json",
     "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/compute_business_requests_v3_pilot",
     "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/compute_business_group_seeds_v3"
    ],
-   "coverage_claim": "receipts read; independent review verdict PASS_REPAIRED_CODE_AND_ACTUAL_TWELVE_RUNS"
+   "per_episode_refs": "existing_evidence_index.json -> business_exact12_run_outputs.runs (12 exact run output dirs)",
+   "coverage_claim": "receipts read; independent review verdict PASS_REPAIRED_CODE_AND_ACTUAL_TWELVE_RUNS; mechanism evidence only, not 210-wide adoption"
   },
   {
    "label": "receipt replay v4/v5 candidates",

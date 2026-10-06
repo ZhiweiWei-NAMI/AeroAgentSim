@@ -1,9 +1,9 @@
 {
-  "positive_actual_consumer": {
+  "actual_consumer_example": {
     "status": "NONE_ESTABLISHED_IN_NAMED_INPUTS",
-    "reason": "No positive per-episode run/capture receipt in the extraction; documented and configured references excluded."
+    "scope": "No positive example can be supplied from this evidence scope; do not invent one."
   },
-  "configured_pointer_only": {
+  "configured_pointer_only_example": {
     "episode_id": "L1-1_v1__seed00",
     "dimension": "perception/capture",
     "log_ref": "aw_data/render_ready_episodes_capture_filtered/L1-1_v1__seed00/render_host_config.json; aw_data/render_ready_episodes_capture_filtered/L1-1_v1__seed00/scene_occupancy_manifest.json",
@@ -25,7 +25,7 @@
     "time_support_recorded": "",
     "time_support_planned": "planned_capture_grid_0_90s_every_0.5s(181_planned_times;6516_grid_36eps)"
   },
-  "mechanism_check_pending": {
+  "mechanism_pending_example": {
     "episode_id": "L1-1_v1__seed00",
     "dimension": "communication",
     "log_ref": "aw_data/objective_semantic_truth/L1-1_v1__seed00/communication_state.jsonl",

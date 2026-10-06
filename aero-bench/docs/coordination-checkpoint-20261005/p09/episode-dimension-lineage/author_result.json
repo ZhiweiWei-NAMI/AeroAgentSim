@@ -62,18 +62,18 @@
  "six_deliverables": {
   "episode_identity_210.csv": 56768,
   "dimension_lineage_1680.csv": 2257243,
-  "source_version_catalog.json": 12037,
-  "existing_evidence_index.json": 346888,
+  "source_version_catalog.json": 13320,
+  "existing_evidence_index.json": 658915,
   "coverage_summary.json": 105972,
   "next_checks.md": 2919
  },
  "supporting_files": {
-  "extract_lineage.py": 53103,
-  "author_checkpoint.json": 6350,
+  "extract_lineage.py": 60824,
+  "author_checkpoint.json": 6716,
   "README.md": 2461,
   "author_result.json": "this file"
  },
- "total_bytes_all_files": 2843741,
+ "total_bytes_all_files": 3165138,
  "matrix_facts": {
   "rows": 1680,
   "columns": 20,
@@ -151,5 +151,17 @@
   "group5": "explicit auditable episode memberships + numeric counts per bucket (no keyword/regex guessing): missing_mapping 630 rows, missing_coverage_statistics 210 rows, real_mechanism_gap 1050 rows",
   "catalog_adoption": "adoption_basis_rule added: current-adopted only from documentary adoption statements; path/source existence supports coverage, never adoption",
   "available_time": "actor cutoff-availability semantics: UNKNOWN_no_actual_ingest_receipt on all 1680 rows (no ingest receipts exist); recorded/planned time support moved to separate time_support_recorded / time_support_planned columns (matrix now 20 cols)"
+ },
+ "exact_mapping_export": {
+  "authorized_reads": [
+   "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/ue_input_overlay_v14/source_manifest.json (36 entries)",
+   "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/compute_source_all210_v2_reference/batch_receipt.json (210 run mappings)",
+   "design/p09/compute_resource/business_group_batch_review.json actual_runs (12 exact outputs)"
+  ],
+  "per_episode_canonical": "all refs now exact artifact paths (no '...' or <episode> templates); placeholders=0 verified",
+  "v14_exact36": "per-episode source_revision/metadata_revision/source_output/current_trajectory/base_capture_dir + per-file source/package_path/bytes exported verbatim (digest fields excluded); 6 receipt_replay entries export '' for source fields absent in source_manifest",
+  "low_load_exact210": "exact output dirs + run statistics for all 210; producer p09.compute.local-resource-fifo/v2 status COMPLETED; coverage NOT adoption (LOW_LOAD_REFERENCE_ONLY)",
+  "business_exact12": "12 exact run output dirs, 6 episodes x normal/congested, verdict PASS_REPAIRED_CODE_AND_ACTUAL_TWELVE_RUNS",
+  "separation_rule": "versions/output coverage exported in source_version_catalog + evidence index; adoption/consumer status carried as explicit fields and never conflated"
  }
 }
