@@ -1,0 +1,39 @@
+{
+  "schema_version": "p02.config.startup-boundary/v1",
+  "configuration_loaded": true,
+  "provider_started": false,
+  "compilation_id": "a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610",
+  "run_id": "9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd",
+  "saved_seed": 20261002,
+  "observed_current_service": {
+    "pid": 1256400,
+    "mode": "SealedReplayManager",
+    "source_argument": "--sealed-run-id",
+    "run_id": "c69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba",
+    "supports_new_execution": false
+  },
+  "separate_blockers": [
+    {
+      "kind": "operator_authentication",
+      "evidence": "Current unauthenticated catalog request returned401; no bootstrap pair supplied by this browser flow. Tokens were not read or generated. No cookie-login endpoint is implemented in this Control flow."
+    },
+    {
+      "kind": "runtime_source_mismatch",
+      "evidence": "Existing process uses --suite plus --sealed-run-id, not the new immutable compilation. Authentication alone cannot turn this replay manager into a live execution manager."
+    }
+  ],
+  "status": "START_BLOCKED_PENDING_EXISTING_OPERATOR_CONTEXT_AND_MATCHING_EXECUTION_INSTANCE",
+  "security_settings_changed": false,
+  "new_credentials_created": false,
+  "service_started_or_replaced": false,
+  "sources": [
+    "frontend/src/app.ts:1003",
+    "frontend/src/run-control.ts:304",
+    "frontend/src/run-control.ts:327",
+    "aero_bench/control/cli.py:136",
+    "aero_bench/control/manager.py:175"
+  ],
+  "authentication": "Bootstrap operator context sends Authorization; run start also sends X-Aero-Bench-CSRF. No cookie login session.",
+  "version_mismatch": "Current sealed native-v8 replay service is not the saved/compiled native-v7 run; credentials alone do not change the execution source.",
+  "minimum_next_step": "Use an existing authorized operator bootstrap context and matching compilation-bound execution instance. No new privilege/login/token generation, no sealed-replay bypass or service replacement was performed."
+}

@@ -1,0 +1,2114 @@
+{
+  "schema_version": "p09.current-state-facts/v1",
+  "measured_at": "2026-10-05T17:29:15.193091-07:00",
+  "scope": "Current source/config/schema and bounded emitted examples. NOT whole210 observed coverage or hardware calibration.",
+  "accepted_registry": {
+    "families": 12,
+    "declared": 79,
+    "executable": 72,
+    "formula": 56,
+    "direct_observation": 16,
+    "nonexecutable": 7,
+    "scalar_operator_namespace": "P01 current16 operators; not the P08 complete62-op DSL"
+  },
+  "fields": [
+    {
+      "predicate": "airspace.aircraft_inside_restricted_airspace",
+      "family": "airspace_operations",
+      "field": "state.restricted_region_active",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "restricted_region",
+      "source": "derived/plan_window_computer",
+      "path": "geometry.restricted_region_active",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_inside_restricted_airspace",
+      "family": "airspace_operations",
+      "field": "geometry.minimum_restricted_boundary_distance_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "actor|restricted_region",
+      "source": "derived/geometric_computer",
+      "path": "geometry.minimum_restricted_boundary_distance_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_inside_protected_airspace",
+      "family": "airspace_operations",
+      "field": "geometry.inside_protected_airspace",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "aircraft|protected_region",
+      "source": "derived/geometric_computer",
+      "path": "geometry.inside_protected_airspace",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_is_non_cooperative",
+      "family": "airspace_operations",
+      "field": "plan.cooperative_flag",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "aircraft",
+      "source": "derived/plan_window_computer",
+      "path": "plan.cooperative_flag",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_outside_assigned_altitude_band",
+      "family": "airspace_operations",
+      "field": "geometry.position_z_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "actor",
+      "source": "derived/geometric_computer",
+      "path": "geometry.position_z_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_outside_assigned_altitude_band",
+      "family": "airspace_operations",
+      "field": "geometry.assigned_altitude_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "actor",
+      "source": "derived/geometric_computer",
+      "path": "geometry.assigned_altitude_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_occupies_airspace_corridor",
+      "family": "airspace_operations",
+      "field": "geometry.aircraft_inside_corridor",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "actor|corridor",
+      "source": "derived/geometric_computer",
+      "path": "geometry.aircraft_inside_corridor",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_moving_in_corridor",
+      "family": "airspace_operations",
+      "field": "geometry.aircraft_inside_corridor",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "actor|corridor",
+      "source": "derived/geometric_computer",
+      "path": "geometry.aircraft_inside_corridor",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_moving_in_corridor",
+      "family": "airspace_operations",
+      "field": "geometry.speed_mps",
+      "data_type": "numeric",
+      "unit": "m/s",
+      "owner_roles": "actor",
+      "source": "derived/geometric_computer",
+      "path": "geometry.speed_mps",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_stationary_in_corridor",
+      "family": "airspace_operations",
+      "field": "geometry.aircraft_inside_corridor",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "actor|corridor",
+      "source": "derived/geometric_computer",
+      "path": "geometry.aircraft_inside_corridor",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_stationary_in_corridor",
+      "family": "airspace_operations",
+      "field": "geometry.speed_mps",
+      "data_type": "numeric",
+      "unit": "m/s",
+      "owner_roles": "actor",
+      "source": "derived/geometric_computer",
+      "path": "geometry.speed_mps",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.airspace_corridor_over_capacity",
+      "family": "airspace_operations",
+      "field": "scene.maximum_corridor_occupancy_count",
+      "data_type": "numeric",
+      "unit": "aircraft",
+      "owner_roles": "corridor",
+      "source": "derived/geometric_computer",
+      "path": "scene.maximum_corridor_occupancy_count",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.airspace_corridor_over_capacity",
+      "family": "airspace_operations",
+      "field": "scene.maximum_corridor_capacity",
+      "data_type": "numeric",
+      "unit": "aircraft",
+      "owner_roles": "corridor",
+      "source": "derived/geometric_computer",
+      "path": "scene.maximum_corridor_capacity",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_airborne",
+      "family": "airspace_operations",
+      "field": "geometry.z_agl_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "aircraft",
+      "source": "derived/geometric_computer",
+      "path": "geometry.z_agl_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_airborne",
+      "family": "airspace_operations",
+      "field": "geometry.local_ground_reference_z_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "aircraft",
+      "source": "derived/geometric_computer",
+      "path": "geometry.local_ground_reference_z_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_at_home_pad",
+      "family": "airspace_operations",
+      "field": "geometry.xy_distance_to_home_pad_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "aircraft|home_pad",
+      "source": "derived/geometric_computer",
+      "path": "geometry.xy_distance_to_home_pad_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_at_home_pad",
+      "family": "airspace_operations",
+      "field": "geometry.home_pad_id",
+      "data_type": "identifier",
+      "unit": "identifier",
+      "owner_roles": "aircraft",
+      "source": "derived/geometric_computer",
+      "path": "geometry.home_pad_id",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_touchdown",
+      "family": "airspace_operations",
+      "field": "geometry.z_agl_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "aircraft",
+      "source": "derived/geometric_computer",
+      "path": "geometry.z_agl_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_touchdown",
+      "family": "airspace_operations",
+      "field": "geometry.speed_mps",
+      "data_type": "numeric",
+      "unit": "m/s",
+      "owner_roles": "aircraft",
+      "source": "derived/geometric_computer",
+      "path": "geometry.speed_mps",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_in_landing_zone",
+      "family": "airspace_operations",
+      "field": "geometry.xy_distance_to_assigned_landing_zone_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "aircraft|landing_zone",
+      "source": "derived/geometric_computer",
+      "path": "geometry.xy_distance_to_assigned_landing_zone_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "airspace.aircraft_in_landing_zone",
+      "family": "airspace_operations",
+      "field": "geometry.assigned_landing_zone_id",
+      "data_type": "identifier",
+      "unit": "identifier",
+      "owner_roles": "aircraft",
+      "source": "derived/geometric_computer",
+      "path": "geometry.assigned_landing_zone_id",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "ground.vehicle_moving_in_lane",
+      "family": "ground_mobility",
+      "field": "truth.lane_id",
+      "data_type": "identifier",
+      "unit": "identifier",
+      "owner_roles": "vehicle",
+      "source": "truth/truth_frames.jsonl",
+      "path": "truth.lane_id",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "ground.vehicle_moving_in_lane",
+      "family": "ground_mobility",
+      "field": "truth.speed_mps",
+      "data_type": "numeric",
+      "unit": "m/s",
+      "owner_roles": "vehicle",
+      "source": "truth/truth_frames.jsonl",
+      "path": "truth.speed_mps",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "ground.vehicle_stopped_in_lane",
+      "family": "ground_mobility",
+      "field": "truth.lane_id",
+      "data_type": "identifier",
+      "unit": "identifier",
+      "owner_roles": "vehicle",
+      "source": "truth/truth_frames.jsonl",
+      "path": "truth.lane_id",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "ground.vehicle_stopped_in_lane",
+      "family": "ground_mobility",
+      "field": "truth.speed_mps",
+      "data_type": "numeric",
+      "unit": "m/s",
+      "owner_roles": "vehicle",
+      "source": "truth/truth_frames.jsonl",
+      "path": "truth.speed_mps",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "ground.vehicle_queue_exceeds_length",
+      "family": "ground_mobility",
+      "field": "domain.signal_queue.queue_vehicle_count",
+      "data_type": "numeric",
+      "unit": "vehicle",
+      "owner_roles": "road_element",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.signal_queue.queue_vehicle_count",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "ground.road_segment_closed",
+      "family": "ground_mobility",
+      "field": "domain.road_closure.road_closed",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "road_segment",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.road_closure.road_closed",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "ground.pedestrian_in_crosswalk",
+      "family": "ground_mobility",
+      "field": "truth.in_crosswalk",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "pedestrian",
+      "source": "truth/truth_frames.jsonl",
+      "path": "truth.in_crosswalk",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "ground.traffic_signal_malfunction_active",
+      "family": "ground_mobility",
+      "field": "domain.signal_queue.controller_health",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "signal",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.signal_queue.controller_health",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "regulation.traffic_signal_applies_to_vehicle",
+      "family": "mobility_regulation",
+      "field": "truth.controlling_signal_id",
+      "data_type": "identifier",
+      "unit": "identifier",
+      "owner_roles": "vehicle",
+      "source": "truth/truth_frames.jsonl",
+      "path": "truth.controlling_signal_id",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "regulation.vehicle_crosses_stop_line_on_red",
+      "family": "mobility_regulation",
+      "field": "truth.crossed_stop_line",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "vehicle|stop_line|signal",
+      "source": "truth/truth_frames.jsonl",
+      "path": "truth.crossed_stop_line",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "regulation.vehicle_crosses_stop_line_on_red",
+      "family": "mobility_regulation",
+      "field": "truth.controlling_signal_state",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "vehicle|stop_line|signal",
+      "source": "truth/truth_frames.jsonl",
+      "path": "truth.controlling_signal_state",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "regulation.vehicle_exceeds_posted_speed",
+      "family": "mobility_regulation",
+      "field": "truth.speed_mps",
+      "data_type": "numeric",
+      "unit": "m/s",
+      "owner_roles": "vehicle",
+      "source": "truth/truth_frames.jsonl",
+      "path": "truth.speed_mps",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "regulation.vehicle_exceeds_posted_speed",
+      "family": "mobility_regulation",
+      "field": "truth.posted_speed_limit_mps",
+      "data_type": "numeric",
+      "unit": "m/s",
+      "owner_roles": "regulation",
+      "source": "truth/truth_frames.jsonl",
+      "path": "truth.posted_speed_limit_mps",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "regulation.vehicle_violates_following_distance",
+      "family": "mobility_regulation",
+      "field": "truth.following_distance_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "following_vehicle|leading_vehicle",
+      "source": "truth/truth_frames.jsonl#sumo_vehicle.following_distance_m",
+      "path": "truth.following_distance_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "regulation.pedestrian_has_crosswalk_priority",
+      "family": "mobility_regulation",
+      "field": "truth.in_crosswalk",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "pedestrian",
+      "source": "truth/truth_frames.jsonl",
+      "path": "truth.in_crosswalk",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "safety.aircraft_pair_below_separation",
+      "family": "agent_interaction_safety",
+      "field": "derived.nearest_aircraft_distance_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "first_aircraft|second_aircraft",
+      "source": "derived/geometric_computer",
+      "path": "derived.nearest_aircraft_distance_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "safety.aircraft_near_building_structure",
+      "family": "agent_interaction_safety",
+      "field": "derived.nearest_building_distance_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "aircraft|structure",
+      "source": "derived/geometric_computer",
+      "path": "derived.nearest_building_distance_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "safety.aircraft_near_ground_vehicle",
+      "family": "agent_interaction_safety",
+      "field": "derived.nearest_ground_vehicle_distance_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "aircraft|vehicle",
+      "source": "derived/geometric_computer",
+      "path": "derived.nearest_ground_vehicle_distance_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "safety.aircraft_near_pedestrian",
+      "family": "agent_interaction_safety",
+      "field": "derived.nearest_pedestrian_distance_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "aircraft|pedestrian",
+      "source": "derived/geometric_computer",
+      "path": "derived.nearest_pedestrian_distance_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "safety.vehicle_pedestrian_conflict",
+      "family": "agent_interaction_safety",
+      "field": "derived.nearest_pedestrian_distance_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "vehicle|pedestrian",
+      "source": "derived/geometric_computer",
+      "path": "derived.nearest_pedestrian_distance_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "safety.crowd_evacuation_active",
+      "family": "agent_interaction_safety",
+      "field": "domain.crowd_evacuation.evacuation_active",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "crowd",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.crowd_evacuation.evacuation_active",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "facility.aircraft_battery_low",
+      "family": "facility_energy_service",
+      "field": "domain.payload_energy.state_of_charge_ratio",
+      "data_type": "numeric",
+      "unit": "ratio",
+      "owner_roles": "aircraft",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.payload_energy.state_of_charge_ratio",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "facility.charging_station_unavailable",
+      "family": "facility_energy_service",
+      "field": "domain.pad_facility.availability",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "station",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.pad_facility.availability",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "facility.charging_queue_over_capacity",
+      "family": "facility_energy_service",
+      "field": "domain.pad_facility.requester_count",
+      "data_type": "numeric",
+      "unit": "aircraft",
+      "owner_roles": "station",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.pad_facility.requester_count",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "facility.charging_queue_over_capacity",
+      "family": "facility_energy_service",
+      "field": "domain.pad_facility.capacity",
+      "data_type": "numeric",
+      "unit": "aircraft",
+      "owner_roles": "station",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.pad_facility.capacity",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "facility.landing_pad_occupied",
+      "family": "facility_energy_service",
+      "field": "domain.pad_facility.occupied",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "pad",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.pad_facility.occupied",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "facility.landing_pad_contention",
+      "family": "facility_energy_service",
+      "field": "domain.pad_facility.pair_contention",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "pad|first_aircraft|second_aircraft",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.pad_facility.pair_contention",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "communication.channel_bandwidth_over_allocated",
+      "family": "communication_process",
+      "field": "bandwidth.dropped_mbps",
+      "data_type": "numeric",
+      "unit": "Mbps",
+      "owner_roles": "allocation",
+      "source": "communication_state.jsonl",
+      "path": "bandwidth.dropped_mbps",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "communication.channel_bandwidth_over_allocated",
+      "family": "communication_process",
+      "field": "requirement.status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "allocation",
+      "source": "communication_state.jsonl",
+      "path": "requirement.status",
+      "availability": "publisher_requirement",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "communication.handover_in_progress",
+      "family": "communication_process",
+      "field": "handover.active",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "handover",
+      "source": "communication_state.jsonl",
+      "path": "handover.active",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "communication.data_flow_latency_above_threshold",
+      "family": "communication_process",
+      "field": "link_quality.latency_ms",
+      "data_type": "numeric",
+      "unit": "ms",
+      "owner_roles": "flow",
+      "source": "communication_state.jsonl",
+      "path": "link_quality.latency_ms",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "communication.data_flow_latency_above_threshold",
+      "family": "communication_process",
+      "field": "quality_thresholds.latency_ms",
+      "data_type": "numeric",
+      "unit": "ms",
+      "owner_roles": "flow",
+      "source": "communication_state.jsonl",
+      "path": "quality_thresholds.latency_ms",
+      "availability": "governed_row_parameter",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "communication.data_flow_latency_above_threshold",
+      "family": "communication_process",
+      "field": "requirement.status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "flow",
+      "source": "communication_state.jsonl",
+      "path": "requirement.status",
+      "availability": "publisher_requirement",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "communication.packet_loss_above_threshold",
+      "family": "communication_process",
+      "field": "link_quality.packet_loss_ratio",
+      "data_type": "numeric",
+      "unit": "ratio",
+      "owner_roles": "flow",
+      "source": "communication_state.jsonl",
+      "path": "link_quality.packet_loss_ratio",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "communication.packet_loss_above_threshold",
+      "family": "communication_process",
+      "field": "quality_thresholds.packet_loss_ratio",
+      "data_type": "numeric",
+      "unit": "ratio",
+      "owner_roles": "flow",
+      "source": "communication_state.jsonl",
+      "path": "quality_thresholds.packet_loss_ratio",
+      "availability": "governed_row_parameter",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "communication.packet_loss_above_threshold",
+      "family": "communication_process",
+      "field": "requirement.status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "flow",
+      "source": "communication_state.jsonl",
+      "path": "requirement.status",
+      "availability": "publisher_requirement",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "communication.retransmission_in_progress",
+      "family": "communication_process",
+      "field": "requirement.status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "retransmission",
+      "source": "communication_state.jsonl",
+      "path": "requirement.status",
+      "availability": "publisher_requirement",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "communication.retransmission_in_progress",
+      "family": "communication_process",
+      "field": "retransmission.count",
+      "data_type": "integer",
+      "unit": "count",
+      "owner_roles": "retransmission",
+      "source": "communication_state.jsonl",
+      "path": "retransmission.count",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_node_unavailable",
+      "family": "computation_process",
+      "field": "failure.requirement_status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "node",
+      "source": "compute_state.jsonl",
+      "path": "failure.requirement_status",
+      "availability": "publisher_requirement",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_node_unavailable",
+      "family": "computation_process",
+      "field": "node_availability.available",
+      "data_type": "boolean",
+      "unit": "nonmeasurement",
+      "owner_roles": "node",
+      "source": "compute_state.jsonl",
+      "path": "node_availability.available",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_task_queued",
+      "family": "computation_process",
+      "field": "failure.requirement_status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "queue|task",
+      "source": "compute_state.jsonl",
+      "path": "failure.requirement_status",
+      "availability": "publisher_requirement",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_task_queued",
+      "family": "computation_process",
+      "field": "queue_depth",
+      "data_type": "integer",
+      "unit": "count",
+      "owner_roles": "queue|task",
+      "source": "compute_state.jsonl",
+      "path": "queue_depth",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_resource_over_allocated",
+      "family": "computation_process",
+      "field": "capacity.cpu_cores",
+      "data_type": "numeric",
+      "unit": "cores",
+      "owner_roles": "node",
+      "source": "compute_state.jsonl",
+      "path": "capacity.cpu_cores",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_resource_over_allocated",
+      "family": "computation_process",
+      "field": "capacity.gpu_units",
+      "data_type": "numeric",
+      "unit": "gpu_units",
+      "owner_roles": "node",
+      "source": "compute_state.jsonl",
+      "path": "capacity.gpu_units",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_resource_over_allocated",
+      "family": "computation_process",
+      "field": "capacity.memory_mb",
+      "data_type": "numeric",
+      "unit": "MB",
+      "owner_roles": "node",
+      "source": "compute_state.jsonl",
+      "path": "capacity.memory_mb",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_resource_over_allocated",
+      "family": "computation_process",
+      "field": "failure.requirement_status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "node",
+      "source": "compute_state.jsonl",
+      "path": "failure.requirement_status",
+      "availability": "publisher_requirement",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_resource_over_allocated",
+      "family": "computation_process",
+      "field": "resource_request.cpu_cores",
+      "data_type": "numeric",
+      "unit": "cores",
+      "owner_roles": "node",
+      "source": "compute_state.jsonl",
+      "path": "resource_request.cpu_cores",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_resource_over_allocated",
+      "family": "computation_process",
+      "field": "resource_request.gpu_units",
+      "data_type": "numeric",
+      "unit": "gpu_units",
+      "owner_roles": "node",
+      "source": "compute_state.jsonl",
+      "path": "resource_request.gpu_units",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_resource_over_allocated",
+      "family": "computation_process",
+      "field": "resource_request.memory_mb",
+      "data_type": "numeric",
+      "unit": "MB",
+      "owner_roles": "node",
+      "source": "compute_state.jsonl",
+      "path": "resource_request.memory_mb",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_task_offloaded",
+      "family": "computation_process",
+      "field": "failure.requirement_status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "task",
+      "source": "compute_state.jsonl",
+      "path": "failure.requirement_status",
+      "availability": "publisher_requirement",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_task_offloaded",
+      "family": "computation_process",
+      "field": "offload.enabled",
+      "data_type": "boolean",
+      "unit": "nonmeasurement",
+      "owner_roles": "task",
+      "source": "compute_state.jsonl",
+      "path": "offload.enabled",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_task_migrating",
+      "family": "computation_process",
+      "field": "failure.requirement_status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "task",
+      "source": "compute_state.jsonl",
+      "path": "failure.requirement_status",
+      "availability": "publisher_requirement",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_task_migrating",
+      "family": "computation_process",
+      "field": "migration.active",
+      "data_type": "boolean",
+      "unit": "nonmeasurement",
+      "owner_roles": "task",
+      "source": "compute_state.jsonl",
+      "path": "migration.active",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_task_execution_failed",
+      "family": "computation_process",
+      "field": "execution_state",
+      "data_type": "categorical",
+      "unit": "nonmeasurement",
+      "owner_roles": "task",
+      "source": "compute_state.jsonl",
+      "path": "execution_state",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_task_execution_failed",
+      "family": "computation_process",
+      "field": "failure.requirement_status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "task",
+      "source": "compute_state.jsonl",
+      "path": "failure.requirement_status",
+      "availability": "publisher_requirement",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "compute.compute_task_deadline_missed",
+      "family": "computation_process",
+      "field": "deadline.status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "task",
+      "source": "compute_state.jsonl",
+      "path": "deadline.status",
+      "availability": "published_monitor",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "positioning.gnss_quality_degraded",
+      "family": "positioning_navigation",
+      "field": "domain.gnss_navigation.quality_level",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "actor",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.gnss_navigation.quality_level",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "positioning.gnss_spoofing_active",
+      "family": "positioning_navigation",
+      "field": "domain.gnss_navigation.gnss_spoofed",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "actor",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.gnss_navigation.gnss_spoofed",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "positioning.navigation_error_exceeds_tolerance",
+      "family": "positioning_navigation",
+      "field": "domain.gnss_navigation.position_error_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "actor",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.gnss_navigation.position_error_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "positioning.aircraft_deviates_from_planned_route",
+      "family": "positioning_navigation",
+      "field": "navigation.path_deviation",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "actor",
+      "source": "derived/control_response_state",
+      "path": "navigation.path_deviation",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "environment.rain_active",
+      "family": "environment_hazard",
+      "field": "weather.rain",
+      "data_type": "numeric",
+      "unit": "ratio",
+      "owner_roles": "region",
+      "source": "truth/weather_meta.jsonl",
+      "path": "weather.rain",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "environment.fog_active",
+      "family": "environment_hazard",
+      "field": "weather.fog_density",
+      "data_type": "numeric",
+      "unit": "ratio",
+      "owner_roles": "region",
+      "source": "truth/weather_meta.jsonl",
+      "path": "weather.fog_density",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "environment.visibility_below_threshold",
+      "family": "environment_hazard",
+      "field": "weather.visibility_m",
+      "data_type": "numeric",
+      "unit": "m",
+      "owner_roles": "region",
+      "source": "truth/weather_meta.jsonl",
+      "path": "weather.visibility_m",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "environment.wind_speed_above_threshold",
+      "family": "environment_hazard",
+      "field": "weather.wind_speed",
+      "data_type": "numeric",
+      "unit": "m/s",
+      "owner_roles": "region",
+      "source": "truth/weather_meta.jsonl",
+      "path": "weather.wind_speed",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "environment.low_illumination_active",
+      "family": "environment_hazard",
+      "field": "weather.illumination_lux",
+      "data_type": "numeric",
+      "unit": "lux",
+      "owner_roles": "region",
+      "source": "truth/weather_meta.jsonl",
+      "path": "weather.illumination_lux",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "environment.temperature_outside_operating_range",
+      "family": "environment_hazard",
+      "field": "weather.temperature_c",
+      "data_type": "numeric",
+      "unit": "degC",
+      "owner_roles": "region",
+      "source": "truth/weather_meta.jsonl",
+      "path": "weather.temperature_c",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "security.ground_control_station_compromised",
+      "family": "digital_security",
+      "field": "domain.security_command.auth_state",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "station",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.security_command.auth_state",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "security.communication_jamming_impact_active",
+      "family": "digital_security",
+      "field": "domain.security_command.jamming_indicator",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "actor|station",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "domain.security_command.jamming_indicator",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "emergency.temporary_no_fly_zone_active",
+      "family": "operational_constraint_emergency",
+      "field": "state.restricted_region_active",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "region",
+      "source": "derived/runtime_region_state",
+      "path": "scene.restricted_region_active",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "emergency.emergency_isolation_active",
+      "family": "operational_constraint_emergency",
+      "field": "scene.emergency_isolation_active",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "zone",
+      "source": "domain_state_supplement/domain_state_observations.jsonl",
+      "path": "scene.emergency_isolation_active",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "emergency.aircraft_in_return_to_home",
+      "family": "operational_constraint_emergency",
+      "field": "plan.rth_mode_active",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "actor",
+      "source": "derived/plan_window_computer",
+      "path": "plan.rth_mode_active",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "emergency.mission_aborted",
+      "family": "operational_constraint_emergency",
+      "field": "control.mission_abort_active",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "actor",
+      "source": "derived/control_response_state",
+      "path": "control.mission_abort_active",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "emergency.aircraft_in_safe_hold",
+      "family": "operational_constraint_emergency",
+      "field": "control.safe_hold_active",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "actor",
+      "source": "derived/control_response_state",
+      "path": "control.safe_hold_active",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "utm.airspace_authorization_active",
+      "family": "utm",
+      "field": "utm.authorization.status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "authorization",
+      "source": "utm_supplement/airspace_authorization_log.jsonl",
+      "path": "utm.authorization.status",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "utm.airspace_authorization_revoked",
+      "family": "utm",
+      "field": "utm.authorization.status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "authorization",
+      "source": "utm_supplement/airspace_authorization_log.jsonl",
+      "path": "utm.authorization.status",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "utm.flight_plan_approved",
+      "family": "utm",
+      "field": "utm.flight_plan.approval_status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "flight_plan",
+      "source": "utm_supplement/flight_plan_log.jsonl",
+      "path": "utm.flight_plan.approval_status",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "utm.operational_intent_conflict",
+      "family": "utm",
+      "field": "utm.operational_intent.conflict_active",
+      "data_type": "boolean",
+      "unit": "bool",
+      "owner_roles": "first_intent|second_intent",
+      "source": "utm_supplement/operational_intent_pair_log.jsonl",
+      "path": "utm.operational_intent.conflict_active",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    },
+    {
+      "predicate": "utm.deconfliction_active",
+      "family": "utm",
+      "field": "utm.deconfliction.resolution_status",
+      "data_type": "categorical",
+      "unit": "state-code",
+      "owner_roles": "system|aircraft",
+      "source": "utm_supplement/deconfliction_log.jsonl",
+      "path": "utm.deconfliction.resolution_status",
+      "availability": "KNOWN only from admitted actual scoped source; absent is UNKNOWN",
+      "current_LP_fit_consumed": false
+    }
+  ],
+  "unresolved_receivers": [
+    {
+      "predicate": "communication.link_unavailable",
+      "reason": "direct rule operand has no immediate receiver authority: l0:weather_meta.jsonl#dust",
+      "feature_admission": "UNKNOWN, no predicate output substituted as a state"
+    },
+    {
+      "predicate": "communication.link_degraded",
+      "reason": "direct rule operand has no immediate receiver authority: l0:weather_meta.jsonl#dust",
+      "feature_admission": "UNKNOWN, no predicate output substituted as a state"
+    },
+    {
+      "predicate": "communication.message_transmission_failed",
+      "reason": "direct rule operand has no immediate receiver authority: l0:weather_meta.jsonl#dust",
+      "feature_admission": "UNKNOWN, no predicate output substituted as a state"
+    },
+    {
+      "predicate": "communication.communication_session_interrupted",
+      "reason": "direct rule operand has no immediate receiver authority: l0:weather_meta.jsonl#dust",
+      "feature_admission": "UNKNOWN, no predicate output substituted as a state"
+    }
+  ],
+  "family_dimensions": {
+    "airspace_operations": {
+      "executable_predicates": 12,
+      "unique_field_signatures": 16,
+      "fields": [
+        {
+          "field": "state.restricted_region_active",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "derived/plan_window_computer"
+        },
+        {
+          "field": "geometry.minimum_restricted_boundary_distance_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "geometry.inside_protected_airspace",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "plan.cooperative_flag",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "derived/plan_window_computer"
+        },
+        {
+          "field": "geometry.position_z_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "geometry.assigned_altitude_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "geometry.aircraft_inside_corridor",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "geometry.speed_mps",
+          "unit": "m/s",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "scene.maximum_corridor_occupancy_count",
+          "unit": "aircraft",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "scene.maximum_corridor_capacity",
+          "unit": "aircraft",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "geometry.z_agl_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "geometry.local_ground_reference_z_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "geometry.xy_distance_to_home_pad_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "geometry.home_pad_id",
+          "unit": "identifier",
+          "type": "identifier",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "geometry.xy_distance_to_assigned_landing_zone_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "geometry.assigned_landing_zone_id",
+          "unit": "identifier",
+          "type": "identifier",
+          "source": "derived/geometric_computer"
+        }
+      ]
+    },
+    "ground_mobility": {
+      "executable_predicates": 6,
+      "unique_field_signatures": 6,
+      "fields": [
+        {
+          "field": "truth.lane_id",
+          "unit": "identifier",
+          "type": "identifier",
+          "source": "truth/truth_frames.jsonl"
+        },
+        {
+          "field": "truth.speed_mps",
+          "unit": "m/s",
+          "type": "numeric",
+          "source": "truth/truth_frames.jsonl"
+        },
+        {
+          "field": "domain.signal_queue.queue_vehicle_count",
+          "unit": "vehicle",
+          "type": "numeric",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        },
+        {
+          "field": "domain.road_closure.road_closed",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        },
+        {
+          "field": "truth.in_crosswalk",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "truth/truth_frames.jsonl"
+        },
+        {
+          "field": "domain.signal_queue.controller_health",
+          "unit": "state-code",
+          "type": "categorical",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        }
+      ]
+    },
+    "mobility_regulation": {
+      "executable_predicates": 5,
+      "unique_field_signatures": 7,
+      "fields": [
+        {
+          "field": "truth.controlling_signal_id",
+          "unit": "identifier",
+          "type": "identifier",
+          "source": "truth/truth_frames.jsonl"
+        },
+        {
+          "field": "truth.crossed_stop_line",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "truth/truth_frames.jsonl"
+        },
+        {
+          "field": "truth.controlling_signal_state",
+          "unit": "state-code",
+          "type": "categorical",
+          "source": "truth/truth_frames.jsonl"
+        },
+        {
+          "field": "truth.speed_mps",
+          "unit": "m/s",
+          "type": "numeric",
+          "source": "truth/truth_frames.jsonl"
+        },
+        {
+          "field": "truth.posted_speed_limit_mps",
+          "unit": "m/s",
+          "type": "numeric",
+          "source": "truth/truth_frames.jsonl"
+        },
+        {
+          "field": "truth.following_distance_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "truth/truth_frames.jsonl#sumo_vehicle.following_distance_m"
+        },
+        {
+          "field": "truth.in_crosswalk",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "truth/truth_frames.jsonl"
+        }
+      ]
+    },
+    "agent_interaction_safety": {
+      "executable_predicates": 6,
+      "unique_field_signatures": 5,
+      "fields": [
+        {
+          "field": "derived.nearest_aircraft_distance_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "derived.nearest_building_distance_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "derived.nearest_ground_vehicle_distance_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "derived.nearest_pedestrian_distance_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "derived/geometric_computer"
+        },
+        {
+          "field": "domain.crowd_evacuation.evacuation_active",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        }
+      ]
+    },
+    "facility_energy_service": {
+      "executable_predicates": 5,
+      "unique_field_signatures": 6,
+      "fields": [
+        {
+          "field": "domain.payload_energy.state_of_charge_ratio",
+          "unit": "ratio",
+          "type": "numeric",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        },
+        {
+          "field": "domain.pad_facility.availability",
+          "unit": "state-code",
+          "type": "categorical",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        },
+        {
+          "field": "domain.pad_facility.requester_count",
+          "unit": "aircraft",
+          "type": "numeric",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        },
+        {
+          "field": "domain.pad_facility.capacity",
+          "unit": "aircraft",
+          "type": "numeric",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        },
+        {
+          "field": "domain.pad_facility.occupied",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        },
+        {
+          "field": "domain.pad_facility.pair_contention",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        }
+      ]
+    },
+    "communication_process": {
+      "executable_predicates": 9,
+      "unique_field_signatures": 8,
+      "fields": [
+        {
+          "field": "bandwidth.dropped_mbps",
+          "unit": "Mbps",
+          "type": "numeric",
+          "source": "communication_state.jsonl"
+        },
+        {
+          "field": "requirement.status",
+          "unit": "state-code",
+          "type": "categorical",
+          "source": "communication_state.jsonl"
+        },
+        {
+          "field": "handover.active",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "communication_state.jsonl"
+        },
+        {
+          "field": "link_quality.latency_ms",
+          "unit": "ms",
+          "type": "numeric",
+          "source": "communication_state.jsonl"
+        },
+        {
+          "field": "quality_thresholds.latency_ms",
+          "unit": "ms",
+          "type": "numeric",
+          "source": "communication_state.jsonl"
+        },
+        {
+          "field": "link_quality.packet_loss_ratio",
+          "unit": "ratio",
+          "type": "numeric",
+          "source": "communication_state.jsonl"
+        },
+        {
+          "field": "quality_thresholds.packet_loss_ratio",
+          "unit": "ratio",
+          "type": "numeric",
+          "source": "communication_state.jsonl"
+        },
+        {
+          "field": "retransmission.count",
+          "unit": "count",
+          "type": "integer",
+          "source": "communication_state.jsonl"
+        }
+      ]
+    },
+    "computation_process": {
+      "executable_predicates": 7,
+      "unique_field_signatures": 13,
+      "fields": [
+        {
+          "field": "failure.requirement_status",
+          "unit": "state-code",
+          "type": "categorical",
+          "source": "compute_state.jsonl"
+        },
+        {
+          "field": "node_availability.available",
+          "unit": "nonmeasurement",
+          "type": "boolean",
+          "source": "compute_state.jsonl"
+        },
+        {
+          "field": "queue_depth",
+          "unit": "count",
+          "type": "integer",
+          "source": "compute_state.jsonl"
+        },
+        {
+          "field": "capacity.cpu_cores",
+          "unit": "cores",
+          "type": "numeric",
+          "source": "compute_state.jsonl"
+        },
+        {
+          "field": "capacity.gpu_units",
+          "unit": "gpu_units",
+          "type": "numeric",
+          "source": "compute_state.jsonl"
+        },
+        {
+          "field": "capacity.memory_mb",
+          "unit": "MB",
+          "type": "numeric",
+          "source": "compute_state.jsonl"
+        },
+        {
+          "field": "resource_request.cpu_cores",
+          "unit": "cores",
+          "type": "numeric",
+          "source": "compute_state.jsonl"
+        },
+        {
+          "field": "resource_request.gpu_units",
+          "unit": "gpu_units",
+          "type": "numeric",
+          "source": "compute_state.jsonl"
+        },
+        {
+          "field": "resource_request.memory_mb",
+          "unit": "MB",
+          "type": "numeric",
+          "source": "compute_state.jsonl"
+        },
+        {
+          "field": "offload.enabled",
+          "unit": "nonmeasurement",
+          "type": "boolean",
+          "source": "compute_state.jsonl"
+        },
+        {
+          "field": "migration.active",
+          "unit": "nonmeasurement",
+          "type": "boolean",
+          "source": "compute_state.jsonl"
+        },
+        {
+          "field": "execution_state",
+          "unit": "nonmeasurement",
+          "type": "categorical",
+          "source": "compute_state.jsonl"
+        },
+        {
+          "field": "deadline.status",
+          "unit": "state-code",
+          "type": "categorical",
+          "source": "compute_state.jsonl"
+        }
+      ]
+    },
+    "positioning_navigation": {
+      "executable_predicates": 4,
+      "unique_field_signatures": 4,
+      "fields": [
+        {
+          "field": "domain.gnss_navigation.quality_level",
+          "unit": "state-code",
+          "type": "categorical",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        },
+        {
+          "field": "domain.gnss_navigation.gnss_spoofed",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        },
+        {
+          "field": "domain.gnss_navigation.position_error_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        },
+        {
+          "field": "navigation.path_deviation",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "derived/control_response_state"
+        }
+      ]
+    },
+    "environment_hazard": {
+      "executable_predicates": 6,
+      "unique_field_signatures": 6,
+      "fields": [
+        {
+          "field": "weather.rain",
+          "unit": "ratio",
+          "type": "numeric",
+          "source": "truth/weather_meta.jsonl"
+        },
+        {
+          "field": "weather.fog_density",
+          "unit": "ratio",
+          "type": "numeric",
+          "source": "truth/weather_meta.jsonl"
+        },
+        {
+          "field": "weather.visibility_m",
+          "unit": "m",
+          "type": "numeric",
+          "source": "truth/weather_meta.jsonl"
+        },
+        {
+          "field": "weather.wind_speed",
+          "unit": "m/s",
+          "type": "numeric",
+          "source": "truth/weather_meta.jsonl"
+        },
+        {
+          "field": "weather.illumination_lux",
+          "unit": "lux",
+          "type": "numeric",
+          "source": "truth/weather_meta.jsonl"
+        },
+        {
+          "field": "weather.temperature_c",
+          "unit": "degC",
+          "type": "numeric",
+          "source": "truth/weather_meta.jsonl"
+        }
+      ]
+    },
+    "digital_security": {
+      "executable_predicates": 2,
+      "unique_field_signatures": 2,
+      "fields": [
+        {
+          "field": "domain.security_command.auth_state",
+          "unit": "state-code",
+          "type": "categorical",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        },
+        {
+          "field": "domain.security_command.jamming_indicator",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        }
+      ]
+    },
+    "operational_constraint_emergency": {
+      "executable_predicates": 5,
+      "unique_field_signatures": 5,
+      "fields": [
+        {
+          "field": "state.restricted_region_active",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "derived/runtime_region_state"
+        },
+        {
+          "field": "scene.emergency_isolation_active",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "domain_state_supplement/domain_state_observations.jsonl"
+        },
+        {
+          "field": "plan.rth_mode_active",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "derived/plan_window_computer"
+        },
+        {
+          "field": "control.mission_abort_active",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "derived/control_response_state"
+        },
+        {
+          "field": "control.safe_hold_active",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "derived/control_response_state"
+        }
+      ]
+    },
+    "utm": {
+      "executable_predicates": 5,
+      "unique_field_signatures": 4,
+      "fields": [
+        {
+          "field": "utm.authorization.status",
+          "unit": "state-code",
+          "type": "categorical",
+          "source": "utm_supplement/airspace_authorization_log.jsonl"
+        },
+        {
+          "field": "utm.flight_plan.approval_status",
+          "unit": "state-code",
+          "type": "categorical",
+          "source": "utm_supplement/flight_plan_log.jsonl"
+        },
+        {
+          "field": "utm.operational_intent.conflict_active",
+          "unit": "bool",
+          "type": "boolean",
+          "source": "utm_supplement/operational_intent_pair_log.jsonl"
+        },
+        {
+          "field": "utm.deconfliction.resolution_status",
+          "unit": "state-code",
+          "type": "categorical",
+          "source": "utm_supplement/deconfliction_log.jsonl"
+        }
+      ]
+    }
+  },
+  "source_layers": [
+    {
+      "layer": "physical/render",
+      "fields": [
+        "truth_pose.position_enu_m",
+        "truth_pose.velocity_enu_mps",
+        "truth_pose.rotation_deg",
+        "annotations.activity_type",
+        "render_presence",
+        "sumo_traffic_light_states"
+      ],
+      "units": [
+        "m",
+        "m/s",
+        "degree",
+        "category",
+        "boolean/category",
+        "category"
+      ],
+      "update_hz": 10,
+      "producer": "Dataset/tools/batch_generate.py -> Dataset/tools/convert_to_render_ready.py; SUMO road traffic plus authored UAV/control routes",
+      "inference": "Objective pose/state; scripted routes are not PX4 battery/flight physics."
+    },
+    {
+      "layer": "weather/environment",
+      "fields": [
+        "wind_speed",
+        "wind_direction_deg",
+        "rain",
+        "fog_density",
+        "dust",
+        "visibility_m",
+        "temperature_c",
+        "illumination_lux",
+        "hazard_concentration_ppm"
+      ],
+      "update_hz": "Source tick grid; domain projection at2Hz",
+      "producer": "Dataset/tools/weather_fields.py + authored weather transitions",
+      "inference": "Authored/interpolated environment, not measured local weather or verified UE exposure effect."
+    },
+    {
+      "layer": "legacy_compute_communication",
+      "update_hz": 2.0,
+      "producer": "Dataset/semantic_simulation/compute_comm.py",
+      "version": "1.6.0",
+      "actual_row_refs": [
+        "aw_data/compute_comm_supplement/L6-2_v1__seed00/communication_state.jsonl",
+        "aw_data/compute_comm_supplement/L6-2_v1__seed00/compute_state.jsonl"
+      ]
+    },
+    {
+      "layer": "domain_state",
+      "update_hz": 2.0,
+      "producer": "Dataset/semantic_simulation/domain_state.py",
+      "version": "2.2.0",
+      "inference": "Geometry/kinematics plus governed heuristic observations; absence is UNKNOWN."
+    },
+    {
+      "layer": "native_ns3_current_P01_and_P09",
+      "update_hz": 2,
+      "native_event_time": "ns continuous discrete-event clock",
+      "producer": "Dataset/semantic_simulation/ns3_episode/{p01_ns3_provider.cc,runner.py}",
+      "contract": "p01.ns3.mature-datagram-lp/v1",
+      "scope": "Named native runs, not a silent replacement of all210 legacy logs"
+    },
+    {
+      "layer": "compute_queue_candidate",
+      "update_hz": "Persistent event queue; state2Hz",
+      "producer": "Dataset/semantic_simulation/ns3_episode/{compute_resource.py,compute_business_profile.py}",
+      "inference": "Explicit arrival/service/CPU/memory/deadlines, GPU/offload/migration unsupported where absent. Sidecar, no proven compute-driven flight response."
+    }
+  ],
+  "legacy_communication": {
+    "version": "1.6.0",
+    "fields": [
+      "availability",
+      "capacity_factor",
+      "distance_m",
+      "effective_range_m",
+      "latency_ms",
+      "operational_factor",
+      "packet_loss_ratio",
+      "quality_level",
+      "quality_score",
+      "range_factor",
+      "weather_attenuation"
+    ],
+    "snr_sinr_rssi": "Neither calculated nor emitted by the current legacy link-quality function",
+    "formula": "q=clamp((1-distance/effective_range)*weather*operational*availability,0,1); latency=20+(1-q)*200 ms; P=(1-q)^2*0.25 under the current profile",
+    "per_flow_nominal_capacity_mbps": 80.0,
+    "shared_station_budget": false,
+    "evidence": "Dataset/semantic_simulation/compute_comm.py:3256-3355; emitted1.6.0 representative row",
+    "realism": "Controlled deterministic envelope; old urban_lte_v2x_discrete label does not implement LTE PHY/HARQ/RLC."
+  },
+  "legacy_compute": {
+    "version": "1.6.0",
+    "fields": [
+      "allocation",
+      "allocation_id",
+      "capacity",
+      "cpu_utilization_pct",
+      "deadline",
+      "declared_capacity",
+      "entity_id",
+      "episode_id",
+      "execution_id",
+      "execution_state",
+      "failure",
+      "failure_state_id",
+      "gpu_utilization_pct",
+      "inbound_allocation",
+      "memory_used_mb",
+      "migration",
+      "migration_id",
+      "model_id",
+      "model_version",
+      "node_availability",
+      "node_id",
+      "node_kind",
+      "offload",
+      "offload_id",
+      "queue_depth",
+      "queue_id",
+      "resource_balance",
+      "resource_id",
+      "resource_request",
+      "rule_id",
+      "rule_version",
+      "schema_name",
+      "schema_version",
+      "source_class",
+      "source_refs",
+      "task_id",
+      "task_kind",
+      "tick"
+    ],
+    "units": "cpu_cores, gpu_units (profile scalar), memory_mb, utilization_pct, queue count, deadline tick",
+    "realism": "Tick resource-demand/allocation/offload state generator; not measured inference times or full persistent per-job CPU/GPU scheduling."
+  },
+  "current_radio": {
+    "native_version": "3.48",
+    "radio": {
+      "node_id": "L6-2_v2__seed00:tower_l6_2_v2:life0",
+      "standard": "802.11n",
+      "channel_number": 1,
+      "channel_width_mhz": 20,
+      "frequency_mhz": 2412,
+      "data_mode": "HtMcs0",
+      "control_mode": "HtMcs0",
+      "tx_power_dbm": 16,
+      "tx_gain_db": 0,
+      "rx_gain_db": 0,
+      "rx_sensitivity_dbm": -95,
+      "configured_rx_noise_figure_db": 7,
+      "rx_noise_figure_observation": "applied via WifiPhy::SetRxNoiseFigure; no public getter",
+      "mac_queues": [
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        }
+      ]
+    },
+    "propagation": {
+      "model": "ns3::LogDistancePropagationLossModel",
+      "exponent": 3,
+      "reference_distance_m": 1,
+      "reference_loss_db": 40.09532929124565
+    },
+    "geometry": {
+      "enabled": false,
+      "configuration_ref": null,
+      "support": "inactive",
+      "metadata": null,
+      "initial_application_link_geometry": [],
+      "propagation_los_evaluations": 0,
+      "propagation_nlos_evaluations": 0,
+      "shadowing_applied": false,
+      "applied_shadowing": false,
+      "extra_fast_fading": false,
+      "shadowing": null
+    },
+    "antenna_offsets": {
+      "mode": "ad_hoc",
+      "band_ghz": 2.4,
+      "gateway_node_id": "L6-2_v2__seed00:tower_l6_2_v2:life0",
+      "gateway_antenna_offset_m": [
+        0,
+        0,
+        3
+      ],
+      "mobile_antenna_offset_m": [
+        0,
+        0,
+        0
+      ],
+      "shared_channel": true
+    },
+    "nominal_phy_mbps": 6.5,
+    "thermal_noise_formula": "-174 dBm/Hz +10log10(width_Hz)+NF_dB",
+    "derived_integrated_noise_dbm": -93.98970004336019,
+    "snr_sinr_rssi": {
+      "PHY": "Yans/WifiPhy uses propagation, interference/error-rate reception internally; no numeric RF observation callback connected in this provider.",
+      "logged": false,
+      "predictive_state": false,
+      "boundary": "Do not substitute BENCH public.network.link.v3 RSSI/SNR: it is a different schema/provider."
+    },
+    "radio_evidence": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_v2_seed00_v5_candidate/coupled/L6-2_v2__seed00/receipt_replay/run1/summary.json#/network/backend/loaded_radio",
+    "config_evidence": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_v2_seed00_v5_candidate/coupled/L6-2_v2__seed00/receipt_replay/run1/run_config.json",
+    "calibrated": false,
+    "limitations": [
+      "No field-calibrated Donghu intercept/exponent/PER/antenna/noise",
+      "This R1 run has no buildings/shadowing/extra fast fading; R2 code support is not evidence R1 uses it",
+      "20MHz channel width,6.5Mbps nominal PHY and8Mbps burst offered load are distinct quantities"
+    ]
+  },
+  "native_loss_and_latency": {
+    "source": "Dataset/semantic_simulation/ns3_episode/event_logs.py and schemas/network_state.schema.json",
+    "P": "ttl_loss_count / mature_accepted_count: unique UDP socket-accepted datagrams whose200ms expiry lies in the1s mature observation window and strictly before observation time; timely RX must be < first_tx+TTL.",
+    "L": "Mean RX-first_tx in ms among timely received unique datagrams in the SAME mature accepted cohort. All-dropped/no timely RX is UNKNOWN, not0.",
+    "queue": "Actual MAC packet/byte snapshots at t-1ns,2Hz;500packets/500ms lifetime.",
+    "censor": "Not yet mature/horizon pending outside denominator; late RX is TTL failure but not asserted permanent PHY loss.",
+    "gateway_estimate": "P09 gateway_expected_sequence_loss is scheduled expected telemetry vs timely gateway receipts; distinct definition/version/authority from accepted-TX mature P. Actor acts only on actual downlink accepted command."
+  },
+  "current_Qwen_fit": {
+    "fields": [
+      {
+        "field": "p01_ns3.latency_mean_ms",
+        "unit": "ms",
+        "update_hz": 2
+      },
+      {
+        "field": "p01_ns3.packet_loss_ratio",
+        "unit": "1",
+        "update_hz": 2
+      }
+    ],
+    "actual_native_input_manifest": "design/p01_ns3/transported_q/manifest.json",
+    "actual_radio_evidence": "aw_data/ns3_episode_v7_training_r1/L6-2_v1__seed00/baseline/run1/summary.json#/network/backend",
+    "actual_radio": {
+      "node_id": "L6-2_v1__seed00:tower_l6_2_v1:life0",
+      "standard": "802.11n",
+      "channel_number": 1,
+      "channel_width_mhz": 20,
+      "frequency_mhz": 2412,
+      "data_mode": "HtMcs0",
+      "control_mode": "HtMcs0",
+      "tx_power_dbm": 16,
+      "tx_gain_db": 0,
+      "rx_gain_db": 0,
+      "rx_sensitivity_dbm": -95,
+      "configured_rx_noise_figure_db": 7,
+      "rx_noise_figure_observation": "applied via WifiPhy::SetRxNoiseFigure; no public getter",
+      "mac_queues": [
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        }
+      ]
+    },
+    "actual_propagation": {
+      "model": "ns3::LogDistancePropagationLossModel",
+      "exponent": 3,
+      "reference_distance_m": 1,
+      "reference_loss_db": 40.09532929124565
+    },
+    "actual_building_geometry_enabled": false,
+    "other_inputs": [
+      "Exact source/receiver/flow owner-role edges",
+      "Known/applicable/time masks",
+      "Bound query AST/threshold120ms or0.05 and raw-unit fixed rules",
+      "TRAIN-only per-field normalization"
+    ],
+    "not_numeric_inputs": [
+      "RSSI",
+      "SNR",
+      "SINR",
+      "ENU coordinates",
+      "camera images",
+      "LiDAR",
+      "CPU/GPU utilization"
+    ],
+    "H": 8,
+    "H_seconds": 3.5,
+    "F": 10,
+    "F_seconds": 5,
+    "K": [
+      1,
+      8
+    ],
+    "future_scope": "Oracle true future plus TRAIN-frozen Gaussian noise; not a deployable forecaster",
+    "evidence": [
+      "Dataset/semantic_simulation/ns3_episode/training_adapter.py:36-39",
+      "Dataset/world_model/rule_factor_graph/qwen_frozen_batch.py",
+      "Dataset/world_model/rule_factor_graph/qwen_query_batch.py",
+      "design/p01_generic/qwen_preparation/first_epoch_820_result_review.json"
+    ],
+    "cross_family_probe": "Separate bounded real-source graph batch exercises additional typed categories/vector/UNKNOWN fields; it does not turn the L/P fit into all-family training."
+  }
+}

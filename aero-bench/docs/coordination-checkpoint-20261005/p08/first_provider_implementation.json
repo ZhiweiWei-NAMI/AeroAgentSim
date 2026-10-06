@@ -1,0 +1,203 @@
+{
+  "schema_version": "p08.public-first-provider-implementation-checkpoint/v1",
+  "checked_at": "2026-10-05T17:38:17.664735-07:00",
+  "source_git_head": "ea295073cdd310a31fa2e29317a3571bc716bb87",
+  "version_identity": "Current worktree module SHA256; Git HEAD alone does not identify uncommitted implementation",
+  "implementations": [
+    {
+      "server_path": "/mnt/data2/weizhiwei/AERO_BENCH/aero_bench/integration/p08_types.py",
+      "relative_path": "aero_bench/integration/p08_types.py",
+      "sha256": "79c8b5e8113c5e0364bdc7ce436226f9c598dc72eb2f211d8b93a5183d69f501",
+      "bytes": 2440,
+      "classes": [
+        {
+          "name": "TypedCell",
+          "methods": []
+        },
+        {
+          "name": "SliceResult",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "server_path": "/mnt/data2/weizhiwei/AERO_BENCH/aero_bench/integration/p08_observation_adapters.py",
+      "relative_path": "aero_bench/integration/p08_observation_adapters.py",
+      "sha256": "13ba73d216a69514f65f7dafb36468c49dca8e0b35bf998c96e9317d5bf015a4",
+      "bytes": 21919,
+      "classes": [
+        {
+          "name": "ObservationBinding",
+          "methods": [
+            "__post_init__"
+          ]
+        },
+        {
+          "name": "AcquisitionExpectation",
+          "methods": [
+            "__post_init__"
+          ]
+        },
+        {
+          "name": "OrderSelection",
+          "methods": [
+            "__post_init__"
+          ]
+        },
+        {
+          "name": "PayloadManifestRelation",
+          "methods": [
+            "__post_init__"
+          ]
+        },
+        {
+          "name": "BenchFlightTelemetryAdapter",
+          "methods": [
+            "project"
+          ]
+        },
+        {
+          "name": "LogisticsOrderLoadAdapter",
+          "methods": [
+            "__init__",
+            "project"
+          ]
+        }
+      ]
+    },
+    {
+      "server_path": "/mnt/data2/weizhiwei/AERO_BENCH/aero_bench/integration/p08_network_journal.py",
+      "relative_path": "aero_bench/integration/p08_network_journal.py",
+      "sha256": "f5a1de6b5adc69edcf839b54dcbf2137e6a2eb841708c06d0c1a64eaef579ce4",
+      "bytes": 12230,
+      "classes": [
+        {
+          "name": "FlowIdentity",
+          "methods": [
+            "key"
+          ]
+        },
+        {
+          "name": "ClosedFlowJournal",
+          "methods": [
+            "__init__",
+            "close",
+            "record_submission",
+            "record_closed_stage",
+            "record_application_decision",
+            "close_application_before",
+            "goodput",
+            "closed_window_availability_ns"
+          ]
+        },
+        {
+          "name": "Ns3ClosedFlowWindowAdapter",
+          "methods": [
+            "__init__",
+            "project"
+          ]
+        }
+      ]
+    },
+    {
+      "server_path": "/mnt/data2/weizhiwei/AERO_BENCH/aero_bench/integration/p08_ns3_provider.py",
+      "relative_path": "aero_bench/integration/p08_ns3_provider.py",
+      "sha256": "462b28e76e2a43f80f9a8f4db5f66ed3edbc37669feeaf37edd17f155295b28a",
+      "bytes": 3748,
+      "classes": [
+        {
+          "name": "JournaledNs3Provider",
+          "methods": [
+            "__init__",
+            "_submit_message",
+            "_record_mailbox_batches"
+          ]
+        }
+      ]
+    },
+    {
+      "server_path": "/mnt/data2/weizhiwei/AERO_BENCH/tests/integration/test_p08_observation_adapters.py",
+      "relative_path": "tests/integration/test_p08_observation_adapters.py",
+      "sha256": "1efd77af6b820e58713030f11f4c57dd7405db307b0e49e4447788df69b5b96d",
+      "bytes": 16759,
+      "classes": [
+        {
+          "name": "TestBenchFlightTelemetryAdapter",
+          "methods": [
+            "test_binding_accepts_matching_observation",
+            "test_amsl_reference_is_preserved_verbatim",
+            "test_requested_enu_velocity_only_with_declared_ned_frame",
+            "test_receipt_preserved_before_barrier_and_mapping_unavailable",
+            "test_independent_expectation_mismatch_is_rejected",
+            "test_missing_authored_expectation_yields_unknown_not_false",
+            "test_binding_vehicle_must_match_observation",
+            "test_undeclared_velocity_frame_is_rejected",
+            "test_actor_and_binding_evidence"
+          ]
+        },
+        {
+          "name": "TestLogisticsOrderLoadAdapter",
+          "methods": [
+            "test_within_capacity_evaluates_true",
+            "test_over_capacity_evaluates_false",
+            "test_missing_payload_relation_stays_unknown",
+            "test_relation_mass_overrides_order_cargo_mass",
+            "test_version_mismatch_stays_unknown",
+            "test_order_not_released_at_observed_time_stays_unknown",
+            "test_assignee_mismatch_stays_unknown",
+            "test_pinned_aircraft_must_be_the_assignee",
+            "test_missing_pinned_profile_stays_unknown",
+            "test_pinned_unit_is_verified_against_the_declared_fleet",
+            "test_order_instance_binding_is_kept_as_evidence"
+          ]
+        }
+      ]
+    },
+    {
+      "server_path": "/mnt/data2/weizhiwei/AERO_BENCH/tests/integration/test_p08_network_journal.py",
+      "relative_path": "tests/integration/test_p08_network_journal.py",
+      "sha256": "fb5cafb7fc610f8c74bbdce91963ba68dae8ee408e0db4cf5f1b804d2abb1c3b",
+      "bytes": 9710,
+      "classes": []
+    }
+  ],
+  "actual_focused_test_run": {
+    "command": "python -m pytest -q tests/integration/test_p08_observation_adapters.py tests/integration/test_p08_network_journal.py",
+    "exit_code": 0,
+    "passed": 35,
+    "observation_fixture_tests": 20,
+    "network_journal_fixture_tests": 15,
+    "pytest_seconds": 2.51,
+    "basis": "Typed fixtures only. No new native provider runtime was started."
+  },
+  "native_execution_accepted": false,
+  "slices": [
+    {
+      "slice": "nav",
+      "class": "BenchFlightTelemetryAdapter",
+      "provider_input": "FlightTelemetryObservation",
+      "implemented": "Explicit aircraft/actor/expected subject+quantity+unit; AMSL retained, declared NED to ENU; received-before-barrier evidence retained when source-clock mapping absent",
+      "real_run_missing": "One authorized actual telemetry observation at a closed barrier, independent acquisition expectation, exact actor/provider/run binding. No native first-slice output accepted yet."
+    },
+    {
+      "slice": "network goodput",
+      "class": "Ns3ClosedFlowWindowAdapter; ClosedFlowJournal; JournaledNs3Provider",
+      "implemented": "SQLite durable complete raw deliveries before mailbox replacement; immutable submission ledger; reset epoch/generation flow binding; dedup; half-open windows; distinct application acceptance and closure; unclosed/missing UNKNOWN",
+      "real_run_missing": "Opt-in seam must be exercised in one real native run with the actual application consumer recording acceptance and closure watermark, plus independent required-goodput profile. NetworkStageResult alone is insufficient."
+    },
+    {
+      "slice": "logistics",
+      "class": "LogisticsOrderLoadAdapter",
+      "provider_input": "LogisticsBusinessQueryResult + exact pinned AircraftUnit",
+      "implemented": "Released order/version/assignee, independent payload-role manifest relation, kg mass vs capacity; missing binding UNKNOWN; no physical custody claim",
+      "real_run_missing": "One actual current-time business query result, verified exact assignee fleet profile and independent payload-manifest relation. Renderer identity fixture is not native custody evidence."
+    }
+  ],
+  "evaluator_scope": "Seven operators only for supplied three rules; full P08 verified62-op semantics is a separate namespace, not silently replaced.",
+  "private_material_not_published": [
+    "design/p08_integration/first_slices.json",
+    "Original catalog/cases/ZIP",
+    "raw provider outputs"
+  ],
+  "runtime_patch": "Original six observable_v2 runtime files absent; native v1.0.2 missing-max_gap patch not applied. First slices are independent."
+}

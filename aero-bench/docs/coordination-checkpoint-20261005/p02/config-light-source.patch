@@ -1,0 +1,697 @@
+diff --git a/frontend/city-studio.html b/frontend/city-studio.html
+index d48fa8d..a8da074 100644
+--- a/frontend/city-studio.html
++++ b/frontend/city-studio.html
+@@ -14 +14 @@
+-          <a class="studio-brand" href="./?scene=1" aria-label="返回 AERO-BENCH 城市视图"><span class="studio-brand-mark">◇</span><span>AERO-BENCH</span></a>
++          <a class="studio-brand" href="./?scene=1" aria-label="返回 AERO-BENCH 城市视图" data-studio-aria="studio.city"><span class="studio-brand-mark">◇</span><span>AERO-BENCH</span></a>
+@@ -16 +16 @@
+-          <div class="studio-topbar-title"><span class="studio-eyebrow">SCENARIO STUDIO</span><strong>城市运行工作区</strong></div>
++          <div class="studio-topbar-title"><span class="studio-eyebrow">SCENARIO STUDIO</span><strong data-studio-i18n="studio.workspace">城市运行工作区</strong></div>
+@@ -19 +19 @@
+-          <label class="studio-scene-name" for="studio-name"><span>场景名称</span><input id="studio-name" type="text" aria-label="场景名称" maxlength="120" /></label>
++          <label class="studio-scene-name" for="studio-name"><span data-studio-i18n="studio.name">场景名称</span><input id="studio-name" type="text" aria-label="场景名称" data-studio-aria="studio.name" maxlength="120" /></label>
+@@ -23,5 +23,9 @@
+-          <button id="studio-save" type="button" class="studio-button studio-button-primary">保存草稿</button>
+-          <button id="studio-export" type="button" class="studio-button">导出 JSON</button>
+-          <label class="studio-button studio-import-label" for="studio-import">导入 JSON<input id="studio-import" type="file" accept=".json,application/json" aria-label="导入工作区 JSON" /></label>
+-          <a class="studio-topbar-link" href="./?scene=1">城市视图</a>
+-          <a class="studio-topbar-link" href="./asset-library.html">素材库</a>
++          <div class="studio-language" role="group" aria-label="Language / 语言">
++            <button type="button" class="studio-button" data-studio-language="zh" aria-pressed="true">中文</button>
++            <button type="button" class="studio-button" data-studio-language="en" aria-pressed="false">English</button>
++          </div>
++          <button id="studio-save" type="button" class="studio-button studio-button-primary" data-studio-i18n="studio.save">保存草稿</button>
++          <button id="studio-export" type="button" class="studio-button" data-studio-i18n="studio.export">导出 JSON</button>
++          <label class="studio-button studio-import-label" for="studio-import"><span data-studio-i18n="studio.import">导入 JSON</span><input id="studio-import" type="file" accept=".json,application/json" aria-label="导入工作区 JSON" data-studio-aria="studio.import" /></label>
++          <a class="studio-topbar-link" href="./?scene=1" data-studio-i18n="studio.city">城市视图</a>
++          <a class="studio-topbar-link" href="./asset-library.html" data-studio-i18n="studio.library">素材库</a>
+@@ -32 +36 @@
+-        <aside id="studio-sidebar" class="studio-sidebar" aria-label="场景配置">
++        <aside id="studio-sidebar" class="studio-sidebar" aria-label="场景配置" data-studio-aria="studio.configuration">
+@@ -34,2 +38,2 @@
+-            <div><span class="studio-eyebrow">AUTHORING DRAFT</span><h1 id="studio-sidebar-title">场景配置</h1><p id="studio-sidebar-subtitle">按模块编辑，同一份草稿随时可导出。</p></div>
+-            <button id="studio-collapse" type="button" class="studio-collapse" aria-label="收起配置面板" aria-expanded="true" title="收起配置面板">◀</button>
++            <div><span class="studio-eyebrow">AUTHORING DRAFT</span><h1 id="studio-sidebar-title" data-studio-i18n="studio.configuration">场景配置</h1><p id="studio-sidebar-subtitle" data-studio-i18n="studio.subtitle">按模块编辑，同一份草稿随时可导出。</p></div>
++            <button id="studio-collapse" type="button" class="studio-collapse" aria-label="收起配置面板" data-studio-aria="studio.collapse" aria-expanded="true" title="收起配置面板" data-studio-title="studio.collapse">◀</button>
+@@ -38,6 +42,6 @@
+-            <a href="?tab=runtime" data-tab="runtime" class="studio-tab" aria-label="场景机群"><span class="studio-tab-index">01</span><span>场景机群</span></a>
+-            <a href="?tab=spatial" data-tab="spatial" class="studio-tab" aria-label="设施与空域"><span class="studio-tab-index">02</span><span>设施与空域</span></a>
+-            <a href="?tab=algorithm" data-tab="algorithm" class="studio-tab" aria-label="调度算法"><span class="studio-tab-index">03</span><span>调度算法</span></a>
+-            <a href="?tab=events" data-tab="events" class="studio-tab" aria-label="事件与标签"><span class="studio-tab-index">04</span><span>事件与标签</span></a>
+-            <a href="?tab=compile" data-tab="compile" class="studio-tab" aria-label="编译与运行"><span class="studio-tab-index">05</span><span>编译运行</span></a>
+-            <a href="?tab=region" data-tab="region" class="studio-tab" aria-label="OSM 区域选取"><span class="studio-tab-index">06</span><span>OSM 选区</span></a>
++            <a href="?tab=runtime" data-tab="runtime" class="studio-tab" data-studio-aria="studio.runtime" aria-label="场景机群"><span class="studio-tab-index">01</span><span data-studio-i18n="studio.runtime">场景机群</span></a>
++            <a href="?tab=spatial" data-tab="spatial" class="studio-tab" data-studio-aria="studio.spatial" aria-label="设施与空域"><span class="studio-tab-index">02</span><span data-studio-i18n="studio.spatial">设施与空域</span></a>
++            <a href="?tab=algorithm" data-tab="algorithm" class="studio-tab" data-studio-aria="studio.algorithm" aria-label="调度算法"><span class="studio-tab-index">03</span><span data-studio-i18n="studio.algorithm">调度算法</span></a>
++            <a href="?tab=events" data-tab="events" class="studio-tab" data-studio-aria="studio.events" aria-label="事件与标签"><span class="studio-tab-index">04</span><span data-studio-i18n="studio.events">事件与标签</span></a>
++            <a href="?tab=compile" data-tab="compile" class="studio-tab" data-studio-aria="studio.compile" aria-label="编译与运行"><span class="studio-tab-index">05</span><span data-studio-i18n="studio.compile">编译运行</span></a>
++            <a href="?tab=region" data-tab="region" class="studio-tab" data-studio-aria="studio.region" aria-label="OSM 区域选取"><span class="studio-tab-index">06</span><span data-studio-i18n="studio.region">OSM 选区</span></a>
+@@ -48 +52 @@
+-          <div class="studio-sidebar-foot"><span class="provenance-chip" data-provenance="authored">人工编排草稿</span> · 不产生正式运行或验证结论</div>
++          <div class="studio-sidebar-foot"><span class="provenance-chip" data-provenance="authored" data-studio-i18n="studio.authored">人工编排草稿</span><span data-studio-i18n="studio.noRun"> · 不产生正式运行或验证结论</span></div>
+@@ -53,2 +57,2 @@
+-            <div><span class="studio-eyebrow">CITY OPERATIONS PREVIEW</span><h2>场景编排预览 <span id="studio-preview-kind" class="provenance-chip" data-provenance="recorded">／ SUMO 记录背景</span></h2></div>
+-            <div class="studio-preview-head-right"><span id="studio-preview-state" class="studio-preview-state">城市加载中</span><button id="studio-open-sidebar" type="button" class="studio-button studio-open-sidebar" aria-label="展开配置面板" aria-expanded="false" hidden>展开配置</button></div>
++            <div><span class="studio-eyebrow">CITY OPERATIONS PREVIEW</span><h2><span data-studio-i18n="studio.preview">场景编排预览</span> <span id="studio-preview-kind" class="provenance-chip" data-provenance="recorded">／ SUMO 记录背景</span></h2></div>
++            <div class="studio-preview-head-right"><span id="studio-preview-state" class="studio-preview-state">城市加载中</span><button id="studio-open-sidebar" type="button" class="studio-button studio-open-sidebar" aria-label="展开配置面板" data-studio-aria="studio.openAria" aria-expanded="false" hidden data-studio-i18n="studio.open">展开配置</button></div>
+@@ -61,2 +65,2 @@
+-            <div class="studio-transport"><button id="studio-play" type="button" class="studio-button studio-play" aria-label="播放编排预览" disabled>播放</button><label for="studio-time">编排时间</label><input id="studio-time" type="range" min="0" max="120" step="0.1" value="30" aria-label="编排预览时间" disabled /><output id="studio-clock" for="studio-time">0:30</output></div>
+-            <div class="studio-preview-selection"><label for="studio-follow">跟随编排机群</label><select id="studio-follow" aria-label="跟随编排机群"><option value="">城市总览</option></select></div>
++            <div class="studio-transport"><button id="studio-play" type="button" class="studio-button studio-play" aria-label="播放编排预览" disabled data-studio-i18n="studio.play">播放</button><label for="studio-time" data-studio-i18n="studio.time">编排时间</label><input id="studio-time" type="range" min="0" max="120" step="0.1" value="30" aria-label="编排预览时间" disabled /><output id="studio-clock" for="studio-time">0:30</output></div>
++            <div class="studio-preview-selection"><label for="studio-follow" data-studio-i18n="studio.follow">跟随编排机群</label><select id="studio-follow" aria-label="跟随编排机群" data-studio-aria="studio.follow"><option value="" data-studio-i18n="studio.overview">城市总览</option></select></div>
+@@ -66 +70 @@
+-          <footer class="studio-preview-foot"><span id="studio-preview-foot-primary">交通参数是 SUMO 记录显示上限；只筛选已有轨迹，不生成交通。</span><span id="studio-preview-foot-secondary">草稿尚未接入 Business / Energy Provider。导出 JSON 后需按正式规格接入执行与验证流程。</span></footer>
++          <footer class="studio-preview-foot"><span id="studio-preview-foot-primary">交通参数是 SUMO 记录显示上限；只筛选已有轨迹，不生成交通。</span><span id="studio-preview-foot-secondary" data-studio-i18n="studio.footer">草稿尚未接入 Business / Energy Provider。导出 JSON 后需按正式规格接入执行与验证流程。</span></footer>
+diff --git a/frontend/src/city-compile-panel.ts b/frontend/src/city-compile-panel.ts
+index c86350d..89363c4 100644
+--- a/frontend/src/city-compile-panel.ts
++++ b/frontend/src/city-compile-panel.ts
+@@ -2 +2 @@ import {
+-  compileCityDraft, fetchNativeSceneCatalog,
++  compileCityDraft, fetchCompilation, fetchNativeSceneCatalog,
+@@ -5 +5,3 @@ import {
+-import type { CityWorkspaceConfig } from "./city-workspace-config";
++import { loadCityWorkspaceConfig, parseCityWorkspaceConfig, type CityWorkspaceConfig } from "./city-workspace-config";
++import { sameJson } from "./city-roads";
++import { t, tf } from "./i18n";
+@@ -9,0 +12 @@ export interface CityCompiledSelection {
++  readonly draftSha256: string;
+@@ -12,0 +16,8 @@ export interface CityCompiledSelection {
++function freezeSavedDraft<T>(value: T): T {
++  if (value !== null && typeof value === "object") {
++    for (const child of Object.values(value)) freezeSavedDraft(child);
++    Object.freeze(value);
++  }
++  return value;
++}
++
+@@ -64 +75 @@ export function renderCityCompilePanel(
+-  heading.textContent = "原生场景编译";
++  heading.textContent = t("compile.title");
+@@ -69 +80 @@ export function renderCityCompilePanel(
+-  provenance.textContent = "注册来源待校验";
++  provenance.textContent = t("compile.sourcePending");
+@@ -71,2 +82 @@ export function renderCityCompilePanel(
+-  addNote(card, "编译只解析输入并返回不可变结果；它不执行、不验证，也不会在此面板发起运行。"
+-    + "编译结果的 executed 和 verified 字段恒为 false。");
++  addNote(card, t("compile.scope"));
+@@ -77 +87 @@ export function renderCityCompilePanel(
+-  select.setAttribute("aria-label", "原生场景注册");
++  select.setAttribute("aria-label", t("compile.registration"));
+@@ -82 +92 @@ export function renderCityCompilePanel(
+-  selectCaption.textContent = "原生场景注册";
++  selectCaption.textContent = t("compile.registration");
+@@ -86 +96 @@ export function renderCityCompilePanel(
+-  const catalogNote = addNote(card, "正在加载原生场景目录……");
++  const catalogNote = addNote(card, t("compile.catalogLoading"));
+@@ -92 +102 @@ export function renderCityCompilePanel(
+-  compileButton.textContent = "编译当前草稿";
++  compileButton.textContent = t("compile.savedDraft");
+@@ -100 +110 @@ export function renderCityCompilePanel(
+-  referenceButton.textContent = "载入所选注册的参考草稿";
++  referenceButton.textContent = t("compile.loadReference");
+@@ -128 +138 @@ export function renderCityCompilePanel(
+-    title.textContent = "存在执行阻断";
++    title.textContent = t("compile.blocked");
+@@ -130,3 +140 @@ export function renderCityCompilePanel(
+-    addNote(panel, `草稿哈希 ${result.draft_sha256} 相对注册 ${result.registration_id} 未能解析为可执行输入。`
+-      + `该注册声明的可编辑执行字段：${selected?.editable_execution_fields.join("、") || "无"}。`
+-      + "其余变更字段需按下列指针修正。");
++    addNote(panel, tf("compile.blockedDetail", { draft: result.draft_sha256, registration: result.registration_id, fields: selected?.editable_execution_fields.join(", ") || t("compile.none") }));
+@@ -150 +158 @@ export function renderCityCompilePanel(
+-    title.textContent = "编译完成（尚未执行、尚未验证）";
++    title.textContent = t("compile.completed");
+@@ -152,2 +160,4 @@ export function renderCityCompilePanel(
+-    keyValueRow(panel, "编译 ID", result.compilation_id);
+-    keyValueRow(panel, "草稿哈希", result.draft_sha256);
++    keyValueRow(panel, t("compile.id"), result.compilation_id);
++    keyValueRow(panel, t("compile.savedIdentity"), result.draft_sha256);
++    panel.dataset.savedDraftSha256 = result.draft_sha256;
++    panel.dataset.compilationId = result.compilation_id;
+@@ -156 +166 @@ export function renderCityCompilePanel(
+-      keyValueRow(panel, "已解析 Run ID", `${run.run_id} · ${run.executor_kind} · ${run.feasible ? "可行" : "不可行"}`);
++      keyValueRow(panel, t("compile.runId"), `${run.run_id} · ${run.executor_kind} · ${run.feasible ? t("compile.feasible") : t("compile.infeasible")}`);
+@@ -158 +168 @@ export function renderCityCompilePanel(
+-    addNote(panel, "本面板不发起运行；下方按钮仅把已解析的编译 ID 和 Run ID 交给调用方决定是否运行。");
++    addNote(panel, t("compile.handoffNote"));
+@@ -162 +172 @@ export function renderCityCompilePanel(
+-    runButton.textContent = "运行";
++    runButton.textContent = t("compile.handoffButton");
+@@ -166,0 +177 @@ export function renderCityCompilePanel(
++        draftSha256: result.draft_sha256,
+@@ -183 +194 @@ export function renderCityCompilePanel(
+-    provenance.textContent = selected === null ? "无可用注册来源" : "已注册原生来源 · 尚未运行";
++    provenance.textContent = selected === null ? t("compile.noRegistration") : t("compile.registered");
+@@ -185 +196 @@ export function renderCityCompilePanel(
+-    compileButton.textContent = busy ? "编译中…" : "编译当前草稿";
++    compileButton.textContent = t(busy ? "compile.busy" : "compile.savedDraft");
+@@ -195 +206 @@ export function renderCityCompilePanel(
+-        catalogNote.textContent = `原生场景目录不可用：[${outcome.code}] ${outcome.detail}`;
++        catalogNote.textContent = tf("compile.catalogUnavailable", { code: outcome.code, detail: outcome.detail });
+@@ -201,2 +212,2 @@ export function renderCityCompilePanel(
+-        ? "原生场景目录为空：尚无已发布的注册，草稿暂无法编译。"
+-        : `已加载 ${registrations.length} 个原生场景注册。选择注册后编译当前草稿。`;
++        ? t("compile.catalogEmpty")
++        : tf("compile.catalogCount", { n: registrations.length });
+@@ -206 +217 @@ export function renderCityCompilePanel(
+-      catalogNote.textContent = `读取原生场景目录失败：${error instanceof Error ? error.message : String(error)}`;
++      catalogNote.textContent = tf("compile.catalogFailed", { error: error instanceof Error ? error.message : String(error) });
+@@ -223 +234 @@ export function renderCityCompilePanel(
+-      if (!disposed) renderError(`参考草稿载入失败：${error instanceof Error ? error.message : String(error)}`);
++      if (!disposed) renderError(tf("compile.referenceFailed", { error: error instanceof Error ? error.message : String(error) }));
+@@ -233,5 +244,20 @@ export function renderCityCompilePanel(
+-    void compileCityDraft({
+-      registration_id: registration.registration_id,
+-      registration_sha256: registration.registration_sha256,
+-      draft: getDraft(),
+-    }, controller.signal).then(outcome => {
++    void (async () => {
++      const saved = loadCityWorkspaceConfig();
++      if (saved === null) throw new Error(t("compile.savedMissing"));
++      const current = parseCityWorkspaceConfig(getDraft());
++      if (!sameJson(saved, current)) throw new Error(t("compile.unsavedChanged"));
++      const draft = freezeSavedDraft(saved);
++      const outcome = await compileCityDraft({
++        registration_id: registration.registration_id,
++        registration_sha256: registration.registration_sha256,
++        draft,
++      }, controller.signal);
++      if (outcome.kind === "compiled" || outcome.kind === "blocked") {
++        const published = await fetchCompilation(outcome.result.compilation_id, controller.signal);
++        if (published.kind !== "found") throw new Error(tf("compile.publishedFailed", {
++          code: published.code, detail: published.detail,
++        }));
++        if (!sameJson(outcome.result, published.result)) throw new Error(t("compile.identityMismatch"));
++      }
++      return outcome;
++    })().then(outcome => {
+@@ -241 +267 @@ export function renderCityCompilePanel(
+-      else renderError(`编译请求被拒绝：[${outcome.code}] ${outcome.detail}`);
++      else renderError(tf("compile.requestRejected", { code: outcome.code, detail: outcome.detail }));
+@@ -244 +270 @@ export function renderCityCompilePanel(
+-      renderError(`编译请求失败：${error instanceof Error ? error.message : String(error)}`);
++      renderError(tf("compile.requestFailed", { detail: error instanceof Error ? error.message : String(error) }));
+diff --git a/frontend/src/city-preview-scenes.ts b/frontend/src/city-preview-scenes.ts
+index a7c7f6e..18592d1 100644
+--- a/frontend/src/city-preview-scenes.ts
++++ b/frontend/src/city-preview-scenes.ts
+@@ -0,0 +1 @@
++import { t, tf } from "./i18n";
+@@ -108,0 +110,5 @@ export function createCityPreviewSceneDraft(preset: CityPreviewScenePreset): Cit
++
++function presetLabel(preset: CityPreviewScenePreset): string {
++  return t(preset.id === "huangpu" ? "studio.region.huangpu" : "studio.region.jingan");
++}
++
+@@ -129 +135 @@ export function renderCityPreviewScenePresetPanel(
+-  panel.append(element("h2", "studio-panel-title", "城市工程预览"));
++  panel.append(element("h2", "studio-panel-title", t("studio.region.title")));
+@@ -131,3 +137 @@ export function renderCityPreviewScenePresetPanel(
+-    "选择其他地区不会立即修改草稿。明确应用后，系统先校验该地区的场景清单和空间资料；"
+-    + "只有核验成功才会用一份全新的地区草稿替换当前草稿，并在三维预览门通过后保存。"
+-    + "当前设施、机队绑定、订单、事件和创作景观不会跨区迁移。");
++    t("studio.region.consequence"));
+@@ -136 +140 @@ export function renderCityPreviewScenePresetPanel(
+-  field.append(element("span", "", "普通城市预览"));
++  field.append(element("span", "", t("studio.region.ordinary")));
+@@ -138 +142 @@ export function renderCityPreviewScenePresetPanel(
+-  select.setAttribute("aria-label", "普通城市预览地区");
++  select.setAttribute("aria-label", t("studio.region.aria"));
+@@ -140 +144 @@ export function renderCityPreviewScenePresetPanel(
+-  if (current === null) select.append(new Option("当前草稿不是已发布地区预设", ""));
++  if (current === null) select.append(new Option(t("studio.region.notPreset"), ""));
+@@ -142 +146 @@ export function renderCityPreviewScenePresetPanel(
+-    select.append(new Option(preset.optionLabel, preset.id));
++    select.append(new Option(presetLabel(preset), preset.id));
+@@ -147 +151 @@ export function renderCityPreviewScenePresetPanel(
+-  const apply = element("button", "studio-button", "校验并切换地区");
++  const apply = element("button", "studio-button", t("studio.region.apply"));
+@@ -150 +154 @@ export function renderCityPreviewScenePresetPanel(
+-    current === null ? "当前草稿路径不会被自动替换。" : `当前地区：${current.optionLabel}。`);
++    current === null ? t("studio.region.unchanged") : tf("studio.region.current", { region: presetLabel(current) }));
+@@ -167,2 +171,2 @@ export function renderCityPreviewScenePresetPanel(
+-      ? `当前地区：${current?.optionLabel ?? "非预设场景"}。草稿未修改。`
+-      : `将创建 ${selected.optionLabel} 的全新草稿；当前草稿及其未保存更改不会迁移。`;
++      ? tf("studio.region.noChange", { region: current === null ? t("studio.region.other") : presetLabel(current) })
++      : tf("studio.region.willCreate", { region: presetLabel(selected) });
+@@ -176,2 +180,2 @@ export function renderCityPreviewScenePresetPanel(
+-    apply.textContent = "正在校验地区场景…";
+-    result.textContent = `正在读取并核验 ${selected.optionLabel}；当前草稿与本地存储尚未改动。`;
++    apply.textContent = t("studio.region.busy");
++    result.textContent = tf("studio.region.verifying", { region: presetLabel(selected) });
+@@ -186 +190 @@ export function renderCityPreviewScenePresetPanel(
+-      result.textContent = `地区切换失败：${error instanceof Error ? error.message : String(error)}。当前草稿与本地存储未改动。`;
++      result.textContent = tf("studio.region.failed", { error: error instanceof Error ? error.message : String(error) });
+@@ -191 +195 @@ export function renderCityPreviewScenePresetPanel(
+-      apply.textContent = "校验并切换地区";
++      apply.textContent = t("studio.region.apply");
+diff --git a/frontend/src/city-runtime-panel.ts b/frontend/src/city-runtime-panel.ts
+index f81fff2..f2da513 100644
+--- a/frontend/src/city-runtime-panel.ts
++++ b/frontend/src/city-runtime-panel.ts
+@@ -0,0 +1 @@
++import { t, tf } from "./i18n";
+@@ -25 +26 @@ const TIME_OF_DAY_OPTIONS = [
+-  ["day", "日景"], ["twilight", "黄昏"], ["night", "夜景"],
++  ["day", "studio.runtime.day"], ["twilight", "studio.runtime.twilight"], ["night", "studio.runtime.night"],
+@@ -29,2 +30,2 @@ const PRESET_OPTIONS = [
+-  ["clear", "晴"], ["cloudy", "多云"], ["lightRain", "小雨"],
+-  ["heavyRain", "大雨"], ["fog", "雾"], ["snow", "雪"],
++  ["clear", "studio.runtime.clear"], ["cloudy", "studio.runtime.cloudy"], ["lightRain", "studio.runtime.drizzle"],
++  ["heavyRain", "studio.runtime.heavyRain"], ["fog", "studio.runtime.fog"], ["snow", "studio.runtime.snow"],
+@@ -152 +153 @@ export function renderCityRuntimePanel(
+-  const weather = card("环境");
++  const weather = card(t("studio.runtime.environment"));
+@@ -155 +156 @@ export function renderCityRuntimePanel(
+-    [["", "自定义"], ...PRESET_OPTIONS], value => {
++    [["", t("studio.runtime.custom")], ...PRESET_OPTIONS.map(([value, key]) => [value, t(key)] as const)], value => {
+@@ -161,2 +162,2 @@ export function renderCityRuntimePanel(
+-  weatherFields.append(field("环境预设", preset));
+-  weatherFields.append(field("云量（0–1）", numberControl("environment.cloudCover",
++  weatherFields.append(field(t("studio.runtime.preset"), preset));
++  weatherFields.append(field(t("studio.runtime.cloud"), numberControl("environment.cloudCover",
+@@ -164 +165 @@ export function renderCityRuntimePanel(
+-  weatherFields.append(field("降水类型", selectControl("environment.precipitation",
++  weatherFields.append(field(t("studio.runtime.precipitation"), selectControl("environment.precipitation",
+@@ -166 +167 @@ export function renderCityRuntimePanel(
+-    [["none", "无"], ["drizzle", "小雨"], ["rain", "雨"], ["snow", "雪"], ["hail", "冰雹"]],
++    [["none", t("studio.runtime.none")], ["drizzle", t("studio.runtime.drizzle")], ["rain", t("studio.runtime.rain")], ["snow", t("studio.runtime.snow")], ["hail", t("studio.runtime.hail")]],
+@@ -168 +169 @@ export function renderCityRuntimePanel(
+-  weatherFields.append(field("降水强度（毫米/小时）", numberControl("environment.precipitationRateMmPerH",
++  weatherFields.append(field(t("studio.runtime.precipitationRate"), numberControl("environment.precipitationRateMmPerH",
+@@ -171 +172 @@ export function renderCityRuntimePanel(
+-  weatherFields.append(field("能见度（米）", numberControl("environment.visibilityM",
++  weatherFields.append(field(t("studio.runtime.visibility"), numberControl("environment.visibilityM",
+@@ -173 +174 @@ export function renderCityRuntimePanel(
+-  weatherFields.append(field("风速（米/秒）", numberControl("environment.windMps",
++  weatherFields.append(field(t("studio.runtime.wind"), numberControl("environment.windMps",
+@@ -175 +176 @@ export function renderCityRuntimePanel(
+-  weatherFields.append(field("风向（度）", numberControl("environment.windDirectionDeg",
++  weatherFields.append(field(t("studio.runtime.windDirection"), numberControl("environment.windDirectionDeg",
+@@ -178,2 +179,2 @@ export function renderCityRuntimePanel(
+-  weatherFields.append(field("时段", selectControl("environment.timeOfDay", current.environment.timeOfDay,
+-    TIME_OF_DAY_OPTIONS, timeOfDay => {
++  weatherFields.append(field(t("studio.runtime.time"), selectControl("environment.timeOfDay", current.environment.timeOfDay,
++    TIME_OF_DAY_OPTIONS.map(([value, key]) => [value, t(key)] as const), timeOfDay => {
+@@ -189 +190 @@ export function renderCityRuntimePanel(
+-  weatherFields.append(field("地面反射", reflections));
++  weatherFields.append(field(t("studio.runtime.reflections"), reflections));
+@@ -192 +193 @@ export function renderCityRuntimePanel(
+-  const fleetCard = card("无人机编队");
++  const fleetCard = card(t("studio.runtime.fleet"));
+@@ -197,2 +198,2 @@ export function renderCityRuntimePanel(
+-    heading.textContent = `编队 ${index + 1} · ${entry.id}`;
+-    row.append(heading, button(`删除编队 ${index + 1}`, () => {
++    heading.textContent = tf("studio.runtime.fleetEntry", { n: index + 1, id: entry.id });
++    row.append(heading, button(tf("studio.runtime.deleteFleet", { n: index + 1 }), () => {
+@@ -202,2 +203,2 @@ export function renderCityRuntimePanel(
+-    fields.append(field(`编队 ${index + 1} 型号`, selectControl(`fleet.${index}.assetId`, entry.assetId,
+-      CITY_FLEET_ASSETS.map(asset => [asset.id, asset.label] as const), assetId => {
++    fields.append(field(tf("studio.runtime.fleetModel", { n: index + 1 }), selectControl(`fleet.${index}.assetId`, entry.assetId,
++      CITY_FLEET_ASSETS.map(asset => [asset.id, asset.id === "model:quadcopter-40-preview" ? t("studio.runtime.cameraModel") : asset.label] as const), assetId => {
+@@ -206 +207 @@ export function renderCityRuntimePanel(
+-    fields.append(field(`编队 ${index + 1} 数量`, numberControl(`fleet.${index}.count`, entry.count,
++    fields.append(field(tf("studio.runtime.fleetCount", { n: index + 1 }), numberControl(`fleet.${index}.count`, entry.count,
+@@ -208 +209 @@ export function renderCityRuntimePanel(
+-    const homeOptions: Array<readonly [string, string]> = [["", "未指定起降点"]];
++    const homeOptions: Array<readonly [string, string]> = [["", t("studio.runtime.noHome")]];
+@@ -214 +215 @@ export function renderCityRuntimePanel(
+-    fields.append(field(`编队 ${index + 1} 起降点`, selectControl(`fleet.${index}.homeFacilityId`,
++    fields.append(field(tf("studio.runtime.fleetHome", { n: index + 1 }), selectControl(`fleet.${index}.homeFacilityId`,
+@@ -218 +219 @@ export function renderCityRuntimePanel(
+-    fields.append(field(`编队 ${index + 1} 电池容量（瓦时）`, numberControl(`fleet.${index}.batteryWh`,
++    fields.append(field(tf("studio.runtime.battery", { n: index + 1 }), numberControl(`fleet.${index}.batteryWh`,
+@@ -222 +223 @@ export function renderCityRuntimePanel(
+-    fields.append(field(`编队 ${index + 1} 预留电量比例（0–1）`, numberControl(`fleet.${index}.reserveRatio`,
++    fields.append(field(tf("studio.runtime.reserve", { n: index + 1 }), numberControl(`fleet.${index}.reserveRatio`,
+@@ -229 +230 @@ export function renderCityRuntimePanel(
+-  fleetCard.append(button("添加编队", () => {
++  fleetCard.append(button(t("studio.runtime.addFleet"), () => {
+@@ -237 +238 @@ export function renderCityRuntimePanel(
+-  const traffic = card("背景交通与人流");
++  const traffic = card(t("studio.runtime.traffic"));
+@@ -239 +240 @@ export function renderCityRuntimePanel(
+-  trafficFields.append(field("背景机动车数", numberControl("traffic.vehicles", current.traffic.vehicles,
++  trafficFields.append(field(t("studio.runtime.vehicles"), numberControl("traffic.vehicles", current.traffic.vehicles,
+@@ -241 +242 @@ export function renderCityRuntimePanel(
+-  trafficFields.append(field("背景自行车数", numberControl("traffic.bicycles", current.traffic.bicycles,
++  trafficFields.append(field(t("studio.runtime.bicycles"), numberControl("traffic.bicycles", current.traffic.bicycles,
+@@ -243 +244 @@ export function renderCityRuntimePanel(
+-  trafficFields.append(field("背景行人数", numberControl("traffic.pedestrians", current.traffic.pedestrians,
++  trafficFields.append(field(t("studio.runtime.pedestrians"), numberControl("traffic.pedestrians", current.traffic.pedestrians,
+@@ -248 +249 @@ export function renderCityRuntimePanel(
+-  note.textContent = "场景需求；本次SUMO回放仅按已有轨迹显示上限，增加流量需重新生成SUMO场景。";
++  note.textContent = t("studio.runtime.trafficNote");
+@@ -252 +253 @@ export function renderCityRuntimePanel(
+-  const run = card("运行参数");
++  const run = card(t("studio.runtime.run"));
+@@ -254 +255 @@ export function renderCityRuntimePanel(
+-  runFields.append(field("随机种子", numberControl("seed", current.seed, 0, Number.MAX_SAFE_INTEGER, "1",
++  runFields.append(field(t("studio.runtime.seed"), numberControl("seed", current.seed, 0, Number.MAX_SAFE_INTEGER, "1",
+diff --git a/frontend/src/city-studio.css b/frontend/src/city-studio.css
+index acfecca..7553ad5 100644
+--- a/frontend/src/city-studio.css
++++ b/frontend/src/city-studio.css
+@@ -722,0 +723,77 @@
++
++/* Configuration workbench palette. This scope changes chrome, not scene materials. */
++#city-studio {
++  color-scheme: light;
++  --studio-surface-canvas: #f1f5f9;
++  --studio-surface-raised: #ffffff;
++  --studio-surface-panel: #ffffff;
++  --studio-surface-control: #f8fafc;
++  --studio-surface-hover: #eff6ff;
++  --studio-ink: #0f172a;
++  --studio-ink-dim: #334155;
++  --studio-muted: #475569;
++  --studio-faint: #64748b;
++  --studio-line: #dbe3ec;
++  --studio-line-strong: #93b4e0;
++  --studio-accent: #2563eb;
++  --studio-accent-bright: #1d4ed8;
++  --studio-positive: #047857;
++  --studio-warning: #92400e;
++  --studio-danger: #b91c1c;
++  --studio-shadow-panel: 0 8px 24px rgba(15, 23, 42, .06);
++  --studio-shadow-overlay: 0 12px 30px rgba(15, 23, 42, .12);
++  --surface-panel: #ffffff;
++  --surface-raised: #ffffff;
++  --surface-control: #f8fafc;
++  --surface-hover: #eff6ff;
++  --surface-canvas: #f1f5f9;
++  --surface-panel-strong: #f8fafc;
++  --border-default: #dbe3ec;
++  --border-strong: #93b4e0;
++  --ink-default: #1e293b;
++  --ink-strong: #0f172a;
++  --ink-muted: #64748b;
++  --accent-primary: #2563eb;
++  --status-positive: #047857;
++  --status-warning: #92400e;
++  --status-danger: #b91c1c;
++  --violet: #7c3aed;
++}
++#city-studio :is(.studio-topbar, .studio-sidebar, .studio-preview-head, .studio-preview-toolbar,
++  .studio-preview-foot, .studio-sidebar-foot, .studio-card) {
++  background: #ffffff;
++  color: var(--studio-ink);
++  border-color: var(--studio-line);
++  box-shadow: var(--studio-shadow-panel);
++}
++#city-studio .studio-preview { background: var(--studio-surface-canvas); }
++#city-studio :is(.studio-brand, .studio-topbar-title, .studio-sidebar-head h1,
++  #studio-panel h2, #studio-panel h3, #studio-panel h4, .studio-row > strong) { color: var(--studio-ink); }
++#city-studio :is(.studio-eyebrow, .studio-brand-mark) { color: var(--studio-accent); }
++#city-studio :is(.studio-sidebar-head p, .studio-note, .studio-help, .studio-empty, .studio-source,
++  .studio-field, .studio-field > span:first-child, .studio-transport, .studio-preview-selection,
++  .studio-preview-metrics, .studio-preview-foot, .studio-tab-index) { color: var(--studio-muted); }
++#city-studio .studio-tab { background: #f8fafc; color: var(--studio-ink-dim); white-space: normal; }
++#city-studio .studio-tab.is-active { background: #eff6ff; color: #1d4ed8; border-color: #93b4e0; box-shadow: inset 0 2px #2563eb; }
++#city-studio .studio-tab.is-active .studio-tab-index { color: #2563eb; }
++#city-studio .studio-button-primary, #city-studio [data-studio-language][aria-pressed="true"] {
++  background: #2563eb; border-color: #2563eb; color: #ffffff;
++}
++#city-studio .studio-topbar-actions { gap: 6px; }
++#city-studio .studio-language { display: flex; gap: 3px; }
++#city-studio .studio-language button { padding-inline: 7px; }
++#city-studio .studio-map-corner-top { background: rgba(255,255,255,.96); color: #334155; border-color: #dbe3ec; }
++#city-studio :is(.studio-preview-state, .studio-save-status) { background: #f8fafc; }
++#city-studio .studio-preview-state { color: #334155; }
++#city-studio .studio-transport output { color: #334155; }
++#city-studio .studio-grid:has(> .studio-card) { grid-template-columns: minmax(0, 1fr); }
++#city-studio .studio-row:has(> strong) { display: grid; grid-template-columns: minmax(90px, .7fr) minmax(0, 1fr); align-items: start; }
++#city-studio .studio-row > span { min-width: 0; overflow-wrap: anywhere; }
++#city-studio .studio-note { overflow-wrap: anywhere; }
++#city-studio .studio-panel-scroll { scrollbar-color: #cbd5e1 transparent; }
++#city-studio .studio-issues { background: #fffbeb; color: #92400e; }
++#city-studio .studio-issues[data-state="error"] { background: #fef2f2; color: #b91c1c; }
++#city-studio .operations-monitor-map-background { fill: #f1f5f9; }
++#city-studio .operations-monitor-map-building { fill: #cbd5e1; }
++#city-studio .operations-monitor-map-marker-label { fill: #1e293b; stroke: #ffffff; }
++#city-studio .operations-monitor-map-marker-shape { fill: #ffffff; stroke: #334155; }
+diff --git a/frontend/src/city-studio.test.ts b/frontend/src/city-studio.test.ts
+index 6e5344b..102030c 100644
+--- a/frontend/src/city-studio.test.ts
++++ b/frontend/src/city-studio.test.ts
+@@ -4 +4 @@ import {
+-  nativeReferenceSpatialSource, resolveRegisteredSource, validateStudioGeometry,
++  nativeReferenceSpatialSource, renderCompiledHandoff, resolveRegisteredSource, savedNativeRegistration, translateStudioShell, validateStudioGeometry,
+@@ -5,0 +6,3 @@ import {
++import studioHtml from "../city-studio.html?raw";
++import { renderCityRuntimePanel } from "./city-runtime-panel";
++import { setLanguage } from "./i18n";
+@@ -37,0 +41,54 @@ const facility: CityFacility = {
++describe("compiled saved-configuration handoff", () => {
++  it("renders English runtime controls while preserving model IDs and edited seed", () => {
++    const root = document.createElement("div");
++    const config = createDefaultCityWorkspaceConfig();
++    const before = JSON.stringify(config);
++    let edited: typeof config | null = null;
++    setLanguage("en");
++    renderCityRuntimePanel(root, config, next => { edited = next; });
++    expect(root.textContent).toContain("Random seed");
++    expect(root.querySelector('option[value="model:quadcopter-40-preview"]')?.textContent).toBe("Camera quadrotor");
++    expect(root.querySelector('select[name="environment.precipitation"] option[value="snow"]')?.textContent).toBe("Snow");
++    expect(JSON.stringify(config)).toBe(before);
++    const seed = root.querySelector<HTMLInputElement>('[name="seed"]')!;
++    seed.value = "20261003";
++    seed.dispatchEvent(new Event("change"));
++    expect(edited).toEqual({ ...config, seed: 20261003 });
++    setLanguage("zh");
++  });
++  it("translates the actual shell while preserving the import control and edited name", () => {
++    const doc = new DOMParser().parseFromString(studioHtml, "text/html");
++    const root = doc.querySelector<HTMLElement>("#city-studio")!;
++    const name = root.querySelector<HTMLInputElement>("#studio-name")!;
++    const imported = root.querySelector<HTMLInputElement>("#studio-import")!;
++    name.value = "authored identity unchanged";
++    setLanguage("en");
++    translateStudioShell(root);
++    expect(root.querySelector("#studio-save")?.textContent).toBe("Save draft");
++    expect(root.querySelector("[data-tab=runtime]")?.textContent).toContain("Scene and fleet");
++    expect(root.querySelector("#studio-import")).toBe(imported);
++    expect(name.value).toBe("authored identity unchanged");
++    setLanguage("zh");
++    translateStudioShell(root);
++    expect(root.querySelector("#studio-save")?.textContent).toBe("保存草稿");
++  });
++  it.each(["zh", "en"] as const)("shows immutable identities without starting a run (%s)", language => {
++    setLanguage(language);
++    const root = document.createElement("div");
++    const selection = {
++      compilationId: "compilation.saved", registrationId: "scene.saved",
++      draftSha256: "a".repeat(64), runIds: ["b".repeat(64), "c".repeat(64)],
++    };
++    renderCompiledHandoff(root, selection);
++    expect(root.querySelector("h3")?.textContent).toBe(
++      language === "en" ? "Compiled, not yet run" : "已编译，尚未运行",
++    );
++    for (const identity of [selection.compilationId, selection.registrationId,
++      selection.draftSha256, ...selection.runIds]) expect(root.textContent).toContain(identity);
++    expect(root.textContent).toContain(language === "en" ? "Saved configuration identity" : "已保存配置身份");
++    expect(root.querySelector("a")?.getAttribute("href")).toBe("/");
++    expect(root.querySelector("button")).toBeNull();
++    setLanguage("zh");
++  });
++});
++
+@@ -81,0 +139,9 @@ describe("native reference spatial source", () => {
++  it("resolves the saved exact source selector without guessing URLs or choosing another registration", () => {
++    const registration = { registration_id: "inspection.saved", scene_path: "/native/saved.json",
++      scene_url: "/authoring/v1/native-scenes/inspection.saved/scene" } as NativeSceneRegistration;
++    expect(savedNativeRegistration("/native/saved.json", [registration])).toBe(registration);
++    expect(savedNativeRegistration("/native/other.json", [registration])).toBeNull();
++    expect(() => savedNativeRegistration("/native/saved.json", [registration,
++      { ...registration, registration_id: "inspection.ambiguous" }])).toThrow("Multiple native registrations");
++  });
++
+diff --git a/frontend/src/city-studio.ts b/frontend/src/city-studio.ts
+index c08e908..a79fd26 100644
+--- a/frontend/src/city-studio.ts
++++ b/frontend/src/city-studio.ts
+@@ -9 +9 @@ import {
+-  fetchAuthoringCatalog, fetchAuthoringJob, fetchAuthoringSource, loadReadyAuthoringPresentation,
++  fetchAuthoringCatalog, fetchAuthoringJob, fetchAuthoringSource, fetchNativeSceneCatalog, loadReadyAuthoringPresentation,
+@@ -73,0 +74 @@ import type { TraceTarget } from "./state/target";
++import { currentLanguage, initLanguage, setLanguage, t, tf, type I18nKey, type Language } from "./i18n";
+@@ -76,0 +78,17 @@ const TABS: readonly StudioTab[] = ["runtime", "spatial", "algorithm", "events",
++
++/** Translate only explicit presentation bindings; inputs, IDs and source data stay intact. */
++export function translateStudioShell(root: HTMLElement): void {
++  for (const [binding, attribute] of [["data-studio-i18n", "textContent"],
++    ["data-studio-aria", "aria-label"], ["data-studio-title", "title"]] as const) {
++    for (const node of root.querySelectorAll<HTMLElement>(`[${binding}]`)) {
++      const key = node.getAttribute(binding) as I18nKey;
++      const label = t(key);
++      if (label === undefined) throw new Error(`Unknown Studio presentation key: ${key}`);
++      if (attribute === "textContent") node.textContent = label;
++      else node.setAttribute(attribute, label);
++    }
++  }
++  for (const button of root.querySelectorAll<HTMLButtonElement>("[data-studio-language]")) {
++    button.setAttribute("aria-pressed", String(button.dataset.studioLanguage === currentLanguage()));
++  }
++}
+@@ -345,0 +364,9 @@ function selectedTab(): StudioTab {
++/** Saved scenePath is a source selector, not a fetch URL for a native registration. */
++export function savedNativeRegistration(
++  scenePath: string, registrations: readonly NativeSceneRegistration[],
++): NativeSceneRegistration | null {
++  const matches = registrations.filter(item => item.scene_path === scenePath);
++  if (matches.length > 1) throw new Error(`Multiple native registrations select ${scenePath}`);
++  return matches[0] ?? null;
++}
++
+@@ -348 +375 @@ function selectedTab(): StudioTab {
+-function renderCompiledHandoff(root: HTMLElement, selection: CityCompiledSelection): void {
++export function renderCompiledHandoff(root: HTMLElement, selection: CityCompiledSelection): void {
+@@ -353 +380 @@ function renderCompiledHandoff(root: HTMLElement, selection: CityCompiledSelecti
+-  title.textContent = "已编译，尚未运行";
++  title.textContent = t("compile.handoffTitle");
+@@ -356,3 +383,5 @@ function renderCompiledHandoff(root: HTMLElement, selection: CityCompiledSelecti
+-  detail.textContent = `编译 ${selection.compilationId} · 场景注册 ${selection.registrationId} · `
+-    + `运行 ${selection.runIds.join("、")}。由本地运行控制服务载入此编译后，在查看器的运行控制中启动；`
+-    + "运行结果以封存证据和独立验证为准。";
++  detail.textContent = `${t("compile.savedIdentity")}: ${selection.draftSha256} · `
++    + tf("compile.handoffDetail", {
++      compilation: selection.compilationId, registration: selection.registrationId,
++      runs: selection.runIds.join(", "),
++    });
+@@ -362 +391 @@ function renderCompiledHandoff(root: HTMLElement, selection: CityCompiledSelecti
+-  link.textContent = "打开运行控制台";
++  link.textContent = t("compile.handoffLink");
+@@ -449,0 +479 @@ class CityStudio {
++    translateStudioShell(this.root);
+@@ -453 +483 @@ class CityStudio {
+-      this.saveStatus.textContent = loaded === null ? "新草稿未保存" : "本地草稿已加载";
++      this.saveStatus.textContent = loaded === null ? t("studio.newDraft") : t("studio.loaded");
+@@ -458 +488 @@ class CityStudio {
+-      this.saveStatus.textContent = "本地草稿读取失败";
++      this.saveStatus.textContent = t("studio.storageError");
+@@ -468,2 +498,2 @@ class CityStudio {
+-    this.startMap();
+-    if (!this.authoringMode) void this.loadInitialSpatial();
++    if (this.authoringMode) this.startMap();
++    else void this.loadInitialSpatial();
+@@ -481,0 +512,12 @@ class CityStudio {
++    for (const button of this.root.querySelectorAll<HTMLButtonElement>("[data-studio-language]")) {
++      button.addEventListener("click", () => {
++        setLanguage(button.dataset.studioLanguage as Language);
++        translateStudioShell(this.root);
++        document.documentElement.lang = currentLanguage();
++        if (this.saveStatus.dataset.state === "saved") this.saveStatus.textContent = t("studio.loaded");
++        if (this.saveStatus.dataset.state === "dirty") this.saveStatus.textContent = t("studio.dirty");
++        // Re-render presentation from this same in-memory draft, without a reload or save.
++        this.renderTab();
++        this.renderSummary();
++      });
++    }
+@@ -649 +691 @@ class CityStudio {
+-        note.textContent = "原生参考场景不提供默认城市的离线 SUMO 交通预览；未自动切换场景。";
++        note.textContent = t("studio.nativeNoTraffic");
+@@ -664 +706,5 @@ class CityStudio {
+-        selection => renderCompiledHandoff(handoff, selection),
++        selection => {
++          renderCompiledHandoff(handoff, selection);
++          this.previewStatus.textContent = t("compile.handoffTitle");
++          this.previewStatus.dataset.state = "ready";
++        },
+@@ -722 +768 @@ class CityStudio {
+-        ? "已校验声明的建筑 GLB、道路、地面覆盖与街道设施"
++        ? t("studio.nativeAssets")
+@@ -726,2 +772,2 @@ class CityStudio {
+-      this.mapPlace.textContent = "已注册原生场景";
+-      this.mapMode.textContent = "公共场景参考";
++      this.mapPlace.textContent = t("studio.nativeSource");
++      this.mapMode.textContent = t("studio.referenceMode");
+@@ -736 +782 @@ class CityStudio {
+-        this.previewStatus.textContent = "原生城市呈现已就绪，尚未运行";
++        this.previewStatus.textContent = t("studio.nativeReady");
+@@ -948,3 +994,3 @@ class CityStudio {
+-      ?? this.spatial?.sceneName ?? "普通城市预览";
+-    this.mapMode.textContent = "编排视图";
+-    this.previewFootSecondary.textContent = "草稿尚未接入 Business / Energy Provider。导出 JSON 后需按正式规格接入执行与验证流程。";
++      ?? this.spatial?.sceneName ?? t("studio.ordinaryPreview");
++    this.mapMode.textContent = t("studio.mode");
++    this.previewFootSecondary.textContent = t("studio.footer");
+@@ -1419,0 +1466,2 @@ class CityStudio {
++      this.mapPlace.textContent = t("studio.nativeSource");
++      this.mapMode.textContent = t("studio.referenceMode");
+@@ -1422,6 +1470,3 @@ class CityStudio {
+-        ? inspection.kind === "native-city" ? "／ 已验证原生城市呈现" : "／ 已验证原生参考场景"
+-        : "／ 已注册原生参考 · 未发布三维网格";
+-      this.previewFootPrimary.textContent = `公共场景 ${this.nativeReference.registration.registration_id}`
+-        + (hasVisual ? " 仅作为已注册编译输入与可视参考；"
+-          : " 已校验为注册编译输入，但当前注册未发布三维网格；")
+-        + "当前未执行、未验证运行结果。";
++        ? inspection.kind === "native-city" ? t("studio.verifiedCity") : t("studio.verifiedReference")
++        : t("studio.noMesh");
++      this.previewFootPrimary.textContent = tf("studio.nativeFooter", { registration: this.nativeReference.registration.registration_id });
+@@ -1430 +1475 @@ class CityStudio {
+-        ?? "普通城市预览";
++        ?? t("studio.ordinaryPreview");
+@@ -1449 +1494,22 @@ class CityStudio {
+-      this.spatial = await loadSpatialSource(this.config.scenePath);
++      const scenePath = this.config.scenePath;
++      if (cityPreviewScenePresetForPath(scenePath) === null) {
++        const outcome = await fetchNativeSceneCatalog();
++        if (outcome.kind === "error") throw new Error(`[${outcome.code}] ${outcome.detail}`);
++        if (this.authoringMode || this.config.scenePath !== scenePath) return;
++        const registration = savedNativeRegistration(scenePath, outcome.catalog.registrations);
++        if (registration !== null) {
++          const reference = await loadNativeReferenceScene(registration);
++          if (this.authoringMode || this.config.scenePath !== scenePath) return;
++          // Keep the saved edited draft. The registered reference supplies verified
++          // public geometry; it must not replace saved seed/name/business inputs.
++          this.nativeReference = reference;
++          this.spatial = nativeReferenceSpatialSource(reference);
++          this.draftError = this.validateDraft();
++          this.startMap();
++          if (this.tab === "spatial" || this.tab === "runtime") this.renderTab();
++          this.renderSummary();
++          return;
++        }
++      }
++      this.startMap();
++      this.spatial = await loadSpatialSource(scenePath);
+@@ -1496 +1562 @@ class CityStudio {
+-    this.saveStatus.textContent = this.draftError === null ? "未保存更改" : "草稿待修正";
++    this.saveStatus.textContent = this.draftError === null ? t("studio.dirty") : t("studio.needsFix");
+@@ -1509 +1575 @@ class CityStudio {
+-        ? "原生参考草稿已修改，尚未编译" : "原生参考草稿待修正";
++        ? t("studio.nativeChanged") : t("studio.nativeFix");
+@@ -1575,2 +1641,2 @@ class CityStudio {
+-        this.basemapNote = "已校验声明的建筑 GLB、道路、地面覆盖与街道设施";
+-        this.previewStatus.textContent = "原生城市呈现已就绪，尚未运行";
++        this.basemapNote = t("studio.nativeAssets");
++        this.previewStatus.textContent = t("studio.nativeReady");
+@@ -1607 +1673 @@ class CityStudio {
+-    this.previewStatus.textContent = this.authoringMode ? "选区静态预览，尚未运行" : "城市加载中";
++    this.previewStatus.textContent = this.authoringMode ? "选区静态预览，尚未运行" : t("studio.cityLoading");
+@@ -1660 +1726 @@ class CityStudio {
+-                ? "原生城市呈现已就绪，尚未运行" : "原生参考场景已就绪，尚未运行";
++                ? t("studio.nativeReady") : "原生参考场景已就绪，尚未运行";
+@@ -1780 +1846 @@ class CityStudio {
+-    this.followSelect.replaceChildren(new Option("城市总览", ""),
++    this.followSelect.replaceChildren(new Option(t("studio.overview"), ""),
+@@ -1854 +1920 @@ class CityStudio {
+-    const counts = `${this.config.fleet.reduce((sum, item) => sum + item.count, 0)} 架无人机 · ${this.config.facilities.length} 处设施 · ${this.config.airspace.length} 处禁飞区`;
++    const counts = tf("studio.counts", { fleet: this.config.fleet.reduce((sum, item) => sum + item.count, 0), facilities: this.config.facilities.length, airspace: this.config.airspace.length });
+@@ -1857 +1923 @@ class CityStudio {
+-      this.previewStatus.textContent = "预览失败";
++      this.previewStatus.textContent = t("studio.previewFailed");
+@@ -1860 +1926 @@ class CityStudio {
+-      this.previewStatus.textContent = "草稿待修正";
++      this.previewStatus.textContent = t("studio.needsFix");
+@@ -1911 +1977 @@ class CityStudio {
+-      this.saveStatus.textContent = "已保存到本地浏览器";
++      this.saveStatus.textContent = t("studio.saved");
+@@ -2035 +2101,5 @@ class CityStudio {
+-if (typeof document !== "undefined" && document.querySelector("#city-studio") !== null) new CityStudio();
++if (typeof document !== "undefined" && document.querySelector("#city-studio") !== null) {
++  initLanguage();
++  document.documentElement.lang = currentLanguage();
++  new CityStudio();
++}

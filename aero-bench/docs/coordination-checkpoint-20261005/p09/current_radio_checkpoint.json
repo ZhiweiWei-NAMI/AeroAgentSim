@@ -1,0 +1,178 @@
+{
+  "schema_version": "p09.actual-radio-checkpoint/v1",
+  "checked_at": "2026-10-05T17:38:17.664735-07:00",
+  "scope": "Current P09 v5 native run configuration, loaded-attribute export, local extension code, and exact ns-3.48 source defaults. No new simulation/container/model call.",
+  "run_ref": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_v2_seed00_v5_candidate/coupled/L6-2_v2__seed00/receipt_replay/run1",
+  "provider_source": "Dataset/semantic_simulation/ns3_episode/p01_ns3_provider.cc",
+  "image_id": "sha256:4b2de26e26d7c9d026e37243e0baa38b85beba41bf1cbc4622643d099274113f",
+  "installed_ns3_version": "3.48",
+  "installed_image_ns3_commit": "d2add90b452d600cfb4859baed8e9ea633519447",
+  "loaded_radio": {
+    "native_version": "3.48",
+    "radio": {
+      "node_id": "L6-2_v2__seed00:tower_l6_2_v2:life0",
+      "standard": "802.11n",
+      "channel_number": 1,
+      "channel_width_mhz": 20,
+      "frequency_mhz": 2412,
+      "data_mode": "HtMcs0",
+      "control_mode": "HtMcs0",
+      "tx_power_dbm": 16,
+      "tx_gain_db": 0,
+      "rx_gain_db": 0,
+      "rx_sensitivity_dbm": -95,
+      "configured_rx_noise_figure_db": 7,
+      "rx_noise_figure_observation": "applied via WifiPhy::SetRxNoiseFigure; no public getter",
+      "mac_queues": [
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        },
+        {
+          "max_packets": 500,
+          "max_delay_ns": 500000000
+        }
+      ]
+    },
+    "propagation": {
+      "model": "ns3::LogDistancePropagationLossModel",
+      "exponent": 3,
+      "reference_distance_m": 1,
+      "reference_loss_db": 40.09532929124565
+    },
+    "geometry": {
+      "enabled": false,
+      "configuration_ref": null,
+      "support": "inactive",
+      "metadata": null,
+      "initial_application_link_geometry": [],
+      "propagation_los_evaluations": 0,
+      "propagation_nlos_evaluations": 0,
+      "shadowing_applied": false,
+      "applied_shadowing": false,
+      "extra_fast_fading": false,
+      "shadowing": null
+    },
+    "antenna_offsets": {
+      "mode": "ad_hoc",
+      "band_ghz": 2.4,
+      "gateway_node_id": "L6-2_v2__seed00:tower_l6_2_v2:life0",
+      "gateway_antenna_offset_m": [
+        0,
+        0,
+        3
+      ],
+      "mobile_antenna_offset_m": [
+        0,
+        0,
+        0
+      ],
+      "shared_channel": true
+    },
+    "nominal_phy_mbps": 6.5,
+    "thermal_noise_formula": "-174 dBm/Hz +10log10(width_Hz)+NF_dB",
+    "derived_integrated_noise_dbm": -93.98970004336019,
+    "snr_sinr_rssi": {
+      "PHY": "Yans/WifiPhy uses propagation, interference/error-rate reception internally; no numeric RF observation callback connected in this provider.",
+      "logged": false,
+      "predictive_state": false,
+      "boundary": "Do not substitute BENCH public.network.link.v3 RSSI/SNR: it is a different schema/provider."
+    },
+    "radio_evidence": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_v2_seed00_v5_candidate/coupled/L6-2_v2__seed00/receipt_replay/run1/summary.json#/network/backend/loaded_radio",
+    "config_evidence": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_v2_seed00_v5_candidate/coupled/L6-2_v2__seed00/receipt_replay/run1/run_config.json",
+    "calibrated": false,
+    "limitations": [
+      "No field-calibrated Donghu intercept/exponent/PER/antenna/noise",
+      "This R1 run has no buildings/shadowing/extra fast fading; R2 code support is not evidence R1 uses it",
+      "20MHz channel width,6.5Mbps nominal PHY and8Mbps burst offered load are distinct quantities"
+    ]
+  },
+  "channel": {
+    "type": "ns3::YansWifiChannel",
+    "shared_across_all_installed_nodes": true,
+    "per_link_isolated": false,
+    "source_lines": "p01_ns3_provider.cc:316-336",
+    "method": "One channel.Create() and phy.SetChannel(shared) before wifi.Install for the whole NodeContainer"
+  },
+  "phy": "ns3::YansWifiPhy",
+  "mac": "ns3::AdhocWifiMac",
+  "station_manager": "ns3::ConstantRateWifiManager",
+  "delay": {
+    "type": "ns3::ConstantSpeedPropagationDelayModel",
+    "type_explicit_in_extension": true,
+    "speed_m_s": 299792458,
+    "speed_evidence": "Exact ns-3.48 source default; no loaded speed getter in old run output",
+    "source": "https://gitlab.com/nsnam/ns-3-dev/-/raw/ns-3.48/src/propagation/model/propagation-delay-model.cc#L82"
+  },
+  "source_resolved_defaults": {
+    "evidence_class": "Resolved from exact ns-3.48 helper/TypeId plus no override in the local extension; not a runtime getter measurement of the completed run",
+    "error_rate_model": "ns3::TableBasedErrorRateModel",
+    "fallback_error_rate_model": "ns3::YansErrorRateModel",
+    "table_frame_size_threshold_bytes": 400,
+    "interference_helper": "ns3::InterferenceHelper",
+    "frame_retry_limit_transmission_attempts": 7,
+    "retry_limit_note": "WifiMac::FrameRetryLimit counts maximum transmission attempts. Deprecated MaxSsrc/MaxSlrc are not the current setting; this is not7 additional retries.",
+    "sources": [
+      "https://gitlab.com/nsnam/ns-3-dev/-/raw/ns-3.48/src/wifi/helper/yans-wifi-helper.cc#L70",
+      "https://gitlab.com/nsnam/ns-3-dev/-/raw/ns-3.48/src/wifi/model/table-based-error-rate-model.cc#L43",
+      "https://gitlab.com/nsnam/ns-3-dev/-/raw/ns-3.48/src/wifi/model/wifi-mac.cc#L145"
+    ]
+  },
+  "application": {
+    "transport": "UDP",
+    "telemetry_payload_bytes": 256,
+    "telemetry_period_ns": 100000000,
+    "telemetry_offered_bps_per_source": 20480,
+    "fault_burst_payload_bytes": 1200,
+    "fault_burst_period_ns": 1200000,
+    "fault_burst_offered_bps": 8000000,
+    "fault_window_ns": [
+      40000000000,
+      52000000000
+    ],
+    "healthy_fault_burst_bps": 0,
+    "packet_observation_ttl_ns": 200000000,
+    "mature_loss_window_ns": 1000000000,
+    "command_payload_bytes": 64,
+    "command_retry_period_ns": 100000000,
+    "command_attempts": 3,
+    "command_deadline_ns": 2000000000
+  },
+  "queue": {
+    "per_EDCA_queue_max_packets": 500,
+    "per_EDCA_queue_max_delay_ns": 500000000,
+    "loaded_queue_count_per_node": 4,
+    "sample_rate_hz": 2,
+    "positive_sample_cutoff": "t-1ns"
+  },
+  "not_exported_resolved_attributes": [
+    "Actual packet TxVector/GI/NSS",
+    "CCA sensitivity/energy detection and preamble thresholds",
+    "RTS/fragmentation/aggregation/CW/AIFS/TXOP and socket buffers"
+  ],
+  "RF_observation": {
+    "numeric_RSSI_SNR_SINR_logged": false,
+    "direct_P01_encoder_RF_inputs": false,
+    "P01_fields": [
+      "latency_mean_ms (ms)",
+      "packet_loss_ratio (1)"
+    ],
+    "indirect_effect": "Propagation/interference/error reception -> real UDP receptions/retries/queues -> L/P; receipt availability -> controller"
+  },
+  "existing_weather_physics": {
+    "rain_attenuation": false,
+    "building_obstruction_in_reviewed_R1": false,
+    "shadowing": false,
+    "additional_fast_fading": false,
+    "legacy_rain_ratio_is_mm_per_hour": false
+  },
+  "next_variant_scope": "Retain movement/packet/receipt-control path; declared legitimate cochannel flows share the existing channel. Separate shadow/fading and frequency/path/rain-rate attenuation variants. Await source-backed rain-unit mapping/coefficient plan; do not multiply packet loss or reinterpret weather.rain ratio as mm/h. No adopted radio change or direct encoder schema expansion yet."
+}

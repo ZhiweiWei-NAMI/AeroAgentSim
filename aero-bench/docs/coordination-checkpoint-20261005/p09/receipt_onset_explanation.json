@@ -1,0 +1,203 @@
+{
+  "schema_version": "p09.receipt-onset-explanation/v1",
+  "created_at": "2026-10-05T17:43:04.338419-07:00",
+  "scope": "Existing trace/source explanation only; no simulation rerun or release mutation. Aggregate evidence, no raw trajectory samples.",
+  "conclusion": "At the43s authored release, the v5 numerical command gate waits for a real accepted receipt. Original scheduled motion proceeds at43.1s. This first old/new difference is a wait/admission-policy difference before receipt-driven execution, not the actor reacting to the fault command at43.1s.",
+  "example_episode": "L6-2_v1__seed00",
+  "original": {
+    "path": "/mnt/data2/weizhiwei/AERO_WORLD/aw_data/render_ready_episodes_capture_filtered/L6-2_v1__seed00/truth_frames.jsonl",
+    "schema": {
+      "schema_name": "truth_frame",
+      "schema_version": "v1"
+    },
+    "version_status": "Current preserved formal release; no original receipt-replay revision is declared. Do not call this original v4."
+  },
+  "new": {
+    "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_seed_batch_v5_candidates/L6-2_v1__seed00/coupled/L6-2_v1__seed00/receipt_replay/run1/mission_trajectory.jsonl.gz",
+    "schema_version": "p01.ns3.receipt-replay/v5",
+    "iteration": "run1",
+    "status": "Plan adopted; combined render materialization/release freeze pending."
+  },
+  "scenario_version_note": "L6-2_v1/v2 denote two scenario profiles. Both new candidates use receipt-replay/v5.",
+  "sampled_steps": [
+    {
+      "tick": 430,
+      "time_ns": 43000000000,
+      "old_activity": "airborne",
+      "new_activity": "airborne",
+      "new_phase": "await_command_receipt",
+      "same_position": true,
+      "old_stationary": true,
+      "new_stationary": true
+    },
+    {
+      "tick": 431,
+      "time_ns": 43100000000,
+      "old_activity": "airborne",
+      "new_activity": "airborne",
+      "new_phase": "await_command_receipt",
+      "same_position": false,
+      "old_stationary": false,
+      "new_stationary": true
+    },
+    {
+      "tick": 445,
+      "time_ns": 44500000000,
+      "old_activity": "airborne",
+      "new_activity": "airborne",
+      "new_phase": "slowdown_motion",
+      "same_position": false,
+      "old_stationary": false,
+      "new_stationary": false
+    },
+    {
+      "tick": 446,
+      "time_ns": 44600000000,
+      "old_activity": "airborne",
+      "new_activity": "airborne",
+      "new_phase": "slowdown_motion",
+      "same_position": false,
+      "old_stationary": false,
+      "new_stationary": false
+    },
+    {
+      "tick": 456,
+      "time_ns": 45600000000,
+      "old_activity": "command_delay",
+      "new_activity": "airborne",
+      "new_phase": "slowdown_motion",
+      "same_position": false,
+      "old_stationary": false,
+      "new_stationary": false
+    }
+  ],
+  "example_command": {
+    "event_id": "uav_delayed_response",
+    "predicate_available_at_gateway_ns": 40900000001,
+    "send_ns": 43900000001,
+    "RX_ns": 44409123885,
+    "accept_ns": 44409123885,
+    "executor_tick_ns": 44500000000,
+    "deadline_ns": 45900000001,
+    "predicate_evaluation_id": "L6-2_v1__seed00:receipt_replay:v5:run1:gateway:40900000001:degraded"
+  },
+  "execution_position_note": "At44.5s the v1 executor changes phase and its following-interval velocity; sampled position is still the held route origin. At44.6s the first candidate displacement is present.",
+  "activity_note": "At45.6s old activity changes to command_delay while new activity remains airborne with slowdown_motion phase. This enum difference is not a second command trigger or physical-task-success receipt.",
+  "all_six_from_existing_individual_review": [
+    {
+      "episode_id": "L6-2_v1__seed00",
+      "scenario_id": "L6-2_v1",
+      "seed": 0,
+      "owner": "uav_digital_l6_2_v1",
+      "first_pose_ns": 43100000000,
+      "first_velocity_ns": 43100000000,
+      "first_activity_ns": 45600000000,
+      "first_command_TX_ns": 43900000001,
+      "first_command_RX_ns": 44409123885,
+      "first_command_accept_ns": 44409123885,
+      "first_command_execution_ns": 44500000000,
+      "comparison_original": "/mnt/data2/weizhiwei/AERO_WORLD/aw_data/render_ready_episodes_capture_filtered/L6-2_v1__seed00/truth_frames.jsonl",
+      "comparison_new": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_seed_batch_v5_candidates/L6-2_v1__seed00/coupled/L6-2_v1__seed00/receipt_replay/run1/mission_trajectory.jsonl.gz"
+    },
+    {
+      "episode_id": "L6-2_v1__seed01",
+      "scenario_id": "L6-2_v1",
+      "seed": 1,
+      "owner": "uav_digital_l6_2_v1",
+      "first_pose_ns": 43100000000,
+      "first_velocity_ns": 43100000000,
+      "first_activity_ns": 45600000000,
+      "first_command_TX_ns": 43900000001,
+      "first_command_RX_ns": 44415492105,
+      "first_command_accept_ns": 44415492105,
+      "first_command_execution_ns": 44500000000,
+      "comparison_original": "/mnt/data2/weizhiwei/AERO_WORLD/aw_data/render_ready_episodes_capture_filtered/L6-2_v1__seed01/truth_frames.jsonl",
+      "comparison_new": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_seed_batch_v5_candidates/L6-2_v1__seed01/coupled/L6-2_v1__seed01/receipt_replay/run1/mission_trajectory.jsonl.gz"
+    },
+    {
+      "episode_id": "L6-2_v1__seed02",
+      "scenario_id": "L6-2_v1",
+      "seed": 2,
+      "owner": "uav_digital_l6_2_v1",
+      "first_pose_ns": 43100000000,
+      "first_velocity_ns": 43100000000,
+      "first_activity_ns": 45600000000,
+      "first_command_TX_ns": 43900000001,
+      "first_command_RX_ns": 44413139885,
+      "first_command_accept_ns": 44413139885,
+      "first_command_execution_ns": 44500000000,
+      "comparison_original": "/mnt/data2/weizhiwei/AERO_WORLD/aw_data/render_ready_episodes_capture_filtered/L6-2_v1__seed02/truth_frames.jsonl",
+      "comparison_new": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_seed_batch_v5_candidates/L6-2_v1__seed02/coupled/L6-2_v1__seed02/receipt_replay/run1/mission_trajectory.jsonl.gz"
+    },
+    {
+      "episode_id": "L6-2_v2__seed00",
+      "scenario_id": "L6-2_v2",
+      "seed": 0,
+      "owner": "uav_digital_l6_2_v2",
+      "first_pose_ns": 43100000000,
+      "first_velocity_ns": 43100000000,
+      "first_activity_ns": 45600000000,
+      "first_command_TX_ns": 43900000001,
+      "first_command_RX_ns": 45404625603,
+      "first_command_accept_ns": 45404625603,
+      "first_command_execution_ns": 45500000000,
+      "comparison_original": "/mnt/data2/weizhiwei/AERO_WORLD/aw_data/render_ready_episodes_capture_filtered/L6-2_v2__seed00/truth_frames.jsonl",
+      "comparison_new": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_v2_seed00_v5_candidate/coupled/L6-2_v2__seed00/receipt_replay/run1/mission_trajectory.jsonl.gz"
+    },
+    {
+      "episode_id": "L6-2_v2__seed01",
+      "scenario_id": "L6-2_v2",
+      "seed": 1,
+      "owner": "uav_digital_l6_2_v2",
+      "first_pose_ns": 43100000000,
+      "first_velocity_ns": 43100000000,
+      "first_activity_ns": 45600000000,
+      "first_command_TX_ns": 43900000001,
+      "first_command_RX_ns": 45404625603,
+      "first_command_accept_ns": 45404625603,
+      "first_command_execution_ns": 45500000000,
+      "comparison_original": "/mnt/data2/weizhiwei/AERO_WORLD/aw_data/render_ready_episodes_capture_filtered/L6-2_v2__seed01/truth_frames.jsonl",
+      "comparison_new": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_seed_batch_v5_candidates/L6-2_v2__seed01/coupled/L6-2_v2__seed01/receipt_replay/run1/mission_trajectory.jsonl.gz"
+    },
+    {
+      "episode_id": "L6-2_v2__seed02",
+      "scenario_id": "L6-2_v2",
+      "seed": 2,
+      "owner": "uav_digital_l6_2_v2",
+      "first_pose_ns": 43100000000,
+      "first_velocity_ns": 43100000000,
+      "first_activity_ns": 45600000000,
+      "first_command_TX_ns": 43900000001,
+      "first_command_RX_ns": 45404625603,
+      "first_command_accept_ns": 45404625603,
+      "first_command_execution_ns": 45500000000,
+      "comparison_original": "/mnt/data2/weizhiwei/AERO_WORLD/aw_data/render_ready_episodes_capture_filtered/L6-2_v2__seed02/truth_frames.jsonl",
+      "comparison_new": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/receipt_l6_2_seed_batch_v5_candidates/L6-2_v2__seed02/coupled/L6-2_v2__seed02/receipt_replay/run1/mission_trajectory.jsonl.gz"
+    }
+  ],
+  "mechanism_sources": [
+    {
+      "path": "Dataset/semantic_simulation/ns3_episode/receipt_replay.py",
+      "lines": [
+        95,
+        106,
+        336,
+        361,
+        372,
+        402,
+        443
+      ],
+      "sha256": "845abe20192200cb52f4a8b3d0ebf1e1a1149b4752251ded6267316c298f914a"
+    },
+    {
+      "path": "Dataset/semantic_simulation/ns3_episode/controller_receipt_consumer.py",
+      "lines": [
+        29
+      ],
+      "sha256": "d4e8b7bf9547447514fa4d0d3a72a94899401d44d086c52575b2cac85c3c88aa"
+    }
+  ],
+  "authority_boundary": "Native ns-3 UDP TX/RX and a numerical waypoint executor. No PX4 actuator measurement. Both healthy/fault branches use the same receipt gate; an unreceived source-script command is not executed.",
+  "recapture_note": "The adopted path changes render-dependent poses, which supports A recapture.43.1s is not attributed solely to received fault action;43.5s is only the first changed sampled pose on the0.5s capture grid, not a proven first changed pixel.",
+  "independent_review": "Existing p09_receipt_final_review read-only source/trace recheck agrees; no rerun."
+}
