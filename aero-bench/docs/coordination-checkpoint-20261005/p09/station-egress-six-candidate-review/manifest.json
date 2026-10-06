@@ -391,8 +391,64 @@
     "source/test_station_egress_candidate.py": {
       "bytes": 5847,
       "sha256": "e4ba1ffbf7163a104f4ecd3587c04e282c0c80ecc04066be91605b952096db0c"
+    },
+    "full-network/L6-4_v1__seed00/network_packets.jsonl.gz": {
+      "bytes": 265445,
+      "sha256": "d6477708c87691dfc81ad38bbb7bb99e11ee716e393554a7163668fbaecc5364"
+    },
+    "full-network/L6-4_v1__seed00/run_config.json.gz": {
+      "bytes": 1413,
+      "sha256": "61bb525099a24b099aa9a70899992b281809fa798818a0640c7cc1718f7490c8"
+    },
+    "full-network/L6-4_v1__seed01/network_packets.jsonl.gz": {
+      "bytes": 265650,
+      "sha256": "bbd322634a2329b81e4ad4fb476b9549eaa2ae6bd580d0b10e66831d592cd41d"
+    },
+    "full-network/L6-4_v1__seed01/run_config.json.gz": {
+      "bytes": 1476,
+      "sha256": "dcbc48961ecde183b78aa9ed36eb3b59b8ab37f823419fbbe25138fb6cc9062e"
+    },
+    "full-network/L6-4_v1__seed02/network_packets.jsonl.gz": {
+      "bytes": 265655,
+      "sha256": "327d45e32a1b1a58abe19bc036314dbb2562b84c34f2fc42aaeb589c42af4679"
+    },
+    "full-network/L6-4_v1__seed02/run_config.json.gz": {
+      "bytes": 1476,
+      "sha256": "b38559b0aa517db661f16bb1c5d910ba842bf435d9c9a88f338e7b1532506b89"
+    },
+    "full-network/L6-4_v2__seed00/network_packets.jsonl.gz": {
+      "bytes": 264118,
+      "sha256": "e2a8d63d5b7d89545ecdd7b024a56fdcc728eff2b0b6461b79ea2d7023149582"
+    },
+    "full-network/L6-4_v2__seed00/run_config.json.gz": {
+      "bytes": 1474,
+      "sha256": "e5a3fce9ea9e5f9ad0bc4b226f28aa1d01a54fc51cae8cbd9b22b228a4f2f98c"
+    },
+    "full-network/L6-4_v2__seed01/network_packets.jsonl.gz": {
+      "bytes": 264112,
+      "sha256": "197cf3eb22ca16fb1421c572e2ec00a827201d8da14e00aaad45ebe3e90c9833"
+    },
+    "full-network/L6-4_v2__seed01/run_config.json.gz": {
+      "bytes": 1475,
+      "sha256": "aaaddb8be74aa6cf8070f7eaf7484f618703dcf64368f04105445a81b0f33a68"
+    },
+    "full-network/L6-4_v2__seed02/network_packets.jsonl.gz": {
+      "bytes": 264062,
+      "sha256": "e90562d0b361b956ad9f346c5344d0186ef789d5a9a016e795845de79fa3c3c3"
+    },
+    "full-network/L6-4_v2__seed02/run_config.json.gz": {
+      "bytes": 1476,
+      "sha256": "5e80789f6a527b3168f1daa392e21518d85a763b443edd491604053442c24dd1"
+    },
+    "full-network/README.md": {
+      "bytes": 1453,
+      "sha256": "26542942436fdaf0d57407ab33be7abbc20e433da62027e88450f51ee7db88ad"
+    },
+    "full-network/manifest.json": {
+      "bytes": 8795,
+      "sha256": "e4172f8c784d374a7f9f56a51395b449075e67db7ae53cc25fcbf6aa6b95db0d"
     }
   },
-  "total_bytes_excluding_manifest": 2855098,
+  "total_bytes_excluding_manifest": 4463178,
   "private_full_map_included": false
 }

@@ -1,0 +1,7 @@
+These twelve gzip files preserve the exact bytes of each existing final network_packets.jsonl and its corresponding final-iteration run_config.json. Decompression was compared byte for byte with the original files; no simulation ran and no failed result was changed.
+
+The final iteration is read from coupled_iterations.json: iteration04 for L6-4_v1 seed00, iteration05 for the other five cases. The final network output and the same iteration's configuration are generated together by run_contract in the already exported linked_replay.py. The manifest records actual executed revisions and seed02 V1 numerical reuse separately from its metadata migration.
+
+first_tx_ns is the application socket send-attempt time; accepted means the entire payload was accepted by Socket::Send. It does not establish a PHY transmission time. rx_ns is the recorded native receiver receipt. Per-packet TTL and the existing logical application deadline remain distinct and unchanged here. Logical reliable readiness/grant/execution-report/landing changes await the native review recommendation.
+
+The original failed v1 seed00 remains failed. No RF/threshold tuning, new simulation, capture, private building-map transfer or original210 replacement occurred. The other small contracts/command receipts and raw selected diagnostics remain in the parent packet. These full packet files add bulk and heartbeat evidence that was intentionally omitted from the compact packet.

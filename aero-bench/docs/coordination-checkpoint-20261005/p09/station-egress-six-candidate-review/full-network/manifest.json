@@ -1,0 +1,183 @@
+{
+  "scope": "Six existing station-egress candidate final network outputs; no rerun or protocol change",
+  "first_tx_ns_semantics": "Time of application Socket::Send attempt; accepted records complete payload accepted by socket. It is not a PHY TX timestamp.",
+  "per_packet_ttl_vs_logical_exchange_timeout": "Existing policies preserved; no reliable-exchange migration in this export.",
+  "private_full_map_included": false,
+  "raw210_replaced": false,
+  "cases": [
+    {
+      "episode_id": "L6-4_v1__seed00",
+      "seed": 0,
+      "executed_revision": "p09.station-egress-congestion/v2-metadata-candidate",
+      "numerical_result_reused": false,
+      "candidate_chain_complete": false,
+      "final_iteration": 4,
+      "packet_rows": 20149,
+      "artifacts": [
+        {
+          "file": "L6-4_v1__seed00/network_packets.jsonl.gz",
+          "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v1__seed00/adopted/network_packets.jsonl",
+          "uncompressed_bytes": 7456392,
+          "uncompressed_sha256": "1c8efe2458fc768b2f44c5ca8d3c065433163a280584d46a8209dd5e8c4671b9",
+          "gzip_bytes": 265445,
+          "gzip_sha256": "d6477708c87691dfc81ad38bbb7bb99e11ee716e393554a7163668fbaecc5364",
+          "byte_preserved": true
+        },
+        {
+          "file": "L6-4_v1__seed00/run_config.json.gz",
+          "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v1__seed00/adopted/iteration04/run_config.json",
+          "uncompressed_bytes": 11566,
+          "uncompressed_sha256": "d774dc6d16f4bb719c28c8d9dd4edbd7391c5981cdc3634eac0af91be90e1d5c",
+          "gzip_bytes": 1413,
+          "gzip_sha256": "61bb525099a24b099aa9a70899992b281809fa798818a0640c7cc1718f7490c8",
+          "byte_preserved": true
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-4_v1__seed01",
+      "seed": 1,
+      "executed_revision": "p09.station-egress-congestion/v2-metadata-candidate",
+      "numerical_result_reused": false,
+      "candidate_chain_complete": true,
+      "final_iteration": 5,
+      "packet_rows": 20158,
+      "artifacts": [
+        {
+          "file": "L6-4_v1__seed01/network_packets.jsonl.gz",
+          "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v1__seed01/adopted/network_packets.jsonl",
+          "uncompressed_bytes": 7459728,
+          "uncompressed_sha256": "c70ee16990c482b15afe5691012ebcc756f9ff7ce1a341f2aed80c0dfaf51927",
+          "gzip_bytes": 265650,
+          "gzip_sha256": "bbd322634a2329b81e4ad4fb476b9549eaa2ae6bd580d0b10e66831d592cd41d",
+          "byte_preserved": true
+        },
+        {
+          "file": "L6-4_v1__seed01/run_config.json.gz",
+          "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v1__seed01/adopted/iteration05/run_config.json",
+          "uncompressed_bytes": 12902,
+          "uncompressed_sha256": "25fdbfdae20aed28a436de4142aed10b3d394e68aa8d447810fb1bd92a43def6",
+          "gzip_bytes": 1476,
+          "gzip_sha256": "dcbc48961ecde183b78aa9ed36eb3b59b8ab37f823419fbbe25138fb6cc9062e",
+          "byte_preserved": true
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-4_v1__seed02",
+      "seed": 2,
+      "executed_revision": "p09.station-egress-congestion/v1-candidate",
+      "numerical_result_reused": true,
+      "candidate_chain_complete": true,
+      "final_iteration": 5,
+      "packet_rows": 20158,
+      "artifacts": [
+        {
+          "file": "L6-4_v1__seed02/network_packets.jsonl.gz",
+          "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_two_recipient_v1_representative/L6-4_v1__seed02/adopted/network_packets.jsonl",
+          "uncompressed_bytes": 7459784,
+          "uncompressed_sha256": "890287bdb3dd4bc01bddd70566ce10507708660b00b1e3f9772e9e39a09c3e45",
+          "gzip_bytes": 265655,
+          "gzip_sha256": "327d45e32a1b1a58abe19bc036314dbb2562b84c34f2fc42aaeb589c42af4679",
+          "byte_preserved": true
+        },
+        {
+          "file": "L6-4_v1__seed02/run_config.json.gz",
+          "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_two_recipient_v1_representative/L6-4_v1__seed02/adopted/iteration05/run_config.json",
+          "uncompressed_bytes": 12902,
+          "uncompressed_sha256": "2a322129cab41d8bdb0f4ff8b79be89df2809499a5f5b4be4f9c6a8f4b686dd4",
+          "gzip_bytes": 1476,
+          "gzip_sha256": "b38559b0aa517db661f16bb1c5d910ba842bf435d9c9a88f338e7b1532506b89",
+          "byte_preserved": true
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-4_v2__seed00",
+      "seed": 0,
+      "executed_revision": "p09.station-egress-congestion/v2-metadata-candidate",
+      "numerical_result_reused": false,
+      "candidate_chain_complete": true,
+      "final_iteration": 5,
+      "packet_rows": 20158,
+      "artifacts": [
+        {
+          "file": "L6-4_v2__seed00/network_packets.jsonl.gz",
+          "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v2__seed00/adopted/network_packets.jsonl",
+          "uncompressed_bytes": 7459742,
+          "uncompressed_sha256": "092b1239160fb77913bfe7f9b8592d7293f4559386cece879c77bd5359dba010",
+          "gzip_bytes": 264118,
+          "gzip_sha256": "e2a8d63d5b7d89545ecdd7b024a56fdcc728eff2b0b6461b79ea2d7023149582",
+          "byte_preserved": true
+        },
+        {
+          "file": "L6-4_v2__seed00/run_config.json.gz",
+          "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v2__seed00/adopted/iteration05/run_config.json",
+          "uncompressed_bytes": 12902,
+          "uncompressed_sha256": "6fa1be2aee786f6794ff8e0f5f173b3a35399ff78fcbe73c072d295261978910",
+          "gzip_bytes": 1474,
+          "gzip_sha256": "e5a3fce9ea9e5f9ad0bc4b226f28aa1d01a54fc51cae8cbd9b22b228a4f2f98c",
+          "byte_preserved": true
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-4_v2__seed01",
+      "seed": 1,
+      "executed_revision": "p09.station-egress-congestion/v2-metadata-candidate",
+      "numerical_result_reused": false,
+      "candidate_chain_complete": true,
+      "final_iteration": 5,
+      "packet_rows": 20158,
+      "artifacts": [
+        {
+          "file": "L6-4_v2__seed01/network_packets.jsonl.gz",
+          "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v2__seed01/adopted/network_packets.jsonl",
+          "uncompressed_bytes": 7459728,
+          "uncompressed_sha256": "8c37186b709802de542c04de268aa419ea1ff4639289188a5f007d07aca42244",
+          "gzip_bytes": 264112,
+          "gzip_sha256": "197cf3eb22ca16fb1421c572e2ec00a827201d8da14e00aaad45ebe3e90c9833",
+          "byte_preserved": true
+        },
+        {
+          "file": "L6-4_v2__seed01/run_config.json.gz",
+          "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v2__seed01/adopted/iteration05/run_config.json",
+          "uncompressed_bytes": 12902,
+          "uncompressed_sha256": "6bf8caf07fbb2b81c720932ce988dc10a882a897981ae0ed01e1831f520629ec",
+          "gzip_bytes": 1475,
+          "gzip_sha256": "aaaddb8be74aa6cf8070f7eaf7484f618703dcf64368f04105445a81b0f33a68",
+          "byte_preserved": true
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-4_v2__seed02",
+      "seed": 2,
+      "executed_revision": "p09.station-egress-congestion/v2-metadata-candidate",
+      "numerical_result_reused": false,
+      "candidate_chain_complete": true,
+      "final_iteration": 5,
+      "packet_rows": 20158,
+      "artifacts": [
+        {
+          "file": "L6-4_v2__seed02/network_packets.jsonl.gz",
+          "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v2__seed02/adopted/network_packets.jsonl",
+          "uncompressed_bytes": 7459784,
+          "uncompressed_sha256": "11d06f352138b05b4aef5d94c81a05276cb6c8cfdf32be238be6b6e6484d03ce",
+          "gzip_bytes": 264062,
+          "gzip_sha256": "e90562d0b361b956ad9f346c5344d0186ef789d5a9a016e795845de79fa3c3c3",
+          "byte_preserved": true
+        },
+        {
+          "file": "L6-4_v2__seed02/run_config.json.gz",
+          "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/station_egress_v2_six_seed_candidate/runs/L6-4_v2__seed02/adopted/iteration05/run_config.json",
+          "uncompressed_bytes": 12902,
+          "uncompressed_sha256": "89c6c6917a2044ebb6182ac684b9f7ee18311d0a2c054bd85f1b2724d74bc17c",
+          "gzip_bytes": 1476,
+          "gzip_sha256": "5e80789f6a527b3168f1daa392e21518d85a763b443edd491604053442c24dd1",
+          "byte_preserved": true
+        }
+      ]
+    }
+  ]
+}
