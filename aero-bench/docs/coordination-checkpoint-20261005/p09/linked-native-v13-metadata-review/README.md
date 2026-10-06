@@ -11,6 +11,7 @@ This packet supplements the frozen native-execution packet `65423f411d2f51e3ccbe
 
 ## Exact evidence locations
 
+- `L2-1_v2*/cached_clearance_provenance.json`: the two cached v1 hardcoded clearance annotations are historical and excluded from current proof; links point to the actual v2-metadata geometry receipt. Cached action bytes and native receipts are unchanged by this sidecar.
 - `30_metadata_resolution.json`: per-episode old execution revision, new annotation revision, trajectory references/hashes, changed rows, preserved physical rows, actual landing receipts and adoption status.
 - `<episode>/scene_setup.json`, `event_script.json`, `adoption_profile.json`, `actions.json`: exact revised artifacts, not a prose substitute.
 - `<episode>/causal_boundary_poses.json`: actual cached poses around event/availability boundaries; contains L2 arrival and X1/X5 nearby actors.

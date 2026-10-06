@@ -70,6 +70,39 @@ def native_evidence(folder, target):
                 if 'rendezvous' in profile else 'No rendezvous declared in this scenario profile'})
 
 
+def cached_clearance_provenance(folder, review, profile, actions):
+    """Exclude an old annotation without rewriting cached native action records."""
+    geometry = profile['backup_contact_geometry']
+    annotations = []
+    for i, row in enumerate(actions):
+        action = row['action']
+        if action['action_id'] not in ('move_uav_backup_loiter', 'move_uav_resume_patrol'):
+            continue
+        old = action['uav_corridor_validation']
+        if old['profile_version'] != 'p09.l2-1-v2.backup-contact-route/v1':
+            raise ValueError('Unexpected cached clearance annotation version')
+        segments = [x for x in geometry['spatial_check']['segments']
+                    if x['action_id'] == action['action_id']]
+        if not segments:
+            raise ValueError('Current geometry receipt has no matching action segments')
+        annotations.append({'action_id': action['action_id'], 'actual_dispatch_tick': row['tick'],
+            'cached_annotation_pointer': f'/actions.json/{i}/action/uav_corridor_validation',
+            'cached_annotation': old, 'disposition': 'HISTORICAL_EXCLUDED_FROM_CURRENT_CLEARANCE_PROOF',
+            'current_receipt': 'adoption_profile.json#/backup_contact_geometry/spatial_check',
+            'current_profile_version': geometry['version'],
+            'current_action_segments': segments})
+    if len(annotations) != 2:
+        raise ValueError('Expected exactly two cached L2v2 clearance annotations')
+    return {'schema_version': 'p09.cached-clearance-provenance/v1',
+        'source_native_actions': str(folder / 'actions.json'),
+        'source_native_actions_sha256': digest(folder / 'actions.json'),
+        'exported_actions_sha256': digest(review / 'actions.json'),
+        'current_profile_sha256': digest(review / 'adoption_profile.json'),
+        'annotations': annotations, 'cached_motion_and_receipts_rewritten': False,
+        'ns3_rerun': False,
+        'meaning': 'The cached v1 Boolean annotation is not current checker evidence. The separate v2-metadata fitted-source geometry receipt is current; native motion records remain historical execution evidence.'}
+
+
 def metadata_episode(folder, review, runtime):
     old_summary, old_profile = load(folder/'summary.json'), load(folder/'adoption_profile.json')
     episode = old_summary['episode_id']; scenario = old_summary['scenario_id']; seed = old_summary['seed']
@@ -97,6 +130,10 @@ def metadata_episode(folder, review, runtime):
                     'planning_claim':'No new preflight upper-bound proof; actual execution receipt only',
                     'operating_inputs':action['terminal_feasibility']})
     write(runtime/'actions.json', actions);shutil.copy2(runtime/'actions.json',review/'actions.json')
+    if scenario == 'L2-1_v2':
+        sidecar = cached_clearance_provenance(folder, review, profile, actions)
+        write(review / 'cached_clearance_provenance.json', sidecar)
+        write(runtime / 'cached_clearance_provenance.json', sidecar)
     new_entities={e['entity_id']:e for e in scene['entities']}
     old_entities={e['entity_id']:e for e in old_scene['entities']}
     corridors=profile.get('route_metadata_migration',{}).get('changed_corridor_entities',[])
