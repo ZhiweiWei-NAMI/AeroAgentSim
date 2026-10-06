@@ -1,0 +1,49 @@
+{
+  "row_count": 4,
+  "unique_counts": {
+    "payload.event_id": 4,
+    "instance_id": 4,
+    "source_event_id": 4,
+    "source_topic": 4,
+    "topic": 4,
+    "sample_id": 4
+  },
+  "rows": [
+    {
+      "payload.event_id": "dual_uav_pad_contention:local:uav_x5_priority",
+      "instance_id": "evt_dual_uav_pad_contention:local:uav_x5_priority",
+      "source_event_id": "dual_uav_pad_contention:local:uav_x5_priority",
+      "source_topic": "dual_uav_pad_contention:local:uav_x5_priority",
+      "topic": "dual_uav_pad_contention:local:uav_x5_priority",
+      "sample_id": "event_trace:280:dual_uav_pad_contention:local:uav_x5_priority",
+      "tick": 280
+    },
+    {
+      "payload.event_id": "dual_uav_pad_contention:local:uav_x5_second",
+      "instance_id": "evt_dual_uav_pad_contention:local:uav_x5_second",
+      "source_event_id": "dual_uav_pad_contention:local:uav_x5_second",
+      "source_topic": "dual_uav_pad_contention:local:uav_x5_second",
+      "topic": "dual_uav_pad_contention:local:uav_x5_second",
+      "sample_id": "event_trace:280:dual_uav_pad_contention:local:uav_x5_second",
+      "tick": 280
+    },
+    {
+      "payload.event_id": "p09.pad-request-intent:local:uav_x5_second",
+      "instance_id": "evt_p09.pad-request-intent:local:uav_x5_second",
+      "source_event_id": "p09.pad-request-intent:local:uav_x5_second",
+      "source_topic": "p09.pad-request-intent:local:uav_x5_second",
+      "topic": "p09.pad-request-intent:local:uav_x5_second",
+      "sample_id": "event_trace:335:p09.pad-request-intent:local:uav_x5_second",
+      "tick": 335
+    },
+    {
+      "payload.event_id": "p09.pad-request-intent:local:uav_x5_priority",
+      "instance_id": "evt_p09.pad-request-intent:local:uav_x5_priority",
+      "source_event_id": "p09.pad-request-intent:local:uav_x5_priority",
+      "source_topic": "p09.pad-request-intent:local:uav_x5_priority",
+      "topic": "p09.pad-request-intent:local:uav_x5_priority",
+      "sample_id": "event_trace:575:p09.pad-request-intent:local:uav_x5_priority",
+      "tick": 575
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+test_half_open_expiry_for_requests_and_results (Dataset.semantic_simulation.ns3_episode.test_linked_pad.PadLifetimeTests) ... ok
+test_late_result_waits_for_native_rx_instead_of_global_due_time (Dataset.semantic_simulation.ns3_episode.test_linked_pad.PadLifetimeTests) ... ok
+test_received_timer_due_and_strict_rx_availability_without_interpreter (Dataset.semantic_simulation.ns3_episode.test_linked_pad.PadLifetimeTests) ... ok
+test_scoped_trigger_and_phase_topics_are_distinct (Dataset.semantic_simulation.ns3_episode.test_linked_pad.PadLifetimeTests) ... ok
+test_wrong_owner_payload_clock_or_policy_fails_explicitly (Dataset.semantic_simulation.ns3_episode.test_linked_pad.PadLifetimeTests) ... ok
+test_each_owner_moves_only_on_own_receipt (Dataset.semantic_simulation.ns3_episode.test_linked_authority.OwnerAuthorityTests) ... ok
+test_peer_watchdog_cannot_block_or_admit_owner (Dataset.semantic_simulation.ns3_episode.test_linked_authority.OwnerAuthorityTests) ... ok
+test_preloaded_rendezvous_is_independent_of_rx_and_late_local_decision (Dataset.semantic_simulation.ns3_episode.test_linked_authority.OwnerAuthorityTests) ... ok
+test_approach_needs_own_bad_decision_not_peer_or_pad_receipt (Dataset.semantic_simulation.ns3_episode.test_linked_authority.PadOwnerTests) ... ok
+test_arbitration_cannot_use_request_presence_without_receipt (Dataset.semantic_simulation.ns3_episode.test_linked_authority.PadOwnerTests) ... ok
+test_pad_result_requires_sender_owned_admission_and_both_received_requests (Dataset.semantic_simulation.ns3_episode.test_linked_authority.PadOwnerTests) ... ok
+test_repair_is_preloaded_and_actor_recovery_requires_own_observation (Dataset.semantic_simulation.ns3_episode.test_linked_authority.PadOwnerTests) ... ok
+test_request_waits_for_own_arrival_pose_and_strict_availability (Dataset.semantic_simulation.ns3_episode.test_linked_authority.PadOwnerTests) ... ok
+test_late_local_recovery_opens_receipt_horizon_and_both_land (Dataset.semantic_simulation.ns3_episode.test_linked_authority.PendingSuccessorTests) ... ok
+test_unreceived_successor_stays_unadmitted_at_finite_wait_horizon (Dataset.semantic_simulation.ns3_episode.test_linked_authority.PendingSuccessorTests) ... ok
+test_environment_changes_before_owner_response_for_both_existing_variants (Dataset.semantic_simulation.ns3_episode.test_linked_authority.WeatherAvailabilityTests) ... ok
+test_queue_does_not_change_other_scenario_admission (Dataset.semantic_simulation.ns3_episode.test_linked_replay.HoldDecisionQueueTests) ... ok
+test_short_original_tick_evidence_is_queued_without_future_truth (Dataset.semantic_simulation.ns3_episode.test_linked_replay.HoldDecisionQueueTests) ... ok
+test_late_admitted_landing_finishes_without_changing_observed_prefix (Dataset.semantic_simulation.ns3_episode.test_linked_replay.LandingAcquisitionTests) ... ok
+test_unreceived_landing_does_not_extend_acquisition (Dataset.semantic_simulation.ns3_episode.test_linked_replay.LandingAcquisitionTests) ... ok
+test_actual_executor_slot_and_expiry (Dataset.semantic_simulation.ns3_episode.test_linked_replay.ReceiptAdmissionTests) ... ok
+test_exact_epoch_and_strict_received_prefix (Dataset.semantic_simulation.ns3_episode.test_linked_replay.ReceiptAdmissionTests) ... ok
+test_pad_request_state_requires_exact_available_rx (Dataset.semantic_simulation.ns3_episode.test_linked_replay.ReceiptAdmissionTests) ... ok
+test_renderer_and_script_request_claims_cannot_replace_rx (Dataset.semantic_simulation.ns3_episode.test_linked_replay.ReceiptAdmissionTests) ... ok
+test_service_fact_delivery_deadline_is_not_use_expiry (Dataset.semantic_simulation.ns3_episode.test_linked_replay.ReceiptAdmissionTests) ... ok
+test_gap_breaks_rain_count_and_missing_pose_is_unknown (Dataset.semantic_simulation.ns3_episode.test_linked_observations.ScopedContractTests) ... ok
+test_injected_fault_hold_not_removed_at_original_fault_tick (Dataset.semantic_simulation.ns3_episode.test_linked_observations.ScopedContractTests) ... ok
+test_only_l5_migrates_the_original_guard (Dataset.semantic_simulation.ns3_episode.test_linked_observations.ScopedContractTests) ... ok
+test_rain_needs_five_contiguous_available_samples (Dataset.semantic_simulation.ns3_episode.test_linked_observations.ScopedContractTests) ... ok
+test_arrival_is_owned_sample_after_motion_and_before_request_decision (Dataset.semantic_simulation.ns3_episode.test_linked_backup.BackupContactTests) ... ok
+test_backup_response_rejects_wrong_receiver_or_unavailable_sender_evidence (Dataset.semantic_simulation.ns3_episode.test_linked_backup.BackupContactTests) ... ok
+test_failed_primary_visual_claim_is_omitted_and_scene_drift_is_explicit (Dataset.semantic_simulation.ns3_episode.test_linked_backup.BackupContactTests) ... ok
+test_geometry_migration_is_only_v2_and_retains_speeds_and_original_destinations (Dataset.semantic_simulation.ns3_episode.test_linked_backup.BackupContactTests) ... ok
+
+----------------------------------------------------------------------
+Ran 33 tests in 35.516s
+
+OK
