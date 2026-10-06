@@ -29,3 +29,9 @@ This packet supplements the frozen native-execution packet `65423f411d2f51e3ccbe
 The two L6 seed02 runs still fail their prescribed story with 11/7 missing events. The original watchdog threshold remains unchanged. A preloaded rendezvous is not a local backup observation, and stationary airborne entities are not certified landed. Resolve the fault-profile/story mismatch with actual ns-3 evidence before adoption. This packet does not resolve that mechanism, certify all 30 episodes, finalize the remaining 174, or establish ARM recapture dependencies.
 
 Run the focused source tests from the AERO_WORLD root using the recorded command. A fresh export uses the exact existing v12 folders; output directories must be new. Review source overlays in an isolated integration copy, preserving the original v12 snapshots.
+
+## Byte-preserving X1 operands and trajectory delta
+
+Each X1 seed now includes `first_permission_source_poses_450_452.raw.jsonl` with the exact six original JSONL lines, plus `.raw-index.json` with original line numbers, byte offsets and per-line hashes. This adds all 18 source rows at ticks 450–452 for the two bound actors. The tick-to-nanosecond mapping is index metadata; original rows remain unchanged.
+
+`full_trajectory_delta_comparison.json` compares every field of all 45,951 rows in the three transformed L2v2 files. Each seed has 901 route-metadata rows and 1,802 logical-corridor placement rows; every physical actor position, velocity, yaw, state and activity is unchanged. The other 27 current trajectories directly reference their exact immutable v12 source files. This is full comparison of the three transformed files and exact file identity for the other 27, not an inference from partial boundary poses. No simulator was rerun.

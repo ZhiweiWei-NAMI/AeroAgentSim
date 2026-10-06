@@ -1436,8 +1436,8 @@
   },
   {
     "path": "README.md",
-    "bytes": 5660,
-    "sha256": "dc37ae5c4c9e1170a6f3c6c0d615ce0dc9d9fafc786031c9876a552fb8305e55"
+    "bytes": 6610,
+    "sha256": "ee9b7976b503a946b6e7e1e2a5d4278805b16c6f4fcea268bce7fdd82184358c"
   },
   {
     "path": "X1_rain_to_c2loss_to_forced_landing__seed00/actions.json",
@@ -1463,6 +1463,16 @@
     "path": "X1_rain_to_c2loss_to_forced_landing__seed00/first_permission_source_poses_450_452.json",
     "bytes": 12355,
     "sha256": "cec52cda16bee8c5739844cfc10c5ae238a444539070358c0277ac3679edf282"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/first_permission_source_poses_450_452.raw-index.json",
+    "bytes": 2476,
+    "sha256": "7ccfabfb018aabd0cde471c3a2e8ebac30a6a908520768aa7082cdc5c93b5e22"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed00/first_permission_source_poses_450_452.raw.jsonl",
+    "bytes": 6451,
+    "sha256": "250cd56fda2a9e23de3b4596df6bc2fd658155c84efedcb1879c93a789693bed"
   },
   {
     "path": "X1_rain_to_c2loss_to_forced_landing__seed00/metadata_migration.json",
@@ -1535,6 +1545,16 @@
     "sha256": "b700e6692ac3751f18779d35cc871f727bc06e0eb74465870ed8e2f44f595640"
   },
   {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/first_permission_source_poses_450_452.raw-index.json",
+    "bytes": 2476,
+    "sha256": "1271583303d77503fa5bdc7c8f991408b7da89eb03849f38d07e452f2585146d"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed01/first_permission_source_poses_450_452.raw.jsonl",
+    "bytes": 6451,
+    "sha256": "250cd56fda2a9e23de3b4596df6bc2fd658155c84efedcb1879c93a789693bed"
+  },
+  {
     "path": "X1_rain_to_c2loss_to_forced_landing__seed01/metadata_migration.json",
     "bytes": 2071,
     "sha256": "55d484b874add867ddabb711c6cd8fd2d21dbae2120fdf525db2525297ad82e4"
@@ -1603,6 +1623,16 @@
     "path": "X1_rain_to_c2loss_to_forced_landing__seed02/first_permission_source_poses_450_452.json",
     "bytes": 12355,
     "sha256": "061e756f7847fb7b259273ca2ce0df02fbe275d2c3909c0baa93e43cda59bbb2"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/first_permission_source_poses_450_452.raw-index.json",
+    "bytes": 2476,
+    "sha256": "2c9349c158f91a8e6268ecb3bb46c73ba28a3e98e405961f9285964bb3fac497"
+  },
+  {
+    "path": "X1_rain_to_c2loss_to_forced_landing__seed02/first_permission_source_poses_450_452.raw.jsonl",
+    "bytes": 6451,
+    "sha256": "250cd56fda2a9e23de3b4596df6bc2fd658155c84efedcb1879c93a789693bed"
   },
   {
     "path": "X1_rain_to_c2loss_to_forced_landing__seed02/metadata_migration.json",
@@ -1858,6 +1888,11 @@
     "path": "focused_validation.json",
     "bytes": 672,
     "sha256": "794c4f04d50ebe0a903a12571c1517e3ced6fa3c4d950d328c2eb80458c07f67"
+  },
+  {
+    "path": "full_trajectory_delta_comparison.json",
+    "bytes": 20686,
+    "sha256": "dd95d7f624de7d5cad27b99e3dee0f1c725203a90c1809689e89698759f9a07c"
   },
   {
     "path": "l2_existing_phy_arp_diagnostics/inventory.json",
@@ -2193,6 +2228,11 @@
     "path": "source/export_v13_metadata_review.py",
     "bytes": 16923,
     "sha256": "0eec56fb60db2351f3d5d08635abca2023f58f639999d85bd7d29aa0a99a0e9c"
+  },
+  {
+    "path": "source/export_v13_raw_pose_delta.py",
+    "bytes": 5502,
+    "sha256": "da5e15ce71da50596c876a23b89559deaa3c4c29e0dc075d31722d25305bcc99"
   },
   {
     "path": "source/linked_backup.py",
