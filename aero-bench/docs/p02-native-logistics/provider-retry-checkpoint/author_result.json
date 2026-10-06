@@ -1,0 +1,68 @@
+{
+  "session": "a400e686-3a13-4b1e-950c-f443091ea395",
+  "route": "workbuddy/glm-5.3-flash (ordinary default)",
+  "scope": "NativeParcelBusinessProvider.handle_command pre-RPC temporal gate repair + three regressions. No core RPC/runtime clock change, no new retry protocol, no service wiring resumed.",
+  "observed_at_utc": "2026-10-06",
+  "production_change": {
+    "file": "aero_bench/providers/logistics_business/native_parcel.py",
+    "function": "NativeParcelBusinessProvider.handle_command (temporal gate only, lines ~91-104)",
+    "before": "if request.run_id != self._run_id or request.issued_at != self._last_time: raise LogisticsBusinessProviderError(\"parcel request is not at the authoritative run time\")",
+    "after": "FINAL (per code-level review): the provider keeps only prepared + exact run binding before forwarding: `if request.run_id != self._run_id: raise LogisticsBusinessProviderError(\"parcel request belongs to another run\")`. The intermediate lexicographic (tick, sim_time_ns) future guard introduced during repair was REMOVED as redundant temporal authority: core RPC.transition already checks the exact authoritative SimulationTime for first-seen requests after dedup, a tuple comparison rejects lateness in neither clock dimension, and no extra provider temporal policy was requested. First-seen clock validation, replay of an identical processed request and payload-reuse refusal are owned entirely by the NativeParcelRpcComponent.transition dedup. No core RPC or clock-module change.",
+    "evolution": "before: exact-time equality gate (blocked stale replays) -> intermediate: run binding + future-only tuple guard -> final: run binding only, all temporal authority at RPC",
+    "unchanged": [
+      "NativeParcelRpcComponent.transition and machine dedup logic (core RPC untouched)",
+      "run/scenario binding, clock logic, receipt validation, response contract checks",
+      "native_vehicle_id projection semantics (no dual-ID change)"
+    ]
+  },
+  "test_file": "tests/providers/test_native_parcel_provider_retry.py",
+  "test_structure": "Parent supplied test verbatim (test_provider_retry_after_tick_advance_reaches_authoritative_dedup) + exactly the two negative cases; actual package fixture h.lower_logistics_task_package(h._package_document()); in-memory transport bound to provider._request reaching actual NativeParcelRpcComponent.transition dedup after tick advance (transport observed twice, rpc.actions length 1, transfers length 1); no service launch or native flight claimed.",
+  "commands": {
+    "before": "cd /mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench && /home/weizhiwei/data/iiot_predict/iiot_py311/airfogsim/bin/python -m pytest tests/providers/test_native_parcel_provider_retry.py -q > validation/p02_forward_reconnect_glm/ui-checkpoint/provider-retry-checkpoint/before.log 2>&1",
+    "after": "cd /mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench && /home/weizhiwei/data/iiot_predict/iiot_py311/airfogsim/bin/python -m pytest tests/providers/test_native_parcel_provider_retry.py -q > validation/p02_forward_reconnect_glm/ui-checkpoint/provider-retry-checkpoint/after.log 2>&1",
+    "neighbors": "/home/weizhiwei/data/iiot_predict/iiot_py311/airfogsim/bin/python -m pytest tests/tasks/test_native_parcel_rpc.py tests/tasks/test_native_parcel_runtime.py tests/providers/test_native_parcel_business_wiring.py tests/providers -q"
+  },
+  "outcomes": {
+    "before": {
+      "exit_code": 1,
+      "log": "validation/p02_forward_reconnect_glm/ui-checkpoint/provider-retry-checkpoint/before.log",
+      "summary": "3 failed",
+      "detail": [
+        "positive: LogisticsBusinessProviderError 'parcel request is not at the authoritative run time' at native_parcel.py:93 — matches coordinator reproduction verbatim",
+        "stale negative: same gate error pre-empted the authoritative refusal",
+        "altered-payload negative: same gate error (calls==1, forwarded never)"
+      ]
+    },
+    "after": {
+      "exit_code": 0,
+      "log": "validation/p02_forward_reconnect_glm/ui-checkpoint/provider-retry-checkpoint/after.log",
+      "summary": "3 passed in 0.63s",
+      "detail": [
+        "positive: retransmitted processed request replayed by authoritative dedup after tick4 advance; again==first; machine snapshot unchanged; projection in_transit; transport called twice; transfers==1",
+        "stale negative (a): first-seen tick3 request after authoritative tick4 forwarded once and refused by the authoritative RPC with the exact exception NativeParcelRuntimeError (match 'issue time differs from current admission time'); zero machine mutation; state awaiting_pickup; transfers==0",
+        "altered-payload negative (b): same command ID action.pickup.1 with dropoff payload forwarded once and refused by the authoritative dedup with the exact exception NativeParcelRuntimeError (match 'reused with different request content'); machine snapshot unchanged (no rollback, no repeated transfer); projection in_transit; transfers==1; original decision time stays tick3 (action.received_at == dwell tick3)"
+      ]
+    },
+    "neighbors": {
+      "exit_code": 1,
+      "summary": "63 passed, 1 error",
+      "detail": "The single error is tests/providers/test_native_parcel_business_wiring.py fixture SETUP (vertiport pad-geometry lowering from the previous, deliberately-closed wiring turn — my re-authored package document lowers facilities with the 12m width instead of the runtime_hook's widened 18m vertiports). Pre-existing and independent of this gate repair; all runnable providers + rpc + runtime tests pass. Service wiring resumes after this bounded deliverable per assignment."
+    }
+  },
+  "assertion_notes": "During bring-up two of my own negative-case expectations were corrected against the repaired semantics: the stale case is refused by the authoritative RPC layer (forwarded, exactly one transport call, calls==['command']), not by the provider gate, its untouched state is awaiting_pickup (that scenario never admitted a pickup), and the altered-payload case is forwarded once (2 calls total). Per coordinator review the two negatives now assert the exact production exception NativeParcelRuntimeError with meaningful message matches ('issue time differs from current admission time', 'reused with different request content') instead of broad raises(Exception), so fixture or API failures cannot pass. The parent positive test remains unchanged from the supplied regression. Production RPC/state was not touched to satisfy these assertions.",
+  "second_review_rerun": {
+    "command": "cd /mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench && /home/weizhiwei/data/iiot_predict/iiot_py311/airfogsim/bin/python -m pytest tests/providers/test_native_parcel_provider_retry.py -q > validation/p02_forward_reconnect_glm/ui-checkpoint/provider-retry-checkpoint/after.log 2>&1",
+    "exit_code": 0,
+    "summary": "3 passed in 0.62s",
+    "wiring_note": "tests/providers/test_native_parcel_business_wiring.py remains in fixture-setup ERROR from the deliberately-closed prior turn (12m vs 18m vertiport lowering); untouched by this deliverable."
+  },
+  "final_simplification_rerun": {
+    "review": "Code-level coordinator review of saved production patch and 3/3 after.log confirmed the requested dedup behavior passes; the (tick, sim_time_ns) future guard was then removed as redundant temporal authority.",
+    "production_state": "handle_command = _require_prepared + exact run binding + forward to RPC; no provider-side temporal comparison remains.",
+    "command": "cd /mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench && /home/weizhiwei/data/iiot_predict/iiot_py311/airfogsim/bin/python -m pytest tests/providers/test_native_parcel_provider_retry.py -q > validation/p02_forward_reconnect_glm/ui-checkpoint/provider-retry-checkpoint/after.log 2>&1",
+    "exit_code": 0,
+    "summary": "3 passed in 0.63s",
+    "assertions": "Exactly the same three cases with explicit NativeParcelRuntimeError + message-match negatives ('issue time differs from current admission time', 'reused with different request content'); positive replay reaches actual transition dedup after tick advance (2 transport calls, 1 action, 1 transfer); original decision time stays tick3; stale scenario state stays awaiting_pickup, altered-payload scenario state stays in_transit with no rollback or repeated transfer.",
+    "checkpoint_status": "closed"
+  }
+}

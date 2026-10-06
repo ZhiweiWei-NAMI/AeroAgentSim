@@ -1,0 +1,38 @@
+import asyncio
+from types import SimpleNamespace
+from aero_bench.providers.logistics_business.native_parcel import NativeParcelBusinessProvider
+from tests.tasks import test_native_parcel_runtime as h
+from tests.tasks import test_native_parcel_rpc as r
+
+def ready(package):
+    rpc=r.component(package)
+    for tick in (1,2,3): rpc.ingest_closed_stage(r.batch(package,tick))
+    return rpc
+
+def test_provider_retry_after_tick_advance_reaches_authoritative_dedup(package):
+    """Actual provider method, in-memory transport; no service launch claimed."""
+    rpc=ready(package)
+    provider=object.__new__(NativeParcelBusinessProvider)
+    provider._prepared=True;provider._run_id=h._RUN_ID;provider._last_time=h._dwell_tick(3)
+    provider._config=SimpleNamespace(provider_id='logistics.native-parcel')
+    calls=[]
+    async def transport(operation,payload):
+        calls.append(operation)
+        req=r.CommandRequest.model_validate(payload['request'])
+        record=rpc.transition(req,now=provider._last_time)
+        phases=('received','accepted','applied','completed') if record['outcome']['status']=='admitted' else ('received','failed')
+        return {'receipts':[dict(run_id=req.run_id,command_id=req.command_id,
+            provider_id=provider._config.provider_id,phase=phase,time=req.issued_at.model_dump(mode='json'))
+            for phase in phases], 'parcel_action_record':record}
+    provider._request=transport
+    request=r.request(3)
+    first=asyncio.run(provider.handle_command(request))
+    assert first.receipts[-1].phase=='completed'
+    rpc.ingest_closed_stage(r.batch(package,4,moving=True));provider._last_time=h._dwell_tick(4)
+    before=rpc.machine.snapshot()
+    again=asyncio.run(provider.handle_command(request))
+    assert again==first
+    assert rpc.machine.snapshot()==before
+    assert rpc.projection().state=='in_transit'
+    assert len(calls)==2
+    assert len(rpc.machine.parcel_state.transfers)==1
