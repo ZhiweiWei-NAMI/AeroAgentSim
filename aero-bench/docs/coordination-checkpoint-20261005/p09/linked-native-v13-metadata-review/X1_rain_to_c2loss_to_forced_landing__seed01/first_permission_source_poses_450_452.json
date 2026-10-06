@@ -1,0 +1,577 @@
+{
+  "schema_version": "p09.cached-x1-first-permission-source-poses/v1",
+  "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed01",
+  "source": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed01/adopted/trajectories.jsonl",
+  "source_trajectory_sha256": "bc8f638b44e3f5368f4f766e030dbd79c46918a649eba564fb0725ee4510b441",
+  "native_execution_revision": "p09.linked-native-causal/v12",
+  "ticks": [
+    450,
+    451,
+    452
+  ],
+  "entity_ids": [
+    "ped_x1_crowd_x1_08",
+    "uav_x1_forced_landing"
+  ],
+  "rows_are_unmodified_cached_source": true,
+  "rows": [
+    {
+      "tick": 450,
+      "entity_id": "ped_x1_crowd_x1_08",
+      "label_class": "pedestrian",
+      "asset_id": "pedestrian.cityops.basic.v1",
+      "pos_enu": [
+        6396.696,
+        6582.535,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -61.261046,
+      "state": "observing",
+      "activity_type": "observing",
+      "animation_hint": "pedestrian_observe",
+      "posture": "standing",
+      "social_state": "observer",
+      "task_id": "ped_x1_crowd_x1_08.task",
+      "role": "semantic_pedestrian",
+      "state_sequence": [
+        "observing"
+      ],
+      "semantic_role": "observing",
+      "activation_tick": 0,
+      "category": "pedestrian",
+      "route_waypoints_enu_m": []
+    },
+    {
+      "tick": 450,
+      "entity_id": "uav_x1_forced_landing",
+      "label_class": "uav",
+      "asset_id": "uav.inspect.quad.v1",
+      "pos_enu": [
+        6400.145,
+        6577.982,
+        10.307692
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -7.692308
+      ],
+      "yaw_deg": 42.274913,
+      "state": "descending",
+      "activity_type": "descending",
+      "animation_hint": "descending",
+      "posture": "standing",
+      "social_state": "solo",
+      "task_id": "uav_x1_forced_landing.task",
+      "role": "mission_uav",
+      "state_sequence": [
+        "rain_patrol"
+      ],
+      "semantic_role": "rain_patrol",
+      "uav_corridor_role": "mission_uav",
+      "uav_corridor": {
+        "assigned_altitude_m": 50.0,
+        "altitude_layers_m": [
+          30.0,
+          50.0,
+          80.0
+        ],
+        "used_lateral_bypass": false
+      },
+      "assigned_altitude_m": 50.0,
+      "ground_reference_z_m": 3.0,
+      "ground_reference_source": "home_hover_pose_origin_v1",
+      "lifecycle": {
+        "auto_lifecycle_applied": true,
+        "home_pad_entity_id": "pad_home_uav_x1_forced_landing",
+        "home_hover_enu_m": [
+          6351.654,
+          6527.313,
+          3.0
+        ],
+        "mission_start_enu_m": [
+          6369.849,
+          6550.439,
+          32.0
+        ],
+        "requires_takeoff": true,
+        "requires_landing_or_terminal_resolution": true,
+        "assigned_altitude_m": 50.0,
+        "waypoint_repair_applied": true
+      },
+      "activation_tick": 0,
+      "category": "uav",
+      "route_waypoints_enu_m": [
+        [
+          6351.654,
+          6527.313,
+          24.0
+        ],
+        [
+          6369.849,
+          6550.439,
+          32.0
+        ],
+        [
+          6369.849,
+          6550.439,
+          50.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          50.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          18.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          8.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          4.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          0.8
+        ]
+      ],
+      "planned_route_waypoints_enu_m": [
+        [
+          6351.654,
+          6527.313,
+          24.0
+        ],
+        [
+          6369.849,
+          6550.439,
+          32.0
+        ],
+        [
+          6369.849,
+          6550.439,
+          50.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          50.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          18.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          8.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          4.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          0.8
+        ]
+      ],
+      "control_state": {
+        "safe_hold_active": false
+      },
+      "mission_state": {
+        "unsafe": true
+      },
+      "communication_state": {
+        "communication_unavailable": false
+      }
+    },
+    {
+      "tick": 451,
+      "entity_id": "ped_x1_crowd_x1_08",
+      "label_class": "pedestrian",
+      "asset_id": "pedestrian.cityops.basic.v1",
+      "pos_enu": [
+        6396.696,
+        6582.535,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -61.261046,
+      "state": "observing",
+      "activity_type": "observing",
+      "animation_hint": "pedestrian_observe",
+      "posture": "standing",
+      "social_state": "observer",
+      "task_id": "ped_x1_crowd_x1_08.task",
+      "role": "semantic_pedestrian",
+      "state_sequence": [
+        "observing"
+      ],
+      "semantic_role": "observing",
+      "activation_tick": 0,
+      "category": "pedestrian",
+      "route_waypoints_enu_m": []
+    },
+    {
+      "tick": 451,
+      "entity_id": "uav_x1_forced_landing",
+      "label_class": "uav",
+      "asset_id": "uav.inspect.quad.v1",
+      "pos_enu": [
+        6400.145,
+        6577.982,
+        9.538462
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -7.692308
+      ],
+      "yaw_deg": 42.274913,
+      "state": "descending",
+      "activity_type": "descending",
+      "animation_hint": "descending",
+      "posture": "standing",
+      "social_state": "solo",
+      "task_id": "uav_x1_forced_landing.task",
+      "role": "mission_uav",
+      "state_sequence": [
+        "rain_patrol"
+      ],
+      "semantic_role": "rain_patrol",
+      "uav_corridor_role": "mission_uav",
+      "uav_corridor": {
+        "assigned_altitude_m": 50.0,
+        "altitude_layers_m": [
+          30.0,
+          50.0,
+          80.0
+        ],
+        "used_lateral_bypass": false
+      },
+      "assigned_altitude_m": 50.0,
+      "ground_reference_z_m": 3.0,
+      "ground_reference_source": "home_hover_pose_origin_v1",
+      "lifecycle": {
+        "auto_lifecycle_applied": true,
+        "home_pad_entity_id": "pad_home_uav_x1_forced_landing",
+        "home_hover_enu_m": [
+          6351.654,
+          6527.313,
+          3.0
+        ],
+        "mission_start_enu_m": [
+          6369.849,
+          6550.439,
+          32.0
+        ],
+        "requires_takeoff": true,
+        "requires_landing_or_terminal_resolution": true,
+        "assigned_altitude_m": 50.0,
+        "waypoint_repair_applied": true
+      },
+      "activation_tick": 0,
+      "category": "uav",
+      "route_waypoints_enu_m": [
+        [
+          6351.654,
+          6527.313,
+          24.0
+        ],
+        [
+          6369.849,
+          6550.439,
+          32.0
+        ],
+        [
+          6369.849,
+          6550.439,
+          50.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          50.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          18.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          8.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          4.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          0.8
+        ]
+      ],
+      "planned_route_waypoints_enu_m": [
+        [
+          6351.654,
+          6527.313,
+          24.0
+        ],
+        [
+          6369.849,
+          6550.439,
+          32.0
+        ],
+        [
+          6369.849,
+          6550.439,
+          50.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          50.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          18.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          8.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          4.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          0.8
+        ]
+      ],
+      "control_state": {
+        "safe_hold_active": false
+      },
+      "mission_state": {
+        "unsafe": true
+      },
+      "communication_state": {
+        "communication_unavailable": false
+      }
+    },
+    {
+      "tick": 452,
+      "entity_id": "ped_x1_crowd_x1_08",
+      "label_class": "pedestrian",
+      "asset_id": "pedestrian.cityops.basic.v1",
+      "pos_enu": [
+        6396.696,
+        6582.535,
+        0.0
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "yaw_deg": -61.261046,
+      "state": "observing",
+      "activity_type": "observing",
+      "animation_hint": "pedestrian_observe",
+      "posture": "standing",
+      "social_state": "observer",
+      "task_id": "ped_x1_crowd_x1_08.task",
+      "role": "semantic_pedestrian",
+      "state_sequence": [
+        "observing"
+      ],
+      "semantic_role": "observing",
+      "activation_tick": 0,
+      "category": "pedestrian",
+      "route_waypoints_enu_m": []
+    },
+    {
+      "tick": 452,
+      "entity_id": "uav_x1_forced_landing",
+      "label_class": "uav",
+      "asset_id": "uav.inspect.quad.v1",
+      "pos_enu": [
+        6400.145,
+        6577.982,
+        8.769231
+      ],
+      "vel_mps": [
+        0.0,
+        0.0,
+        -7.692308
+      ],
+      "yaw_deg": 42.274913,
+      "state": "descending",
+      "activity_type": "descending",
+      "animation_hint": "descending",
+      "posture": "standing",
+      "social_state": "solo",
+      "task_id": "uav_x1_forced_landing.task",
+      "role": "mission_uav",
+      "state_sequence": [
+        "rain_patrol"
+      ],
+      "semantic_role": "rain_patrol",
+      "uav_corridor_role": "mission_uav",
+      "uav_corridor": {
+        "assigned_altitude_m": 50.0,
+        "altitude_layers_m": [
+          30.0,
+          50.0,
+          80.0
+        ],
+        "used_lateral_bypass": false
+      },
+      "assigned_altitude_m": 50.0,
+      "ground_reference_z_m": 3.0,
+      "ground_reference_source": "home_hover_pose_origin_v1",
+      "lifecycle": {
+        "auto_lifecycle_applied": true,
+        "home_pad_entity_id": "pad_home_uav_x1_forced_landing",
+        "home_hover_enu_m": [
+          6351.654,
+          6527.313,
+          3.0
+        ],
+        "mission_start_enu_m": [
+          6369.849,
+          6550.439,
+          32.0
+        ],
+        "requires_takeoff": true,
+        "requires_landing_or_terminal_resolution": true,
+        "assigned_altitude_m": 50.0,
+        "waypoint_repair_applied": true
+      },
+      "activation_tick": 0,
+      "category": "uav",
+      "route_waypoints_enu_m": [
+        [
+          6351.654,
+          6527.313,
+          24.0
+        ],
+        [
+          6369.849,
+          6550.439,
+          32.0
+        ],
+        [
+          6369.849,
+          6550.439,
+          50.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          50.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          18.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          8.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          4.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          0.8
+        ]
+      ],
+      "planned_route_waypoints_enu_m": [
+        [
+          6351.654,
+          6527.313,
+          24.0
+        ],
+        [
+          6369.849,
+          6550.439,
+          32.0
+        ],
+        [
+          6369.849,
+          6550.439,
+          50.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          50.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          18.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          8.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          4.0
+        ],
+        [
+          6400.145,
+          6577.982,
+          0.8
+        ]
+      ],
+      "control_state": {
+        "safe_hold_active": false
+      },
+      "mission_state": {
+        "unsafe": true
+      },
+      "communication_state": {
+        "communication_unavailable": false
+      }
+    }
+  ],
+  "ns3_rerun": false,
+  "UE_capture": false,
+  "scope": "Source operands missing from prior 453\u2013457 excerpt; not a new simulation or changed admission"
+}
