@@ -1,0 +1,70 @@
+{
+  "schema_version": "p09.linked-source-adoption/v4",
+  "episode_id": "X5_comm_failure_to_pad_contention__seed01",
+  "scenario_id": "X5_comm_failure_to_pad_contention",
+  "seed": 1,
+  "ns3_seed": 2,
+  "ns3_run": 1,
+  "mechanism": "pad_service",
+  "actor_ids": [
+    "uav_x5_priority",
+    "uav_x5_second"
+  ],
+  "primary_station": "tower_x5_comm",
+  "backup_station": null,
+  "heartbeat": {
+    "period_ns": 100000000,
+    "payload_bytes": 256,
+    "ttl_ns": 200000000,
+    "window_ns": 1000000000,
+    "loss_limit": 0.05,
+    "consecutive_limit": 3
+  },
+  "receiver_state_namespace": "p09.actor-heartbeat-watchdog/v1",
+  "receiver_state_definitions": {
+    "loss_ratio": "unit1; mature expected local slots not received before strict generation+TTL; includes unsent expected slots",
+    "consecutive_missing": "packet; trailing mature missing sequence slots",
+    "degraded": "bool/UNKNOWN; loss_ratio>0.05 AND consecutive_missing>=3",
+    "observation_ns": "ns; local window close/available time, consumed strictly before actor decision"
+  },
+  "legacy_state_disposition": "old global accepted-TX/reference and initial runtime flags are separate; no actor-control causality claim from those flags",
+  "command": {
+    "payload_bytes": 64,
+    "attempts": 3,
+    "period_ns": 100000000,
+    "deadline_ns": 2000000000,
+    "policy_delay_ns": 0
+  },
+  "source_script": "Dataset/scenarios/X_cross_layer/X5_comm_failure_to_pad_contention/event_script.json",
+  "source_scene": "Dataset/scenarios/X_cross_layer/X5_comm_failure_to_pad_contention/scene_setup.json",
+  "source_script_sha256": "eb5da8e7d89a2c791dbd776648c521271450be3b4ad767dac3f7ecdcfff4b6d4",
+  "source_scene_sha256": "d794cd07ebb641de7e0fd9ff3760a05608a000c27d0a23b66d4d93ef4d16407d",
+  "corrections": [],
+  "assumptions": [
+    "receiver-visible periodic heartbeat is configured application traffic",
+    "actor observes local weather/nearby geometry after one original tick",
+    "10Hz authored waypoint engine, not PX4 aerodynamic flight"
+  ],
+  "rain_rf": "not amplified; dimensionless rain is not an observed mm/h rate",
+  "rf_profile": "R1:2412MHz/20MHz/HtMcs0/16dBm/NF7/n3/L0=40.09532929124565",
+  "pad_request_transport": {
+    "payload_bytes": 64,
+    "attempts": 3,
+    "period_ns": 100000000,
+    "deadline_ns": 5000000000,
+    "policy_delay_ns": 0
+  },
+  "pad_request_policy": {
+    "version": "p09.pad-cold-discovery/v1",
+    "deadline_basis": "ns-3 ARP WaitReplyTimeout=1s, MaxRetries=3 permits cold discovery retries; 5s authored service-request envelope, distinct from 2s flight-command deadline",
+    "request_count_semantics": "accepted active pad requests, recorded only after actual RX; rejected request retires at local service completion, not remote actor truth"
+  },
+  "pad_owner": "pad_x5_primary",
+  "priority_order": [
+    "uav_x5_priority",
+    "uav_x5_second"
+  ],
+  "service_delay_ns": 500000000,
+  "service_record_policy": "accepted requests and allocation results persist until station_recovered revocation; transport deadline bounds delivery, not durable fact use",
+  "pad_transport_assumption": "explicit local pad Wi-Fi endpoint; independent of failed tower"
+}

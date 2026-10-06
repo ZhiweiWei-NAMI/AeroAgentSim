@@ -1,0 +1,153 @@
+[
+  {
+    "event_id": "lifecycle_takeoff_uav_x1_forced_landing",
+    "decision_tick": 30,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_takeoff_uav_x1_forced_landing",
+      "decision_ns": 3000000000
+    }
+  },
+  {
+    "event_id": "x1_ped_approach",
+    "decision_tick": 120,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "x1_ped_approach",
+      "decision_ns": 12000000000
+    }
+  },
+  {
+    "event_id": "crowd_present",
+    "decision_tick": 150,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "crowd_present",
+      "decision_ns": 15000000000
+    }
+  },
+  {
+    "event_id": "rain_onset",
+    "decision_tick": 180,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "rain_onset",
+      "decision_ns": 18000000000
+    }
+  },
+  {
+    "event_id": "rain_threshold",
+    "decision_tick": 182,
+    "allow": true,
+    "evidence": {
+      "local_weather": {
+        "sample_ns": 18000000000,
+        "available_ns": 18100000000,
+        "weather": {
+          "condition": "rain",
+          "rain": 0.62,
+          "wetness": 0.75,
+          "fog": 0.0,
+          "fog_density": 0.0,
+          "wind_speed": 4.0,
+          "wind_direction_deg": 110.0,
+          "visibility_m": 1600.0,
+          "visibility": 1600.0,
+          "temperature_c": 21.0,
+          "illumination_lux": 2400.0,
+          "hazard_source_active": false,
+          "hazard_concentration_ppm": 0.0,
+          "hazard_radius_m": 0.0
+        }
+      },
+      "legacy_sustain_semantics_retained": true
+    }
+  },
+  {
+    "event_id": "c2_loss_tick",
+    "decision_tick": 260,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "c2_loss_tick",
+      "decision_ns": 26000000000
+    }
+  },
+  {
+    "event_id": "c2_loss_after_rain",
+    "decision_tick": 270,
+    "allow": true,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 26900000000,
+          "receiver_owner": "uav_x1_forced_landing",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 1,
+          "ttl_not_timely": 7,
+          "observed_late": 0,
+          "pending_expected": 2,
+          "loss_ratio": 0.875,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 7,
+          "degraded": true,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "degraded",
+      "decision_ns": 27000000000,
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "c2_safe_hold",
+    "decision_tick": 369,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "c2_safe_hold",
+      "decision_ns": 36900000000
+    }
+  },
+  {
+    "event_id": "forced_landing_descent",
+    "decision_tick": 400,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "forced_landing_descent",
+      "decision_ns": 40000000000
+    }
+  },
+  {
+    "event_id": "crowd_reacts_to_landing",
+    "decision_tick": 454,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "crowd_reacts_to_landing",
+      "decision_ns": 45400000000
+    }
+  },
+  {
+    "event_id": "x1_recovery",
+    "decision_tick": 613,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "x1_recovery",
+      "decision_ns": 61300000000
+    }
+  }
+]

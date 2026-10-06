@@ -1,0 +1,452 @@
+[
+  {
+    "entity_id": "bg_ped_l6_4_v1_01",
+    "tick": 900,
+    "pos_enu": [
+      6643.578737,
+      6508.880632,
+      0.0
+    ],
+    "vel_mps": [
+      0.395088,
+      -1.164211,
+      0.0
+    ],
+    "yaw_deg": -71.254788,
+    "label_class": "pedestrian",
+    "state": "walking",
+    "activity_type": "walking"
+  },
+  {
+    "entity_id": "bg_ped_l6_4_v1_02",
+    "tick": 900,
+    "pos_enu": [
+      6641.449,
+      6509.546,
+      0.0
+    ],
+    "vel_mps": [
+      0.401071,
+      -1.181607,
+      0.0
+    ],
+    "yaw_deg": -71.251311,
+    "label_class": "pedestrian",
+    "state": "walking",
+    "activity_type": "walking"
+  },
+  {
+    "entity_id": "bg_ped_l6_4_v1_03",
+    "tick": 900,
+    "pos_enu": [
+      6643.894807,
+      6507.949263,
+      0.0
+    ],
+    "vel_mps": [
+      0.395088,
+      -1.164211,
+      0.0
+    ],
+    "yaw_deg": -71.254788,
+    "label_class": "pedestrian",
+    "state": "walking",
+    "activity_type": "walking"
+  },
+  {
+    "entity_id": "bg_ped_l6_4_v1_04",
+    "tick": 900,
+    "pos_enu": [
+      6642.003737,
+      6507.910211,
+      0.0
+    ],
+    "vel_mps": [
+      0.394561,
+      -1.162982,
+      0.0
+    ],
+    "yaw_deg": -71.259628,
+    "label_class": "pedestrian",
+    "state": "walking",
+    "activity_type": "walking"
+  },
+  {
+    "entity_id": "bg_vehicle_l6_4_v1_01",
+    "tick": 900,
+    "pos_enu": [
+      6642.533,
+      6562.965,
+      0.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": 84.98202,
+    "label_class": "vehicle",
+    "state": "traffic_flow",
+    "activity_type": "traffic_flow"
+  },
+  {
+    "entity_id": "bg_vehicle_l6_4_v1_02",
+    "tick": 900,
+    "pos_enu": [
+      6675.92,
+      6430.31,
+      0.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": -70.974394,
+    "label_class": "vehicle",
+    "state": "traffic_flow",
+    "activity_type": "traffic_flow"
+  },
+  {
+    "entity_id": "bg_vehicle_l6_4_v1_03",
+    "tick": 900,
+    "pos_enu": [
+      6677.757,
+      6434.18,
+      0.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": -70.709954,
+    "label_class": "vehicle",
+    "state": "traffic_flow",
+    "activity_type": "traffic_flow"
+  },
+  {
+    "entity_id": "contract_facility_l6_4_v1_02",
+    "tick": 900,
+    "pos_enu": [
+      6656.893,
+      6514.759,
+      0.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": 45.0,
+    "label_class": "charging_pile",
+    "state": "available",
+    "activity_type": "available"
+  },
+  {
+    "entity_id": "contract_facility_l6_4_v1_03",
+    "tick": 900,
+    "pos_enu": [
+      6638.609,
+      6510.143,
+      0.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": 90.0,
+    "label_class": "radio_tower",
+    "state": "online",
+    "activity_type": "online"
+  },
+  {
+    "entity_id": "corridor_l6_4_v1_uav_digital_l6_4_v1_00",
+    "tick": 900,
+    "pos_enu": [
+      6653.956,
+      6527.6,
+      13.5
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": 0.0,
+    "label_class": "uav_corridor",
+    "state": "semantic_corridor",
+    "activity_type": "semantic_corridor"
+  },
+  {
+    "entity_id": "corridor_l6_4_v1_uav_digital_l6_4_v1_01",
+    "tick": 900,
+    "pos_enu": [
+      6643.995,
+      6526.709,
+      28.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": -174.885,
+    "label_class": "uav_corridor",
+    "state": "semantic_corridor",
+    "activity_type": "semantic_corridor"
+  },
+  {
+    "entity_id": "corridor_l6_4_v1_uav_digital_l6_4_v1_02",
+    "tick": 900,
+    "pos_enu": [
+      6634.035,
+      6525.817,
+      31.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": 0.0,
+    "label_class": "uav_corridor",
+    "state": "semantic_corridor",
+    "activity_type": "semantic_corridor"
+  },
+  {
+    "entity_id": "corridor_l6_4_v1_uav_digital_l6_4_v1_03",
+    "tick": 900,
+    "pos_enu": [
+      6636.035,
+      6527.817,
+      30.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": 45.0,
+    "label_class": "uav_corridor",
+    "state": "semantic_corridor",
+    "activity_type": "semantic_corridor"
+  },
+  {
+    "entity_id": "corridor_l6_4_v1_uav_digital_l6_4_v1_04",
+    "tick": 900,
+    "pos_enu": [
+      6643.535,
+      6533.817,
+      30.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": 36.027,
+    "label_class": "uav_corridor",
+    "state": "semantic_corridor",
+    "activity_type": "semantic_corridor"
+  },
+  {
+    "entity_id": "corridor_l6_4_v1_uav_digital_l6_4_v1_05",
+    "tick": 900,
+    "pos_enu": [
+      6649.035,
+      6537.817,
+      33.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": 0.0,
+    "label_class": "uav_corridor",
+    "state": "semantic_corridor",
+    "activity_type": "semantic_corridor"
+  },
+  {
+    "entity_id": "corridor_l6_4_v1_uav_digital_l6_4_v1_06",
+    "tick": 900,
+    "pos_enu": [
+      6651.495,
+      6532.709,
+      36.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": -64.282,
+    "label_class": "uav_corridor",
+    "state": "semantic_corridor",
+    "activity_type": "semantic_corridor"
+  },
+  {
+    "entity_id": "corridor_l6_4_v1_uav_digital_l6_4_v1_07",
+    "tick": 900,
+    "pos_enu": [
+      6653.956,
+      6527.6,
+      19.5
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": 0.0,
+    "label_class": "uav_corridor",
+    "state": "semantic_corridor",
+    "activity_type": "semantic_corridor"
+  },
+  {
+    "entity_id": "corridor_l6_4_v1_uav_digital_l6_4_v1_secondary_00",
+    "tick": 900,
+    "pos_enu": [
+      6671.908,
+      6530.889,
+      13.5
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": 0.0,
+    "label_class": "uav_corridor",
+    "state": "semantic_corridor",
+    "activity_type": "semantic_corridor"
+  },
+  {
+    "entity_id": "corridor_l6_4_v1_uav_digital_l6_4_v1_secondary_01",
+    "tick": 900,
+    "pos_enu": [
+      6659.208,
+      6525.376,
+      26.5
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": -156.533,
+    "label_class": "uav_corridor",
+    "state": "semantic_corridor",
+    "activity_type": "semantic_corridor"
+  },
+  {
+    "entity_id": "pad_home_uav_digital_l6_4_v1",
+    "tick": 900,
+    "pos_enu": [
+      6653.956,
+      6527.6,
+      0.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": 90.924,
+    "label_class": "landing_pad",
+    "state": "available",
+    "activity_type": "available"
+  },
+  {
+    "entity_id": "pad_home_uav_digital_l6_4_v1_secondary",
+    "tick": 900,
+    "pos_enu": [
+      6671.908,
+      6530.889,
+      0.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": 90.924,
+    "label_class": "landing_pad",
+    "state": "available",
+    "activity_type": "available"
+  },
+  {
+    "entity_id": "tower_l6_4_v1",
+    "tick": 900,
+    "pos_enu": [
+      6633.091,
+      6530.449,
+      0.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": -92.54,
+    "label_class": "radio_tower",
+    "state": "jammed",
+    "activity_type": "jammed"
+  },
+  {
+    "entity_id": "u_inspect_l6_4_v1",
+    "tick": 900,
+    "pos_enu": [
+      6602.531241,
+      6554.54843,
+      22.0
+    ],
+    "vel_mps": [
+      0.126962,
+      -4.992278,
+      0.0
+    ],
+    "yaw_deg": -88.543186,
+    "label_class": "uav",
+    "state": "inspect_racetrack",
+    "activity_type": "inspect_racetrack"
+  },
+  {
+    "entity_id": "uav_digital_l6_4_v1",
+    "tick": 900,
+    "pos_enu": [
+      6634.035,
+      6525.817,
+      32.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": -174.885453,
+    "label_class": "uav",
+    "state": "jammed",
+    "activity_type": "jammed"
+  },
+  {
+    "entity_id": "uav_digital_l6_4_v1_secondary",
+    "tick": 900,
+    "pos_enu": [
+      6622.035,
+      6532.817,
+      34.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": 152.105096,
+    "label_class": "uav",
+    "state": "jammed",
+    "activity_type": "jammed"
+  }
+]

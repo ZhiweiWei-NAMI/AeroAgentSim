@@ -1,0 +1,257 @@
+{
+  "episode_id": "L2-1_v2__seed00",
+  "status": "requires_resolution",
+  "revision": "p09.linked-native-causal/v4",
+  "original_narrative": {
+    "scenario_description": "Communication station failure with backup link recovery",
+    "script_description": "Communication station failure with backup link recovery",
+    "original_event_titles": [
+      {
+        "event_id": "lifecycle_takeoff_uav_l2_1_v2",
+        "title": "UAV takes off from visible home pad and enters mission airspace",
+        "intent": "uav_takes_off_from_visible_home_pad_and_enters_mission_airspace",
+        "predecessors": null
+      },
+      {
+        "event_id": "station_degraded",
+        "title": "Communication station degraded",
+        "intent": "digital_anomaly",
+        "predecessors": null
+      },
+      {
+        "event_id": "uav_link_response",
+        "title": "UAV changes behavior under degraded C2",
+        "intent": "avoid_or_rth",
+        "predecessors": null
+      },
+      {
+        "event_id": "patrol_resume_via_backup_link",
+        "title": "UAV resumes patrol; tower confirms backup-link visual state",
+        "intent": "recovery_or_restore",
+        "predecessors": null
+      },
+      {
+        "event_id": "lifecycle_landing_uav_l2_1_v2",
+        "title": "UAV returns to the visible home pad and lands after mission resolution",
+        "intent": "landing_or_terminal_resolution",
+        "predecessors": null
+      }
+    ]
+  },
+  "source_refs": [
+    "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/event_script.json",
+    "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/scene_setup.json"
+  ],
+  "scope": {
+    "schema_version": "p09.linked-source-adoption/v4",
+    "episode_id": "L2-1_v2__seed00",
+    "scenario_id": "L2-1_v2",
+    "seed": 0,
+    "ns3_seed": 1,
+    "ns3_run": 1,
+    "mechanism": "backup_station",
+    "actor_ids": [
+      "uav_l2_1_v2"
+    ],
+    "primary_station": "tower_l2_1_v2",
+    "backup_station": "contract_facility_l2_1_v2_03",
+    "heartbeat": {
+      "period_ns": 100000000,
+      "payload_bytes": 256,
+      "ttl_ns": 200000000,
+      "window_ns": 1000000000,
+      "loss_limit": 0.05,
+      "consecutive_limit": 3
+    },
+    "receiver_state_namespace": "p09.actor-heartbeat-watchdog/v1",
+    "receiver_state_definitions": {
+      "loss_ratio": "unit1; mature expected local slots not received before strict generation+TTL; includes unsent expected slots",
+      "consecutive_missing": "packet; trailing mature missing sequence slots",
+      "degraded": "bool/UNKNOWN; loss_ratio>0.05 AND consecutive_missing>=3",
+      "observation_ns": "ns; local window close/available time, consumed strictly before actor decision"
+    },
+    "legacy_state_disposition": "old global accepted-TX/reference and initial runtime flags are separate; no actor-control causality claim from those flags",
+    "command": {
+      "payload_bytes": 64,
+      "attempts": 3,
+      "period_ns": 100000000,
+      "deadline_ns": 2000000000,
+      "policy_delay_ns": 0
+    },
+    "source_script": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/event_script.json",
+    "source_scene": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/scene_setup.json",
+    "source_script_sha256": "eda41c304f3bd445a68c7af748edf384770306ce79ce417f5c72b85b26fca6aa",
+    "source_scene_sha256": "5d5e7e8f55d34f6c7c7c1b788c610624039a3faa2ce0c11fcf7bb3069e44dc81",
+    "corrections": [
+      {
+        "profile": "backup_discovery",
+        "change": "activate backup discovery at locally observed arrival at authored backup-loiter endpoint; avoid unsupported pre-contact ARP resolution"
+      },
+      {
+        "trigger_id": "trig_after_station_degraded_delay_30",
+        "change": "response delay starts at actor-observed loss, not station global truth"
+      }
+    ],
+    "assumptions": [
+      "receiver-visible periodic heartbeat is configured application traffic",
+      "actor observes local weather/nearby geometry after one original tick",
+      "10Hz authored waypoint engine, not PX4 aerodynamic flight"
+    ],
+    "rain_rf": "not amplified; dimensionless rain is not an observed mm/h rate",
+    "rf_profile": "R1:2412MHz/20MHz/HtMcs0/16dBm/NF7/n3/L0=40.09532929124565",
+    "backup_discovery_policy": "actor reaches its existing authored backup-loiter endpoint, observes arrival after one tick, then begins backup discovery/request",
+    "landing_authority": "preloaded onboard mission termination after receipt-admitted patrol resumption; no new failed-path landing command assumed"
+  },
+  "event_times_ns": {
+    "lifecycle_takeoff_uav_l2_1_v2": 3000000000,
+    "station_degraded": 26000000000,
+    "uav_link_response": 30000000000,
+    "p09_actor_observed_station_loss": 27000000000
+  },
+  "guard_refs": {
+    "lifecycle_takeoff_uav_l2_1_v2": "trig_lifecycle_takeoff_uav_l2_1_v2",
+    "station_degraded": "trig_station_degraded",
+    "uav_link_response": "trig_after_station_degraded_delay_30",
+    "patrol_resume_via_backup_link": "trig_after_uav_link_response_delay_54",
+    "lifecycle_landing_uav_l2_1_v2": "trig_after_patrol_resume_via_backup_link_delay_80",
+    "p09_actor_observed_station_loss": "p09_actor_observed_station_loss"
+  },
+  "first_allowed_admissions": {
+    "lifecycle_takeoff_uav_l2_1_v2": {
+      "event_id": "lifecycle_takeoff_uav_l2_1_v2",
+      "decision_tick": 30,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "lifecycle_takeoff_uav_l2_1_v2",
+        "decision_ns": 3000000000
+      }
+    },
+    "station_degraded": {
+      "event_id": "station_degraded",
+      "decision_tick": 260,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "station_degraded",
+        "decision_ns": 26000000000
+      }
+    },
+    "p09_actor_observed_station_loss": {
+      "event_id": "p09_actor_observed_station_loss",
+      "decision_tick": 266,
+      "allow": true,
+      "evidence": {
+        "rule_version": "p09.actor-heartbeat-watchdog/v1",
+        "rows": [
+          {
+            "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+            "observation_ns": 26500000000,
+            "receiver_owner": "uav_l2_1_v2",
+            "receiver_epoch": 0,
+            "window_ns": 1000000000,
+            "mature_expected": 8,
+            "timely_received": 5,
+            "ttl_not_timely": 3,
+            "observed_late": 0,
+            "pending_expected": 2,
+            "loss_ratio": 0.375,
+            "availability": "KNOWN",
+            "reason": null,
+            "consecutive_missing": 3,
+            "degraded": true,
+            "rule_version": "p09.actor-heartbeat-watchdog/v1",
+            "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+          }
+        ],
+        "required": "degraded",
+        "decision_ns": 26600000000,
+        "authority": "local onboard",
+        "physical_motion_evidence": null
+      }
+    },
+    "uav_link_response": {
+      "event_id": "uav_link_response",
+      "decision_tick": 300,
+      "allow": true,
+      "evidence": {
+        "authority": "authored exogenous/local event",
+        "source_event": "uav_link_response",
+        "decision_ns": 30000000000
+      }
+    }
+  },
+  "unfired_events": [
+    "patrol_resume_via_backup_link",
+    "lifecycle_landing_uav_l2_1_v2"
+  ],
+  "trajectory_difference": {
+    "uav_l2_1_v2": {
+      "first_changed_tick": 271,
+      "fields": [
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "state": "cruise",
+        "activity_type": "cruise"
+      },
+      "after": {
+        "state": "hover",
+        "activity_type": "hover"
+      }
+    },
+    "tower_l2_1_v2": {
+      "first_changed_tick": 346,
+      "fields": [
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "state": "backup_link",
+        "activity_type": "backup_link"
+      },
+      "after": {
+        "state": "degraded",
+        "activity_type": "degraded"
+      }
+    }
+  },
+  "duration_original_ticks": 900,
+  "duration_adopted_ticks": 900,
+  "all_actor_final_states_ref": "episodes/L2-1_v2__seed00/all-actor-final-states.json",
+  "ue_dependencies": {
+    "changed_entities": [
+      "uav_l2_1_v2",
+      "tower_l2_1_v2"
+    ],
+    "weather_changed": false,
+    "camera_declarations": [
+      {
+        "camera_id": "demo_high_overview",
+        "placement_mode": "world_pose",
+        "placement": {
+          "position_enu_m": [
+            6265.396,
+            6136.461,
+            180.0
+          ],
+          "rotation_deg": {
+            "pitch_deg": -70.0,
+            "yaw_deg": 0.0
+          }
+        },
+        "fov_deg": 90.0
+      }
+    ],
+    "camera_declarations_changed": false,
+    "model_or_material_change": false,
+    "capture_frame_step_original_ticks": 5,
+    "appended_frames_if_adopted": 0,
+    "review_before_collection": true
+  },
+  "classification": "A",
+  "classification_basis": "Actual render input trajectory/state/time differs",
+  "published_original210_changed": false,
+  "terminal_acceptance": "all fired is not a whole-chain pass; reviewers must check receipts, rule operands, actual motion and all actors"
+}
