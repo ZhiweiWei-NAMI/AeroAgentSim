@@ -1,0 +1,75 @@
+{
+  "schema_version": "p02.native-parcel-contract-proposal/v1",
+  "status": "implementation_contract_not_execution_acceptance",
+  "task_id": "logistics.native-parcel.v1",
+  "world_source": "existing BENCH native city/world and PX4 Gazebo providers; preserve original inspection suite",
+  "identities": {
+    "order_id": "order.p02.single",
+    "parcel_entity_id": "parcel.p02.single",
+    "carrier_entity_id": "uav.p02.carrier",
+    "pickup_facility_id": "facility.p02.pickup",
+    "dropoff_facility_id": "facility.p02.dropoff"
+  },
+  "clock": {
+    "source": "closed SceneState / StageBarrier / PX4 provider events",
+    "axes": "ENU metres; scene x=east,y=up,z=-north",
+    "no_wall_clock_as_simulation": true
+  },
+  "facilities": {
+    "status": "exact geometry/frame/model calibration must be bound before compilation",
+    "geometry": "existing FacilityLandingPad rectangle; no guessed coordinate transformation",
+    "pickup_source_candidate": "existing native launch/contact pad",
+    "dropoff_source_candidate": "explicit authored pad on existing BENCH ground; validate actual geometry before launch"
+  },
+  "declared_demo_policy": {
+    "minimum_pickup_dwell_s": 2.0,
+    "minimum_dropoff_dwell_s": 2.0,
+    "vertical_tolerance_m": 0.15,
+    "horizontal_uncertainty_m": 0.1,
+    "max_stationary_speed_m_s": 0.2,
+    "note": "Authored demo policy, not measured hardware capability. Pad footprint and pose-reference calibration are mandatory independent inputs; no half-height default."
+  },
+  "states": [
+    "awaiting_pickup",
+    "loaded",
+    "in_transit",
+    "delivered"
+  ],
+  "custody": {
+    "initial_holder": "facility.p02.pickup",
+    "pickup_holder": "uav.p02.carrier",
+    "delivery_holder": "facility.p02.dropoff",
+    "claim": "modeled admitted business custody tied to real closed native pose, not a simulated gripper/parcel aerodynamics measurement"
+  },
+  "attachment": {
+    "frame": "explicit body-local transform, required in compiled configuration",
+    "relative_pose": null,
+    "missing_semantics": "cannot compile carriage without declared transform",
+    "projection": "backend shared entity snapshot; renderer only displays supplied parcel pose"
+  },
+  "transitions": {
+    "pickup": "exact order/parcel/carrier/facility and closed native contiguous dwell + received authorized action; one-shot transfer record; network report alone insufficient",
+    "in_transit": "admitted pickup plus later real in-air closed native state; no future binding",
+    "delivery": "exact destination geometry/body clearance/landed speed/contact + contiguous dwell AND admitted dropoff/handoff; transfer and detach exactly once",
+    "duplicate": "same accepted action id returns original decision and transfer; different payload conflicts explicitly",
+    "missing": "UNKNOWN/unconfirmed; do not infer presence, custody or delivery from labels or missing observations"
+  },
+  "runtime_seal_distinction": "live admitted business state is not independently verified; the separate sealed verifier replays full source windows, commands and custody records. Never mint VerifiedDwellProvenance during live execution.",
+  "verifier": {
+    "existing_corrected_datum_base_image_id": "sha256:5d9c75aeb3ccd7ec2b65d4fb7c9b393bdf5b7096e2d6311050bfc85c6445224a",
+    "existing_corrected_datum_base_oci": "localhost:5000/aero-bench/verifier@sha256:e8c2d1dc09369aa4d800e0f2ee975e97641922f01ac94d950964f884a7e74eec",
+    "base_component": "inspection.verifier",
+    "source_revision": "97c9a5a5c97cb929d4d67847d0a77cca19c462ea244c01c7ebdd923a8c54333b",
+    "logistics_component": "new explicit logistics-native sealed verifier/config required; cannot relabel the inspection image",
+    "new_compilation_required": true,
+    "old_compilation_preserved": "a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610",
+    "requested_corrected_pin": "localhost:5000/aero-bench/verifier@sha256:e8c2d1dc09369aa4d800e0f2ee975e97641922f01ac94d950964f884a7e74eec",
+    "pin_gap": "Existing pinned image resolves inspection packages/goals only; native parcel dispatch and separately sealed custody/delivery verifier are not implemented. No digest substitution or run is authorized by this handoff alone."
+  },
+  "scope": "one bounded new native logistics run only after contract/source review and compilation closure; current task is code preparation",
+  "unsupported": [
+    "charge transition in this minimal scenario",
+    "physical gripper dynamics or parcel mass effects unless separately declared/supported",
+    "old inspection report deliveries as logistics orders"
+  ]
+}
