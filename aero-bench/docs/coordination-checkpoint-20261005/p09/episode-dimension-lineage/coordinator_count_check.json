@@ -1,0 +1,84 @@
+{
+  "status": "COUNT_CHECKPOINT_ONLY_PROVISIONAL",
+  "observed_at": "2026-10-06T06:41:29.948095-07:00",
+  "identity_rows": 210,
+  "dimension_rows": 1680,
+  "consumer_counts": {
+    "actual_consumer_confirmed": 0,
+    "configured_pointer": 210,
+    "actual_capture_binding": 0,
+    "documented_corpus_or_contract_level": 1050,
+    "none_confirmed": 420
+  },
+  "pending_group_counts": {
+    "missing_mapping": {
+      "row_count": 630,
+      "membership_pairs_verified": 630,
+      "reason": "no episode-level consumer mapping exists in any read source; pending_check states the open question per row"
+    },
+    "missing_coverage_statistics": {
+      "row_count": 210,
+      "membership_pairs_verified": 210,
+      "reason": "camera/LiDAR sidecar clock/extrinsic fields presence-verified only (validity unaudited); no per-frame occlusion ground truth; per-episode capture_tick lists verified 1/210"
+    },
+    "real_mechanism_gap": {
+      "row_count": 1050,
+      "membership_pairs_verified": 1050,
+      "reason": "scalar model or typed state without a physical mechanism (root causal summary): comm/compute = 1.6.0 scalar model; GNSS/weather/facility = typed states; ns3/R1/v9/business candidates exist only as versioned outputs outside the formal 210"
+    }
+  },
+  "scope": "Metadata extraction engineering counts. Not 210 physics acceptance, not materialized adoption or actual capture consumption. Pending categories can overlap.",
+  "open_output_items": [
+    "Canonical evidence index still includes ellipsis placeholders: explicitly unresolved, excluded from artifact/consumer proof.",
+    "Exact36 v14 /210 low-load /12 business source-manifest mappings remain pending follow-up by the same author.",
+    "same_run_capture_binding strings denote boundary/profile assertions, not actual capture receipts. Actual capture confirmation count remains0.",
+    "Source catalog current_adoption labels are documentary claims, not actual episode consumption.",
+    "Mechanism categories are source-based pending checks, not new per-episode physical validation."
+  ],
+  "effective_route": {
+    "provider": "workbuddy",
+    "model": "glm-5.3-flash",
+    "maxTokens": 131072,
+    "reasoningEffort": "provider_default_omitted",
+    "session_id": "6a42ae20-678b-4198-a7ef-977799519182"
+  },
+  "script_write_time": "2026-10-06T06:37:12.320195-07:00",
+  "source_files": [
+    {
+      "name": "extract_lineage.py",
+      "bytes": 53103
+    },
+    {
+      "name": "episode_identity_210.csv",
+      "bytes": 56768
+    },
+    {
+      "name": "dimension_lineage_1680.csv",
+      "bytes": 2257243
+    },
+    {
+      "name": "source_version_catalog.json",
+      "bytes": 12037
+    },
+    {
+      "name": "existing_evidence_index.json",
+      "bytes": 346888
+    },
+    {
+      "name": "coverage_summary.json",
+      "bytes": 105972
+    },
+    {
+      "name": "next_checks.md",
+      "bytes": 2919
+    },
+    {
+      "name": "README.md",
+      "bytes": 2461
+    },
+    {
+      "name": "author_result.json",
+      "bytes": 10729
+    }
+  ]
+}
