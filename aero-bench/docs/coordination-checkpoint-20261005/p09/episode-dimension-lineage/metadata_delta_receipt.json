@@ -28,5 +28,42 @@
     "time_support_planned": 210,
     "source_version_or_hash": 24
   },
-  "review_scope": "Only requested metadata/source-definition corrections; no physics/payload/run/UE changes"
+  "review_scope": "Only requested metadata/source-definition corrections; no physics/payload/run/UE changes",
+  "receiver_membership_qualification": {
+    "source_result_path": "/mnt/data2/weizhiwei/AERO_WORLD/design/p09/episode_dimension_lineage/native-metadata-corrections/receiver-membership/result/p09_inventory_result.json",
+    "session_id": "6a42ae20-678b-4198-a7ef-977799519182",
+    "success": true,
+    "terminal": {
+      "kind": "completed"
+    },
+    "receiver_artifact_mapped_episode_count": 24,
+    "mapped_members": [
+      "L2-1_v1__seed00",
+      "L2-1_v1__seed01",
+      "L2-1_v1__seed02",
+      "L2-1_v2__seed00",
+      "L2-1_v2__seed01",
+      "L2-1_v2__seed02",
+      "L6-1_v1__seed00",
+      "L6-1_v1__seed01",
+      "L6-1_v1__seed02",
+      "L6-1_v2__seed00",
+      "L6-1_v2__seed01",
+      "L6-1_v2__seed02",
+      "L6-4_v1__seed00",
+      "L6-4_v1__seed01",
+      "L6-4_v1__seed02",
+      "L6-4_v2__seed00",
+      "L6-4_v2__seed01",
+      "L6-4_v2__seed02",
+      "X1_rain_to_c2loss_to_forced_landing__seed00",
+      "X1_rain_to_c2loss_to_forced_landing__seed01",
+      "X1_rain_to_c2loss_to_forced_landing__seed02",
+      "X5_comm_failure_to_pad_contention__seed00",
+      "X5_comm_failure_to_pad_contention__seed01",
+      "X5_comm_failure_to_pad_contention__seed02"
+    ],
+    "unmapped_L5_coverage": "Not established by this export; not evidence of absence",
+    "other_L6_2_source": "Separate receipt_replay evidence"
+  }
 }

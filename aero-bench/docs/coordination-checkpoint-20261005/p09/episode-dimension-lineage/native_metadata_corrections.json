@@ -1,6 +1,6 @@
 {
  "schema_version": "p09.lineage.native-metadata-corrections/v1",
- "status": "RESIDUAL_LABEL_CONTRADICTIONS_CORRECTED_EXTRACTION_EXIT0_SOURCE_FROZEN_FOR_PARENT_DELTA_REVIEW",
+ "status": "RECEIVER_MEMBERSHIP_QUALIFIED_24OF30_EXTRACTION_EXIT0_SOURCE_FROZEN_FOR_PARENT_NATIVE_REVIEW",
  "session": "6a42ae20-678b-4198-a7ef-977799519182 (resumed; no redo of immutable packet f3101f948b7f73d624ff1aa017efd2deeb0156f7)",
  "correction_1_split_policy": {
   "edited_logic": "ONE split policy in BOTH tables: scenario_family=scenario_id stripped trailing _vN; base_episode_family=scenario_family+original seed (zfill2); split_group=scenario_family everywhere; source_family remains a separate producer label column; identity CSV gained scenario_family + base_episode_family columns",
@@ -122,12 +122,12 @@
  "output_sizes": {
   "episode_identity_210.csv": 59438,
   "dimension_lineage_1680.csv": 2437237,
-  "source_version_catalog.json": 15888,
+  "source_version_catalog.json": 16038,
   "existing_evidence_index.json": 658915,
-  "coverage_summary.json": 587319,
+  "coverage_summary.json": 587479,
   "next_checks.md": 2919,
   "README.md": 2461,
-  "extract_lineage.py": 71706,
+  "extract_lineage.py": 72016,
   "author_checkpoint.json": 6547
  },
  "second_review_clarifications": {
@@ -198,6 +198,47 @@
     "non_exhaustive_union": 1470
    },
    "five_fixes": "all preserved (39/117 split both tables, 3 LP definitions, declared_reference_grid 1470, server numerical/authored truth, model-visible observer-evidence-by-cutoff, three evidence axes)"
+  }
+ },
+ "membership_qualification_receiver24": {
+  "scope": "membership qualification from already-accepted exact36 mappings only; not a new audit/experiment",
+  "statement": "24 of the 30 v12/v13-metadata episodes have the copied gateway expected-sequence artifact (receiver_observed_states.jsonl in exact36 package files); six L5-1_v1/v2 seed episodes have NO mapped receiver artifact - receiver coverage NOT established by this export (unmapped is not evidence of absence); six L6-2 episodes carry separate receipt_replay evidence",
+  "exact24_members": [
+   "L2-1_v1__seed00",
+   "L2-1_v1__seed01",
+   "L2-1_v1__seed02",
+   "L2-1_v2__seed00",
+   "L2-1_v2__seed01",
+   "L2-1_v2__seed02",
+   "L6-1_v1__seed00",
+   "L6-1_v1__seed01",
+   "L6-1_v1__seed02",
+   "L6-1_v2__seed00",
+   "L6-1_v2__seed01",
+   "L6-1_v2__seed02",
+   "L6-4_v1__seed00",
+   "L6-4_v1__seed01",
+   "L6-4_v1__seed02",
+   "L6-4_v2__seed00",
+   "L6-4_v2__seed01",
+   "L6-4_v2__seed02",
+   "X1_rain_to_c2loss_to_forced_landing__seed00",
+   "X1_rain_to_c2loss_to_forced_landing__seed01",
+   "X1_rain_to_c2loss_to_forced_landing__seed02",
+   "X5_comm_failure_to_pad_contention__seed00",
+   "X5_comm_failure_to_pad_contention__seed01",
+   "X5_comm_failure_to_pad_contention__seed02"
+  ],
+  "sites_corrected": [
+   "extract_lineage.py catalog v14 per_dimension_producer_revision.communication (~589)",
+   "coverage_summary count_group_4c communication_special_note (~873)"
+  ],
+  "preserved": "three LP definition IDs (p09.LP.q-derived/v1, p09.LP.gateway-declared-sequence/v1, p09.LP.mature-ttl-cohort/v1), all 1680 rows/maps/counts, exact36/210/12 mappings, union1470/motion210 non-exhaustive qualification",
+  "command": {
+   "command": "python3 design/p09/episode_dimension_lineage/extract_lineage.py",
+   "exitcode": 0,
+   "start": "2026-10-06T07:30:56-07:00",
+   "end": "2026-10-06T07:30:56-07:00"
   }
  }
 }

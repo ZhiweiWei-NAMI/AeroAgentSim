@@ -1913,7 +1913,7 @@
    "localization/navigation (2.2.0)",
    "facility/task state (2.2.0)"
   ],
-  "communication_special_note": "communication is NOT listed unchanged: the 30 v12+v13-metadata episodes carry the copied native v12 gateway expected-sequence producer output (receiver_observed_states.jsonl, p09.gateway-scheduled-sequence-ttl/v1) - distinct from published old q formula and accepted-TX matured-TTL cohort; 6 L6-2 episodes carry receipt_replay evidence; no new comm simulation executed for v14",
+  "communication_special_note": "communication is NOT listed unchanged: 24 of the 30 v12+v13-metadata episodes have the copied native v12 gateway expected-sequence artifact (receiver_observed_states.jsonl, p09.gateway-scheduled-sequence-ttl/v1) - distinct from published old q formula and accepted-TX matured-TTL cohort; six L5-1_v1/v2 seed episodes have no mapped receiver artifact: receiver coverage NOT established by this export (unmapped is not evidence of absence); six L6-2 episodes carry separate receipt_replay evidence; no new comm simulation executed for v14",
   "projection_configured_not_produced": [
    "perception/capture (render_host_config + planned capture_window.json; UE capture not run)"
   ],
