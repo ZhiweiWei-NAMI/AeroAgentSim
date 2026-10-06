@@ -162,8 +162,8 @@
     },
     {
       "file": "README.md",
-      "bytes": 3351,
-      "sha256": "d235537ef193967566ea322b35d92174dc21613902d622a490d093080f069c40"
+      "bytes": 3514,
+      "sha256": "a17ee6f2112d4b146a1b66caf9892d98021c48fe05daddefcdf2ffbdeb53445e"
     },
     {
       "file": "capture-script.mjs",
@@ -182,8 +182,8 @@
     },
     {
       "file": "operator-start.md",
-      "bytes": 3436,
-      "sha256": "9c6967716722c07a353f90ccf7165fc0fa80e7d9c6b42efa140ae72f779997cd"
+      "bytes": 4159,
+      "sha256": "2e1368bdcde4fee64b815ca2a66395bebd67db765b7501b6b2afd6ab1fa72b91"
     }
   ],
   "preserved_assets": "Existing BENCH GLB/city loading pipeline. No model or map assets uploaded.",
@@ -203,5 +203,6 @@
     ]
   },
   "native_execution_started": false,
-  "integration_branch_remote_exists": false
+  "integration_branch_remote_exists": false,
+  "operator_documentation_correction": "Disable xtrace before variable expansion; bootstrap reuse is distinct from normal run-scoped credential issuance."
 }
