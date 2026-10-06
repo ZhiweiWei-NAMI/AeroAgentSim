@@ -1,0 +1,48 @@
+{
+  "schema_version": "p02.inspection-record-ui-review/v1",
+  "scope": "Same accepted inspection run post-run authoritative replay; no native restart",
+  "run_id": "9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd",
+  "files": [
+    {
+      "file": "semantics-en-tick292.png",
+      "bytes": 737887,
+      "sha256": "352ac83715b5fbc6c13940c2fc5c39130b58d3c0f834a3ca01babb894cf05ea0"
+    },
+    {
+      "file": "semantics-en-tick300.png",
+      "bytes": 737832,
+      "sha256": "9824a009d9b5b3b4c43d034ab6c74739c6f79a1540489da3e95599a9b2b78075"
+    },
+    {
+      "file": "semantics-en-narrow-tick300.png",
+      "bytes": 537698,
+      "sha256": "dd21b38dc91e9151925cbc5dde049174bf13acdf9c0eb6fde2fa84da231fba8d"
+    },
+    {
+      "file": "semantics-en-source-version.json",
+      "bytes": 1454,
+      "sha256": "162dc1eae7db51ffd9e4971f10da2015c92f388d8e54e4630e683a13f126751c"
+    },
+    {
+      "file": "asset-failure-classification.json",
+      "bytes": 1646,
+      "sha256": "64db80c6b90d4a288f64d1a15dcd6b3acd99e16a3127836468bf105fc1c3d2c9"
+    }
+  ],
+  "focused_ui_tests": {
+    "passed": 33,
+    "test_files": 2
+  },
+  "new_logistics_run": false,
+  "live_reconnect_acceptance": false,
+  "raw_trace_assets_exported": false,
+  "source_files_sha256": {
+    "app.ts": "a16af490fc4b803aa4447bccec202a83f302f3018a8e62a5091c48900f6a2579",
+    "i18n.ts": "046583a0e05b4fe8ab69286a04f11a84f733e25a40be3acda32581e3d4345d61",
+    "p02-mission-records.ts": "2ec7a0b171c73ff818dccba6fa0a8df7b51f752afe02ddcef7f32d8a7cf07cbb",
+    "p02-mission-records.test.ts": "8fbf87991997ef74903391c4d2b0421337b79d656625500acc87503659bf1b34",
+    "main.ts": "9327d0fcec3a7347a2a7631cb8cba37717819ca6dbf9d347f835261f06bdf474",
+    "viewer-chrome.ts": "60260ef83b5b3433d7ab65015d9f36a22007726ffd97bc7a1acb766bb6299096",
+    "viewer-chrome.test.ts": "b3b8dc754e8deae7e19961be461c7bd7c6615edcd57b9c9c7da55fb1ae00ccb8"
+  }
+}

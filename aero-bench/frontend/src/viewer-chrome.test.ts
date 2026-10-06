@@ -1,3 +1,4 @@
+import { setLanguage } from "./i18n";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mountViewerChrome, type ViewerChromeHandle } from "./viewer-chrome";
 
@@ -13,9 +14,22 @@ function viewer(search = "") {
   handle = mountViewerChrome(root, search);
   return root;
 }
-afterEach(() => { handle?.dispose(); handle = undefined; document.body.replaceChildren(); });
+afterEach(() => { handle?.dispose(); handle = undefined; document.body.replaceChildren(); setLanguage("zh"); });
 
 describe("compact viewer chrome", () => {
+  it("localizes source disclosure through repeated reconciliation without changing provenance", async () => {
+    const root = viewer();
+    const note = root.querySelector(".hud-note")!;
+    note.textContent = "Native city: public state only";
+    setLanguage("en");
+    await vi.waitFor(() => expect(root.querySelector(".viewer-chrome-provenance button")?.textContent).toBe("Source details"));
+    note.textContent = "Native city: updated public state only";
+    await vi.waitFor(() => expect(root.querySelector(".viewer-chrome-provenance button")?.textContent).toBe("Source details"));
+    expect(root.querySelector(".viewer-chrome-provenance")?.getAttribute("data-provenance")).toBe("unknown");
+    setLanguage("zh");
+    expect(root.querySelector(".viewer-chrome-provenance button")?.textContent).toBe("来源说明");
+  });
+
   it("starts with collapsed docks and legend, preserving application hidden state", () => {
     const root = viewer();
     const buttons = root.querySelectorAll(".viewer-chrome-toggle");

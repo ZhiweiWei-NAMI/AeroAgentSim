@@ -1,3 +1,4 @@
+import { renderUnboundMissionRecords } from "./p02-mission-records";
 import { LoadingProgressView, type ProgressListener } from "./loading-progress";
 import { ReplayEvents } from "./replay-events";
 import { showAvailableContent } from "./available-content";
@@ -1701,22 +1702,11 @@ export class PublicTraceApp {
         (sourceRef === null ? ` · ${t("p02.identityUnknown", lang)}` : ` · ${sourceRef}`));
       ordersBody.append(head);
       if (records.length === 0) {
-        const unbound = index.unboundEventsUpTo(tick);
-        ordersBody.append(element("p", "p02-orders-empty", unbound.length === 0
-          ? t("p02.noOrders", lang)
-          : tf("p02.unboundOrders", { count: unbound.length }, lang)));
-        for (const event of unbound.slice(-4)) {
-          const row = element("div", "p02-order-row p02-order-row-unbound");
-          row.setAttribute("role", "listitem");
-          row.append(
-            element("strong", "p02-order-id", unknown),
-            element("span", "p02-order-stage", event.state),
-            element("span", "p02-order-meta",
-              `tick ${event.tick} · ${formatRunClock(event.flipTimeSeconds)} · ${event.providerId}`),
-          );
-          ordersBody.append(row);
-        }
+        ordersBody.append(element("p", "p02-orders-empty", t("p02.noOrders", lang)));
       }
+      dock.querySelector(".p02-mission-records")?.remove();
+      const missionRecords = renderUnboundMissionRecords(document, index.unboundEventsUpTo(tick), lang, formatRunClock);
+      if (missionRecords !== null) ordersBody.after(missionRecords);
       for (const record of records) {
         const row = element("button", "p02-order-row");
         row.type = "button";

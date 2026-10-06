@@ -1,0 +1,30 @@
+{
+  "source_root": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench/frontend",
+  "branch": "feature/p02-bench-native-integration-20261005",
+  "head": "e8390a31e61b01ca4f0a0ed818ca283cc9093cc9",
+  "owned_source_files": {
+    "app.ts": "a16af490fc4b803aa4447bccec202a83f302f3018a8e62a5091c48900f6a2579",
+    "i18n.ts": "046583a0e05b4fe8ab69286a04f11a84f733e25a40be3acda32581e3d4345d61",
+    "p02-mission-records.ts": "2ec7a0b171c73ff818dccba6fa0a8df7b51f752afe02ddcef7f32d8a7cf07cbb",
+    "p02-mission-records.test.ts": "8fbf87991997ef74903391c4d2b0421337b79d656625500acc87503659bf1b34",
+    "main.ts": "9327d0fcec3a7347a2a7631cb8cba37717819ca6dbf9d347f835261f06bdf474",
+    "viewer-chrome.ts": "60260ef83b5b3433d7ab65015d9f36a22007726ffd97bc7a1acb766bb6299096",
+    "viewer-chrome.test.ts": "b3b8dc754e8deae7e19961be461c7bd7c6615edcd57b9c9c7da55fb1ae00ccb8"
+  },
+  "qa_public_dir": "/mnt/data2/weizhiwei/AERO_BENCH/frontend/public",
+  "qa_port": 5417,
+  "vite_pid": 1319696,
+  "capture_pid": 1324195,
+  "focused_tests": {
+    "files": [
+      "p02-mission-records.test.ts",
+      "viewer-chrome.test.ts"
+    ],
+    "count": 33,
+    "status": "passed"
+  },
+  "earlier_semantics_typecheck_build": "passed before subsequent three-label translation patch",
+  "final_combined_typecheck_build": "coordinator owns; pending catalog writer release",
+  "original_run_unchanged": true,
+  "simulation_started": false
+}
