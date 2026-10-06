@@ -1436,8 +1436,8 @@
   },
   {
     "path": "README.md",
-    "bytes": 6610,
-    "sha256": "ee9b7976b503a946b6e7e1e2a5d4278805b16c6f4fcea268bce7fdd82184358c"
+    "bytes": 7598,
+    "sha256": "e732df8952fc99e5b5a139eeed0d2b7783e27a20f62edb9b22141feabb357600"
   },
   {
     "path": "X1_rain_to_c2loss_to_forced_landing__seed00/actions.json",
@@ -2278,5 +2278,20 @@
     "path": "terminal_planning_bound_resolution.json",
     "bytes": 7748,
     "sha256": "b62b232b4916b2d23878665316c62b1e52d38df961e55a4ab57429d9709b794f"
+  },
+  {
+    "path": "whole-trajectory-pair/corrected-v13.jsonl.gz",
+    "bytes": 258394,
+    "sha256": "f21fbefab37937486c3c3fc7ea49d00b735e32ff5731277426c0e567b6b83ab4"
+  },
+  {
+    "path": "whole-trajectory-pair/manifest.json",
+    "bytes": 3056,
+    "sha256": "e8ee368782a3bd5ae4eb2e653f64bf7677beb62cceda953cd6bc341072fa3f0d"
+  },
+  {
+    "path": "whole-trajectory-pair/old-v12.jsonl.gz",
+    "bytes": 258633,
+    "sha256": "0b7bc3af526588eb6cf3ca2568af5e1dcb3fb5fdd7f63643d7967f56afd8bab3"
   }
 ]

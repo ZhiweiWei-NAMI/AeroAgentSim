@@ -35,3 +35,14 @@ Run the focused source tests from the AERO_WORLD root using the recorded command
 Each X1 seed now includes `first_permission_source_poses_450_452.raw.jsonl` with the exact six original JSONL lines, plus `.raw-index.json` with original line numbers, byte offsets and per-line hashes. This adds all 18 source rows at ticks 450–452 for the two bound actors. The tick-to-nanosecond mapping is index metadata; original rows remain unchanged.
 
 `full_trajectory_delta_comparison.json` compares every field of all 45,951 rows in the three transformed L2v2 files. Each seed has 901 route-metadata rows and 1,802 logical-corridor placement rows; every physical actor position, velocity, yaw, state and activity is unchanged. The other 27 current trajectories directly reference their exact immutable v12 source files. This is full comparison of the three transformed files and exact file identity for the other 27, not an inference from partial boundary poses. No simulator was rerun.
+
+## Whole L2v2 old/new trajectory pair
+
+`whole-trajectory-pair/old-v12.jsonl.gz` and `corrected-v13.jsonl.gz` contain the exact original JSONL bytes, with no redaction or reserialization. All three L2v2 seeds were SHA-checked and share this single pair. Each file has 15,317 rows.
+
+| File | Original bytes | Gzip bytes | Original SHA256 |
+| --- | ---: | ---: | --- |
+| old-v12.jsonl.gz | 22,977,395 | 258,633 | 97462a9e44735879541fa58724fff0b5916350a6d6807bf9036c76f89e3ccf25 |
+| corrected-v13.jsonl.gz | 22,928,741 | 258,394 | 20d82c462da5412422805e10577d6c044689e1f4b448044780a012f7b86d9efb |
+
+The sibling `manifest.json` records compressed hashes, source paths for all three seeds, deterministic gzip settings and successful decompression checks. Reconstruct the files locally using Python stdlib `gzip`; compare original hashes before reviewing rows. This export closes access to the whole relevant trajectory pair. It does not certify the two failed L6 stories or authorize capture.

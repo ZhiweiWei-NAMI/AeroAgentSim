@@ -1,0 +1,69 @@
+{
+  "schema_version": "p09.l2v2.byte-exact-trajectory-pair/v1",
+  "scope": "One existing old/new pair shared byte-for-byte by seeds00/01/02. No simulation, redaction, reserialization, or duplicate per-seed data export.",
+  "gzip": {
+    "mtime": 0,
+    "level": 9,
+    "filename_header": ""
+  },
+  "files": [
+    {
+      "role": "source",
+      "file": "old-v12.jsonl.gz",
+      "uncompressed_bytes": 22977395,
+      "uncompressed_sha256": "97462a9e44735879541fa58724fff0b5916350a6d6807bf9036c76f89e3ccf25",
+      "compressed_bytes": 258633,
+      "compressed_sha256": "0b7bc3af526588eb6cf3ca2568af5e1dcb3fb5fdd7f63643d7967f56afd8bab3",
+      "shared_by": [
+        {
+          "episode_id": "L2-1_v2__seed00",
+          "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed00/adopted/trajectories.jsonl",
+          "bytes": 22977395,
+          "sha256": "97462a9e44735879541fa58724fff0b5916350a6d6807bf9036c76f89e3ccf25"
+        },
+        {
+          "episode_id": "L2-1_v2__seed01",
+          "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed01/adopted/trajectories.jsonl",
+          "bytes": 22977395,
+          "sha256": "97462a9e44735879541fa58724fff0b5916350a6d6807bf9036c76f89e3ccf25"
+        },
+        {
+          "episode_id": "L2-1_v2__seed02",
+          "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed02/adopted/trajectories.jsonl",
+          "bytes": 22977395,
+          "sha256": "97462a9e44735879541fa58724fff0b5916350a6d6807bf9036c76f89e3ccf25"
+        }
+      ],
+      "verified_decompression_matches_original": true
+    },
+    {
+      "role": "current",
+      "file": "corrected-v13.jsonl.gz",
+      "uncompressed_bytes": 22928741,
+      "uncompressed_sha256": "20d82c462da5412422805e10577d6c044689e1f4b448044780a012f7b86d9efb",
+      "compressed_bytes": 258394,
+      "compressed_sha256": "f21fbefab37937486c3c3fc7ea49d00b735e32ff5731277426c0e567b6b83ab4",
+      "shared_by": [
+        {
+          "episode_id": "L2-1_v2__seed00",
+          "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_artifacts/L2-1_v2__seed00/trajectories.jsonl",
+          "bytes": 22928741,
+          "sha256": "20d82c462da5412422805e10577d6c044689e1f4b448044780a012f7b86d9efb"
+        },
+        {
+          "episode_id": "L2-1_v2__seed01",
+          "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_artifacts/L2-1_v2__seed01/trajectories.jsonl",
+          "bytes": 22928741,
+          "sha256": "20d82c462da5412422805e10577d6c044689e1f4b448044780a012f7b86d9efb"
+        },
+        {
+          "episode_id": "L2-1_v2__seed02",
+          "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_artifacts/L2-1_v2__seed02/trajectories.jsonl",
+          "bytes": 22928741,
+          "sha256": "20d82c462da5412422805e10577d6c044689e1f4b448044780a012f7b86d9efb"
+        }
+      ],
+      "verified_decompression_matches_original": true
+    }
+  ]
+}
