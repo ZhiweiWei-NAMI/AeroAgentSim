@@ -1,0 +1,11 @@
+{
+  "scope": "synthetic actual-package affected integration tests; no flight acceptance",
+  "command": "python -m pytest -q tests/tasks/test_native_parcel_stage.py tests/tasks/test_native_parcel_stage_integration.py tests/tasks/test_native_parcel_rpc.py tests/tasks/test_native_parcel_hook_projection.py",
+  "passed": 22,
+  "failed": 0,
+  "walltime_pytest_s": 1.33,
+  "xml": "coordinator-focused.xml",
+  "prior_independent_boundary_baseline": "missing-pad cases 2 failed, distinct carrier-source case passed",
+  "observed_utc": "2026-10-06T12:48:26.272574+00:00",
+  "remaining": "actual service wire, dedicated verifier entrypoint, task activation, immutable launch pins, live parcel UI"
+}

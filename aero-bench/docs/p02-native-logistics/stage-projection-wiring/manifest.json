@@ -1,0 +1,166 @@
+{
+  "scope": "Actual saved stage/RPC/provider/hook/public projection wiring; provisional source packet, no new flight or activation acceptance",
+  "base_branch": "feature/p02-bench-native-integration-20261005",
+  "base_commit": "17aa46a53f296fe09d0ae912773ab6363c7b2cb5",
+  "created_at": "2026-10-06T12:54:03.339768+00:00",
+  "files": [
+    {
+      "source_path": "aero_bench/tasks/logistics/native_parcel_contract.py",
+      "packet_path": "source/aero_bench/tasks/logistics/native_parcel_contract.py",
+      "bytes": 32154,
+      "sha256": "3e448d7027de27e19387fffe1230f01dc31b1fa8721ecbd245b85b931e9d6467"
+    },
+    {
+      "source_path": "aero_bench/tasks/logistics/native_parcel_runtime.py",
+      "packet_path": "source/aero_bench/tasks/logistics/native_parcel_runtime.py",
+      "bytes": 78958,
+      "sha256": "406a3d4120532538de388033eecf894a8171be10f7e230574e8d583d7d61deab"
+    },
+    {
+      "source_path": "aero_bench/tasks/logistics/native_parcel_stage.py",
+      "packet_path": "source/aero_bench/tasks/logistics/native_parcel_stage.py",
+      "bytes": 16877,
+      "sha256": "5aa4247a88f427971eba588da725bbfd18f1a4f7f38ba3847970331f55e38191"
+    },
+    {
+      "source_path": "aero_bench/tasks/logistics/native_parcel_rpc.py",
+      "packet_path": "source/aero_bench/tasks/logistics/native_parcel_rpc.py",
+      "bytes": 13181,
+      "sha256": "c8e23c37bbefc5b214d3cbb154f3fe0df5d7229563ebb29c233e1f7311667553"
+    },
+    {
+      "source_path": "aero_bench/tasks/logistics/native_parcel_hook.py",
+      "packet_path": "source/aero_bench/tasks/logistics/native_parcel_hook.py",
+      "bytes": 4551,
+      "sha256": "7e3ca2204e7faf43562f66981d72d70704c8fd64b49ebbbee6e38b5cc65e1336"
+    },
+    {
+      "source_path": "aero_bench/tasks/logistics/runtime_hook.py",
+      "packet_path": "source/aero_bench/tasks/logistics/runtime_hook.py",
+      "bytes": 23629,
+      "sha256": "b43324498c901b7bc9267c4350595b42257570d2e2f98f45c0c45c1129091f15"
+    },
+    {
+      "source_path": "aero_bench/tasks/logistics/sealed_observations.py",
+      "packet_path": "source/aero_bench/tasks/logistics/sealed_observations.py",
+      "bytes": 14377,
+      "sha256": "e2c3da83200f43d266e80790e289c44688ff4493fa01cad73d1397365c54ca98"
+    },
+    {
+      "source_path": "aero_bench/providers/logistics_business/native_parcel.py",
+      "packet_path": "source/aero_bench/providers/logistics_business/native_parcel.py",
+      "bytes": 7471,
+      "sha256": "91ad83b3e5dea6545f52f616c8c27058279e79a6281c55b50e8307ffb005a10e"
+    },
+    {
+      "source_path": "aero_bench/providers/registry.py",
+      "packet_path": "source/aero_bench/providers/registry.py",
+      "bytes": 19039,
+      "sha256": "dd7e241527ca75cec0e9c8dcc3f57a2c217885334a99f09548d9853c4c9f8c75"
+    },
+    {
+      "source_path": "aero_bench/runtime/events.py",
+      "packet_path": "source/aero_bench/runtime/events.py",
+      "bytes": 19746,
+      "sha256": "e06be5183af5c0db91862ed4fb7d617372d2579b89e4f067c900be2bc1cd799b"
+    },
+    {
+      "source_path": "aero_bench/trace/contracts.py",
+      "packet_path": "source/aero_bench/trace/contracts.py",
+      "bytes": 48379,
+      "sha256": "4120a01cac71772cdfb98275c65be5b16780e9cb582f40ff198f0c0080fec0b0"
+    },
+    {
+      "source_path": "aero_bench/trace/projector.py",
+      "packet_path": "source/aero_bench/trace/projector.py",
+      "bytes": 56168,
+      "sha256": "4aa418eb39d50152be3516dd2b08aa9de4d23c630c11a7081b05b857aeb1c5cb"
+    },
+    {
+      "source_path": "aero_bench/trace/vocabulary.py",
+      "packet_path": "source/aero_bench/trace/vocabulary.py",
+      "bytes": 1522,
+      "sha256": "b5cfe3a85ddc02d28af56d0b999ccad1b3afba108d2aa77bf664f714ee6e25e3"
+    },
+    {
+      "source_path": "containers/logistics-business/service.py",
+      "packet_path": "source/containers/logistics-business/service.py",
+      "bytes": 104048,
+      "sha256": "f3f415eae1945d89818cae23faf8302d7a1b7c936770036e261a10277dc0e27b"
+    },
+    {
+      "source_path": "tests/tasks/test_native_parcel_stage.py",
+      "packet_path": "source/tests/tasks/test_native_parcel_stage.py",
+      "bytes": 11698,
+      "sha256": "42109ad75f81637380774c0699a65b1cfb0ba658afa7bc1dc3f4a12e30bf8e46"
+    },
+    {
+      "source_path": "tests/tasks/test_native_parcel_stage_integration.py",
+      "packet_path": "source/tests/tasks/test_native_parcel_stage_integration.py",
+      "bytes": 1735,
+      "sha256": "30ecfb474da91379d2bd1636464eb252a8ba2d7188cb53a5e2939d166029fc40"
+    },
+    {
+      "source_path": "tests/tasks/test_native_parcel_rpc.py",
+      "packet_path": "source/tests/tasks/test_native_parcel_rpc.py",
+      "bytes": 7634,
+      "sha256": "e11246535cefb8cb2a23a9455eede40d1902eb9a8c291959558bc56d4755ec46"
+    },
+    {
+      "source_path": "tests/tasks/test_native_parcel_hook_projection.py",
+      "packet_path": "source/tests/tasks/test_native_parcel_hook_projection.py",
+      "bytes": 4718,
+      "sha256": "60b64fff2d735f2d5b6893d6eb078e41609e67aa818fcf6838bc5e6a630dfc03"
+    },
+    {
+      "source_path": "tests/tasks/test_native_parcel_clock_integration.py",
+      "packet_path": "source/tests/tasks/test_native_parcel_clock_integration.py",
+      "bytes": 3120,
+      "sha256": "3f1e0cd2749ab7d8f1243775456b6a38645597552535422186618f140de20cbb"
+    },
+    {
+      "source_path": "tests/tasks/test_native_parcel_runtime.py",
+      "packet_path": "source/tests/tasks/test_native_parcel_runtime.py",
+      "bytes": 58485,
+      "sha256": "6c26a701ef7eaa5d5f3128bd9e7d99e336a1607fa905602001a3ccceb8ea3946"
+    },
+    {
+      "source_path": "validation/p02_native_parcel_glm/stage-completeness-review/coordinator-focused.xml",
+      "packet_path": "source/validation/p02_native_parcel_glm/stage-completeness-review/coordinator-focused.xml",
+      "bytes": 3246,
+      "sha256": "ab495fe4f3ba14a58d338eb11aaac94a9b2adb398ad1efec48c3f9018726a496"
+    },
+    {
+      "source_path": "validation/p02_native_parcel_glm/stage-completeness-review/coordinator-focused-result.json",
+      "packet_path": "source/validation/p02_native_parcel_glm/stage-completeness-review/coordinator-focused-result.json",
+      "bytes": 690,
+      "sha256": "a490b8e7cfdf887af662895fbfcde5eaf47efc48311146bb76146b73933e1d76"
+    },
+    {
+      "source_path": "validation/p02_forward_reconnect_glm/ui-checkpoint/rpc-initial-review.json",
+      "packet_path": "source/validation/p02_forward_reconnect_glm/ui-checkpoint/rpc-initial-review.json",
+      "bytes": 7652,
+      "sha256": "37237562e4d1b23cf88c15e0411a7831f39dd30594005a407929de9b60eaf14f"
+    },
+    {
+      "source_path": "validation/p02_forward_reconnect_glm/ui-checkpoint/provider-glue-initial-review.json",
+      "packet_path": "source/validation/p02_forward_reconnect_glm/ui-checkpoint/provider-glue-initial-review.json",
+      "bytes": 17349,
+      "sha256": "3bfa4fb1e3496d4868d6520c729249359e07722d7681b02a09387e461d8ceb78"
+    }
+  ],
+  "synthetic_execution": {
+    "passed": 22,
+    "failed": 0,
+    "pytest_seconds": 1.33
+  },
+  "remaining": [
+    "real service-wire fixture execution",
+    "dedicated sealed verifier entrypoint review/tests",
+    "explicit native task resolver/hook registration",
+    "concrete immutable launch geometry/attachment/config/image pins",
+    "public parcel event consumption and live UI run/GIF"
+  ],
+  "core_runtime": "AST excluding docstrings equal to parent-accepted clock snapshot, as measured before copying",
+  "ownership": "GLM a400 reviewed substantive coordinator-origin RPC/provider/business/projection drafts, not glue-only; c17 owns core/stage and pending verifier. Coordinator owns independent integration probes and this packet."
+}

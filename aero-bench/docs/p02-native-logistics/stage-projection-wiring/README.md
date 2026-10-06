@@ -1,0 +1,13 @@
+# P02 stage and projection wiring checkpoint
+
+This packet exports the actual saved integration source and affected synthetic tests. It does not authorize a flight, certify a new compilation, or claim a live parcel workflow. The accepted inspection seal and its original failed verdict remain unchanged.
+
+The closed-stage path is PX4 physical observation → existing LogisticsRuntimeHook ingestion → authoritative business RPC → native parcel state machine → immutable source SceneState plus modeled parcel projection → private frame and typed public event. Custody is a modeled business transition; this implementation does not simulate a gripper or parcel aerodynamics.
+
+The stage now requires both declared pads on every batch and one common carrier source across their assessments. A partial or conflicting batch fails before dwell/frontier/tombstone mutation. The production rebind helper and redundant RPC pad-set guard were removed; the synthetic helper remains in tests. The coordinator independently ran stage, three integration counterexamples, RPC, and hook projection: 22 passed in 1.33 s. The original clock module has no AST behavior change relative to the independently accepted snapshot after excluding docstrings. The mislabeled RX regression now uses tick 3 / 4 s against admission tick 3 / 3 s and checks unchanged state.
+
+Two short original request-header configuration fragments are in route-receipts.json. They confirm ordinary workbuddy/glm-5.3-flash, 131072 output tokens, and omitted reasoningEffort. File origins and actual GLM takeover/review are recorded in the included provider-glue-initial-review.json. The substantive coordinator-origin provider/business drafts are not described as mere glue. The older rpc-initial-review.json preserves chronology; its former missing-pad/source blockers and duplicate RPC guard are superseded by the latest provider-glue review and the 22-test result.
+
+Actual service-wire tests and the dedicated sealed-verifier entrypoint are still being completed in the original GLM sessions. Native hook registration, concrete launch pins/pads/attachment, and live public parcel UI consumption remain integration work. LOGISTICS_RUNTIME_IMPLEMENTED is still false for the generic business-only template; it has not been flipped to imply physical capability.
+
+For independent review, overlay source/ onto a disposable checkout of the named base branch, install no new dependencies, and use the existing Python environment. The focused command is recorded in coordinator-focused-result.json. All test observations are synthetic; no new native provider run is included.

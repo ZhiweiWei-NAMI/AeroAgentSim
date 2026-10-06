@@ -1,0 +1,130 @@
+{
+  "review": "provider-business-projection-glue-initial-review",
+  "checkpoint": "validation/p02_forward_reconnect_glm/ui-checkpoint",
+  "reviewer": "glm (session a400e686)",
+  "ownership": {
+    "owned_this_round": [
+      "aero_bench/tasks/logistics/native_parcel_hook.py",
+      "aero_bench/trace/projector.py (parcel projection branch only)",
+      "aero_bench/trace/contracts.py (PublicRunEvent provider vocabulary only)"
+    ],
+    "other_workers": {
+      "c17": "native_parcel_stage.py / native_parcel_runtime.py / native_parcel_verifier.py (stage/runtime/verifier)",
+      "coordinator": "tests/tasks/test_native_parcel_hook_projection.py (read/run only, preserved)"
+    },
+    "preserved": "NativeParcelProjection.schema_version keeps its canonical slash version 'aero-bench.native-parcel-projection/v1' independently of the wire Identifier."
+  },
+  "wire_identifier_fix": {
+    "defect": "append_event failed AgentInteraction Identifier validation: payload_schema_id='aero-bench.native-parcel-projection/v1' contains '/', forbidden by Identifier pattern ^[a-z][a-z0-9_.-]*$.",
+    "patch": [
+      "native_parcel_hook.py: wire payload_schema_id -> 'aero-bench.native-parcel-projection-v1' (one line).",
+      "projector.py: NATIVE_PARCEL_PROJECTION_SCHEMA_VERSION ('...-v1') wire check + NATIVE_PARCEL_PROJECTION_MODEL_VERSION ('.../v1') used to rebind the validated projection; the previous code fed the wire id into model_validate.",
+      "contracts.py: PublicRunEvent closed provider vocabulary gained 'public.parcel-projection' with exact typed interaction 'logistics.parcel_projection.v1' (the coordinator's event type existed in trace/vocabulary.py but the validator's closed set rejected it — surfaced only after the Identifier fix unblocked the wire)."
+    ],
+    "not_weakened": "Identifier pattern untouched; frame_json stays out of public payload (test asserts 'frame_json' not in public fields; field set is an exact frozenset match)."
+  },
+  "glue_review_axes": [
+    {"axis": "caller authority (provider -> container)", "result": "passed", "evidence": "NativeParcelBusinessProvider.handle_command/parcel_scene_frame: _require_prepared, run_id equality, response field-set equality, CommandReceipt revalidation, record.request == request echo, lifecycle-vs-admission consistency ((receipts[-1].phase=='completed') != (status=='admitted') raises)."},
+    {"axis": "clock authority", "result": "passed", "evidence": "Provider: request.issued_at != self._last_time (last step receipt) raises 'not at the authoritative run time'; parcel_scene_frame: self._last_time != at raises 'not current'. Container: now = self._current set only on the real stage boundary; _require_command_time gates snapshot 'at'."},
+    {"axis": "server-owned RX time on the wire", "result": "passed", "evidence": "Container _handle_parcel_command derives now from its own stepped clock (self._current), never from the request; RPC transition re-checks issued_at == now."},
+    {"axis": "principal/actor authority", "result": "passed", "evidence": "Container binds request.agent_id via _binding_for(agent, carrier) requiring role 'aircraft_agent' (_principal_denied otherwise); RPC transition independently re-checks ids.authorized_principal_id; config validator requires the declared principal-to-carrier grant at compile time."},
+    {"axis": "projection integrity", "result": "passed", "evidence": "Hook: frame must be typed NativeParcelSceneFrame and frame.scene_state == scene_state (typed equality) before any ledger write, else 'parcel projection RPC changed its source SceneState' (regression test test_changed_source_scene_is_rejected_before_projection_events pins this). Canonical frame digest over model_dump json."},
+    {"axis": "private/public split", "result": "passed", "evidence": "Private event (private+verifier) carries frame_digest+frame_json; public event carries only the exact safe field set; projector pops frame_digest before reconstruction and re-validates NativeParcelProjection typed + entity_id binding; test asserts frame_json absent from public fields."},
+    {"axis": "ingest/replay atomicity on the wire", "result": "passed", "evidence": "Service commits journal + parcel stage only after source validation; 'not outcome.replayed' guard prevents duplicate custody on replayed ingest; journal-observed result returned unchanged."},
+    {"axis": "sealed_observations binding", "result": "passed", "evidence": "native_parcel_verifier.replay_native_parcel_batches replays sealed logistics observations (load_sealed_logistics_observations) + sealed px4 motion through a fresh component with transitions — read-only over sealed artifacts (c17-owned surface)."}
+  ],
+  "gaps_reported_before_activation": [
+    {"id": "G1", "severity": "activation-blocking", "item": "NativeParcelRuntimeHookFactory is referenced nowhere outside native_parcel_hook.py (repo grep): no resolver/executor/harness registration binds it, so the runtime hook never activates in a real run. Consistent with runtime_hook.py's 'deliberately NOT auto-enabled' design — activation requires explicit resolver/executor wiring plus the declared NativeParcelBusinessConfig the factory demands."},
+    {"id": "G2", "severity": "resolved", "item": "RESOLVED: stage author released the strict batch validator (every-batch declared-pad completeness + shared-carrier source validation); the redundant RPC pad-set check was removed per the coordinator rule (see dedup_record). The independent missing/wrong-source RPC regression test is preserved and green."},
+    {"id": "G3", "severity": "minor-hardening", "item": "Provider-side parcel_scene_frame rebinds run_id and 'at' but not the resolved scenario digest (the scenario IS available at build_native_parcel_business_session); the server-side component and the scene-frame validator enforce it, failing closed, so this is hardening rather than a hole."},
+    {"id": "G4", "severity": "note", "item": "Container binds self._parcel_scene only on the step boundary; the snapshot frame validator (same_closed_native_stage + hook's scene equality) fails closed on any mismatch, but binding the scene at ingest time would make cross-RPC consistency explicit rather than construction-time-detected."}
+  ],
+  "test_results": {
+    "runner": "/home/weizhiwei/data/iiot_predict/iiot_py311/airfogsim/bin/python -m pytest",
+    "focused_regression": "tests/tasks/test_native_parcel_hook_projection.py: 2 passed (including test_existing_closed_hook_precedes_projection_and_public_trace_is_typed-equivalent test_original_ingest_precedes_projection_and_motion_scene_stays_immutable)",
+    "affected": "hook_projection + rpc + test_trace_projector + test_trace_contracts + test_public_verification_projection: 39 passed",
+    "wider_trace": "test_trace_traffic_lights + test_public_replay_audit + test_indexed_replay_publication + test_artifact_seal + test_scene_history_incremental + test_inspection_frame_projection: 63 passed",
+    "cross_worker": "test_native_parcel_rpc + test_native_parcel_stage after c17's shared-source change: 16 passed",
+    "no_new_flight": true
+  },
+  "classification": {
+    "coordinator_draft": "substantive implementation, not glue-only",
+    "justification": "The drafts carry real business semantics on their own authority paths: native_parcel.py implements the typed parcel command lifecycle (receipt construction, admission consistency, request echo binding) and the authoritative projection RPC client (snapshot at current time, typed frame revalidation, run/time rebinding); containers/logistics-business/service.py implements server-owned RX semantics end to end (clock from its own stepped _current, principal binding via its own grant table, journal+parcel commit atomicity with replay exclusion, sealed snapshot/finalize artifact embedding of native_parcel.snapshot()). These are substantive provider/business implementation paths with their own validation contracts, not pass-through glue.",
+    "actual_ownership_recorded": {
+      "glm_session_a400e686": [
+        "aero_bench/tasks/logistics/native_parcel_rpc.py (RPC session: compiled geometry, step_ns/max_steps run bound, admission dedup, current-stage binding)",
+        "aero_bench/tasks/logistics/native_parcel_hook.py (hook composition + wire payload_schema_id)",
+        "aero_bench/trace/projector.py (parcel projection public branch only)",
+        "aero_bench/trace/contracts.py (PublicRunEvent provider vocabulary entry for public.parcel-projection only)",
+        "aero_bench/trace/vocabulary.py (parcel-wire literal PUBLIC_PARCEL_PAYLOAD_SCHEMA_ID only; coordinator draft otherwise unowned, closed vocabulary untouched)",
+        "aero_bench/providers/logistics_business/native_parcel.py (provider parcel lifecycle + scene-frame RPC client)",
+        "containers/logistics-business/service.py (server-side parcel ops: _handle_parcel_command/_handle_parcel_snapshot/ingest commit path — review + narrow fixes only)"
+      ],
+      "c17_stage_runtime_verifier": [
+        "aero_bench/tasks/logistics/native_parcel_stage.py",
+        "aero_bench/tasks/logistics/native_parcel_runtime.py",
+        "aero_bench/tasks/logistics/native_parcel_verifier.py"
+      ],
+      "coordinator": [
+        "tests/tasks/test_native_parcel_hook_projection.py (preserved, read/run only)",
+        "aero_bench/tasks/logistics/runtime_hook.py + runtime_bindings.py (originals preserved)"
+      ]
+    }
+  },
+  "dedup_record": {
+    "trigger": "Stage author released the exact strict batch validator: native_parcel_stage.py now enforces 'seen_pads != declared_pads' on EVERY batch (single-record exemption removed) plus _validate_shared_carrier_source.",
+    "action": "Removed the now-redundant RPC pad-set check from native_parcel_rpc.ingest_closed_stage; the session keeps compiled pad geometry, step_ns/max_steps run-bound and run/scenario checks.",
+    "test_update": "tests/tasks/test_native_parcel_rpc.py::test_rpc_session_requires_every_declared_pad_per_stage adapted to the new ownership: same atomicity contract (no machine mutation, no tombstone, no projection source on partial/duplicate batches) asserted through the stage-owned errors ('missing declared pad', 'repeats one observation digest').",
+    "preserved_untouched": "tests/tasks/test_native_parcel_rpc.py::test_batch_missing_pad_wrong_pose_and_tick_jump_are_atomic (independent missing/wrong-source regression) — unchanged; now fully green under the stage's strict validator.",
+    "result": "rpc + hook_projection + trace_projector + trace_contracts: 31 passed"
+  },
+  "vocabulary_literal_ownership": {
+    "scope": "aero_bench/trace/vocabulary.py parcel-wire literal only (coordinator draft, unowned); closed vocabulary otherwise untouched.",
+    "change": "Added PUBLIC_PARCEL_PAYLOAD_SCHEMA_ID = 'aero-bench.native-parcel-projection-v1' (Identifier wire form) + __all__ entry; native_parcel_hook.py and projector.py now both reference this single constant.",
+    "separation_preserved": "NativeParcelProjection.schema_version keeps its canonical slash literal 'aero-bench.native-parcel-projection/v1' (native_parcel_rpc.py); the projector rebinds it via NATIVE_PARCEL_PROJECTION_MODEL_VERSION. No generic validator weakened: PUBLIC_PROVIDER_EVENT_TYPES, the PublicRunEvent closed set and Identifier pattern are unchanged.",
+    "result": "hook_projection + trace_projector + trace_contracts + rpc: 31 passed"
+  },
+  "activation_gap_precise": {
+    "generic_task_registry": "The generic task registry has no native parcel hook: aero_bench/runtime/hooks.py defines only the RuntimeHookFactory Protocol and resolve_runtime_hook(factories, ...); NativeParcelRuntimeHookFactory (native_parcel_hook.py) is referenced nowhere outside its own module, so nothing composes it into a resolved run.",
+    "task_resolver": "LogisticsTaskPackageResolver remains explicitly infeasible: aero_bench/tasks/logistics/integration.py:50 LOGISTICS_RUNTIME_IMPLEMENTED = False; gated at integration.py:225 (runtime_available) and integration.py:301; authoring blocks physical-logistics completion at city_native_registration.py:1871-1876.",
+    "action": "Not flipped, not launched, per instruction. Activation requires the coordinator's explicit resolver/executor registration decision; the provider session path (registry.py:485 build_native_parcel_business_session) already exists and is separately validated."
+  },
+  "service_provider_path_inspection": {
+    "method": "existing typed fixtures only (tests/providers/test_logistics_business_*.py); no new fixtures, no flight",
+    "wiring_confirmed": "containers/logistics-business/service.py dispatch table: PARCEL_SNAPSHOT_OPERATION -> _handle_parcel_snapshot (line 2366); 'command' routes parcel tools to _handle_parcel_command (line 1871); ingest path commits journal + parcel stage together with 'not outcome.replayed' exclusion.",
+    "result": "test_logistics_business_service + provider + registration + observations: 105 passed",
+    "stage_author_note": "tests/tasks/test_native_parcel_stage.py showed 4 in-flight failures during their validator release window (stage-author domain, reported not touched); rpc+stage were 16/16 green at their last consistent snapshot."
+  },
+  "service_read_checkpoint": {
+    "verdict": "provider_hook_service_reviewed_wire_fixed_dedup_done_activation_blocked_no_wiring_test_fixture",
+    "exact_saved_files": [
+      "aero_bench/tasks/logistics/native_parcel_rpc.py (dedup done: RPC pad-set removed; compiled geometry, step_ns/max_steps, run/scenario checks kept)",
+      "aero_bench/tasks/logistics/native_parcel_hook.py (wire id now PUBLIC_PARCEL_PAYLOAD_SCHEMA_ID)",
+      "aero_bench/trace/projector.py (parcel branch: vocabulary wire check + canonical slash rebind)",
+      "aero_bench/trace/contracts.py (PublicRunEvent vocabulary entry only)",
+      "aero_bench/trace/vocabulary.py (PUBLIC_PARCEL_PAYLOAD_SCHEMA_ID literal only)",
+      "tests/tasks/test_native_parcel_rpc.py (missing/wrong-source regression preserved; adapted test asserts stage-owned errors)",
+      "this review JSON"
+    ],
+    "exact_test_results": [
+      "hook+rpc+stage (coordinator 18 + my regressions): 19 passed",
+      "hook_projection+trace_projector+trace_contracts+rpc: 31 passed",
+      "providers typed-fixture suites service/provider/registration/observations: 105 passed",
+      "wider trace sweep: 63 passed"
+    ],
+    "service_read_findings": [
+      "containers/logistics-business/service.py dispatch: PARCEL_SNAPSHOT_OPERATION -> _handle_parcel_snapshot (line 2366); parcel tools -> _handle_parcel_command (line 1871); ingest commits journal+parcel atomically with 'not outcome.replayed' exclusion",
+      "aero_bench/providers/logistics_business/native_parcel.py: config model_validator cross-binds order/facilities/pads/observation plan/tolerances/carrier calibration/principal grant; session builder checks adapter identity, capability declaration, clock binding; provider command path enforces run_id + issued_at == server _last_time, echoes NativeParcelActionRecord, ties completed phase to admitted status; parcel_scene_frame requires current time and typed frame revalidation",
+      "NativeParcelBusinessConfig has NO existing document fixture in tests/ (grep: zero matches) - the hook fixture builds only the v3 business config"
+    ],
+    "wiring_test_status": "NOT created this checkpoint: the ONE authorized service-path test (authenticated current batch -> parcel component -> pickup -> command lifecycle -> parcel_scene_frame at same tick; ingest/command retries no duplicate; unauthorized principal fails) requires a new synthetic NativeParcelBusinessConfig document fixture (order/package/pads/observation plan/bindings/grant all cross-validated). No existing _running_stack fixture provides it; creating one is new fixture scope, recorded as next scope. Clearly synthetic producer sources, no flight claim, no activation.",
+    "activation_gaps_precise": {
+      "task_resolver": "LogisticsTaskPackageResolver infeasible: integration.py:50 LOGISTICS_RUNTIME_IMPLEMENTED=False, gated at :225 and :301; authoring blocks physical-logistics at city_native_registration.py:1871-1876. Not flipped, not launched.",
+      "hook_factory": "Generic task registry has no native parcel hook: runtime/hooks.py defines only the RuntimeHookFactory Protocol + resolve_runtime_hook(factories, ...); NativeParcelRuntimeHookFactory is referenced nowhere outside native_parcel_hook.py, so no resolved run composes it.",
+      "ui_projection": "frontend/src/app.ts renders parcel labels from business snapshot records (carrierEntityId/parcelId, lines ~1559-1582); no frontend consumer of the public.parcel-projection typed event exists yet - the wire chain is server-side only (hook -> ledger -> projector)."
+    },
+    "takeover_and_origins": "Substantive code takeover recorded only where actually reviewed/fixed (rpc dedup, hook/projector/contracts wire chain, vocabulary literal). Coordinator source origins (runtime_hook drafts, hook-projection test, vocabulary draft) remain recorded in classification.actual_ownership_recorded.",
+    "constraints_honored": "No activation, no flight/build/install/auth changes, stage/core/verifier untouched, review of original drafts only, no rewrite."
+  },
+  "verdict": "wire_fixed_glue_reviewed_activation_blocked_on_G1_with_conditional_G2"
+}

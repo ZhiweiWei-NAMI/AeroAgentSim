@@ -1,0 +1,85 @@
+{
+  "review": "rpc-initial-review",
+  "checkpoint": "validation/p02_forward_reconnect_glm/ui-checkpoint",
+  "reviewer": "glm (session a400e686, native_parcel_rpc owner)",
+  "ownership": {
+    "owned_files": [
+      "aero_bench/tasks/logistics/native_parcel_rpc.py",
+      "tests/tasks/test_native_parcel_rpc.py"
+    ],
+    "other_worker_scope_read_only": [
+      "aero_bench/tasks/logistics/native_parcel_stage.py",
+      "aero_bench/tasks/logistics/native_parcel_runtime.py"
+    ],
+    "boundary_note": "Missing-pad and source-validation semantics inside the stage consumer belong to the native_parcel_stage/runtime worker; the RPC session's own admission contract belongs to this review."
+  },
+  "validated_axes": [
+    {
+      "axis": "server-owned reception time",
+      "result": "passed",
+      "evidence": "native_parcel_rpc.py transition(): received_at is the enclosing service's `now` argument (its actual clock), never a caller field; request.issued_at must equal `now` (line ~192); runtime admit_action re-checks received_at/now relation (native_parcel_runtime.py:1241) and rejects future vs past reception. Test test_rpc_uses_current_closed_tick_and_independent_principal pins `now` to the current closed stage."
+    },
+    {
+      "axis": "server-owned RX stage barrier",
+      "result": "passed",
+      "evidence": "AdmittedParcelAction.rx_stage_barrier_digest is copied from self.batch.source_stage_barrier_digest — the previously accepted closed-stage barrier — not from the request (native_parcel_rpc.py:202); runtime re-binds it against the contiguous closing barrier (native_parcel_runtime.py:1407)."
+    },
+    {
+      "axis": "exact declared run/principal/action key",
+      "result": "passed",
+      "evidence": "transition() rejects foreign run_id; tool_id must map to pickup/dropoff; arguments must name exactly order_id/parcel_id/actor_id of contract.identities; request.agent_id must equal ids.authorized_principal_id (independent principal binding, native_parcel_runtime.py:698 re-check). Record validator NativeParcelActionRecord.command_binding re-binds run/command/principal/tool/payload/outcome digests."
+    },
+    {
+      "axis": "dedup",
+      "result": "passed",
+      "evidence": "First admission persists canonical_json_bytes(request) under key (run_id, agent_id, command_id) BEFORE admitting; same key + identical payload returns the original record verbatim; same key + different content raises 'reused with different request content'. Test test_same_request_returns_original_and_payload_reuse_rejected covers both. Stage-level batch re-delivery dedup is tombstoned by (run_id, at) in native_parcel_stage.consume_batch."
+    },
+    {
+      "axis": "current stage binding",
+      "result": "passed",
+      "evidence": "transition() requires now == self.batch.at (the last ingested closed stage); admission proceeds only against the current closed observation stage. Test pins transition(now=tick+1) as ValueError 'current closed'."
+    },
+    {
+      "axis": "pose and source bindings of the projection",
+      "result": "passed",
+      "evidence": "projection() derives the carrier pose via runtime parcel_carriage_pose from the exact batch observation when custody is carrier-held, else uses the declared resting pose; NativeParcelSceneFrame.same_closed_native_stage re-binds run/scenario/scene-state digest/stage-barrier between SceneState and projection; projection carries source_scene_state_digest, source_stage_barrier_digest, source_observation_digest."
+    },
+    {
+      "axis": "ingest batch integrity (per-record)",
+      "result": "passed",
+      "evidence": "ingest_closed_stage rejects foreign run/scenario, violates of declared step_ns clock (sim_time_ns != tick*step_ns) and max_steps, and any record whose facility/pad geometry differs from the compiled pads."
+    },
+    {
+      "axis": "ingest batch completeness (session-level)",
+      "result": "defect_found_fixed",
+      "evidence": "RPC accepted a batch covering only one declared pad because the stage surface deliberately admits single-pad stages (len(observations) > 1 guard, native_parcel_stage.py:158; its own tests consume _batch(pickup)). A pickup-only batch then mutated the machine (dwell incremented) before any rejection and became the projection source — breaking the session's atomicity contract. Fixed in native_parcel_rpc.py ingest_closed_stage: the session now requires the exact declared pad set {(pickup_facility, pickup_pad_index), (dropoff_facility, dropoff_pad_index)} covered exactly once, checked BEFORE consume_batch, so rejection is fully atomic (machine snapshot unchanged, batch not consumed)."
+    },
+    {
+      "axis": "cross-pad source consistency of one sample",
+      "result": "out_of_scope_blocking_for_stage_owner",
+      "evidence": "A source sample assessed against the far dropoff pad (h._observation(..., facility_id=h._DROPOFF) reusing the pickup-side sample fields) is absorbed by observe() without a cross-pad consistency check; the remaining failure of test_batch_missing_pad_wrong_pose_and_tick_jump_are_atomic (second sub-case, line ~143) demonstrates it. Per the ownership boundary this is native_parcel_stage/native_parcel_runtime source-validation work (missing-pad/source-validation failures belong there). Handoff: either assess each source sample per-pad or reject samples whose digest duplicates another pad's source evidence."
+    }
+  ],
+  "defects_fixed": [
+    {
+      "file": "aero_bench/tasks/logistics/native_parcel_rpc.py",
+      "change": "ingest_closed_stage now enforces the session's full declared pad set (exactly one record per declared facility/pad) before stage consumption; error message names covered vs declared pads.",
+      "test_added": "tests/tasks/test_native_parcel_rpc.py::test_rpc_session_requires_every_declared_pad_per_stage — pickup-only batch rejected atomically (snapshot unchanged, rpc.batch is None); duplicated-record batch rejected; full batch accepted and projection shows awaiting_pickup."
+    }
+  ],
+  "blocking_for_owner": [
+    {
+      "owner": "native_parcel_stage/runtime worker",
+      "item": "Cross-pad source-sample validation (wrong-pose record sub-case of test_batch_missing_pad_wrong_pose_and_tick_jump_are_atomic, tests/tasks/test_native_parcel_rpc.py line ~143). Not fixable inside native_parcel_rpc.py without duplicating stage-owned source semantics."
+    }
+  ],
+  "test_results": {
+    "runner": "/home/weizhiwei/data/iiot_predict/iiot_py311/airfogsim/bin/python -m pytest",
+    "before_fix": "tests/tasks/test_native_parcel_rpc.py: 1 failed (test_batch_missing_pad_wrong_pose_and_tick_jump_are_atomic), 3 passed",
+    "after_fix": "tests/tasks/test_native_parcel_rpc.py: 4 passed, 1 failed (remaining failure = out-of-scope stage-owned wrong-pose sub-case above)",
+    "collateral": "tests/tasks/test_native_parcel_stage.py + test_native_parcel_runtime.py + test_native_parcel_review_regressions.py + test_native_parcel_clock_integration.py + test_native_parcel_verifier.py: 95 passed (no collateral from the RPC fix)",
+    "no_new_flight": true
+  },
+  "verdict": "passed_with_one_rpc_defect_fixed",
+  "environment_addendum": "At 2026-10-06T05:26 the RPC suite no longer collects: native_parcel_stage.py:60 (stage-worker file) imports require_facility from aero_bench.tasks.logistics.facilities, which exports no such symbol anywhere in aero_bench (verified by repo-wide grep) — an in-flight edit outside this review's ownership. The consistent-state measurements above (RPC 4 passed / 1 stage-owned failure; parcel family 95 passed) were taken before that edit. RPC-owned code and tests remain intact and unaffected."
+}
