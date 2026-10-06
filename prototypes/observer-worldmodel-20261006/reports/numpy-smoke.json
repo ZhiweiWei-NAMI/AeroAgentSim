@@ -1,0 +1,105 @@
+{
+  "mode": "random-weight NumPy reference; NOT actual Qwen; NOT trained; synthetic modality tokens",
+  "history_samples": 21,
+  "history_seconds": 10,
+  "rollout_shape": [
+    8,
+    10,
+    3,
+    2
+  ],
+  "logit_shape": [
+    8,
+    2,
+    11
+  ],
+  "probability_shape": [
+    2,
+    11
+  ],
+  "graph_nodes": 72,
+  "graph_edges": 255,
+  "observer_owned_observations": 3,
+  "explicit_local_associations": 3,
+  "probability_normalized": true,
+  "sample_self_feedback": true,
+  "joint_covariance_offdiagonal_max": 0.003899956597515921,
+  "rule_mc_bins_zero_based": [
+    [
+      10,
+      10
+    ],
+    [
+      0,
+      9
+    ],
+    [
+      10,
+      10
+    ],
+    [
+      10,
+      10
+    ],
+    [
+      10,
+      10
+    ],
+    [
+      10,
+      10
+    ],
+    [
+      10,
+      10
+    ],
+    [
+      10,
+      10
+    ]
+  ],
+  "rule_mc_probabilities": [
+    [
+      0.125,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.875
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.125,
+      0.875
+    ]
+  ],
+  "synthetic_label_bins_zero_based": [
+    2,
+    -1
+  ],
+  "hybrid": {
+    "loss": 0.22890634727334175,
+    "timing": 0.15703787577121245,
+    "terminal": 0.1437369430042586,
+    "rps_report_j1_to_j10": 0.1483433238095836,
+    "timing_count": 15,
+    "terminal_count": 1
+  },
+  "torch_available": false,
+  "torch_gradient_tests": "BLOCKED: torch not installed in this executor",
+  "frozen_clamp_mask_parity": "UNVERIFIED: original function unavailable; formula/semantic conformance only",
+  "elapsed_seconds": 0.025290766003308818
+}

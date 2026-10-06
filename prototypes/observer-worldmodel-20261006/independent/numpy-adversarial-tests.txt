@@ -1,0 +1,19 @@
+test_complete_and_censored_first_flip_semantics (__main__.IndependentContractTests.test_complete_and_censored_first_flip_semantics) ... ok
+test_future_evidence_rejected (__main__.IndependentContractTests.test_future_evidence_rejected) ... ok
+test_graph_reindex_and_queries_stay_bound (__main__.IndependentContractTests.test_graph_reindex_and_queries_stay_bound) ... ok
+test_joint_correlated_sample_feedback_and_edges (__main__.IndependentContractTests.test_joint_correlated_sample_feedback_and_edges) ... ok
+test_joint_missing_subvector_nll (__main__.IndependentContractTests.test_joint_missing_subvector_nll) ... ok
+test_mixture_probability_before_loss_once (__main__.IndependentContractTests.test_mixture_probability_before_loss_once) ... ok
+test_observation_stored_once_and_multi_entity_refs (__main__.IndependentContractTests.test_observation_stored_once_and_multi_entity_refs) ... ok
+test_overlapping_association_edges_not_order_dependent (__main__.IndependentContractTests.test_overlapping_association_edges_not_order_dependent) ... ok
+test_same_query_all_paths_and_unknown_not_bucket11 (__main__.IndependentContractTests.test_same_query_all_paths_and_unknown_not_bucket11) ... ok
+test_schema_fails_closed_before_wrong_geometry (__main__.IndependentContractTests.test_schema_fails_closed_before_wrong_geometry) ... ok
+test_stage_parameter_arrays_untied (__main__.IndependentContractTests.test_stage_parameter_arrays_untied) ... ok
+test_unix_cutoff_boundary (__main__.IndependentContractTests.test_unix_cutoff_boundary) ... ok
+test_unix_observation_tick_boundary (__main__.IndependentContractTests.test_unix_observation_tick_boundary) ... ok
+test_unknown_numeric_storage_does_not_become_evidence (__main__.IndependentContractTests.test_unknown_numeric_storage_does_not_become_evidence) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.080s
+
+OK

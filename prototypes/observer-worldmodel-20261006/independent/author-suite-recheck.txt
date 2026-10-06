@@ -1,0 +1,42 @@
+test_bad_association_identity_and_coverage_rejected (test_contracts.ContractTests.test_bad_association_identity_and_coverage_rejected) ... ok
+test_between_tick_flip_not_claimed_visible (test_contracts.ContractTests.test_between_tick_flip_not_claimed_visible) ... ok
+test_branch_specific_feedback_and_graph_rebuild (test_contracts.ContractTests.test_branch_specific_feedback_and_graph_rebuild) ... ok
+test_complete_numpy_chain (test_contracts.ContractTests.test_complete_numpy_chain) ... ok
+test_duplicate_local_evidence_rejected_order_independently (test_contracts.ContractTests.test_duplicate_local_evidence_rejected_order_independently) ... ok
+test_exact_rule_equality_threshold (test_contracts.ContractTests.test_exact_rule_equality_threshold) ... ok
+test_field_order_and_domains_fail_closed (test_contracts.ContractTests.test_field_order_and_domains_fail_closed) ... ok
+test_future_encoder_and_association_support_rejected (test_contracts.ContractTests.test_future_encoder_and_association_support_rejected) ... ok
+test_future_numeric_and_oracle_source_rejected (test_contracts.ContractTests.test_future_numeric_and_oracle_source_rejected) ... ok
+test_graph_identity_and_query_reindexing (test_contracts.ContractTests.test_graph_identity_and_query_reindexing) ... ok
+test_history_twenty_one_inclusive_samples (test_contracts.ContractTests.test_history_twenty_one_inclusive_samples) ... ok
+test_hybrid_separate_reductions_and_terminal_cdf (test_contracts.ContractTests.test_hybrid_separate_reductions_and_terminal_cdf) ... ok
+test_initial_true_and_exact_five_seconds (test_contracts.ContractTests.test_initial_true_and_exact_five_seconds) ... ok
+test_joint_lowrank_correlation_and_masked_marginal (test_contracts.ContractTests.test_joint_lowrank_correlation_and_masked_marginal) ... ok
+test_known_cdf_and_terminal_censoring (test_contracts.ContractTests.test_known_cdf_and_terminal_censoring) ... ok
+test_large_absolute_timestamp_cutoff (test_contracts.ContractTests.test_large_absolute_timestamp_cutoff) ... ok
+test_local_association_not_scene_clone (test_contracts.ContractTests.test_local_association_not_scene_clone) ... ok
+test_loss_empty_masks_and_unknown_nan (test_contracts.ContractTests.test_loss_empty_masks_and_unknown_nan) ... ok
+test_missing_values_not_zero_evidence_and_source_retained (test_contracts.ContractTests.test_missing_values_not_zero_evidence_and_source_retained) ... ok
+test_probability_mixture_not_logit_average (test_contracts.ContractTests.test_probability_mixture_not_logit_average) ... ok
+test_query_invalid_type_rejected (test_contracts.ContractTests.test_query_invalid_type_rejected) ... ok
+test_rule_unknown_is_not_no_flip (test_contracts.ContractTests.test_rule_unknown_is_not_no_flip) ... ok
+test_stage2_parameter_separation_numpy (test_contracts.ContractTests.test_stage2_parameter_separation_numpy) ... ok
+test_stateful_rule_without_initial_memory_fails_closed (test_contracts.ContractTests.test_stateful_rule_without_initial_memory_fails_closed) ... ok
+test_units_frames_must_match (test_contracts.ContractTests.test_units_frames_must_match) ... ok
+test_unknown_initial_and_no_flip_are_different (test_contracts.ContractTests.test_unknown_initial_and_no_flip_are_different) ... ok
+test_absolute_times_preserve_half_second_resolution (test_torch.TorchTests.test_absolute_times_preserve_half_second_resolution) ... skipped 'BLOCKED: PyTorch is not installed; no gradient tests were run'
+test_copied_initialization_is_untied (test_torch.TorchTests.test_copied_initialization_is_untied) ... skipped 'BLOCKED: PyTorch is not installed; no gradient tests were run'
+test_empty_mask_connected_zero_gradient (test_torch.TorchTests.test_empty_mask_connected_zero_gradient) ... skipped 'BLOCKED: PyTorch is not installed; no gradient tests were run'
+test_hybrid_numpy_formula_parity_and_gradient (test_torch.TorchTests.test_hybrid_numpy_formula_parity_and_gradient) ... skipped 'BLOCKED: PyTorch is not installed; no gradient tests were run'
+test_invalid_known_timing_label_rejected (test_torch.TorchTests.test_invalid_known_timing_label_rejected) ... skipped 'BLOCKED: PyTorch is not installed; no gradient tests were run'
+test_local_qwen_loader_rejects_remote_identifier (test_torch.TorchTests.test_local_qwen_loader_rejects_remote_identifier) ... skipped 'BLOCKED: PyTorch is not installed; no gradient tests were run'
+test_lowrank_masked_marginal (test_torch.TorchTests.test_lowrank_masked_marginal) ... skipped 'BLOCKED: PyTorch is not installed; no gradient tests were run'
+test_rollout_own_previous_state (test_torch.TorchTests.test_rollout_own_previous_state) ... skipped 'BLOCKED: PyTorch is not installed; no gradient tests were run'
+test_shape_probabilities_and_rule_reference (test_torch.TorchTests.test_shape_probabilities_and_rule_reference) ... skipped 'BLOCKED: PyTorch is not installed; no gradient tests were run'
+test_stage1_nll_gradient_through_frozen_backbone (test_torch.TorchTests.test_stage1_nll_gradient_through_frozen_backbone) ... skipped 'BLOCKED: PyTorch is not installed; no gradient tests were run'
+test_stage2_frozen_stage1_and_parameter_separation (test_torch.TorchTests.test_stage2_frozen_stage1_and_parameter_separation) ... skipped 'BLOCKED: PyTorch is not installed; no gradient tests were run'
+
+----------------------------------------------------------------------
+Ran 37 tests in 0.094s
+
+OK (skipped=11)
