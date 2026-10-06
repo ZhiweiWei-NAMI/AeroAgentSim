@@ -1,0 +1,296 @@
+[
+  {
+    "event_id": "lifecycle_takeoff_uav_l2_1_v1",
+    "decision_tick": 30,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_takeoff_uav_l2_1_v1",
+      "decision_ns": 3000000000
+    }
+  },
+  {
+    "event_id": "station_degraded",
+    "decision_tick": 260,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "station_degraded",
+      "decision_ns": 26000000000
+    }
+  },
+  {
+    "event_id": "p09_actor_observed_station_loss",
+    "decision_tick": 266,
+    "allow": true,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 26500000000,
+          "receiver_owner": "uav_l2_1_v1",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 5,
+          "ttl_not_timely": 3,
+          "observed_late": 0,
+          "pending_expected": 2,
+          "loss_ratio": 0.375,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 3,
+          "degraded": true,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "degraded",
+      "decision_ns": 26600000000,
+      "owner": "uav_l2_1_v1",
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "p09_actor_observed_station_loss",
+    "decision_tick": 267,
+    "allow": true,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 26600000000,
+          "receiver_owner": "uav_l2_1_v1",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 4,
+          "ttl_not_timely": 4,
+          "observed_late": 0,
+          "pending_expected": 2,
+          "loss_ratio": 0.5,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 4,
+          "degraded": true,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "degraded",
+      "decision_ns": 26700000000,
+      "owner": "uav_l2_1_v1",
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "p09_actor_observed_station_loss",
+    "decision_tick": 268,
+    "allow": true,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 26700000000,
+          "receiver_owner": "uav_l2_1_v1",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 3,
+          "ttl_not_timely": 5,
+          "observed_late": 0,
+          "pending_expected": 2,
+          "loss_ratio": 0.625,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 5,
+          "degraded": true,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "degraded",
+      "decision_ns": 26800000000,
+      "owner": "uav_l2_1_v1",
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "p09_actor_observed_station_loss",
+    "decision_tick": 269,
+    "allow": true,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 26800000000,
+          "receiver_owner": "uav_l2_1_v1",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 2,
+          "ttl_not_timely": 6,
+          "observed_late": 0,
+          "pending_expected": 2,
+          "loss_ratio": 0.75,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 6,
+          "degraded": true,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "degraded",
+      "decision_ns": 26900000000,
+      "owner": "uav_l2_1_v1",
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "p09_actor_observed_station_loss",
+    "decision_tick": 270,
+    "allow": true,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 26900000000,
+          "receiver_owner": "uav_l2_1_v1",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 1,
+          "ttl_not_timely": 7,
+          "observed_late": 0,
+          "pending_expected": 2,
+          "loss_ratio": 0.875,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 7,
+          "degraded": true,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "degraded",
+      "decision_ns": 27000000000,
+      "owner": "uav_l2_1_v1",
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "uav_link_response",
+    "decision_tick": 300,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "uav_link_response",
+      "decision_ns": 30000000000
+    }
+  },
+  {
+    "event_id": "patrol_resume_via_backup_link",
+    "decision_tick": 359,
+    "allow": true,
+    "evidence": {
+      "message_id": "command:patrol_resume_via_backup_link:uav_l2_1_v1",
+      "receipt": {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "command:patrol_resume_via_backup_link:uav_l2_1_v1",
+        "packet_id": "packet-360",
+        "source_owner": "contract_facility_l2_1_v1_03",
+        "source_epoch": 0,
+        "receiver_owner": "uav_l2_1_v1",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 35609279423,
+        "decision_ns": 35709279423,
+        "send_ns": 35709279423,
+        "deadline_ns": 37709279423,
+        "action": "patrol_resume_via_backup_link",
+        "receive_ns": 35711562768,
+        "accepted_ns": 35711562768,
+        "status": "accepted"
+      },
+      "controller_decisions": [
+        {
+          "schema_version": "p09.receiver-controller-consumption/v1",
+          "command_id": "command:patrol_resume_via_backup_link:uav_l2_1_v1",
+          "receiver_owner": "uav_l2_1_v1",
+          "receiver_epoch": 0,
+          "action": "patrol_resume_via_backup_link",
+          "receive_ns": 35711562768,
+          "accepted_ns": 35711562768,
+          "policy_delay_ns": 0,
+          "policy_ready_ns": 35711562768,
+          "queue_available_ns": 35900000000,
+          "execution_decision_ns": 35900000000,
+          "status": "ready_for_executor",
+          "physical_motion_evidence": null
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "patrol_resume_via_backup_link",
+    "decision_tick": 360,
+    "allow": true,
+    "evidence": {
+      "message_id": "command:patrol_resume_via_backup_link:uav_l2_1_v1",
+      "receipt": {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "command:patrol_resume_via_backup_link:uav_l2_1_v1",
+        "packet_id": "packet-360",
+        "source_owner": "contract_facility_l2_1_v1_03",
+        "source_epoch": 0,
+        "receiver_owner": "uav_l2_1_v1",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 35609279423,
+        "decision_ns": 35709279423,
+        "send_ns": 35709279423,
+        "deadline_ns": 37709279423,
+        "action": "patrol_resume_via_backup_link",
+        "receive_ns": 35711562768,
+        "accepted_ns": 35711562768,
+        "status": "accepted"
+      },
+      "controller_decisions": [
+        {
+          "schema_version": "p09.receiver-controller-consumption/v1",
+          "command_id": "command:patrol_resume_via_backup_link:uav_l2_1_v1",
+          "receiver_owner": "uav_l2_1_v1",
+          "receiver_epoch": 0,
+          "action": "patrol_resume_via_backup_link",
+          "receive_ns": 35711562768,
+          "accepted_ns": 35711562768,
+          "policy_delay_ns": 0,
+          "policy_ready_ns": 35711562768,
+          "queue_available_ns": 36000000000,
+          "execution_decision_ns": 36000000000,
+          "status": "ready_for_executor",
+          "physical_motion_evidence": null
+        }
+      ]
+    }
+  },
+  {
+    "event_id": "lifecycle_landing_uav_l2_1_v1",
+    "decision_tick": 440,
+    "allow": true,
+    "evidence": {
+      "authority": "preloaded onboard mission termination after receipt-admitted patrol resumption; no new failed-path landing command assumed",
+      "predecessor": "patrol_resume_via_backup_link",
+      "decision_ns": 44000000000
+    }
+  }
+]

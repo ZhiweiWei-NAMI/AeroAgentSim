@@ -1,0 +1,388 @@
+[
+  {
+    "tick": 30,
+    "action": {
+      "type": "move_entity",
+      "action_id": "move_uav_digital_l6_1_v1_takeoff_entry",
+      "entity_id": "uav_digital_l6_1_v1",
+      "waypoints_enu_m": [
+        [
+          6672.515,
+          6547.604,
+          3.0
+        ],
+        [
+          6672.515,
+          6547.604,
+          24.0
+        ],
+        [
+          6653.742,
+          6541.248,
+          32.0
+        ]
+      ],
+      "velocity_mps": 5.0,
+      "activity_type": "takeoff",
+      "post_activity_type": "cruise",
+      "uav_corridor_validation": {
+        "status": "low_altitude_waypoints_preserved_and_building_clear",
+        "assigned_altitude_m": 30.0,
+        "original_waypoints_enu_m": [
+          [
+            6672.515,
+            6547.604,
+            3.0
+          ],
+          [
+            6672.515,
+            6547.604,
+            24.0
+          ],
+          [
+            6653.742,
+            6541.248,
+            32
+          ]
+        ],
+        "preserved_action_type": "move_entity"
+      }
+    },
+    "result": {
+      "status": "ok",
+      "tick": 30,
+      "scheduled_tick": 30,
+      "entity_id": "uav_digital_l6_1_v1",
+      "path_length_m": 42.373448
+    },
+    "motion_schedule": {
+      "terminal_tick": 115,
+      "endpoint_enu_m": [
+        6653.742,
+        6541.248,
+        32.0
+      ]
+    }
+  },
+  {
+    "tick": 250,
+    "action": {
+      "type": "set_visual_state",
+      "action_id": "set_tower_c2_loss",
+      "entity_id": "tower_l6_1_v1",
+      "visual_state": {
+        "mode": "link_lost"
+      }
+    },
+    "result": {
+      "status": "ok",
+      "tick": 250,
+      "entity_id": "tower_l6_1_v1",
+      "mode": "link_lost"
+    }
+  },
+  {
+    "tick": 250,
+    "action": {
+      "type": "move_entity",
+      "action_id": "move_uav_until_c2_loss",
+      "entity_id": "uav_digital_l6_1_v1",
+      "waypoints_enu_m": [
+        [
+          6653.742,
+          6541.248,
+          32.0
+        ],
+        [
+          6653.742,
+          6541.248,
+          30.0
+        ],
+        [
+          6667.742,
+          6549.248,
+          30.0
+        ]
+      ],
+      "velocity_mps": 6.0,
+      "uav_corridor_validation": {
+        "status": "waypoints_repaired_for_building_clearance",
+        "assigned_altitude_m": 30.0,
+        "original_waypoints_enu_m": [
+          [
+            6653.742,
+            6541.248,
+            32
+          ],
+          [
+            6667.742,
+            6549.248,
+            31
+          ]
+        ],
+        "preserved_action_type": "move_entity"
+      }
+    },
+    "result": {
+      "status": "ok",
+      "tick": 250,
+      "scheduled_tick": 250,
+      "entity_id": "uav_digital_l6_1_v1",
+      "path_length_m": 18.124515
+    },
+    "motion_schedule": {
+      "terminal_tick": 281,
+      "endpoint_enu_m": [
+        6667.742,
+        6549.248,
+        30.0
+      ]
+    }
+  },
+  {
+    "tick": 250,
+    "action": {
+      "type": "set_runtime_state",
+      "action_id": "set_runtime_state_l6_1_v1_c2_loss_00",
+      "entity_id": "uav_digital_l6_1_v1",
+      "delay_ticks": 1,
+      "state_patch": {
+        "communication_state": {
+          "communication_unavailable": true
+        }
+      },
+      "runtime_state_schedule_profile_id": "l5_l6_x_runtime_state_schedule",
+      "runtime_state_schedule_semantics": "queued_after_event_actions_delay_ticks_0_next_tick"
+    },
+    "result": {
+      "status": "omitted_by_explicit_configuration"
+    }
+  },
+  {
+    "tick": 285,
+    "action": {
+      "type": "set_visual_state",
+      "action_id": "set_uav_rth",
+      "entity_id": "uav_digital_l6_1_v1",
+      "visual_state": {
+        "mode": "return_to_home"
+      }
+    },
+    "result": {
+      "status": "ok",
+      "tick": 285,
+      "entity_id": "uav_digital_l6_1_v1",
+      "mode": "return_to_home"
+    }
+  },
+  {
+    "tick": 285,
+    "action": {
+      "type": "move_entity",
+      "action_id": "move_uav_rth_home",
+      "entity_id": "uav_digital_l6_1_v1",
+      "waypoints_enu_m": [
+        [
+          6667.742,
+          6549.248,
+          30.0
+        ],
+        [
+          6672.515,
+          6547.604,
+          30.0
+        ]
+      ],
+      "velocity_mps": 7.0,
+      "uav_corridor_validation": {
+        "status": "low_altitude_waypoints_preserved_and_building_clear",
+        "assigned_altitude_m": 30.0,
+        "original_waypoints_enu_m": [
+          [
+            6667.742,
+            6549.248,
+            30.0
+          ],
+          [
+            6672.515,
+            6547.604,
+            30.0
+          ]
+        ],
+        "preserved_action_type": "move_entity"
+      }
+    },
+    "result": {
+      "status": "ok",
+      "tick": 285,
+      "scheduled_tick": 285,
+      "entity_id": "uav_digital_l6_1_v1",
+      "path_length_m": 5.048194
+    },
+    "motion_schedule": {
+      "terminal_tick": 293,
+      "endpoint_enu_m": [
+        6672.515,
+        6547.604,
+        30.0
+      ]
+    }
+  },
+  {
+    "tick": 285,
+    "action": {
+      "type": "set_runtime_state",
+      "action_id": "set_runtime_state_l6_1_v1_rth_engaged_00",
+      "entity_id": "uav_digital_l6_1_v1",
+      "delay_ticks": 1,
+      "state_patch": {
+        "control_state": {
+          "rth_active": true
+        }
+      },
+      "runtime_state_schedule_profile_id": "l5_l6_x_runtime_state_schedule",
+      "runtime_state_schedule_semantics": "queued_after_event_actions_delay_ticks_0_next_tick"
+    },
+    "result": {
+      "status": "ok",
+      "tick": 285,
+      "scheduled_tick": 286,
+      "effective_tick": 286,
+      "entity_id": "uav_digital_l6_1_v1",
+      "state_families": [
+        "control_state"
+      ]
+    }
+  },
+  {
+    "tick": 335,
+    "action": {
+      "type": "set_visual_state",
+      "action_id": "set_tower_link_restored",
+      "entity_id": "tower_l6_1_v1",
+      "visual_state": {
+        "mode": "online"
+      }
+    },
+    "result": {
+      "status": "ok",
+      "tick": 335,
+      "entity_id": "tower_l6_1_v1",
+      "mode": "online"
+    }
+  },
+  {
+    "tick": 335,
+    "action": {
+      "type": "set_visual_state",
+      "action_id": "set_uav_link_restored_hold",
+      "entity_id": "uav_digital_l6_1_v1",
+      "visual_state": {
+        "mode": "hover"
+      }
+    },
+    "result": {
+      "status": "ok",
+      "tick": 335,
+      "entity_id": "uav_digital_l6_1_v1",
+      "mode": "hover"
+    }
+  },
+  {
+    "tick": 335,
+    "action": {
+      "type": "set_runtime_state",
+      "action_id": "set_runtime_state_l6_1_v1_c2_recovered_00",
+      "entity_id": "uav_digital_l6_1_v1",
+      "delay_ticks": 5,
+      "state_patch": {
+        "control_state": {
+          "rth_active": false
+        }
+      },
+      "runtime_state_schedule_profile_id": "l5_l6_x_runtime_state_schedule",
+      "runtime_state_schedule_semantics": "queued_after_event_actions_delay_ticks_5"
+    },
+    "result": {
+      "status": "ok",
+      "tick": 335,
+      "scheduled_tick": 340,
+      "effective_tick": 340,
+      "entity_id": "uav_digital_l6_1_v1",
+      "state_families": [
+        "control_state"
+      ]
+    }
+  },
+  {
+    "tick": 415,
+    "action": {
+      "type": "move_entity",
+      "action_id": "move_uav_digital_l6_1_v1_landing_return",
+      "entity_id": "uav_digital_l6_1_v1",
+      "waypoints_enu_m": [
+        [
+          6672.515,
+          6547.604,
+          36.0
+        ],
+        [
+          6672.515,
+          6547.604,
+          3.0
+        ]
+      ],
+      "velocity_mps": 4.0,
+      "activity_type": "return_to_pad",
+      "post_activity_type": "landed",
+      "uav_corridor_validation": {
+        "status": "low_altitude_waypoints_preserved_and_building_clear",
+        "assigned_altitude_m": 30.0,
+        "original_waypoints_enu_m": [
+          [
+            6672.515,
+            6547.604,
+            36.0
+          ],
+          [
+            6672.515,
+            6547.604,
+            3.0
+          ]
+        ],
+        "preserved_action_type": "move_entity"
+      },
+      "terminal_feasibility": {
+        "model": "constant_speed_path_with_explicit_landing_reference_v2",
+        "dispatch_upper_bound_tick": 405,
+        "route_length_m": 70.313835,
+        "available_ticks": 485,
+        "required_speed_mps": 1.44977,
+        "max_speed_mps": 8.0,
+        "home_pose_origin_z_m": 3.0,
+        "landing_reference_enu_m": [
+          6672.515,
+          6547.604,
+          3.0
+        ],
+        "touchdown_altitude_tolerance_m": 1.5,
+        "touchdown_dwell_ticks": 5
+      }
+    },
+    "result": {
+      "status": "ok",
+      "tick": 415,
+      "scheduled_tick": 415,
+      "entity_id": "uav_digital_l6_1_v1",
+      "path_length_m": 39.0
+    },
+    "motion_schedule": {
+      "terminal_tick": 513,
+      "endpoint_enu_m": [
+        6672.515,
+        6547.604,
+        3.0
+      ]
+    }
+  }
+]

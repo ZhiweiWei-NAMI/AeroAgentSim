@@ -1,0 +1,872 @@
+[
+  {
+    "tick": 896,
+    "entity_id": "uav_weather_l5_1_v2",
+    "label_class": "uav",
+    "asset_id": "uav.inspect.quad.v1",
+    "pos_enu": [
+      7204.942,
+      7239.364,
+      3.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": -76.945344,
+    "state": "landed",
+    "activity_type": "landed",
+    "animation_hint": "landed",
+    "posture": "standing",
+    "social_state": "solo",
+    "task_id": "uav_weather_l5_1_v2.task",
+    "role": "mission_uav",
+    "state_sequence": [
+      "patrol"
+    ],
+    "semantic_role": "patrol",
+    "uav_corridor_role": "mission_uav",
+    "uav_corridor": {
+      "assigned_altitude_m": 30.0,
+      "altitude_layers_m": [
+        30.0,
+        50.0,
+        80.0
+      ],
+      "used_lateral_bypass": false
+    },
+    "assigned_altitude_m": 30.0,
+    "ground_reference_z_m": 3.0,
+    "ground_reference_source": "home_hover_pose_origin_v1",
+    "lifecycle": {
+      "auto_lifecycle_applied": true,
+      "home_pad_entity_id": "pad_home_uav_weather_l5_1_v2",
+      "home_hover_enu_m": [
+        7204.942,
+        7239.364,
+        3.0
+      ],
+      "mission_start_enu_m": [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      "requires_takeoff": true,
+      "requires_landing_or_terminal_resolution": true,
+      "assigned_altitude_m": 30.0,
+      "waypoint_repair_applied": true
+    },
+    "activation_tick": 0,
+    "category": "uav",
+    "route_waypoints_enu_m": [
+      [
+        7204.942,
+        7239.364,
+        24.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        32.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      [
+        7230.612,
+        7256.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7266.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        3.0
+      ]
+    ],
+    "planned_route_waypoints_enu_m": [
+      [
+        7204.942,
+        7239.364,
+        24.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        32.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      [
+        7230.612,
+        7256.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7266.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        3.0
+      ]
+    ],
+    "control_state": {
+      "slowdown_active": false
+    },
+    "mission_state": {
+      "unsafe": false
+    },
+    "navigation_state": {
+      "route_degraded": false
+    }
+  },
+  {
+    "tick": 897,
+    "entity_id": "uav_weather_l5_1_v2",
+    "label_class": "uav",
+    "asset_id": "uav.inspect.quad.v1",
+    "pos_enu": [
+      7204.942,
+      7239.364,
+      3.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": -76.945344,
+    "state": "landed",
+    "activity_type": "landed",
+    "animation_hint": "landed",
+    "posture": "standing",
+    "social_state": "solo",
+    "task_id": "uav_weather_l5_1_v2.task",
+    "role": "mission_uav",
+    "state_sequence": [
+      "patrol"
+    ],
+    "semantic_role": "patrol",
+    "uav_corridor_role": "mission_uav",
+    "uav_corridor": {
+      "assigned_altitude_m": 30.0,
+      "altitude_layers_m": [
+        30.0,
+        50.0,
+        80.0
+      ],
+      "used_lateral_bypass": false
+    },
+    "assigned_altitude_m": 30.0,
+    "ground_reference_z_m": 3.0,
+    "ground_reference_source": "home_hover_pose_origin_v1",
+    "lifecycle": {
+      "auto_lifecycle_applied": true,
+      "home_pad_entity_id": "pad_home_uav_weather_l5_1_v2",
+      "home_hover_enu_m": [
+        7204.942,
+        7239.364,
+        3.0
+      ],
+      "mission_start_enu_m": [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      "requires_takeoff": true,
+      "requires_landing_or_terminal_resolution": true,
+      "assigned_altitude_m": 30.0,
+      "waypoint_repair_applied": true
+    },
+    "activation_tick": 0,
+    "category": "uav",
+    "route_waypoints_enu_m": [
+      [
+        7204.942,
+        7239.364,
+        24.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        32.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      [
+        7230.612,
+        7256.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7266.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        3.0
+      ]
+    ],
+    "planned_route_waypoints_enu_m": [
+      [
+        7204.942,
+        7239.364,
+        24.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        32.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      [
+        7230.612,
+        7256.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7266.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        3.0
+      ]
+    ],
+    "control_state": {
+      "slowdown_active": false
+    },
+    "mission_state": {
+      "unsafe": false
+    },
+    "navigation_state": {
+      "route_degraded": false
+    }
+  },
+  {
+    "tick": 898,
+    "entity_id": "uav_weather_l5_1_v2",
+    "label_class": "uav",
+    "asset_id": "uav.inspect.quad.v1",
+    "pos_enu": [
+      7204.942,
+      7239.364,
+      3.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": -76.945344,
+    "state": "landed",
+    "activity_type": "landed",
+    "animation_hint": "landed",
+    "posture": "standing",
+    "social_state": "solo",
+    "task_id": "uav_weather_l5_1_v2.task",
+    "role": "mission_uav",
+    "state_sequence": [
+      "patrol"
+    ],
+    "semantic_role": "patrol",
+    "uav_corridor_role": "mission_uav",
+    "uav_corridor": {
+      "assigned_altitude_m": 30.0,
+      "altitude_layers_m": [
+        30.0,
+        50.0,
+        80.0
+      ],
+      "used_lateral_bypass": false
+    },
+    "assigned_altitude_m": 30.0,
+    "ground_reference_z_m": 3.0,
+    "ground_reference_source": "home_hover_pose_origin_v1",
+    "lifecycle": {
+      "auto_lifecycle_applied": true,
+      "home_pad_entity_id": "pad_home_uav_weather_l5_1_v2",
+      "home_hover_enu_m": [
+        7204.942,
+        7239.364,
+        3.0
+      ],
+      "mission_start_enu_m": [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      "requires_takeoff": true,
+      "requires_landing_or_terminal_resolution": true,
+      "assigned_altitude_m": 30.0,
+      "waypoint_repair_applied": true
+    },
+    "activation_tick": 0,
+    "category": "uav",
+    "route_waypoints_enu_m": [
+      [
+        7204.942,
+        7239.364,
+        24.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        32.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      [
+        7230.612,
+        7256.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7266.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        3.0
+      ]
+    ],
+    "planned_route_waypoints_enu_m": [
+      [
+        7204.942,
+        7239.364,
+        24.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        32.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      [
+        7230.612,
+        7256.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7266.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        3.0
+      ]
+    ],
+    "control_state": {
+      "slowdown_active": false
+    },
+    "mission_state": {
+      "unsafe": false
+    },
+    "navigation_state": {
+      "route_degraded": false
+    }
+  },
+  {
+    "tick": 899,
+    "entity_id": "uav_weather_l5_1_v2",
+    "label_class": "uav",
+    "asset_id": "uav.inspect.quad.v1",
+    "pos_enu": [
+      7204.942,
+      7239.364,
+      3.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": -76.945344,
+    "state": "landed",
+    "activity_type": "landed",
+    "animation_hint": "landed",
+    "posture": "standing",
+    "social_state": "solo",
+    "task_id": "uav_weather_l5_1_v2.task",
+    "role": "mission_uav",
+    "state_sequence": [
+      "patrol"
+    ],
+    "semantic_role": "patrol",
+    "uav_corridor_role": "mission_uav",
+    "uav_corridor": {
+      "assigned_altitude_m": 30.0,
+      "altitude_layers_m": [
+        30.0,
+        50.0,
+        80.0
+      ],
+      "used_lateral_bypass": false
+    },
+    "assigned_altitude_m": 30.0,
+    "ground_reference_z_m": 3.0,
+    "ground_reference_source": "home_hover_pose_origin_v1",
+    "lifecycle": {
+      "auto_lifecycle_applied": true,
+      "home_pad_entity_id": "pad_home_uav_weather_l5_1_v2",
+      "home_hover_enu_m": [
+        7204.942,
+        7239.364,
+        3.0
+      ],
+      "mission_start_enu_m": [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      "requires_takeoff": true,
+      "requires_landing_or_terminal_resolution": true,
+      "assigned_altitude_m": 30.0,
+      "waypoint_repair_applied": true
+    },
+    "activation_tick": 0,
+    "category": "uav",
+    "route_waypoints_enu_m": [
+      [
+        7204.942,
+        7239.364,
+        24.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        32.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      [
+        7230.612,
+        7256.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7266.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        3.0
+      ]
+    ],
+    "planned_route_waypoints_enu_m": [
+      [
+        7204.942,
+        7239.364,
+        24.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        32.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      [
+        7230.612,
+        7256.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7266.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        3.0
+      ]
+    ],
+    "control_state": {
+      "slowdown_active": false
+    },
+    "mission_state": {
+      "unsafe": false
+    },
+    "navigation_state": {
+      "route_degraded": false
+    }
+  },
+  {
+    "tick": 900,
+    "entity_id": "uav_weather_l5_1_v2",
+    "label_class": "uav",
+    "asset_id": "uav.inspect.quad.v1",
+    "pos_enu": [
+      7204.942,
+      7239.364,
+      3.0
+    ],
+    "vel_mps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "yaw_deg": -76.945344,
+    "state": "landed",
+    "activity_type": "landed",
+    "animation_hint": "landed",
+    "posture": "standing",
+    "social_state": "solo",
+    "task_id": "uav_weather_l5_1_v2.task",
+    "role": "mission_uav",
+    "state_sequence": [
+      "patrol"
+    ],
+    "semantic_role": "patrol",
+    "uav_corridor_role": "mission_uav",
+    "uav_corridor": {
+      "assigned_altitude_m": 30.0,
+      "altitude_layers_m": [
+        30.0,
+        50.0,
+        80.0
+      ],
+      "used_lateral_bypass": false
+    },
+    "assigned_altitude_m": 30.0,
+    "ground_reference_z_m": 3.0,
+    "ground_reference_source": "home_hover_pose_origin_v1",
+    "lifecycle": {
+      "auto_lifecycle_applied": true,
+      "home_pad_entity_id": "pad_home_uav_weather_l5_1_v2",
+      "home_hover_enu_m": [
+        7204.942,
+        7239.364,
+        3.0
+      ],
+      "mission_start_enu_m": [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      "requires_takeoff": true,
+      "requires_landing_or_terminal_resolution": true,
+      "assigned_altitude_m": 30.0,
+      "waypoint_repair_applied": true
+    },
+    "activation_tick": 0,
+    "category": "uav",
+    "route_waypoints_enu_m": [
+      [
+        7204.942,
+        7239.364,
+        24.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        32.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      [
+        7230.612,
+        7256.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7266.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        3.0
+      ]
+    ],
+    "planned_route_waypoints_enu_m": [
+      [
+        7204.942,
+        7239.364,
+        24.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        32.0
+      ],
+      [
+        7204.612,
+        7238.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7248.038,
+        30.0
+      ],
+      [
+        7230.612,
+        7256.038,
+        30.0
+      ],
+      [
+        7222.612,
+        7266.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        30.0
+      ],
+      [
+        7200.612,
+        7258.038,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        36.0
+      ],
+      [
+        7204.942,
+        7239.364,
+        3.0
+      ]
+    ],
+    "control_state": {
+      "slowdown_active": false
+    },
+    "mission_state": {
+      "unsafe": false
+    },
+    "navigation_state": {
+      "route_degraded": false
+    }
+  }
+]

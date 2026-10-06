@@ -1,0 +1,116 @@
+{
+  "schema_version": "p09.linked-native-causal/v12",
+  "episode_id": "L5-1_v2__seed02",
+  "seed": 2,
+  "scenario_id": "L5-1_v2",
+  "source_refs": [
+    "Dataset/scenarios/L5_environment/interaction/L5-1_v2/event_script.json",
+    "Dataset/scenarios/L5_environment/interaction/L5-1_v2/scene_setup.json"
+  ],
+  "guard_version": "p09.l5-1.rain-consecutive-original-ticks/v1",
+  "healthy_control": false,
+  "event_times_ns": {
+    "lifecycle_takeoff_uav_weather_l5_1_v2": 3000000000,
+    "clear_motion_baseline": 0,
+    "weather_onset": 18000000000,
+    "rain_condition_met": 19000000000,
+    "rain_speed_reduction": 22000000000,
+    "rain_low_visibility_reroute": 34000000000,
+    "rain_partial_recovery": 48500000000,
+    "weather_vehicle_leaves_after_partial_recovery": 56500000000,
+    "lifecycle_landing_uav_weather_l5_1_v2": 64500000000,
+    "nominal_task_cruise": 17500000000,
+    "p09.weather-update:rain_low_visibility_reroute": 33000000000,
+    "rain_low_visibility_reroute:local:uav_weather_l5_1_v2": 33500000000,
+    "rain_low_visibility_reroute:local:weather_car_l5_1_v2": 33500000000,
+    "p09.weather-update:rain_partial_recovery": 47500000000,
+    "rain_partial_recovery:local:uav_weather_l5_1_v2": 48000000000,
+    "rain_partial_recovery:local:weather_car_l5_1_v2": 48000000000
+  },
+  "unfired_events": [],
+  "pose_and_visual_differences_from_same_seed_source_replay": {
+    "uav_weather_l5_1_v2": {
+      "first_changed_tick": 211,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "state",
+        "activity_type"
+      ],
+      "before": {
+        "pos_enu": [
+          7220.760571,
+          7247.009429,
+          30.0
+        ],
+        "vel_mps": [
+          2.057143,
+          1.142857,
+          0.0
+        ],
+        "state": "rain_conservative_reroute",
+        "activity_type": "rain_conservative_reroute"
+      },
+      "after": {
+        "pos_enu": [
+          7221.069143,
+          7247.180857,
+          30.0
+        ],
+        "vel_mps": [
+          5.142857,
+          2.857143,
+          0.0
+        ],
+        "state": "cruise",
+        "activity_type": "cruise"
+      }
+    },
+    "weather_car_l5_1_v2": {
+      "first_changed_tick": 211,
+      "fields": [
+        "pos_enu",
+        "vel_mps",
+        "yaw_deg"
+      ],
+      "before": {
+        "pos_enu": [
+          7116.54852,
+          7227.68648,
+          0.0
+        ],
+        "vel_mps": [
+          2.3952,
+          0.0548,
+          0.0
+        ],
+        "yaw_deg": 1.310647
+      },
+      "after": {
+        "pos_enu": [
+          7116.309,
+          7227.681,
+          0.0
+        ],
+        "vel_mps": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "yaw_deg": 2.427795
+      }
+    }
+  },
+  "weather_changed": true,
+  "adoption_class": "A",
+  "published210_modified": false,
+  "collection_status": "one-shot collection pending final freeze",
+  "iteration_count": 0,
+  "backend": null,
+  "duration_ticks": 900,
+  "motion_acquisition": null,
+  "output_dir": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed02/adopted",
+  "motion_scope": "authored waypoint engine; not PX4 motion feedback",
+  "missing_event_disposition": "complete",
+  "rf_weather_scope": "not amplified; dimensionless rain is not an observed mm/h rate"
+}
