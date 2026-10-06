@@ -1,0 +1,284 @@
+{
+  "late_bounds": 27,
+  "affected_episodes": 23,
+  "episodes": [
+    {
+      "episode_id": "L2-1_v2__seed00",
+      "rows": [
+        {
+          "action_id": "move_uav_l2_1_v2_landing_return",
+          "owner": "uav_l2_1_v2",
+          "old_dispatch_upper_bound_tick": 425,
+          "actual_dispatch_tick": 475
+        }
+      ]
+    },
+    {
+      "episode_id": "L2-1_v2__seed01",
+      "rows": [
+        {
+          "action_id": "move_uav_l2_1_v2_landing_return",
+          "owner": "uav_l2_1_v2",
+          "old_dispatch_upper_bound_tick": 425,
+          "actual_dispatch_tick": 475
+        }
+      ]
+    },
+    {
+      "episode_id": "L2-1_v2__seed02",
+      "rows": [
+        {
+          "action_id": "move_uav_l2_1_v2_landing_return",
+          "owner": "uav_l2_1_v2",
+          "old_dispatch_upper_bound_tick": 425,
+          "actual_dispatch_tick": 475
+        }
+      ]
+    },
+    {
+      "episode_id": "L2-1_v1__seed00",
+      "rows": [
+        {
+          "action_id": "move_uav_l2_1_v1_landing_return",
+          "owner": "uav_l2_1_v1",
+          "old_dispatch_upper_bound_tick": 430,
+          "actual_dispatch_tick": 440
+        }
+      ]
+    },
+    {
+      "episode_id": "L2-1_v1__seed01",
+      "rows": [
+        {
+          "action_id": "move_uav_l2_1_v1_landing_return",
+          "owner": "uav_l2_1_v1",
+          "old_dispatch_upper_bound_tick": 430,
+          "actual_dispatch_tick": 440
+        }
+      ]
+    },
+    {
+      "episode_id": "L2-1_v1__seed02",
+      "rows": [
+        {
+          "action_id": "move_uav_l2_1_v1_landing_return",
+          "owner": "uav_l2_1_v1",
+          "old_dispatch_upper_bound_tick": 430,
+          "actual_dispatch_tick": 440
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-1_v1__seed00",
+      "rows": [
+        {
+          "action_id": "move_uav_digital_l6_1_v1_landing_return",
+          "owner": "uav_digital_l6_1_v1",
+          "old_dispatch_upper_bound_tick": 405,
+          "actual_dispatch_tick": 415
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-1_v1__seed01",
+      "rows": [
+        {
+          "action_id": "move_uav_digital_l6_1_v1_landing_return",
+          "owner": "uav_digital_l6_1_v1",
+          "old_dispatch_upper_bound_tick": 405,
+          "actual_dispatch_tick": 415
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-1_v1__seed02",
+      "rows": [
+        {
+          "action_id": "move_uav_digital_l6_1_v1_landing_return",
+          "owner": "uav_digital_l6_1_v1",
+          "old_dispatch_upper_bound_tick": 405,
+          "actual_dispatch_tick": 415
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-1_v2__seed00",
+      "rows": [
+        {
+          "action_id": "move_uav_digital_l6_1_v2_landing_return",
+          "owner": "uav_digital_l6_1_v2",
+          "old_dispatch_upper_bound_tick": 405,
+          "actual_dispatch_tick": 415
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-1_v2__seed01",
+      "rows": [
+        {
+          "action_id": "move_uav_digital_l6_1_v2_landing_return",
+          "owner": "uav_digital_l6_1_v2",
+          "old_dispatch_upper_bound_tick": 405,
+          "actual_dispatch_tick": 415
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-1_v2__seed02",
+      "rows": [
+        {
+          "action_id": "move_uav_digital_l6_1_v2_landing_return",
+          "owner": "uav_digital_l6_1_v2",
+          "old_dispatch_upper_bound_tick": 405,
+          "actual_dispatch_tick": 415
+        }
+      ]
+    },
+    {
+      "episode_id": "L5-1_v1__seed00",
+      "rows": [
+        {
+          "action_id": "move_uav_weather_l5_1_v1_landing_return",
+          "owner": "uav_weather_l5_1_v1",
+          "old_dispatch_upper_bound_tick": 515,
+          "actual_dispatch_tick": 545
+        }
+      ]
+    },
+    {
+      "episode_id": "L5-1_v1__seed01",
+      "rows": [
+        {
+          "action_id": "move_uav_weather_l5_1_v1_landing_return",
+          "owner": "uav_weather_l5_1_v1",
+          "old_dispatch_upper_bound_tick": 515,
+          "actual_dispatch_tick": 545
+        }
+      ]
+    },
+    {
+      "episode_id": "L5-1_v1__seed02",
+      "rows": [
+        {
+          "action_id": "move_uav_weather_l5_1_v1_landing_return",
+          "owner": "uav_weather_l5_1_v1",
+          "old_dispatch_upper_bound_tick": 515,
+          "actual_dispatch_tick": 545
+        }
+      ]
+    },
+    {
+      "episode_id": "L5-1_v2__seed00",
+      "rows": [
+        {
+          "action_id": "move_uav_weather_l5_1_v2_landing_return",
+          "owner": "uav_weather_l5_1_v2",
+          "old_dispatch_upper_bound_tick": 615,
+          "actual_dispatch_tick": 645
+        }
+      ]
+    },
+    {
+      "episode_id": "L5-1_v2__seed01",
+      "rows": [
+        {
+          "action_id": "move_uav_weather_l5_1_v2_landing_return",
+          "owner": "uav_weather_l5_1_v2",
+          "old_dispatch_upper_bound_tick": 615,
+          "actual_dispatch_tick": 645
+        }
+      ]
+    },
+    {
+      "episode_id": "L5-1_v2__seed02",
+      "rows": [
+        {
+          "action_id": "move_uav_weather_l5_1_v2_landing_return",
+          "owner": "uav_weather_l5_1_v2",
+          "old_dispatch_upper_bound_tick": 615,
+          "actual_dispatch_tick": 645
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-4_v1__seed00",
+      "rows": [
+        {
+          "action_id": "move_uav_digital_l6_4_v1_landing_return",
+          "owner": "uav_digital_l6_4_v1",
+          "old_dispatch_upper_bound_tick": 540,
+          "actual_dispatch_tick": 710
+        },
+        {
+          "action_id": "move_uav_digital_l6_4_v1_secondary_landing_return",
+          "owner": "uav_digital_l6_4_v1_secondary",
+          "old_dispatch_upper_bound_tick": 550,
+          "actual_dispatch_tick": 715
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-4_v1__seed01",
+      "rows": [
+        {
+          "action_id": "move_uav_digital_l6_4_v1_secondary_landing_return",
+          "owner": "uav_digital_l6_4_v1_secondary",
+          "old_dispatch_upper_bound_tick": 550,
+          "actual_dispatch_tick": 595
+        },
+        {
+          "action_id": "move_uav_digital_l6_4_v1_landing_return",
+          "owner": "uav_digital_l6_4_v1",
+          "old_dispatch_upper_bound_tick": 540,
+          "actual_dispatch_tick": 685
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-4_v2__seed00",
+      "rows": [
+        {
+          "action_id": "move_uav_digital_l6_4_v2_landing_return",
+          "owner": "uav_digital_l6_4_v2",
+          "old_dispatch_upper_bound_tick": 540,
+          "actual_dispatch_tick": 650
+        },
+        {
+          "action_id": "move_uav_digital_l6_4_v2_secondary_landing_return",
+          "owner": "uav_digital_l6_4_v2_secondary",
+          "old_dispatch_upper_bound_tick": 550,
+          "actual_dispatch_tick": 655
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-4_v2__seed01",
+      "rows": [
+        {
+          "action_id": "move_uav_digital_l6_4_v2_secondary_landing_return",
+          "owner": "uav_digital_l6_4_v2_secondary",
+          "old_dispatch_upper_bound_tick": 550,
+          "actual_dispatch_tick": 595
+        },
+        {
+          "action_id": "move_uav_digital_l6_4_v2_landing_return",
+          "owner": "uav_digital_l6_4_v2",
+          "old_dispatch_upper_bound_tick": 540,
+          "actual_dispatch_tick": 685
+        }
+      ]
+    },
+    {
+      "episode_id": "L6-4_v2__seed02",
+      "rows": [
+        {
+          "action_id": "move_uav_digital_l6_4_v2_secondary_landing_return",
+          "owner": "uav_digital_l6_4_v2_secondary",
+          "old_dispatch_upper_bound_tick": 550,
+          "actual_dispatch_tick": 615
+        }
+      ]
+    }
+  ],
+  "policy": "Historical proof excluded; retained physical landing inputs; actual execution is a separate receipt, not a planning certificate"
+}

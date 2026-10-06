@@ -1,0 +1,1907 @@
+[
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "X5_comm_failure_to_pad_contention__seed00",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_review/X5_comm_failure_to_pad_contention__seed00/adopted",
+    "source_trajectory_sha256": "5c58f038ac61d3342d9a7192ee2c24d4f4467302ded296f92baa39271a4578d7",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_review/X5_comm_failure_to_pad_contention__seed00/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "5c58f038ac61d3342d9a7192ee2c24d4f4467302ded296f92baa39271a4578d7",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 24327,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_x5_priority_landing_return",
+        "owner": "uav_x5_priority",
+        "dispatch_tick": 690,
+        "actual_motion_schedule": {
+          "terminal_tick": 852,
+          "endpoint_enu_m": [
+            6671.908,
+            6530.889,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6671.908,
+            6530.889,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      },
+      {
+        "action_id": "move_uav_x5_second_landing_return",
+        "owner": "uav_x5_second",
+        "dispatch_tick": 745,
+        "actual_motion_schedule": {
+          "terminal_tick": 846,
+          "endpoint_enu_m": [
+            6659.262,
+            6513.999,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6659.262,
+            6513.999,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "X5_comm_failure_to_pad_contention__seed01",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X5_comm_failure_to_pad_contention__seed01/adopted",
+    "source_trajectory_sha256": "5c58f038ac61d3342d9a7192ee2c24d4f4467302ded296f92baa39271a4578d7",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X5_comm_failure_to_pad_contention__seed01/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "5c58f038ac61d3342d9a7192ee2c24d4f4467302ded296f92baa39271a4578d7",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 24327,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_x5_priority_landing_return",
+        "owner": "uav_x5_priority",
+        "dispatch_tick": 690,
+        "actual_motion_schedule": {
+          "terminal_tick": 852,
+          "endpoint_enu_m": [
+            6671.908,
+            6530.889,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6671.908,
+            6530.889,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      },
+      {
+        "action_id": "move_uav_x5_second_landing_return",
+        "owner": "uav_x5_second",
+        "dispatch_tick": 745,
+        "actual_motion_schedule": {
+          "terminal_tick": 846,
+          "endpoint_enu_m": [
+            6659.262,
+            6513.999,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6659.262,
+            6513.999,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "X5_comm_failure_to_pad_contention__seed02",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X5_comm_failure_to_pad_contention__seed02/adopted",
+    "source_trajectory_sha256": "5c58f038ac61d3342d9a7192ee2c24d4f4467302ded296f92baa39271a4578d7",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X5_comm_failure_to_pad_contention__seed02/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "5c58f038ac61d3342d9a7192ee2c24d4f4467302ded296f92baa39271a4578d7",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 24327,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_x5_priority_landing_return",
+        "owner": "uav_x5_priority",
+        "dispatch_tick": 690,
+        "actual_motion_schedule": {
+          "terminal_tick": 852,
+          "endpoint_enu_m": [
+            6671.908,
+            6530.889,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6671.908,
+            6530.889,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      },
+      {
+        "action_id": "move_uav_x5_second_landing_return",
+        "owner": "uav_x5_second",
+        "dispatch_tick": 745,
+        "actual_motion_schedule": {
+          "terminal_tick": 846,
+          "endpoint_enu_m": [
+            6659.262,
+            6513.999,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6659.262,
+            6513.999,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L2-1_v2__seed00",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed00/adopted",
+    "source_trajectory_sha256": "97462a9e44735879541fa58724fff0b5916350a6d6807bf9036c76f89e3ccf25",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_artifacts/L2-1_v2__seed00/trajectories.jsonl",
+    "current_trajectory_sha256": "20d82c462da5412422805e10577d6c044689e1f4b448044780a012f7b86d9efb",
+    "changed_trajectory_rows": 2703,
+    "physical_rows_verified_unchanged": 13515,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [
+      "corridor_l2_1_v2_uav_l2_1_v2_03",
+      "corridor_l2_1_v2_uav_l2_1_v2_04"
+    ],
+    "route_field_owner": "uav_l2_1_v2",
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_l2_1_v2_landing_return",
+        "owner": "uav_l2_1_v2",
+        "dispatch_tick": 475,
+        "actual_motion_schedule": {
+          "terminal_tick": 627,
+          "endpoint_enu_m": [
+            6342.768,
+            6121.862,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6342.768,
+            6121.862,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_l2_1_v2_landing_return",
+        "owner": "uav_l2_1_v2",
+        "old_dispatch_upper_bound_tick": 425,
+        "actual_dispatch_tick": 475
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L2-1_v2__seed01",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed01/adopted",
+    "source_trajectory_sha256": "97462a9e44735879541fa58724fff0b5916350a6d6807bf9036c76f89e3ccf25",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_artifacts/L2-1_v2__seed01/trajectories.jsonl",
+    "current_trajectory_sha256": "20d82c462da5412422805e10577d6c044689e1f4b448044780a012f7b86d9efb",
+    "changed_trajectory_rows": 2703,
+    "physical_rows_verified_unchanged": 13515,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [
+      "corridor_l2_1_v2_uav_l2_1_v2_03",
+      "corridor_l2_1_v2_uav_l2_1_v2_04"
+    ],
+    "route_field_owner": "uav_l2_1_v2",
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_l2_1_v2_landing_return",
+        "owner": "uav_l2_1_v2",
+        "dispatch_tick": 475,
+        "actual_motion_schedule": {
+          "terminal_tick": 627,
+          "endpoint_enu_m": [
+            6342.768,
+            6121.862,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6342.768,
+            6121.862,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_l2_1_v2_landing_return",
+        "owner": "uav_l2_1_v2",
+        "old_dispatch_upper_bound_tick": 425,
+        "actual_dispatch_tick": 475
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L2-1_v2__seed02",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed02/adopted",
+    "source_trajectory_sha256": "97462a9e44735879541fa58724fff0b5916350a6d6807bf9036c76f89e3ccf25",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v13_metadata_artifacts/L2-1_v2__seed02/trajectories.jsonl",
+    "current_trajectory_sha256": "20d82c462da5412422805e10577d6c044689e1f4b448044780a012f7b86d9efb",
+    "changed_trajectory_rows": 2703,
+    "physical_rows_verified_unchanged": 13515,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [
+      "corridor_l2_1_v2_uav_l2_1_v2_03",
+      "corridor_l2_1_v2_uav_l2_1_v2_04"
+    ],
+    "route_field_owner": "uav_l2_1_v2",
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_l2_1_v2_landing_return",
+        "owner": "uav_l2_1_v2",
+        "dispatch_tick": 475,
+        "actual_motion_schedule": {
+          "terminal_tick": 627,
+          "endpoint_enu_m": [
+            6342.768,
+            6121.862,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6342.768,
+            6121.862,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_l2_1_v2_landing_return",
+        "owner": "uav_l2_1_v2",
+        "old_dispatch_upper_bound_tick": 425,
+        "actual_dispatch_tick": 475
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L2-1_v1__seed00",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed00/adopted",
+    "source_trajectory_sha256": "ceaaea748c198cebb98c7ecff20a26eb180617e9b67bf9f7f179f6cd73dd5ba6",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed00/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "ceaaea748c198cebb98c7ecff20a26eb180617e9b67bf9f7f179f6cd73dd5ba6",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 18020,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_l2_1_v1_landing_return",
+        "owner": "uav_l2_1_v1",
+        "dispatch_tick": 440,
+        "actual_motion_schedule": {
+          "terminal_tick": 559,
+          "endpoint_enu_m": [
+            7252.576,
+            6381.651,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            7252.576,
+            6381.651,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_l2_1_v1_landing_return",
+        "owner": "uav_l2_1_v1",
+        "old_dispatch_upper_bound_tick": 430,
+        "actual_dispatch_tick": 440
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L2-1_v1__seed01",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed01/adopted",
+    "source_trajectory_sha256": "ceaaea748c198cebb98c7ecff20a26eb180617e9b67bf9f7f179f6cd73dd5ba6",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed01/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "ceaaea748c198cebb98c7ecff20a26eb180617e9b67bf9f7f179f6cd73dd5ba6",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 18020,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_l2_1_v1_landing_return",
+        "owner": "uav_l2_1_v1",
+        "dispatch_tick": 440,
+        "actual_motion_schedule": {
+          "terminal_tick": 559,
+          "endpoint_enu_m": [
+            7252.576,
+            6381.651,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            7252.576,
+            6381.651,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_l2_1_v1_landing_return",
+        "owner": "uav_l2_1_v1",
+        "old_dispatch_upper_bound_tick": 430,
+        "actual_dispatch_tick": 440
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L2-1_v1__seed02",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed02/adopted",
+    "source_trajectory_sha256": "ceaaea748c198cebb98c7ecff20a26eb180617e9b67bf9f7f179f6cd73dd5ba6",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed02/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "ceaaea748c198cebb98c7ecff20a26eb180617e9b67bf9f7f179f6cd73dd5ba6",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 18020,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_l2_1_v1_landing_return",
+        "owner": "uav_l2_1_v1",
+        "dispatch_tick": 440,
+        "actual_motion_schedule": {
+          "terminal_tick": 559,
+          "endpoint_enu_m": [
+            7252.576,
+            6381.651,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            7252.576,
+            6381.651,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_l2_1_v1_landing_return",
+        "owner": "uav_l2_1_v1",
+        "old_dispatch_upper_bound_tick": 430,
+        "actual_dispatch_tick": 440
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L6-1_v1__seed00",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed00/adopted",
+    "source_trajectory_sha256": "ef70e9aba99ced9fe8e26d799ea3b89ff31a7bac695f797278c142b1e28a2de8",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed00/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "ef70e9aba99ced9fe8e26d799ea3b89ff31a7bac695f797278c142b1e28a2de8",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 19822,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_digital_l6_1_v1_landing_return",
+        "owner": "uav_digital_l6_1_v1",
+        "dispatch_tick": 415,
+        "actual_motion_schedule": {
+          "terminal_tick": 513,
+          "endpoint_enu_m": [
+            6672.515,
+            6547.604,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6672.515,
+            6547.604,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_digital_l6_1_v1_landing_return",
+        "owner": "uav_digital_l6_1_v1",
+        "old_dispatch_upper_bound_tick": 405,
+        "actual_dispatch_tick": 415
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L6-1_v1__seed01",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed01/adopted",
+    "source_trajectory_sha256": "ef70e9aba99ced9fe8e26d799ea3b89ff31a7bac695f797278c142b1e28a2de8",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed01/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "ef70e9aba99ced9fe8e26d799ea3b89ff31a7bac695f797278c142b1e28a2de8",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 19822,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_digital_l6_1_v1_landing_return",
+        "owner": "uav_digital_l6_1_v1",
+        "dispatch_tick": 415,
+        "actual_motion_schedule": {
+          "terminal_tick": 513,
+          "endpoint_enu_m": [
+            6672.515,
+            6547.604,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6672.515,
+            6547.604,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_digital_l6_1_v1_landing_return",
+        "owner": "uav_digital_l6_1_v1",
+        "old_dispatch_upper_bound_tick": 405,
+        "actual_dispatch_tick": 415
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L6-1_v1__seed02",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed02/adopted",
+    "source_trajectory_sha256": "ef70e9aba99ced9fe8e26d799ea3b89ff31a7bac695f797278c142b1e28a2de8",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed02/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "ef70e9aba99ced9fe8e26d799ea3b89ff31a7bac695f797278c142b1e28a2de8",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 19822,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_digital_l6_1_v1_landing_return",
+        "owner": "uav_digital_l6_1_v1",
+        "dispatch_tick": 415,
+        "actual_motion_schedule": {
+          "terminal_tick": 513,
+          "endpoint_enu_m": [
+            6672.515,
+            6547.604,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6672.515,
+            6547.604,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_digital_l6_1_v1_landing_return",
+        "owner": "uav_digital_l6_1_v1",
+        "old_dispatch_upper_bound_tick": 405,
+        "actual_dispatch_tick": 415
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L6-1_v2__seed00",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed00/adopted",
+    "source_trajectory_sha256": "2ef5cdad752607566fd316f65c89dc32a9cefd7bdb6a9bfec9b0a20e18df1f98",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed00/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "2ef5cdad752607566fd316f65c89dc32a9cefd7bdb6a9bfec9b0a20e18df1f98",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 19822,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_digital_l6_1_v2_landing_return",
+        "owner": "uav_digital_l6_1_v2",
+        "dispatch_tick": 415,
+        "actual_motion_schedule": {
+          "terminal_tick": 540,
+          "endpoint_enu_m": [
+            6670.527,
+            6536.834,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6670.527,
+            6536.834,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_digital_l6_1_v2_landing_return",
+        "owner": "uav_digital_l6_1_v2",
+        "old_dispatch_upper_bound_tick": 405,
+        "actual_dispatch_tick": 415
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L6-1_v2__seed01",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed01/adopted",
+    "source_trajectory_sha256": "2ef5cdad752607566fd316f65c89dc32a9cefd7bdb6a9bfec9b0a20e18df1f98",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed01/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "2ef5cdad752607566fd316f65c89dc32a9cefd7bdb6a9bfec9b0a20e18df1f98",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 19822,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_digital_l6_1_v2_landing_return",
+        "owner": "uav_digital_l6_1_v2",
+        "dispatch_tick": 415,
+        "actual_motion_schedule": {
+          "terminal_tick": 540,
+          "endpoint_enu_m": [
+            6670.527,
+            6536.834,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6670.527,
+            6536.834,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_digital_l6_1_v2_landing_return",
+        "owner": "uav_digital_l6_1_v2",
+        "old_dispatch_upper_bound_tick": 405,
+        "actual_dispatch_tick": 415
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L6-1_v2__seed02",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed02/adopted",
+    "source_trajectory_sha256": "2ef5cdad752607566fd316f65c89dc32a9cefd7bdb6a9bfec9b0a20e18df1f98",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed02/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "2ef5cdad752607566fd316f65c89dc32a9cefd7bdb6a9bfec9b0a20e18df1f98",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 19822,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_digital_l6_1_v2_landing_return",
+        "owner": "uav_digital_l6_1_v2",
+        "dispatch_tick": 415,
+        "actual_motion_schedule": {
+          "terminal_tick": 540,
+          "endpoint_enu_m": [
+            6670.527,
+            6536.834,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6670.527,
+            6536.834,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_digital_l6_1_v2_landing_return",
+        "owner": "uav_digital_l6_1_v2",
+        "old_dispatch_upper_bound_tick": 405,
+        "actual_dispatch_tick": 415
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L5-1_v1__seed00",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed00/adopted",
+    "source_trajectory_sha256": "dae0edc800d527bee1d2ba865b65740977501d5a2b343ee328515a307287c98f",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed00/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "dae0edc800d527bee1d2ba865b65740977501d5a2b343ee328515a307287c98f",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 19381,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_weather_l5_1_v1_landing_return",
+        "owner": "uav_weather_l5_1_v1",
+        "dispatch_tick": 545,
+        "actual_motion_schedule": {
+          "terminal_tick": 701,
+          "endpoint_enu_m": [
+            7306.104,
+            7267.596,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            7306.104,
+            7267.596,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_weather_l5_1_v1_landing_return",
+        "owner": "uav_weather_l5_1_v1",
+        "old_dispatch_upper_bound_tick": 515,
+        "actual_dispatch_tick": 545
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L5-1_v1__seed01",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed01/adopted",
+    "source_trajectory_sha256": "dae0edc800d527bee1d2ba865b65740977501d5a2b343ee328515a307287c98f",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed01/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "dae0edc800d527bee1d2ba865b65740977501d5a2b343ee328515a307287c98f",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 19381,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_weather_l5_1_v1_landing_return",
+        "owner": "uav_weather_l5_1_v1",
+        "dispatch_tick": 545,
+        "actual_motion_schedule": {
+          "terminal_tick": 701,
+          "endpoint_enu_m": [
+            7306.104,
+            7267.596,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            7306.104,
+            7267.596,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_weather_l5_1_v1_landing_return",
+        "owner": "uav_weather_l5_1_v1",
+        "old_dispatch_upper_bound_tick": 515,
+        "actual_dispatch_tick": 545
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L5-1_v1__seed02",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed02/adopted",
+    "source_trajectory_sha256": "dae0edc800d527bee1d2ba865b65740977501d5a2b343ee328515a307287c98f",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed02/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "dae0edc800d527bee1d2ba865b65740977501d5a2b343ee328515a307287c98f",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 19381,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_weather_l5_1_v1_landing_return",
+        "owner": "uav_weather_l5_1_v1",
+        "dispatch_tick": 545,
+        "actual_motion_schedule": {
+          "terminal_tick": 701,
+          "endpoint_enu_m": [
+            7306.104,
+            7267.596,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            7306.104,
+            7267.596,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_weather_l5_1_v1_landing_return",
+        "owner": "uav_weather_l5_1_v1",
+        "old_dispatch_upper_bound_tick": 515,
+        "actual_dispatch_tick": 545
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L5-1_v2__seed00",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed00/adopted",
+    "source_trajectory_sha256": "82c2f40e35c92e5b3b10cb34975fe925033945b8f08d3ac06ffb59774040cb62",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed00/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "82c2f40e35c92e5b3b10cb34975fe925033945b8f08d3ac06ffb59774040cb62",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 19486,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_weather_l5_1_v2_landing_return",
+        "owner": "uav_weather_l5_1_v2",
+        "dispatch_tick": 645,
+        "actual_motion_schedule": {
+          "terminal_tick": 791,
+          "endpoint_enu_m": [
+            7204.942,
+            7239.364,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            7204.942,
+            7239.364,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_weather_l5_1_v2_landing_return",
+        "owner": "uav_weather_l5_1_v2",
+        "old_dispatch_upper_bound_tick": 615,
+        "actual_dispatch_tick": 645
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L5-1_v2__seed01",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed01/adopted",
+    "source_trajectory_sha256": "82c2f40e35c92e5b3b10cb34975fe925033945b8f08d3ac06ffb59774040cb62",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed01/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "82c2f40e35c92e5b3b10cb34975fe925033945b8f08d3ac06ffb59774040cb62",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 19486,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_weather_l5_1_v2_landing_return",
+        "owner": "uav_weather_l5_1_v2",
+        "dispatch_tick": 645,
+        "actual_motion_schedule": {
+          "terminal_tick": 791,
+          "endpoint_enu_m": [
+            7204.942,
+            7239.364,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            7204.942,
+            7239.364,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_weather_l5_1_v2_landing_return",
+        "owner": "uav_weather_l5_1_v2",
+        "old_dispatch_upper_bound_tick": 615,
+        "actual_dispatch_tick": 645
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L5-1_v2__seed02",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed02/adopted",
+    "source_trajectory_sha256": "82c2f40e35c92e5b3b10cb34975fe925033945b8f08d3ac06ffb59774040cb62",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed02/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "82c2f40e35c92e5b3b10cb34975fe925033945b8f08d3ac06ffb59774040cb62",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 19486,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_weather_l5_1_v2_landing_return",
+        "owner": "uav_weather_l5_1_v2",
+        "dispatch_tick": 645,
+        "actual_motion_schedule": {
+          "terminal_tick": 791,
+          "endpoint_enu_m": [
+            7204.942,
+            7239.364,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            7204.942,
+            7239.364,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_weather_l5_1_v2_landing_return",
+        "owner": "uav_weather_l5_1_v2",
+        "old_dispatch_upper_bound_tick": 615,
+        "actual_dispatch_tick": 645
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed00",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed00/adopted",
+    "source_trajectory_sha256": "bc8f638b44e3f5368f4f766e030dbd79c46918a649eba564fb0725ee4510b441",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "bc8f638b44e3f5368f4f766e030dbd79c46918a649eba564fb0725ee4510b441",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 25228,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_x1_safe_touchdown",
+        "owner": "uav_x1_forced_landing",
+        "dispatch_tick": 615,
+        "actual_motion_schedule": {
+          "terminal_tick": 626,
+          "endpoint_enu_m": [
+            6400.145,
+            6577.982,
+            0.8
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6400.145,
+            6577.982,
+            0.8
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed01",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed01/adopted",
+    "source_trajectory_sha256": "bc8f638b44e3f5368f4f766e030dbd79c46918a649eba564fb0725ee4510b441",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed01/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "bc8f638b44e3f5368f4f766e030dbd79c46918a649eba564fb0725ee4510b441",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 25228,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_x1_safe_touchdown",
+        "owner": "uav_x1_forced_landing",
+        "dispatch_tick": 615,
+        "actual_motion_schedule": {
+          "terminal_tick": 626,
+          "endpoint_enu_m": [
+            6400.145,
+            6577.982,
+            0.8
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6400.145,
+            6577.982,
+            0.8
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "X1_rain_to_c2loss_to_forced_landing__seed02",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed02/adopted",
+    "source_trajectory_sha256": "bc8f638b44e3f5368f4f766e030dbd79c46918a649eba564fb0725ee4510b441",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed02/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "bc8f638b44e3f5368f4f766e030dbd79c46918a649eba564fb0725ee4510b441",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 25228,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_x1_safe_touchdown",
+        "owner": "uav_x1_forced_landing",
+        "dispatch_tick": 615,
+        "actual_motion_schedule": {
+          "terminal_tick": 626,
+          "endpoint_enu_m": [
+            6400.145,
+            6577.982,
+            0.8
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6400.145,
+            6577.982,
+            0.8
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L6-4_v1__seed00",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed00/adopted",
+    "source_trajectory_sha256": "953a4afd0394306d6224b8baab653971c6ec3ae211d2c80246aa2771877ecd28",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed00/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "953a4afd0394306d6224b8baab653971c6ec3ae211d2c80246aa2771877ecd28",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 24575,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_digital_l6_4_v1_landing_return",
+        "owner": "uav_digital_l6_4_v1",
+        "dispatch_tick": 710,
+        "actual_motion_schedule": {
+          "terminal_tick": 837,
+          "endpoint_enu_m": [
+            6653.956,
+            6527.6,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6653.956,
+            6527.6,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      },
+      {
+        "action_id": "move_uav_digital_l6_4_v1_secondary_landing_return",
+        "owner": "uav_digital_l6_4_v1_secondary",
+        "dispatch_tick": 715,
+        "actual_motion_schedule": {
+          "terminal_tick": 977,
+          "endpoint_enu_m": [
+            6671.908,
+            6530.889,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6671.908,
+            6530.889,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_digital_l6_4_v1_landing_return",
+        "owner": "uav_digital_l6_4_v1",
+        "old_dispatch_upper_bound_tick": 540,
+        "actual_dispatch_tick": 710
+      },
+      {
+        "action_id": "move_uav_digital_l6_4_v1_secondary_landing_return",
+        "owner": "uav_digital_l6_4_v1_secondary",
+        "old_dispatch_upper_bound_tick": 550,
+        "actual_dispatch_tick": 715
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L6-4_v1__seed01",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed01/adopted",
+    "source_trajectory_sha256": "0bdae79313916761bc70a18979b871e2f772dbeeae60a4fa78d6ef433cefa9d8",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed01/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "0bdae79313916761bc70a18979b871e2f772dbeeae60a4fa78d6ef433cefa9d8",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 22525,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_digital_l6_4_v1_secondary_landing_return",
+        "owner": "uav_digital_l6_4_v1_secondary",
+        "dispatch_tick": 595,
+        "actual_motion_schedule": {
+          "terminal_tick": 857,
+          "endpoint_enu_m": [
+            6671.908,
+            6530.889,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6671.908,
+            6530.889,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      },
+      {
+        "action_id": "move_uav_digital_l6_4_v1_landing_return",
+        "owner": "uav_digital_l6_4_v1",
+        "dispatch_tick": 685,
+        "actual_motion_schedule": {
+          "terminal_tick": 812,
+          "endpoint_enu_m": [
+            6653.956,
+            6527.6,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6653.956,
+            6527.6,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_digital_l6_4_v1_secondary_landing_return",
+        "owner": "uav_digital_l6_4_v1_secondary",
+        "old_dispatch_upper_bound_tick": 550,
+        "actual_dispatch_tick": 595
+      },
+      {
+        "action_id": "move_uav_digital_l6_4_v1_landing_return",
+        "owner": "uav_digital_l6_4_v1",
+        "old_dispatch_upper_bound_tick": 540,
+        "actual_dispatch_tick": 685
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L6-4_v1__seed02",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed02/adopted",
+    "source_trajectory_sha256": "5b1cfe041c6c01cc1517f30eed33b8c02a6288567b3d70ac2925748dcd832abd",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed02/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "5b1cfe041c6c01cc1517f30eed33b8c02a6288567b3d70ac2925748dcd832abd",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 22525,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [],
+    "late_historical_planning_bounds": [],
+    "actual_unfired_events": [
+      "multi_uav_hold_entry",
+      "multi_uav_safe_hold",
+      "alternate_channel",
+      "lifecycle_landing_uav_digital_l6_4_v1",
+      "lifecycle_landing_uav_digital_l6_4_v1_secondary",
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v1",
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v1_secondary",
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v1",
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v1_secondary",
+      "alternate_channel:local:uav_digital_l6_4_v1",
+      "alternate_channel:local:uav_digital_l6_4_v1_secondary"
+    ],
+    "adoption_status": "BLOCKED_UNFIRED_EVENTS",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L6-4_v2__seed00",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed00/adopted",
+    "source_trajectory_sha256": "6c00514385c108108e71515fd9c0dae463475888d059d2676776671d93030bb1",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed00/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "6c00514385c108108e71515fd9c0dae463475888d059d2676776671d93030bb1",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 23225,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_digital_l6_4_v2_landing_return",
+        "owner": "uav_digital_l6_4_v2",
+        "dispatch_tick": 650,
+        "actual_motion_schedule": {
+          "terminal_tick": 777,
+          "endpoint_enu_m": [
+            6653.956,
+            6527.6,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6653.956,
+            6527.6,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      },
+      {
+        "action_id": "move_uav_digital_l6_4_v2_secondary_landing_return",
+        "owner": "uav_digital_l6_4_v2_secondary",
+        "dispatch_tick": 655,
+        "actual_motion_schedule": {
+          "terminal_tick": 923,
+          "endpoint_enu_m": [
+            6675.925,
+            6529.012,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6675.925,
+            6529.012,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_digital_l6_4_v2_landing_return",
+        "owner": "uav_digital_l6_4_v2",
+        "old_dispatch_upper_bound_tick": 540,
+        "actual_dispatch_tick": 650
+      },
+      {
+        "action_id": "move_uav_digital_l6_4_v2_secondary_landing_return",
+        "owner": "uav_digital_l6_4_v2_secondary",
+        "old_dispatch_upper_bound_tick": 550,
+        "actual_dispatch_tick": 655
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L6-4_v2__seed01",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed01/adopted",
+    "source_trajectory_sha256": "525f3af226e79f359baa6bbaf23f767d86c92d05186e16f94466ef4aa8e6d1bf",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed01/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "525f3af226e79f359baa6bbaf23f767d86c92d05186e16f94466ef4aa8e6d1bf",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 22525,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_digital_l6_4_v2_secondary_landing_return",
+        "owner": "uav_digital_l6_4_v2_secondary",
+        "dispatch_tick": 595,
+        "actual_motion_schedule": {
+          "terminal_tick": 863,
+          "endpoint_enu_m": [
+            6675.925,
+            6529.012,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6675.925,
+            6529.012,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      },
+      {
+        "action_id": "move_uav_digital_l6_4_v2_landing_return",
+        "owner": "uav_digital_l6_4_v2",
+        "dispatch_tick": 685,
+        "actual_motion_schedule": {
+          "terminal_tick": 812,
+          "endpoint_enu_m": [
+            6653.956,
+            6527.6,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6653.956,
+            6527.6,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_digital_l6_4_v2_secondary_landing_return",
+        "owner": "uav_digital_l6_4_v2_secondary",
+        "old_dispatch_upper_bound_tick": 550,
+        "actual_dispatch_tick": 595
+      },
+      {
+        "action_id": "move_uav_digital_l6_4_v2_landing_return",
+        "owner": "uav_digital_l6_4_v2",
+        "old_dispatch_upper_bound_tick": 540,
+        "actual_dispatch_tick": 685
+      }
+    ],
+    "actual_unfired_events": [],
+    "adoption_status": "METADATA_REPAIRED_PENDING_NATIVE_REVIEW",
+    "published210_modified": false,
+    "UE_capture_started": false
+  },
+  {
+    "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+    "episode_id": "L6-4_v2__seed02",
+    "simulation_source_revision": "p09.linked-native-causal/v12",
+    "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+    "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed02/adopted",
+    "source_trajectory_sha256": "c782c6596a497d63626b49dc3ea14e8ec245224b4f45f89cd09d16151c7da2f9",
+    "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed02/adopted/trajectories.jsonl",
+    "current_trajectory_sha256": "c782c6596a497d63626b49dc3ea14e8ec245224b4f45f89cd09d16151c7da2f9",
+    "changed_trajectory_rows": 0,
+    "physical_rows_verified_unchanged": 22525,
+    "numeric_motion_actions_unchanged": true,
+    "ns3_rerun": false,
+    "provider_endpoint_poses_unchanged": true,
+    "render_changes": [],
+    "route_field_owner": null,
+    "landing_execution_receipts": [
+      {
+        "action_id": "move_uav_digital_l6_4_v2_secondary_landing_return",
+        "owner": "uav_digital_l6_4_v2_secondary",
+        "dispatch_tick": 615,
+        "actual_motion_schedule": {
+          "terminal_tick": 883,
+          "endpoint_enu_m": [
+            6675.925,
+            6529.012,
+            3.0
+          ]
+        },
+        "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+        "operating_inputs": {
+          "model": "p09.landing-reference-operating-inputs/v1",
+          "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+          "landing_reference_enu_m": [
+            6675.925,
+            6529.012,
+            3.0
+          ],
+          "home_pose_origin_z_m": 3.0,
+          "touchdown_altitude_tolerance_m": 1.5,
+          "touchdown_dwell_ticks": 5,
+          "max_speed_mps": 8.0
+        }
+      }
+    ],
+    "late_historical_planning_bounds": [
+      {
+        "action_id": "move_uav_digital_l6_4_v2_secondary_landing_return",
+        "owner": "uav_digital_l6_4_v2_secondary",
+        "old_dispatch_upper_bound_tick": 550,
+        "actual_dispatch_tick": 615
+      }
+    ],
+    "actual_unfired_events": [
+      "multi_uav_hold_entry",
+      "multi_uav_safe_hold",
+      "alternate_channel",
+      "lifecycle_landing_uav_digital_l6_4_v2",
+      "multi_uav_hold_entry:local:uav_digital_l6_4_v2",
+      "multi_uav_safe_hold:local:uav_digital_l6_4_v2",
+      "alternate_channel:local:uav_digital_l6_4_v2"
+    ],
+    "adoption_status": "BLOCKED_UNFIRED_EVENTS",
+    "published210_modified": false,
+    "UE_capture_started": false
+  }
+]

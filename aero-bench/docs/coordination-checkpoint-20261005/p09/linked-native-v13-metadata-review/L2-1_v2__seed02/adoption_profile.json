@@ -1,0 +1,255 @@
+{
+  "schema_version": "p09.linked-source-adoption/v13-metadata",
+  "episode_id": "L2-1_v2__seed02",
+  "scenario_id": "L2-1_v2",
+  "seed": 2,
+  "ns3_seed": 3,
+  "ns3_run": 1,
+  "mechanism": "backup_station",
+  "actor_ids": [
+    "uav_l2_1_v2"
+  ],
+  "primary_station": "tower_l2_1_v2",
+  "backup_station": "contract_facility_l2_1_v2_03",
+  "heartbeat": {
+    "period_ns": 100000000,
+    "payload_bytes": 256,
+    "ttl_ns": 200000000,
+    "window_ns": 1000000000,
+    "loss_limit": 0.05,
+    "consecutive_limit": 3
+  },
+  "receiver_state_namespace": "p09.actor-heartbeat-watchdog/v1",
+  "receiver_state_definitions": {
+    "loss_ratio": "unit1; mature expected local slots not received before strict generation+TTL; includes unsent expected slots",
+    "consecutive_missing": "packet; trailing mature missing sequence slots",
+    "degraded": "bool/UNKNOWN; loss_ratio>0.05 AND consecutive_missing>=3",
+    "observation_ns": "ns; local window close/available time, consumed strictly before actor decision"
+  },
+  "legacy_state_disposition": "old global accepted-TX/reference and initial runtime flags are separate; no actor-control causality claim from those flags",
+  "command": {
+    "payload_bytes": 64,
+    "attempts": 3,
+    "period_ns": 100000000,
+    "deadline_ns": 2000000000,
+    "policy_delay_ns": 0
+  },
+  "application_message_policy": "modeled report payload frozen at submission and bound to exact native flow/packet RX through immutable ledger; not hardware ACK or PX4 receipt",
+  "source_script": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/event_script.json",
+  "source_scene": "Dataset/scenarios/L2_infrastructure/failure/L2-1_v2/scene_setup.json",
+  "source_script_sha256": "eda41c304f3bd445a68c7af748edf384770306ce79ce417f5c72b85b26fca6aa",
+  "source_scene_sha256": "5d5e7e8f55d34f6c7c7c1b788c610624039a3faa2ce0c11fcf7bb3069e44dc81",
+  "corrections": [
+    {
+      "profile": "backup_discovery",
+      "change": "activate backup discovery at locally observed arrival at authored backup-loiter endpoint; avoid unsupported pre-contact ARP resolution"
+    },
+    {
+      "trigger_id": "trig_after_station_degraded_delay_30",
+      "change": "response delay starts at actor-observed loss, not station global truth"
+    },
+    {
+      "event_id": "patrol_resume_via_backup_link",
+      "change": "failed primary tower does not confirm a receiver-private response; retain event ID and log exact backup endpoint"
+    },
+    {
+      "profile": "p09.l2-1-v2.backup-contact-route/v2-metadata",
+      "change": "move the backup contact endpoint toward the already authored backup station; retain velocities, patrol destination and landing route"
+    }
+  ],
+  "assumptions": [
+    "receiver-visible periodic heartbeat is configured application traffic",
+    "actor observes local weather/nearby geometry after one original tick",
+    "10Hz authored waypoint engine, not PX4 aerodynamic flight"
+  ],
+  "rain_rf": "not amplified; dimensionless rain is not an observed mm/h rate",
+  "rf_profile": "R1:2412MHz/20MHz/HtMcs0/16dBm/NF7/n3/L0=40.09532929124565",
+  "backup_request_policy": {
+    "version": "p09.backup-actor-available-arrival/v1",
+    "owner": "uav_l2_1_v2",
+    "sample_latency_original_ticks": 1,
+    "decision": "strictly after sample availability",
+    "arrival_tolerance_m": 1e-05,
+    "pose_source": "executed owner trajectory, modeled local navigation observation",
+    "station_authority": "actual exact-owner request RX only; no actor arrival/global event knowledge"
+  },
+  "backup_contact_geometry": {
+    "version": "p09.l2-1-v2.backup-contact-route/v2-metadata",
+    "scope": "L2-1_v2 only; original published script/scene unchanged",
+    "backup_station": "contract_facility_l2_1_v2_03",
+    "backup_antenna_enu_m": [
+      6248.051,
+      6127.613,
+      3.0
+    ],
+    "contact_enu_m": [
+      6308.0,
+      6134.0,
+      30.0
+    ],
+    "basis": "unchanged-route native ARP cache drops and backup PREAMBLE_DETECT_FAILURE; no RF threshold/power change",
+    "rf_scope": "same R1 ns-3 PHY/MAC; contact feasibility is measured by native request/response RX, not by a calculated range alone",
+    "spatial_check": {
+      "map_package": "Config/LowAltitude/Maps/donghu_road_topo/map_package.json",
+      "buildings": "Content/Maps/donghu_road_topo/building/building.geojson",
+      "checker": "Dataset/tools/uav_corridor_planner.py:BuildingObstacleIndex.air_segment_clear",
+      "horizontal_clearance_m": 6.0,
+      "vertical_clearance_m": 5.0,
+      "fallback_building_height_m": 18.0,
+      "fitted_geojson_center_xy_m": [
+        12611088.0,
+        2646000.0
+      ],
+      "fitted_geojson_transform": {
+        "matrix": [
+          [
+            1.0000015815806307,
+            -1.5984744385484467e-06
+          ],
+          [
+            1.0995904773380971e-06,
+            -1.0000007238309223
+          ],
+          [
+            7056.163108432631,
+            7053.8895503307995
+          ]
+        ],
+        "mean_error_m": 0.003573095,
+        "max_error_m": 0.049919045,
+        "pair_count": 1130
+      },
+      "checked_segments": 3,
+      "all_clear": true,
+      "segments": [
+        {
+          "action_id": "move_uav_backup_loiter",
+          "segment_index": 0,
+          "start_enu_m": [
+            6341.975,
+            6137.542,
+            31.0
+          ],
+          "end_enu_m": [
+            6341.975,
+            6137.542,
+            30.0
+          ],
+          "clear": true,
+          "building_collision_id": null
+        },
+        {
+          "action_id": "move_uav_backup_loiter",
+          "segment_index": 1,
+          "start_enu_m": [
+            6341.975,
+            6137.542,
+            30.0
+          ],
+          "end_enu_m": [
+            6308.0,
+            6134.0,
+            30.0
+          ],
+          "clear": true,
+          "building_collision_id": null
+        },
+        {
+          "action_id": "move_uav_resume_patrol",
+          "segment_index": 0,
+          "start_enu_m": [
+            6308.0,
+            6134.0,
+            30.0
+          ],
+          "end_enu_m": [
+            6330.975,
+            6139.542,
+            30.0
+          ],
+          "clear": true,
+          "building_collision_id": null
+        }
+      ],
+      "meaning": "Executed fitted source geometry check, with explicit fallback heights; not surveyed physical clearance"
+    }
+  },
+  "route_metadata_migration": {
+    "version": "p09.adopted-route-and-terminal-metadata/v1",
+    "owner": "uav_l2_1_v2",
+    "route_source_action_ids": [
+      "move_uav_l2_1_v2_takeoff_entry",
+      "move_uav_backup_loiter",
+      "move_uav_resume_patrol",
+      "move_uav_l2_1_v2_landing_return"
+    ],
+    "full_route_enu_m": [
+      [
+        6342.768,
+        6121.862,
+        3.0
+      ],
+      [
+        6342.768,
+        6121.862,
+        24.0
+      ],
+      [
+        6341.975,
+        6137.542,
+        31.0
+      ],
+      [
+        6341.975,
+        6137.542,
+        30.0
+      ],
+      [
+        6308.0,
+        6134.0,
+        30.0
+      ],
+      [
+        6330.975,
+        6139.542,
+        30.0
+      ],
+      [
+        6330.975,
+        6139.542,
+        36.0
+      ],
+      [
+        6342.768,
+        6121.862,
+        36.0
+      ],
+      [
+        6342.768,
+        6121.862,
+        3.0
+      ]
+    ],
+    "changed_corridor_entities": [
+      "corridor_l2_1_v2_uav_l2_1_v2_03",
+      "corridor_l2_1_v2_uav_l2_1_v2_04"
+    ],
+    "current_vs_original": "Enabled scene corridors and route arrays describe adopted actions; old plan is explicit p09_original provenance",
+    "native_receipt_replay_required": false,
+    "native_receipt_basis": "No move action changes; corrected logical corridor entities are not ns-3 endpoints",
+    "ue_dependency": "Mission route metadata plus enabled corridor03/04 geometry from tick0; changed scene requires capture-input review"
+  },
+  "backup_discovery_policy": "actor reaches its versioned backup-contact endpoint, samples its own actual arrival, observes it after one tick, then begins backup request strictly after availability",
+  "landing_authority": "preloaded onboard mission termination after receipt-admitted patrol resumption; no new failed-path landing command assumed",
+  "terminal_annotation_migration": {
+    "version": "p09.adopted-route-and-terminal-metadata/v1",
+    "scope": "Legacy dispatch/available-time/speed proof is historical; physical landing reference and dwell inputs retained",
+    "actions": [
+      {
+        "event_id": "lifecycle_landing_uav_l2_1_v2",
+        "action_id": "move_uav_l2_1_v2_landing_return",
+        "old_dispatch_upper_bound_tick": 425
+      }
+    ]
+  }
+}

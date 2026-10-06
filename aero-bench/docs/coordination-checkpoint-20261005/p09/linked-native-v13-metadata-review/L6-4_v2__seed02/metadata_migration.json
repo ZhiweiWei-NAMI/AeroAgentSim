@@ -1,0 +1,66 @@
+{
+  "schema_version": "p09.metadata-only-cached-receipt-migration/v1",
+  "episode_id": "L6-4_v2__seed02",
+  "simulation_source_revision": "p09.linked-native-causal/v12",
+  "metadata_revision": "p09.linked-source-adoption/v13-metadata",
+  "source_output": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed02/adopted",
+  "source_trajectory_sha256": "c782c6596a497d63626b49dc3ea14e8ec245224b4f45f89cd09d16151c7da2f9",
+  "current_trajectory": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed02/adopted/trajectories.jsonl",
+  "current_trajectory_sha256": "c782c6596a497d63626b49dc3ea14e8ec245224b4f45f89cd09d16151c7da2f9",
+  "changed_trajectory_rows": 0,
+  "physical_rows_verified_unchanged": 22525,
+  "numeric_motion_actions_unchanged": true,
+  "ns3_rerun": false,
+  "provider_endpoint_poses_unchanged": true,
+  "render_changes": [],
+  "route_field_owner": null,
+  "landing_execution_receipts": [
+    {
+      "action_id": "move_uav_digital_l6_4_v2_secondary_landing_return",
+      "owner": "uav_digital_l6_4_v2_secondary",
+      "dispatch_tick": 615,
+      "actual_motion_schedule": {
+        "terminal_tick": 883,
+        "endpoint_enu_m": [
+          6675.925,
+          6529.012,
+          3.0
+        ]
+      },
+      "planning_claim": "No new preflight upper-bound proof; actual execution receipt only",
+      "operating_inputs": {
+        "model": "p09.landing-reference-operating-inputs/v1",
+        "planning_proof_status": "NOT_CERTIFIED_FOR_RECEIPT_ADMITTED_DISPATCH",
+        "landing_reference_enu_m": [
+          6675.925,
+          6529.012,
+          3.0
+        ],
+        "home_pose_origin_z_m": 3.0,
+        "touchdown_altitude_tolerance_m": 1.5,
+        "touchdown_dwell_ticks": 5,
+        "max_speed_mps": 8.0
+      }
+    }
+  ],
+  "late_historical_planning_bounds": [
+    {
+      "action_id": "move_uav_digital_l6_4_v2_secondary_landing_return",
+      "owner": "uav_digital_l6_4_v2_secondary",
+      "old_dispatch_upper_bound_tick": 550,
+      "actual_dispatch_tick": 615
+    }
+  ],
+  "actual_unfired_events": [
+    "multi_uav_hold_entry",
+    "multi_uav_safe_hold",
+    "alternate_channel",
+    "lifecycle_landing_uav_digital_l6_4_v2",
+    "multi_uav_hold_entry:local:uav_digital_l6_4_v2",
+    "multi_uav_safe_hold:local:uav_digital_l6_4_v2",
+    "alternate_channel:local:uav_digital_l6_4_v2"
+  ],
+  "adoption_status": "BLOCKED_UNFIRED_EVENTS",
+  "published210_modified": false,
+  "UE_capture_started": false
+}

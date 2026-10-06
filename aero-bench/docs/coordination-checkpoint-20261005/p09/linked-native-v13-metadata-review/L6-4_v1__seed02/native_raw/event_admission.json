@@ -1,0 +1,142 @@
+[
+  {
+    "event_id": "lifecycle_takeoff_uav_digital_l6_4_v1",
+    "decision_tick": 30,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_takeoff_uav_digital_l6_4_v1",
+      "decision_ns": 3000000000
+    }
+  },
+  {
+    "event_id": "lifecycle_takeoff_uav_digital_l6_4_v1_secondary",
+    "decision_tick": 38,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_takeoff_uav_digital_l6_4_v1_secondary",
+      "decision_ns": 3800000000
+    }
+  },
+  {
+    "event_id": "lifecycle_takeoff_uav_digital_l6_4_v1_secondary",
+    "decision_tick": 39,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_takeoff_uav_digital_l6_4_v1_secondary",
+      "decision_ns": 3900000000
+    }
+  },
+  {
+    "event_id": "lifecycle_takeoff_uav_digital_l6_4_v1_secondary",
+    "decision_tick": 40,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "lifecycle_takeoff_uav_digital_l6_4_v1_secondary",
+      "decision_ns": 4000000000
+    }
+  },
+  {
+    "event_id": "wideband_jamming",
+    "decision_tick": 240,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "wideband_jamming",
+      "decision_ns": 24000000000
+    }
+  },
+  {
+    "event_id": "multi_uav_hold_entry",
+    "decision_tick": 270,
+    "allow": false,
+    "evidence": {
+      "authority": "narrative aggregate of completed owner events; no physical dispatch",
+      "completed_local_event_ticks": {
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v1": null,
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v1_secondary": null
+      }
+    }
+  },
+  {
+    "event_id": "multi_uav_hold_entry:local:uav_digital_l6_4_v1",
+    "decision_tick": 270,
+    "allow": false,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 26900000000,
+          "receiver_owner": "uav_digital_l6_4_v1",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 7,
+          "ttl_not_timely": 1,
+          "observed_late": 1,
+          "pending_expected": 2,
+          "loss_ratio": 0.125,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 0,
+          "degraded": false,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "degraded",
+      "decision_ns": 27000000000,
+      "owner": "uav_digital_l6_4_v1",
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "multi_uav_hold_entry:local:uav_digital_l6_4_v1_secondary",
+    "decision_tick": 270,
+    "allow": false,
+    "evidence": {
+      "rule_version": "p09.actor-heartbeat-watchdog/v1",
+      "rows": [
+        {
+          "schema_version": "p09.gateway-scheduled-sequence-ttl/v1",
+          "observation_ns": 26900000000,
+          "receiver_owner": "uav_digital_l6_4_v1_secondary",
+          "receiver_epoch": 0,
+          "window_ns": 1000000000,
+          "mature_expected": 8,
+          "timely_received": 7,
+          "ttl_not_timely": 1,
+          "observed_late": 1,
+          "pending_expected": 2,
+          "loss_ratio": 0.125,
+          "availability": "KNOWN",
+          "reason": null,
+          "consecutive_missing": 0,
+          "degraded": false,
+          "rule_version": "p09.actor-heartbeat-watchdog/v1",
+          "state_source": "native receiver RX versus declared expected sequence; not global accepted-TX loss"
+        }
+      ],
+      "required": "degraded",
+      "decision_ns": 27000000000,
+      "owner": "uav_digital_l6_4_v1_secondary",
+      "authority": "local onboard",
+      "physical_motion_evidence": null
+    }
+  },
+  {
+    "event_id": "p09.backup-rendezvous",
+    "decision_tick": 460,
+    "allow": true,
+    "evidence": {
+      "authority": "authored exogenous/local event",
+      "source_event": "p09.backup-rendezvous",
+      "decision_ns": 46000000000
+    }
+  }
+]

@@ -1,0 +1,114 @@
+{
+  "schema_version": "p09.linked-source-adoption/v13-metadata",
+  "episode_id": "L6-4_v1__seed02",
+  "scenario_id": "L6-4_v1",
+  "seed": 2,
+  "ns3_seed": 3,
+  "ns3_run": 1,
+  "mechanism": "cochannel_backup",
+  "actor_ids": [
+    "uav_digital_l6_4_v1",
+    "uav_digital_l6_4_v1_secondary"
+  ],
+  "primary_station": "tower_l6_4_v1",
+  "backup_station": null,
+  "heartbeat": {
+    "period_ns": 100000000,
+    "payload_bytes": 256,
+    "ttl_ns": 200000000,
+    "window_ns": 1000000000,
+    "loss_limit": 0.05,
+    "consecutive_limit": 3
+  },
+  "receiver_state_namespace": "p09.actor-heartbeat-watchdog/v1",
+  "receiver_state_definitions": {
+    "loss_ratio": "unit1; mature expected local slots not received before strict generation+TTL; includes unsent expected slots",
+    "consecutive_missing": "packet; trailing mature missing sequence slots",
+    "degraded": "bool/UNKNOWN; loss_ratio>0.05 AND consecutive_missing>=3",
+    "observation_ns": "ns; local window close/available time, consumed strictly before actor decision"
+  },
+  "legacy_state_disposition": "old global accepted-TX/reference and initial runtime flags are separate; no actor-control causality claim from those flags",
+  "command": {
+    "payload_bytes": 64,
+    "attempts": 3,
+    "period_ns": 100000000,
+    "deadline_ns": 2000000000,
+    "policy_delay_ns": 0
+  },
+  "application_message_policy": "modeled report payload frozen at submission and bound to exact native flow/packet RX through immutable ledger; not hardware ACK or PX4 receipt",
+  "source_script": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v1/event_script.json",
+  "source_scene": "Dataset/scenarios/L6_digital_layer/failure/L6-4_v1/scene_setup.json",
+  "source_script_sha256": "798017de70a367fb5675d46cd49f429c194c28ec52e6213b6590255645509e6d",
+  "source_scene_sha256": "e0905cd75ba3d01a1d5f75cd704c72c1219d738ccbbe6410e5c8eae899a6034b",
+  "corrections": [
+    {
+      "change": "script and scene descriptions/required_event describe actual cochannel UDP mechanism",
+      "retained_identifiers": "legacy wideband_jamming event/trigger/action/topic IDs preserve source references; they do not certify wideband jamming"
+    },
+    {
+      "event_id": "multi_uav_hold_entry",
+      "change": "queue original-tick actor hold decision to next authored action boundary instead of silently losing a short observed pulse"
+    },
+    {
+      "event_id": "wideband_jamming",
+      "change": "legacy IDs retained; simulated cause and hold titles declare cochannel competition, not certified wideband jamming"
+    },
+    {
+      "profile": "p09.independent-owner-receipts/v1",
+      "change": "owner-local hold/safe-hold/RX; action-free aggregates; preloaded absolute radio rendezvous; station commands require actual status report and execution ACK"
+    }
+  ],
+  "assumptions": [
+    "receiver-visible periodic heartbeat is configured application traffic",
+    "actor observes local weather/nearby geometry after one original tick",
+    "10Hz authored waypoint engine, not PX4 aerodynamic flight"
+  ],
+  "rain_rf": "not amplified; dimensionless rain is not an observed mm/h rate",
+  "rf_profile": "R1:2412MHz/20MHz/HtMcs0/16dBm/NF7/n3/L0=40.09532929124565",
+  "hold_decision_queue": {
+    "version": "p09.cochannel-local-hold-queue/v1",
+    "decision_grid_ns": 100000000,
+    "action_grid_original_ticks": 5,
+    "semantics": "retain each owner first available local degradation decision independently until next permitted authored action boundary; no peer watchdog access; preserve operands/time; run-local and single-fire"
+  },
+  "motion_acquisition": {
+    "version": "p09.complete-admitted-landings/v1",
+    "nominal_duration_ticks": 900,
+    "landing_dwell_ticks": 5,
+    "extension_basis": "actual admitted landing motion terminal tick plus five original ticks; original speeds/routes unchanged"
+  },
+  "interference_offered_bps": 8000000,
+  "backup_channel": 6,
+  "interference_class": "legitimate cochannel UDP competition, not wideband jamming",
+  "channel_switch_authority": "explicit absolute rendezvous installed before fault; actor response commands still require received reports",
+  "rendezvous": {
+    "version": "p09.preloaded-absolute-rendezvous/v1",
+    "tick": 460,
+    "time_ns": 46000000000,
+    "owners": [
+      "tower_l6_4_v1",
+      "uav_digital_l6_4_v1",
+      "uav_digital_l6_4_v1_secondary"
+    ],
+    "authority": "absolute original authored nominal plan installed before fault; independent of actor watchdogs/RX",
+    "channel_number": 6
+  },
+  "owner_control_version": "p09.independent-owner-receipts/v1",
+  "pending_successor_wait_ticks": 25,
+  "terminal_annotation_migration": {
+    "version": "p09.adopted-route-and-terminal-metadata/v1",
+    "scope": "Legacy dispatch/available-time/speed proof is historical; physical landing reference and dwell inputs retained",
+    "actions": [
+      {
+        "event_id": "lifecycle_landing_uav_digital_l6_4_v1",
+        "action_id": "move_uav_digital_l6_4_v1_landing_return",
+        "old_dispatch_upper_bound_tick": 540
+      },
+      {
+        "event_id": "lifecycle_landing_uav_digital_l6_4_v1_secondary",
+        "action_id": "move_uav_digital_l6_4_v1_secondary_landing_return",
+        "old_dispatch_upper_bound_tick": 550
+      }
+    ]
+  }
+}

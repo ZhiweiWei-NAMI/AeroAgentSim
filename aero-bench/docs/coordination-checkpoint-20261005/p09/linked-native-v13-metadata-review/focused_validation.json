@@ -1,0 +1,18 @@
+{
+  "command": "/home/weizhiwei/data/iiot_predict/iiot_py311/airfogsim/bin/python -m unittest Dataset.semantic_simulation.ns3_episode.test_linked_backup Dataset.semantic_simulation.ns3_episode.test_batch_status -v",
+  "tests": 7,
+  "failures": 0,
+  "seconds": 11.951,
+  "result": "OK",
+  "independent_review": {
+    "reviewer": "/root/p09_causal_crossreview",
+    "scope": "Source delta and three seed JSON roundtrips, motion-action cores, original proof retention, per-episode persisted status",
+    "backup_tests": 6,
+    "failures": 0,
+    "seconds": 11.858,
+    "result": "pass"
+  },
+  "adoption_certification": false,
+  "native_rerun": false,
+  "UE_capture": false
+}

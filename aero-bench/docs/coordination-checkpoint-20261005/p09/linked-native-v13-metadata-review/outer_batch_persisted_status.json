@@ -1,0 +1,326 @@
+{
+  "scope": "30 scoped communication episodes only; generation is not independent adoption acceptance",
+  "source_commit": "fd407a065d4eb6f4ff5863c3bfb175eb64d17515",
+  "pid": 1143476,
+  "started_unix_s": 1791262388.507188,
+  "reused": [
+    "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_review/X5_comm_failure_to_pad_contention__seed00/adopted/summary.json"
+  ],
+  "completed": [
+    {
+      "scenario": "X5_comm_failure_to_pad_contention",
+      "seed": 1,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X5_comm_failure_to_pad_contention__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 43.715564265847206,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "X5_comm_failure_to_pad_contention",
+      "seed": 2,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X5_comm_failure_to_pad_contention__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 45.632255773060024,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L2-1_v2",
+      "seed": 0,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 41.26049543078989,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L2-1_v2",
+      "seed": 1,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 41.03521228954196,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L2-1_v2",
+      "seed": 2,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v2__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 41.57657330669463,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L2-1_v1",
+      "seed": 0,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 42.46211155876517,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L2-1_v1",
+      "seed": 1,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 43.168976430781186,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L2-1_v1",
+      "seed": 2,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L2-1_v1__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 42.237089820206165,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L6-1_v1",
+      "seed": 0,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 20.307834906503558,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L6-1_v1",
+      "seed": 1,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 20.730059066787362,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L6-1_v1",
+      "seed": 2,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v1__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 19.61203035991639,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L6-1_v2",
+      "seed": 0,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 20.523958506062627,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L6-1_v2",
+      "seed": 1,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 20.16080556437373,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L6-1_v2",
+      "seed": 2,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-1_v2__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 20.937407137826085,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L5-1_v1",
+      "seed": 0,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 13.101292008534074,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L5-1_v1",
+      "seed": 1,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 12.303690248169005,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L5-1_v1",
+      "seed": 2,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v1__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 12.13638458866626,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L5-1_v2",
+      "seed": 0,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 13.401643436402082,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L5-1_v2",
+      "seed": 1,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 13.742009394802153,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L5-1_v2",
+      "seed": 2,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L5-1_v2__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 13.106593241915107,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "X1_rain_to_c2loss_to_forced_landing",
+      "seed": 0,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 22.07006515748799,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "X1_rain_to_c2loss_to_forced_landing",
+      "seed": 1,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 22.251069360412657,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "X1_rain_to_c2loss_to_forced_landing",
+      "seed": 2,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/X1_rain_to_c2loss_to_forced_landing__seed02/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 21.799332942813635,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L6-4_v1",
+      "seed": 0,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 91.39016651641577,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L6-4_v1",
+      "seed": 1,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 80.4111915230751,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L6-4_v1",
+      "seed": 2,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v1__seed02/adopted/summary.json",
+      "unfired_events": [
+        "multi_uav_hold_entry",
+        "multi_uav_safe_hold",
+        "alternate_channel",
+        "lifecycle_landing_uav_digital_l6_4_v1",
+        "lifecycle_landing_uav_digital_l6_4_v1_secondary",
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v1",
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v1_secondary",
+        "multi_uav_safe_hold:local:uav_digital_l6_4_v1",
+        "multi_uav_safe_hold:local:uav_digital_l6_4_v1_secondary",
+        "alternate_channel:local:uav_digital_l6_4_v1",
+        "alternate_channel:local:uav_digital_l6_4_v1_secondary"
+      ],
+      "wall_time_s": 45.29779984150082,
+      "process_completed": true,
+      "semantic_status": "UNFIRED_EVENTS",
+      "missing_event_disposition": "requires resolution before adoption"
+    },
+    {
+      "scenario": "L6-4_v2",
+      "seed": 0,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed00/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 83.23830333445221,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L6-4_v2",
+      "seed": 1,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed01/adopted/summary.json",
+      "unfired_events": [],
+      "wall_time_s": 81.31212702207267,
+      "process_completed": true,
+      "semantic_status": "STORY_COMPLETE_PENDING_REVIEW",
+      "missing_event_disposition": "complete"
+    },
+    {
+      "scenario": "L6-4_v2",
+      "seed": 2,
+      "summary": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/L6-4_v2__seed02/adopted/summary.json",
+      "unfired_events": [
+        "multi_uav_hold_entry",
+        "multi_uav_safe_hold",
+        "alternate_channel",
+        "lifecycle_landing_uav_digital_l6_4_v2",
+        "multi_uav_hold_entry:local:uav_digital_l6_4_v2",
+        "multi_uav_safe_hold:local:uav_digital_l6_4_v2",
+        "alternate_channel:local:uav_digital_l6_4_v2"
+      ],
+      "wall_time_s": 83.11102054920048,
+      "process_completed": true,
+      "semantic_status": "UNFIRED_EVENTS",
+      "missing_event_disposition": "requires resolution before adoption"
+    }
+  ],
+  "failed": [],
+  "published210_modified": false,
+  "ue_capture_started": false,
+  "finished_unix_s": 1791263473.4834337,
+  "status": "generated-pending-independent-review"
+}

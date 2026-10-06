@@ -1,0 +1,208 @@
+{
+  "backup-request:uav_l2_1_v2": {
+    "attempts": [
+      {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "backup-request:uav_l2_1_v2",
+        "packet_id": "packet-391",
+        "source_owner": "uav_l2_1_v2",
+        "source_epoch": 0,
+        "receiver_owner": "contract_facility_l2_1_v2_03",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 39000000000,
+        "decision_ns": 39100000000,
+        "send_ns": 39100000000,
+        "deadline_ns": 41100000000,
+        "action": "request_backup_path",
+        "receive_ns": 39108325465,
+        "accepted_ns": 39108325465,
+        "status": "accepted"
+      },
+      {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "backup-request:uav_l2_1_v2",
+        "packet_id": "packet-393",
+        "source_owner": "uav_l2_1_v2",
+        "source_epoch": 0,
+        "receiver_owner": "contract_facility_l2_1_v2_03",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 39000000000,
+        "decision_ns": 39100000000,
+        "send_ns": 39200000000,
+        "deadline_ns": 41100000000,
+        "action": "request_backup_path",
+        "receive_ns": 39200221905,
+        "accepted_ns": 39200221905,
+        "status": "accepted"
+      },
+      {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "backup-request:uav_l2_1_v2",
+        "packet_id": "packet-396",
+        "source_owner": "uav_l2_1_v2",
+        "source_epoch": 0,
+        "receiver_owner": "contract_facility_l2_1_v2_03",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 39000000000,
+        "decision_ns": 39100000000,
+        "send_ns": 39300000000,
+        "deadline_ns": 41100000000,
+        "action": "request_backup_path",
+        "receive_ns": 39300224785,
+        "accepted_ns": 39300224785,
+        "status": "accepted"
+      }
+    ],
+    "accepted": {
+      "schema_version": "p09.actual-downlink-command-receipt/v1",
+      "command_id": "backup-request:uav_l2_1_v2",
+      "packet_id": "packet-391",
+      "source_owner": "uav_l2_1_v2",
+      "source_epoch": 0,
+      "receiver_owner": "contract_facility_l2_1_v2_03",
+      "receiver_epoch": 0,
+      "evidence_available_ns": 39000000000,
+      "decision_ns": 39100000000,
+      "send_ns": 39100000000,
+      "deadline_ns": 41100000000,
+      "action": "request_backup_path",
+      "receive_ns": 39108325465,
+      "accepted_ns": 39108325465,
+      "status": "accepted"
+    },
+    "submission": {
+      "message_id": "backup-request:uav_l2_1_v2",
+      "source": "uav_l2_1_v2",
+      "receiver": "contract_facility_l2_1_v2_03",
+      "send_ns": 39100000000,
+      "evidence_ns": 39000000000,
+      "action": "request_backup_path",
+      "deadline_ns": 41100000000,
+      "sender_decision_evidence": {
+        "type": "owner-local available endpoint arrival",
+        "owner": "uav_l2_1_v2",
+        "event_id": "uav_link_response",
+        "move_event_ns": 30000000000,
+        "sample_ns": 38900000000,
+        "available_ns": 39000000000,
+        "decision_ns": 39100000000,
+        "position_enu_m": [
+          6308.0,
+          6134.0,
+          30.0
+        ],
+        "authored_target_enu_m": [
+          6308.0,
+          6134.0,
+          30.0
+        ],
+        "policy_version": "p09.backup-actor-available-arrival/v1",
+        "pose_source": "executed owner trajectory, modeled local navigation observation"
+      },
+      "application_payload": null
+    }
+  },
+  "command:patrol_resume_via_backup_link:uav_l2_1_v2": {
+    "attempts": [
+      {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "command:patrol_resume_via_backup_link:uav_l2_1_v2",
+        "packet_id": "packet-395",
+        "source_owner": "contract_facility_l2_1_v2_03",
+        "source_epoch": 0,
+        "receiver_owner": "uav_l2_1_v2",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 39108325465,
+        "decision_ns": 39208325465,
+        "send_ns": 39208325465,
+        "deadline_ns": 41208325465,
+        "action": "patrol_resume_via_backup_link",
+        "receive_ns": 39212648565,
+        "accepted_ns": 39212648565,
+        "status": "accepted"
+      },
+      {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "command:patrol_resume_via_backup_link:uav_l2_1_v2",
+        "packet_id": "packet-398",
+        "source_owner": "contract_facility_l2_1_v2_03",
+        "source_epoch": 0,
+        "receiver_owner": "uav_l2_1_v2",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 39108325465,
+        "decision_ns": 39208325465,
+        "send_ns": 39308325465,
+        "deadline_ns": 41208325465,
+        "action": "patrol_resume_via_backup_link",
+        "receive_ns": 39308541005,
+        "accepted_ns": 39308541005,
+        "status": "accepted"
+      },
+      {
+        "schema_version": "p09.actual-downlink-command-receipt/v1",
+        "command_id": "command:patrol_resume_via_backup_link:uav_l2_1_v2",
+        "packet_id": "packet-400",
+        "source_owner": "contract_facility_l2_1_v2_03",
+        "source_epoch": 0,
+        "receiver_owner": "uav_l2_1_v2",
+        "receiver_epoch": 0,
+        "evidence_available_ns": 39108325465,
+        "decision_ns": 39208325465,
+        "send_ns": 39408325465,
+        "deadline_ns": 41208325465,
+        "action": "patrol_resume_via_backup_link",
+        "receive_ns": 39408537445,
+        "accepted_ns": 39408537445,
+        "status": "accepted"
+      }
+    ],
+    "accepted": {
+      "schema_version": "p09.actual-downlink-command-receipt/v1",
+      "command_id": "command:patrol_resume_via_backup_link:uav_l2_1_v2",
+      "packet_id": "packet-395",
+      "source_owner": "contract_facility_l2_1_v2_03",
+      "source_epoch": 0,
+      "receiver_owner": "uav_l2_1_v2",
+      "receiver_epoch": 0,
+      "evidence_available_ns": 39108325465,
+      "decision_ns": 39208325465,
+      "send_ns": 39208325465,
+      "deadline_ns": 41208325465,
+      "action": "patrol_resume_via_backup_link",
+      "receive_ns": 39212648565,
+      "accepted_ns": 39212648565,
+      "status": "accepted"
+    },
+    "submission": {
+      "message_id": "command:patrol_resume_via_backup_link:uav_l2_1_v2",
+      "source": "contract_facility_l2_1_v2_03",
+      "receiver": "uav_l2_1_v2",
+      "send_ns": 39208325465,
+      "evidence_ns": 39108325465,
+      "action": "patrol_resume_via_backup_link",
+      "deadline_ns": 41208325465,
+      "sender_decision_evidence": {
+        "type": "actual received application report",
+        "message_id": "backup-request:uav_l2_1_v2",
+        "receipt": {
+          "schema_version": "p09.actual-downlink-command-receipt/v1",
+          "command_id": "backup-request:uav_l2_1_v2",
+          "packet_id": "packet-391",
+          "source_owner": "uav_l2_1_v2",
+          "source_epoch": 0,
+          "receiver_owner": "contract_facility_l2_1_v2_03",
+          "receiver_epoch": 0,
+          "evidence_available_ns": 39000000000,
+          "decision_ns": 39100000000,
+          "send_ns": 39100000000,
+          "deadline_ns": 41100000000,
+          "action": "request_backup_path",
+          "receive_ns": 39108325465,
+          "accepted_ns": 39108325465,
+          "status": "accepted"
+        }
+      },
+      "application_payload": null
+    }
+  }
+}
