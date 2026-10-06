@@ -1,0 +1,75 @@
+F.F                                                                      [100%]
+=================================== FAILURES ===================================
+______ test_provider_retry_after_tick_advance_reaches_authoritative_dedup ______
+
+package = LogisticsTaskPackage(schema_version='aero-bench.logistics-task/v1', package_id='logistics.task.v1', task_id='logistics...line_s=600.0),), no_fly_zones=(), actor_grants=(OrderActorGrant(actor_id='uav.p02.carrier:1', role='aircraft_agent'),))
+
+    def test_provider_retry_after_tick_advance_reaches_authoritative_dedup(package):
+        """Actual provider method, in-memory transport; no service launch claimed."""
+        rpc = ready(package)
+        calls = []
+        provider = _provider_with_in_memory_transport(rpc, calls)
+        request = r.request(3)
+        first = asyncio.run(provider.handle_command(request))
+        assert first.receipts[-1].phase == "completed"
+    
+        rpc.ingest_closed_stage(r.batch(package, 4, moving=True))
+        provider._last_time = h._dwell_tick(4)
+        before = rpc.machine.snapshot()
+>       again = asyncio.run(provider.handle_command(request))
+
+tests/providers/test_native_parcel_provider_retry.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/weizhiwei/data/iiot_predict/iiot_py311/airfogsim/lib/python3.10/asyncio/runners.py:44: in run
+    return loop.run_until_complete(main)
+/home/weizhiwei/data/iiot_predict/iiot_py311/airfogsim/lib/python3.10/asyncio/base_events.py:649: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <aero_bench.providers.logistics_business.native_parcel.NativeParcelBusinessProvider object at 0x7f7561629c60>
+request = CommandRequest(run_id='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', command_id='action.pickup.1'...ngle'), NamedValue(name='parcel_id', value='parcel.p02.single'), NamedValue(name='actor_id', value='uav.p02.carrier')))
+
+    async def handle_command(self, request):
+        from aero_bench.providers.contracts import ProviderCommandResult
+        from aero_bench.runtime.contracts import CommandReceipt
+        from aero_bench.tasks.logistics.native_parcel_rpc import (
+            NativeParcelActionRecord, PARCEL_PICKUP_TOOL, PARCEL_DROPOFF_TOOL,
+        )
+        if request.tool_id not in {PARCEL_PICKUP_TOOL, PARCEL_DROPOFF_TOOL}:
+            return await super().handle_command(request)
+        self._require_prepared()
+        if request.run_id != self._run_id or request.issued_at != self._last_time:
+>           raise LogisticsBusinessProviderError("parcel request is not at the authoritative run time")
+E           aero_bench.providers.logistics_business.provider.LogisticsBusinessProviderError: parcel request is not at the authoritative run time
+
+aero_bench/providers/logistics_business/native_parcel.py:93: LogisticsBusinessProviderError
+_ test_processed_command_id_with_altered_payload_is_rejected_without_rollback __
+
+package = LogisticsTaskPackage(schema_version='aero-bench.logistics-task/v1', package_id='logistics.task.v1', task_id='logistics...line_s=600.0),), no_fly_zones=(), actor_grants=(OrderActorGrant(actor_id='uav.p02.carrier:1', role='aircraft_agent'),))
+
+    def test_processed_command_id_with_altered_payload_is_rejected_without_rollback(
+        package,
+    ):
+        """Same command ID as the processed request with a different payload is
+        refused by the authoritative dedup; state never rolls back or retransfers."""
+        rpc = ready(package)
+        calls = []
+        provider = _provider_with_in_memory_transport(rpc, calls)
+        request = r.request(3)
+        first = asyncio.run(provider.handle_command(request))
+        assert first.receipts[-1].phase == "completed"
+        rpc.ingest_closed_stage(r.batch(package, 4, moving=True))
+        provider._last_time = h._dwell_tick(4)
+        before = rpc.machine.snapshot()
+        altered = r.request(3, kind="dropoff")
+        with pytest.raises(Exception):
+            asyncio.run(provider.handle_command(altered))
+>       assert len(calls) == 2
+E       AssertionError: assert 1 == 2
+E        +  where 1 = len(['command'])
+
+tests/providers/test_native_parcel_provider_retry.py:126: AssertionError
+=========================== short test summary info ============================
+FAILED tests/providers/test_native_parcel_provider_retry.py::test_provider_retry_after_tick_advance_reaches_authoritative_dedup
+FAILED tests/providers/test_native_parcel_provider_retry.py::test_processed_command_id_with_altered_payload_is_rejected_without_rollback
+2 failed, 1 passed in 0.75s
