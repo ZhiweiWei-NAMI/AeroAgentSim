@@ -1415,6 +1415,11 @@
     "sha256": "5903f71086df64e9807ff177c328eadd2a04cd0c7b55f28fa973f92af6dc3db4"
   },
   {
+    "path": "L6_seed02_observed_fault_failure.json",
+    "bytes": 9754,
+    "sha256": "40df88831703d1691f5949e42342f085a36cb297914696fd0b517e325c09e466"
+  },
+  {
     "path": "README.md",
     "bytes": 5033,
     "sha256": "eb7afc68f3801ab44d79fb01a7ef770a42e3d4979274699e938f1aaaadd90e21"
