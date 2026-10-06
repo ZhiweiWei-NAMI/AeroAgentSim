@@ -1,0 +1,351 @@
+--- dea2691/aero_bench/tasks/logistics/native_parcel_runtime.py
++++ current/aero_bench/tasks/logistics/native_parcel_runtime.py
+@@ -75,6 +75,8 @@
+ from dataclasses import dataclass
+ from typing import Literal
+ 
++from pydantic import model_validator
++
+ from aero_bench.config.models import StrictModel
+ from aero_bench.runtime.contracts import SimulationTime
+ from aero_bench.serialization import canonical_json_bytes
+@@ -114,8 +116,8 @@
+ )
+ 
+ NATIVE_PARCEL_SNAPSHOT_SCHEMA_VERSION: Literal[
+-    "aero-bench.logistics-native-parcel-snapshot/v1"
+-] = "aero-bench.logistics-native-parcel-snapshot/v1"
++    "aero-bench.logistics-native-parcel-snapshot/v2"
++] = "aero-bench.logistics-native-parcel-snapshot/v2"
+ 
+ _IN_TRANSIT_ACTION_ID = "logistics.runtime.in_transit"
+ _MAX_PAST_KEYS = 4096
+@@ -389,6 +391,56 @@
+     def pad_index(self) -> int:
+         return self._pad_index
+ 
++    @property
++    def last_at(self) -> SimulationTime | None:
++        """The exact last absorbed stage time (set even after a reset)."""
++        return self._last_at
++
++    def restore(
++        self,
++        samples: tuple[FacilityPadPhysicalObservation, ...],
++        *,
++        last_at: SimulationTime | None,
++    ) -> None:
++        """Restore this window's exact persisted state (no re-assessment).
++
++        The samples are the exact qualifying contiguous run and ``last_at``
++        is the exact last absorbed stage time — set even when an ineligible
++        stage cleared the run, so contiguity gating and the
++        dwell-ends-at-admission-tick check behave identically after a JSON
++        roundtrip into a fresh machine.  Window samples are never re-sorted
++        and never re-assessed here: the sealed evidence was already
++        kernel-assessed when absorbed.
++        """
++        for sample in samples:
++            _strict_model(
++                FacilityPadPhysicalObservation, sample, "window sample"
++            )
++            if sample.run_id != self._run_id:
++                raise NativeParcelRuntimeError(
++                    "restored window sample belongs to run "
++                    f"{sample.run_id!r}, not the declared parcel run "
++                    f"{self._run_id!r}"
++                )
++            if (
++                sample.facility_id != self._facility_id
++                or sample.pad_index != self._pad_index
++            ):
++                raise NativeParcelRuntimeError(
++                    f"restored window sample names facility "
++                    f"{sample.facility_id!r} pad {sample.pad_index}; this "
++                    f"window accumulates only {self._facility_id!r} pad "
++                    f"{self._pad_index}"
++                )
++        if last_at is not None and samples:
++            if _tick_key(samples[-1].at) != _tick_key(last_at):
++                raise NativeParcelRuntimeError(
++                    "restored window last-at does not match the window's "
++                    "closing sample; exact-state restoration is impossible"
++                )
++        self._samples = tuple(samples)
++        self._last_at = last_at
++
+     def observe(self, observation: FacilityPadPhysicalObservation) -> bool:
+         """Absorb one closed-stage observation; return True if it extends.
+ 
+@@ -674,23 +726,70 @@
+ 
+ 
+ class NativeParcelSnapshot(StrictModel):
+-    """The seek-consistent append-only parcel snapshot.
++    """The exact seek-consistent append-only parcel snapshot (schema v2).
+ 
+     ``sequence`` counts accepted evidence/decision commits;
+     ``past_keys`` are the closed-stage ``(tick, sim_time_ns)`` keys already
+-    absorbed (the replay frontier); ``stream_digest`` binds the exact digest
+-    chain of every absorbed evidence/decision fact.  Replaying the same sealed
+-    evidence stream through a fresh machine reproduces the identical snapshot.
++    absorbed (the global replay frontier); ``stream_digest`` binds the exact
++    digest chain of every absorbed evidence/decision fact.  A JSON roundtrip
++    of this snapshot into a fresh machine of the same contract/run restores
++    the *exact* machine state: both qualifying presence windows (with each
++    window's last absorbed time, including an invalid-reset empty window),
++    the per-facility and global evidence frontiers, the current time, and the
++    complete keyed decision ledger including unconfirmed/rejected tombstones
++    with their original outcomes.  There is no old-schema compatibility and
++    no empty default concealing lost state: every exact-state field is
++    required, and a ledger key whose original outcome is missing is explicit
++    corruption, never physical replay.
+     """
+ 
+-    schema_version: Literal["aero-bench.logistics-native-parcel-snapshot/v1"]
++    schema_version: Literal["aero-bench.logistics-native-parcel-snapshot/v2"]
+     contract_id: str
+     contract_digest: str
+     run_id: str
+     sequence: int
+     parcel_state: NativeParcelState
+-    past_keys: tuple[tuple[int, int], ...] = ()
++    past_keys: tuple[tuple[int, int], ...]
+     stream_digest: str
++    current_time: SimulationTime
++    last_observation_at: SimulationTime | None
++    facility_frontiers: tuple[tuple[str, SimulationTime | None], ...]
++    pickup_window_samples: tuple[FacilityPadPhysicalObservation, ...]
++    pickup_window_last_at: SimulationTime | None
++    dropoff_window_samples: tuple[FacilityPadPhysicalObservation, ...]
++    dropoff_window_last_at: SimulationTime | None
++    decisions: tuple[ParcelActionKeyRecord, ...]
++    decision_outcomes: tuple[ParcelAdmissionOutcome, ...]
++    #: The exact previous decision frontier (``None`` when no keyed decision
++    #: exists).  A duplicate replay advances the current time without
++    #: creating a decision, so this is not derivable from ``current_time``;
++    #: it is persisted exactly and a missing field is a validation error.
++    last_decision_at: SimulationTime | None
++
++    @model_validator(mode="after")
++    def exact_state_is_internally_consistent(self) -> "NativeParcelSnapshot":
++        frontiers = dict(self.facility_frontiers)
++        if len(frontiers) != len(self.facility_frontiers):
++            raise ValueError(
++                "snapshot facility frontiers name the same facility twice"
++            )
++        seen_keys = set()
++        for record in self.decisions:
++            key = (record.run_id, record.principal_id, record.action_id)
++            if key in seen_keys:
++                raise ValueError(
++                    f"snapshot decision ledger names key {key!r} twice"
++                )
++            seen_keys.add(key)
++            if record.content_digest not in {
++                outcome.action_digest for outcome in self.decision_outcomes
++            }:
++                raise ValueError(
++                    f"snapshot decision ledger key {key!r} has no recorded "
++                    "original outcome; missing keyed state is corruption, "
++                    "never physical replay"
++                )
++        return self
+ 
+ 
+ # ------------------------------------------------------------ state machine
+@@ -1073,10 +1172,11 @@
+                 )
+             outcome = self._decision_by_digest.get(action_digest)
+             if outcome is None:
+-                # Only admitted outcomes survive a restore; the same exact
+-                # content re-decides deterministically to the same result.
+-                outcome = self._decide(action=action, action_digest=action_digest)
+-                self._decision_by_digest[action_digest] = outcome
++                raise NativeParcelRuntimeError(
++                    f"admission key {key!r} is recorded in the ledger but "
++                    "its original outcome is missing; missing keyed "
++                    "decision state is corruption, never a physical replay"
++                )
+             return outcome
+         outcome = self._decide(action=action, action_digest=action_digest)
+         record = ParcelActionKeyRecord(
+@@ -1161,14 +1261,18 @@
+                 decision_at=self._now,
+             )
+         # The qualifying contiguous dwell must END at the current admission
+-        # tick: a window that closed before this decision is a stale window
+-        # (the evidence no longer reaches the admission moment) and is never
++        # time exactly: the closing observation's authoritative SimulationTime
++        # must equal the admission time in BOTH tick and sim_time_ns.  A
++        # window that closed earlier is a stale window, and a window whose
++        # closing stage matches only on the integer tick (e.g. a tick=3/3 s
++        # dwell offered against a tick=3/100 s admission time) is not the
++        # evidence that reaches this admission moment either — it is never
+         # confirmed.
+-        closing_tick = window[-1].at.tick
+-        if closing_tick != self._now.tick:
++        closing_at = window[-1].at
++        if _tick_key(closing_at) != _tick_key(self._now):
+             relation = (
+                 "before"
+-                if _tick_key(window[-1].at) < _tick_key(self._now)
++                if _tick_key(closing_at) < _tick_key(self._now)
+                 else "after"
+             )
+             return ParcelAdmissionOutcome(
+@@ -1178,9 +1282,10 @@
+                 status="unconfirmed",
+                 reason=(
+                     f"the contiguous closed dwell window closed at tick "
+-                    f"{closing_tick}, {relation} the current admission tick "
+-                    f"{self._now.tick}; a qualifying dwell must end exactly "
+-                    f"at the current admission tick; {UNKNOWN_SOURCE_NOTE} "
++                    f"{closing_at.tick}, {relation} the current admission "
++                    f"tick {self._now.tick}; a qualifying dwell must end "
++                    f"exactly at the current admission tick; "
++                    f"{UNKNOWN_SOURCE_NOTE} "
+                     f"the {kind} action is admitted only after the "
+                     "contiguous grounded closed dwell reaches the current "
+                     "admission tick"
+@@ -1375,7 +1480,15 @@
+     # -------------------------------------------------------------- snapshot
+ 
+     def snapshot(self) -> NativeParcelSnapshot:
+-        """The seek-consistent append-only snapshot of the machine."""
++        """The exact seek-consistent append-only snapshot of the machine.
++
++        The snapshot carries the complete exact state: both qualifying
++        presence windows with their last absorbed times, the per-facility and
++        global evidence frontiers, the current time, and the complete keyed
++        decision ledger including unconfirmed/rejected tombstones with their
++        original outcomes.  A JSON roundtrip into a fresh machine of the same
++        contract/run therefore reproduces the machine exactly.
++        """
+         return NativeParcelSnapshot(
+             schema_version=NATIVE_PARCEL_SNAPSHOT_SCHEMA_VERSION,
+             contract_id=self._contract.contract_id,
+@@ -1385,19 +1498,36 @@
+             parcel_state=self._parcel_state,
+             past_keys=self._past_keys,
+             stream_digest=self._stream_digest,
++            current_time=self._now,
++            last_observation_at=self._last_observation_at,
++            facility_frontiers=tuple(
++                sorted(self._facility_frontiers.items())
++            ),
++            pickup_window_samples=self._pickup_window.snapshot(),
++            pickup_window_last_at=self._pickup_window.last_at,
++            dropoff_window_samples=self._dropoff_window.snapshot(),
++            dropoff_window_last_at=self._dropoff_window.last_at,
++            decisions=tuple(self._decisions.values()),
++            decision_outcomes=tuple(self._decision_by_digest.values()),
++            last_decision_at=self._last_decision_at,
+         )
+ 
+     def restore(self, snapshot: NativeParcelSnapshot) -> None:
+         """Restore the machine to an earlier snapshot (seek backward).
+ 
+-        Only a snapshot of the same contract/run can be restored; anything else
+-        is foreign.  After a restore the absorbed evidence frontier is the
+-        snapshot's, so seek-forward replay cannot re-bind future evidence:
+-        observations at or before the restored frontier are ignored by
+-        :meth:`observe` and an observation that skips the frontier raises
+-        :class:`SeekConsistencyError` in :meth:`check_seek_forward`.  The pad
+-        windows restart empty; the sealed replay re-delivers the closed stages
+-        from the frontier onward and the contiguous windows rebuild.
++        Only a snapshot of the same contract/run can be restored; anything
++        else is foreign.  The exact state is restored: both qualifying
++        presence windows (with their last absorbed times, including an
++        invalid-reset empty window), the per-facility and global evidence
++        frontiers, the current time, and the complete keyed decision ledger
++        including unconfirmed/rejected tombstones with their original
++        outcomes.  A ledger key whose original outcome is missing from the
++        snapshot is explicit corruption and raises; it is never re-decided
++        through a physical replay.  After a restore the absorbed evidence
++        frontier is the snapshot's, so seek-forward replay cannot re-bind
++        future evidence: observations at or before the restored frontier are
++        ignored by :meth:`observe` and an observation that skips the frontier
++        raises :class:`SeekConsistencyError` in :meth:`check_seek_forward`.
+         """
+         _strict_model(NativeParcelSnapshot, snapshot, "NativeParcelSnapshot")
+         if snapshot.contract_digest != self._contract.contract_digest():
+@@ -1412,44 +1542,50 @@
+         self._sequence = snapshot.sequence
+         self._past_keys = snapshot.past_keys
+         self._stream_digest = snapshot.stream_digest
+-        self._last_observation_at = (
+-            SimulationTime(tick=snapshot.past_keys[-1][0],
+-                           sim_time_ns=snapshot.past_keys[-1][1])
+-            if snapshot.past_keys
+-            else None
+-        )
+-        self._now = (
+-            snapshot.parcel_state.last_update_at
+-            if snapshot.parcel_state.last_update_at is not None
+-            else self._now
+-        )
++        self._now = snapshot.current_time
++        self._last_observation_at = snapshot.last_observation_at
++        self._facility_frontiers = dict(snapshot.facility_frontiers)
++        if set(self._facility_frontiers) != {
++            self._pickup_facility_id,
++            self._dropoff_facility_id,
++        }:
++            raise NativeParcelRuntimeError(
++                "snapshot facility frontiers do not name exactly the two "
++                "declared facilities; exact-state restoration is impossible"
++            )
+         self._pickup_window = self._fresh_window(
+             self._pickup_facility_id, self._pickup_pad_index
+         )
+         self._dropoff_window = self._fresh_window(
+             self._dropoff_facility_id, self._dropoff_pad_index
+         )
+-        decided_keys = snapshot.parcel_state.decided_action_keys
+-        decided_digests = {record.content_digest for record in decided_keys}
++        self._pickup_window.restore(
++            snapshot.pickup_window_samples, last_at=snapshot.pickup_window_last_at
++        )
++        self._dropoff_window.restore(
++            snapshot.dropoff_window_samples,
++            last_at=snapshot.dropoff_window_last_at,
++        )
++        decided_keys = snapshot.decisions
+         self._decisions = {
+             (record.run_id, record.principal_id, record.action_id): record
+             for record in decided_keys
+         }
+-        self._last_decision_at = (
+-            snapshot.parcel_state.last_update_at
+-            if decided_keys
+-            else None
+-        )
+-        self._decision_by_digest = {
+-            outcome.action_digest: outcome
+-            for outcome in self._admitted_history
+-            if outcome.action_digest in decided_digests
+-        }
+-        self._admitted_history = tuple(
+-            outcome
+-            for outcome in self._admitted_history
+-            if outcome.action_digest in decided_digests
+-        )
++        outcomes = {o.action_digest: o for o in snapshot.decision_outcomes}
++        for record in decided_keys:
++            if record.content_digest not in outcomes:
++                raise NativeParcelRuntimeError(
++                    f"decision key "
++                    f"{(record.run_id, record.principal_id, record.action_id)!r} "
++                    "has no recorded original outcome in the snapshot; "
++                    "missing keyed decision state is corruption, never a "
++                    "physical replay"
++                )
++        self._decision_by_digest = dict(outcomes)
++        # The decision frontier is restored exactly: a duplicate replay
++        # advances the current time without creating a decision, so it is
++        # never synthesized from the snapshot's current time.
++        self._last_decision_at = snapshot.last_decision_at
+ 
+     def check_seek_forward(self, observation: FacilityPadPhysicalObservation) -> None:
+         """Raise when the next observation would skip the restored frontier.

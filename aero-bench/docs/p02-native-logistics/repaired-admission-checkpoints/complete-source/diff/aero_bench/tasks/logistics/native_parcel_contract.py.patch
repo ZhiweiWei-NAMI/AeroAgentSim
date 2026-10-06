@@ -1,0 +1,32 @@
+--- dea2691/aero_bench/tasks/logistics/native_parcel_contract.py
++++ current/aero_bench/tasks/logistics/native_parcel_contract.py
+@@ -178,10 +178,13 @@
+     parcel_entity_id: LogisticsIdentifier
+     carrier_entity_id: LogisticsIdentifier
+     #: The one declared principal authorized to act for the declared carrier
+-    #: on this order.  An admitted action naming any other principal is
+-    #: foreign: there is no alias inference, no string splitting and no
+-    #: fallback — the principal-to-carrier authorization binding is explicit
+-    #: and exact, and it is part of the identity digest.
++    #: on this order.  It is an independently authored principal identity
++    #: explicitly bound to this carrier by this declared identities record —
++    #: not an entity-ID alias of the carrier, so it may (but need not) differ
++    #: from ``carrier_entity_id``.  An admitted action naming any other
++    #: principal is foreign: there is no alias inference, no string splitting
++    #: and no fallback — the binding is explicit, exact and part of the
++    #: identity digest.
+     authorized_principal_id: Identifier
+     pickup_facility_id: LogisticsIdentifier
+     dropoff_facility_id: LogisticsIdentifier
+@@ -207,11 +210,6 @@
+         if self.pickup_facility_id == self.dropoff_facility_id:
+             raise ValueError(
+                 "pickup and dropoff facilities must be distinct facilities"
+-            )
+-        if self.authorized_principal_id != self.carrier_entity_id:
+-            raise ValueError(
+-                "the declared authorized principal must be the declared "
+-                "carrier entity: the principal-to-carrier binding is exact"
+             )
+         return self
+ 

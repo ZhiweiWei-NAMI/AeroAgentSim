@@ -1,0 +1,63 @@
+--- test_native_parcel_runtime.before
++++ test_native_parcel_runtime.after
+@@ -708,11 +708,11 @@
+             now=_dwell_tick(5),
+         )
+         assert outcome.status == "unconfirmed"
+-        # The window ends exactly at the admission tick, but the in-air stage
+-        # at tick 4 is not an eligible grounded closed stage, so the run is
+-        # invalidated.
+-        assert "tick 4 presence assessment is not eligible" in outcome.reason
+-        assert "aircraft_not_landed" in outcome.reason
++        # The in-air sample cleared the prefix; the one subsequent grounded
++        # sample cannot establish a contiguous dwell or a custody transfer.
++        assert "a contiguous dwell requires at least two distinct closed stages" in outcome.reason
++        assert machine.parcel_state.state == "awaiting_pickup"
++        assert not machine.parcel_state.transfers
+ 
+     def test_motion_at_admission_tick_invalidates_window(self, package):
+         # A qualifying grounded prefix (ticks 1-2) followed by a moving stage
+@@ -735,7 +735,9 @@
+             now=_dwell_tick(3),
+         )
+         assert outcome.status == "unconfirmed"
+-        assert "not eligible" in outcome.reason
++        assert "the closed presence window is empty" in outcome.reason
++        assert machine.parcel_state.state == "awaiting_pickup"
++        assert not machine.parcel_state.transfers
+ 
+     def test_contact_loss_at_admission_tick_invalidates_window(self, package):
+         # Contact loss: the final stage at the admission tick no longer sits
+@@ -758,7 +760,9 @@
+             now=_dwell_tick(3),
+         )
+         assert outcome.status == "unconfirmed"
+-        assert "not eligible" in outcome.reason
++        assert "the closed presence window is empty" in outcome.reason
++        assert machine.parcel_state.state == "awaiting_pickup"
++        assert not machine.parcel_state.transfers
+ 
+     def test_moving_carrier_breaks_presence_dwell(self, package):
+         machine = _machine(package)
+@@ -775,7 +779,9 @@
+             now=_dwell_tick(2),
+         )
+         assert outcome.status == "unconfirmed"
+-        assert "not eligible" in outcome.reason
++        assert "a contiguous dwell requires at least two distinct closed stages" in outcome.reason
++        assert machine.parcel_state.state == "awaiting_pickup"
++        assert not machine.parcel_state.transfers
+ 
+     def test_in_air_carrier_breaks_presence_dwell(self, package):
+         machine = _machine(package)
+@@ -793,7 +799,9 @@
+             now=_dwell_tick(2),
+         )
+         assert outcome.status == "unconfirmed"
+-        assert "not eligible" in outcome.reason
++        assert "a contiguous dwell requires at least two distinct closed stages" in outcome.reason
++        assert machine.parcel_state.state == "awaiting_pickup"
++        assert not machine.parcel_state.transfers
+ 
+     def test_dwell_window_reset_by_gap_between_pads(self, package):
+         # A pickup-pad stage, an off-pad stage (dropoff pad, resets nothing on

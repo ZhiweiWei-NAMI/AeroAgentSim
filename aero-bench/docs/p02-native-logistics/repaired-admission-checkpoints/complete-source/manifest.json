@@ -1,0 +1,119 @@
+{
+  "schema_version": "p02.parcel-admission-repair-source/v1",
+  "recorded_at": "2026-10-06T04:17:21.494414-07:00",
+  "base_evidence_commit": "dea2691928c87be9a4c40e2c9871d3c41dae5b67",
+  "scope": "Repaired source and synthetic actual-package regression evidence; no runtime activation",
+  "author_session_id": "c17d3614-e676-4394-acc4-32391809e123",
+  "snapshot_schema": "aero-bench.logistics-native-parcel-snapshot/v2",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 3128,
+      "sha256": "b8886e6a0fcce421f33dbcd77395584c6a5678b16195e8c9b3f05df3bffa5c98"
+    },
+    {
+      "path": "diff/aero_bench/tasks/logistics/native_parcel_contract.py.patch",
+      "bytes": 1717,
+      "sha256": "aad2ce5dc155ae4524a20a67f990ef4fe1164ff5ac19afecc21418023d04c808"
+    },
+    {
+      "path": "diff/aero_bench/tasks/logistics/native_parcel_runtime.py.patch",
+      "bytes": 17261,
+      "sha256": "27d8053c8d41b4384b4a0e249312adbcf9096e33ab3ebb631f80c7f63e87d11c"
+    },
+    {
+      "path": "diff/tests/tasks/test_native_parcel_review_regressions.py.patch",
+      "bytes": 3069,
+      "sha256": "66cf6d2230bcaa4ce7e2ec9b9b579997ee594b3feb78185941cc8c0fbfe94366"
+    },
+    {
+      "path": "diff/tests/tasks/test_native_parcel_runtime.py.patch",
+      "bytes": 7292,
+      "sha256": "de189fbfe9f80b1727f66fe8a322a51db65a3c401ba851756069a45a8367b129"
+    },
+    {
+      "path": "source/aero_bench/tasks/logistics/facility_presence.py",
+      "bytes": 30040,
+      "sha256": "88da26f0c7bdf2778eff76b68da5f8da4e3cb1b981422cbd63568d7669ba2ae2"
+    },
+    {
+      "path": "source/aero_bench/tasks/logistics/native_parcel_contract.py",
+      "bytes": 32154,
+      "sha256": "3e448d7027de27e19387fffe1230f01dc31b1fa8721ecbd245b85b931e9d6467"
+    },
+    {
+      "path": "source/aero_bench/tasks/logistics/native_parcel_runtime.py",
+      "bytes": 69471,
+      "sha256": "dd523e03d24b5076bf82fecc7e927199f768d1f1c5fa02c6c5360cc427e126db"
+    },
+    {
+      "path": "source/aero_bench/tasks/logistics/physical_observations.py",
+      "bytes": 66056,
+      "sha256": "130f13c9b76ff53ab4a3f348269f02f9d1b5d08eab48646e57efeec51b975c64"
+    },
+    {
+      "path": "source/tests/tasks/test_native_parcel_review_regressions.py",
+      "bytes": 6273,
+      "sha256": "d1392d161cc4f61cb0e662d63caa8c90e654e0f4bbb50bbfbd5ee1a95a6149b8"
+    },
+    {
+      "path": "source/tests/tasks/test_native_parcel_runtime.py",
+      "bytes": 49545,
+      "sha256": "4e53651b8e0fa63f75b4b9aaad3c107deceb25d77975d0ab4d9bea3d9022eebf"
+    },
+    {
+      "path": "test-results.json",
+      "bytes": 901,
+      "sha256": "8bb4dc599de0b73d57d3b46ef475fc3df676baa6fd27244b7ce50e9a2cda1270"
+    },
+    {
+      "path": "tests/affected-suite-before-assertion-alignment.xml",
+      "bytes": 18314,
+      "sha256": "35195ddcdff6a0f9387508c62d88392ebd08a767621958eea54a84d63c462276"
+    },
+    {
+      "path": "tests/affected-suite-final.xml",
+      "bytes": 9422,
+      "sha256": "48729a1cb8897a094699d20ad016e76890eb1446dab04579b7906a5b9810baf9"
+    },
+    {
+      "path": "tests/after-distinct-principal.xml",
+      "bytes": 586,
+      "sha256": "598fca96bbe21640c3fd0b87e7b01c3c1e6675f6ff3299b85b6a4a094f8d862a"
+    },
+    {
+      "path": "tests/after-snapshot-original.xml",
+      "bytes": 541,
+      "sha256": "618d0a57abc8c64e0d5b897e68f5c0f3e183b5df02476285127eb85df6e23cf2"
+    },
+    {
+      "path": "tests/after-temporal.xml",
+      "bytes": 409,
+      "sha256": "b4f0ddf482dd80362d631825373c1137b788999a86988f71983e7953c55bf8d4"
+    },
+    {
+      "path": "tests/before-native-temporal-principal.xml",
+      "bytes": 3876,
+      "sha256": "427388d06670bc03bcb1f06a7eceddbeab696e2966242662a51eb559c69415c5"
+    },
+    {
+      "path": "tests/before-snapshot-decision-frontier.xml",
+      "bytes": 1040,
+      "sha256": "cf6ae197ab77be1fd5e480110e42151b0c3d7f1547905bfd7271e2f681b7fbd0"
+    },
+    {
+      "path": "tests/module-reason-assertions.patch",
+      "bytes": 2999,
+      "sha256": "bc55854696ac2db7ccb0521b6768e56821202a573269b5fff5e420c867a92301"
+    }
+  ],
+  "bytes": 324094,
+  "source_paths": [
+    "aero_bench/tasks/logistics/native_parcel_contract.py",
+    "aero_bench/tasks/logistics/native_parcel_runtime.py",
+    "aero_bench/tasks/logistics/facility_presence.py",
+    "aero_bench/tasks/logistics/physical_observations.py",
+    "tests/tasks/test_native_parcel_runtime.py",
+    "tests/tasks/test_native_parcel_review_regressions.py"
+  ]
+}
