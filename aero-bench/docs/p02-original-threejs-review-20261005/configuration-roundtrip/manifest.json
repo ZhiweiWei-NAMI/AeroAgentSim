@@ -1,6 +1,7 @@
 {
-  "scope": "Actual configuration UI and existing sealed-v8 replay; no newly executed native run",
-  "created_utc": "2026-10-06T04:01:31.549602+00:00",
+  "scope": "Configuration editor round-trip only; original BENCH GLB preview and existing sealed-v8 replay. No new native run started.",
+  "created_at": "2026-10-05T21:56:04.099670-07:00",
+  "created_utc": "2026-10-06T04:56:04.099684+00:00",
   "source_files": [
     {
       "path": "aero-bench/frontend/src/app.ts",
@@ -36,111 +37,171 @@
       "path": "aero-bench/frontend/src/operations-monitor.ts",
       "bytes": 68381,
       "sha256": "b4c7a27eb34c1aa780fffef82fe09c4902edd4f84399acd5b25fab5edcd679be"
+    },
+    {
+      "path": "aero-bench/frontend/src/map.ts",
+      "bytes": 249276,
+      "sha256": "a12f0c88185775ecfdec84da3540ca6a8a20524e6b0e92251b495c39d930ddc0"
+    },
+    {
+      "path": "aero-bench/frontend/src/city-asset-cache.ts",
+      "bytes": 8902,
+      "sha256": "77d9bd81906bcb1bb9ea0a424f1382f3434733e64f68549791ed47126381164b"
+    },
+    {
+      "path": "aero-bench/frontend/src/entity-visuals.ts",
+      "bytes": 3183,
+      "sha256": "1b72569aafda789bfba30174b9c3c622dfb85bcab0b0ad5a234fc32018aceaab"
+    },
+    {
+      "path": "aero-bench/frontend/src/loading-progress.ts",
+      "bytes": 2880,
+      "sha256": "5e93879b301576689ef42cd3b74b2bc37ba62fe1f0f755d4cd73188d764551dd"
     }
   ],
+  "application_source_unchanged_from_c6bd9fbb": true,
+  "prior_capture_commit": "c6bd9fbb",
   "artifacts": [
     {
       "file": "01-edit-save-reload.gif",
-      "bytes": 595375,
-      "sha256": "b48035e70ed0d26de4009076de44f35986959c6d60ee4523dea5769acdcc19cb",
+      "bytes": 1041000,
+      "sha256": "3e3e3b0c59449d07a3bd10c9d8f0918085fe85e2eb53c0601f1d7c63dbaf7f2a",
       "width": 1600,
       "height": 1000,
-      "frames": 5
+      "frames": 5,
+      "total_duration_ms": 12000
     },
     {
       "file": "01-run-before-configuration.png",
-      "bytes": 207335,
-      "sha256": "4d613142d7ef53e7f38840629090e4e4ba969e3d4d3a21c8971f8756c7624119",
+      "bytes": 668829,
+      "sha256": "0ff1171ac7697400a908985f56e87b0b96420ff35eba8bccd503d12783c1fe3e",
       "width": 1600,
       "height": 1000,
       "frames": 1
     },
     {
       "file": "02-language-compile-return.gif",
-      "bytes": 412441,
-      "sha256": "c2aac266e83db4c9cd864a7d1fafa725ae808d166601cb3f6cd09905da47c2ea",
+      "bytes": 660982,
+      "sha256": "fb346c4dad6a48a4481a59f9b856e7dbe0512ee1db5a8aee3319d1145faaf11f",
       "width": 1600,
       "height": 1000,
-      "frames": 3
+      "frames": 3,
+      "total_duration_ms": 7200
     },
     {
       "file": "02-studio-editor-en.png",
-      "bytes": 388807,
-      "sha256": "7ab65c030a5ec39c49f9790a3e56c52851a5a45497eee8709f1302cff32f961b",
+      "bytes": 388790,
+      "sha256": "44489e29ffcfba4032880f55a1d41e2452fd0bb05d1b9968b79ed20ff48c68c9",
       "width": 1600,
       "height": 1000,
       "frames": 1
     },
     {
       "file": "03-seed-edited.png",
-      "bytes": 389590,
-      "sha256": "6193e9a58b7153c2b09dcb78ca48f79547da9c307017de1554d9cd8635e7e876",
+      "bytes": 389572,
+      "sha256": "ee388dbe214d6a12b45a38c29897b2341795da1a8aa108734895eb6d92acd510",
       "width": 1600,
       "height": 1000,
       "frames": 1
     },
     {
       "file": "04-draft-saved.png",
-      "bytes": 390945,
-      "sha256": "bcc34acc934836598922a9f0629a9d2129156f7c118dbf653162caa56fb71f67",
+      "bytes": 390459,
+      "sha256": "0cf783b8ae5b0ccabb70314bf34f293050f0f9c31ecfdd676a90186c0dd55490",
       "width": 1600,
       "height": 1000,
       "frames": 1
     },
     {
       "file": "05-edited-draft-reloaded.png",
-      "bytes": 388833,
-      "sha256": "cddb7af345879346b6bdbb81a9bf3ed77642627d3aa4fb9b11e70dc628f7f01d",
+      "bytes": 388789,
+      "sha256": "a1165a1e1478880774567af952ad56241a6c41bd18297a08307610e14e03a6f2",
       "width": 1600,
       "height": 1000,
       "frames": 1
     },
     {
       "file": "06-studio-editor-zh.png",
-      "bytes": 409017,
-      "sha256": "f84e1b3a34368afd0321fca8f8c54dee17be4f36f3a00c83999299e24ac36874",
+      "bytes": 408779,
+      "sha256": "9df68166e558af0a01f45f49b6921c31c7e51fc87943f7766b0bd0ebaaaca45c",
       "width": 1600,
       "height": 1000,
       "frames": 1
     },
     {
       "file": "07-studio-narrow-zh.png",
-      "bytes": 280368,
-      "sha256": "b3d6f05cb2a9536389e12d9ccb1db0ac88aed516ea646e352feb367eb89103d8",
+      "bytes": 280355,
+      "sha256": "7faa29b86961c3c537043e43ef6f7b526512768e8bff4c5fb587cbdab7fb8f54",
       "width": 1200,
       "height": 800,
       "frames": 1
     },
     {
       "file": "08-studio-narrow-en.png",
-      "bytes": 271816,
-      "sha256": "c9bac1c0833a160e71ab30cc7a2457a8c450a7c33cfda7d9b1c985d0f969abe4",
+      "bytes": 270326,
+      "sha256": "a31031aa2be35d0fa23148bf8b9942c42fa95f2fb08af6b414a2dd03ead7adee",
       "width": 1200,
       "height": 800,
       "frames": 1
     },
     {
       "file": "09-matching-compiled-handoff.png",
-      "bytes": 413690,
-      "sha256": "9a7e97ca54450a2863a9fe5a25b9b6bc3f01616332f6e210df04a20764bd2ff7",
+      "bytes": 413976,
+      "sha256": "80b41cbdedce3e15c4505deada6ed34f55843c4d0b77fdd5092b29b3e7789630",
       "width": 1600,
       "height": 1000,
       "frames": 1
     },
     {
       "file": "10-original-replay-restored.png",
-      "bytes": 207459,
-      "sha256": "00cd106b33a1faf58ed6f0b4d0c1afb52d318c227840bfe9f17664838831d5a3",
+      "bytes": 668829,
+      "sha256": "0ff1171ac7697400a908985f56e87b0b96420ff35eba8bccd503d12783c1fe3e",
       "width": 1600,
       "height": 1000,
       "frames": 1
     },
     {
+      "file": "README.md",
+      "bytes": 3351,
+      "sha256": "d235537ef193967566ea322b35d92174dc21613902d622a490d093080f069c40"
+    },
+    {
+      "file": "capture-script.mjs",
+      "bytes": 8778,
+      "sha256": "3c85535a93b6123db4aa7a4ac0a0b1ee9a60969187db235b8d0d4c98e6f98aa4"
+    },
+    {
       "file": "operation-evidence.json",
-      "bytes": 14046,
-      "sha256": "82113ed81f6253fbb0382fc867fea17557e833a19c74cc9d9ce70e226a967ec8"
+      "bytes": 20014,
+      "sha256": "35eb95e2bcfeec8a1125739afb83b4e0c224033bff5b64458df7950ec630e305"
+    },
+    {
+      "file": "operation-roundtrip.mjs",
+      "bytes": 7554,
+      "sha256": "658647a53e330e36ac5b5e764f1f2c992259e0bfab357335d9b3b250a7f07a9b"
+    },
+    {
+      "file": "operator-start.md",
+      "bytes": 3436,
+      "sha256": "9c6967716722c07a353f90ccf7165fc0fa80e7d9c6b42efa140ae72f779997cd"
     }
   ],
   "preserved_assets": "Existing BENCH GLB/city loading pipeline. No model or map assets uploaded.",
-  "gif_method": "Original browser PNGs, original 1600x1000 dimensions, 128-color GIF palette. No scene redraw. Original PNGs retained."
+  "gif_method": "Screenshot-step GIF assembled from actual browser PNGs, not continuous recording; original dimensions, 128-color palette, original PNGs retained.",
+  "frame_groups": {
+    "01-edit-save-reload.gif": [
+      "01-run-before-configuration.png",
+      "02-studio-editor-en.png",
+      "03-seed-edited.png",
+      "04-draft-saved.png",
+      "05-edited-draft-reloaded.png"
+    ],
+    "02-language-compile-return.gif": [
+      "06-studio-editor-zh.png",
+      "09-matching-compiled-handoff.png",
+      "10-original-replay-restored.png"
+    ]
+  },
+  "native_execution_started": false,
+  "integration_branch_remote_exists": false
 }
