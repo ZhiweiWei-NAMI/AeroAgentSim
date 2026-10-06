@@ -223,9 +223,10 @@
     "run_summary": false
   },
   "gaps": [
-    "Original verifier failed before issuing goal verdict; normal same-run public map/GIF acceptance remains unfinished.",
-    "Historical per-run Start ID was absent from prior receipts; this packet does not reconstruct credentials or claim reattachment.",
-    "Actual Gazebo RTF was not exported in inspected public evidence."
+    "Live Control reconnect and full configuration-to-UI-start acceptance remain unfinished; post-run workspace viewer does not exercise that path.",
+    "Historical Start ID absent from previous receipts; no credentials reconstructed.",
+    "Actual Gazebo RTF was not exported in inspected evidence.",
+    "Native UAV GLB binding unavailable; original city GLBs/textures and independent UAV marker are visible."
   ],
   "scenario_identity": {
     "scenario_digest": "5f3c7bd9de29d2e26e3d89972ad153de2aa09fa81d4187cf9d1fbee60f2d8c0d",
@@ -244,7 +245,7 @@
     }
   ],
   "runtime_terminal_status": "run.completed at tick300/sim150s, independently bound to original ledger row163542",
-  "independent_verifier_status": "failed at wait_verifier, exit1: deployed AMSL-only adapter ignores declared ENU datum; independent same-seal re-evaluation pending",
+  "independent_verifier_status": "Separate same-seal datum-aware reevaluation passed all 15 goals with complete coverage; original runner error preserved.",
   "verifier_failure_receipt": "verifier-region-failure.json",
   "resolved_run_source_correction": {
     "previous_published_reference": "historical native-v7/resolved-run.json, run8af7b060..., seed20261001",
@@ -254,5 +255,14 @@
     "identity_selection": "run_id exactly equals sealed runtime run_id",
     "digest_encoding": "aero_bench.serialization.canonical_json_bytes(exact resolved-run record)"
   },
-  "seed": 20261002
+  "seed": 20261002,
+  "original_independent_verifier_status": "failed at wait_verifier, exit1: deployed AMSL-only adapter ignores declared ENU datum; independent same-seal re-evaluation pending",
+  "corrected_reevaluation": {
+    "identity": "e6a653a3646e2b94fec0f5851f34e8641435fb13937936a0fcf6e3e3d7d750c0",
+    "result": "passed",
+    "goals_passed": 15,
+    "coverage_complete": true,
+    "receipt": "corrected-reevaluation/reevaluation-receipt.json",
+    "report": "corrected-reevaluation/outputs/verifier/report.json"
+  }
 }

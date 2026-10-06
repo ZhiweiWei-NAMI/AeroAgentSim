@@ -1,0 +1,131 @@
+{
+  "run_id": "9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd",
+  "compilation_id": "a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610",
+  "reevaluation_id": "e6a653a3646e2b94fec0f5851f34e8641435fb13937936a0fcf6e3e3d7d750c0",
+  "execution_attempt_id": "p02-verifier-enu-recheck-stage3",
+  "status": "passed",
+  "coverage_complete": true,
+  "goal_count": 15,
+  "passed_goal_count": 15,
+  "goals": [
+    {
+      "goal_id": "goal.formal.initial_outside_arrival",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.armed_after_start",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.takeoff_agl",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.trace_coverage",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.pre_observation_ground_track",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.target_observations",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.geofence_containment",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.no_fly_avoidance",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.contact_safety",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.report_outcome",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.return_to_launch",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.landing",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.stopped_dwell",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.terminal_disarm",
+      "passed": true,
+      "failure_class": null
+    },
+    {
+      "goal_id": "goal.formal.semantic_f1",
+      "passed": true,
+      "failure_class": null
+    }
+  ],
+  "original_runner_status": "error",
+  "original_runner_failure": "resolved formal region altitude planes are not level",
+  "original_runner_result_replaced": false,
+  "same_sealed_evidence": true,
+  "seal_manifest_unchanged": true,
+  "simulation_executed": false,
+  "new_verifier_image_id": "sha256:5d9c75aeb3ccd7ec2b65d4fb7c9b393bdf5b7096e2d6311050bfc85c6445224a",
+  "old_verifier_image": "localhost:5000/aero-bench/verifier@sha256:082f4ecd3693d50fd6d6946f6b436de73d40da9eeabb00d8cc7e9c00db78713f",
+  "source_revision": "97c9a5a5c97cb929d4d67847d0a77cca19c462ea244c01c7ebdd923a8c54333b",
+  "source_adapter_sha256": "ed5f0c2686c8e1256e28202c3a522658a332ea6d2d1a2a500c601a0549b8c640",
+  "seed": 20261002,
+  "providers": [
+    {
+      "provider_id": "flight",
+      "adapter": "px4.gazebo",
+      "runtime_image": "localhost:5000/aero-bench/flight@sha256:661dc7420eb130147ff422349e2bf097bd951c89f37a2f02e6f7aec088018abc",
+      "config_digest": "53938bb502a04edaa79ba53bbd0af314245b69975284c629fe66e3b222bc4c4c"
+    },
+    {
+      "provider_id": "network",
+      "adapter": "ns3.rpc",
+      "runtime_image": "localhost:5000/aero-bench/network@sha256:96cc757f5947c2af2179befed3fbf842a0ddd6a3da1d24855c71439575d821b3",
+      "config_digest": "c258117f01b1bc4f7c5390841ab71fea5c41b7995a6be6511913b7ec87213b82"
+    },
+    {
+      "provider_id": "traffic",
+      "adapter": "sumo.traci",
+      "runtime_image": "localhost:5000/aero-bench/traffic@sha256:0823507eb65d928ea073a2eaaa252e63c4c0ffeacc9f9efb99c106f53b919f8f",
+      "config_digest": "fd5cd8a9bba7da3cebb0bd63d2621a69661754c431f869aead76f764f8b58a5c"
+    },
+    {
+      "provider_id": "business",
+      "adapter": "inspection.business",
+      "runtime_image": "localhost:5000/aero-bench/business@sha256:09181f134e16d9ef08c998bb53675a68d05a2795d2e9a5c43018471e16491fa5",
+      "config_digest": "16cb03363c3bd096d886f21bcc1f0ec7728d4fef240922f4d2b1a6afe43d5d57"
+    }
+  ],
+  "started_los_angeles": "2026-10-06T00:25:44.505856-07:00",
+  "finished_los_angeles": "2026-10-06T00:32:41.856704-07:00",
+  "elapsed_seconds": 417.3508484363556,
+  "report_sha256": "7ef987ba64db74822710e0f7606813d50b32183b2fd4a1038dcb731a43496a3b",
+  "report_schema": "aero-bench.verification/v1",
+  "goal_configuration_changed": false,
+  "altitude_tolerance_m": 1e-06
+}
