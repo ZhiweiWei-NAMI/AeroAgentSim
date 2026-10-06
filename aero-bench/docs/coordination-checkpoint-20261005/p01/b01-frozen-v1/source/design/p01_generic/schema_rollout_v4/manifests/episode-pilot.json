@@ -1,0 +1,43 @@
+{
+  "manifest": "p01v4/episode-pilot",
+  "version": 1,
+  "episode_id": "L4-1_v1__seed00",
+  "selection_reason": "Episode L4-1_v1__seed00 is a fixed TRAIN episode of the prior v2 engineering cohort (host_data_v2/cohort.json, cutoff 250), so its tick span covers the historical cutoff 250 and a finite future to tick 900 required by S01.04 causal split checks. It is one of the four episodes whose capture supplement (rgb + lidar) exists in design/p01_generic/structured_mm_20261006/host_data_v2, enabling independent per-modality import; L4-1_v1__seed00 has the largest record volume of the four host_data_v2 episodes, exercising import at realistic scale.",
+  "capture_view_id": "uav_view_000__u_inspect_l4_1_v1",
+  "observer_entity_id": "u_inspect_l4_1_v1",
+  "split_role": "TRAIN",
+  "sources_read_only": {
+    "render_ready_root": "aw_data/render_ready_episodes",
+    "semantic_truth_root": "aw_data/objective_semantic_truth",
+    "capture_root": "design/p01_generic/structured_mm_20261006/host_data_v2/L4-1_v1/seed00"
+  },
+  "coverage": {
+    "source_records": {
+      "global_entity_roster.json": 78,
+      "truth_frames.jsonl": 901,
+      "world_truth_graph_deltas.jsonl": 180,
+      "event_occurrences.jsonl": 10
+    },
+    "canonical_records": {
+      "entity": 78,
+      "frame": 41472,
+      "edge": 138831,
+      "event": 10,
+      "observation": 22
+    },
+    "ticks_covered": {"first": 0, "last": 900, "count": 901},
+    "modalities": {"rgb": 11, "lidar": 11},
+    "missing_modalities": []
+  },
+  "import_run": {
+    "command": "PYTHONPATH=<code_root>/src python -B -m p01v4.data.import_episode --episode L4-1_v1__seed00 --view uav_view_000__u_inspect_l4_1_v1 --observer u_inspect_l4_1_v1 --capture-root <results_root_ref> --out-derived <derived>/pilot_L4-1_v1__seed00.canonical.jsonl --out-manifest manifests/pilot-import.json",
+    "wall_seconds": 12.665,
+    "max_rss_kbytes": 716400,
+    "cuda_visible_devices": "empty",
+    "device": "CPU only"
+  },
+  "derived": {
+    "canonical_records": "design/p01_generic/schema_rollout_v4/derived/pilot_L4-1_v1__seed00.canonical.jsonl",
+    "import_manifest": "design/p01_generic/schema_rollout_v4/manifests/pilot-import.json"
+  }
+}
