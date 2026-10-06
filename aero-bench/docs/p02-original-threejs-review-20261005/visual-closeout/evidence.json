@@ -1,0 +1,144 @@
+{
+  "scope": "Actual browser pixels of existing BENCH renderer and original declared GLBs; visual QA only.",
+  "source": {
+    "baseCommit": "ea295073cdd310a31fa2e29317a3571bc716bb87",
+    "sourceSha256": {
+      "frontend/src/map.ts": "a12f0c88185775ecfdec84da3540ca6a8a20524e6b0e92251b495c39d930ddc0",
+      "frontend/src/map.native-presentation.test.ts": "9300fb0e99833afda4d36604f695f43ccd74066c72963a850b8af6469625091d",
+      "frontend/src/operations-monitor.ts": "a1f1ae83d9e484c0f83ce140a628983ac9b39a000e06b65682e1b50afa2cfe31",
+      "frontend/src/operations-monitor.test.ts": "681688ba4501eed4af3111e95c737dd7428fa9dbde204156ca9665530a8b848e",
+      "frontend/src/operations-monitor.css": "18ec9b385c9eb7e04035cce2ed05a3495b65da73fdbe181de098a11de4746dfd",
+      "frontend/src/p02-view.css": "5bd5b0002940c534d508cc20417e489cc9a1985f1681afdd7e7b6b22fa63031e",
+      "frontend/src/city-studio.ts": "bac4bf216899fc57b554393e816637f7f62d3abff98596c0c5a3eef4ec781b28",
+      "frontend/src/city-studio.css": "498a58996b35a5f75c131e2cd3dad6dbaa319562cfac04ba7dea69fe910d6dfa",
+      "frontend/src/city-studio.test.ts": "90fd1ffd7ff784e5fe9adba975c7bd75cdc8fcafb0ad0962be78d545d6c79eec",
+      "frontend/src/i18n.ts": "b46e8a0825797bad9df291566262de890d20149fe01d58fce1bd7eca7149e712"
+    },
+    "sourceVersion": "fe1d32a8a810e2e89a5e933261c76e82c990da39387b8f9301be65976eaa87a2",
+    "sceneAssets": "Original BENCH GLBs unchanged",
+    "providerStarted": false
+  },
+  "checks": {
+    "focusedTestsPassed": 52,
+    "typecheck": "passed",
+    "productionBuild": "passed; existing large chunk warning",
+    "runConfigurationRoundtrip": [
+      {
+        "name": "configuration-narrow-en",
+        "body": {
+          "width": 1200,
+          "height": 800,
+          "viewport": [
+            1200,
+            800
+          ]
+        },
+        "cursor": "9"
+      },
+      {
+        "name": "run-restored-narrow-en",
+        "body": {
+          "width": 1200,
+          "height": 800,
+          "viewport": [
+            1200,
+            800
+          ]
+        },
+        "cursor": "9"
+      }
+    ],
+    "selection": [
+      {
+        "selection": "uav.inspector◉",
+        "inspector": "uav.inspectorAircraft · TAKEOFFGlobal overviewExternal followRigid onboardGimbal onboard (unavailable)Physical telemetryActivity TAKEOFFConnectivity UNKNOWNHealth HealthyPositionE -450 m / N -450 mAltitude0.17 m AGLHeading90° (Clockwise from true north)Speed0.01 m/sBattery remaining95%PayloadUNKNOWNData freshnessSEALED REPLAY sample is synchronized with source clockSample time00:00:05Declared business associationAuthored business example (not physical delivery evidence from this run)Current cursor 10Order inspection-overlay.1Parcel inspection-overlay.1DetailsOrderorder.inspection-overlay.1Parcelparcel.order.inspection-overlay.1Carrieruav.inspectorCustodyuav.inspectorCustody kindentityDestinationfacility.liedeAttempt1Phasepicked_upSourceaero_bench/tasks/logistics/orders.pySource kindauthored_business_fixtureCurrent cursor10tick10Open camera previewSwap main viewCamera source: Simulated RGB · ReadyRaw camera sourcesimulated_rgb · readyCamera image slot",
+        "body": {
+          "width": 1600,
+          "height": 1000,
+          "viewport": [
+            1600,
+            1000
+          ]
+        },
+        "cursor": "9"
+      }
+    ],
+    "saveReload": {
+      "exactBytesRetained": true,
+      "retainedSeed": true,
+      "dirtyEditSurvivedLanguageSwitch": true
+    },
+    "internalPanelScroll": {
+      "scrollTop": 200,
+      "clientHeight": 432,
+      "scrollHeight": 1806,
+      "overflowY": "auto",
+      "body": [
+        1200,
+        800
+      ],
+      "viewport": [
+        1200,
+        800
+      ]
+    },
+    "configuration": [
+      {
+        "step": "camera-config-1600-en",
+        "body": {
+          "width": 1600,
+          "height": 1000,
+          "viewport": [
+            1600,
+            1000
+          ]
+        },
+        "language": "en",
+        "status": "Native city ready, not yet run",
+        "clock": "Not run",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "exactSavedBytes": true
+      },
+      {
+        "step": "camera-config-narrow-en",
+        "body": {
+          "width": 1200,
+          "height": 800,
+          "viewport": [
+            1200,
+            800
+          ]
+        },
+        "language": "en",
+        "status": "Native city ready, not yet run",
+        "clock": "Not run",
+        "nativePreviewCamera": "declared-asset-bounds-oblique",
+        "exactSavedBytes": true
+      }
+    ],
+    "pageErrors": [],
+    "abortedReplayRequests": 198
+  },
+  "runtime": {
+    "providerStarted": false,
+    "savedCompilationRegistration": "inspection.huangpu.native.v7",
+    "savedCompilationId": "a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610",
+    "savedDraftSha256": "68c049b28e15d4e2886b36ff222361e6bfb059b4ff8b23339dd7e0a4fa7f368f",
+    "savedSeed": 20261002,
+    "compiledRunId": "9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd",
+    "sealedReplayRunId": "c69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba",
+    "matchingExecution": "Pending separate native execution owner; active service remains sealed native-v8 replay."
+  },
+  "screenshots": [
+    "selected-en.png",
+    "selected-zh.png",
+    "narrow-desktop-en.png",
+    "configuration-narrow-en.png",
+    "run-restored-narrow-en.png",
+    "camera-config-1600-en.png",
+    "camera-config-narrow-en.png",
+    "saved-reloaded-en.png",
+    "14-compile-light-en.png"
+  ],
+  "privacy": "No credentials, raw draft/config bodies, native scene/trace files or assets published."
+}

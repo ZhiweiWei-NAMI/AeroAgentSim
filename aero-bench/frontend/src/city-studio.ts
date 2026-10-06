@@ -6,7 +6,7 @@ import {
   buildingPlacement, fetchBuildingRenderManifest,
 } from "./city-building-renders";
 import {
-  fetchAuthoringCatalog, fetchAuthoringJob, fetchAuthoringSource, loadReadyAuthoringPresentation,
+  fetchAuthoringCatalog, fetchAuthoringJob, fetchAuthoringSource, fetchNativeSceneCatalog, loadReadyAuthoringPresentation,
   submitSceneSelection, type AuthoringCatalog, type AuthoringJob, type AuthoringSource,
   type NativeSceneRegistration, type VerifiedStaticPresentation,
 } from "./city-authoring-api";
@@ -71,9 +71,27 @@ import { PublicTraceMap, type MapScene, type MapView } from "./map";
 import { parseMeshPack } from "./osm2world/pack";
 import { LayerState } from "./state/layers";
 import type { TraceTarget } from "./state/target";
+import { currentLanguage, initLanguage, setLanguage, t, tf, type I18nKey, type Language } from "./i18n";
 
 type StudioTab = "runtime" | "spatial" | "algorithm" | "events" | "compile" | "region";
 const TABS: readonly StudioTab[] = ["runtime", "spatial", "algorithm", "events", "compile", "region"];
+
+/** Translate only explicit presentation bindings; inputs, IDs and source data stay intact. */
+export function translateStudioShell(root: HTMLElement): void {
+  for (const [binding, attribute] of [["data-studio-i18n", "textContent"],
+    ["data-studio-aria", "aria-label"], ["data-studio-title", "title"]] as const) {
+    for (const node of root.querySelectorAll<HTMLElement>(`[${binding}]`)) {
+      const key = node.getAttribute(binding) as I18nKey;
+      const label = t(key);
+      if (label === undefined) throw new Error(`Unknown Studio presentation key: ${key}`);
+      if (attribute === "textContent") node.textContent = label;
+      else node.setAttribute(attribute, label);
+    }
+  }
+  for (const button of root.querySelectorAll<HTMLButtonElement>("[data-studio-language]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.studioLanguage === currentLanguage()));
+  }
+}
 const BLOCKING_FLIGHT_ISSUES = new Set([
   "building_collision", "facility_collision", "airspace_incursion",
   "ground_collision", "invalid_flight_segment", "aircraft_collision",
@@ -343,23 +361,34 @@ function selectedTab(): StudioTab {
   return TABS.find(value => value === tab) ?? "runtime";
 }
 
+/** Saved scenePath is a source selector, not a fetch URL for a native registration. */
+export function savedNativeRegistration(
+  scenePath: string, registrations: readonly NativeSceneRegistration[],
+): NativeSceneRegistration | null {
+  const matches = registrations.filter(item => item.scene_path === scenePath);
+  if (matches.length > 1) throw new Error(`Multiple native registrations select ${scenePath}`);
+  return matches[0] ?? null;
+}
+
 /** A compiled result is input for a run, not a run: Control loads the immutable compilation and
  * the viewer's run console starts it. Nothing here starts, polls or verifies a run. */
-function renderCompiledHandoff(root: HTMLElement, selection: CityCompiledSelection): void {
+export function renderCompiledHandoff(root: HTMLElement, selection: CityCompiledSelection): void {
   const card = document.createElement("section");
   card.className = "studio-card";
   card.dataset.role = "compiled-handoff";
   const title = document.createElement("h3");
-  title.textContent = "已编译，尚未运行";
+  title.textContent = t("compile.handoffTitle");
   const detail = document.createElement("p");
   detail.className = "studio-note";
-  detail.textContent = `编译 ${selection.compilationId} · 场景注册 ${selection.registrationId} · `
-    + `运行 ${selection.runIds.join("、")}。由本地运行控制服务载入此编译后，在查看器的运行控制中启动；`
-    + "运行结果以封存证据和独立验证为准。";
+  detail.textContent = `${t("compile.savedIdentity")}: ${selection.draftSha256} · `
+    + tf("compile.handoffDetail", {
+      compilation: selection.compilationId, registration: selection.registrationId,
+      runs: selection.runIds.join(", "),
+    });
   const link = document.createElement("a");
   link.className = "studio-button";
   link.href = "/";
-  link.textContent = "打开运行控制台";
+  link.textContent = t("compile.handoffLink");
   card.append(title, detail, link);
   root.replaceChildren(card);
 }
@@ -447,15 +476,16 @@ class CityStudio {
   private selectedLogisticsRevision = 0;
 
   constructor() {
+    translateStudioShell(this.root);
     try {
       const loaded = loadCityWorkspaceConfig();
       this.config = loaded ?? createDefaultCityWorkspaceConfig();
-      this.saveStatus.textContent = loaded === null ? "新草稿未保存" : "本地草稿已加载";
+      this.saveStatus.textContent = loaded === null ? t("studio.newDraft") : t("studio.loaded");
       this.saveStatus.dataset.state = loaded === null ? "dirty" : "saved";
     } catch (error) {
       this.initialStorageError = `本地草稿读取失败：${errorMessage(error)}。当前显示默认草稿，原存储未改动。`;
       this.config = createDefaultCityWorkspaceConfig();
-      this.saveStatus.textContent = "本地草稿读取失败";
+      this.saveStatus.textContent = t("studio.storageError");
       this.saveStatus.dataset.state = "error";
     }
     this.nameInput.value = this.config.name;
@@ -465,8 +495,8 @@ class CityStudio {
     }
     this.renderTab();
     this.renderSummary();
-    this.startMap();
-    if (!this.authoringMode) void this.loadInitialSpatial();
+    if (this.authoringMode) this.startMap();
+    else void this.loadInitialSpatial();
     const playbackTimer = window.setInterval(() => this.syncPlayback(), 180);
     window.addEventListener("beforeunload", () => {
       window.clearInterval(playbackTimer); this.authoringAbort?.abort(); this.nativeReferenceAbort?.abort();
@@ -479,6 +509,18 @@ class CityStudio {
   }
 
   private bindControls(): void {
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>("[data-studio-language]")) {
+      button.addEventListener("click", () => {
+        setLanguage(button.dataset.studioLanguage as Language);
+        translateStudioShell(this.root);
+        document.documentElement.lang = currentLanguage();
+        if (this.saveStatus.dataset.state === "saved") this.saveStatus.textContent = t("studio.loaded");
+        if (this.saveStatus.dataset.state === "dirty") this.saveStatus.textContent = t("studio.dirty");
+        // Re-render presentation from this same in-memory draft, without a reload or save.
+        this.renderTab();
+        this.renderSummary();
+      });
+    }
     this.nameInput.addEventListener("change", () => {
       this.changeDraft({ ...this.config, name: this.nameInput.value.trim() });
     });
@@ -540,8 +582,8 @@ class CityStudio {
     const whole = Math.floor(seconds);
     this.clockOutput.value = `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
     const playing = this.mapRoot.dataset.previewPlaying === "true";
-    this.playButton.textContent = playing ? "暂停" : "播放";
-    this.playButton.setAttribute("aria-label", playing ? "暂停编排预览" : "播放编排预览");
+    this.playButton.textContent = playing ? t("control.pause") : t("studio.play");
+    this.playButton.setAttribute("aria-label", `${playing ? t("control.pause") : t("studio.play")} · ${t("studio.preview")}`);
   }
 
   private setCollapsed(collapsed: boolean): void {
@@ -646,7 +688,7 @@ class CityStudio {
       } else {
         const note = document.createElement("p");
         note.className = "studio-note";
-        note.textContent = "原生参考场景不提供默认城市的离线 SUMO 交通预览；未自动切换场景。";
+        note.textContent = t("studio.nativeNoTraffic");
         traffic.append(note);
       }
     } else if (this.tab === "algorithm") {
@@ -661,7 +703,11 @@ class CityStudio {
       const handoff = document.createElement("div");
       this.panelRoot.append(host, handoff);
       this.compilePanel = renderCityCompilePanel(host, () => this.config,
-        selection => renderCompiledHandoff(handoff, selection),
+        selection => {
+          renderCompiledHandoff(handoff, selection);
+          this.previewStatus.textContent = t("compile.handoffTitle");
+          this.previewStatus.dataset.state = "ready";
+        },
         registration => this.selectNativeReference(registration));
     } else {
       const editor = document.createElement("div");
@@ -719,12 +765,12 @@ class CityStudio {
       this.renderFollowChoices();
       this.mapReady = visual.kind === "native-city";
       this.basemapNote = visual.kind === "native-city"
-        ? "已校验声明的建筑 GLB、道路、地面覆盖与街道设施"
+        ? t("studio.nativeAssets")
         : visual.kind === "unavailable" ? "已注册 PublicScenario 未发布三维网格" : "";
       this.draftError = this.validateDraft();
       this.nameInput.value = this.config.name;
-      this.mapPlace.textContent = "已注册原生场景";
-      this.mapMode.textContent = "公共场景参考";
+      this.mapPlace.textContent = t("studio.nativeSource");
+      this.mapMode.textContent = t("studio.referenceMode");
       this.saveStatus.textContent = "参考草稿已载入，尚未保存";
       this.saveStatus.dataset.state = this.draftError === null ? "dirty" : "error";
       if (visual.kind === "unavailable") {
@@ -733,7 +779,7 @@ class CityStudio {
         this.previewStatus.textContent = "原生参考已校验；未发布三维网格";
         this.previewStatus.dataset.state = "warning";
       } else if (visual.kind === "native-city") {
-        this.previewStatus.textContent = "原生城市呈现已就绪，尚未运行";
+        this.previewStatus.textContent = t("studio.nativeReady");
         this.previewStatus.dataset.state = "ready";
       } else {
         this.previewStatus.textContent = "正在装配已验证原生场景";
@@ -945,9 +991,9 @@ class CityStudio {
     this.sidebarSubtitle.textContent = "按模块编辑，同一份草稿随时可导出。";
     this.syncSceneBackdropLabels();
     this.mapPlace.textContent = cityPreviewScenePresetForPath(this.config.scenePath)?.placeLabel
-      ?? this.spatial?.sceneName ?? "普通城市预览";
-    this.mapMode.textContent = "编排视图";
-    this.previewFootSecondary.textContent = "草稿尚未接入 Business / Energy Provider。导出 JSON 后需按正式规格接入执行与验证流程。";
+      ?? this.spatial?.sceneName ?? t("studio.ordinaryPreview");
+    this.mapMode.textContent = t("studio.mode");
+    this.previewFootSecondary.textContent = t("studio.footer");
     this.nameInput.disabled = false;
     requireElement<HTMLInputElement>("#studio-import").disabled = false;
     this.activateTab("runtime", true);
@@ -1417,17 +1463,16 @@ class CityStudio {
     if (this.authoringMode) return;
     if (this.nativeReference !== null) {
       const inspection = inspectNativeReferenceVisual(this.nativeReference);
+      this.mapPlace.textContent = t("studio.nativeSource");
+      this.mapMode.textContent = t("studio.referenceMode");
       const hasVisual = inspection.kind !== "unavailable";
       this.previewKind.textContent = hasVisual
-        ? inspection.kind === "native-city" ? "／ 已验证原生城市呈现" : "／ 已验证原生参考场景"
-        : "／ 已注册原生参考 · 未发布三维网格";
-      this.previewFootPrimary.textContent = `公共场景 ${this.nativeReference.registration.registration_id}`
-        + (hasVisual ? " 仅作为已注册编译输入与可视参考；"
-          : " 已校验为注册编译输入，但当前注册未发布三维网格；")
-        + "当前未执行、未验证运行结果。";
+        ? inspection.kind === "native-city" ? t("studio.verifiedCity") : t("studio.verifiedReference")
+        : t("studio.noMesh");
+      this.previewFootPrimary.textContent = tf("studio.nativeFooter", { registration: this.nativeReference.registration.registration_id });
     } else if (this.spatial === null) {
       this.mapPlace.textContent = cityPreviewScenePresetForPath(this.config.scenePath)?.placeLabel
-        ?? "普通城市预览";
+        ?? t("studio.ordinaryPreview");
       this.previewKind.textContent = "／ 场景资料加载中";
       this.previewFootPrimary.textContent = "正在读取场景几何资料。";
     } else if (this.spatial.data.roadClearance === null) {
@@ -1446,7 +1491,28 @@ class CityStudio {
 
   private async loadInitialSpatial(): Promise<void> {
     try {
-      this.spatial = await loadSpatialSource(this.config.scenePath);
+      const scenePath = this.config.scenePath;
+      if (cityPreviewScenePresetForPath(scenePath) === null) {
+        const outcome = await fetchNativeSceneCatalog();
+        if (outcome.kind === "error") throw new Error(`[${outcome.code}] ${outcome.detail}`);
+        if (this.authoringMode || this.config.scenePath !== scenePath) return;
+        const registration = savedNativeRegistration(scenePath, outcome.catalog.registrations);
+        if (registration !== null) {
+          const reference = await loadNativeReferenceScene(registration);
+          if (this.authoringMode || this.config.scenePath !== scenePath) return;
+          // Keep the saved edited draft. The registered reference supplies verified
+          // public geometry; it must not replace saved seed/name/business inputs.
+          this.nativeReference = reference;
+          this.spatial = nativeReferenceSpatialSource(reference);
+          this.draftError = this.validateDraft();
+          this.startMap();
+          if (this.tab === "spatial" || this.tab === "runtime") this.renderTab();
+          this.renderSummary();
+          return;
+        }
+      }
+      this.startMap();
+      this.spatial = await loadSpatialSource(scenePath);
       this.syncRenderedBuildingObstacles();
       this.draftError = this.validateDraft();
       if (this.tab === "spatial") this.renderTab();
@@ -1493,7 +1559,7 @@ class CityStudio {
     if (sceneChanged) this.previewIssues = [];
     this.previewError = null;
     this.operationError = null;
-    this.saveStatus.textContent = this.draftError === null ? "未保存更改" : "草稿待修正";
+    this.saveStatus.textContent = this.draftError === null ? t("studio.dirty") : t("studio.needsFix");
     this.saveStatus.dataset.state = this.draftError === null ? "dirty" : "error";
     this.nameInput.value = this.config.name;
     this.trafficPreviewPanel?.refresh();
@@ -1506,7 +1572,7 @@ class CityStudio {
     this.renderSummary();
     if (this.nativeReference !== null) {
       this.previewStatus.textContent = this.draftError === null
-        ? "原生参考草稿已修改，尚未编译" : "原生参考草稿待修正";
+        ? t("studio.nativeChanged") : t("studio.nativeFix");
       this.previewStatus.dataset.state = this.draftError === null ? "warning" : "error";
       return;
     }
@@ -1543,8 +1609,8 @@ class CityStudio {
           if (epoch !== this.mapEpoch || this.nativeReference !== reference
               || this.nativeReferenceAbort !== controller) return;
           this.previewStatus.textContent = progress.phase === "layers"
-            ? `正在校验原生城市图层 ${progress.completed}/${progress.total}`
-            : `正在装配原生建筑 ${progress.completed}/${progress.total}`;
+            ? tf("studio.nativeLayers", { completed: progress.completed, total: progress.total })
+            : tf("studio.nativeAssembling", { completed: progress.completed, total: progress.total });
           this.previewStatus.dataset.state = "loading";
         },
       });
@@ -1565,22 +1631,22 @@ class CityStudio {
         this.mapReady = false;
         this.previewApplied = false;
         this.previewError = null;
-        this.basemapNote = "已注册 PublicScenario 未发布三维网格";
-        this.previewStatus.textContent = "原生参考已校验；未发布三维网格";
+        this.basemapNote = t("studio.nativeNoMeshNote");
+        this.previewStatus.textContent = t("studio.nativeVerifiedNoMesh");
         this.previewStatus.dataset.state = "warning";
         this.renderSummary();
       } else if (visual.kind === "native-city") {
         this.mapReady = true;
         this.previewError = null;
-        this.basemapNote = "已校验声明的建筑 GLB、道路、地面覆盖与街道设施";
-        this.previewStatus.textContent = "原生城市呈现已就绪，尚未运行";
+        this.basemapNote = t("studio.nativeAssets");
+        this.previewStatus.textContent = t("studio.nativeReady");
         this.previewStatus.dataset.state = "ready";
         this.renderSummary();
       }
     } catch (error) {
       if (epoch !== this.mapEpoch || this.nativeReference !== reference || controller.signal.aborted) return;
       this.mapReady = false;
-      this.previewError = `原生参考场景装配失败：${errorMessage(error)}`;
+      this.previewError = `${t("studio.nativeAssembleFailed")}${errorMessage(error)}`;
       this.renderSummary();
     } finally {
       if (this.nativeReferenceAbort === controller) this.nativeReferenceAbort = null;
@@ -1604,7 +1670,7 @@ class CityStudio {
     this.playButton.disabled = true;
     this.timeInput.disabled = true;
     this.previewError = null;
-    this.previewStatus.textContent = this.authoringMode ? "选区静态预览，尚未运行" : "城市加载中";
+    this.previewStatus.textContent = this.authoringMode ? t("studio.authoringStaticPreview") : t("studio.cityLoading");
     this.previewStatus.dataset.state = "loading";
     try {
       this.map = new PublicTraceMap(this.mapRoot, {
@@ -1626,9 +1692,9 @@ class CityStudio {
               this.selectedDraftSceneReady = false;
               this.selectedDraftPendingImport = null;
               this.authoringStage = "城市呈现装配失败";
-              this.authoringError = `已发布城市资产装配失败：${detail ?? "未知原因"}`;
+              this.authoringError = `${t("studio.nativeCityAssetsFailed")}${detail ?? t("studio.unknownReason")}`;
             } else {
-              this.authoringStage = "ready · 完整静态城市呈现，尚未运行";
+              this.authoringStage = t("studio.authoringReady");
               this.authoringError = null;
               this.selectedDraftSceneReady = true;
               void this.finishPendingSelectedImport();
@@ -1641,8 +1707,8 @@ class CityStudio {
           if (!this.authoringMode && native !== null && digest === native.scenario.scenario_digest) {
             if (status === "failed") {
               this.mapReady = false;
-              this.previewError = `原生参考场景装配失败：${detail ?? "未知原因"}`;
-              this.previewStatus.textContent = "原生参考场景失败";
+              this.previewError = `${t("studio.nativeAssembleFailed")}${detail ?? t("studio.unknownReason")}`;
+              this.previewStatus.textContent = t("studio.nativeSceneFailed");
               this.previewStatus.dataset.state = "error";
             } else if (!nativeReferenceHasVisualPresentation(native)) {
               // An incomplete visual declaration remains valid compiler input, but a
@@ -1650,14 +1716,14 @@ class CityStudio {
               this.mapReady = false;
               this.previewApplied = false;
               this.previewError = null;
-              this.basemapNote = "已注册 PublicScenario 未发布三维网格";
-              this.previewStatus.textContent = "原生参考已校验；未发布三维网格";
+              this.basemapNote = t("studio.nativeNoMeshNote");
+              this.previewStatus.textContent = t("studio.nativeVerifiedNoMesh");
               this.previewStatus.dataset.state = "warning";
             } else {
               this.mapReady = true;
               this.previewError = null;
               this.previewStatus.textContent = inspectNativeReferenceVisual(native).kind === "native-city"
-                ? "原生城市呈现已就绪，尚未运行" : "原生参考场景已就绪，尚未运行";
+                ? t("studio.nativeReady") : t("studio.nativeSceneReady");
               this.previewStatus.dataset.state = "ready";
             }
             this.renderSummary();
@@ -1666,9 +1732,9 @@ class CityStudio {
           if (digest !== "default-pack" || this.authoringMode) return;
           if (status === "failed") {
             this.mapReady = false;
-            this.previewError = `城市加载失败：${detail ?? "未知原因"}`;
+            this.previewError = `${t("studio.cityLoadFailed")}${detail ?? t("studio.unknownReason")}`;
             if (this.pendingImport !== null) {
-              this.saveStatus.textContent = "导入未保存：城市加载失败";
+              this.saveStatus.textContent = t("studio.importUnsavedFailed");
               this.saveStatus.dataset.state = "error";
               this.operationError = this.previewError;
               this.pendingImport = null;
@@ -1680,7 +1746,7 @@ class CityStudio {
           this.syncRenderedBuildingObstacles();
           this.draftError = this.validateDraft();
           if (this.tab === "spatial") this.renderTab();
-          this.previewStatus.textContent = "城市已就绪";
+          this.previewStatus.textContent = t("studio.cityReady");
           this.previewStatus.dataset.state = "ready";
           this.requestApply();
           this.renderSummary();
@@ -1691,7 +1757,7 @@ class CityStudio {
       else void this.reloadNativeReferenceMap(this.nativeReference, epoch);
     } catch (error) {
       this.mapReady = false;
-      this.previewError = `三维视图无法启动：${errorMessage(error)}`;
+      this.previewError = `${t("studio.mapStartFailed")}${errorMessage(error)}`;
       this.renderSummary();
     }
   }
@@ -1777,7 +1843,7 @@ class CityStudio {
   private renderFollowChoices(): void {
     const selected = this.followSelect.value;
     const options = this.map?.workspaceEntityChoices() ?? [];
-    this.followSelect.replaceChildren(new Option("城市总览", ""),
+    this.followSelect.replaceChildren(new Option(t("studio.overview"), ""),
       ...options.map(item => new Option(item.label, item.id)));
     this.followSelect.value = options.some(item => item.id === selected) ? selected : "";
   }
@@ -1851,13 +1917,13 @@ class CityStudio {
     }
     this.syncSceneBackdropLabels();
     const unbound = this.config.fleet.filter(item => item.homeFacilityId === null);
-    const counts = `${this.config.fleet.reduce((sum, item) => sum + item.count, 0)} 架无人机 · ${this.config.facilities.length} 处设施 · ${this.config.airspace.length} 处禁飞区`;
+    const counts = tf("studio.counts", { fleet: this.config.fleet.reduce((sum, item) => sum + item.count, 0), facilities: this.config.facilities.length, airspace: this.config.airspace.length });
     this.previewMetrics.textContent = this.basemapNote ? `${counts} · ${this.basemapNote}` : counts;
     if (this.previewError !== null) {
-      this.previewStatus.textContent = "预览失败";
+      this.previewStatus.textContent = t("studio.previewFailed");
       this.previewStatus.dataset.state = "error";
     } else if (this.draftError !== null && this.mapReady) {
-      this.previewStatus.textContent = "草稿待修正";
+      this.previewStatus.textContent = t("studio.needsFix");
       this.previewStatus.dataset.state = "warning";
     }
     const messages: string[] = [];
@@ -1908,7 +1974,7 @@ class CityStudio {
       saveCityWorkspaceConfig(this.checkedConfig());
       this.initialStorageError = null;
       this.operationError = null;
-      this.saveStatus.textContent = "已保存到本地浏览器";
+      this.saveStatus.textContent = t("studio.saved");
       this.saveStatus.dataset.state = "saved";
       this.renderSummary();
     } catch (error) {
@@ -2032,4 +2098,8 @@ class CityStudio {
   }
 }
 
-if (typeof document !== "undefined" && document.querySelector("#city-studio") !== null) new CityStudio();
+if (typeof document !== "undefined" && document.querySelector("#city-studio") !== null) {
+  initLanguage();
+  document.documentElement.lang = currentLanguage();
+  new CityStudio();
+}

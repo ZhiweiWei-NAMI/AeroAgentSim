@@ -1,12 +1,17 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  boundsFor,
   mountOperationsMonitor,
   type OperationsMonitorCallbacks,
   type OperationsSnapshot,
 } from "./operations-monitor";
+
+import { setLanguage, t } from "./i18n";
+
+afterEach(() => setLanguage("zh"));
 
 function snapshot(overrides: Partial<OperationsSnapshot> = {}): OperationsSnapshot {
   return {
@@ -82,6 +87,17 @@ function setMapBox(map: SVGSVGElement): void {
 describe("operations monitor", () => {
   beforeEach(() => document.body.replaceChildren());
 
+  it("distinguishes an unexecuted configuration from replay playback in both languages", () => {
+    const { monitor } = mount();
+    monitor.update(snapshot({ clockState: "notrun" }));
+    expect(monitor.element.querySelector(".operations-monitor-clock-state")?.textContent).toBe("尚未运行");
+    setLanguage("en");
+    monitor.update(snapshot({ clockState: "notrun" }));
+    expect(monitor.element.querySelector(".operations-monitor-clock-state")?.textContent).toBe("Not run");
+    monitor.update(snapshot({ clockState: "playing" }));
+    expect(monitor.element.querySelector(".operations-monitor-clock-state")?.textContent).toBe("Playing");
+  });
+
   it("renders one shared selection with explicit source, clock, statuses, camera source, and unknown values", () => {
     const { monitor } = mount();
     expect(monitor.element.getAttribute("aria-label")).toBe("运行态势监视");
@@ -111,6 +127,43 @@ describe("operations monitor", () => {
     expect(onSelect).toHaveBeenLastCalledWith({ kind: "entity", id: "van-1" });
     expect(marker.dataset.x).toBe("60");
     expect(marker.dataset.z).toBe("30");
+  });
+
+  it("renders declared building squares on the grid without stretching the fit", () => {
+    const { monitor } = mount();
+    monitor.update(snapshot({ buildings: [
+      { id: "cell:100:100", x: 1000, z: 1000, sizeM: 8 },
+      { id: "cell:100:101", x: 1008, z: 1012, sizeM: 8 },
+      { id: "cell:100:102", x: 1016, z: 1024, sizeM: 8 },
+    ] }));
+    const squares = monitor.element.querySelectorAll<SVGRectElement>(".operations-monitor-map-building");
+    expect(squares).toHaveLength(3);
+    // The monitor map transform is linear in the declared metre grid, so
+    // equal metre pitches must give equal attribute deltas — no offset, no
+    // skew. Attributes are written with 2-decimal rounding, so compare at
+    // that precision.
+    const attr = (node: SVGRectElement, name: string): number => Number(node.getAttribute(name));
+    const dx1 = attr(squares[1]!, "x") - attr(squares[0]!, "x");
+    const dx2 = attr(squares[2]!, "x") - attr(squares[1]!, "x");
+    const dy1 = attr(squares[1]!, "y") - attr(squares[0]!, "y");
+    const dy2 = attr(squares[2]!, "y") - attr(squares[1]!, "y");
+    expect(dx1).toBeCloseTo(dx2, 1);
+    expect(dy1).toBeCloseTo(dy2, 1);
+    expect(Math.abs(dx1)).toBeGreaterThan(0);
+    // Equal declared sizeM squares render with equal width and height.
+    expect(attr(squares[0]!, "width")).toBeCloseTo(attr(squares[1]!, "width"), 1);
+    expect(attr(squares[0]!, "height")).toBeCloseTo(attr(squares[2]!, "height"), 1);
+  });
+
+  it("does not include building squares in the fit bounds", () => {
+    const baseBounds = boundsFor(snapshot());
+    const withBounds = boundsFor(snapshot({ buildings: [
+      { id: "cell:500:500", x: 5000, z: 5000, sizeM: 8 },
+    ] }));
+    expect(withBounds.minX).toBe(baseBounds.minX);
+    expect(withBounds.maxX).toBe(baseBounds.maxX);
+    expect(withBounds.minZ).toBe(baseBounds.minZ);
+    expect(withBounds.maxZ).toBe(baseBounds.maxZ);
   });
 
   it("keeps keyed controls, keyboard focus, disclosures, and the preview slot stable across clock updates", () => {
@@ -406,4 +459,116 @@ describe("operations monitor", () => {
     expect(() => monitor.update(snapshot())).toThrow(/disposed/);
     expect(() => monitor.dispose()).not.toThrow();
   });
+});
+
+it("aggregates P02 static facilities while retaining the selected carrier and route", () => {
+  document.body.classList.add("p02-active");
+  const { host, monitor } = mount();
+  try {
+    monitor.update(snapshot({ objects: [...snapshot().objects, ...Array.from({ length: 180 }, (_, index) => ({
+      id: `static-${index}`, kind: "facility" as const, label: `building-${index}`,
+      position: { x: index % 3, y: 0, z: index % 3 },
+    }))] }));
+    expect(host.querySelectorAll(".operations-monitor-map-marker")).toHaveLength(2);
+    expect(host.querySelector('[data-object-id="uav-1"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(host.querySelector(".operations-monitor-map-route.is-selected")).not.toBeNull();
+    expect(Number((host.querySelector(".operations-monitor-map-markers") as SVGElement).dataset.staticCellCount)).toBeLessThan(10);
+  } finally { monitor.dispose(); document.body.classList.remove("p02-active"); }
+});
+
+
+describe("selected current-frame business and monitor language", () => {
+  it("renders exact selected business separately from telemetry and clears it on seek", () => {
+    const { monitor } = mount();
+    const selectedBusiness: NonNullable<OperationsSnapshot["selectedBusiness"]> = {
+      entityId: "uav-1", cursorTick: 12, sourceKind: "authored_business_fixture",
+      orders: [{ orderId: "order.exact", parcelId: "parcel.exact", carrierEntityId: "uav-1",
+        custodyId: "facility.exact", custodyKind: "facility", destinationId: "destination.exact",
+        attempt: 2, status: "assigned", sourceRef: "business/exact.json", tick: 10, timeSeconds: 5 }],
+      attributes: [], unboundEvents: [],
+    };
+    monitor.update(snapshot({ selectedBusiness }));
+    const row = monitor.element.querySelector<HTMLElement>(".operations-monitor-business-row")!;
+    expect(row.dataset.orderId).toBe("order.exact");
+    expect(row.dataset.parcelId).toBe("parcel.exact");
+    expect(row.dataset.cursorTick).toBe("12");
+    expect(row.querySelector('[data-business-field="custody"]')?.textContent).toBe("facility.exact");
+    expect(row.querySelector('[data-business-field="destination"]')?.textContent).toBe("destination.exact");
+    expect(row.querySelector('[data-business-field="source"]')?.textContent).toBe("business/exact.json");
+    expect(monitor.element.querySelector(".operations-monitor-business-source")?.textContent).toBe(t("p02.sourceAuthored"));
+    const physical = monitor.element.querySelector(".operations-monitor-facts")!.textContent;
+    expect(physical).not.toContain("order-9");
+    expect(physical).not.toContain("屋顶 A");
+    monitor.update(snapshot({ selectedBusiness: { ...selectedBusiness, cursorTick: 9, orders: [] } }));
+    expect(monitor.element.querySelector(".operations-monitor-business-row")).toBeNull();
+    expect(monitor.element.querySelector(".operations-monitor-business-empty")?.textContent).toContain("未知");
+    monitor.update(snapshot({ selectedBusiness: null }));
+    expect(monitor.element.querySelector<HTMLElement>(".operations-monitor-business")?.dataset.cursorTick).toBeUndefined();
+    expect(() => monitor.update(snapshot({ selectedBusiness: { ...selectedBusiness, cursorTick: 9 } }))).toThrow(/future records/);
+    monitor.dispose();
+  });
+
+  it("translates all monitor chrome, tooltips and accessible names after mounting", () => {
+    const { monitor } = mount();
+    const english = snapshot({ sourceLabel: "Replay public run", selectedBusiness: {
+      entityId: "uav-1", cursorTick: 12, sourceKind: "authored_business_fixture", attributes: [], unboundEvents: [],
+      orders: [{ orderId: "order.exact", parcelId: "parcel.exact", carrierEntityId: "uav-1", custodyKind: "facility",
+        custodyId: "facility.exact", destinationId: "destination.exact", attempt: 2, status: "assigned",
+        sourceRef: "business/exact.json", tick: 10, timeSeconds: 5 }],
+    }, objects: [{ id: "uav-1", label: "uav-1", kind: "uav", phase: "HOLD", position: { x: 1, y: 42, z: -2 },
+      telemetry: { altitudeM: 42, altitudeReference: "AGL", freshness: { state: "fresh" }, health: { label: "UNKNOWN", state: "unknown" } },
+      camera: { source: "simulated_rgb", state: "ready" } }], routes: [], polygons: [], events: [{
+      id: "event.exact", label: "event.exact", severity: "warning", condition: "declared", timeSeconds: 4, objectIds: ["uav-1"],
+    }] });
+    monitor.update(english);
+    setLanguage("en");
+    expect(monitor.element.textContent).not.toMatch(/[\u4e00-\u9fff]/);
+    for (const node of monitor.element.querySelectorAll("[aria-label], [title]")) {
+      expect(node.getAttribute("aria-label") ?? "").not.toMatch(/[\u4e00-\u9fff]/);
+      expect(node.getAttribute("title") ?? "").not.toMatch(/[\u4e00-\u9fff]/);
+    }
+    expect(monitor.element.querySelector(".operations-monitor-clock-state")?.textContent).toBe("Playing");
+    expect(monitor.element.querySelector(".operations-monitor-business-source")?.textContent).toBe(t("p02.sourceAuthored", "en"));
+    expect(monitor.element.querySelector('[data-camera-mode="chase"]')?.textContent).toBe("External follow");
+    setLanguage("zh");
+    expect(monitor.element.querySelector('[data-camera-mode="chase"]')?.textContent).toBe("外部跟随");
+    monitor.dispose();
+  });
+});
+
+
+it("keeps follow and physics ahead of compact business rows with full inspectable identity", () => {
+  const onCameraMode = vi.fn();
+  const { monitor } = mount({ onCameraMode });
+  const selectedBusiness: NonNullable<OperationsSnapshot["selectedBusiness"]> = {
+    entityId: "uav-1", cursorTick: 12, sourceKind: "authored_business_fixture", attributes: [], unboundEvents: [],
+    orders: [{ orderId: "order.inspection-overlay.1", parcelId: "parcel.order.inspection-overlay.1", carrierEntityId: "uav-1",
+      custodyId: "facility.exact", custodyKind: "facility", destinationId: "destination.exact", attempt: 2,
+      status: "assigned", sourceRef: "business/exact.json", tick: 10, timeSeconds: 5 }],
+  };
+  monitor.update(snapshot({ selectedBusiness }));
+  const business = monitor.element.querySelector(".operations-monitor-business")!;
+  const facts = monitor.element.querySelector(".operations-monitor-facts")!;
+  const actions = monitor.element.querySelector(".operations-monitor-camera-actions")!;
+  expect(actions.compareDocumentPosition(facts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(facts.compareDocumentPosition(business) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const row = monitor.element.querySelector<HTMLElement>(".operations-monitor-business-row")!;
+  expect(row.querySelector(".operations-monitor-business-label")?.textContent).toBe("订单 inspection-overlay.1");
+  expect(row.querySelector(".operations-monitor-business-label")?.getAttribute("title")).toBe("order.inspection-overlay.1");
+  const details = row.querySelector<HTMLDetailsElement>("details")!;
+  expect(details.open).toBe(false);
+  expect(details.querySelector('[data-business-field="order"]')?.textContent).toBe("order.inspection-overlay.1");
+  expect(details.querySelector('[data-business-field="sourceKind"]')?.textContent).toBe("authored_business_fixture");
+  details.open = true;
+  monitor.update(snapshot({ selectedBusiness }));
+  expect(monitor.element.querySelector<HTMLDetailsElement>(".operations-monitor-business-details")?.open).toBe(true);
+  monitor.element.querySelector<HTMLButtonElement>('[data-camera-mode="chase"]')!.click();
+  expect(onCameraMode).toHaveBeenCalledWith("chase");
+  const cameraEvidence = monitor.element.querySelector<HTMLDetailsElement>(".operations-monitor-camera-evidence")!;
+  expect(cameraEvidence.open).toBe(false);
+  expect(cameraEvidence.querySelector("code")?.dataset.sourceKind).toBe("simulated_rgb");
+  setLanguage("en");
+  expect(monitor.element.querySelector(".operations-monitor-preview-meta")?.textContent).toContain("Simulated RGB");
+  expect(monitor.element.querySelector(".operations-monitor-camera-evidence summary")?.textContent).toBe("Raw camera source");
+  monitor.dispose();
 });

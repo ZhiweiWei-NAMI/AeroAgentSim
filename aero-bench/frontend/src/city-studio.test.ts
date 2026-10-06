@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultCityWorkspaceConfig, type CityFacility } from "./city-workspace-config";
 import {
-  nativeReferenceSpatialSource, resolveRegisteredSource, validateStudioGeometry,
+  nativeReferenceSpatialSource, renderCompiledHandoff, resolveRegisteredSource, savedNativeRegistration, translateStudioShell, validateStudioGeometry,
 } from "./city-studio";
+import studioHtml from "../city-studio.html?raw";
+import { renderCityRuntimePanel } from "./city-runtime-panel";
+import { setLanguage, t, tf } from "./i18n";
 import type { AuthoringCatalog, NativeSceneRegistration } from "./city-authoring-api";
 import { SHANGHAI_ORIGIN } from "./city-region-selector";
 import type { SpatialMapData } from "./city-spatial-panel";
@@ -34,6 +37,60 @@ const facility: CityFacility = {
   rotationDeg: 0, widthM: 6, depthM: 6, heightM: 1,
   capacity: 2, chargingPowerW: 0,
 };
+
+describe("compiled saved-configuration handoff", () => {
+  it("renders English runtime controls while preserving model IDs and edited seed", () => {
+    const root = document.createElement("div");
+    const config = createDefaultCityWorkspaceConfig();
+    const before = JSON.stringify(config);
+    let edited: typeof config | null = null;
+    setLanguage("en");
+    renderCityRuntimePanel(root, config, next => { edited = next; });
+    expect(root.textContent).toContain("Random seed");
+    expect(root.querySelector('option[value="model:quadcopter-40-preview"]')?.textContent).toBe("Camera quadrotor");
+    expect(root.querySelector('select[name="environment.precipitation"] option[value="snow"]')?.textContent).toBe("Snow");
+    expect(JSON.stringify(config)).toBe(before);
+    const seed = root.querySelector<HTMLInputElement>('[name="seed"]')!;
+    seed.value = "20261003";
+    seed.dispatchEvent(new Event("change"));
+    expect(edited).toEqual({ ...config, seed: 20261003 });
+    setLanguage("zh");
+  });
+  it("translates the actual shell while preserving the import control and edited name", () => {
+    const doc = new DOMParser().parseFromString(studioHtml, "text/html");
+    const root = doc.querySelector<HTMLElement>("#city-studio")!;
+    const name = root.querySelector<HTMLInputElement>("#studio-name")!;
+    const imported = root.querySelector<HTMLInputElement>("#studio-import")!;
+    name.value = "authored identity unchanged";
+    setLanguage("en");
+    translateStudioShell(root);
+    expect(root.querySelector("#studio-save")?.textContent).toBe("Save draft");
+    expect(root.querySelector("[data-tab=runtime]")?.textContent).toContain("Scene and fleet");
+    expect(root.querySelector("#studio-import")).toBe(imported);
+    expect(name.value).toBe("authored identity unchanged");
+    setLanguage("zh");
+    translateStudioShell(root);
+    expect(root.querySelector("#studio-save")?.textContent).toBe("保存草稿");
+  });
+  it.each(["zh", "en"] as const)("shows immutable identities without starting a run (%s)", language => {
+    setLanguage(language);
+    const root = document.createElement("div");
+    const selection = {
+      compilationId: "compilation.saved", registrationId: "scene.saved",
+      draftSha256: "a".repeat(64), runIds: ["b".repeat(64), "c".repeat(64)],
+    };
+    renderCompiledHandoff(root, selection);
+    expect(root.querySelector("h3")?.textContent).toBe(
+      language === "en" ? "Compiled, not yet run" : "已编译，尚未运行",
+    );
+    for (const identity of [selection.compilationId, selection.registrationId,
+      selection.draftSha256, ...selection.runIds]) expect(root.textContent).toContain(identity);
+    expect(root.textContent).toContain(language === "en" ? "Saved configuration identity" : "已保存配置身份");
+    expect(root.querySelector("a")?.getAttribute("href")).toBe("/");
+    expect(root.querySelector("button")).toBeNull();
+    setLanguage("zh");
+  });
+});
 
 describe("city studio import geometry gate", () => {
   it("accepts an unbound fleet as an editable draft", () => {
@@ -79,6 +136,15 @@ describe("city studio import geometry gate", () => {
 });
 
 describe("native reference spatial source", () => {
+  it("resolves the saved exact source selector without guessing URLs or choosing another registration", () => {
+    const registration = { registration_id: "inspection.saved", scene_path: "/native/saved.json",
+      scene_url: "/authoring/v1/native-scenes/inspection.saved/scene" } as NativeSceneRegistration;
+    expect(savedNativeRegistration("/native/saved.json", [registration])).toBe(registration);
+    expect(savedNativeRegistration("/native/other.json", [registration])).toBeNull();
+    expect(() => savedNativeRegistration("/native/saved.json", [registration,
+      { ...registration, registration_id: "inspection.ambiguous" }])).toThrow("Multiple native registrations");
+  });
+
   it("derives building, road and region context directly from PublicScenario", () => {
     const at = (east: number, north: number, up: number) => coordinate({
       enu: { east_m: east, north_m: north, up_m: up },
@@ -165,5 +231,42 @@ describe("selected city source restoration", () => {
     expect(resolveRegisteredSource(catalog, "jingan", "0".repeat(64))).toEqual({
       kind: "hash_changed", source_id: "jingan",
     });
+  });
+});
+
+describe("native preview status localization", () => {
+  it.each(["zh", "en"] as const)("resolves every new status key in both languages (%s)", language => {
+    setLanguage(language);
+    const keys = [
+      "studio.nativeLayers", "studio.nativeAssembling", "studio.nativeVerifiedNoMesh",
+      "studio.nativeNoMeshNote", "studio.nativeAssembleFailed", "studio.authoringStaticPreview",
+      "studio.nativeCityAssetsFailed", "studio.nativeSceneFailed", "studio.nativeSceneReady",
+      "studio.cityLoadFailed", "studio.importUnsavedFailed", "studio.cityReady",
+      "studio.mapStartFailed", "studio.unknownReason", "studio.authoringReady",
+    ] as const;
+    for (const key of keys) {
+      expect(typeof t(key)).toBe("string");
+      expect(t(key).length).toBeGreaterThan(0);
+    }
+    expect(tf("studio.nativeLayers", { completed: 2, total: 5 }))
+      .toContain(language === "en" ? "2/5" : "2/5");
+    setLanguage("zh");
+  });
+
+  it("keeps raw error details and scene identities intact when composing localized messages", () => {
+    setLanguage("en");
+    const detail = "mesh fetch failed";
+    const digest = "f".repeat(64);
+    const composed = `${t("studio.nativeAssembleFailed")}${detail ?? t("studio.unknownReason")}`;
+    expect(composed).toContain(detail);
+    expect(composed).not.toContain("undefined");
+    const missingDetail = null as string | null;
+    const fallback = `${t("studio.nativeCityAssetsFailed")}${missingDetail ?? t("studio.unknownReason")}`;
+    expect(fallback).toContain(t("studio.unknownReason"));
+    expect(tf("studio.nativeFooter", { registration: digest })).toContain(digest);
+    setLanguage("zh");
+    expect(`${t("studio.nativeAssembleFailed")}${detail}`).toContain(detail);
+    expect(t("studio.nativeAssembleFailed")).toContain("：");
+    setLanguage("zh");
   });
 });

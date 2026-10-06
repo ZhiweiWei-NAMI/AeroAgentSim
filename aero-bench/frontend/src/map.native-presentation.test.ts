@@ -134,3 +134,50 @@ describe("map declared native city route", () => {
     expect(native.dispose).not.toHaveBeenCalled();
   });
 });
+
+describe("map frameP02Overview", () => {
+  function frameRig() {
+    const setFollow = vi.fn();
+    const renderObservation = vi.fn();
+    const rig = {
+      destroyed: false,
+      nativePresentation: {},
+      position: (value: ResolvedCoordinate) => new THREE.Vector3(value.enu.east_m, value.enu.up_m, -value.enu.north_m),
+      observationScene: { sceneState: { samples: [{ pose: { position: coordinate({ enu: { east_m: -450, north_m: -437, up_m: 0.1 } }) } }] } },
+      root: { dataset: {} },
+      controls: { target: new THREE.Vector3(99, 99, 99), update: vi.fn() },
+      camera: new THREE.PerspectiveCamera(60, 1.6, 0.1, 4000),
+      setFollow,
+      renderObservation,
+    };
+    const frame = PublicTraceMap.prototype.frameP02Overview;
+    return { rig, setFollow, renderObservation, frame: frame.bind(rig as unknown as PublicTraceMap) };
+  }
+
+  it("converts declared frame-authority ENU metres with the identity used by every recorded state", () => {
+    const { rig, setFollow, renderObservation, frame } = frameRig();
+    const ok = frame({
+      position: { east: -510, north: -450, up: 20.1 },
+      target: { east: -450, north: -437, up: 0.1 },
+    });
+    expect(ok).toBe(true);
+    // enuPosition identity: world = (east, up, -north). No offset, no shift.
+    expect(rig.camera.position.toArray()).toEqual([-510, 20.1, 450]);
+    expect(rig.controls.target.toArray()).toEqual([-450, 0.1, 437]);
+    // The overview never engages following; it is a plain free-camera frame.
+    expect(setFollow).toHaveBeenCalledWith(null);
+    expect(renderObservation).toHaveBeenCalled();
+  });
+
+  it("is a no-op for a null pose or non-finite coordinates", () => {
+    const { rig, setFollow, renderObservation, frame } = frameRig();
+    expect(frame(null)).toBe(false);
+    expect(frame({
+      position: { east: Number.NaN, north: 0, up: 0 },
+      target: { east: 0, north: 0, up: 0 },
+    })).toBe(false);
+    expect(rig.controls.target.toArray()).toEqual([99, 99, 99]);
+    expect(setFollow).not.toHaveBeenCalled();
+    expect(renderObservation).not.toHaveBeenCalled();
+  });
+});
