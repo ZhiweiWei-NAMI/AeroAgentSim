@@ -139,5 +139,9 @@
       "sha256": "f68414ea5beeb0d0fe94f51f3d240ac7a8248f9555212823d2a678b5736f9e7a"
     }
   ],
-  "sealed_new_run_verifier_requirement": "e8c2d1dc09369aa4d800e0f2ee975e97641922f01ac94d950964f884a7e74eec (corrected inspection datum verifier; dedicated parcel verifier still absent)"
+  "sealed_new_run_verifier_requirement": "e8c2d1dc09369aa4d800e0f2ee975e97641922f01ac94d950964f884a7e74eec (corrected inspection datum verifier; dedicated parcel verifier still absent)",
+  "native_review_status": "REJECTED_FIRST_REVIEW_REPAIR_ASSIGNED_SAME_SESSION",
+  "launch_hold": true,
+  "native_reproduction": "native-first-review/native_review_reproduction.json",
+  "coordinator_verified_module_tests": "37 original tests passed but did not cover these invariants"
 }
