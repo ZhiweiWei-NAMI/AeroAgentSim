@@ -4,7 +4,7 @@ import { createFacilityVisual, disposeFacilityVisual, loadFacilityVisualAssets,
 import { syncMeteredRoofVisibility } from "./city-building-facade";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import type { PublicNetworkFrame, PublicScenario, PublicTrafficLightFrame, PublicTrajectory, ResolvedCoordinate, SceneState } from "./generated/aero-bench-contracts";
+import type { PublicBuilding, PublicNetworkFrame, PublicScenario, PublicTrafficLightFrame, PublicTrajectory, ResolvedCoordinate, SceneState } from "./generated/aero-bench-contracts";
 import type { EntityKind, LayerVisibility } from "./state/layers";
 import type { TraceTarget } from "./state/target";
 import type { OsmEntityKind, OsmFixture, OsmTrafficSignal, OsmJson } from "./osm2world/source";
@@ -20,7 +20,7 @@ import { verifyAuditedTrafficForScene } from "./city-audited-traffic";
 import { trafficPreviewDraftMatches, type TrafficPreviewDraftSnapshot,
   type VerifiedTrafficPreviewArtifact } from "./city-traffic-preview-api";
 import { assertNotAborted } from "./verified-bytes";
-import { currentLanguage, subscribeLanguage } from "./i18n";
+import { currentLanguage, subscribeLanguage, t, tf } from "./i18n";
 import { BuildingRenderStreamer, buildingPlacement, fetchBuildingRenderManifest,
   setBuildingRenderLighting, type BuildingRenderProgress } from "./city-building-renders";
 import { fetchBuildingRenderSourceContext, validateBuildingRenderContext } from "./city-building-source-context";
@@ -63,8 +63,9 @@ import { type SourceBuildingShape, type SourceBuildingTriangleRange } from "./ci
 import { applyMountedCamera, cameraFootprintOnPlane, type CameraMount } from "./observation-camera";
 import { declaredSensorMount } from "./observation-camera-sensors";
 import { mountOperationsMonitor, type OperationsMonitorHandle, type OperationsObject,
-  type OperationsSnapshot, type OperationsPolygon } from "./operations-monitor";
+  type OperationsSnapshot, type OperationsPolygon, type OperationsBuildingSquare } from "./operations-monitor";
 import { telemetryFromSample, publicOperationEvents, latestOperationTasks } from "./operations-data";
+import { businessDestinationMarkers, businessParcelAnchor, compactCargoLabel, type SelectedFrameBusinessView } from "./p02-entity-overlays";
 import "./operations-monitor.css";
 
 export type CameraMode = "free" | "chase" | "cockpit";
@@ -235,6 +236,44 @@ function loadTexture(path: string, onReady: () => void): THREE.Texture {
 }
 
 function enuPosition(east: number, north: number, up: number): THREE.Vector3 { return new THREE.Vector3(east, up, -north); }
+
+/**
+ * Aggregate the scenario's declared building anchors into deduplicated
+ * minimap squares. Each building contributes its anchor footprint (metres,
+ * ENU); anchors landing in the same grid cell collapse to one square, so
+ * hundreds of building components become a cheap static background. No
+ * geometry is invented: a building without usable base vertices falls back
+ * to a small square at its declared anchor, or is skipped entirely.
+ */
+function aggregateOperationsBuildings(buildings: readonly PublicBuilding[]): OperationsBuildingSquare[] {
+  const CELL_M = 8;
+  const byCell = new Map<string, OperationsBuildingSquare>();
+  for (const building of buildings) {
+    if (building == null || typeof building !== "object") continue;
+    const vertices = Array.isArray(building.base_vertices) ? building.base_vertices : [];
+    const flat = vertices
+      .map((vertex) => vertex?.enu ?? null)
+      .filter((enu): enu is { east_m: number; north_m: number; up_m: number } =>
+        enu != null && Number.isFinite(enu.east_m) && Number.isFinite(enu.north_m));
+    const square: OperationsBuildingSquare | null = flat.length > 0
+      ? {
+        id: `building:${building.building_id}`,
+        x: flat.reduce((sum, enu) => sum + enu.east_m, 0) / flat.length,
+        z: -flat.reduce((sum, enu) => sum + enu.north_m, 0) / flat.length,
+        sizeM: Math.max(4, Math.min(28, Math.sqrt(
+          Math.max(...flat.map((enu) => enu.east_m)) - Math.min(...flat.map((enu) => enu.east_m))) * 0.5
+          + Math.sqrt(Math.max(...flat.map((enu) => enu.north_m)) - Math.min(...flat.map((enu) => enu.north_m))) * 0.5) * 2) * 0.5,
+      }
+      : Number.isFinite(building.anchor_east_m) && Number.isFinite(building.anchor_north_m)
+        ? { id: `building:${building.building_id}`, x: building.anchor_east_m, z: -building.anchor_north_m, sizeM: 6 }
+        : null;
+    if (square === null) continue;
+    const cell = `cell:${Math.round(square.x / CELL_M)}:${Math.round(square.z / CELL_M)}`;
+    const existing = byCell.get(cell);
+    if (existing === undefined) byCell.set(cell, { ...square, id: cell });
+  }
+  return [...byCell.values()];
+}
 function disposeMaterial(value: THREE.Material | THREE.Material[]): void { for (const material of Array.isArray(value) ? value : [value]) material.dispose(); }
 function clearGroup(group: THREE.Group): void {
   group.traverse((object) => {
@@ -559,6 +598,23 @@ export class PublicTraceMap {
   private readonly resizeObserver: ResizeObserver;
   private readonly unsubscribeGroundLanguage: () => void;
 
+  // P02 persistent parcel-ID overlay: one sprite per carrier entity that an
+  // explicit business record binds (p02.business-identities/v1). Rebuilt only
+  // when the declared set changes; per-frame work is a position copy from
+  // the already-tracked entity objects. Labels show the authored parcel id —
+  // never a dynamic entity id; runs without business records get no labels.
+  private readonly p02CargoLabels = new Map<string, THREE.Sprite>();
+  private p02CargoLabelGroup: THREE.Group | null = null;
+  private p02CargoLabelsVisible = false;
+  private p02BusinessFrame: SelectedFrameBusinessView | null = null;
+  private readonly p02DestinationMarkers = new Map<string, THREE.Sprite>();
+  private p02DestinationGroup: THREE.Group | null = null;
+  private readonly p02AircraftMarkers = new Map<string, THREE.Sprite>();
+  private p02AircraftGroup: THREE.Group | null = null;
+  /** Minimap building-square cache, keyed by the scenario it was built from. */
+  private p02BuildingSquares: OperationsBuildingSquare[] | null = null;
+  private p02BuildingSquaresScenario: PublicScenario | null = null;
+
   // Rolling preview frame statistics; `?perf=1` shows it, F9 toggles it.
   private readonly perfOverlay = new CityPerfOverlay({
     visible: new URLSearchParams(window.location.search).get("perf") === "1" });
@@ -851,7 +907,10 @@ export class PublicTraceMap {
         onSwap: () => { this.setCameraMode(this.mode === "cockpit" ? "free" : "cockpit"); this.renderObservation(true); },
       });
     } catch { this.callbacks.onUnavailable?.(); throw new Error("OSM2World viewer could not initialize"); }
-    this.unsubscribeGroundLanguage = subscribeLanguage(() => this.refreshMappedExtentLegend());
+    this.unsubscribeGroundLanguage = subscribeLanguage(() => {
+      this.refreshMappedExtentLegend();
+      this.renderObservation(true);
+    });
   }
   private setCityMood(mood: "day" | "dusk", refreshReflections = true): void {
     this.setCityTimeOfDay(mood === "day" ? "day" : "twilight", refreshReflections);
@@ -1182,6 +1241,9 @@ export class PublicTraceMap {
   }
   private renderObservation(force = false): void {
     if (this.operationsMonitor !== null && this.operationsMonitor !== undefined) this.updateCamera();
+    this.p02UpdateCargoLabelPositions();
+    this.p02UpdateDestinationMarkers();
+    this.p02UpdateAircraftMarkers();
     this.renderer.domElement.style.transform = this.camera.userData.observationHorizontalMirror === true ? "scaleX(-1)" : "";
     const mainStarted = performance.now();
     this.renderer.render(this.scene, this.camera);
@@ -1254,6 +1316,22 @@ export class PublicTraceMap {
   private operationsSnapshot(): OperationsSnapshot {
     const scene = this.observationScene;
     const time = this.observationTime();
+    const lang = currentLanguage();
+    const sourceKind = scene?.operationContext?.sourceKind ?? "replay";
+    const sampleTelemetry = (sample: SceneState["samples"][number]): ReturnType<typeof telemetryFromSample> => {
+      const telemetry = telemetryFromSample(sample, time, sourceKind);
+      const source = t(sourceKind === "replay" ? "mode.replay" : "mode.live", lang);
+      return { ...telemetry,
+        activity: telemetry.activity?.state === "unknown" ? { ...telemetry.activity, label: t("p02.unknown", lang) } : telemetry.activity,
+        connectivity: telemetry.connectivity?.state === "unknown" ? { ...telemetry.connectivity, label: t("p02.unknown", lang) } : telemetry.connectivity,
+        health: telemetry.health === undefined ? undefined : { ...telemetry.health, label: t(sample.health?.healthy === true
+          ? "monitor.healthy" : sample.health?.healthy === false ? "monitor.unhealthy" : "p02.unknown", lang) },
+        freshness: telemetry.freshness === undefined ? undefined : { ...telemetry.freshness,
+          label: tf(telemetry.freshness.state === "fresh" ? "monitor.sampleFresh"
+            : telemetry.freshness.state === "stale" ? "monitor.sampleStale" : "monitor.sampleFuture",
+          { source, age: (telemetry.freshness.ageSeconds ?? 0).toFixed(3) }, lang) },
+      };
+    };
     const operationPosition = (coordinate: ResolvedCoordinate): THREE.Vector3 => scene?.scenario != null && scene.pack == null
       ? enuPosition(coordinate.enu.east_m, coordinate.enu.north_m, coordinate.enu.up_m)
       : this.position(coordinate);
@@ -1281,11 +1359,10 @@ export class PublicTraceMap {
         label: this.operationsPreview?.entityLabel(target.id) ?? definition?.entity_id ?? target.id,
         position, headingRad: Math.atan2(heading.x, -heading.z),
         phase: sample?.mode ?? (typeof node.userData.flightPhase === "string" ? node.userData.flightPhase : undefined),
-        telemetry: sample === undefined ? undefined : telemetryFromSample(sample, time,
-          scene?.operationContext?.sourceKind ?? "replay"),
+        telemetry: sample === undefined ? undefined : sampleTelemetry(sample),
         task: tasks.get(target.id),
         camera: kind !== "uav" ? undefined : sensor === null
-          ? { source: "unavailable", state: "unavailable", reason: "无声明相机或当前姿态" }
+          ? { source: "unavailable", state: "unavailable", reason: t("monitor.missingCamera", lang) }
           : { source: "simulated_rgb", state: "ready", label: sensor.label, frameTimeSeconds: time },
       });
     }
@@ -1301,10 +1378,10 @@ export class PublicTraceMap {
       objects.push({ id: sample.entity_id, label: sample.entity_id,
         kind: definition.kind === "static_asset" ? "facility" : definition.kind as "uav" | "ugv" | "pedestrian",
         position, headingRad: Math.atan2(heading.x, -heading.z), phase: sample.mode ?? undefined,
-        telemetry: telemetryFromSample(sample, time, scene?.operationContext?.sourceKind ?? "replay"),
+        telemetry: sampleTelemetry(sample),
         task: tasks.get(sample.entity_id),
         camera: definition.kind !== "uav" ? undefined : { source: "unavailable", state: "unavailable",
-          reason: "声明三维场景未就绪，无法生成模拟图像" },
+          reason: t("monitor.missingScene", lang) },
       });
     }
     const routes = (scene?.trajectories ?? []).map(trajectory => ({ id: trajectory.entity_id,
@@ -1319,7 +1396,7 @@ export class PublicTraceMap {
     }));
     if (this.mappedGroundIdentity !== null) {
       const extent = this.mappedGroundIdentity.extent;
-      polygons.push({ id: "operating-area", kind: "other", label: "运行区域",
+      polygons.push({ id: "operating-area", kind: "other", label: t("monitor.operatingArea", lang),
         points: [{ x: extent.west, z: -extent.north }, { x: extent.east, z: -extent.north },
           { x: extent.east, z: -extent.south }, { x: extent.west, z: -extent.south }] });
     }
@@ -1331,8 +1408,8 @@ export class PublicTraceMap {
       const point = operationPosition(pose.position); return { x: point.x, z: point.z };
     });
     if (disconnected) for (const object of objects) {
-      if (object.camera !== undefined) Object.assign(object.camera, { state: "disconnected", reason: "数据通道中断；显示最近已知姿态" });
-      if (object.telemetry !== undefined) Object.assign(object.telemetry, { freshness: { state: "unknown", label: "数据通道中断；新鲜度未知" } });
+      if (object.camera !== undefined) Object.assign(object.camera, { state: "disconnected", reason: t("monitor.disconnectedPose", lang) });
+      if (object.telemetry !== undefined) Object.assign(object.telemetry, { freshness: { state: "unknown", label: t("monitor.freshnessDisconnected", lang) } });
     }
     const mounted = this.observationMount(this.observationTarget(), this.camera.aspect);
     const mount: CameraMount = this.mode === "cockpit" && mounted !== null ? mounted.mount : {
@@ -1342,10 +1419,24 @@ export class PublicTraceMap {
     const footprint = cameraFootprintOnPlane({ position: this.camera.position, quaternion: this.camera.quaternion }, mount, 0).polygon;
     const direction = this.camera.getWorldDirection(new THREE.Vector3());
     this.root.dataset.observationTimeS = String(time);
+    // Static building context for the minimap: aggregated squares compiled
+    // from the scenario's declared building anchors, grid-deduped to one
+    // square per cell. Context only — they neither drive the fit bounds nor
+    // any business highlight, and are cached until the scenario changes.
+    if (this.p02BuildingSquares === null || this.p02BuildingSquaresScenario !== (scene?.scenario ?? null)) {
+      this.p02BuildingSquaresScenario = scene?.scenario ?? null;
+      this.p02BuildingSquares = scene?.scenario == null || scene.scenario.buildings == null
+        ? [] : aggregateOperationsBuildings(scene.scenario.buildings);
+    }
+    const buildings = this.p02BuildingSquares ?? [];
     return { sourceKey: `${this.observationSource || this.sourceKey}:${this.sourceKey}:${this.root.dataset.sceneReady ?? "loading"}`,
-      sourceLabel: disconnected ? "数据通道中断 · 系统状态未知" : (formal ? scene?.operationContext?.sourceLabel : undefined) ?? (this.workspaceConfig === null ? "工程记录 / 作者展示 · 非正式执行" : "作者编排预览 · 非正式执行"),
-      timeSeconds: time, clockState: (formal ? scene?.operationContext?.clockState : undefined) ?? (this.previewPlaying ? "playing" : "paused"),
-      selected: this.observationSelection, objects, routes, polygons, events: locatedEvents,
+      sourceLabel: t(disconnected ? "monitor.sourceDisconnected" : this.nativePresentation !== null && scene?.operationContext === undefined
+        ? "monitor.sourceAuthored" : formal
+        ? sourceKind === "replay" ? "monitor.sourceReplay" : "monitor.sourceLive"
+        : this.workspaceConfig === null ? "monitor.sourceEngineering" : "monitor.sourceAuthored", lang),
+      timeSeconds: time, clockState: this.nativePresentation !== null && scene?.operationContext === undefined ? "notrun" : (formal ? scene?.operationContext?.clockState : undefined) ?? (this.previewPlaying ? "playing" : "paused"),
+      selected: this.observationSelection, objects, routes, polygons, events: locatedEvents, buildings,
+      selectedBusiness: this.p02BusinessFrame,
       observer: { mode: this.mode, position: this.observationFocus(),
         headingRad: Math.atan2(direction.x, -direction.z), footprint: footprint ?? undefined } };
   }
@@ -1988,6 +2079,9 @@ export class PublicTraceMap {
     delete this.root.dataset.buildingRenderLastError;
     for (const line of this.trajectories.values()) { this.scene.remove(line); line.geometry.dispose(); disposeMaterial(line.material); } this.trajectories.clear();
     for (const line of this.networks.values()) { this.scene.remove(line); line.geometry.dispose(); disposeMaterial(line.material); } this.networks.clear();
+    this.p02DisposeCargoLabels();
+    this.p02DisposeDestinationMarkers();
+    this.p02DisposeAircraftMarkers();
   }
   private attachEntityVisual(object: THREE.Object3D, kind: EntityKind, modelAssetId: string | null, generation: number): void {
     void loadEntityVisual(kind, modelAssetId).then(visual => {
@@ -2040,7 +2134,20 @@ export class PublicTraceMap {
     const centerZ = -(extent.south + extent.north) / 2;
     this.previewCityCenter.set(centerX, 0, centerZ);
     const span = Math.max(extent.east - extent.west, extent.north - extent.south, 180);
-    if (this.sourceKey.startsWith("authoring:")) {
+    if (this.nativePresentation !== null) {
+      // A registered native configuration has no running actor to follow.
+      // Fit its actual asset bounds from above rather than use the default
+      // street-height flight-preview camera, which can start inside a facade.
+      const bounds = this.nativePresentation.bounds;
+      const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+      const halfVertical = THREE.MathUtils.degToRad(this.camera.fov / 2);
+      const halfHorizontal = Math.atan(Math.tan(halfVertical) * this.camera.aspect);
+      const distance = sphere.radius / Math.sin(Math.min(halfVertical, halfHorizontal)) * 1.12;
+      const direction = new THREE.Vector3(0.8, 1.1, 0.8).normalize();
+      this.controls.target.copy(sphere.center);
+      this.camera.position.copy(sphere.center).addScaledVector(direction, distance);
+      this.root.dataset.nativePreviewCamera = "declared-asset-bounds-oblique";
+    } else if (this.sourceKey.startsWith("authoring:")) {
       // A selected static region is inspected from above; the ordinary preview
       // switches to its moving flight camera after loading.
       this.camera.position.set(centerX + span * 0.55, Math.max(170, span * 0.58), centerZ + span * 0.55);
@@ -3626,6 +3733,240 @@ export class PublicTraceMap {
       object.userData.trafficLightTelemetrySource = observed?.telemetry_source ?? null;
     }
   }
+  /** P02 config readback: which scene the map actually assembled last. */
+  sceneSourceLabel(): string {
+    return this.root.dataset.sceneSource ?? this.sourceKey ?? "";
+  }
+
+  /** Pass through the application's exact current selector result without joining business records here. */
+  setP02BusinessFrame(business: SelectedFrameBusinessView | null): void {
+    if (this.destroyed || this.p02BusinessFrame === business) return;
+    this.p02BusinessFrame = business;
+    this.renderObservation(true);
+  }
+
+  /**
+   * P02: move the free camera to an authored overview pose expressed in the
+   * trace's declared frame-authority ENU metres. The pose comes from the
+   * application, which fits only valid carrier/route positions; the map just
+   * converts it through the current recorded coordinate authority. Packed
+   * scenes anchor local ENU deltas to an actual sample projected to the pack
+   * origin. A null pose is a no-op; the caller keeps
+   * camera authority either way and following is not engaged.
+   */
+  frameP02Overview(pose: {
+    position: { east: number; north: number; up: number };
+    target: { east: number; north: number; up: number };
+  } | null, currentFrame: SceneState | null = this.observationScene?.sceneState ?? null): boolean {
+    if (this.destroyed || pose === null) return false;
+    const anchor = currentFrame?.samples.filter(sample => {
+      const enu = sample.pose.position.enu;
+      return [enu.east_m, enu.north_m, enu.up_m].every(Number.isFinite);
+    }).sort((left, right) => {
+      const distance = (coordinate: ResolvedCoordinate): number => Math.hypot(
+        coordinate.enu.east_m - pose.target.east, coordinate.enu.north_m - pose.target.north);
+      return distance(left.pose.position) - distance(right.pose.position);
+    })[0]?.pose.position;
+    if (anchor === undefined) return false;
+    const mappedAnchor = this.position(anchor);
+    const mapPoint = (point: { east: number; north: number; up: number }): THREE.Vector3 =>
+      mappedAnchor.clone().add(enuPosition(point.east - anchor.enu.east_m,
+        point.north - anchor.enu.north_m, point.up - anchor.enu.up_m));
+    const target = mapPoint(pose.target);
+    const position = mapPoint(pose.position);
+    if (![target.x, target.y, target.z, position.x, position.y, position.z].every(Number.isFinite)) return false;
+    this.controls.target.copy(target);
+    this.camera.position.copy(position);
+    this.camera.lookAt(target);
+    this.setFollow(null);
+    this.controls.update();
+    this.root.dataset.p02OverviewFrame = this.nativePresentation != null ? "declared-enu" : "recorded-wgs84-to-pack";
+    this.root.dataset.p02OverviewAnchorEnu = [anchor.enu.east_m, anchor.enu.north_m, anchor.enu.up_m]
+      .map(value => value.toFixed(3)).join(",");
+    this.root.dataset.p02OverviewAnchorWorld = mappedAnchor.toArray().map(value => value.toFixed(3)).join(",");
+    this.root.dataset.p02OverviewTarget = [target.x, target.y, target.z].map(value => value.toFixed(3)).join(",");
+    this.root.dataset.p02OverviewPosition = [position.x, position.y, position.z].map(value => value.toFixed(3)).join(",");
+    this.renderObservation();
+    return true;
+  }
+  /**
+   * P02: show persistent parcel-id labels above the carrier entities that
+   * business records explicitly bind. `labels` maps carrier entity id ->
+   * authored parcel id; entities without an entry keep their existing
+   * presentation. Rebuilds only when the declared id set changes; every
+   * later frame just copies positions.
+   */
+  setP02CargoLabels(labels: ReadonlyMap<string, string>, visible: boolean): void {
+    if (this.destroyed) return;
+    this.p02CargoLabelsVisible = visible;
+    const declared = visible ? [...labels.entries()].sort(([left], [right]) => left.localeCompare(right))
+      .map(([id, label]) => `${id}:${label}`).join("\u0000") : "";
+    if (declared !== (this.root.dataset.p02CargoLabelSet ?? "")) {
+      this.p02DisposeCargoLabels();
+      this.root.dataset.p02CargoLabelSet = declared;
+      if (visible && labels.size > 0) {
+        const group = new THREE.Group();
+        group.name = "P02 cargo id labels";
+        group.userData.provenance = "authored-business-overlay";
+        group.renderOrder = 5;
+        for (const [entityId, text] of labels) {
+          const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: p02CargoLabelTexture(compactCargoLabel(text)), transparent: true, depthWrite: false, depthTest: false, sizeAttenuation: false,
+          }));
+          sprite.center.set(0, 0.5);
+          sprite.userData.p02EntityId = entityId;
+          sprite.userData.p02ParcelId = text;
+          sprite.userData.visualOnly = true;
+          const icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: p02BusinessIconTexture("cargo"),
+            transparent: true, depthWrite: false, depthTest: false, sizeAttenuation: false }));
+          const leader = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({
+            color: 0x1f7fd4, transparent: true, opacity: 0.85, depthTest: false, depthWrite: false }));
+          sprite.userData.p02Icon = icon;
+          sprite.userData.p02Leader = leader;
+          group.add(leader, icon, sprite);
+          this.p02CargoLabels.set(entityId, sprite);
+        }
+        this.p02CargoLabelGroup = group;
+        this.scene.add(group);
+      }
+    }
+    if (this.p02CargoLabelGroup !== null) this.p02CargoLabelGroup.visible = visible;
+    this.p02UpdateCargoLabelPositions();
+  }
+
+  /** Parcel position follows exact current custody authority, including explicit unavailable positions. */
+  private p02UpdateCargoLabelPositions(): void {
+    const group = this.p02CargoLabelGroup;
+    if (group === null || !this.p02CargoLabelsVisible) return;
+    for (const sprite of this.p02CargoLabels.values()) {
+      const scene = this.observationScene;
+      const anchor = businessParcelAnchor(sprite.userData.p02ParcelId as string, this.p02BusinessFrame,
+        scene?.scenario ?? null, scene?.sceneState ?? null);
+      sprite.userData.p02PlacementState = anchor === null ? "unknown-custody-position" : "authored-custody-position";
+      sprite.userData.p02CustodyHolderId = anchor?.holderId ?? null;
+      if (anchor === null) {
+        sprite.visible = false;
+        (sprite.userData.p02Icon as THREE.Sprite).visible = false;
+        (sprite.userData.p02Leader as THREE.Line).visible = false;
+        continue;
+      }
+      const world = this.position(anchor.position);
+      const icon = sprite.userData.p02Icon as THREE.Sprite;
+      const leader = sprite.userData.p02Leader as THREE.Line;
+      const projected = world.clone().project(this.camera);
+      const visible = projected.z >= -1 && projected.z <= 1;
+      sprite.visible = icon.visible = leader.visible = visible;
+      if (!visible) continue;
+      const height = this.root.clientHeight || 480;
+      const width = this.root.clientWidth || 640;
+      const offset = (x: number, y: number): THREE.Vector3 => projected.clone()
+        .add(new THREE.Vector3(x * 2 / width, y * 2 / height, 0)).unproject(this.camera);
+      icon.position.copy(offset(24, 28));
+      sprite.position.copy(offset(35, 28));
+      const pixelScale = 2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / height;
+      icon.scale.set(16 * pixelScale, 16 * pixelScale, 1);
+      sprite.scale.set(82 * pixelScale, 20 * pixelScale, 1);
+      leader.geometry.dispose();
+      leader.geometry = new THREE.BufferGeometry().setFromPoints([world, offset(24, 28)]);
+    }
+  }
+
+  private p02DisposeCargoLabels(): void {
+    if (this.p02CargoLabelGroup !== null) {
+      this.scene.remove(this.p02CargoLabelGroup);
+      for (const child of this.p02CargoLabelGroup.children) {
+        if (child instanceof THREE.Sprite) { child.material.map?.dispose(); child.material.dispose(); }
+        else if (child instanceof THREE.Line) { child.geometry.dispose(); disposeMaterial(child.material); }
+      }
+      this.p02CargoLabelGroup = null;
+    }
+    this.p02CargoLabels.clear();
+    delete this.root.dataset.p02CargoLabelSet;
+  }
+
+  private p02UpdateDestinationMarkers(): void {
+    const scene = this.observationScene;
+    const markers = businessDestinationMarkers(this.p02BusinessFrame, scene?.scenario ?? null, scene?.sceneState ?? null);
+    const active = new Set(markers.map(marker => marker.destinationId));
+    this.root.dataset.p02DestinationState = markers.length === 0 ? "unknown" : "authored-entity-position";
+    this.root.dataset.p02DestinationIds = [...active].join(",");
+    for (const [id, sprite] of this.p02DestinationMarkers) if (!active.has(id)) sprite.visible = false;
+    if (markers.length === 0) return;
+    if (this.p02DestinationGroup === null) {
+      this.p02DestinationGroup = new THREE.Group();
+      this.p02DestinationGroup.userData.provenance = "authored-business-overlay";
+      this.scene.add(this.p02DestinationGroup);
+    }
+    for (const marker of markers) {
+      let sprite = this.p02DestinationMarkers.get(marker.destinationId);
+      if (sprite === undefined) {
+        sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: p02BusinessIconTexture("destination"),
+          transparent: true, depthWrite: false, depthTest: false, sizeAttenuation: false }));
+        sprite.userData.p02DestinationId = marker.destinationId;
+        sprite.userData.visualOnly = true;
+        this.p02DestinationGroup.add(sprite);
+        this.p02DestinationMarkers.set(marker.destinationId, sprite);
+      }
+      sprite.position.copy(this.position(marker.position, 2));
+      const pixelScale = 2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / (this.root.clientHeight || 480);
+      sprite.scale.set(20 * pixelScale, 20 * pixelScale, 1);
+      sprite.visible = true;
+    }
+  }
+
+  private p02DisposeDestinationMarkers(): void {
+    if (this.p02DestinationGroup !== null) this.scene.remove(this.p02DestinationGroup);
+    for (const sprite of this.p02DestinationMarkers.values()) { sprite.material.map?.dispose(); sprite.material.dispose(); }
+    this.p02DestinationMarkers.clear();
+    this.p02DestinationGroup = null;
+  }
+
+  private p02UpdateAircraftMarkers(): void {
+    const scene = this.observationScene;
+    const active = new Set<string>();
+    if (this.p02CargoLabelsVisible && scene?.scenario != null && scene.sceneState != null) {
+      for (const sample of scene.sceneState.samples) {
+        const definition = scene.scenario.entities.find(entity => entity.entity_id === sample.entity_id);
+        if (definition?.kind !== "uav" || sample.at.tick !== scene.sceneState.at.tick) continue;
+        const object = this.dynamic.get(`entity:${sample.entity_id}`);
+        if (object === undefined || !object.visible) continue;
+        active.add(sample.entity_id);
+        if (this.p02AircraftGroup === null) {
+          this.p02AircraftGroup = new THREE.Group();
+          this.p02AircraftGroup.name = "Recorded UAV screen markers";
+          this.p02AircraftGroup.userData.provenance = "recorded-entity-position-marker";
+          this.p02AircraftGroup.renderOrder = 6;
+          this.scene.add(this.p02AircraftGroup);
+        }
+        let sprite = this.p02AircraftMarkers.get(sample.entity_id);
+        if (sprite === undefined) {
+          sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: p02AircraftIconTexture(), transparent: true,
+            depthTest: false, depthWrite: false, sizeAttenuation: false }));
+          sprite.userData.target = { kind: "entity", id: sample.entity_id } satisfies TraceTarget;
+          sprite.userData.p02EntityId = sample.entity_id;
+          sprite.userData.visualOnly = true;
+          this.p02AircraftGroup.add(sprite);
+          this.p02AircraftMarkers.set(sample.entity_id, sprite);
+        }
+        sprite.position.copy(this.position(sample.pose.position));
+        const ndc = sprite.position.clone().project(this.camera);
+        const scale = 2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) / (this.root.clientHeight || 480);
+        sprite.scale.set(24 * scale, 24 * scale, 1);
+        sprite.visible = ndc.z >= -1 && ndc.z <= 1;
+      }
+    }
+    for (const [id, sprite] of this.p02AircraftMarkers) if (!active.has(id)) sprite.visible = false;
+    this.root.dataset.p02AircraftMarkerIds = [...active].join(",");
+    this.root.dataset.p02CarrierModelState = this.nativePresentation !== null ? "native-entity-glb-binding-unavailable" : "viewer-model-route";
+  }
+
+  private p02DisposeAircraftMarkers(): void {
+    if (this.p02AircraftGroup !== null) this.scene.remove(this.p02AircraftGroup);
+    for (const sprite of this.p02AircraftMarkers.values()) { sprite.material.map?.dispose(); sprite.material.dispose(); }
+    this.p02AircraftMarkers.clear();
+    this.p02AircraftGroup = null;
+  }
+
   destroy(): void {
     this.unsubscribeGroundLanguage();
     document.removeEventListener("visibilitychange", this.resetPreviewClock);
@@ -3633,6 +3974,9 @@ export class PublicTraceMap {
     this.operationsMonitor?.dispose(); this.operationsMonitor = null;
     this.secondaryTarget?.dispose(); this.secondaryTarget = null;
     this.destroyed = true; this.resizeObserver.disconnect(); this.controls.dispose(); this.clearScene();
+    this.p02DisposeCargoLabels();
+    this.p02DisposeDestinationMarkers();
+    this.p02DisposeAircraftMarkers();
     disposeCityDaySky(this.cityDaySky);
     this.daySky.dispose(); this.duskSky.dispose(); this.dayReflection.dispose(); this.duskReflection.dispose();
     this.horizon.geometry.dispose(); this.horizon.material.map?.dispose(); this.horizon.material.dispose();
@@ -3640,4 +3984,86 @@ export class PublicTraceMap {
     this.selectionOutline.geometry.dispose(); disposeMaterial(this.selectionOutline.material);
     this.sun.shadow.dispose(); this.renderer.dispose(); this.root.replaceChildren();
   }
+}
+
+/**
+ * P02 compact parcel label: full authored identity stays in inspector and metadata.
+ * Independent implementation (no external host
+ * code); one canvas per record, disposed with the label group.
+ */
+function p02CargoLabelTexture(text: string): THREE.CanvasTexture {
+  if (typeof document === "undefined") {
+    throw new Error("P02 cargo labels require a browser document");
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = 344;
+  canvas.height = 84;
+  const context = canvas.getContext("2d");
+  if (context === null) throw new Error("P02 cargo label canvas is unavailable");
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  const radius = 22;
+  context.beginPath();
+  context.moveTo(radius, 4);
+  context.arcTo(canvas.width - 4, 4, canvas.width - 4, canvas.height - 4, radius);
+  context.arcTo(canvas.width - 4, canvas.height - 4, 4, canvas.height - 4, radius);
+  context.arcTo(4, canvas.height - 4, 4, 4, radius);
+  context.arcTo(4, 4, canvas.width - 4, 4, radius);
+  context.closePath();
+  context.fillStyle = "rgba(255, 255, 255, 0.92)";
+  context.fill();
+  context.lineWidth = 6;
+  context.strokeStyle = "#1f7fd4";
+  context.stroke();
+  context.fillStyle = "#123a5c";
+  context.font = "600 42px Inter, 'Noto Sans SC', system-ui, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(text, canvas.width / 2, canvas.height / 2 + 2, canvas.width - 40);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function p02BusinessIconTexture(kind: "cargo" | "destination"): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 64;
+  const context = canvas.getContext("2d");
+  if (context === null) throw new Error("P02 business icon canvas is unavailable");
+  context.fillStyle = "#ffffff";
+  context.strokeStyle = "#1f7fd4";
+  context.lineWidth = 5;
+  context.lineJoin = "round";
+  context.beginPath();
+  if (kind === "cargo") {
+    context.moveTo(10, 18); context.lineTo(32, 7); context.lineTo(54, 18);
+    context.lineTo(54, 46); context.lineTo(32, 58); context.lineTo(10, 46); context.closePath();
+    context.fill(); context.stroke();
+    context.beginPath(); context.moveTo(10, 18); context.lineTo(32, 30); context.lineTo(54, 18);
+    context.moveTo(32, 30); context.lineTo(32, 58); context.stroke();
+  } else {
+    context.moveTo(32, 58); context.bezierCurveTo(24, 43, 11, 36, 11, 24);
+    context.arc(32, 24, 21, Math.PI, 0); context.bezierCurveTo(53, 36, 40, 43, 32, 58);
+    context.fill(); context.stroke();
+    context.beginPath(); context.arc(32, 24, 7, 0, Math.PI * 2); context.stroke();
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function p02AircraftIconTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas"); canvas.width = canvas.height = 64;
+  const context = canvas.getContext("2d");
+  if (context === null) throw new Error("P02 aircraft marker canvas is unavailable");
+  context.fillStyle = "rgba(255,255,255,.94)";
+  context.beginPath(); context.arc(32, 32, 31, 0, Math.PI * 2); context.fill();
+  context.strokeStyle = "#1264b0"; context.lineWidth = 5;
+  context.beginPath(); context.moveTo(17, 17); context.lineTo(47, 47);
+  context.moveTo(47, 17); context.lineTo(17, 47); context.stroke();
+  for (const [x, y] of [[17, 17], [47, 17], [17, 47], [47, 47]]) {
+    context.beginPath(); context.arc(x!, y!, 9, 0, Math.PI * 2); context.stroke();
+  }
+  context.fillStyle = "#1264b0"; context.fillRect(26, 23, 12, 18);
+  const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }

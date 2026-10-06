@@ -10,6 +10,8 @@
  * rendered, and never persisted.
  */
 import type { ControlReplaySource } from "./control-replay-source";
+import { ControlAssetQueue } from "./control-asset-queue";
+import type { RunStartIdentityStore } from "./run-start-identity";
 import type { Unsubscribe } from "./state/observable";
 import { Observable } from "./state/observable";
 import {
@@ -73,6 +75,7 @@ export interface RunSessionState {
 export interface RunSessionOptions {
   /** Generate the client-side idempotency identifiers (test seam). */
   readonly newIdentifier?: (prefix: string) => string;
+  readonly startIdentities?: RunStartIdentityStore;
 }
 
 const TERMINAL_PHASES: ReadonlySet<string> = new Set(["completed", "cancelled", "error"]);
@@ -177,14 +180,17 @@ export class RunSession {
   private readonly state: Observable<RunSessionState>;
   private readonly client: ControlClient;
   private readonly newIdentifier: (prefix: string) => string;
+  private readonly startIdentities: RunStartIdentityStore | undefined;
   private stream: RunEventStream | null = null;
   private runCredentials: RunCredentials | null = null;
+  private assetQueue: ControlAssetQueue | null = null;
   private statusController: AbortController | null = null;
   private disposed = false;
 
   constructor(client: ControlClient, options: RunSessionOptions = {}) {
     this.client = client;
     this.newIdentifier = options.newIdentifier ?? defaultIdentifier;
+    this.startIdentities = options.startIdentities;
     this.state = new Observable<RunSessionState>(initialState());
   }
 
@@ -194,8 +200,11 @@ export class RunSession {
 
   async publicAsset(digest: string, signal?: AbortSignal): Promise<Response> {
     if (this.disposed || this.runCredentials === null) throw new ControlProtocolError("no live run credentials are held");
-    return this.client.publicAsset(this.runCredentials, digest, signal);
+    if (this.assetQueue === null) throw new ControlProtocolError("no run asset queue is held");
+    return this.assetQueue.fetch(digest, signal);
   }
+
+  get assetDiagnostics(): Readonly<Record<string, number>> | null { return this.assetQueue?.diagnostics ?? null; }
 
   /** Sealed replay of the finished run. The source keeps its own copy of the run credentials in
    * memory, so it stays usable after this session is disposed. */
@@ -204,11 +213,14 @@ export class RunSession {
     if (this.disposed || credentials === null) throw new ControlProtocolError("no live run credentials are held");
     if (!this.isTerminal) throw new ControlProtocolError("the run has not reached a terminal phase");
     const client = this.client;
+    const assets = this.assetQueue;
+    if (assets === null) throw new ControlProtocolError("no run asset queue is held");
     return Object.freeze({
       runId: credentials.runId,
       manifest: (signal?: AbortSignal) => client.publicReplayManifest(credentials, signal),
       trace: (signal?: AbortSignal) => client.publicTrace(credentials, signal),
-      asset: (digest: string, signal?: AbortSignal) => client.publicAsset(credentials, digest, signal),
+      asset: (digest: string, signal?: AbortSignal) => assets.fetch(digest, signal),
+      assetQueueManaged: true,
     });
   }
 
@@ -262,6 +274,7 @@ export class RunSession {
     }
     this.closeStream();
     this.runCredentials = null;
+    this.assetQueue = null;
     this.patch({
       connection: "connecting",
       hasRunCredentials: false,
@@ -278,12 +291,16 @@ export class RunSession {
     });
     let response: StartRunResponse;
     try {
-      response = await this.client.startRun(bootstrap, runId, this.newIdentifier("start"));
+      const startId = this.startIdentities === undefined ? this.newIdentifier("start")
+        : this.startIdentities.getOrCreate(runId, () => this.newIdentifier("start")).startId;
+      response = await this.client.startRun(bootstrap, runId, startId);
     } catch (error) {
       this.patch({ connection: "error", sessionError: errorMessage(error) });
       return;
     }
     this.runCredentials = this.credentialsOf(response.credentials);
+    const credentials = this.runCredentials;
+    this.assetQueue = new ControlAssetQueue((digest, signal) => this.client.publicAsset(credentials, digest, signal));
     this.patch({
       connection: "connected",
       hasRunCredentials: true,
@@ -428,6 +445,7 @@ export class RunSession {
   disconnect(): void {
     this.closeStream();
     this.runCredentials = null;
+    this.assetQueue = null;
     this.patch({
       connection: "closed",
       hasRunCredentials: false,
@@ -446,6 +464,7 @@ export class RunSession {
     this.statusController = null;
     this.closeStream();
     this.runCredentials = null;
+    this.assetQueue = null;
     this.state.set(initialState());
   }
 }

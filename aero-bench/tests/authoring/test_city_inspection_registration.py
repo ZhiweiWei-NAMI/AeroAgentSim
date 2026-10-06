@@ -218,10 +218,31 @@ def test_city_compile_derives_snapshot_run_without_changing_native_bindings(
     assert result.runs[0].scenario_digest != BASE_SCENARIO_DIGEST
     assert result.runs[0].world_digest == WORLD_DIGEST
 
+    publication_root = compiler.output_root / result.compilation_id
+    publication_digests = {
+        path.relative_to(publication_root): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in publication_root.rglob("*") if path.is_file()
+    }
     loaded, bundle, runs = load_published_compilation(
         compiler.output_root, result.compilation_id,
     )
     assert loaded == result and len(runs) == 1
+    from aero_bench.executor.planning import build_execution_plan
+    from aero_bench.providers.registry import builtin_provider_registry
+    from aero_bench.tasks.registry import builtin_task_package_resolvers
+
+    plan = build_execution_plan(
+        runs[0], executor_kind="docker_reference", bundle_root=bundle,
+        task_package_resolvers=builtin_task_package_resolvers(),
+        provider_registry=builtin_provider_registry(),
+    )
+    assert plan.run.run_id == result.runs[0].run_id
+    assert Path(plan.bundle_root) == bundle
+    assert (bundle / runs[0].task.instruction.path).is_file()
+    assert {
+        path.relative_to(publication_root): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in publication_root.rglob("*") if path.is_file()
+    } == publication_digests
     derived = runs[0]
     base = scene.run
     assert derived.seed == base.seed
@@ -234,7 +255,10 @@ def test_city_compile_derives_snapshot_run_without_changing_native_bindings(
     snapshot = derived_assets.pop("asset.city-authoring-snapshot")
     assert derived_assets == base_assets
     assert snapshot.classification == "private"
-    suite_root = (bundle / result.suite.path).parent
+    suite_root = bundle
+    assert suite_root == (
+        compiler.output_root / result.compilation_id / "bundle" / result.suite.path
+    ).parent
     snapshot_path = suite_root / "authoring/workspace-snapshot.json"
     assert snapshot.file.path == "authoring/workspace-snapshot.json"
     assert parse_json_object(snapshot_path.read_bytes())["draft"] == (

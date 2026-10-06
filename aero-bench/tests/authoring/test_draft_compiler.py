@@ -501,6 +501,14 @@ def test_published_compilation_loads_after_compiler_session_and_binds_control(te
     assert manager.catalog.suite_sha256 == result.suite.sha256
     assert manager._bundle_root == bundle
     assert manager._output_root != bundle
+    from aero_bench.executor.planning import build_execution_plan
+    plan = build_execution_plan(
+        runs[0], executor_kind="docker_reference", bundle_root=manager._bundle_root,
+        task_package_resolvers=builtin_task_package_resolvers(),
+        provider_registry=builtin_provider_registry(),
+    )
+    assert plan.run.run_id == result.runs[0].run_id
+    assert Path(plan.bundle_root) == bundle
 
 
 def test_published_compilation_rejects_tampered_resolved_run_and_input(template, tmp_path):

@@ -5,7 +5,10 @@ import { readGlbDocument } from "./city-building-renders";
 import { parseCityEnvironmentSource, type EnvironmentPoint, type EnvironmentPolygon } from "./city-environment";
 import { parseCityGroundCovers } from "./city-ground-cover";
 import { groundMaterialInputFromCover, groundMaterialInputFromGreen } from "./city-ground-material-rules";
-import { assignCityGroundMaterial, terrainFlatColor } from "./city-terrain-surfaces";
+import { assignCityGroundMaterial, createTerrainSurfaceKit, loadVerifiedTerrainTextureSets,
+  terrainTextureSetIds, TERRAIN_TEXTURE_LIBRARY_SHA256, type TerrainSurfaceKit } from "./city-terrain-surfaces";
+import { createSurfaceWetnessUniforms } from "./city-surface-wetness";
+import { createWaterSurfaceUniforms } from "./city-water-surface";
 import { crossingStripeSegments, laneOffsets, sameJson, triangulateUpward,
   validateCanonicalCityRoadPayload } from "./city-roads";
 import type { PublicBuilding, PublicEntityDefinition, PublicScenario,
@@ -924,10 +927,9 @@ function createFixtureGroup(fixtures: readonly NativeFixture[]): THREE.Group {
   return group;
 }
 
-/** Untextured ground: the native asset contract does not carry the terrain texture
- * library, so each material preset is drawn in its measured flat colour. */
+/** Native geometry and classification use the viewer's existing pinned terrain materials. */
 function createRegionGroup(environment: ReturnType<typeof parseCityEnvironmentSource>,
-    covers: ReturnType<typeof parseCityGroundCovers>): THREE.Group {
+    covers: ReturnType<typeof parseCityGroundCovers>, kit: TerrainSurfaceKit): THREE.Group {
   const group = new THREE.Group();
   group.name = "Declared native green and ground-cover regions";
   const layers = [
@@ -945,11 +947,24 @@ function createRegionGroup(environment: ReturnType<typeof parseCityEnvironmentSo
   for (const key of [...byPreset.keys()].sort()) {
     const members = byPreset.get(key)!, { assignment, y } = members[0]!;
     const draft: DraftGeometry = { positions: [], indices: [] };
-    for (const member of members) addPolygon(draft, member.polygon, y);
-    const water = assignment.family === "water";
-    const mesh = draftMesh(draft, new THREE.MeshStandardMaterial({ color: terrainFlatColor(assignment),
-      roughness: water ? 0.2 : 0.95, metalness: 0 }),
+    const uv: number[] = [], color: number[] = [];
+    for (const member of members) {
+      const start = draft.positions.length;
+      addPolygon(draft, member.polygon, y);
+      const attributes = kit.attributes(new Float32Array(draft.positions.slice(start)), member.assignment);
+      if (attributes !== null) {
+        for (const value of attributes.uv) uv.push(value);
+        for (const value of attributes.color) color.push(value);
+      }
+    }
+    const material = kit.material(assignment);
+    material.userData.nativeTerrainKitOwned = true;
+    const mesh = draftMesh(draft, material,
     `${y === 0.018 ? "OSM green area" : "OSM ground cover"}: ${assignment.preset}`);
+    if (uv.length > 0) {
+      mesh.geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+      mesh.geometry.setAttribute("color", new THREE.Float32BufferAttribute(color, 3));
+    }
     mesh.userData.terrainPreset = assignment.preset;
     mesh.userData.groundMaterials = members.map(member => member.assignment);
     group.add(mesh);
@@ -957,7 +972,8 @@ function createRegionGroup(environment: ReturnType<typeof parseCityEnvironmentSo
   group.userData.nativeSource = "aero-bench.city-environment-source/v1";
   group.userData.greenCount = environment.greens.length;
   group.userData.groundCoverCount = covers.length;
-  group.userData.materialSource = "flat-preset-colours; terrain textures are not in the native asset contract";
+  group.userData.materialSource = "viewer-pinned-terrain-library";
+  group.userData.terrainTextureLibrarySha256 = TERRAIN_TEXTURE_LIBRARY_SHA256;
   return group;
 }
 
@@ -1002,6 +1018,7 @@ function disposeObject(root: THREE.Object3D): void {
     if (!(node instanceof THREE.Mesh)) return;
     geometries.add(node.geometry);
     for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
+      if (material.userData.nativeTerrainKitOwned === true) continue;
       materials.add(material);
       for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
     }
@@ -1113,6 +1130,7 @@ export async function loadNativeCityPresentation(plan: NativeCityPresentationPla
   root.name = `Native city assets: ${plan.worldId}`;
   const buildings = new THREE.Group(); buildings.name = "Native per-building GLBs";
   let roads: THREE.Group | null = null, fixtures: THREE.Group | null = null, regions: THREE.Group | null = null;
+  let terrainKit: TerrainSurfaceKit | null = null;
   root.add(buildings);
   let completed = 0, verifiedBytes = 0, disposed = false;
   const total = NATIVE_LAYER_KINDS.length + plan.buildings.length;
@@ -1158,7 +1176,17 @@ export async function loadNativeCityPresentation(plan: NativeCityPresentationPla
     root.add(roads);
     fixtures = createFixtureGroup(nativeFixtures);
     root.add(fixtures);
-    regions = createRegionGroup(environment, groundCovers);
+    const terrainAssignments = [
+      ...environment.greens.map(green => assignCityGroundMaterial(groundMaterialInputFromGreen(green))),
+      ...groundCovers.map(cover => assignCityGroundMaterial(groundMaterialInputFromCover(cover))),
+    ];
+    const textures = await loadVerifiedTerrainTextureSets({ setIds: terrainTextureSetIds(terrainAssignments),
+      maxAnisotropy: 8, signal: controller.signal });
+    try {
+      terrainKit = createTerrainSurfaceKit(terrainAssignments, textures,
+        createSurfaceWetnessUniforms(), createWaterSurfaceUniforms());
+    } catch (error) { textures.dispose(); throw error; }
+    regions = createRegionGroup(environment, groundCovers, terrainKit);
     root.add(regions);
 
     let nextBuilding = 0;
@@ -1229,6 +1257,7 @@ export async function loadNativeCityPresentation(plan: NativeCityPresentationPla
         disposed = true;
         controller.abort();
         disposeObject(root);
+        terrainKit?.dispose();
         resolver.dispose();
       },
     };
@@ -1237,6 +1266,7 @@ export async function loadNativeCityPresentation(plan: NativeCityPresentationPla
   } catch (error) {
     controller.abort();
     disposeObject(root);
+    terrainKit?.dispose();
     resolver.dispose();
     options.signal?.removeEventListener("abort", abort);
     throw error;

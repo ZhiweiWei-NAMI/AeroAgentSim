@@ -1,3 +1,4 @@
+import { t, tf } from "./i18n";
 import {
   createDefaultCityWorkspaceConfig,
   parseCityWorkspaceConfig,
@@ -106,6 +107,11 @@ export function createCityPreviewSceneDraft(preset: CityPreviewScenePreset): Cit
   });
 }
 
+
+function presetLabel(preset: CityPreviewScenePreset): string {
+  return t(preset.id === "huangpu" ? "studio.region.huangpu" : "studio.region.jingan");
+}
+
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K, className: string, text?: string,
 ): HTMLElementTagNameMap[K] {
@@ -126,28 +132,26 @@ export function renderCityPreviewScenePresetPanel(
   let busy = false;
   const panel = element("section", "studio-card");
   panel.dataset.role = "ordinary-scene-preset";
-  panel.append(element("h2", "studio-panel-title", "城市工程预览"));
+  panel.append(element("h2", "studio-panel-title", t("studio.region.title")));
   const note = element("p", "studio-note",
-    "选择其他地区不会立即修改草稿。明确应用后，系统先校验该地区的场景清单和空间资料；"
-    + "只有核验成功才会用一份全新的地区草稿替换当前草稿，并在三维预览门通过后保存。"
-    + "当前设施、机队绑定、订单、事件和创作景观不会跨区迁移。");
+    t("studio.region.consequence"));
   note.dataset.role = "scene-preset-consequence";
   const field = element("label", "studio-field");
-  field.append(element("span", "", "普通城市预览"));
+  field.append(element("span", "", t("studio.region.ordinary")));
   const select = document.createElement("select");
-  select.setAttribute("aria-label", "普通城市预览地区");
+  select.setAttribute("aria-label", t("studio.region.aria"));
   const current = cityPreviewScenePresetForPath(currentScenePath);
-  if (current === null) select.append(new Option("当前草稿不是已发布地区预设", ""));
+  if (current === null) select.append(new Option(t("studio.region.notPreset"), ""));
   for (const preset of CITY_PREVIEW_SCENE_PRESETS) {
-    select.append(new Option(preset.optionLabel, preset.id));
+    select.append(new Option(presetLabel(preset), preset.id));
   }
   select.value = current?.id ?? "";
   field.append(select);
   const actions = element("div", "studio-row");
-  const apply = element("button", "studio-button", "校验并切换地区");
+  const apply = element("button", "studio-button", t("studio.region.apply"));
   apply.type = "button";
   const result = element("p", "studio-note",
-    current === null ? "当前草稿路径不会被自动替换。" : `当前地区：${current.optionLabel}。`);
+    current === null ? t("studio.region.unchanged") : tf("studio.region.current", { region: presetLabel(current) }));
   result.dataset.role = "scene-preset-result";
   result.setAttribute("aria-live", "polite");
   actions.append(apply);
@@ -164,8 +168,8 @@ export function renderCityPreviewScenePresetPanel(
     if (disposed) return;
     const selected = selectedPreset();
     result.textContent = selected === null || selected.scenePath === currentScenePath
-      ? `当前地区：${current?.optionLabel ?? "非预设场景"}。草稿未修改。`
-      : `将创建 ${selected.optionLabel} 的全新草稿；当前草稿及其未保存更改不会迁移。`;
+      ? tf("studio.region.noChange", { region: current === null ? t("studio.region.other") : presetLabel(current) })
+      : tf("studio.region.willCreate", { region: presetLabel(selected) });
     delete result.dataset.state;
     sync();
   });
@@ -173,8 +177,8 @@ export function renderCityPreviewScenePresetPanel(
     const selected = selectedPreset();
     if (disposed || busy || selected === null || selected.scenePath === currentScenePath) return;
     busy = true;
-    apply.textContent = "正在校验地区场景…";
-    result.textContent = `正在读取并核验 ${selected.optionLabel}；当前草稿与本地存储尚未改动。`;
+    apply.textContent = t("studio.region.busy");
+    result.textContent = tf("studio.region.verifying", { region: presetLabel(selected) });
     result.dataset.state = "dirty";
     sync();
     void onApply(selected).then(outcome => {
@@ -183,12 +187,12 @@ export function renderCityPreviewScenePresetPanel(
       result.dataset.state = outcome.ok ? "saved" : "error";
     }).catch((error: unknown) => {
       if (disposed) return;
-      result.textContent = `地区切换失败：${error instanceof Error ? error.message : String(error)}。当前草稿与本地存储未改动。`;
+      result.textContent = tf("studio.region.failed", { error: error instanceof Error ? error.message : String(error) });
       result.dataset.state = "error";
     }).finally(() => {
       if (disposed) return;
       busy = false;
-      apply.textContent = "校验并切换地区";
+      apply.textContent = t("studio.region.apply");
       sync();
     });
   });

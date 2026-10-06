@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ControlProtocolError, type StreamEnvelope } from "./run-control";
 import { RunSession, MAX_EVENTS, MAX_SCENE_STATES } from "./run-store";
+import { RunStartIdentityStore } from "./run-start-identity";
 import type { ControlCatalog, StartRunResponse } from "./generated/aero-bench-contracts";
 import {
   RUN_ID,
@@ -78,6 +79,45 @@ describe("RunSession", () => {
     expect(state.snapshot?.phase).toBe("starting");
     expect(state.connection).toBe("connected");
     expect(state.scenario?.world_id).toBe("fixture.world");
+  });
+
+  it("reuses the persisted non-secret start id through the supported Start API after reload", async () => {
+    const values = new Map<string, string>();
+    const storage = { getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value); } };
+    const client = fakeClient();
+    for (const generated of ["start.first", "start.must-not-replace"]) {
+      const current = new RunSession(client as never, {
+        startIdentities: new RunStartIdentityStore(storage, "http://127.0.0.1:8766", "f".repeat(64)),
+        newIdentifier: () => generated,
+      });
+      await current.loadCatalog("a".repeat(64));
+      current.selectRun(RUN_ID);
+      await current.start({ operatorToken: "a".repeat(64), csrfToken: "b".repeat(64) });
+      expect(current.currentState.hasRunCredentials).toBe(true);
+      current.dispose();
+    }
+    expect(client.startRun).toHaveBeenCalledTimes(2);
+    expect(client.startRun.mock.calls.map(args => (args as unknown[])[2])).toEqual(["start.first", "start.first"]);
+    const saved = JSON.parse([...values.values()][0]!);
+    expect(Object.keys(saved).sort()).toEqual(["schemaVersion", "serviceOrigin", "runId", "startId", "compilationId"].sort());
+    expect(saved.runId).toBe(RUN_ID);
+  });
+
+  it("does not send Start if persistence fails before the HTTP request", async () => {
+    const client = fakeClient();
+    const current = new RunSession(client as never, {
+      startIdentities: new RunStartIdentityStore({ getItem: () => null,
+        setItem: () => { throw new Error("storage is not writable"); } }, "http://127.0.0.1:8766"),
+      newIdentifier: () => "start.first",
+    });
+    await current.loadCatalog("a".repeat(64));
+    current.selectRun(RUN_ID);
+    await current.start({ operatorToken: "a".repeat(64), csrfToken: "b".repeat(64) });
+    expect(client.startRun).not.toHaveBeenCalled();
+    expect(current.currentState.sessionError).toBe("storage is not writable");
+    expect(current.currentState.hasRunCredentials).toBe(false);
+    current.dispose();
   });
 
   it("ingests scene states only at strictly advancing ticks", async () => {
