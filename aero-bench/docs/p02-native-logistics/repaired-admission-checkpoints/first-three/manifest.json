@@ -1,0 +1,93 @@
+{
+  "scope": "Three local source repair checkpoints; synthetic actual-package regressions. Snapshot/restore remains unresolved. Not full module/native-flight acceptance.",
+  "files": [
+    {
+      "path": "source/aero_bench/tasks/logistics/native_parcel_contract.py",
+      "repository_path": "aero_bench/tasks/logistics/native_parcel_contract.py",
+      "bytes": 32216,
+      "sha256": "b0cdf7abdbe209de5feed2a1fa387f748a85baf27eaf9e2e7c9e3047364ac05d"
+    },
+    {
+      "path": "source/aero_bench/tasks/logistics/native_parcel_runtime.py",
+      "repository_path": "aero_bench/tasks/logistics/native_parcel_runtime.py",
+      "bytes": 62347,
+      "sha256": "6859e641c64bfb5ffa95929452cc4ee89dbdeda9cc1f943657ab2aee79480e3d"
+    },
+    {
+      "path": "source/aero_bench/tasks/logistics/facility_presence.py",
+      "repository_path": "aero_bench/tasks/logistics/facility_presence.py",
+      "bytes": 30040,
+      "sha256": "88da26f0c7bdf2778eff76b68da5f8da4e3cb1b981422cbd63568d7669ba2ae2"
+    },
+    {
+      "path": "source/aero_bench/tasks/logistics/physical_observations.py",
+      "repository_path": "aero_bench/tasks/logistics/physical_observations.py",
+      "bytes": 66056,
+      "sha256": "130f13c9b76ff53ab4a3f348269f02f9d1b5d08eab48646e57efeec51b975c64"
+    },
+    {
+      "path": "source/tests/tasks/test_native_parcel_runtime.py",
+      "repository_path": "tests/tasks/test_native_parcel_runtime.py",
+      "bytes": 45668,
+      "sha256": "815b967eb14017c096d921bccd2e02ecc3ae264e99d73d16e7604224660bc100"
+    },
+    {
+      "path": "source/tests/tasks/test_native_parcel_review_regressions.py",
+      "repository_path": "tests/tasks/test_native_parcel_review_regressions.py",
+      "bytes": 4178,
+      "sha256": "e31d4e6e2a1d6a165dd34631c42e448c22b25d4f66a202dcf48b64c366e4975b"
+    },
+    {
+      "path": "checks/window-reset-checkpoint/coordinator-result.json",
+      "bytes": 649,
+      "sha256": "5410f910cbdd097074a27432fd070cc25bdf3a1dc59f15511f21c8fbbc7ed100"
+    },
+    {
+      "path": "checks/window-reset-checkpoint/coordinator-regression.xml",
+      "bytes": 708,
+      "sha256": "3ee7a4f01aa664424b3b19932cb5dec61eeb7d7863fe863388a5a9f1fad2fe56"
+    },
+    {
+      "path": "checks/window-reset-checkpoint/before-function.py.txt",
+      "bytes": 1664,
+      "sha256": "7970d8dd01222c38e0bf4d6ddfa439fe86cd31c3ec8fbc770362e1ffe1def41b"
+    },
+    {
+      "path": "checks/window-reset-checkpoint/after-function.py.txt",
+      "bytes": 2740,
+      "sha256": "e03d2f4bd50db1323400724328e216742caa92c191698174fd76dc8eba80cacd"
+    },
+    {
+      "path": "checks/window-reset-checkpoint/function.patch",
+      "bytes": 1488,
+      "sha256": "f5a34bf81bceff888dccdcd386edd734568c98ec6a39153ca48519befa1acc2b"
+    },
+    {
+      "path": "checks/two-pad-checkpoint/coordinator-result.json",
+      "bytes": 461,
+      "sha256": "e1caa91bb24cfafa440b4151015c5723cd353ec06c7146f627ffc5c9d821acc9"
+    },
+    {
+      "path": "checks/two-pad-checkpoint/coordinator-final-regression.xml",
+      "bytes": 390,
+      "sha256": "84b2756e60ebc614f2b3d4fc4fa38f985ce12893eef40965d5f8a7e2462f18d4"
+    },
+    {
+      "path": "checks/principal-checkpoint/coordinator-result.json",
+      "bytes": 452,
+      "sha256": "6ca848b488708963672ebdd2bf424d367127e0da0efe3e52da1a71de8748285a"
+    },
+    {
+      "path": "checks/principal-checkpoint/coordinator-regression.xml",
+      "bytes": 684,
+      "sha256": "5aba9d7bba313c70b59bb58305d67c7dd5da50f8e1f980b1022ebe52098d553b"
+    }
+  ],
+  "author_provider": "workbuddy",
+  "author_model": "glm-5.3-flash",
+  "verified_checkpoints": {
+    "qualifying_window_reset": "3 passed in 0.56s",
+    "same_tick_two_pads": "1 passed in 0.49s",
+    "principal_key_run_binding": "3 passed in 0.49s"
+  }
+}
