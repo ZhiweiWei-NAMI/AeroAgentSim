@@ -1,5 +1,6 @@
 import "./styles.css";
 import "./city-studio.css";
+import { applyStudioRunReturnLinks } from "./p02-studio-navigation";
 
 import { AssetResolver } from "./asset-resolver";
 import {
@@ -477,6 +478,7 @@ class CityStudio {
 
   constructor() {
     translateStudioShell(this.root);
+    applyStudioRunReturnLinks(this.root, new URL(window.location.href));
     try {
       const loaded = loadCityWorkspaceConfig();
       this.config = loaded ?? createDefaultCityWorkspaceConfig();
@@ -516,6 +518,13 @@ class CityStudio {
         document.documentElement.lang = currentLanguage();
         if (this.saveStatus.dataset.state === "saved") this.saveStatus.textContent = t("studio.loaded");
         if (this.saveStatus.dataset.state === "dirty") this.saveStatus.textContent = t("studio.dirty");
+        if (this.nativeReference !== null && this.mapReady
+            && inspectNativeReferenceVisual(this.nativeReference).kind === "native-city") {
+          this.basemapNote = t("studio.nativeAssets");
+          if (this.tab !== "compile" && this.previewStatus.dataset.state === "ready") {
+            this.previewStatus.textContent = t("studio.nativeReady");
+          }
+        }
         // Re-render presentation from this same in-memory draft, without a reload or save.
         this.renderTab();
         this.renderSummary();

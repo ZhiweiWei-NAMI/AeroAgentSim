@@ -2,6 +2,7 @@ import { LoadingProgressView, type ProgressListener } from "./loading-progress";
 import { ReplayEvents } from "./replay-events";
 import { showAvailableContent } from "./available-content";
 import { PublicTraceMap, type MapScene } from "./map";
+import { studioConfigurationUrl } from "./p02-studio-navigation";
 import type { PublicScenario, PublicTrafficLightFrame, SceneState,
   ReplayAccessRequest } from "./generated/aero-bench-contracts";
 import type { OsmBuildingKind as BuildingType, OsmTrafficSignal as TrafficLight } from "./osm2world/source";
@@ -79,6 +80,19 @@ import {
   statusValue,
   textBlock,
 } from "./ui";
+import {
+  buildRunIndex,
+  selectedFrameBusinessView,
+  type SelectedFrameBusinessView,
+  entityKindsOf,
+  formatRunClock,
+  p02OrderSelection,
+  p02OverviewPose,
+  type BusinessIdentityEnvelope,
+  type OverviewPoseEnu,
+  type RunIndex,
+} from "./p02-entity-overlays";
+import "./p02-view.css";
 
 export type AppMode = "live" | "replay";
 type InfoTab = "overview" | "telemetry" | "agent" | "interactions" | "network" | "evidence" | "boundary";
@@ -256,6 +270,12 @@ interface AppShell {
   readonly contextMenu: HTMLElement;
   readonly sourceMessage: HTMLElement;
   readonly telemetryHudContainer: HTMLElement;
+  /** P02 map-first view switch (运行/配置). Absent nodes are allowed: tests mount partial shells. */
+  readonly p02ViewSwitch: HTMLElement | null;
+  /** P02 运行 business dock floating over the map (orders + selected-cargo inspector). */
+  readonly p02RunDock: HTMLElement | null;
+  /** P02 配置 panel body; lives in the left sidebar below the existing panels. */
+  readonly p02ConfigBody: HTMLElement | null;
 }
 
 export class PublicTraceApp {
@@ -312,6 +332,19 @@ export class PublicTraceApp {
   private endpointAbortController: AbortController | null = null;
   private replacementApp: PublicTraceApp | null = null;
   private disposed = false;
+
+  // ------------------------------------------------------------------
+  // P02 Run/Configuration views. Compiled once per trace load; every
+  // per-tick render is a Map join over these tables (no rescans).
+  // ------------------------------------------------------------------
+  private p02RunIndex: RunIndex | null = null;
+  private p02View: "run" | "config" = "run";
+  private p02SelectedOrderId: string | null = null;
+  /** Business-identity sidecar fetch generation; only the latest binds. */
+  private p02IdentityGeneration = 0;
+  private p02IdentityAbort: AbortController | null = null;
+  /** Trace whose business overview the map has already framed (one-shot). */
+  private p02OverviewFramed: PublicTrace | null = null;
 
   private readonly keydown = (event: KeyboardEvent) => {
     if (event.key === "Escape") {
@@ -407,6 +440,12 @@ export class PublicTraceApp {
       onUnavailable: () => this.handleMapUnavailable(),
       onBasemapNote: (note) => this.showBasemapNote(note),
       onSceneStatus: (digest, status, detail) => {
+        // The selected city asset can finish after the trace's first render.
+        // Fit only after its real coordinate authority and GLBs are ready.
+        if (status === "ready" && this.mode === "replay") {
+          this.p02OverviewFramed = null;
+          this.p02FrameOverview();
+        }
         if (this.mode !== "replay" || digest !== this.trace?.scenario_digest) return;
         this.loadingProgress.update({ stage: status, detail });
         if (status === "failed") this.replay.pause();
@@ -443,6 +482,35 @@ export class PublicTraceApp {
     this.shell.langZh.addEventListener("click", () => setLanguage("zh"));
     this.shell.langEn.addEventListener("click", () => setLanguage("en"));
     this.shell.followChip.addEventListener("click", () => this.camera.releaseFollow());
+    // Configuration opens the actual editable Studio, rather than hiding Run
+    // business panels over the same replay canvas.
+    this.shell.p02ViewSwitch?.querySelectorAll<HTMLButtonElement>(".p02-view-button").forEach(button => {
+      button.addEventListener("click", () => {
+        const requested = button.dataset.p02View === "config" ? "config" : "run";
+        if (requested === "config") {
+          window.open(studioConfigurationUrl(new URL(window.location.href)).href, "_self");
+          return;
+        }
+        if (requested !== this.p02View) {
+          this.p02View = requested;
+          this.applyP02View();
+        }
+      });
+    });
+    // The switch is rendered from static text; bind the accessible name and
+    // the data view in one pass so the buttons are keyboard/screen-reader
+    // usable before any interaction.
+    if (this.shell.p02ViewSwitch !== null) {
+      for (const button of this.shell.p02ViewSwitch.querySelectorAll<HTMLButtonElement>(".p02-view-button")) {
+        button.type = "button";
+        const requested = button === this.shell.p02ViewSwitch.querySelector(".p02-view-button:last-child") ? "config" : "run";
+        button.dataset.p02View = requested;
+        if (button.getAttribute("aria-label") === null) {
+          button.setAttribute("aria-label", t(requested === "config" ? "p02.switchConfig" : "p02.switchRun"));
+        }
+        button.setAttribute("aria-controls", "p02-run-dock, p02-config-section");
+      }
+    }
     this.unsubscribeLanguage = subscribeLanguage(() => this.applyLanguageChange());
     this.applyLanguageChange();
 
@@ -452,8 +520,13 @@ export class PublicTraceApp {
       this.sealedReplayRequired = trace.scenario.replay_mode === "indexed";
       if (!this.sealedReplayRequired) this.sealedReplayStatus = "ready";
       this.replay.setTrace(trace);
+      // P02: compile the Run index once per trace. Per-tick renders join
+      // these tables by key; the trace documents are never rescanned.
+      this.p02RunIndex = buildRunIndex({ trace, entityKinds: entityKindsOf(trace.scenario) });
+      this.p02SelectedOrderId = null;
       this.applyDeclaredLayerDefaults(trace.scenario);
       this.renderAll();
+      this.loadP02BusinessIdentities(trace);
       if (this.mode === "replay" && this.replayAssetBase !== null) {
         void this.resolveDeclaredAssets(trace, this.replayAssetBase);
       }
@@ -474,6 +547,7 @@ export class PublicTraceApp {
       this.renderInspector();
       this.renderRightRail();
       this.renderMap();
+      this.renderP02RunDock();
       this.telemetryPanel.update(this.telemetrySource());
       this.updateTelemetryHud();
     });
@@ -502,6 +576,11 @@ export class PublicTraceApp {
       this.renderMapMessage();
       this.renderMetrics();
       this.renderMap();
+      this.renderP02RunDock();
+      // Parcel labels follow the same replay cursor as the dock rows —
+      // rebuild them whenever the cursor moves.
+      this.renderP02MapOverlay();
+      this.renderP02Config();
       this.telemetryPanel.update(this.telemetrySource());
       this.updateTelemetryHud();
     });
@@ -530,6 +609,10 @@ export class PublicTraceApp {
     // visibility flips arrive through the HUD's own layout notification.
     this.hudLayoutObserver?.observe(this.telemetryHud.root);
     this.renderAll();
+    // P02 initial state: apply the view now (not only on switch) so the very
+    // first frame is map-first without a body scrollbar, and the view
+    // buttons carry their real pressed state.
+    this.applyP02View();
   }
 
   /** Accept one caller-provided public-trace/v3 document (validated at the boundary). */
@@ -820,6 +903,9 @@ export class PublicTraceApp {
     this.meshScene?.dispose(); this.meshScene = null;
     this.liveMeshResolver?.dispose(); this.liveMeshResolver = null;
     this.replayAssetFetch = null;
+    this.p02IdentityAbort?.abort();
+    this.p02IdentityAbort = null;
+    this.p02IdentityGeneration += 1;
     this.sealedReplayLoader?.dispose();
     this.sealedReplayLoader = null;
     this.sealedReplayRequired = false;
@@ -1147,6 +1233,21 @@ export class PublicTraceApp {
         node.textContent = t(key, lang);
       }
     }
+    this.shell.p02ViewSwitch?.setAttribute("aria-label", t("p02.viewSwitch", lang));
+    for (const button of this.shell.p02ViewSwitch?.querySelectorAll<HTMLButtonElement>(".p02-view-button") ?? []) {
+      const config = button.dataset.p02View === "config";
+      button.textContent = t(config ? "p02.config" : "p02.run", lang);
+      button.setAttribute("aria-label", t(config ? "p02.switchConfig" : "p02.switchRun", lang));
+    }
+    this.shell.p02RunDock?.setAttribute("aria-label", t("p02.dockAria", lang));
+    const dockTitle = this.shell.p02RunDock?.querySelector(".p02-dock-title");
+    if (dockTitle) dockTitle.textContent = t("p02.dockTitle", lang);
+    this.shell.p02RunDock?.querySelector(".p02-orders-body")?.setAttribute("aria-label", t("p02.ordersAria", lang));
+    this.shell.p02RunDock?.querySelector(".p02-cargo-body")?.setAttribute("aria-label", t("p02.selectedAria", lang));
+    const configSection = this.shell.p02ConfigBody?.parentElement;
+    configSection?.setAttribute("aria-label", t("p02.configAria", lang));
+    const configTitle = configSection?.querySelector(".p02-section-title");
+    if (configTitle) configTitle.textContent = t("p02.config", lang);
     this.shell.loadTraceButton.textContent = t("workspaceTraces.load", lang);
     this.shell.refreshTracesButton.textContent = t("workspaceTraces.refresh", lang);
     this.populateWorkspaceTraceSelect(this.workspaceCatalog);
@@ -1414,6 +1515,79 @@ export class PublicTraceApp {
     this.shell.telemetryHudContainer.hidden = false;
     this.renderMapStats(scene.scenario);
     this.map.render(scene, this.mapView());
+    this.map.setP02BusinessFrame?.(this.selectedP02BusinessFrame());
+    this.renderP02MapOverlay();
+    this.p02FrameOverview();
+  }
+
+  /**
+   * P02: persistent map labels for business parcels. One sprite per carrier
+   * entity that a business record explicitly binds at trace load; the label
+   * is the authored parcel id — never a raw dynamic entity id. The
+   * declared-set is rebuilt only when the trace or its identity binding
+   * changes; the map itself just copies positions per frame.
+   */
+  private renderP02MapOverlay(): void {
+    if (!this.map.setP02CargoLabels) return;
+    const trace = this.trace;
+    if (trace === null || this.p02View !== "run") {
+      this.map.setP02CargoLabels(new Map(), false);
+      return;
+    }
+    // ONE selector: labels are read at the same replay cursor the dock and
+    // the inspector consume — never at the trace's final tick. The declared
+    // record set is tiny, so it is rebuilt per render instead of caching a
+    // second, tick-stale copy.
+    const tick = this.currentTick() ?? trace.time.tick;
+    const labels = new Map<string, string>();
+    const records = this.p02RunIndex?.identity?.allAt(tick) ?? [];
+    for (const record of records) {
+      if (record.carrierEntityId !== undefined && record.parcelId !== undefined
+        && !labels.has(record.carrierEntityId)) {
+        labels.set(record.carrierEntityId, record.parcelId);
+      }
+    }
+    this.map.setP02CargoLabels(labels, true);
+  }
+
+  /**
+   * P02: elevated oblique overview pose fitted to the valid, source-backed
+   * business geometry at the current cursor — the selected order's carrier
+   * current SceneState pose. Facility ids have no scene entity in the trace, so
+   * they contribute no position and stay UNKNOWN; nothing is invented. The
+   * frame happens at most once per accepted trace; the cursor keeps authority
+   * and no follow is engaged.
+   */
+  private p02FrameOverview(): void {
+    if (this.p02View !== "run") return;
+    if (this.shell.map.querySelector<HTMLElement>("#city-map")?.dataset.sceneReady !== "true") return;
+    const trace = this.trace;
+    if (trace === null || this.p02OverviewFramed === trace) return;
+    const tick = this.currentTick() ?? trace.time.tick;
+    const identity = this.p02RunIndex?.identity;
+    const records = identity?.allAt(tick) ?? [];
+    const selectedId = this.p02SelectedOrderId !== null
+      ? records.find((record) => record.orderId === this.p02SelectedOrderId)
+      : undefined;
+    const selected = this.selection.get();
+    const carrierId = selected?.kind === "entity" ? selected.id
+      : (selectedId ?? records[records.length - 1])?.carrierEntityId;
+    const points: { east: number; north: number; up: number }[] = [];
+    const state = this.currentSceneState();
+    if (state !== null) {
+      // Before an order is assigned, frame the current observed aircraft.
+      // This camera-only scope does not invent a carrier/custody binding.
+      const currentAircraft = new Set(trace.scenario?.entities
+        .filter(entity => entity.kind === "uav").map(entity => entity.entity_id) ?? []);
+      for (const sample of state.samples) {
+        if ((carrierId === undefined ? !currentAircraft.has(sample.entity_id)
+          : sample.entity_id !== carrierId) || sample.at.tick > tick) continue;
+        const enu = sample.pose.position.enu;
+        points.push({ east: enu.east_m, north: enu.north_m, up: enu.up_m });
+      }
+    }
+    const pose: OverviewPoseEnu | null = points.length === 0 ? null : p02OverviewPose(points);
+    if (this.map.frameP02Overview?.(pose, state) === true) this.p02OverviewFramed = trace;
   }
 
   private renderMapStats(scenario: PublicScenario | null): void {
@@ -1430,8 +1604,361 @@ export class PublicTraceApp {
     if (scale !== null) scale.textContent = `${width.toFixed(0)} × ${depth.toFixed(0)} m · ${t("metrics.uavs", lang)} ${scenario.entities.filter((entity) => entity.kind === "uav").length}`;
   }
 
-  private renderAll(): void {
-    this.updateReplayInteractions();
+  // ------------------------------------------------------------------
+  // P02 Run / Configuration views. The replay cursor stays the single
+  // authority: every number below is read at this.currentTick() from the
+  // compiled Run index, never from a secondary clock or a rescan.
+  // ------------------------------------------------------------------
+
+  /**
+   * Fetch the explicit business-identity sidecar once per trace load and
+   * recompile the index with it. The sidecar binds only the exact loaded
+   * run id; a missing file or a foreign run leaves every business fact
+   * UNKNOWN — it never degrades the trace itself.
+   */
+  private loadP02BusinessIdentities(trace: PublicTrace): void {
+    this.p02IdentityAbort?.abort();
+    const controller = new AbortController();
+    this.p02IdentityAbort = controller;
+    const generation = ++this.p02IdentityGeneration;
+    void (async () => {
+      try {
+        const response = await fetch("./p02-business-identities/demo.json", {
+          signal: controller.signal,
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) return; // no sidecar published: stay UNKNOWN
+        const envelope = parseStrictJson(
+          new TextDecoder("utf-8", { fatal: true }).decode(await readBoundedResponse(
+            response, 4_000_000, "business identity sidecar", controller.signal))) as BusinessIdentityEnvelope;
+        if (controller.signal.aborted || generation !== this.p02IdentityGeneration) return;
+        if (envelope === null || typeof envelope !== "object" || envelope.scene_run_id !== trace.run_id) return;
+        // Recompile the index once with the accepted sidecar; per-tick
+        // rendering keeps joining prebuilt maps only.
+        this.p02RunIndex = buildRunIndex({
+          trace, entityKinds: entityKindsOf(trace.scenario), identity: envelope,
+        });
+        this.renderP02RunDock();
+        this.renderInspector();
+        this.renderP02MapOverlay();
+        // The selector now resolves a carrier for the first time; the one-shot
+        // overview may have been skipped earlier for lack of valid positions.
+        this.p02OverviewFramed = null;
+        this.p02FrameOverview();
+      } catch {
+        // Aborted/invalid sidecar: business facts stay UNKNOWN.
+      }
+    })();
+  }
+
+  /** Show one view; the map and its frame cursor stay mounted in both. */
+  private applyP02View(): void {
+    const run = this.p02View === "run";
+    document.body.classList.add("p02-active");
+    document.body.classList.toggle("p02-view-config", !run);
+    for (const button of this.shell.p02ViewSwitch?.querySelectorAll<HTMLButtonElement>(".p02-view-button") ?? []) {
+      const isCurrent = (button.dataset.p02View === "config") === !run;
+      button.setAttribute("aria-pressed", String(isCurrent));
+      button.tabIndex = isCurrent ? 0 : -1;
+    }
+    this.renderP02RunDock();
+    this.renderP02Config();
+  }
+
+  /** Order list + selected-cargo inspector, scoped to the current cursor tick. */
+  private renderP02RunDock(): void {
+    const dock = this.shell.p02RunDock;
+    if (dock === null) return;
+    const trace = this.trace;
+    const index = this.p02RunIndex;
+    if (trace === null || index === null) {
+      dock.hidden = true;
+      return;
+    }
+    dock.hidden = this.p02View !== "run";
+    const lang = currentLanguage();
+    const unknown = t("p02.unknown", lang);
+    const tick = this.currentTick() ?? trace.time.tick;
+    const source = this.p02DockSource();
+    const sourceNode = dock.querySelector<HTMLElement>(".p02-dock-source");
+    if (sourceNode !== null) {
+      sourceNode.textContent = source;
+      sourceNode.hidden = source.length === 0;
+    }
+
+    const ordersBody = dock.querySelector<HTMLElement>(".p02-orders-body");
+    if (ordersBody !== null) {
+      ordersBody.replaceChildren();
+      const identity = index.identity;
+      const records = identity?.allAt(tick) ?? [];
+      const sourceRef = identity?.source.source_ref ?? null;
+      const head = element("div", "p02-orders-head",
+        `${t("p02.orders", lang)} · ${records.length === 0 ? unknown : String(records.length)}` +
+        (sourceRef === null ? ` · ${t("p02.identityUnknown", lang)}` : ` · ${sourceRef}`));
+      ordersBody.append(head);
+      if (records.length === 0) {
+        const unbound = index.unboundEventsUpTo(tick);
+        ordersBody.append(element("p", "p02-orders-empty", unbound.length === 0
+          ? t("p02.noOrders", lang)
+          : tf("p02.unboundOrders", { count: unbound.length }, lang)));
+        for (const event of unbound.slice(-4)) {
+          const row = element("div", "p02-order-row p02-order-row-unbound");
+          row.setAttribute("role", "listitem");
+          row.append(
+            element("strong", "p02-order-id", unknown),
+            element("span", "p02-order-stage", event.state),
+            element("span", "p02-order-meta",
+              `tick ${event.tick} · ${formatRunClock(event.flipTimeSeconds)} · ${event.providerId}`),
+          );
+          ordersBody.append(row);
+        }
+      }
+      for (const record of records) {
+        const row = element("button", "p02-order-row");
+        row.type = "button";
+        row.setAttribute("role", "listitem");
+        const selected = this.p02SelectedOrderId === record.orderId;
+        row.classList.toggle("is-selected", selected);
+        row.setAttribute("aria-pressed", String(selected));
+        // Carrier/custody come only from the authored record.
+        const target = p02OrderSelection(record);
+        row.append(
+          element("strong", "p02-order-id", record.orderId),
+          element("span", "p02-order-stage", record.status ?? unknown),
+          element("span", "p02-order-meta",
+            `${t("p02.parcel", lang)} ${record.parcelId ?? unknown}` +
+            ` · ${t("p02.carrier", lang)} ${record.carrierEntityId ?? unknown}` +
+            ` · ${t("p02.destination", lang)} ${record.destinationId ?? unknown}` +
+            ` · tick ${record.tick} · ${formatRunClock(record.timeSeconds)}`),
+          // Raw paths / repeated identifiers stay collapsed by default.
+          (() => {
+            const details = element("details", "p02-order-details");
+            const summary = element("summary", undefined, t("p02.details", lang));
+            const line = element("span", "p02-order-detail-line",
+              `${t("p02.custody", lang)} ${record.custodyId ?? `${unknown}(${record.custodyKind ?? unknown})`}` +
+              ` · ${t("p02.attempt", lang)} ${record.attempt?.toString() ?? unknown}` +
+              ` · ${t("p02.source", lang)} ${record.sourceRef}` +
+              (record.availabilityReason === undefined ? "" : ` · ${record.availabilityReason}`));
+            details.append(summary, line);
+            return details;
+          })(),
+        );
+        row.addEventListener("click", () => {
+          this.p02SelectedOrderId = selected ? null : record.orderId;
+          if (target !== null) {
+            // One authoritative selection: the record's carrier feeds the
+            // dock, the inspector and the map. Following stays explicit via
+            // the cargo view's 聚焦跟随 button; an unresolved position shows
+            // 位置未知 instead of moving the camera.
+            this.selection.select(target);
+            this.p02OverviewFramed = null;
+            this.p02FrameOverview();
+          }
+          this.renderP02RunDock();
+        });
+        ordersBody.append(row);
+      }
+    }
+
+    const cargoBody = dock.querySelector<HTMLElement>(".p02-cargo-body");
+    if (cargoBody !== null) {
+      cargoBody.replaceChildren();
+      const selected = this.selection.get();
+      if (selected === null || selected.kind !== "entity") {
+        cargoBody.append(element("p", "p02-cargo-empty", t("p02.selectEntity", lang)));
+        return;
+      }
+      const cargo = this.selectedP02BusinessFrame();
+      if (cargo === null) return;
+      const heading = element("div", "p02-cargo-head");
+      heading.append(element("h3", "p02-cargo-title", `${t("p02.cargo", lang)} · ${cargo.entityId}`));
+      const focusButton = document.createElement("button");
+      focusButton.type = "button";
+      focusButton.className = "p02-cargo-focus";
+      focusButton.textContent = t("p02.follow", lang);
+      focusButton.setAttribute("aria-pressed",
+        String(this.camera.isFollowing({ kind: "entity", id: cargo.entityId })));
+      focusButton.addEventListener("click", () => {
+        if (this.camera.isFollowing({ kind: "entity", id: cargo.entityId })) {
+          this.camera.releaseFollow();
+        } else {
+          this.camera.follow({ kind: "entity", id: cargo.entityId });
+        }
+        this.renderP02RunDock();
+      });
+      heading.append(focusButton);
+      cargoBody.append(heading);
+      cargoBody.append(element("p", "p02-cargo-kind",
+        `${t("p02.entityKind", lang)} ${cargo.entityKind ?? unknown} · ${t("p02.phase", lang)} ${cargo.phase ?? unknown}`));
+      this.renderP02BusinessRecords(cargoBody, cargo);
+      if (cargo.attributes.length > 0) {
+        const attributes = element("dl", "p02-cargo-attributes");
+        for (const attribute of cargo.attributes.slice(0, 8)) {
+          const term = element("dt", undefined, attribute.name);
+          const description = element("dd", undefined,
+            String(attribute.value));
+          attributes.append(term, description);
+        }
+        cargoBody.append(attributes);
+      }
+    }
+  }
+
+  private selectedP02BusinessFrame(): SelectedFrameBusinessView | null {
+    const selected = this.selection.get();
+    const trace = this.trace;
+    const index = this.p02RunIndex;
+    const tick = this.currentTick();
+    if (selected?.kind !== "entity" || trace === null || index === null || tick === null) return null;
+    return selectedFrameBusinessView(index, trace, selected.id, tick,
+      sampleAtTick(this.currentSceneState(), selected.id));
+  }
+
+  private renderP02BusinessRecords(body: HTMLElement, cargo: SelectedFrameBusinessView): void {
+    const lang = currentLanguage();
+    const unknown = t("p02.unknown", lang);
+    body.append(element("p", "p02-business-source", t(cargo.sourceKind === "authored_business_fixture"
+      ? "p02.sourceAuthored" : cargo.sourceKind === "business_provider"
+        ? "p02.sourceProvider" : "p02.sourceUnknown", lang)));
+    if (cargo.orders.length === 0) body.append(element("p", "p02-cargo-empty", t("p02.noAssociation", lang)));
+    for (const order of cargo.orders) {
+      const row = element("div", "p02-cargo-order");
+      row.dataset.orderId = order.orderId;
+      row.dataset.cursorTick = String(cargo.cursorTick);
+      row.textContent = `${t("p02.order", lang)} ${order.orderId} · ${order.status ?? unknown}` +
+        ` · ${t("p02.parcel", lang)} ${order.parcelId ?? unknown}` +
+        ` · ${t("p02.carrier", lang)} ${order.carrierEntityId ?? unknown}` +
+        ` · ${t("p02.custody", lang)} ${order.custodyId ?? unknown} (${order.custodyKind ?? unknown})` +
+        ` · ${t("p02.destination", lang)} ${order.destinationId ?? unknown}` +
+        ` · tick ${order.tick} · ${formatRunClock(order.timeSeconds)}`;
+      const details = element("details", "p02-order-details");
+      details.append(element("summary", undefined, t("p02.details", lang)),
+        element("span", "p02-order-detail-line",
+          `${t("p02.attempt", lang)} ${order.attempt?.toString() ?? unknown}` +
+          ` · ${t("p02.source", lang)} ${order.sourceRef}` +
+          (order.availabilityReason === undefined ? "" : ` · ${order.availabilityReason}`)));
+      row.append(details);
+      body.append(row);
+    }
+  }
+
+  /** Source label for the dock header: replay cursor vs live session, from live state only. */
+  private p02DockSource(): string {
+    const lang = currentLanguage();
+    const businessSource = this.p02RunIndex?.identity?.source.source_kind;
+    const businessLabel = ` · ${t(businessSource === "authored_business_fixture"
+      ? "p02.sourceAuthored" : businessSource === "business_provider" ? "p02.sourceProvider" : "p02.sourceUnknown", lang)}`;
+    if (this.mode === "replay") {
+      const trace = this.trace;
+      return trace === null ? "" : `${t("p02.replayCursor", lang)} ${this.currentTick() ?? trace.time.tick} · ${t("p02.readOnly", lang)}${businessLabel}`;
+    }
+    const session = this.session?.currentState;
+    return session?.snapshot === undefined || session.snapshot === null
+      ? t("mode.liveDisconnected", lang) : `${t("p02.live", lang)} ${session.snapshot.run_id.slice(0, 8)}${businessLabel}`;
+  }
+
+  /**
+   * 配置 view: the SAME configuration the Run view consumes, with real
+   * save. City presentation is the one existing config authority exposed to
+   * this console: selecting a presentation saves it into the location (?city=)
+   * and the map reloads through loadPackedScene; the visible round-trip
+   * (dataset.sceneSource / sceneReady + onBasemapNote) is the readback.
+   * Entity visibility is saved through the existing LayerState authority
+   * (layers.toggleEntity) — no parallel fake configuration.
+   */
+  private renderP02Config(): void {
+    const body = this.shell.p02ConfigBody;
+    if (body === null) return;
+    if (this.p02View !== "config") {
+      body.replaceChildren();
+      return;
+    }
+    body.replaceChildren();
+    const lang = currentLanguage();
+    const unknown = t("p02.unknown", lang);
+    const trace = this.trace;
+    const mapContainer = this.shell.map.querySelector<HTMLElement>("#city-map");
+    const sceneReady = mapContainer?.dataset.sceneReady === "true";
+    const rows: [string, string][] = [
+      [t("p02.entry", lang), "frontend/index.html → src/main.ts → PublicTraceApp → PublicTraceMap"],
+      [t("p02.frameCursor", lang), this.mode === "replay"
+        ? tf("p02.replayAuthority", { tick: this.currentTick() ?? this.trace?.time.tick ?? unknown }, lang)
+        : t("p02.liveAuthority", lang)],
+      [t("p02.dataSource", lang), this.mode === "replay"
+        ? (trace === null ? unknown : `${t("p02.publicTrace", lang)} ${trace.run_id.slice(0, 12)} · ${trace.scenario.replay_mode}`)
+        : `Control ${this.session === null ? t("conn.idle", lang) : t("conn.connected", lang)}`],
+      [t("p02.entities", lang), trace === null ? unknown : `${trace.scenario.entities.length} (${t("p02.scenarioDeclared", lang)})`],
+      [t("p02.orders", lang), this.p02RunIndex?.identity === null || this.p02RunIndex === null ? unknown
+        : `${this.p02RunIndex.identity.allAt(this.currentTick() ?? trace?.time.tick ?? 0).length} · ${this.p02RunIndex.identity.source.source_ref}`],
+      [t("p02.stageChain", lang), this.p02RunIndex === null || this.p02RunIndex.stageChain().length === 0
+        ? unknown : this.p02RunIndex.stageChain().map(stage => stage === "未知" ? unknown : stage).join(" → ")],
+    ];
+    const table = element("dl", "p02-config-table");
+    for (const [name, value] of rows) {
+      table.append(element("dt", undefined, name), element("dd", undefined, value));
+    }
+    body.append(table);
+
+    // City presentation: the actual configuration input consumed by the map.
+    // building-render-scene-v1 / default-scene-v1 bind the shanghai-huangpu-east
+    // mesh world that the V8 trace's frame authority declares; the jingan
+    // previews are a different world (offered for authoring comparisons).
+    const presentations = [
+      "/city-presentation/building-render-scene-v1.json",
+      "/city-presentation/jingan-engineering-preview-v3.json",
+      "/city-presentation/jingan-engineering-preview-v2.json",
+      "/city-presentation/default-scene-v1.json",
+    ];
+    const current = new URLSearchParams(window.location.search).get("city")
+      ?? "/city-presentation/default-scene-v1.json";
+    const label = element("div", "p02-config-label", t("p02.cityPresentation", lang));
+    const select = document.createElement("select");
+    select.className = "p02-config-select";
+    select.setAttribute("aria-label", t("p02.cityPresentation", lang));
+    for (const path of presentations) {
+      const option = document.createElement("option");
+      option.value = path;
+      option.textContent = path;
+      option.selected = path === current;
+      select.append(option);
+    }
+    const status = element("span", "p02-config-status",
+      sceneReady ? `${t("p02.applied", lang)} · ${this.map.sceneSourceLabel()}` : t("p02.waitingScene", lang));
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.className = "p02-config-save";
+    saveButton.textContent = t("p02.saveApply", lang);
+    saveButton.addEventListener("click", () => {
+      if (select.value === current) {
+        status.textContent = t("p02.unchanged", lang);
+        return;
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.set("city", select.value);
+      // Persist through the location — the same authority the map reads on
+      // load; the map reloads the pack and the readback line confirms.
+      window.location.assign(url);
+    });
+    const presentationRow = element("div", "p02-config-row");
+    presentationRow.append(label, select, saveButton, status);
+    body.append(presentationRow);
+
+    // Entity visibility: existing LayerState authority, saved immediately.
+    const layers = this.layers.visibility();
+    const visibility = element("div", "p02-config-row");
+    visibility.append(element("div", "p02-config-label", t("p02.entityVisibility", lang)));
+    const hidden = [...this.layers.hiddenEntityKeys()];
+    visibility.append(element("span", "p02-config-status",
+      hidden.length === 0 ? t("p02.allVisible", lang) : tf("p02.hiddenCount", { count: hidden.length }, lang)));
+    body.append(visibility);
+    body.append(element("p", "p02-config-note",
+      `${t("p02.layerVisibility", lang)}: ${(Object.entries(layers) as [string, boolean][]).map(([id, visible]) =>
+        `${id}=${visible ? t("p02.on", lang) : t("p02.off", lang)}`).join(" · ")}`));
+    body.append(element("p", "p02-config-note",
+      t("p02.configNote", lang)));
+  }
+
+  private renderAll(): void {    this.updateReplayInteractions();
     const lang = currentLanguage();
     if (this.mode === "replay") {
       this.shell.modePill.textContent = t("mode.replay", lang);
@@ -1485,6 +2012,8 @@ export class PublicTraceApp {
     this.renderMapMessage();
     this.renderFollowChip(this.camera.followed());
     this.renderMap();
+    this.renderP02RunDock();
+    this.renderP02Config();
     this.telemetryPanel.update(this.telemetrySource());
     this.updateTelemetryHud();
     if (this.mode === "replay" && this.trace !== null) {
@@ -2601,6 +3130,8 @@ export class PublicTraceApp {
         const sceneState = this.currentSceneState();
         const tick = this.currentTick();
         const sample = sampleAtTick(sceneState, selected.id);
+        const business = this.selectedP02BusinessFrame();
+        if (business !== null) this.renderP02BusinessRecords(body, business);
         if (sample === null) {
           body.append(emptyRow(t("telemetry.noSample", lang)));
           break;
@@ -3416,7 +3947,24 @@ function buildShell(root: HTMLElement, mode: AppMode): AppShell {
   libraryLink.href = "./asset-library.html";
   libraryLink.dataset.i18n = "mode.link.assets";
   libraryLink.textContent = t("mode.link.assets", lang);
-  append(meta, modePill, connPill, phasePill, integrityPill, publicOnlyPill, liveLink, replayLink, libraryLink);
+  // P02 map-first view switch: 运行 (map + business dock) and 配置 (actual
+  // console state). Buttons, not links: they toggle in-page views without
+  // reloading the trace or the scene.
+  const p02ViewSwitch = element("div", "p02-view-switch");
+  p02ViewSwitch.setAttribute("role", "group");
+  p02ViewSwitch.setAttribute("aria-label", "视图切换：运行 / 配置");
+  const p02RunButton = document.createElement("button");
+  p02RunButton.type = "button";
+  p02RunButton.className = "p02-view-button";
+  p02RunButton.textContent = "运行";
+  p02RunButton.setAttribute("aria-pressed", "true");
+  const p02ConfigButton = document.createElement("button");
+  p02ConfigButton.type = "button";
+  p02ConfigButton.className = "p02-view-button";
+  p02ConfigButton.textContent = "配置";
+  p02ConfigButton.setAttribute("aria-pressed", "false");
+  p02ViewSwitch.append(p02RunButton, p02ConfigButton);
+  append(meta, modePill, connPill, phasePill, integrityPill, publicOnlyPill, p02ViewSwitch, liveLink, replayLink, libraryLink);
   const langGroup = element("div", "lang-switch");
   langGroup.setAttribute("role", "group");
   langGroup.setAttribute("aria-label", t("lang.switch", lang));
@@ -3531,7 +4079,19 @@ function buildShell(root: HTMLElement, mode: AppMode): AppShell {
   const weatherTitle = sectionTitle(t("section.weather", lang));
   weatherTitle.dataset.i18n = "section.weather";
   const fleetSummary = element("div", "fleet-summary");
-  append(left, controlPanel, entitiesTitle, fleetSummary, entityTree, layersTitle, layerTree, weatherTitle, weatherList);
+  // P02 Configuration view: echoes the actual, live config state of this
+  // console (frame source, scene, layers, replay cursor authority). Every
+  // value is read back from the running application state; nothing here is
+  // an editable placeholder.
+  const p02ConfigSection = element("section", "p02-config-section");
+  p02ConfigSection.id = "p02-config-section";
+  p02ConfigSection.setAttribute("aria-label", "配置 · 实际控制台状态");
+  p02ConfigSection.hidden = true;
+  const p02ConfigTitle = element("h2", "p02-section-title", "配置");
+  const p02ConfigBody = element("div", "p02-config-body");
+  p02ConfigSection.append(p02ConfigTitle, p02ConfigBody);
+  append(left, controlPanel, entitiesTitle, fleetSummary, entityTree, layersTitle, layerTree, weatherTitle, weatherList,
+    p02ConfigSection);
 
   const map = element("section", "map");
   map.setAttribute("aria-label", t("section.overview", lang));
@@ -3567,6 +4127,27 @@ function buildShell(root: HTMLElement, mode: AppMode): AppShell {
   const attributionNote = element("div", "attribution-note", t("hud.legend.attribution", lang));
   append(legend, legendTitle, legendKinds, attributionNote);
   append(hud, hudTopLeft, mapStats, hudNote, legend);
+
+  // P02 map-first business dock. The 3D map owns the viewport; this dock is
+  // the only business surface over it and scrolls locally, never the body.
+  const p02RunDock = element("section", "p02-run-dock");
+  p02RunDock.id = "p02-run-dock";
+  p02RunDock.setAttribute("aria-label", "运行态势 · 业务面板");
+  p02RunDock.hidden = true;
+  const p02DockHead = element("header", "p02-dock-head");
+  const p02DockTitle = element("h2", "p02-dock-title", "业务运行");
+  const p02DockSource = element("span", "p02-dock-source");
+  p02DockSource.setAttribute("role", "status");
+  p02DockSource.hidden = true;
+  p02DockHead.append(p02DockTitle, p02DockSource);
+  const p02OrdersBody = element("div", "p02-orders-body");
+  p02OrdersBody.setAttribute("role", "list");
+  p02OrdersBody.setAttribute("aria-label", "业务订单与任务");
+  const p02CargoBody = element("section", "p02-cargo-body");
+  p02CargoBody.id = "p02-cargo-inspector";
+  p02CargoBody.setAttribute("aria-label", "所选对象业务视图");
+  p02RunDock.append(p02DockHead, p02OrdersBody, p02CargoBody);
+  map.append(p02RunDock);
   const mapMessage = element("div", "map-message");
   mapMessage.setAttribute("role", "status");
   mapMessage.setAttribute("aria-live", "polite");
@@ -3686,6 +4267,9 @@ function buildShell(root: HTMLElement, mode: AppMode): AppShell {
     contextMenu,
     sourceMessage,
     telemetryHudContainer,
+    p02ViewSwitch,
+    p02RunDock,
+    p02ConfigBody,
   };
 }
 

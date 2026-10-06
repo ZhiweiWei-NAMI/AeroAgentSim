@@ -810,3 +810,25 @@
 @media (max-width: 1250px) {
   #city-studio .studio-map-corner-top { top: 58px; }
 }
+
+/* Authoring preview: leave the map visible until an object is selected. */
+#city-studio .operations-monitor-sidebar:has(.operations-monitor-detail[data-selection-state="empty"]) {
+  display: none;
+}
+#city-studio .operations-monitor-header {
+  grid-column: 1 / -1;
+  max-width: min(100%, 560px);
+  flex-wrap: wrap;
+}
+#city-studio .operations-monitor-source {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+#city-studio .city-preview-controls > .provenance-chip {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}

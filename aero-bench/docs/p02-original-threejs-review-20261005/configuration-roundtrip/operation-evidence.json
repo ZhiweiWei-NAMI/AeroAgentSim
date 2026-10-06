@@ -1,0 +1,480 @@
+{
+  "scope": "Configuration editor round-trip only; original BENCH GLB preview and existing sealed-v8 replay. No new native run started.",
+  "providerStarted": false,
+  "errors": [],
+  "steps": [
+    {
+      "name": "01-run-before-configuration",
+      "path": "/",
+      "language": "en",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "panelScroll": {},
+      "seedEditable": false,
+      "selectedPanel": {
+        "x": 1287,
+        "y": 319.796875,
+        "width": 302,
+        "height": 240.953125,
+        "top": 319.796875,
+        "right": 1589,
+        "bottom": 560.75,
+        "left": 1287
+      },
+      "previewKind": {},
+      "identity": {},
+      "returnLinks": []
+    },
+    {
+      "name": "02-studio-editor-en",
+      "path": "/city-studio.html",
+      "language": "en",
+      "seed": "20261002",
+      "saveState": "saved",
+      "previewStatus": "Native city ready, not yet run",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "panelScroll": {
+        "client": 676,
+        "total": 1415
+      },
+      "seedEditable": true,
+      "selectedPanel": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "previewKind": {
+        "text": "/ Verified native city",
+        "width": 170,
+        "scrollWidth": 170
+      },
+      "identity": {},
+      "returnLinks": [
+        {
+          "text": "◇AERO-BENCH",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        },
+        {
+          "text": "City view",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        }
+      ]
+    },
+    {
+      "name": "03-seed-edited",
+      "path": "/city-studio.html",
+      "language": "en",
+      "seed": "20261003",
+      "saveState": "dirty",
+      "previewStatus": "Native reference draft changed, not yet compiled",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "panelScroll": {
+        "client": 676,
+        "total": 1415
+      },
+      "seedEditable": true,
+      "selectedPanel": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "previewKind": {
+        "text": "/ Verified native city",
+        "width": 170,
+        "scrollWidth": 170
+      },
+      "identity": {},
+      "returnLinks": [
+        {
+          "text": "◇AERO-BENCH",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        },
+        {
+          "text": "City view",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        }
+      ]
+    },
+    {
+      "name": "04-draft-saved",
+      "path": "/city-studio.html",
+      "language": "en",
+      "seed": "20261003",
+      "saveState": "saved",
+      "previewStatus": "Native reference draft changed, not yet compiled",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "panelScroll": {
+        "client": 676,
+        "total": 1415
+      },
+      "seedEditable": true,
+      "selectedPanel": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "previewKind": {
+        "text": "/ Verified native city",
+        "width": 170,
+        "scrollWidth": 170
+      },
+      "identity": {},
+      "returnLinks": [
+        {
+          "text": "◇AERO-BENCH",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        },
+        {
+          "text": "City view",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        }
+      ]
+    },
+    {
+      "name": "05-edited-draft-reloaded",
+      "path": "/city-studio.html",
+      "language": "en",
+      "seed": "20261003",
+      "saveState": "saved",
+      "previewStatus": "Native city ready, not yet run",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "panelScroll": {
+        "client": 676,
+        "total": 1415
+      },
+      "seedEditable": true,
+      "selectedPanel": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "previewKind": {
+        "text": "/ Verified native city",
+        "width": 170,
+        "scrollWidth": 170
+      },
+      "identity": {},
+      "returnLinks": [
+        {
+          "text": "◇AERO-BENCH",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        },
+        {
+          "text": "City view",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        }
+      ]
+    },
+    {
+      "name": "06-studio-editor-zh",
+      "path": "/city-studio.html",
+      "language": "zh",
+      "seed": "20261003",
+      "saveState": "saved",
+      "previewStatus": "原生城市呈现已就绪，尚未运行",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "panelScroll": {
+        "client": 702,
+        "total": 1399
+      },
+      "seedEditable": true,
+      "selectedPanel": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "previewKind": {
+        "text": "／ 已验证原生城市呈现",
+        "width": 140,
+        "scrollWidth": 140
+      },
+      "identity": {},
+      "returnLinks": [
+        {
+          "text": "◇AERO-BENCH",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        },
+        {
+          "text": "城市视图",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        }
+      ]
+    },
+    {
+      "name": "07-studio-narrow-zh",
+      "path": "/city-studio.html",
+      "language": "zh",
+      "seed": "20261003",
+      "saveState": "saved",
+      "previewStatus": "原生城市呈现已就绪，尚未运行",
+      "body": {
+        "width": 1200,
+        "height": 800,
+        "viewport": [
+          1200,
+          800
+        ]
+      },
+      "panelScroll": {
+        "client": 458,
+        "total": 1399
+      },
+      "seedEditable": true,
+      "selectedPanel": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "previewKind": {
+        "text": "／ 已验证原生城市呈现",
+        "width": 140,
+        "scrollWidth": 140
+      },
+      "identity": {},
+      "returnLinks": [
+        {
+          "text": "◇AERO-BENCH",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        },
+        {
+          "text": "城市视图",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        }
+      ]
+    },
+    {
+      "name": "08-studio-narrow-en",
+      "path": "/city-studio.html",
+      "language": "en",
+      "seed": "20261003",
+      "saveState": "saved",
+      "previewStatus": "Native city ready, not yet run",
+      "body": {
+        "width": 1200,
+        "height": 800,
+        "viewport": [
+          1200,
+          800
+        ]
+      },
+      "panelScroll": {
+        "client": 432,
+        "total": 1430
+      },
+      "seedEditable": true,
+      "selectedPanel": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "previewKind": {
+        "text": "/ Verified native city",
+        "width": 170,
+        "scrollWidth": 170
+      },
+      "identity": {},
+      "returnLinks": [
+        {
+          "text": "◇AERO-BENCH",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        },
+        {
+          "text": "City view",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        }
+      ]
+    },
+    {
+      "name": "09-matching-compiled-handoff",
+      "path": "/city-studio.html",
+      "language": "en",
+      "saveState": "saved",
+      "previewStatus": "Compiled, not yet run",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "panelScroll": {
+        "client": 676,
+        "total": 1166
+      },
+      "seedEditable": false,
+      "selectedPanel": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "previewKind": {
+        "text": "/ Verified native city",
+        "width": 170,
+        "scrollWidth": 170
+      },
+      "identity": {
+        "savedDraftSha256": "68c049b28e15d4e2886b36ff222361e6bfb059b4ff8b23339dd7e0a4fa7f368f",
+        "compilationId": "a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610"
+      },
+      "returnLinks": [
+        {
+          "text": "◇AERO-BENCH",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        },
+        {
+          "text": "City view",
+          "path": "/?view=replay&trace=validation%2Fplatform-plan-20261001%2FW1-I5%2Fruns-v8%2Fc69f303f0be963d9fd4c393d88f7cb61d3508c539f080924d30b0d6f19f7deba%2Fpublic%2Fpublic-trace.json&scene=1&city=/city-presentation/jingan-engineering-preview-v3.json"
+        }
+      ]
+    },
+    {
+      "name": "10-original-replay-restored",
+      "path": "/",
+      "language": "en",
+      "body": {
+        "width": 1600,
+        "height": 1000,
+        "viewport": [
+          1600,
+          1000
+        ]
+      },
+      "panelScroll": {},
+      "seedEditable": false,
+      "selectedPanel": {
+        "x": 1287,
+        "y": 319.796875,
+        "width": 302,
+        "height": 240.953125,
+        "top": 319.796875,
+        "right": 1589,
+        "bottom": 560.75,
+        "left": 1287
+      },
+      "previewKind": {},
+      "identity": {},
+      "returnLinks": []
+    }
+  ],
+  "gifFrames": [
+    {
+      "file": "01-run-before-configuration.png",
+      "duration_ms": 1800
+    },
+    {
+      "file": "02-studio-editor-en.png",
+      "duration_ms": 1800
+    },
+    {
+      "file": "03-seed-edited.png",
+      "duration_ms": 1800
+    },
+    {
+      "file": "04-draft-saved.png",
+      "duration_ms": 1800
+    },
+    {
+      "file": "05-edited-draft-reloaded.png",
+      "duration_ms": 1800
+    },
+    {
+      "file": "06-studio-editor-zh.png",
+      "duration_ms": 1800
+    },
+    {
+      "file": "09-matching-compiled-handoff.png",
+      "duration_ms": 1800
+    },
+    {
+      "file": "10-original-replay-restored.png",
+      "duration_ms": 1800
+    }
+  ],
+  "editedValueSurvivesReload": true,
+  "panelScrollWorks": true,
+  "approvedDraftRestoredExactly": true,
+  "returnedToOriginalRunSource": true,
+  "status": "configuration-roundtrip-passed-native-execution-pending"
+}

@@ -14,8 +14,9 @@ vi.mock("./map", () => {
 
 import { declaredReplayModelAssets, PublicTraceApp, viewModeFromLocation } from "./app";
 import { publicTrace } from "./testing/trace-v3-fixture";
-import { initLanguage, t } from "./i18n";
+import { initLanguage, setLanguage, t } from "./i18n";
 import type { PublicTrace } from "./trace";
+import { buildRunIndex, entityKindsOf, type RunIndex } from "./p02-entity-overlays";
 
 describe("PublicTraceApp shell (map mocked)", () => {
   beforeEach(() => {
@@ -55,6 +56,57 @@ describe("PublicTraceApp shell (map mocked)", () => {
 
     app.dispose();
     expect(() => app.loadDocument(publicTrace())).rejects.toThrow();
+  });
+
+  it("shares cursor-scoped business identity across both panels and translates P02 controls", async () => {
+    const navigation = vi.spyOn(window, "open").mockReturnValue(null);
+    const root = document.createElement("div");
+    document.body.append(root);
+    const app = new PublicTraceApp(root, "replay");
+    await app.loadDocument(publicTrace());
+    const harness = app as unknown as {
+      trace: PublicTrace;
+      p02RunIndex: RunIndex;
+      selection: { select(target: { kind: "entity"; id: string }): void };
+    };
+    const trace = harness.trace;
+    harness.p02RunIndex = buildRunIndex({ trace, entityKinds: entityKindsOf(trace.scenario), identity: {
+      schema_version: "p02.business-identities/v1", scene_run_id: trace.run_id,
+      source_kind: "authored_business_fixture", source_ref: "fixture.json",
+      records: [1, 2].map(tick => ({
+        record_id: `record.${tick}`, at: { tick, sim_time_ns: tick * 1_000_000_000 },
+        order_id: "order.exact", parcel_id: tick === 1 ? "parcel.exact" : "parcel.future",
+        carrier_entity_id: "fixture.uav", custody_holder: { kind: "facility" as const, id: "facility.exact" },
+        destination_id: "destination.exact", attempt: 1, status: "assigned",
+        source_ref: "fixture.json", availability_reason: null,
+      })),
+    } });
+    harness.selection.select({ kind: "entity", id: "fixture.uav" });
+    for (const language of ["en", "zh"] as const) {
+      setLanguage(language);
+      const left = root.querySelector(".p02-cargo-body .p02-cargo-order");
+      const right = root.querySelector(".inspector .p02-cargo-order");
+      expect(left?.textContent).toBe(right?.textContent);
+      expect(right?.textContent).toContain("parcel.exact");
+      expect(right?.textContent).toContain("facility.exact");
+      expect(right?.textContent).toContain("destination.exact");
+      expect(right?.textContent).not.toContain("parcel.future");
+      expect(root.querySelector(".inspector .p02-business-source")?.textContent).toBe(t("p02.sourceAuthored", language));
+      expect(root.querySelector(".p02-cargo-focus")?.textContent).toBe(t("p02.follow", language));
+      expect(root.querySelector(".p02-dock-title")?.textContent).toBe(t("p02.dockTitle", language));
+      root.querySelector<HTMLButtonElement>('[data-p02-view="config"]')!.click();
+      const [href, target] = navigation.mock.lastCall!;
+      expect(new URL(String(href)).pathname).toBe("/city-studio.html");
+      expect(target).toBe("_self");
+      expect(document.body.classList.contains("p02-view-config")).toBe(false);
+      if (language === "en") {
+        expect(root.querySelector(".p02-run-dock")?.textContent).not.toMatch(/[\u4e00-\u9fff]/);
+        expect(root.querySelector(".p02-config-body")?.textContent).not.toMatch(/[\u4e00-\u9fff]/);
+      }
+      root.querySelector<HTMLButtonElement>('[data-p02-view="run"]')!.click();
+    }
+    navigation.mockRestore();
+    app.dispose();
   });
 
   it("collects declared building render assets together with entity models", () => {

@@ -1,0 +1,146 @@
+{
+  "scope": "Actual configuration UI and existing sealed-v8 replay; no newly executed native run",
+  "created_utc": "2026-10-06T04:01:31.549602+00:00",
+  "source_files": [
+    {
+      "path": "aero-bench/frontend/src/app.ts",
+      "bytes": 186015,
+      "sha256": "3569308a7311860553e6d3806447c5837d636cca29c7fefd985b8187c673f75e"
+    },
+    {
+      "path": "aero-bench/frontend/src/city-studio.ts",
+      "bytes": 108853,
+      "sha256": "302b7f5fe680de610244da7c0659c90a5a4690e3413921cf0d0ea70e6d7bce7a"
+    },
+    {
+      "path": "aero-bench/frontend/src/app.smoke.test.ts",
+      "bytes": 8372,
+      "sha256": "135eb68ade99c7cb5e404aa68f16d231b7f04ea6078fad021698d40c9a96bbe6"
+    },
+    {
+      "path": "aero-bench/frontend/src/p02-studio-navigation.ts",
+      "bytes": 868,
+      "sha256": "f9007562b76257779578726eefc1bfed4d9ac464b6b58c25bbf2e926488c1a94"
+    },
+    {
+      "path": "aero-bench/frontend/src/p02-studio-navigation.test.ts",
+      "bytes": 1484,
+      "sha256": "6753189c7583dd56667ff602055e125f4baab5da903792e2cfde8f128693eced"
+    },
+    {
+      "path": "aero-bench/frontend/src/city-studio.css",
+      "bytes": 38817,
+      "sha256": "aa1c5b62969b7bf0cbe275bf482b6424e22997c6fe26ec30b3df6dafa7aa5bfe"
+    },
+    {
+      "path": "aero-bench/frontend/src/operations-monitor.ts",
+      "bytes": 68381,
+      "sha256": "b4c7a27eb34c1aa780fffef82fe09c4902edd4f84399acd5b25fab5edcd679be"
+    }
+  ],
+  "artifacts": [
+    {
+      "file": "01-edit-save-reload.gif",
+      "bytes": 595375,
+      "sha256": "b48035e70ed0d26de4009076de44f35986959c6d60ee4523dea5769acdcc19cb",
+      "width": 1600,
+      "height": 1000,
+      "frames": 5
+    },
+    {
+      "file": "01-run-before-configuration.png",
+      "bytes": 207335,
+      "sha256": "4d613142d7ef53e7f38840629090e4e4ba969e3d4d3a21c8971f8756c7624119",
+      "width": 1600,
+      "height": 1000,
+      "frames": 1
+    },
+    {
+      "file": "02-language-compile-return.gif",
+      "bytes": 412441,
+      "sha256": "c2aac266e83db4c9cd864a7d1fafa725ae808d166601cb3f6cd09905da47c2ea",
+      "width": 1600,
+      "height": 1000,
+      "frames": 3
+    },
+    {
+      "file": "02-studio-editor-en.png",
+      "bytes": 388807,
+      "sha256": "7ab65c030a5ec39c49f9790a3e56c52851a5a45497eee8709f1302cff32f961b",
+      "width": 1600,
+      "height": 1000,
+      "frames": 1
+    },
+    {
+      "file": "03-seed-edited.png",
+      "bytes": 389590,
+      "sha256": "6193e9a58b7153c2b09dcb78ca48f79547da9c307017de1554d9cd8635e7e876",
+      "width": 1600,
+      "height": 1000,
+      "frames": 1
+    },
+    {
+      "file": "04-draft-saved.png",
+      "bytes": 390945,
+      "sha256": "bcc34acc934836598922a9f0629a9d2129156f7c118dbf653162caa56fb71f67",
+      "width": 1600,
+      "height": 1000,
+      "frames": 1
+    },
+    {
+      "file": "05-edited-draft-reloaded.png",
+      "bytes": 388833,
+      "sha256": "cddb7af345879346b6bdbb81a9bf3ed77642627d3aa4fb9b11e70dc628f7f01d",
+      "width": 1600,
+      "height": 1000,
+      "frames": 1
+    },
+    {
+      "file": "06-studio-editor-zh.png",
+      "bytes": 409017,
+      "sha256": "f84e1b3a34368afd0321fca8f8c54dee17be4f36f3a00c83999299e24ac36874",
+      "width": 1600,
+      "height": 1000,
+      "frames": 1
+    },
+    {
+      "file": "07-studio-narrow-zh.png",
+      "bytes": 280368,
+      "sha256": "b3d6f05cb2a9536389e12d9ccb1db0ac88aed516ea646e352feb367eb89103d8",
+      "width": 1200,
+      "height": 800,
+      "frames": 1
+    },
+    {
+      "file": "08-studio-narrow-en.png",
+      "bytes": 271816,
+      "sha256": "c9bac1c0833a160e71ab30cc7a2457a8c450a7c33cfda7d9b1c985d0f969abe4",
+      "width": 1200,
+      "height": 800,
+      "frames": 1
+    },
+    {
+      "file": "09-matching-compiled-handoff.png",
+      "bytes": 413690,
+      "sha256": "9a7e97ca54450a2863a9fe5a25b9b6bc3f01616332f6e210df04a20764bd2ff7",
+      "width": 1600,
+      "height": 1000,
+      "frames": 1
+    },
+    {
+      "file": "10-original-replay-restored.png",
+      "bytes": 207459,
+      "sha256": "00cd106b33a1faf58ed6f0b4d0c1afb52d318c227840bfe9f17664838831d5a3",
+      "width": 1600,
+      "height": 1000,
+      "frames": 1
+    },
+    {
+      "file": "operation-evidence.json",
+      "bytes": 14046,
+      "sha256": "82113ed81f6253fbb0382fc867fea17557e833a19c74cc9d9ce70e226a967ec8"
+    }
+  ],
+  "preserved_assets": "Existing BENCH GLB/city loading pipeline. No model or map assets uploaded.",
+  "gif_method": "Original browser PNGs, original 1600x1000 dimensions, 128-color GIF palette. No scene redraw. Original PNGs retained."
+}

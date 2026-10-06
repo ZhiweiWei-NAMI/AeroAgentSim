@@ -838,6 +838,9 @@ export function mountOperationsMonitor(
   }
 
   function renderDetail(snapshot: OperationsSnapshot): void {
+    // Studio can collapse an unselected inspector without hiding a selected
+    // object whose measurements are explicitly unavailable.
+    detail.dataset.selectionState = snapshot.selected === null ? "empty" : "selected";
     const selected = objectForTarget(snapshot, snapshot.selected);
     const selectedEvent = eventForTarget(snapshot, snapshot.selected);
     facts.replaceChildren(); statusGrid.replaceChildren();
