@@ -111,7 +111,7 @@
    "predicate_binding_definitions.json": "predicate binding definitions (not an episode producer)"
   },
   "per_dimension_producer_revision": {
-   "communication": "30 episodes (v12+v13-metadata): 1.6.0 unchanged, receiver_observed_states.jsonl inherited; 6 L6-2 episodes (p09.receipt_replay/v5/run1): receipt.json/receipt_timeline.json replay evidence, not a new physical comm producer",
+   "communication": "30 episodes (v12+v13-metadata): copied native v12 gateway expected-sequence producer output (receiver_observed_states.jsonl, schema p09.gateway-scheduled-sequence-ttl/v1, state_source native receiver RX vs declared expected sequence) - distinct from the published old q formula (p09.LP.q-derived/v1) and from the accepted-TX matured-TTL cohort (p09.LP.mature-ttl-cohort/v1); no new comm simulation run for v14; 6 L6-2 episodes (p09.receipt_replay/v5/run1): receipt.json/receipt_timeline.json replay evidence, not a new physical comm producer; NOT all comm changed, NOT all native",
    "computation": "1.6.0 unchanged (no compute file listed in projection receipts)",
    "energy/thermal": "2.2.0 unchanged",
    "motion/geometry": "30 episodes: v12 authored waypoint engine trajectories.jsonl listed (physical_motion_scope = authored waypoint engine, not PX4 motion feedback); 6 L6-2 episodes: receipt_replay/v5/run1 output",
@@ -123,16 +123,23 @@
   "not_recomputed_rule": "empty new event_realization is marked NOT_RECOMPUTED, which is not zero events"
  },
  "model_visible_vs_archive_only": {
-  "model_visible": "values/fields a consumer can read from named manifests/summaries at the transfer boundary or in v14 package files",
-  "archive_only": "address/archive-only unless known at cutoff: full event_script/scene_setup, future fault and weather schedules, terminal/hidden control, semantic episode names",
+  "model_visible": "observer evidence actually available by cutoff in the chosen experimental view (NEVER mere readable-file existence); manifests/occupancy/event_script/future plans/semantic names/terminal states stay archive-only unless independently known by cutoff; config pointers are not actual observed input",
+  "archive_only": "archive/address-only unless known by cutoff: full event_script/scene_setup, future fault and weather schedules, terminal/hidden control, semantic episode names, manifests/occupancy",
   "known_plan_experiments": "explicit known-plan experiments (authored schedules, planned fault injection, ARM windows) carry their own labels and are never counted as observed model-visible history"
  },
  "lp_definitions": {
-  "q_derived": "definition_id=p09.LP.q-derived/v1 (old q-based scalar L/P; source distribution/statistics not demonstrated per root causal summary)",
-  "mature_ttl_cohort": "definition_id=p09.LP.mature-ttl-cohort/v1 (native ns3 receipt cohort; strict RX<firstTX+TTL; count actual available_time<=cutoff; no timely RX means L undefined, never zero; incomplete compute tasks remain pending/right-censored without hindsight outcomes)"
+  "q_derived": "definition_id=p09.LP.q-derived/v1 (published old q-based scalar L/P; source distribution/statistics not demonstrated per root causal summary)",
+  "gateway_declared_sequence": "definition_id=p09.LP.gateway-declared-sequence/v1 (gateway declared-expected-sequence deadline stats: schema p09.gateway-scheduled-sequence-ttl/v1, state_source 'native receiver RX versus declared expected sequence'; counts mature_expected/timely_received over declared expected sequences; UNKNOWN when no_mature_expected_sequence)",
+  "mature_ttl_cohort": "definition_id=p09.LP.mature-ttl-cohort/v1 (accepted-TX matured TTL cohort: strict RX<firstTX+TTL; count actual available_time<=cutoff; no timely RX means L undefined, never zero; incomplete compute tasks remain pending/right-censored without hindsight outcomes)"
+ },
+ "evidence_axes": {
+  "rule": "THREE separate evidence axes, never collapsed: (a) producer/source lineage = log_ref, producer/source_ref, source_version_or_hash, source_family; (b) source schema availability-time fields/support = time_support_recorded, time_support_planned (receiver rows carry observation_ns/available_ns at schema level); (c) confirmed per-run consumer/cutoff use = current_consumer tier + available_time. Axis (a) existence never implies (c); consumer=0 never implies logs lack availability-time fields (axis b)",
+  "axis_a_producer_source_lineage": "log_ref; producer/source_ref; source_version_or_hash; source_family",
+  "axis_b_schema_availability_time_support": "time_support_recorded (declared reference grid; receiver schema observation_ns/available_ns header-verified); time_support_planned (planned capture schedule)",
+  "axis_c_confirmed_consumer_cutoff_use": "current_consumer [tier=...] + available_time (UNKNOWN_no_actual_ingest_receipt on all 1680 rows)"
  },
  "split_group_semantics": {
-  "rule": "ORIGINAL scenario+seed and all versions/overlays/load branches/windows share one split_group (base family = scenario_id minus _vN); never derived from revision; version copies are not independent samples",
+  "rule": "ONE split policy in BOTH tables: scenario_family = scenario_id stripped trailing _vN (39); base_episode_family = scenario_family + original seed (117); split_group = scenario_family everywhere (conservative entire-family/all-seeds grouping). Producer source_family is a separate producer label, not a split level. ORIGINAL scenario+seed and all versions/overlays/load branches/windows stay together; never derived from revision; the inventory makes NO actual TRAIN/VALID assignment claim",
   "base_families": 39,
   "note": "39 base families behind 70 scenario_ids: 25 paired v1/v2, 3 triple (L4-3/L4-5/L5-1 v1/v2/v3), 5 single-version L-series, 6 X-named episodes; new-scenario generalization claims require the ENTIRE base family across ALL seeds held out",
   "transported_q": "ORACLE_ONLY: transported_q TRUE future + TRAIN-frozen Gaussian noise is an oracle diagnostic, never a historical available prediction input"
@@ -141,8 +148,8 @@
   {
    "label": "compute_comm:1.6.0",
    "producer": "aeroworld_discrete_compute_comm_sim",
-   "scope": "all 210 (current adopted legacy supplement)",
-   "adoption": "current_adoption",
+   "scope": "all 210 (published/reference output)",
+   "adoption": "current_adoption_unconfirmed (published/reference output; actual per-run consumer adoption unconfirmed, matching confirmed actual_consumer_confirmed=0; scope/adoption previously based on paths only)",
    "paths": [
     "aw_data/compute_comm_supplement/<episode>/{summary.json,simulation_manifest.json}",
     "aw_data/objective_semantic_truth/<episode>/{communication_state,compute_state}.jsonl"
@@ -152,8 +159,8 @@
   {
    "label": "domain_state:2.2.0",
    "producer": "aeroworld_domain_state_observation_sim",
-   "scope": "all 210 (current adopted legacy supplement)",
-   "adoption": "current_adoption",
+   "scope": "all 210 (published/reference output)",
+   "adoption": "current_adoption_unconfirmed (published/reference output; actual per-run consumer adoption unconfirmed, matching confirmed actual_consumer_confirmed=0; scope/adoption previously based on paths only)",
    "paths": [
     "aw_data/objective_semantic_truth/<episode>/domain_state_observations.jsonl"
    ],

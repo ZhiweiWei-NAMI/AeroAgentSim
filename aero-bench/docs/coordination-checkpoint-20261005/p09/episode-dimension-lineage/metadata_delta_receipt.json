@@ -1,0 +1,32 @@
+{
+  "source_session": "6a42ae20-678b-4198-a7ef-977799519182",
+  "source_result_path": "/mnt/data2/weizhiwei/AERO_WORLD/design/p09/episode_dimension_lineage/native-metadata-corrections/catalog-residual/result/p09_inventory_result.json",
+  "success": true,
+  "terminal": {
+    "kind": "completed"
+  },
+  "request_header_excerpt": [
+    {
+      "provider": "workbuddy",
+      "model": "glm-5.3-flash",
+      "maxTokens": 131072
+    }
+  ],
+  "reasoningEffort": "omitted/provider default",
+  "tool_calls": {
+    "bash": 5
+  },
+  "tool_errors": {},
+  "source_is_frozen": true,
+  "changes_compared_to": "f3101f948b7f73d624ff1aa017efd2deeb0156f7",
+  "matrix_changed_columns": {
+    "time_support_recorded": 1470,
+    "pending_check": 420,
+    "current_consumer": 420,
+    "producer/source_ref": 210,
+    "observation_or_truth": 420,
+    "time_support_planned": 210,
+    "source_version_or_hash": 24
+  },
+  "review_scope": "Only requested metadata/source-definition corrections; no physics/payload/run/UE changes"
+}

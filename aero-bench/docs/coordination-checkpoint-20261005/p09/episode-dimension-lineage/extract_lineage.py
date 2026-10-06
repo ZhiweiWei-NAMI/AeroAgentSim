@@ -126,20 +126,48 @@ def v14_inherit_note(ep, candidates, label):
             return f"; v14 package (source_revision={src}) inherits producer file {c}"
     return f"; v14 package (source_revision={src}) lists no {label} producer file (no producer change evidenced)"
 
-# P01/P09 supplement (2): model-visible view vs lossless archive-only view.
-# Names/labels present in named summaries; contents deliberately not read.
-ARCHIVE_ONLY = ("address/archive-only unless known at cutoff: full event_script/scene_setup, future fault and "
-                "weather schedules, terminal/hidden control, semantic episode names")
+# P01/P09 supplement (2), parent correction 5: model-visible is defined as
+# OBSERVER EVIDENCE ACTUALLY AVAILABLE BY CUTOFF in the chosen experimental
+# view — never mere readable-file existence. Manifests, occupancy, full
+# event_script/scene_setup, future fault/weather plans, semantic episode names
+# and terminal states remain archive/address-only unless independently known by
+# cutoff; explicit known-plan experiments stay separate; unknown runtime
+# availability stays unknown; config pointers are never relabeled actual
+# observed input.
+ARCHIVE_ONLY = ("archive/address-only unless known by cutoff: full event_script/scene_setup, future fault and "
+                "weather schedules, terminal/hidden control, semantic episode names, manifests/occupancy")
 AO = " | archive-only view: " + ARCHIVE_ONLY
 
-# P01/P09 supplement (5): DISTINCT definition ids for the two L/P families.
-DEF_Q = ("definition_id=p09.LP.q-derived/v1 (old q-based scalar L/P; source distribution/statistics not "
+# Parent correction 2: receiver observation lineage. The copied v14
+# receiver_observed_states.jsonl IS the native v12 producer output (copying
+# without new simulation does not change the original producer). Header of the
+# exact existing source example read this session (first line only):
+#   schema p09.gateway-scheduled-sequence-ttl/v1; state_source literal
+#   "native receiver RX versus declared expected sequence";
+#   observation_ns/available_ns/mature_expected/timely_received; producer
+#   Dataset/semantic_simulation/ns3_episode/gateway_sequence_metric.py.
+RECEIVER_EXAMPLE = ("/mnt/data1/weizhiwei/AERO_WORLD_runtime/p09/linked_native_v12_remaining/"
+                    "L2-1_v1__seed00/adopted/receiver_observed_states.jsonl")
+GW_SCHEMA = "p09.gateway-scheduled-sequence-ttl/v1"
+
+# P01/P09 supplement (5), parent correction 2: THREE distinct definition ids and
+# denominators — never merged.
+DEF_Q = ("definition_id=p09.LP.q-derived/v1 (published old q-based scalar L/P; source distribution/statistics not "
          "demonstrated per root causal summary)")
-DEF_TTL = ("definition_id=p09.LP.mature-ttl-cohort/v1 (native ns3 receipt cohort; strict RX<firstTX+TTL; "
+DEF_GW = ("definition_id=p09.LP.gateway-declared-sequence/v1 (gateway declared-expected-sequence deadline stats: "
+          "schema " + GW_SCHEMA + ", state_source 'native receiver RX versus declared expected sequence'; counts "
+          "mature_expected/timely_received over declared expected sequences; UNKNOWN when no_mature_expected_sequence)")
+DEF_TTL = ("definition_id=p09.LP.mature-ttl-cohort/v1 (accepted-TX matured TTL cohort: strict RX<firstTX+TTL; "
            "count actual available_time<=cutoff; no timely RX means L undefined, never zero; incomplete compute "
            "tasks remain pending/right-censored without hindsight outcomes)")
 
-# P01/P09 supplement (4): split_group base family = scenario_id minus trailing _vN.
+# Parent correction 1: ONE split policy for both tables.
+#   scenario_family      = scenario_id stripped trailing _vN          (39 groups)
+#   base_episode_family  = scenario_family + original seed           (117 groups)
+#   split_group          = scenario_family in BOTH identity and matrix tables
+# (conservative entire-family/all-seeds grouping). Producer source_family is a
+# separate column and is NOT a split level. The inventory makes NO actual
+# TRAIN/VALID assignment claim.
 import re
 
 def split_base(scenario_id):
@@ -288,9 +316,20 @@ V9_EP = "L6-2_v1__seed00"
 # consumption receipt exists (none does today). Time support labels are recorded
 # separately in time_support_recorded / time_support_planned.
 AVAIL_UNKNOWN = "UNKNOWN_no_actual_ingest_receipt"
-TS_RECORDED = "recorded_time_support_full_episode_0_90s(901_truth_ticks;181_capture_frames)"
-TS_CAPTURE = "planned_capture_grid_0_90s_every_0.5s(181_planned_times;6516_grid_36eps)"
+# Parent correction 3: recorded time support is the DECLARED/REFERENCE grid,
+# not a per-episode measured count (901/181 were never read per episode; 181 is
+# the planned capture schedule, never successful frames). Measured per-episode
+# counts stay NOT_MEASURED; no scans to fill counts.
+TS_RECORDED = "declared_reference_grid_0_90s(corpus_contract_900_ticks_plus_tick0;capture_step_5;per_episode_measured_counts_NOT_MEASURED)"
+TS_CAPTURE = "planned_capture_schedule_0_90s_every_0.5s(181_planned_times;6516_grid_36eps;planned_only_never_successful_frames)"
 TS_UNK = "unknown"
+# Axis (b) support: receiver observations DO carry availability-time fields at
+# schema level (exact header verified on example L2-1_v1__seed00). Actual
+# ingestion/cutoff proof (axis c) independently stays UNKNOWN.
+TS_GW_SUFFIX = ("; schema_availability_time_fields: receiver_observed_states.jsonl rows carry "
+                "observation_ns/available_ns (header-verified example L2-1_v1__seed00; producer "
+                "gateway_sequence_metric.py; per-episode field presence NOT swept)")
+TS_RECORDED_GW = TS_RECORDED + TS_GW_SUFFIX
 
 matrix = []
 
@@ -299,7 +338,7 @@ def add(ep, dim, **kw):
         kw["producer/source_ref"] = kw.pop("producer_source_ref")
     row = {c: "" for c in COLS}
     row.update(episode_id=ep, dimension=dim, split_group=split_base(
-        next(r["scenario_id"] for r in idx if r["episode_id"] == ep)))
+        next(r["scenario_id"] for r in idx if r["episode_id"] == ep)))  # scenario_family; identity CSV uses the same policy
     row.update(kw)
     matrix.append(row)
 
@@ -314,7 +353,7 @@ for r in idx:
     bind_motion = (bind_orig + (v14_inherit_note(ep, ["trajectories.jsonl", "mission_trajectory.jsonl.gz"], "motion") + " (UE capture not yet run; authored waypoint engine, not PX4 feedback)" if in14 else ""))
     bind_weather = (bind_orig + (v14_inherit_note(ep, ["weather.jsonl"], "weather") + " (authored schedule, not new weather dynamics)" if in14 else ""))
     bind_capture = (bind_orig + ("; v14_technical_overlay_same_window(0..900_ticks)" if in14 else ""))
-    comm14 = ("; v14 package " + (f"(source_revision={v14_proj[ep].get('source_revision','')}) inherits {V13_META} metadata + receiver_observed_states.jsonl (no new comm producer executed)" if "receiver_observed_states.jsonl" in v14_files.get(ep, []) else f"(source_revision={v14_proj[ep].get('source_revision','')}) — no comm observation file listed (no comm producer change evidenced)") if in14 else "")
+    comm14 = ("; v14 package " + (f"(source_revision={v14_proj[ep].get('source_revision','')}) inherits {V13_META} metadata + receiver_observed_states.jsonl (native v12 gateway producer output copied, not old 1.6.0; schema p09.gateway-scheduled-sequence-ttl/v1, no new comm producer executed)" if "receiver_observed_states.jsonl" in v14_files.get(ep, []) else f"(source_revision={v14_proj[ep].get('source_revision','')}) — no comm observation file listed (no comm producer change evidenced)") if in14 else "")
     motion14 = v14_inherit_note(ep, ["trajectories.jsonl", "mission_trajectory.jsonl.gz"], "motion") if in14 else ""
     weather14 = v14_inherit_note(ep, ["weather.jsonl"], "weather") if in14 else ""
     # 1 communication
@@ -332,7 +371,7 @@ for r in idx:
         pending_check="confirm whether the adopted training pipeline consumes this episode's 1.6.0 comm outputs directly or only derived fit fields; group-specific ns3 replay candidates (12 groups/36 eps) not adopted; " + DEF_TTL,
         source_family="original_210_compute_comm_1.6.0",
         available_time=AVAIL_UNKNOWN,
-        time_support_recorded=TS_RECORDED if e["communication_state"] else TS_UNK,
+        time_support_recorded=TS_RECORDED_GW if e["communication_state"] else TS_UNK,
         same_run_capture_binding="unknown")
     # 2 computation
     add(ep, "computation",
@@ -378,14 +417,14 @@ for r in idx:
                           + plan_adopted[ep].get("first_changed_pose_time_s", "?") + "s); release not modified, recapture required; current formal source remains " + BOUNDARY)
     add(ep, "motion/geometry",
         log_ref=f"{BOUNDARY}/{ep}/trajectories.jsonl; {BOUNDARY}/{ep}/truth_frames.jsonl" if e["trajectories"] and e["truth_frames"] else "",
-        producer_source_ref=f"{BOUNDARY}/{ep}/episode_manifest.json (server semantic pipeline; UE-rendered truth)",
+        producer_source_ref=f"{BOUNDARY}/{ep}/episode_manifest.json (server semantic pipeline; server numerical/authored truth; render input)",
         source_version_or_hash="capture_filtered_boundary(unversioned; newest boundary file 2026-09-24)" + motion14,
         run_or_profile_revision="tick contract 0..900 step5 181 frames (verified representative episodes)",
         evidence_ref=f"{BOUNDARY}/{ep}/episode_manifest.json" if e["episode_manifest"] else "",
         evidence_scope="episode_output" if e["trajectories"] and e["truth_frames"] else "source_only",
-        current_consumer="documented contract-level: P01 airspace_operations(12)/agent_interaction_safety(6) spatial predicates consume rendered motion/geometry (current_state_facts.md)",
+        current_consumer="documented contract-level: P01 airspace_operations(12)/agent_interaction_safety(6) spatial predicates consume rendered motion/geometry (current_state_facts.md); motion has exact source/output references but episode-level consumer/adoption remains unconfirmed",
         used_fields="pos_enu; velocity_enu_mps; activity_type (verified L6-2_v1__seed00/L1-1_v1__seed00 prior P09 session)",
-        observation_or_truth="UE-rendered physical truth (trajectories); truth_frames per-tick entity truth; plans/command RX excluded",
+        observation_or_truth="server numerical/authored truth (trajectories; truth_frames per-tick entity truth; render-ready numerical logs, no UE acquisition or physical-provider inference); plans/command RX excluded",
         ue_input_ref=ue14,
         pending_check=motion_pending,
         source_family="original_210_render_ready_boundary",
@@ -517,7 +556,8 @@ sio2 = _io.StringIO()
 wr2 = csv.writer(sio2, lineterminator="\n")
 wr2.writerow(["episode_id", "scenario_id", "original_seed", "original_archive_ref", "original_source_manifest_ref",
               "current_adoption_ref", "current_change_table_release_adoption", "current_candidate_status",
-              "scenario_seed_unique_check", "v14_overlay_present", "split_group"])
+              "scenario_seed_unique_check", "v14_overlay_present", "scenario_family", "base_episode_family",
+              "split_group"])
 seen = set()
 for r in idx:
     ep = r["episode_id"]
@@ -525,9 +565,11 @@ for r in idx:
     assert key not in seen, f"duplicate scenario/seed {key}"
     seen.add(key)
     c = change.get(ep, {})
+    sf = split_base(r["scenario_id"])
+    bef = sf + "__seed" + str(r["seed"]).zfill(2)  # corpus seed00 convention
     wr2.writerow([ep, r["scenario_id"], r["seed"], r.get("archive", ""), r.get("source_manifest", ""),
                   f"{BOUNDARY}/{ep}", c.get("release_adoption", ""), c.get("candidate_status", ""),
-                  "OK_70x3", "yes" if ep in v14_eps else "no", ep])
+                  "OK_70x3", "yes" if ep in v14_eps else "no", sf, bef, sf])
 sizes["episode_identity_210.csv"] = wbytes("episode_identity_210.csv", sio2.getvalue())
 
 catalog = {
@@ -544,7 +586,7 @@ catalog = {
         "files_actually_listed_in_projection_receipts": V14_ACTUAL,
         "producer_by_file": PRODUCER_BY_FILE,
         "per_dimension_producer_revision": {
-            "communication": "30 episodes (v12+v13-metadata): 1.6.0 unchanged, receiver_observed_states.jsonl inherited; 6 L6-2 episodes (p09.receipt_replay/v5/run1): receipt.json/receipt_timeline.json replay evidence, not a new physical comm producer",
+            "communication": "30 episodes (v12+v13-metadata): copied native v12 gateway expected-sequence producer output (receiver_observed_states.jsonl, schema p09.gateway-scheduled-sequence-ttl/v1, state_source native receiver RX vs declared expected sequence) - distinct from the published old q formula (p09.LP.q-derived/v1) and from the accepted-TX matured-TTL cohort (p09.LP.mature-ttl-cohort/v1); no new comm simulation run for v14; 6 L6-2 episodes (p09.receipt_replay/v5/run1): receipt.json/receipt_timeline.json replay evidence, not a new physical comm producer; NOT all comm changed, NOT all native",
             "computation": "1.6.0 unchanged (no compute file listed in projection receipts)",
             "energy/thermal": "2.2.0 unchanged",
             "motion/geometry": "30 episodes: v12 authored waypoint engine trajectories.jsonl listed (physical_motion_scope = authored waypoint engine, not PX4 motion feedback); 6 L6-2 episodes: receipt_replay/v5/run1 output",
@@ -556,20 +598,25 @@ catalog = {
         "not_recomputed_rule": "empty new event_realization is marked NOT_RECOMPUTED, which is not zero events",
     },
     "model_visible_vs_archive_only": {
-        "model_visible": "values/fields a consumer can read from named manifests/summaries at the transfer boundary or in v14 package files",
+        "model_visible": "observer evidence actually available by cutoff in the chosen experimental view (NEVER mere readable-file existence); manifests/occupancy/event_script/future plans/semantic names/terminal states stay archive-only unless independently known by cutoff; config pointers are not actual observed input",
         "archive_only": ARCHIVE_ONLY,
         "known_plan_experiments": "explicit known-plan experiments (authored schedules, planned fault injection, ARM windows) carry their own labels and are never counted as observed model-visible history",
     },
-    "lp_definitions": {"q_derived": DEF_Q, "mature_ttl_cohort": DEF_TTL},
+    "lp_definitions": {"q_derived": DEF_Q, "gateway_declared_sequence": DEF_GW, "mature_ttl_cohort": DEF_TTL},
+    "evidence_axes": {
+        "rule": "THREE separate evidence axes, never collapsed: (a) producer/source lineage = log_ref, producer/source_ref, source_version_or_hash, source_family; (b) source schema availability-time fields/support = time_support_recorded, time_support_planned (receiver rows carry observation_ns/available_ns at schema level); (c) confirmed per-run consumer/cutoff use = current_consumer tier + available_time. Axis (a) existence never implies (c); consumer=0 never implies logs lack availability-time fields (axis b)",
+        "axis_a_producer_source_lineage": "log_ref; producer/source_ref; source_version_or_hash; source_family",
+        "axis_b_schema_availability_time_support": "time_support_recorded (declared reference grid; receiver schema observation_ns/available_ns header-verified); time_support_planned (planned capture schedule)",
+        "axis_c_confirmed_consumer_cutoff_use": "current_consumer [tier=...] + available_time (UNKNOWN_no_actual_ingest_receipt on all 1680 rows)"},
     "split_group_semantics": {
-        "rule": "ORIGINAL scenario+seed and all versions/overlays/load branches/windows share one split_group (base family = scenario_id minus _vN); never derived from revision; version copies are not independent samples",
+        "rule": "ONE split policy in BOTH tables: scenario_family = scenario_id stripped trailing _vN (39); base_episode_family = scenario_family + original seed (117); split_group = scenario_family everywhere (conservative entire-family/all-seeds grouping). Producer source_family is a separate producer label, not a split level. ORIGINAL scenario+seed and all versions/overlays/load branches/windows stay together; never derived from revision; the inventory makes NO actual TRAIN/VALID assignment claim",
         "base_families": len({split_base(r['scenario_id']) for r in idx}),
         "note": "39 base families behind 70 scenario_ids: 25 paired v1/v2, 3 triple (L4-3/L4-5/L5-1 v1/v2/v3), 5 single-version L-series, 6 X-named episodes; new-scenario generalization claims require the ENTIRE base family across ALL seeds held out",
         "transported_q": "ORACLE_ONLY: transported_q TRUE future + TRAIN-frozen Gaussian noise is an oracle diagnostic, never a historical available prediction input",
     },
     "versions": [
-        {"label": "compute_comm:1.6.0", "producer": "aeroworld_discrete_compute_comm_sim", "scope": "all 210 (current adopted legacy supplement)", "adoption": "current_adoption", "paths": [f"{CCS}/<episode>/{{summary.json,simulation_manifest.json}}", f"{OST}/<episode>/{{communication_state,compute_state}}.jsonl"], "coverage_claim": "manifest-asserted + path-existence checked; field-observed only for representative episodes"},
-        {"label": "domain_state:2.2.0", "producer": "aeroworld_domain_state_observation_sim", "scope": "all 210 (current adopted legacy supplement)", "adoption": "current_adoption", "paths": [f"{OST}/<episode>/domain_state_observations.jsonl"], "coverage_claim": "path-existence checked; per-family row presence not read"},
+        {"label": "compute_comm:1.6.0", "producer": "aeroworld_discrete_compute_comm_sim", "scope": "all 210 (published/reference output)", "adoption": "current_adoption_unconfirmed (published/reference output; actual per-run consumer adoption unconfirmed, matching confirmed actual_consumer_confirmed=0; scope/adoption previously based on paths only)", "paths": [f"{CCS}/<episode>/{{summary.json,simulation_manifest.json}}", f"{OST}/<episode>/{{communication_state,compute_state}}.jsonl"], "coverage_claim": "manifest-asserted + path-existence checked; field-observed only for representative episodes"},
+        {"label": "domain_state:2.2.0", "producer": "aeroworld_domain_state_observation_sim", "scope": "all 210 (published/reference output)", "adoption": "current_adoption_unconfirmed (published/reference output; actual per-run consumer adoption unconfirmed, matching confirmed actual_consumer_confirmed=0; scope/adoption previously based on paths only)", "paths": [f"{OST}/<episode>/domain_state_observations.jsonl"], "coverage_claim": "path-existence checked; per-family row presence not read"},
         {"label": "capture_filtered_boundary(unversioned)", "producer": "server semantic pipeline + UE capture", "scope": "all 210", "adoption": "current_adoption",
          "boundary_files": ["episode_manifest.json", "trajectories.jsonl", "truth_frames.jsonl", "weather_meta.jsonl", "render_host_config.json", "scene_occupancy_manifest.json"],
          "paths": [f"{BOUNDARY}/<episode>/" + "{episode_manifest.json,trajectories.jsonl,truth_frames.jsonl,weather_meta.jsonl,render_host_config.json,scene_occupancy_manifest.json} (corpus layout; per-episode exact refs in existing_evidence_index.per_episode_canonical)"],
@@ -691,44 +738,94 @@ for row in matrix:
     tier_members[t].setdefault(key, []).append(ep)
     consumer_episode_level[key] = 0  # no episode-level field-observed consumption evidenced
 
-# count group 5: explicit auditable memberships and numeric counts per bucket.
-# Buckets are defined over explicit dimension lists; memberships are the matrix
-# rows/episodes themselves — no keyword/regex guessing.
-G5_BUCKETS = {
-    "missing_mapping": {
-        "dimensions": ["energy/thermal", "localization/navigation", "facility/task state"],
-        "reason": "no episode-level consumer mapping exists in any read source; pending_check states the open question per row",
-    },
-    "missing_coverage_statistics": {
-        "dimensions": ["perception/capture"],
-        "reason": "camera/LiDAR sidecar clock/extrinsic fields presence-verified only (validity unaudited); no per-frame occlusion ground truth; per-episode capture_tick lists verified 1/210",
-    },
-    "real_mechanism_gap": {
-        "dimensions": ["communication", "computation", "localization/navigation", "weather/environment", "facility/task state"],
-        "reason": "scalar model or typed state without a physical mechanism (root causal summary): comm/compute = 1.6.0 scalar model; GNSS/weather/facility = typed states; ns3/R1/v9/business candidates exist only as versioned outputs outside the formal 210",
-    },
+# count group 5: explicit evidence-backed classification — NO keyword/regex
+# matching. Each dimension is hand-classified once, citing the read source that
+# evidences it. Members are actual matrix rows (episode_id+dimension+reason);
+# counts are RECOMPUTED from those member lists. Rows in no declared bucket fall
+# to unclassified_unknown instead of being guessed.
+G5_CLASSIFICATION = {
+    "communication": {
+        "real_mechanism_gap": "scalar compute_comm:1.6.0 supplement model; no physical communication mechanism (root causal summary, current_state_facts.md)"},
+    "computation": {
+        "real_mechanism_gap": "scalar compute_comm:1.6.0 supplement model; no physical compute mechanism (root causal summary, current_state_facts.md)"},
+# motion/geometry is deliberately NOT in the three pending sets (non-exhaustive
+# by design): it has exact source/output references but remains consumer/
+# adoption-unconfirmed. No mechanism defect is inferred to force it into a
+# category — it is exported in the explicit outside_pending_sets bucket.
+    "localization/navigation": {
+        "missing_mapping": "no episode-level consumer mapping in any read source; pending_check states the open question per row",
+        "real_mechanism_gap": "GNSS navigation typed state; no physical mechanism (root causal summary, current_state_facts.md)"},
+    "weather/environment": {
+        "real_mechanism_gap": "authored weather schedule; no physical weather dynamics (root causal summary, current_state_facts.md)"},
+    "facility/task state": {
+        "missing_mapping": "no episode-level consumer mapping in any read source; pending_check states the open question per row",
+        "real_mechanism_gap": "pad/charging facility typed state; no physical model (root causal summary, current_state_facts.md)"},
+    "energy/thermal": {
+        "missing_mapping": "no episode-level consumer mapping in any read source; per-episode energy observation rows not read; pending_check states the open question per row"},
+    "perception/capture": {
+        "missing_coverage_statistics": "camera/LiDAR sidecar clock/extrinsic fields presence-verified only (validity unaudited); no per-frame occlusion ground truth; per-episode capture_tick list verified 1/210"},
 }
+MOTION_OUTSIDE_REASON = ("motion has exact source/output references (boundary trajectories.jsonl/truth_frames.jsonl, "
+                         "path-existence verified; v14 source_manifest physical_motion_scope='authored waypoint engine; "
+                         "not PX4 motion feedback', read this session) but episode-level consumer/adoption remains "
+                         "unconfirmed; NOT placed in the three pending sets — no mechanism defect inferred")
+g5_members = {b: [] for b in ("missing_mapping", "missing_coverage_statistics",
+                              "real_mechanism_gap", "outside_pending_sets", "unclassified_unknown")}
+for row in matrix:
+    if row["dimension"] == "motion/geometry":
+        continue  # explicitly classified into outside_pending_sets below
+    cls = G5_CLASSIFICATION.get(row["dimension"], {})
+    if not cls:
+        g5_members["unclassified_unknown"].append({
+            "episode_id": row["episode_id"], "dimension": row["dimension"],
+            "reason": "no explicit evidence-backed classification declared"})
+    else:
+        for _b, _reason in cls.items():
+            g5_members[_b].append({
+                "episode_id": row["episode_id"], "dimension": row["dimension"],
+                "reason": _reason})
+g5_members["outside_pending_sets"] = [
+    {"episode_id": row["episode_id"], "dimension": "motion/geometry", "reason": MOTION_OUTSIDE_REASON}
+    for row in matrix if row["dimension"] == "motion/geometry"]
 g5 = {}
-for _name, _spec in G5_BUCKETS.items():
-    _members = {d: sorted(r["episode_id"] for r in matrix if r["dimension"] == d) for d in _spec["dimensions"]}
-    g5[_name] = {
-        "dimensions": _spec["dimensions"],
-        "row_count": sum(len(v) for v in _members.values()),
-        "episode_memberships": _members,
-        "reason": _spec["reason"],
+for _b, _m in g5_members.items():
+    g5[_b] = {
+        "row_count": len(_m),
+        "count_recomputed_from_members": True,
+        "classification_basis": "explicit evidence-backed dimension classification; no keyword/regex matching",
+        "members": _m,
     }
+g5["real_mechanism_gap"]["interpretation"] = ("SOURCE-LEVEL pending review flag derived from read source documents "
+    "(root causal summary, current_state_facts.md); NOT a claim of demonstrated physical defects per row")
+_union = (len(g5_members["missing_mapping"]) + len(g5_members["missing_coverage_statistics"])
+          + len(g5_members["real_mechanism_gap"]))
+_dual = sum(1 for r in matrix if r["dimension"] in ("localization/navigation", "facility/task state"))
+g5["_pending_sets_non_exhaustive"] = True
+g5["_pending_union_distinct_rows"] = _union - _dual
+g5["_outside_pending_sets_rows"] = len(g5_members["outside_pending_sets"])
 g5["_total_rows"] = len(matrix)
-g5["_note"] = "buckets are dimension-based and may overlap across buckets; every counted row carries exactly one specific pending_check"
+g5["_classified_member_entries"] = sum(len(m) for m in g5_members.values())
+g5["_distinct_classified_rows"] = len(matrix) - len(g5_members["unclassified_unknown"])
+g5["_note"] = ("the three pending sets are NON-EXHAUSTIVE: union = %d distinct rows (630 missing_mapping + 210 "
+               "missing_coverage_statistics + 1050 real_mechanism_gap, minus 420 rows dual-bucketed in both "
+               "missing_mapping and real_mechanism_gap); motion/geometry 210 rows sit OUTSIDE them in "
+               "outside_pending_sets; a row may carry multiple buckets where the evidence supports both; counts are "
+               "recomputed from the member lists above" % (_union - _dual))
 
 coverage = {
     "schema_version": "p09.lineage.coverage-summary/v2",
     "status": "EXTRACTION_PROVISIONAL_NOT_ACCEPTANCE",
+    "evidence_axes": {
+        "rule": "THREE separate evidence axes, never collapsed: (a) producer/source lineage; (b) source schema availability-time fields/support (receiver observation_ns/available_ns exist at schema level); (c) confirmed per-run consumer/cutoff use (tier + available_time). consumer tier 0 never implies logs lack availability-time fields; ingestion/cutoff proof stays UNKNOWN independently",
+        "columns": {"a_producer_source_lineage": ["log_ref", "producer/source_ref", "source_version_or_hash", "source_family"],
+                    "b_schema_availability_time_support": ["time_support_recorded", "time_support_planned"],
+                    "c_confirmed_consumer_cutoff_use": ["current_consumer", "available_time"]}},
     "view_labels": {
-        "model_visible": "fields/labels readable from named manifests/summaries at the boundary or in v14 package files",
+        "model_visible": "observer evidence actually available by cutoff in the chosen experimental view (NEVER mere readable-file existence); unknown runtime availability stays unknown; config pointers are not actual observed input",
         "archive_only": ARCHIVE_ONLY,
         "known_plan_experiments": "explicit known-plan experiments carry separate labels and are never counted as observed model-visible history",
     },
-    "lp_definition_ids": {"q_derived": DEF_Q, "mature_ttl_cohort": DEF_TTL,
+    "lp_definition_ids": {"q_derived": DEF_Q, "gateway_declared_sequence": DEF_GW, "mature_ttl_cohort": DEF_TTL,
         "rule": "distinct definition_id per L/P family; count only actual available_time<=cutoff; no timely RX -> L undefined (never zero); incomplete compute tasks remain pending/right-censored without hindsight outcomes"},
     "count_group_1_identity_alignment": {
         "definition": "episode set agreement across published index (210), archive manifest (210), change table (210), v14 original210 references (210); 70 scenarios x seeds 0/1/2; duplicates none",
@@ -760,7 +857,7 @@ coverage = {
         "supporting": "adoption_configuration.json adopted_as_final_workload=false and adopted_render_versions=false; v14 is technical-input candidate only",
     },
     "count_group_4b_split_group_alignment": {
-        "definition": "episodes grouped by base scenario family (scenario_id minus _vN); ORIGINAL scenario+seed and all versions/overlays/load branches/windows share one split_group; new-scenario generalization claims require the ENTIRE base family across ALL seeds held out",
+        "definition": "ONE split policy in BOTH tables: scenario_family (39) + base_episode_family (117, family+seed) exported per episode; split_group = scenario_family everywhere (conservative entire-family/all-seeds); source_family is a producer label, not a split level; no actual TRAIN/VALID assignment claimed; new-scenario generalization claims require the ENTIRE base family across ALL seeds held out",
         "base_families": len({split_base(r['scenario_id']) for r in idx}),
         "episodes_covered": 210,
         "composition": {"paired_v1_v2": 25, "triple_v1_v2_v3": 3, "single_version_L": 5, "X_named": 6},
@@ -772,7 +869,8 @@ coverage = {
         "package_metadata_revision_values": v14_meta_revs,
         "source_revision_groups": {f"source_revision={k[0]} | metadata_revision={k[1]}": {"episodes": len(v), "members": sorted(v)} for k, v in sorted(v14_rev_groups.items())},
         "dimensions_with_changed_producer_files": {"motion/geometry": "30 eps v12 trajectories.jsonl + 6 eps p09.receipt_replay/v5/run1", "weather/environment": "v12 weather.jsonl authored schedule (30 eps; 6 L6-2 eps list no weather file)"},
-        "dimensions_unchanged": ["communication (1.6.0)", "computation (1.6.0)", "energy/thermal (2.2.0)", "localization/navigation (2.2.0)", "facility/task state (2.2.0)"],
+        "dimensions_unchanged": ["computation (1.6.0)", "energy/thermal (2.2.0)", "localization/navigation (2.2.0)", "facility/task state (2.2.0)"],
+        "communication_special_note": "communication is NOT listed unchanged: the 30 v12+v13-metadata episodes carry the copied native v12 gateway expected-sequence producer output (receiver_observed_states.jsonl, p09.gateway-scheduled-sequence-ttl/v1) - distinct from published old q formula and accepted-TX matured-TTL cohort; 6 L6-2 episodes carry receipt_replay evidence; no new comm simulation executed for v14",
         "projection_configured_not_produced": ["perception/capture (render_host_config + planned capture_window.json; UE capture not run)"],
         "not_recomputed_is_not_zero_events": True,
     },
