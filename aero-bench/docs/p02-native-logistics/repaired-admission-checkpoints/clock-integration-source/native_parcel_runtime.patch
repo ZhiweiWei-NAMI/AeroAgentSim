@@ -1,0 +1,324 @@
+--- 4c783b7/native_parcel_runtime.py
++++ clock-integration/native_parcel_runtime.py
+@@ -135,6 +135,30 @@
+     return (at.tick, at.sim_time_ns)
+ 
+ 
++def _clock_relation(
++    a: SimulationTime, b: SimulationTime
++) -> Literal["earlier", "equal", "later", "inconsistent"]:
++    """The exact monotone relation of two SimulationTime records.
++
++    The declared simulation clock is ONE monotone relation: simulation time
++    increases with tick (no tick duration is assumed without a declaration).
++    ``a`` is ``later`` than ``b`` when its tick is greater AND its simulation
++    time is strictly greater, or when the ticks are equal and its sim_time_ns
++    is greater; ``equal`` requires both components equal.  A greater tick
++    with a non-increasing sim_time_ns — or an earlier tick with a non-earlier
++    sim_time_ns — is ``inconsistent``: the two components disagree, which is
++    never a valid ordering (a lexicographic tuple comparison would silently
++    accept it).
++    """
++    if a.tick == b.tick:
++        if a.sim_time_ns == b.sim_time_ns:
++            return "equal"
++        return "later" if a.sim_time_ns > b.sim_time_ns else "earlier"
++    if a.tick > b.tick:
++        return "later" if a.sim_time_ns > b.sim_time_ns else "inconsistent"
++    return "earlier" if a.sim_time_ns < b.sim_time_ns else "inconsistent"
++
++
+ def _strict_model(model_cls, value: object, label: str):
+     if not isinstance(value, model_cls):
+         raise NativeParcelRuntimeError(
+@@ -931,20 +955,27 @@
+     def observe(self, observation: FacilityPadPhysicalObservation) -> bool:
+         """Absorb one closed-stage carrier presence sample.
+ 
+-        The sample must be strictly newer than the absorbed **global** evidence
+-        frontier (a replayed or older closed stage after a seek returns
+-        ``False`` and is never re-bound).  Each declared facility additionally
+-        keeps its **own** frontier: the first sample from EACH facility at the
+-        identical authoritative tick/time is absorbed, while a duplicate or
+-        stale sample from the same facility returns ``False``.  The global
+-        frontier is the maximum over all absorbed samples and never rolls
+-        backward.  The sample routes to the pickup or dropoff pad window by
+-        its declared facility identity; any other facility is foreign and
+-        raises.  The pickup window accumulates only while the parcel awaits
+-        pickup; the dropoff window only while the carrier holds the parcel
+-        (``loaded``/``in_transit``).  When a loaded carrier is observed
+-        explicitly in air, the runtime-detected ``loaded -> in_transit`` flip
+-        is committed, bound to exactly that observation.
++        The sample must be **clock-consistent and strictly newer** than the
++        absorbed **global** evidence frontier: simulation time must increase
++        with tick (a greater tick with a non-increasing sim_time_ns is an
++        inconsistent clock and raises — a lexicographic tuple ordering is
++        never assumed), a strictly older closed stage after a seek returns
++        ``False``, and the SAME tick with a changed sim_time_ns raises.  The
++        exact global frontier :class:`SimulationTime` may be shared by the
++        SECOND declared facility at the identical tick **and** sim_time_ns
++        only; a same-tick sample from a facility that has already absorbed
++        that tick returns ``False`` and can never increment a dwell or phase
++        across pads.  Each declared facility additionally keeps its **own**
++        frontier: a duplicate or stale sample from the same facility returns
++        ``False``.  The global frontier is the maximum over all absorbed
++        samples and never rolls backward.  The sample routes to the pickup or
++        dropoff pad window by its declared facility identity; any other
++        facility is foreign and raises.  The pickup window accumulates only
++        while the parcel awaits pickup; the dropoff window only while the
++        carrier holds the parcel (``loaded``/``in_transit``).  When a loaded
++        carrier is observed explicitly in air, the runtime-detected
++        ``loaded -> in_transit`` flip is committed, bound to exactly that
++        observation.
+         """
+         _strict_model(
+             FacilityPadPhysicalObservation,
+@@ -956,13 +987,44 @@
+                 f"observation belongs to run {observation.run_id!r}, not the "
+                 "declared parcel run; foreign evidence is rejected"
+             )
+-        if (
+-            self._last_observation_at is not None
+-            and _tick_key(observation.at)
+-            < _tick_key(self._last_observation_at)
+-        ):
+-            # A replayed/older closed stage after a seek: never re-bind it.
+-            return False
++        if self._last_observation_at is not None:
++            global_relation = _clock_relation(
++                observation.at, self._last_observation_at
++            )
++            if global_relation == "inconsistent":
++                # One declared monotone clock: a greater tick with a
++                # non-increasing sim_time_ns (or the reverse) disagrees with
++                # every already-absorbed stage and is never re-interpreted.
++                raise NativeParcelRuntimeError(
++                    f"observation at tick {observation.at.tick} "
++                    f"({observation.at.sim_time_ns} ns) is clock-inconsistent "
++                    f"with the absorbed global frontier tick "
++                    f"{self._last_observation_at.tick} "
++                    f"({self._last_observation_at.sim_time_ns} ns); the "
++                    "declared simulation time must increase with tick"
++                )
++            if (
++                observation.at.tick == self._last_observation_at.tick
++                and observation.at.sim_time_ns
++                != self._last_observation_at.sim_time_ns
++            ):
++                # The closed stage at the frontier tick has exactly ONE
++                # authoritative SimulationTime.  A sample at the same tick
++                # with a changed sim_time_ns is a re-stamped stage — the
++                # second declared facility shares only the EXACT frontier
++                # time, and no facility re-increments a dwell or phase at a
++                # mutated time.
++                raise NativeParcelRuntimeError(
++                    f"observation at tick {observation.at.tick} carries "
++                    f"sim_time_ns {observation.at.sim_time_ns} ns, but the "
++                    "absorbed stage at that tick carries "
++                    f"{self._last_observation_at.sim_time_ns} ns; one closed "
++                    "stage has exactly one authoritative SimulationTime and "
++                    "a same-tick re-stamp is never absorbed"
++                )
++            if global_relation == "earlier":
++                # A replayed/older closed stage after a seek: never re-bind.
++                return False
+         if observation.facility_id not in self._facility_frontiers:
+             raise NativeParcelRuntimeError(
+                 f"observation names facility {observation.facility_id!r}; the "
+@@ -970,13 +1032,24 @@
+                 f"{self._dropoff_facility_id!r} — foreign evidence is rejected"
+             )
+         facility_frontier = self._facility_frontiers[observation.facility_id]
+-        if (
+-            facility_frontier is not None
+-            and _tick_key(observation.at) <= _tick_key(facility_frontier)
+-        ):
+-            # A duplicate or stale closed stage from this same facility:
+-            # never re-bind it.
+-            return False
++        if facility_frontier is not None:
++            facility_relation = _clock_relation(
++                observation.at, facility_frontier
++            )
++            if facility_relation in ("equal", "earlier"):
++                # A duplicate or stale closed stage from this same facility
++                # (including the same tick already absorbed by this pad):
++                # never re-bound, never a second dwell increment.
++                return False
++            if facility_relation == "inconsistent":
++                raise NativeParcelRuntimeError(
++                    f"observation at tick {observation.at.tick} "
++                    f"({observation.at.sim_time_ns} ns) is clock-inconsistent "
++                    f"with the {observation.facility_id!r} frontier tick "
++                    f"{facility_frontier.tick} "
++                    f"({facility_frontier.sim_time_ns} ns); the declared "
++                    "simulation time must increase with tick"
++                )
+         if observation.facility_id == self._pickup_facility_id:
+             if self._parcel_state.state == "awaiting_pickup":
+                 self._pickup_window.observe(observation)
+@@ -994,7 +1067,8 @@
+         canonical_carrier_profile(self._contract, observation=observation)
+         if (
+             self._last_observation_at is None
+-            or _tick_key(observation.at) > _tick_key(self._last_observation_at)
++            or _clock_relation(observation.at, self._last_observation_at)
++            == "later"
+         ):
+             # The global frontier is the maximum over all absorbed samples
+             # and never rolls backward.
+@@ -1128,7 +1202,19 @@
+             )
+         if (
+             self._last_observation_at is not None
+-            and _tick_key(now) < _tick_key(self._last_observation_at)
++            and _clock_relation(now, self._last_observation_at) == "inconsistent"
++        ):
++            raise NativeParcelRuntimeError(
++                f"admission decision time {now.tick}/{now.sim_time_ns} ns is "
++                "clock-inconsistent with the absorbed evidence frontier "
++                f"{self._last_observation_at.tick}/"
++                f"{self._last_observation_at.sim_time_ns} ns: the declared "
++                "simulation time must increase with tick; a lexicographic "
++                "tuple ordering is never accepted"
++            )
++        if (
++            self._last_observation_at is not None
++            and _clock_relation(now, self._last_observation_at) == "earlier"
+         ):
+             raise NativeParcelRuntimeError(
+                 f"admission decision time {now.tick} precedes the absorbed "
+@@ -1136,13 +1222,32 @@
+             )
+         if (
+             self._last_decision_at is not None
+-            and _tick_key(now) < _tick_key(self._last_decision_at)
++            and _clock_relation(now, self._last_decision_at) == "inconsistent"
++        ):
++            raise NativeParcelRuntimeError(
++                f"admission decision time {now.tick}/{now.sim_time_ns} ns is "
++                "clock-inconsistent with the previous decision time "
++                f"{self._last_decision_at.tick}/{self._last_decision_at.sim_time_ns} ns: "
++                "the declared simulation time must increase with tick"
++            )
++        if (
++            self._last_decision_at is not None
++            and _clock_relation(now, self._last_decision_at) == "earlier"
+         ):
+             raise NativeParcelRuntimeError(
+                 f"admission decision time {now.tick} rewinds before the "
+                 f"previous decision time {self._last_decision_at.tick}"
+             )
+-        if _tick_key(action.received_at) > _tick_key(now):
++        received_relation = _clock_relation(action.received_at, now)
++        if received_relation == "inconsistent":
++            raise NativeParcelRuntimeError(
++                f"action {action.action_id!r} claims reception at "
++                f"{action.received_at.tick}/{action.received_at.sim_time_ns} ns "
++                f"against the admission decision time {now.tick}/{now.sim_time_ns} ns: "
++                "the reception and decision clocks are inconsistent — the "
++                "declared simulation time must increase with tick"
++            )
++        if received_relation == "later":
+             raise NativeParcelRuntimeError(
+                 f"action {action.action_id!r} claims reception at tick "
+                 f"{action.received_at.tick}, after the admission decision "
+@@ -1591,9 +1696,21 @@
+         """Raise when the next observation would skip the restored frontier.
+ 
+         After a seek backward, the sealed replay must re-deliver the closed
+-        stages from the snapshot frontier onward.  An observation whose tick is
+-        not exactly frontier + 1 (when the machine has already absorbed
+-        evidence) would silently bind a future stage and is rejected.
++        stages from the snapshot frontier onward.  With an absorbed frontier,
++        exactly three shapes are permitted and everything else is rejected:
++
++        * the EXACT frontier :class:`SimulationTime` — only for a facility
++          that has NOT yet absorbed that time (the second declared pad of a
++          shared closed stage); a same-pad repeat or a facility that already
++          absorbed the frontier raises;
++        * the exact frontier tick with a strictly greater sim_time_ns (the
++          next stage at the same declared tick length);
++        * the next tick with a strictly increasing sim_time_ns (the next
++          declared stage; no tick duration is assumed without a declaration).
++
++        A mismatched same-tick sim_time_ns, a jump beyond the next tick, a
++        backward tick and any clock-inconsistent relation all raise
++        :class:`SeekConsistencyError`: a future binding is never observed.
+         """
+         _strict_model(
+             FacilityPadPhysicalObservation,
+@@ -1602,11 +1719,66 @@
+         )
+         if self._last_observation_at is None:
+             return
+-        expected_tick = self._last_observation_at.tick + 1
+-        if observation.at.tick != expected_tick:
++        frontier = self._last_observation_at
++        relation = _clock_relation(observation.at, frontier)
++        if relation == "equal":
++            # The exact frontier time is only ever the OTHER declared pad's
++            # record of the same closed stage; a pad that has already
++            # absorbed the frontier cannot repeat it.
++            already_absorbed = self._facility_frontiers.get(
++                observation.facility_id
++            )
++            if already_absorbed is not None and _clock_relation(
++                already_absorbed, frontier
++            ) in ("equal", "later"):
++                raise SeekConsistencyError(
++                    f"seek-forward replay names facility "
++                    f"{observation.facility_id!r}, which already absorbed the "
++                    f"frontier tick {frontier.tick} "
++                    f"({frontier.sim_time_ns} ns); a same-pad repeat is not "
++                    "a next closed stage"
++                )
++            if observation.facility_id not in self._facility_frontiers:
++                raise NativeParcelRuntimeError(
++                    f"observation names facility {observation.facility_id!r}; "
++                    f"the slice observes only {self._pickup_facility_id!r} and "
++                    f"{self._dropoff_facility_id!r} — foreign evidence is "
++                    "rejected"
++                )
++            return
++        if relation == "later":
++            if observation.at.tick == frontier.tick:
++                # The next stage may share the frontier TICK only with a
++                # strictly greater sim_time_ns; a same-tick record with a
++                # different ns is a re-stamped stage, not a next stage.
++                raise SeekConsistencyError(
++                    f"seek-forward replay observation at tick "
++                    f"{observation.at.tick} carries sim_time_ns "
++                    f"{observation.at.sim_time_ns} ns, but the restored "
++                    f"frontier at that tick carries {frontier.sim_time_ns} ns; "
++                    "one closed stage has exactly one authoritative "
++                    "SimulationTime"
++                )
++            if observation.at.tick > frontier.tick + 1:
++                raise SeekConsistencyError(
++                    f"seek-forward replay expected closed stage tick "
++                    f"{frontier.tick + 1} after the restored frontier "
++                    f"{frontier.tick}, got {observation.at.tick}; a future "
++                    "binding is never observed"
++                )
++            return
++        if relation == "inconsistent":
+             raise SeekConsistencyError(
+-                f"seek-forward replay expected closed stage tick "
+-                f"{expected_tick} after the restored frontier "
+-                f"{self._last_observation_at.tick}, got {observation.at.tick}; "
+-                "a future binding is never observed"
+-            )
++                f"seek-forward replay observation at tick "
++                f"{observation.at.tick} ({observation.at.sim_time_ns} ns) is "
++                f"clock-inconsistent with the restored frontier tick "
++                f"{frontier.tick} ({frontier.sim_time_ns} ns); the declared "
++                "simulation time must increase with tick"
++            )
++        raise SeekConsistencyError(
++            f"seek-forward replay expected the next closed stage after the "
++            f"restored frontier tick {frontier.tick} "
++            f"({frontier.sim_time_ns} ns), got tick {observation.at.tick} "
++            f"({observation.at.sim_time_ns} ns); a backward stage is never "
++            "observed"
++        )

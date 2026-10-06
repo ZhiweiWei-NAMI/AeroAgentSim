@@ -1,0 +1,25 @@
+{
+  "recorded_at": "2026-10-06T05:13:31.002963-07:00",
+  "command": [
+    "/home/weizhiwei/data/iiot_predict/iiot_py311/airfogsim/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "tests/tasks/test_native_parcel_clock_integration.py",
+    "tests/tasks/test_native_parcel_runtime.py",
+    "tests/tasks/test_native_parcel_review_regressions.py",
+    "--junitxml=/mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench/docs/p02-native-logistics/repaired-admission-checkpoints/clock-integration-source/tests/core-final.xml"
+  ],
+  "exit_code": 0,
+  "source_stable": true,
+  "hashes": {
+    "aero_bench/tasks/logistics/native_parcel_contract.py": "3e448d7027de27e19387fffe1230f01dc31b1fa8721ecbd245b85b931e9d6467",
+    "aero_bench/tasks/logistics/native_parcel_runtime.py": "2fdbfa41babd114a39eaed570c57b934d12d03e93d8bef45b7e71ea07d0ce57a",
+    "aero_bench/tasks/logistics/facility_presence.py": "88da26f0c7bdf2778eff76b68da5f8da4e3cb1b981422cbd63568d7669ba2ae2",
+    "aero_bench/tasks/logistics/physical_observations.py": "130f13c9b76ff53ab4a3f348269f02f9d1b5d08eab48646e57efeec51b975c64",
+    "tests/tasks/test_native_parcel_runtime.py": "a3bee70f05555b236fe59c81ed417661422c1d087e11e41fbf8b389727552238",
+    "tests/tasks/test_native_parcel_review_regressions.py": "d1392d161cc4f61cb0e662d63caa8c90e654e0f4bbb50bbfbd5ee1a95a6149b8",
+    "tests/tasks/test_native_parcel_clock_integration.py": "3f1e0cd2749ab7d8f1243775456b6a38645597552535422186618f140de20cbb"
+  },
+  "scope": "Synthetic actual-package regression; no flight"
+}

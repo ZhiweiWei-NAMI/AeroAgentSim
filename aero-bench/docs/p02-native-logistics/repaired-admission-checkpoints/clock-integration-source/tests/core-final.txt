@@ -1,0 +1,4 @@
+........................................................................ [ 87%]
+..........                                                               [100%]
+- generated xml file: /mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench/docs/p02-native-logistics/repaired-admission-checkpoints/clock-integration-source/tests/core-final.xml -
+82 passed in 0.82s

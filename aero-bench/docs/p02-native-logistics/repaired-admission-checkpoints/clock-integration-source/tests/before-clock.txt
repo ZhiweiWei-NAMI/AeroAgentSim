@@ -1,0 +1,157 @@
+FFFFFF..                                                                 [100%]
+=================================== FAILURES ===================================
+___________ test_earlier_rx_tick_with_future_nanoseconds_is_rejected ___________
+
+package = LogisticsTaskPackage(schema_version='aero-bench.logistics-task/v1', package_id='logistics.task.v1', task_id='logistics...line_s=600.0),), no_fly_zones=(), actor_grants=(OrderActorGrant(actor_id='uav.p02.carrier:1', role='aircraft_agent'),))
+
+    def test_earlier_rx_tick_with_future_nanoseconds_is_rejected(package):
+        machine = ready(package)
+        before = machine.snapshot()
+        action = h._action(received_at=h.SimulationTime(tick=2, sim_time_ns=100_000_000_000))
+>       with pytest.raises(h.NativeParcelRuntimeError):
+E       Failed: DID NOT RAISE <class 'aero_bench.tasks.logistics.native_parcel_runtime.NativeParcelRuntimeError'>
+
+tests/tasks/test_native_parcel_clock_integration.py:23: Failed
+_ test_same_tick_changed_ns_never_creates_an_observation_phase[facility.p02.pickup] _
+
+package = LogisticsTaskPackage(schema_version='aero-bench.logistics-task/v1', package_id='logistics.task.v1', task_id='logistics...line_s=600.0),), no_fly_zones=(), actor_grants=(OrderActorGrant(actor_id='uav.p02.carrier:1', role='aircraft_agent'),))
+facility = 'facility.p02.pickup'
+
+    @pytest.mark.parametrize("facility", [h._PICKUP, h._DROPOFF])
+    def test_same_tick_changed_ns_never_creates_an_observation_phase(package, facility):
+        machine = h._machine(package)
+        machine.observe(h._observation(package, at=h._dwell_tick(1)))
+        before = machine.snapshot()
+>       with pytest.raises(h.NativeParcelRuntimeError):
+E       Failed: DID NOT RAISE <class 'aero_bench.tasks.logistics.native_parcel_runtime.NativeParcelRuntimeError'>
+
+tests/tasks/test_native_parcel_clock_integration.py:33: Failed
+_ test_same_tick_changed_ns_never_creates_an_observation_phase[facility.p02.dropoff] _
+
+package = LogisticsTaskPackage(schema_version='aero-bench.logistics-task/v1', package_id='logistics.task.v1', task_id='logistics...line_s=600.0),), no_fly_zones=(), actor_grants=(OrderActorGrant(actor_id='uav.p02.carrier:1', role='aircraft_agent'),))
+facility = 'facility.p02.dropoff'
+
+    @pytest.mark.parametrize("facility", [h._PICKUP, h._DROPOFF])
+    def test_same_tick_changed_ns_never_creates_an_observation_phase(package, facility):
+        machine = h._machine(package)
+        machine.observe(h._observation(package, at=h._dwell_tick(1)))
+        before = machine.snapshot()
+>       with pytest.raises(h.NativeParcelRuntimeError):
+E       Failed: DID NOT RAISE <class 'aero_bench.tasks.logistics.native_parcel_runtime.NativeParcelRuntimeError'>
+
+tests/tasks/test_native_parcel_clock_integration.py:33: Failed
+________________ test_later_tick_with_backwards_ns_is_rejected _________________
+
+package = LogisticsTaskPackage(schema_version='aero-bench.logistics-task/v1', package_id='logistics.task.v1', task_id='logistics...line_s=600.0),), no_fly_zones=(), actor_grants=(OrderActorGrant(actor_id='uav.p02.carrier:1', role='aircraft_agent'),))
+
+    def test_later_tick_with_backwards_ns_is_rejected(package):
+        machine = h._machine(package)
+        machine.observe(h._observation(package, at=h._dwell_tick(1)))
+        before = machine.snapshot()
+>       with pytest.raises(h.NativeParcelRuntimeError):
+E       Failed: DID NOT RAISE <class 'aero_bench.tasks.logistics.native_parcel_runtime.NativeParcelRuntimeError'>
+
+tests/tasks/test_native_parcel_clock_integration.py:43: Failed
+_ test_restore_partial_stage_can_consume_unseen_second_pad[facility.p02.pickup-facility.p02.dropoff] _
+
+package = LogisticsTaskPackage(schema_version='aero-bench.logistics-task/v1', package_id='logistics.task.v1', task_id='logistics...line_s=600.0),), no_fly_zones=(), actor_grants=(OrderActorGrant(actor_id='uav.p02.carrier:1', role='aircraft_agent'),))
+first = 'facility.p02.pickup', second = 'facility.p02.dropoff'
+
+    @pytest.mark.parametrize("first,second", [(h._PICKUP,h._DROPOFF),(h._DROPOFF,h._PICKUP)])
+    def test_restore_partial_stage_can_consume_unseen_second_pad(package, first, second):
+        machine = h._machine(package)
+        one = h._observation(package, at=h._dwell_tick(1), facility_id=first)
+        machine.observe(one)
+        restored = h._machine(package)
+        restored.restore(h.NativeParcelSnapshot.model_validate_json(machine.snapshot().model_dump_json()))
+        two = h._observation(package, at=h._dwell_tick(1), facility_id=second)
+>       restored.check_seek_forward(two)
+
+tests/tasks/test_native_parcel_clock_integration.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <aero_bench.tasks.logistics.native_parcel_runtime.NativeParcelStateMachine object at 0x7f02004b8a60>
+observation = FacilityPadPhysicalObservation(schema_version='aero-bench.logistics-physical-observation/v1', facility_id='facility.p0...not cross-checked for attitude', observation_digest='62362ea38442f642de4b55f53195ecffd9f49a9dc29bba364bb1eeb4f56b2515')
+
+    def check_seek_forward(self, observation: FacilityPadPhysicalObservation) -> None:
+        """Raise when the next observation would skip the restored frontier.
+    
+        After a seek backward, the sealed replay must re-deliver the closed
+        stages from the snapshot frontier onward.  An observation whose tick is
+        not exactly frontier + 1 (when the machine has already absorbed
+        evidence) would silently bind a future stage and is rejected.
+        """
+        _strict_model(
+            FacilityPadPhysicalObservation,
+            observation,
+            "FacilityPadPhysicalObservation",
+        )
+        if self._last_observation_at is None:
+            return
+        expected_tick = self._last_observation_at.tick + 1
+        if observation.at.tick != expected_tick:
+>           raise SeekConsistencyError(
+                f"seek-forward replay expected closed stage tick "
+                f"{expected_tick} after the restored frontier "
+                f"{self._last_observation_at.tick}, got {observation.at.tick}; "
+                "a future binding is never observed"
+            )
+E           aero_bench.tasks.logistics.native_parcel_runtime.SeekConsistencyError: seek-forward replay expected closed stage tick 2 after the restored frontier 1, got 1; a future binding is never observed
+
+aero_bench/tasks/logistics/native_parcel_runtime.py:1607: SeekConsistencyError
+_ test_restore_partial_stage_can_consume_unseen_second_pad[facility.p02.dropoff-facility.p02.pickup] _
+
+package = LogisticsTaskPackage(schema_version='aero-bench.logistics-task/v1', package_id='logistics.task.v1', task_id='logistics...line_s=600.0),), no_fly_zones=(), actor_grants=(OrderActorGrant(actor_id='uav.p02.carrier:1', role='aircraft_agent'),))
+first = 'facility.p02.dropoff', second = 'facility.p02.pickup'
+
+    @pytest.mark.parametrize("first,second", [(h._PICKUP,h._DROPOFF),(h._DROPOFF,h._PICKUP)])
+    def test_restore_partial_stage_can_consume_unseen_second_pad(package, first, second):
+        machine = h._machine(package)
+        one = h._observation(package, at=h._dwell_tick(1), facility_id=first)
+        machine.observe(one)
+        restored = h._machine(package)
+        restored.restore(h.NativeParcelSnapshot.model_validate_json(machine.snapshot().model_dump_json()))
+        two = h._observation(package, at=h._dwell_tick(1), facility_id=second)
+>       restored.check_seek_forward(two)
+
+tests/tasks/test_native_parcel_clock_integration.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <aero_bench.tasks.logistics.native_parcel_runtime.NativeParcelStateMachine object at 0x7f020055e650>
+observation = FacilityPadPhysicalObservation(schema_version='aero-bench.logistics-physical-observation/v1', facility_id='facility.p0...not cross-checked for attitude', observation_digest='f1d4cb0af071c1f1535be6eaf2e813095e9d0ba5cf6080fa1e33ff86757a90b8')
+
+    def check_seek_forward(self, observation: FacilityPadPhysicalObservation) -> None:
+        """Raise when the next observation would skip the restored frontier.
+    
+        After a seek backward, the sealed replay must re-deliver the closed
+        stages from the snapshot frontier onward.  An observation whose tick is
+        not exactly frontier + 1 (when the machine has already absorbed
+        evidence) would silently bind a future stage and is rejected.
+        """
+        _strict_model(
+            FacilityPadPhysicalObservation,
+            observation,
+            "FacilityPadPhysicalObservation",
+        )
+        if self._last_observation_at is None:
+            return
+        expected_tick = self._last_observation_at.tick + 1
+        if observation.at.tick != expected_tick:
+>           raise SeekConsistencyError(
+                f"seek-forward replay expected closed stage tick "
+                f"{expected_tick} after the restored frontier "
+                f"{self._last_observation_at.tick}, got {observation.at.tick}; "
+                "a future binding is never observed"
+            )
+E           aero_bench.tasks.logistics.native_parcel_runtime.SeekConsistencyError: seek-forward replay expected closed stage tick 2 after the restored frontier 1, got 1; a future binding is never observed
+
+aero_bench/tasks/logistics/native_parcel_runtime.py:1607: SeekConsistencyError
+- generated xml file: /mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench/validation/p02_native_parcel_glm/closed-stage-checkpoint/before-clock.xml -
+=========================== short test summary info ============================
+FAILED tests/tasks/test_native_parcel_clock_integration.py::test_earlier_rx_tick_with_future_nanoseconds_is_rejected
+FAILED tests/tasks/test_native_parcel_clock_integration.py::test_same_tick_changed_ns_never_creates_an_observation_phase[facility.p02.pickup]
+FAILED tests/tasks/test_native_parcel_clock_integration.py::test_same_tick_changed_ns_never_creates_an_observation_phase[facility.p02.dropoff]
+FAILED tests/tasks/test_native_parcel_clock_integration.py::test_later_tick_with_backwards_ns_is_rejected
+FAILED tests/tasks/test_native_parcel_clock_integration.py::test_restore_partial_stage_can_consume_unseen_second_pad[facility.p02.pickup-facility.p02.dropoff]
+FAILED tests/tasks/test_native_parcel_clock_integration.py::test_restore_partial_stage_can_consume_unseen_second_pad[facility.p02.dropoff-facility.p02.pickup]
+6 failed, 2 passed in 0.60s
