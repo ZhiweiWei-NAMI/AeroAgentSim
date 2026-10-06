@@ -12,9 +12,11 @@
       "frontend/src/city-studio.ts": "bac4bf216899fc57b554393e816637f7f62d3abff98596c0c5a3eef4ec781b28",
       "frontend/src/city-studio.css": "498a58996b35a5f75c131e2cd3dad6dbaa319562cfac04ba7dea69fe910d6dfa",
       "frontend/src/city-studio.test.ts": "90fd1ffd7ff784e5fe9adba975c7bd75cdc8fcafb0ad0962be78d545d6c79eec",
-      "frontend/src/i18n.ts": "b46e8a0825797bad9df291566262de890d20149fe01d58fce1bd7eca7149e712"
+      "frontend/src/i18n.ts": "b46e8a0825797bad9df291566262de890d20149fe01d58fce1bd7eca7149e712",
+      "frontend/src/p02-entity-overlays.ts": "274e7b1144b18726d8b4f2c3c06b88023cc4572fd23b6ae505d9962994a08f73",
+      "frontend/src/p02-entity-overlays.test.ts": "358237e77a4d2a3fb3287d921103507defbc01213a152d09f05445da98cfa6d3"
     },
-    "sourceVersion": "fe1d32a8a810e2e89a5e933261c76e82c990da39387b8f9301be65976eaa87a2",
+    "sourceVersion": "d7e1bab5c78de698997d8ccdd8404064f522854b039dd101ab69172441089834",
     "sceneAssets": "Original BENCH GLBs unchanged",
     "providerStarted": false
   },
