@@ -3,8 +3,8 @@
   "created_at": "2026-10-05T17:38:17.664735-07:00",
   "files": {
     "README.md": {
-      "bytes": 3840,
-      "sha256": "b1ff902eb3ea1458cdc231933ee6b01d228dbe0d4244bd1196850936c09d0374"
+      "bytes": 3902,
+      "sha256": "b746176c324c1f2df1417b4585b6a477efe735deb7dc9ef6558707091f888aba"
     },
     "p01/first_epoch_820_result.json": {
       "bytes": 8552,
@@ -17,6 +17,10 @@
     "p01/first_epoch_820_result_review.json": {
       "bytes": 6148,
       "sha256": "c0346582de06c48b00804882739a6db3346cd5da14237c666b06757b04a716f6"
+    },
+    "p01/training_hold_status.json": {
+      "bytes": 3815,
+      "sha256": "35b85bb463d48f519f61f5d53e5c4ffb23f065f712e0369f24ba13c8afea5b93"
     },
     "p02/13-config-light-en.png": {
       "bytes": 730324,
@@ -103,7 +107,7 @@
       "sha256": "960ecde8f729635904ba6d2e5f777f521af11d081c5c2742e4d4deafe09677ef"
     }
   },
-  "total_bytes": 1985084,
-  "updated_at": "2026-10-05T17:43:04.339669-07:00",
+  "total_bytes": 1988961,
+  "updated_at": "2026-10-05T17:46:04.007262-07:00",
   "csv_export_note": "CSV line endings normalized to LF; parsed headers/row values unchanged. Source files untouched."
 }

@@ -1,0 +1,71 @@
+{
+  "schema_version": "p01.training-hold/v1",
+  "updated_at": "2026-10-05T17:46:04.007262-07:00",
+  "status": "RESULTS_SEALED_NEW_PREDICTION_EXPERIMENTS_ON_HOLD",
+  "completed_result": "first_epoch_820_result.json",
+  "independent_review": "first_epoch_820_result_review.json",
+  "scope": "One1640TRAIN pass, same820VALID endpoint per K1/K8 arm, oracle future-state plus Gaussian diagnostic. Not a production forecasting result.",
+  "completed_pid": 995161,
+  "completed_pid_still_exists": false,
+  "hold": "No new prediction training, history-only forecast experiment, old GRU fit, or additional Qwen budget. Multimodal PyG prediction chain has not yet run end-to-end.",
+  "retained_artifacts": [
+    {
+      "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/resolved_config.json",
+      "bytes": 2488,
+      "retention": "retain necessary final/configuration/evaluation artifact"
+    },
+    {
+      "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/normalization.json",
+      "bytes": 1774,
+      "retention": "retain necessary final/configuration/evaluation artifact"
+    },
+    {
+      "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/cohort_receipt.json",
+      "bytes": 3065,
+      "retention": "retain necessary final/configuration/evaluation artifact"
+    },
+    {
+      "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/schedule.json",
+      "bytes": 9906,
+      "retention": "retain necessary final/configuration/evaluation artifact"
+    },
+    {
+      "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/comparison.json",
+      "bytes": 238398,
+      "retention": "retain necessary final/configuration/evaluation artifact"
+    },
+    {
+      "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/K1/last820.pt",
+      "bytes": 50184870,
+      "retention": "retain necessary final/configuration/evaluation artifact"
+    },
+    {
+      "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/K1/full_VALID_predictions.npz",
+      "bytes": 52359,
+      "retention": "retain necessary final/configuration/evaluation artifact"
+    },
+    {
+      "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/K1/receipt.json",
+      "bytes": 101833,
+      "retention": "retain necessary final/configuration/evaluation artifact"
+    },
+    {
+      "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/K8/last820.pt",
+      "bytes": 50184870,
+      "retention": "retain necessary final/configuration/evaluation artifact"
+    },
+    {
+      "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/K8/full_VALID_predictions.npz",
+      "bytes": 56503,
+      "retention": "retain necessary final/configuration/evaluation artifact"
+    },
+    {
+      "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/qwen35/outputs/first_epoch_820_seed0_v3/K8/receipt.json",
+      "bytes": 101829,
+      "retention": "retain necessary final/configuration/evaluation artifact"
+    }
+  ],
+  "intermediate_policy": "Keep small code/configuration/metrics/predictions/deletion records and necessary final artifacts. Only scoped recoverable compression/cleanup after activity/dependency checks; no new permanent-delete object authorized or executed in this update.",
+  "preserved": "Original128/538 result versions and negative findings remain available. Current model base and source/raw210 remain retained.",
+  "other_projects": "P09 dataset/recapture decisions and ordinary Flash read-only storage inventory, P02 current visual/configuration closures continue independently."
+}
