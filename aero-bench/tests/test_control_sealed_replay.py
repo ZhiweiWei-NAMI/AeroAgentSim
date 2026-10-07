@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import http.client
 import json
+import shutil
 import socket
 import threading
 
@@ -190,16 +191,57 @@ def test_independent_failed_or_invalid_verdict_is_not_promoted(sealed_cli):
     assert manager._replays[run_id].summary.status == trace["verifier_public"]["status"]
 
 
-def test_import_rejects_input_digest_drift_and_invalid_selection(sealed_cli):
+def test_import_rejects_invalid_selection(sealed_cli):
     suite, config, _, run_id = sealed_cli
     for selection in ((), (run_id, run_id), ("f" * 64,)):
         with pytest.raises(ControlManagerError, match="selection"):
             sealed_replay.SealedReplayManager.from_files(
                 suite_path=suite, runner_config_path=config, run_ids=selection
             )
-    config.write_bytes(config.read_bytes() + b"\n")
-    with pytest.raises(ControlManagerError, match="resolved inputs"):
-        _load(sealed_cli)
+
+
+@pytest.mark.parametrize("sealed_cli", ["embedded", "indexed"], indirect=True)
+def test_relocated_replay_accepts_active_config_and_preserves_summary(sealed_cli):
+    suite, config, output, run_id = sealed_cli
+    original_summary = (output / "runner-summary.json").read_bytes()
+    relocated = output.with_name("relocated")
+    shutil.move(output, relocated)
+    active_config = json.loads(config.read_bytes())
+    active_config["output_root"] = str(relocated)
+    config.write_text(json.dumps(active_config, indent=2) + "\n\n")
+    manager = sealed_replay.SealedReplayManager.from_files(
+        suite_path=suite, runner_config_path=config, run_ids=(run_id,),
+    )
+    access = manager.issue_read_access(run_id)
+    assert access.read_only
+    assert manager._replays[run_id].root == relocated / run_id
+    assert manager.public_trace_document(run_id, operator_token=access.credentials.operator_token) == (
+        relocated / run_id / "public/public-trace.json"
+    ).read_bytes()
+    assert (relocated / "runner-summary.json").read_bytes() == original_summary
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("target", ["run-id", "public"])
+def test_relocated_replay_still_rejects_identity_or_evidence_drift(sealed_cli, target):
+    suite, config, output, run_id = sealed_cli
+    relocated = output.with_name("relocated")
+    shutil.move(output, relocated)
+    active_config = json.loads(config.read_bytes())
+    active_config["output_root"] = str(relocated)
+    config.write_text(json.dumps(active_config))
+    if target == "run-id":
+        summary_path = relocated / "runner-summary.json"
+        summary = json.loads(summary_path.read_bytes())
+        summary["runs"][0]["run_id"] = "f" * 64
+        summary_path.write_bytes(canonical_json_bytes(summary) + b"\n")
+    else:
+        (relocated / run_id / "public/public-trace.json").write_bytes(b"{}\n")
+    with pytest.raises(ControlManagerError) as error:
+        sealed_replay.SealedReplayManager.from_files(
+            suite_path=suite, runner_config_path=config, run_ids=(run_id,),
+        )
+    assert error.value.code == "replay.invalid"
 
 
 @pytest.mark.parametrize("sealed_cli", ["embedded", "indexed"], indirect=True)
