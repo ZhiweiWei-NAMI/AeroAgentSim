@@ -138,7 +138,7 @@ async function login() {
   await page.getByLabel('控制服务地址', { exact: true }).fill(endpoint);
   await token.fill(bootstrap.bootstrap_token);
   await csrf.fill(bootstrap.bootstrap_csrf);
-  const reply = page.waitForResponse(r => r.url() === `${endpoint}/v1/catalog`);
+  const reply = page.waitForResponse(r => r.url() === `${endpoint}/v1/catalog`, { timeout: requestTimeoutMs });
   await page.getByRole('button', { name: '加载运行目录', exact: true }).click();
   const response = await reply;
   await token.fill(''); await csrf.fill('');
@@ -147,7 +147,7 @@ async function login() {
   discoveredStartId = catalog.runs.find(run => run.run_id === runId)?.start_id ?? null;
 }
 async function start(name) {
-  const reply = page.waitForResponse(r => r.url() === `${endpoint}/v1/runs` && r.request().method() === 'POST');
+  const reply = page.waitForResponse(r => r.url() === `${endpoint}/v1/runs` && r.request().method() === 'POST', { timeout: requestTimeoutMs });
   await page.getByRole('button', { name, exact: true }).click();
   const response = await reply;
   const value = await response.json();
@@ -255,13 +255,16 @@ async function captureSealedReplay(trace, entry = 'terminal') {
     await page.waitForTimeout(5000);
   }
   await setControlsOpen(false);
+  log('sealed-replay-controls-closed', { run_id: runId });
   const play = page.getByRole('button', { name: '▶ 播放', exact: true });
   const carrier = page.locator('.operations-monitor-fleet-row[data-object-id="uav.p02.carrier"]');
   await carrier.click();
+  log('sealed-replay-carrier-selected', { run_id: runId, entity_id: 'uav.p02.carrier' });
   await page.getByRole('button', { name: '外部跟随', exact: true }).click();
   if (await page.locator('#city-map').getAttribute('data-observation-camera-mode') !== 'chase') {
     throw new Error('Sealed replay carrier follow did not become active');
   }
+  log('sealed-replay-chase-active', { run_id: runId });
   const replayFrames = [], displayedTicks = new Set(), positions = new Set(), stages = new Set();
   let previousTick = null, previousState = null, previousMode = null, replayPlaying = false;
   const lastTick = trace.scene_states.at(-1).at.tick;
@@ -376,7 +379,7 @@ try {
       return response;
     };
   });
-  page = await context.newPage(); page.setDefaultTimeout(requestTimeoutMs);
+  page = await context.newPage(); page.setDefaultTimeout(Math.min(requestTimeoutMs, 30_000));
   page.on('request', request => requestAudit.observe(request.url(), request.method(), elapsed()));
   rendererEvidence = await page.evaluate(() => {
     const canvas = document.createElement('canvas');
@@ -407,7 +410,7 @@ try {
   await login();
   if (values['sealed-only']) {
     const reply = page.waitForResponse(response => response.url() === `${endpoint}/v1/runs/${runId}/replay-access`
-      && response.request().method() === 'POST');
+      && response.request().method() === 'POST', { timeout: requestTimeoutMs });
     await page.getByRole('button', { name: '打开已封存回放', exact: true }).click();
     const response = await reply;
     if (!response.ok()) throw new Error(`Read-only replay access failed: HTTP ${response.status()}`);

@@ -9,9 +9,8 @@ verifier checks their sealed records, including actual airborne transport.
 ## Open the platform
 
 For the local delivery, open `http://127.0.0.1:5416/city-studio.html` to inspect
-the configuration. Publication recovery and its new browser capture are
-pending. After publication is ready, the read-only Control service on port
-8769 will expose the authenticated catalog. Open
+the configuration. The read-only Control service on port 8769 exposes the
+authenticated catalog for the recovered sealed run. Open
 `http://127.0.0.1:5416/?view=live`, enter the private bootstrap values under
 `正式运行控制`, load the catalog, select the parcel run and click
 `打开已封存回放`. This service uses `SealedReplayManager` and needs no runtime
@@ -22,7 +21,7 @@ loopback address; remote browsers need forwarding to that host.
 The local delivery directory is `validation/platform-0.1/`. The final-run
 paths are `final-scene/native-bundle/`, `final-registry/`,
 `final-configuration/`, `final-compilations/`, `execution/`, and
-`final-watchable/`. Recovered projection output is planned under
+`final-watchable/`. Recovered projection output is retained under
 `publication/<run_id>/`. The image lock is `verifier-image/images.json`; use its
 actual component digests. Raw runs, original city assets, recordings and
 credentials are retained in local storage rather than published in Git.
@@ -36,10 +35,10 @@ goals passing. Actual pickup completed at tick 60, delivery at tick 128,
 and the declared observation horizon remained 300 ticks. Its original run
 summary nevertheless has status `error` with
 `public_trace_projection_failed`; public trace publication did not finish.
-Recovery will complete only that projection from the same immutable runtime
-and verification seals into `publication/<run_id>/`. The original failed
-summary stays unchanged. Recovery and the new sealed-playback capture have
-not yet been completed. See [the evidence manifest](platform-0.1-evidence.json)
+Recovery completed that projection from the same immutable runtime and
+verification seals into `publication/<run_id>/`, whose summary is `passed`.
+The original failed summary stays unchanged. The new sealed-playback capture
+is in progress. See [the evidence manifest](platform-0.1-evidence.json)
 for the recorded source identities and outcomes.
 
 An earlier run completed physical pickup and delivery but failed formal

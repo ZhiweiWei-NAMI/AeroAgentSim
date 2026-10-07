@@ -92,7 +92,6 @@ import {
   formatRunClock,
   p02OrderSelection,
   p02OverviewPose,
-  type BusinessIdentityEnvelope,
   type OverviewPoseEnu,
   type RunIndex,
 } from "./p02-entity-overlays";
@@ -208,6 +207,7 @@ type SealedReplayStatus = "idle" | "loading" | "ready" | "failed";
 
 interface SealedReplaySourceRequest {
   readonly traceUrl: URL;
+  readonly assetBaseHref?: string;
   readonly fetch?: typeof fetch;
   fetchTrace(signal: AbortSignal, onProgress: ProgressListener): Promise<VerifiedPublicTracePayload>;
   verifyTrace?(payload: VerifiedPublicTracePayload, signal: AbortSignal): Promise<void>;
@@ -344,9 +344,6 @@ export class PublicTraceApp {
   private p02RunIndex: RunIndex | null = null;
   private p02View: "run" | "config" = "run";
   private p02SelectedOrderId: string | null = null;
-  /** Business-identity sidecar fetch generation; only the latest binds. */
-  private p02IdentityGeneration = 0;
-  private p02IdentityAbort: AbortController | null = null;
   /** Trace whose business overview the map has already framed (one-shot). */
   private p02OverviewFramed: string | null = null;
   private p02LiveBusinessSource: RunBusinessSource | null = null;
@@ -532,7 +529,6 @@ export class PublicTraceApp {
       this.p02SelectedOrderId = null;
       this.applyDeclaredLayerDefaults(trace.scenario);
       this.renderAll();
-      this.loadP02BusinessIdentities(trace);
       if (this.mode === "replay" && this.replayAssetBase !== null) {
         void this.resolveDeclaredAssets(trace, this.replayAssetBase);
       }
@@ -663,6 +659,7 @@ export class PublicTraceApp {
     const fetchImpl = controlReplayFetch(source, baseHref);
     await this.loadSealedReplay({
       traceUrl: new URL("public-trace.json", baseHref),
+      assetBaseHref: new URL("replay/", baseHref).href,
       fetch: fetchImpl,
       fetchTrace: (requestSignal, onProgress) =>
         this.store.fetchFrom(traceSignal => source.trace(traceSignal), requestSignal, onProgress),
@@ -708,7 +705,7 @@ export class PublicTraceApp {
     let pendingLoader: SealedReplayLoader | null = null;
     try {
       const traceUrl = source.traceUrl;
-      this.replayAssetBase = new URL(".", traceUrl).href;
+      this.replayAssetBase = source.assetBaseHref ?? new URL(".", traceUrl).href;
       this.replayAssetFetch = source.fetch ?? null;
       const candidate = await source.fetchTrace(controller.signal, progress => {
         if (isCurrent() && !controller.signal.aborted) this.loadingProgress.update(progress);
@@ -909,9 +906,6 @@ export class PublicTraceApp {
     this.meshScene?.dispose(); this.meshScene = null;
     this.liveMeshResolver?.dispose(); this.liveMeshResolver = null;
     this.replayAssetFetch = null;
-    this.p02IdentityAbort?.abort();
-    this.p02IdentityAbort = null;
-    this.p02IdentityGeneration += 1;
     this.sealedReplayLoader?.dispose();
     this.sealedReplayLoader = null;
     this.sealedReplayRequired = false;
@@ -925,6 +919,7 @@ export class PublicTraceApp {
     this.hudLayoutObserver?.disconnect();
     this.telemetryHud.dispose();
     this.map.destroy();
+    document.body.classList.remove("p02-controls-open");
   }
 
   /** Replace the terminal live console with a read-only sealed replay; credentials stay in memory. */
@@ -1682,48 +1677,6 @@ export class PublicTraceApp {
   // authority: every number below is read at this.currentTick() from the
   // compiled Run index, never from a secondary clock or a rescan.
   // ------------------------------------------------------------------
-
-  /**
-   * Fetch the explicit business-identity sidecar once per trace load and
-   * recompile the index with it. The sidecar binds only the exact loaded
-   * run id; a missing file or a foreign run leaves every business fact
-   * UNKNOWN — it never degrades the trace itself.
-   */
-  private loadP02BusinessIdentities(trace: PublicTrace): void {
-    this.p02IdentityAbort?.abort();
-    if (trace.events.some(event => event.event_type === "public.parcel-projection")) return;
-    const controller = new AbortController();
-    this.p02IdentityAbort = controller;
-    const generation = ++this.p02IdentityGeneration;
-    void (async () => {
-      try {
-        const response = await fetch("./p02-business-identities/demo.json", {
-          signal: controller.signal,
-          headers: { Accept: "application/json" },
-        });
-        if (!response.ok) return; // no sidecar published: stay UNKNOWN
-        const envelope = parseStrictJson(
-          new TextDecoder("utf-8", { fatal: true }).decode(await readBoundedResponse(
-            response, 4_000_000, "business identity sidecar", controller.signal))) as BusinessIdentityEnvelope;
-        if (controller.signal.aborted || generation !== this.p02IdentityGeneration) return;
-        if (envelope === null || typeof envelope !== "object" || envelope.scene_run_id !== trace.run_id) return;
-        // Recompile the index once with the accepted sidecar; per-tick
-        // rendering keeps joining prebuilt maps only.
-        this.p02RunIndex = buildRunIndex({
-          trace, entityKinds: entityKindsOf(trace.scenario), identity: envelope,
-        });
-        this.renderP02RunDock();
-        this.renderInspector();
-        this.renderP02MapOverlay();
-        // The selector now resolves a carrier for the first time; the one-shot
-        // overview may have been skipped earlier for lack of valid positions.
-        this.p02OverviewFramed = null;
-        this.p02FrameOverview();
-      } catch {
-        // Aborted/invalid sidecar: business facts stay UNKNOWN.
-      }
-    })();
-  }
 
   /** Show one view; the map and its frame cursor stay mounted in both. */
   private applyP02View(): void {

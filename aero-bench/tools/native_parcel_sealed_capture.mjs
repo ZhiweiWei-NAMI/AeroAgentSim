@@ -9,7 +9,7 @@ export class SealedCaptureRequestAudit {
     if (target.origin !== this.endpoint) return;
     const path = target.pathname;
     const forbidden = (path === '/v1/runs' && method === 'POST')
-      || /^\/v1\/runs\/[0-9a-f]{64}(?:\/(?:events|control))?$/.test(path);
+      || /^\/v1\/runs\/[0-9a-f]{64}(?:\/(?:events|controls\/[^/]+))?$/.test(path);
     this.requests.push({ method, path, elapsed_s: elapsedS, forbidden });
   }
   summary() {

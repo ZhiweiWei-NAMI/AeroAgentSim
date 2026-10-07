@@ -178,8 +178,131 @@
     "retained_unchanged": true
   },
   "publication_recovery": {
-    "status": "pending",
-    "reason": "Complete public evidence binding from the same passed runtime and verification seals; original execution record is retained."
+    "status": "completed",
+    "receipt": {
+      "path": "validation/platform-0.1/publication/4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb/finalization-recovery.json",
+      "sha256": "6207dcf7c4aa6eee691a5d0a35f20ec6a16ae0f48b5bdb8cebc57bdfcdea3057",
+      "size_bytes": 4696
+    },
+    "original_execution_modified": false,
+    "summary": {
+      "path": "validation/platform-0.1/publication/4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb/run-summary.json",
+      "sha256": "1f37b1a9fd461982c78e4fcb348a8e10c55ca412747ce676895423820b0a9d38",
+      "size_bytes": 2408
+    },
+    "details": {
+      "bundle_root": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench/validation/platform-0.1/final-compilations/b76081905ec64aa146f74197d5e1daa605ba25a078b13a898f6c0f99edb91c44/bundle",
+      "compilation_id": "b76081905ec64aa146f74197d5e1daa605ba25a078b13a898f6c0f99edb91c44",
+      "completed_wall_time_ns": 1791360721919939115,
+      "original_diagnostics": [
+        {
+          "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench/validation/platform-0.1/execution/4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb/failure-diagnostic.json",
+          "sha256": "ce78813c4bb75f8af46f9a4b1653246bfb9301c1de11877591bc74d9df0e7c8d"
+        },
+        {
+          "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench/validation/platform-0.1/execution/4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb/failure-diagnostic.public_trace_projection.json",
+          "sha256": "ce78813c4bb75f8af46f9a4b1653246bfb9301c1de11877591bc74d9df0e7c8d"
+        }
+      ],
+      "original_failure_classes": [
+        "public_trace_projection_failed"
+      ],
+      "original_summary_sha256": "72368981e873e407da8b8c85bbf4c59ade2ad3cfcaccb15dc623ba31f4020b00",
+      "public_trace": {
+        "event_chain_root": "debafa52654ee98a518a559b9f4986cf03edd77f99d09f64b19a85f8f37e4639",
+        "projector_version": "aero-bench.public-projector/v2",
+        "relative_path": "public/public-trace.json",
+        "replay": {
+          "file_count": 435,
+          "relative_path": "public/replay/replay-manifest.json",
+          "schema_version": "aero-bench.public-replay-manifest/v1",
+          "sha256": "196b943c3b960a77584cd26002706defc2252bf1ed18d788ccafbf629ce24309",
+          "total_size_bytes": 685795743
+        },
+        "schema_version": "aero-bench.public-trace/v3",
+        "sha256": "2af47dd1767197aa85e56465ff6e2a5340e252167365048ff071dfaad6049603"
+      },
+      "recovered_summary_sha256": "1f37b1a9fd461982c78e4fcb348a8e10c55ca412747ce676895423820b0a9d38",
+      "run_id": "4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb",
+      "runtime_seal": {
+        "artifacts": [
+          {
+            "artifact_id": "artifact.trajectory",
+            "sha256": "ea0b3f2df9611e4356a3071a376bc8b7a155072e57c8ed618c93b839810bd2fd",
+            "size_bytes": 638001
+          },
+          {
+            "artifact_id": "artifact.event-log",
+            "sha256": "a7bf95afb13704a1476ba7281d4bd0e575a5db1b6b06c3eaba08273df47c6d82",
+            "size_bytes": 1438480510
+          },
+          {
+            "artifact_id": "artifact.scene-states",
+            "sha256": "d11615d5a640067e0450dbc59490424e7cfbeeccb6e7ebd50ac7be21542f4228",
+            "size_bytes": 240556547
+          },
+          {
+            "artifact_id": "artifact.native-parcel-state",
+            "sha256": "49ede96db3f3a0999679de6e2ecf0bceeecd04742d1e48b7bab51102fa468a52",
+            "size_bytes": 2732714
+          },
+          {
+            "artifact_id": "artifact.delivery",
+            "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "size_bytes": 2
+          },
+          {
+            "artifact_id": "artifact.sumo-evidence",
+            "sha256": "1f66c66d8ce7650750e6956707b5fe86722f6478a7d62310e3537839ff697ec2",
+            "size_bytes": 39973940
+          }
+        ],
+        "attempt_id": "attempt.9be82c0381374935a2fabd68c6514008",
+        "event_chain_root": "debafa52654ee98a518a559b9f4986cf03edd77f99d09f64b19a85f8f37e4639",
+        "execution_scope": "formal_benchmark",
+        "manifest_digest": "ad0491df97967b67f59d8bc09df6df88068697e71cc30e0eb2936aadbef49dca",
+        "run_id": "4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb",
+        "schema_version": "aero-bench.seal/v2"
+      },
+      "schema_version": "aero-bench.publication-recovery/v1",
+      "serving_runner_config_sha256": "4606b4d23e7a6531030e2207186a8d82e46486ce61b0f07c46f45c2dd77942b2",
+      "simulation_rerun": false,
+      "source_revision": {
+        "files": [
+          {
+            "path": "aero_bench/trace/projector.py",
+            "sha256": "e23401fa67ca9a3b2fff99eda56a02dfd60ead6f5026b9870213f666e4e7e2e4"
+          },
+          {
+            "path": "aero_bench/runner/execution.py",
+            "sha256": "9d7d0ad5ff72dd33162c3f3224d8ed818c08c943b757372cb358ac835053b97b"
+          },
+          {
+            "path": "tools/finalize_verified_run.py",
+            "sha256": "d9034f0cb0d9fc9aaaab9457ae9ca923273d37fe3581e2549468f588863706a2"
+          }
+        ],
+        "git_head": "e67f97c6dcedc023a129ba5359fdeebe25418720"
+      },
+      "source_run_root": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench/validation/platform-0.1/execution/4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb",
+      "source_runner_config": {
+        "path": "/mnt/data1/weizhiwei/AERO_WORLD_runtime/p02_aeroagentsim_native_integration_20261005/aero-bench/validation/platform-0.1/runner.yaml",
+        "sha256": "72d7762c2d54fdc1bd1aa3ebfa116923238465552889fd55825cd792db08e5e3"
+      },
+      "started_wall_time_ns": 1791360171843557554,
+      "status": "completed",
+      "verification_manifest_digest": "a36e87914666d63fd58f93da78afab35f6faff6d5661b1bf32d042407669979b",
+      "verification_report": {
+        "artifact_id": "artifact.verification-report",
+        "artifact_type": "verification.report",
+        "producer_id": "logistics.parcel.verifier",
+        "relative_path": "verifier/report.json",
+        "sha256": "5cc9ebdc5c15e07c5e0c58039a7b8ceb42a93ccbb0dff337fbc2ae72483c1fd9",
+        "size_bytes": 1364,
+        "visibility": "public"
+      },
+      "verifier_rerun": false
+    }
   },
   "video": {
     "status": "awaiting_complete_sealed_playback"

@@ -48,7 +48,7 @@ test('audits actual requests and excludes credentials from read-only replay evid
 });
 test('rejects observed Start, status, stream, and runtime control traffic', () => {
   for (const [path, method] of [['/v1/runs', 'POST'], [`/v1/runs/${runId}`, 'GET'],
-    [`/v1/runs/${runId}/events`, 'GET'], [`/v1/runs/${runId}/control`, 'POST']]) {
+    [`/v1/runs/${runId}/events`, 'GET'], [`/v1/runs/${runId}/controls/pause`, 'POST']]) {
     const audit = new SealedCaptureRequestAudit('http://127.0.0.1:8769');
     audit.observe(`http://127.0.0.1:8769${path}`, method, 1);
     assert.throws(() => audit.assertReadOnly());
