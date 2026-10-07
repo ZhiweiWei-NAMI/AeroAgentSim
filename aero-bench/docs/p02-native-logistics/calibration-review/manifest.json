@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "path": "calibration.json",
+      "bytes": 7185,
+      "sha256": "0772b261d8a492db1833a0ed2fa32eb69bf9d13b933f33c89359a40cda30c62f"
+    },
+    {
+      "path": "pinned-model-extract.json",
+      "bytes": 5612,
+      "sha256": "52197aa811acb3f38826d96aa76ea39312d510e876d78de8d07321e449582ead"
+    }
+  ]
+}

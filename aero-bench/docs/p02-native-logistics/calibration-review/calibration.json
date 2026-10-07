@@ -1,0 +1,213 @@
+{
+  "schema_version": "p02.native-source-pose-calibration/v1",
+  "status": "source-derived-model-specific-calibration; new logistics run not executed",
+  "flight_oci": "localhost:5000/aero-bench/flight@sha256:661dc7420eb130147ff422349e2bf097bd951c89f37a2f02e6f7aec088018abc",
+  "provider_pose_reference": {
+    "definition": "configured Gazebo model's root pose from /world/{world}/dynamic_pose/info Pose_V",
+    "service": {
+      "path": "/opt/aero-bench/service.py",
+      "sha256": "d94a54987d01e02801dcf931c6c4d0a790dd52cadb91b9b1ef6a6b351ed619f8",
+      "bytes": 475897
+    },
+    "code_path": "containers/px4-gazebo/service.py",
+    "functions": [
+      "_on_pose_topic_message",
+      "_parse_pose_message",
+      "_model_poses",
+      "telemetry"
+    ],
+    "frame": "Gazebo world ENU, metres; not MAVSDK AMSL/AGL or base_link pose",
+    "model_source_name": "x500_mono_cam",
+    "spawned_model_name": "x500_mono_cam_0"
+  },
+  "source_transform": {
+    "model_sources": [
+      {
+        "path": "/opt/px4-gazebo/share/gz/models/x500_base/model.sdf",
+        "sha256": "7456e4b43a1894a727bdf544250205780dc2e74460d9cfa424c65edb3fb4e898",
+        "bytes": 19413,
+        "model_name": "x500_base",
+        "model_pose": "0 0 .24 0 0 0",
+        "includes": []
+      },
+      {
+        "path": "/opt/px4-gazebo/share/gz/models/x500/model.sdf",
+        "sha256": "cb76a4afd439f253a8c516b1fcd3528f80347619cfa46bebb620557054fbf125",
+        "bytes": 3533,
+        "model_name": "x500",
+        "model_pose": null,
+        "includes": [
+          "<include merge=\"true\">\n      <uri>model://x500_base</uri>\n    </include>\n    "
+        ]
+      },
+      {
+        "path": "/opt/px4-gazebo/share/gz/models/x500_mono_cam/model.sdf",
+        "sha256": "458d1a09d522ea62bb8027c34c5a3ffd24547ebc17655b0ae7a86b5cc99ebee6",
+        "bytes": 471,
+        "model_name": "x500_mono_cam",
+        "model_pose": null,
+        "includes": [
+          "<include merge=\"true\">\n      <uri>x500</uri>\n    </include>\n    ",
+          "<include merge=\"true\">\n      <uri>model://mono_cam</uri>\n      <pose>.12 .03 .242 0 0 0</pose>\n    </include>\n    "
+        ]
+      },
+      {
+        "path": "/opt/px4-gazebo/share/gz/models/mono_cam/model.sdf",
+        "sha256": "2d8b948585fc615cb0f34ed9d67885c15a9bac16df2d1fc59ebb03325c0c26cf",
+        "bytes": 2055,
+        "model_name": "mono_cam",
+        "model_pose": "0 0 0 0 0 0",
+        "includes": []
+      }
+    ],
+    "expanded_sdf_sha256": "44ea642fbf5b04da7e3b4d922e3570e0a5353ac903f9225837ae035dab0727d2",
+    "expanded_sdf_bytes": 27678,
+    "model_to_base_link_translation_enu_m": [
+      0,
+      0,
+      0.24
+    ],
+    "base_link_to_level_contact_plane_z_m": -0.227,
+    "model_to_level_contact_plane_z_m": 0.01299999999999999,
+    "pose_reference_above_contact_m": -0.01299999999999999,
+    "applicability": "this pinned model and root-pose convention, level settled contact; not a universal UAV offset"
+  },
+  "pad_source": {
+    "world_sdf_path": "/mnt/data2/weizhiwei/AERO_BENCH/validation/platform-plan-20261001/final-verify/authoring-api/compilations-run2/a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610/bundle/validation/platform-plan-20261001/W1-I5/native-v7/world/gazebo/huangpu-native.sdf",
+    "sha256": "689e06e342f9a78766be742c3dd62fd89de9c7c97c79f4004ee37443ee1ac42e",
+    "bytes": 477286,
+    "world_name": "huangpu_native",
+    "model_name": "launch.huangpu-research",
+    "pose_enu_m_rad": [
+      -450.0,
+      -450.0,
+      0.075,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "size_m": [
+      8.0,
+      8.0,
+      0.15
+    ],
+    "contact_top_enu_up_m": 0.15
+  },
+  "observed_touchdown_check": {
+    "source_receipt_path": "/mnt/data2/weizhiwei/AERO_BENCH/validation/p02-original-threejs/same-run-performance/receipt.json",
+    "sha256": "a3dc475e33bd32410cc46bd1b16a5a5b8a870387108270dccfc980673679ebec",
+    "run_id": "9e07a000f35961e5d4bca89553729a8e743143781aad6d213fed722abfd324fd",
+    "compilation_id": "a504dba5ab6c8c2183b5ce419173f89bd03289860e62ffeee760ff529417c610",
+    "sample": {
+      "entity_id": "uav.inspector",
+      "at": {
+        "sim_time_ns": 150000000000,
+        "tick": 300
+      },
+      "mode": "HOLD",
+      "armed": false,
+      "pose": {
+        "orientation_enu": {
+          "qw": 0.9999993660312122,
+          "qx": 7.602799753608587e-09,
+          "qy": 1.1279143906740902e-07,
+          "qz": 0.0011260271581745725
+        },
+        "orientation_ned": {
+          "qw": 8.513158268613424e-08,
+          "qx": -0.7079025543422641,
+          "qy": -0.7063101114635731,
+          "qz": -7.437960016257416e-08
+        },
+        "position": {
+          "agl_m": 0.1688028248026967,
+          "amsl_m": 20.168802824802697,
+          "ecef": {
+            "x_m": -2850475.063894195,
+            "y_m": 4655878.715793686,
+            "z_m": 3287252.686538576
+          },
+          "enu": {
+            "east_m": -450.09398125400963,
+            "north_m": -449.9704544811149,
+            "up_m": 0.13699987109567124
+          },
+          "geoid_separation_m": 30.0,
+          "ned": {
+            "down_m": -0.13699987109567124,
+            "east_m": -450.09398125400963,
+            "north_m": -449.9704544811149
+          },
+          "terrain_amsl_m": 20.0,
+          "wgs84": {
+            "ellipsoid_height_m": 50.1688028248027,
+            "latitude_deg": 31.22474152752034,
+            "longitude_deg": 121.47627610635146
+          }
+        }
+      },
+      "linear_velocity_enu": {
+        "east_mps": -0.009170684032142162,
+        "frame_id": "ENU",
+        "north_mps": 0.019528770819306374,
+        "up_mps": 0.004745339043438435
+      },
+      "attributes": [
+        {
+          "name": "collision_contact",
+          "value": false,
+          "value_type": "bool"
+        },
+        {
+          "name": "contacts_complete",
+          "value": true,
+          "value_type": "bool"
+        },
+        {
+          "name": "ground_contact",
+          "value": true,
+          "value_type": "bool"
+        },
+        {
+          "name": "in_air",
+          "value": false,
+          "value_type": "bool"
+        },
+        {
+          "name": "landed",
+          "value": true,
+          "value_type": "bool"
+        },
+        {
+          "name": "landed_state",
+          "value": "ON_GROUND",
+          "value_type": "str"
+        },
+        {
+          "name": "telemetry_source",
+          "value": "gazebo-mavsdk",
+          "value_type": "str"
+        }
+      ]
+    },
+    "expected_root_up_from_source_m": 0.137,
+    "measured_root_up_m": 0.13699987109567124,
+    "contact_residual_m": -1.289043287666658e-07,
+    "role": "independent observed check of source calculation; not used to fit calibration or authorize new dwell"
+  },
+  "required_compile_binding": [
+    "carrier/provider/native_vehicle",
+    "flight OCI digest",
+    "provider service SHA256",
+    "spawned model and source model hashes",
+    "world/pad hash",
+    "pose-reference frame",
+    "source calibration record digest"
+  ],
+  "unchanged": [
+    "presence tolerance",
+    "speed/contact criteria",
+    "current-tick contiguous dwell",
+    "original sealed run"
+  ]
+}

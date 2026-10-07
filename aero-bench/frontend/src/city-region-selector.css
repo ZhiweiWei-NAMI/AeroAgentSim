@@ -1,0 +1,65 @@
+.city-region-selector {
+  --region-ink: #17372f;
+  --region-muted: #567166;
+  display: grid;
+  grid-template-rows: auto minmax(360px, 1fr) auto;
+  min-height: 560px;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #cbdcd2;
+  border-radius: 14px;
+  color: var(--region-ink);
+  background: #f8faf6;
+  box-shadow: 0 12px 36px #17372f13;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.region-header, .region-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 18px;
+}
+
+.region-header { border-bottom: 1px solid #d8e3d8; }
+.region-header h2 { margin: 3px 0 0; font-size: 19px; line-height: 1.2; font-weight: 680; }
+.region-eyebrow { color: #147356; font-size: 10px; font-weight: 750; letter-spacing: .11em; text-transform: uppercase; }
+.region-toolbar { display: flex; flex-wrap: wrap; gap: 6px; }
+.region-toolbar button {
+  min-height: 31px;
+  padding: 5px 10px;
+  border: 1px solid #bed1c4;
+  border-radius: 7px;
+  background: #fff;
+  color: #245142;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+.region-toolbar button:hover, .region-toolbar button[aria-pressed="true"] { border-color: #137d5b; background: #e6f5e9; color: #075f45; }
+.region-toolbar button:focus-visible { outline: 2px solid #137d5b; outline-offset: 2px; }
+.region-map { position: relative; min-height: 360px; overflow: hidden; background: #edf2ee; }
+.region-map canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.region-map canvas[data-mode="pan"] { cursor: grab; }
+.region-map canvas[data-mode="pan"]:active { cursor: grabbing; }
+.region-map-guide {
+  position: absolute; top: 12px; right: 12px;
+  padding: 6px 10px;
+  border: 1px solid #d3e1d5;
+  border-radius: 5px;
+  background: #f8fcf3ed;
+  color: #345c4d;
+  font-size: 11px;
+  pointer-events: none;
+}
+.region-footer { flex-wrap: wrap; border-top: 1px solid #d8e3d8; font-size: 12px; line-height: 1.5; }
+.region-summary { font-weight: 650; }
+.region-boundary-note { margin-top: 2px; color: #6e6655; font-size: 11px; }
+.region-status { color: var(--region-muted); }
+.region-status.region-error { color: #af3f31; }
+@media (max-width: 700px) {
+  .region-header { align-items: flex-start; flex-direction: column; }
+  .region-map-guide { top: auto; bottom: 9px; }
+}

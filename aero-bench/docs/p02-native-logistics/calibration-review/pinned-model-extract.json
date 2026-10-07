@@ -1,0 +1,88 @@
+{
+  "sources": [
+    {
+      "path": "/opt/px4-gazebo/share/gz/models/x500_base/model.sdf",
+      "sha256": "7456e4b43a1894a727bdf544250205780dc2e74460d9cfa424c65edb3fb4e898",
+      "bytes": 19413,
+      "model_name": "x500_base",
+      "model_pose": "0 0 .24 0 0 0",
+      "includes": []
+    },
+    {
+      "path": "/opt/px4-gazebo/share/gz/models/x500/model.sdf",
+      "sha256": "cb76a4afd439f253a8c516b1fcd3528f80347619cfa46bebb620557054fbf125",
+      "bytes": 3533,
+      "model_name": "x500",
+      "model_pose": null,
+      "includes": [
+        "<include merge=\"true\">\n      <uri>model://x500_base</uri>\n    </include>\n    "
+      ]
+    },
+    {
+      "path": "/opt/px4-gazebo/share/gz/models/x500_mono_cam/model.sdf",
+      "sha256": "458d1a09d522ea62bb8027c34c5a3ffd24547ebc17655b0ae7a86b5cc99ebee6",
+      "bytes": 471,
+      "model_name": "x500_mono_cam",
+      "model_pose": null,
+      "includes": [
+        "<include merge=\"true\">\n      <uri>x500</uri>\n    </include>\n    ",
+        "<include merge=\"true\">\n      <uri>model://mono_cam</uri>\n      <pose>.12 .03 .242 0 0 0</pose>\n    </include>\n    "
+      ]
+    },
+    {
+      "path": "/opt/px4-gazebo/share/gz/models/mono_cam/model.sdf",
+      "sha256": "2d8b948585fc615cb0f34ed9d67885c15a9bac16df2d1fc59ebb03325c0c26cf",
+      "bytes": 2055,
+      "model_name": "mono_cam",
+      "model_pose": "0 0 0 0 0 0",
+      "includes": []
+    }
+  ],
+  "expanded": {
+    "sha256": "44ea642fbf5b04da7e3b4d922e3570e0a5353ac903f9225837ae035dab0727d2",
+    "bytes": 27678,
+    "model_name": "x500_mono_cam",
+    "frames": [
+      {
+        "name": "_merged__x500__model__",
+        "attached_to": "base_link",
+        "pose": "0 0 0 0 0 0",
+        "relative_to": "__model__"
+      },
+      {
+        "name": "_merged__x500_base__model__",
+        "attached_to": "base_link",
+        "pose": "0 0 0.23999999999999999 0 0 0",
+        "relative_to": "_merged__x500__model__"
+      },
+      {
+        "name": "_merged__mono_cam__model__",
+        "attached_to": "camera_link",
+        "pose": "0.12 0.029999999999999999 0.24199999999999999 0 0 0",
+        "relative_to": "__model__"
+      }
+    ],
+    "base_link_pose": "0 0 0 0 0 0",
+    "base_link_relative_to": "_merged__x500_base__model__",
+    "feet": [
+      {
+        "name": "base_link_collision_3",
+        "pose": "0 -0.13200000000000001 -0.2195 0 0 0",
+        "box_size": "0.25 0.014999999999999999 0.014999999999999999",
+        "fragment": "<collision name=\"base_link_collision_3\">\n        <pose>0 -0.13200000000000001 -0.2195 0 0 0</pose>\n        <geometry>\n          <box>\n            <size>0.25 0.014999999999999999 0.014999999999999999</size>\n          </box>\n        </geometry>\n        <surface>\n          <contact>\n            <ode>\n              <min_depth>0.001</min_depth>\n              <max_vel>0</max_vel>\n            </ode>\n          </contact>\n          <friction>\n            <ode />\n          </friction>\n        </surface>\n      </collision>\n      "
+      },
+      {
+        "name": "base_link_collision_4",
+        "pose": "0 0.13200000000000001 -0.2195 0 0 0",
+        "box_size": "0.25 0.014999999999999999 0.014999999999999999",
+        "fragment": "<collision name=\"base_link_collision_4\">\n        <pose>0 0.13200000000000001 -0.2195 0 0 0</pose>\n        <geometry>\n          <box>\n            <size>0.25 0.014999999999999999 0.014999999999999999</size>\n          </box>\n        </geometry>\n        <surface>\n          <contact>\n            <ode>\n              <min_depth>0.001</min_depth>\n              <max_vel>0</max_vel>\n            </ode>\n          </contact>\n          <friction>\n            <ode />\n          </friction>\n        </surface>\n      </collision>\n      "
+      }
+    ]
+  },
+  "provider_service": {
+    "path": "/opt/aero-bench/service.py",
+    "sha256": "d94a54987d01e02801dcf931c6c4d0a790dd52cadb91b9b1ef6a6b351ed619f8",
+    "bytes": 475897
+  },
+  "sdformat_stderr": "\u001b[1;33mWarning [Utils.cc:132]\u001b[0m [/sdf/model[@name=\"x500_base\"]/link[@name=\"base_link\"]/sensor[@name=\"air_pressure_sensor\"]/gz_frame_id:/opt/px4-gazebo/share/gz/models/x500_base/model.sdf:L219]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].\n\u001b[1;33mWarning [Utils.cc:132]\u001b[0m [/sdf/model[@name=\"x500_base\"]/link[@name=\"base_link\"]/sensor[@name=\"magnetometer_sensor\"]/gz_frame_id:/opt/px4-gazebo/share/gz/models/x500_base/model.sdf:L232]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].\n\u001b[1;33mWarning [Utils.cc:132]\u001b[0m [/sdf/model[@name=\"x500_base\"]/link[@name=\"base_link\"]/sensor[@name=\"imu_sensor\"]/gz_frame_id:/opt/px4-gazebo/share/gz/models/x500_base/model.sdf:L254]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].\n\u001b[1;33mWarning [Utils.cc:132]\u001b[0m [/sdf/model[@name=\"x500_base\"]/link[@name=\"base_link\"]/sensor[@name=\"navsat_sensor\"]/gz_frame_id:/opt/px4-gazebo/share/gz/models/x500_base/model.sdf:L301]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].\n\u001b[1;33mWarning [Utils.cc:132]\u001b[0m [/sdf/model[@name=\"mono_cam\"]/link[@name=\"camera_link\"]/sensor[@name=\"camera\"]/gz_frame_id:/opt/px4-gazebo/share/gz/models/mono_cam/model.sdf:L51]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].\n"
+}

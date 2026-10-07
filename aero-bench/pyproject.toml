@@ -1,0 +1,32 @@
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aero-bench"
+version = "0.1.0"
+description = "Strict resolved-run contracts and explicit OCI reference execution for AERO-BENCH"
+requires-python = ">=3.10"
+dependencies = [
+    "jsonschema>=4.23,<5",
+    "pydantic==2.11.3",
+    "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<9"]
+
+[project.scripts]
+aero-bench-resolve = "aero_bench.config.cli:main"
+aero-bench-run = "aero_bench.runner.cli:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+    "sumo_integration: requires Docker and a locally available digest-pinned SUMO image",
+]
+
+[tool.setuptools.packages.find]
+include = ["aero_bench*"]

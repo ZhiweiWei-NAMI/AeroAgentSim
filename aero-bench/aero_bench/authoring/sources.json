@@ -1,0 +1,31 @@
+{
+  "schema_version": "aero-bench.scene-source-registry/v1",
+  "sources": [
+    {
+      "source_id": "shanghai-central-osm-v1",
+      "display_name": "上海中心 OSM",
+      "path": "frontend/public/osm2world/shanghai-hongqiao.osm.json",
+      "sha256": "d0f3f30f846e8145aecd497e20ee95bc58e5cb0b3d4b4f46d1339e285217b847",
+      "origin": {
+        "latitude_deg": 31.2304,
+        "longitude_deg": 121.4737,
+        "ellipsoid_height_m": 50,
+        "geoid_undulation_m": 30,
+        "amsl_m": 20
+      }
+    },
+    {
+      "source_id": "shanghai-jingan-osm-v1",
+      "display_name": "上海静安 OSM",
+      "path": "frontend/public/osm2world/shanghai-jingan.osm.json",
+      "sha256": "778c35a2743e4f291d4257765494b6e492613283107524ac8a7ce8359778f7df",
+      "origin": {
+        "latitude_deg": 31.2235,
+        "longitude_deg": 121.445,
+        "ellipsoid_height_m": 50,
+        "geoid_undulation_m": 30,
+        "amsl_m": 20
+      }
+    }
+  ]
+}
