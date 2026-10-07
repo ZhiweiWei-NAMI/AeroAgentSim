@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { NativeParcelStreamEvidence } from './native_parcel_stream_evidence.mjs';
+import { readRuntimeStatusResponse } from './native_parcel_status_read.mjs';
 
 const { values } = parseArgs({ options: {
   origin: { type: 'string' }, control: { type: 'string' },
@@ -94,6 +95,7 @@ const startRecords = [], snapshots = [], viewRecords = [], errors = [];
 const capturedStages = new Set(), phases = new Set();
 let streamEvidence = null;
 let reconnected = false, followingCarrier = false, played = false, terminal = null;
+const statusFailureReceipts = [];
 let discoveredStartId = null;
 let stopRequested = null;
 let navigationStarted = false, needsLogin = false;
@@ -283,8 +285,9 @@ async function captureSealedReplay(trace) {
         const pause = page.getByRole('button', { name: '⏸ 暂停', exact: true });
         if (await pause.count()) await pause.click();
         await screenshot('replay-terminal.png');
-        if (positions.size < 2 || displayedTicks.size < 2 || !stages.has('loaded') || !stages.has('delivered')) {
-          throw new Error('Sealed replay lacks displayed measured motion, pickup or delivery');
+        if (positions.size < 2 || displayedTicks.size < 2 || !stages.has('loaded')
+            || !stages.has('in_transit') || !stages.has('delivered')) {
+          throw new Error('Sealed replay lacks displayed measured motion, pickup, transit or delivery');
         }
         save('replay-view-evidence.json', { run_id: runId, source: 'same-run sealed authoritative public trace',
           replay_video_start_s: replayStarted, replay_video_end_s: elapsed(), frames: replayFrames,
@@ -390,11 +393,19 @@ try {
       await start('重连启动（复用已认证运行标识）');
       log('page-reload-reconnected', { run_id: runId, start_id: discoveredStartId });
     }
-    const response = await context.request.get(`${endpoint}/v1/runs/${runId}`, {
-      timeout: Math.min(requestTimeoutMs, timeoutMs - (performance.now() - started)),
-      headers: { Origin: origin, Authorization: `Bearer ${credentials.operator_token}` },
+    const response = await readRuntimeStatusResponse({
+      request: remainingMs => context.request.get(`${endpoint}/v1/runs/${runId}`, {
+        timeout: Math.min(remainingMs, requestTimeoutMs, timeoutMs - (performance.now() - started)),
+        headers: { Origin: origin, Authorization: `Bearer ${credentials.operator_token}` },
+      }),
+      timeoutMs: Math.min(requestTimeoutMs, timeoutMs - (performance.now() - started)),
+      backoffMs: pollMs, wait: ms => page.waitForTimeout(ms),
+      onFailure: receipt => {
+        statusFailureReceipts.push({ ...receipt, elapsed_s: elapsed() });
+        save('runtime-status-error.json', { run_id: runId, failures: statusFailureReceipts });
+        log('status-read-failed', receipt);
+      },
     });
-    if (!response.ok()) throw new Error(`Status failed: HTTP ${response.status()}`);
     const value = await response.json(); const snapshot = value.snapshot;
     if (snapshot?.run_id !== runId) throw new Error('Status returned a different run');
     snapshots.push(snapshot);
@@ -454,7 +465,7 @@ try {
       await screenshot('runtime-reconnected.png');
     }
     save('runtime-control-evidence.json', { run_id: runId, compilation_id: compiled.compilation_id,
-      renderer: rendererEvidence, stream: streamEvidence?.summary() ?? null, start_records: startRecords, snapshots, view_records: viewRecords, reconnected, errors, elapsed_s: elapsed() });
+      renderer: rendererEvidence, stream: streamEvidence?.summary() ?? null, start_records: startRecords, snapshots, view_records: viewRecords, reconnected, status_failures: statusFailureReceipts, errors, elapsed_s: elapsed() });
     await page.waitForTimeout(pollMs);
   }
 } catch (error) {
@@ -470,7 +481,7 @@ try {
     try { await collectStream(); } catch (error) { errors.push({ source: 'final-stream', message: sanitize(error.message) }); process.exitCode = 1; }
   }
   save('runtime-control-evidence.json', { run_id: runId, compilation_id: compiled.compilation_id,
-    renderer: rendererEvidence, stream: streamEvidence?.summary() ?? null, start_records: startRecords, snapshots, view_records: viewRecords, reconnected,
+    renderer: rendererEvidence, stream: streamEvidence?.summary() ?? null, start_records: startRecords, snapshots, view_records: viewRecords, reconnected, status_failures: statusFailureReceipts,
     terminal_status: terminal?.summary?.status ?? null, elapsed_s: elapsed(), errors });
   streamEvidence?.close();
   await context?.close(); await browser?.close();
