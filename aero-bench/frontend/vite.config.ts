@@ -2,13 +2,21 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import type { HttpProxy } from "vite";
+import { forwardBrowserOrigin } from "./scripts/control-proxy";
 // @ts-expect-error local ESM server plugin
 import { workspaceTracesPlugin } from "./scripts/workspace-traces.mjs";
 // @ts-expect-error local ESM server plugin
 import { assetLibraryPlugin } from "./scripts/asset-library.mjs";
 
 const proxy = {
-  "/v1": { target: process.env.AERO_CONTROL_API_TARGET ?? "http://127.0.0.1:8123", changeOrigin: true },
+  "/v1": {
+    target: process.env.AERO_CONTROL_API_TARGET ?? "http://127.0.0.1:8123",
+    changeOrigin: true,
+    configure(proxy: HttpProxy.ProxyServer) {
+      proxy.on("proxyReq", forwardBrowserOrigin);
+    },
+  },
   "/authoring/v1": { target: process.env.AERO_AUTHORING_API_TARGET ?? "http://127.0.0.1:8124", changeOrigin: true },
 };
 const previewKeyPath = process.env.AERO_PREVIEW_TLS_KEY;
