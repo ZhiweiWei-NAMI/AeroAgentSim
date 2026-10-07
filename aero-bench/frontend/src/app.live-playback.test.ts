@@ -38,6 +38,29 @@ describe("P02 live playback entry", () => {
     state.renderSession({ ...connected, connection: "closed" });
     expect(root.querySelector("#mode-pill")?.textContent).toBe("实时 · 未连接");
   });
+  it("reads declared entity kinds from the live scenario and preserves undeclared samples", () => {
+    const root = document.createElement("div"); document.body.append(root);
+    app = new PublicTraceApp(root, "live");
+    const liveScenario = parsePublicTrace(publicTrace()).scenario;
+    const declared = liveScenario.entities[0];
+    const states = [sceneState(1, [declared.entity_id, "entity.undeclared"], [
+      stateSample(1, declared.entity_id), stateSample(1, "entity.undeclared"),
+    ])] as unknown as SceneState[];
+    const state = app as unknown as {
+      session: { currentState: RunSessionState; dispose: () => void };
+      entityEntries(): readonly { entityId: string; kind: string | null }[];
+    };
+    state.session = { dispose: vi.fn(), currentState: {
+      connection: "connected", catalog: null, catalogError: null, selectedRunId: null,
+      discoveredStartId: null, hasRunCredentials: false, snapshot: null, scenario: liveScenario,
+      runtimeControl: null, transitions: [], sceneStates: states, latestTick: 1,
+      events: [], trafficLightFrame: null, sessionError: null, pendingControl: null,
+    } };
+    expect(state.entityEntries()).toEqual([
+      { entityId: declared.entity_id, kind: declared.kind },
+      { entityId: "entity.undeclared", kind: null },
+    ]);
+  });
   it("exposes the real playback action in the visible header when the footer is hidden", () => {
     const root = document.createElement("div"); document.body.append(root);
     app = new PublicTraceApp(root, "live");

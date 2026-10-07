@@ -2229,7 +2229,7 @@ export class PublicTraceApp {
     if (sceneState === null) {
       return [];
     }
-    const definitions = this.trace?.scenario.entities;
+    const definitions = (this.trace?.scenario ?? this.session?.currentState.scenario)?.entities;
     return sceneState.samples.map((sample) => ({
       entityId: sample.entity_id,
       kind: definitions?.find((definition) => definition.entity_id === sample.entity_id)?.kind ?? null,

@@ -107,7 +107,15 @@ async function screenshot(name) {
   });
   await page.screenshot({ path: resolve(out, name), mask: [page.locator('input[type="password"]')] });
 }
+async function setControlsOpen(open) {
+  const expanded = await page.evaluate(() => document.body.classList.contains('p02-controls-open'));
+  if (expanded !== open) await page.getByRole('button', { name: '正式运行控制', exact: true }).click();
+  if (await page.evaluate(() => document.body.classList.contains('p02-controls-open')) !== open) {
+    throw new Error('Formal controls toggle did not reach the requested visible state');
+  }
+}
 async function login() {
+  await setControlsOpen(true);
   const token = page.getByLabel('引导操作员令牌', { exact: true });
   const csrf = page.getByLabel('引导 CSRF 令牌', { exact: true });
   for (const field of [token, csrf]) {
@@ -142,6 +150,7 @@ async function start(name) {
   const record = { run_id: value.run_id, start_id: request.start_id,
     phase: value.snapshot.phase, transition_sequence: value.snapshot.transition_sequence };
   startRecords.push(record); log(reconnected ? 'reconnected' : 'started', record);
+  await setControlsOpen(false);
 }
 async function collectStream() {
   const batch = await page.evaluate(() => window.__parcelCapture.splice(0));
@@ -199,6 +208,7 @@ async function observeView(tick) {
 
 async function captureSealedReplay(trace) {
   if (trace.run_id !== runId || trace.scene_states.length < 2) throw new Error('Sealed replay has no matching physical history');
+  await setControlsOpen(true);
   const open = page.getByRole('button', { name: '加载封存回放', exact: true });
   await open.waitFor(); await open.click();
   log('sealed-replay-loading', { run_id: runId, scene_states: trace.scene_states.length });
@@ -208,6 +218,10 @@ async function captureSealedReplay(trace) {
     if (performance.now() - started > timeoutMs) throw new Error('Sealed replay loading timed out');
     const loading = await page.evaluate(() => ({
       ready: document.querySelector('#city-map')?.dataset.sceneReady === 'true',
+      tick: document.querySelector('#city-map')?.dataset.sceneTick ?? null,
+      rendered_uav_count: document.querySelector('#city-map')?.dataset.renderedUavCount ?? null,
+      provenance: document.querySelector('#mode-pill')?.dataset.provenance ?? null,
+      source_key: document.querySelector('.operations-monitor-source')?.dataset.sourceKey ?? null,
       stage: document.querySelector('.loading-progress')?.getAttribute('data-stage') ?? null,
       text: document.querySelector('.loading-progress:not([hidden])')?.textContent ?? null,
       map: { ...document.querySelector('.map')?.dataset },
@@ -215,9 +229,12 @@ async function captureSealedReplay(trace) {
     if (loading.stage === 'failed') throw new Error(`Sealed replay load failed: ${loading.text}`);
     if (loading.text !== progressKey) { progressKey = loading.text; log('sealed-replay-progress', loading); }
     save('replay-loading-evidence.json', { run_id: runId, ...loading, elapsed_s: elapsed() });
-    if (loading.ready) break;
+    if (loading.stage === 'ready' && loading.ready && loading.tick === String(trace.scene_states[0].at.tick)
+        && loading.rendered_uav_count === '1' && loading.provenance === 'recorded'
+        && loading.source_key?.startsWith(`${runId}:`)) break;
     await page.waitForTimeout(5000);
   }
+  await setControlsOpen(false);
   const play = page.getByRole('button', { name: '▶ 播放', exact: true });
   await play.click();
   const carrier = page.locator('.operations-monitor-fleet-row[data-object-id="uav.p02.carrier"]');
@@ -426,6 +443,7 @@ try {
     }
     if (tick !== null && tick >= reconnectTick && !reconnected) {
       await screenshot('runtime-before-disconnect.png');
+      await setControlsOpen(true);
       await page.getByRole('button', { name: '断开并清除凭据', exact: true }).click();
       credentials = null;
       await screenshot('runtime-disconnected.png');
