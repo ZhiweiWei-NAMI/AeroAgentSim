@@ -12,13 +12,13 @@ RUN python -m pip install --no-cache-dir --require-hashes \
 # append-only history from the repository package. The package is copied as
 # source (no build step) so the image stays reproducible from the pinned
 # revision and the service can never drift from the accepted contracts.
-COPY aero_bench /opt/aero-bench/aero_bench
-COPY containers/logistics-business/selfcheck.py /opt/aero-bench/selfcheck.py
-COPY containers/selfcheck_scenario.py /opt/aero-bench/containers/selfcheck_scenario.py
-COPY containers/logistics-business/service.py /opt/aero-bench/service.py
-COPY containers/logistics-business/entrypoint.py /opt/aero-bench/entrypoint.py
-COPY aero_bench/world/workload_scenario.py /opt/aero-bench/workload_scenario.py
-COPY containers/readiness_probe.py /opt/aero-bench/readiness_probe.py
+COPY --chown=65532:65532 aero_bench /opt/aero-bench/aero_bench
+COPY --chown=65532:65532 containers/logistics-business/selfcheck.py /opt/aero-bench/selfcheck.py
+COPY --chown=65532:65532 containers/selfcheck_scenario.py /opt/aero-bench/containers/selfcheck_scenario.py
+COPY --chown=65532:65532 containers/logistics-business/service.py /opt/aero-bench/service.py
+COPY --chown=65532:65532 containers/logistics-business/entrypoint.py /opt/aero-bench/entrypoint.py
+COPY --chown=65532:65532 aero_bench/world/workload_scenario.py /opt/aero-bench/workload_scenario.py
+COPY --chown=65532:65532 containers/readiness_probe.py /opt/aero-bench/readiness_probe.py
 
 ENV PYTHONPATH=/opt/aero-bench
 
