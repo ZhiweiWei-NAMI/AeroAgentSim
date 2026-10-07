@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { parseArgs } from 'node:util';
+import { NativeParcelStreamEvidence } from './native_parcel_stream_evidence.mjs';
 
 const { values } = parseArgs({ options: {
   origin: { type: 'string' }, control: { type: 'string' },
@@ -14,6 +15,7 @@ const { values } = parseArgs({ options: {
   'request-timeout-seconds': { type: 'string', default: '60' },
   attach: { type: 'boolean', default: false },
   replay: { type: 'boolean', default: false },
+  renderer: { type: 'string', default: 'software' },
   help: { type: 'boolean', short: 'h' },
 } });
 if (values.help) {
@@ -21,15 +23,18 @@ if (values.help) {
 Usage: node tools/capture_native_parcel.mjs --origin URL --control URL
   --credentials-file PATH --compilation-result PATH --output DIRECTORY
 Options: --reconnect-tick 4 --timeout-seconds 1800 --poll-seconds 5
-  --request-timeout-seconds 60 --attach --replay
+  --request-timeout-seconds 60 --attach --replay --renderer software|hardware
 Use --attach to require an existing authenticated catalog start identity.
-Use --replay to watch the existing run until it seals, then play its actual
-sealed history. It reuses the existing idempotent Start only to obtain access
-credentials, then clicks the verified sealed-replay action. It starts no new run.
+Use --replay to play the actual sealed history after the run completes.
+Use --attach --replay to require an existing run and reuse its idempotent Start
+only for access credentials. Without --attach the UI may start the selected
+compiled run; an existing catalog start identity is still reused when present.
 The credentials file is the private JSON written by tools/run_stack.py.
 Starts through the UI, plays and follows the carrier, disconnects and logs in
 again, reconnects to the same run/start identity, and waits for a real terminal.
-Writes sanitized control/stream evidence, screenshots and a Chromium video.
+Writes sanitized control evidence, append-only runtime-stream-evidence.jsonl,
+screenshots and a Chromium video. Use a fresh output directory; the JSONL
+transcript is never overwritten. Canonical sealed trace bytes stay separate.
 Returns nonzero for runtime failure, timeout or incomplete viewer evidence.`);
   process.exit(0);
 }
@@ -46,6 +51,7 @@ if (!Number.isInteger(reconnectTick)) throw new Error('--reconnect-tick must be 
 const timeoutMs = positiveNumber('timeout-seconds') * 1000;
 const pollMs = positiveNumber('poll-seconds') * 1000;
 const requestTimeoutMs = positiveNumber('request-timeout-seconds') * 1000;
+if (!['software', 'hardware'].includes(values.renderer)) throw new Error('--renderer must be software or hardware');
 const origin = new URL(values.origin).origin;
 const endpoint = new URL(values.control).origin;
 const out = resolve(values.output);
@@ -83,8 +89,10 @@ const elapsed = () => (performance.now() - started) / 1000;
 function log(event, details = {}) { console.log(JSON.stringify(sanitize({ event, ...details, elapsed_s: elapsed() }))); }
 const { chromium } = createRequire(resolve(root, 'frontend/package.json'))('@playwright/test');
 let browser, context, page, credentials = null;
-const startRecords = [], snapshots = [], streamRecords = [], viewRecords = [], errors = [];
-const streamIds = new Set(), capturedStages = new Set(), phases = new Set();
+let rendererEvidence = null;
+const startRecords = [], snapshots = [], viewRecords = [], errors = [];
+const capturedStages = new Set(), phases = new Set();
+let streamEvidence = null;
 let reconnected = false, followingCarrier = false, played = false, terminal = null;
 let discoveredStartId = null;
 let stopRequested = null;
@@ -139,9 +147,7 @@ async function collectStream() {
   const batch = await page.evaluate(() => window.__parcelCapture.splice(0));
   for (const record of batch) {
     if (record.error) { errors.push(record); continue; }
-    if (record.payload.run_id !== runId) throw new Error('UI stream returned a different run');
-    const key = `${record.event}:${record.id}`;
-    if (!streamIds.has(key)) { streamIds.add(key); streamRecords.push(record); }
+    streamEvidence.append(record);
   }
 }
 async function observeView(tick) {
@@ -152,8 +158,9 @@ async function observeView(tick) {
   const actualMode = await page.locator('#city-map').getAttribute('data-observation-camera-mode');
   followingCarrier = actualMode === 'chase';
   if (!followingCarrier && await page.locator('#city-map').getAttribute('data-scene-ready') === 'true') {
-    const carrier = page.getByText('uav.p02.carrier', { exact: true }).first();
+    const carrier = page.locator('.operations-monitor-fleet-row[data-object-id="uav.p02.carrier"]');
     if (await carrier.count() && await carrier.isVisible()) {
+      log('select-carrier-request', { tick, selector: 'operations-monitor-fleet-row' });
       await carrier.click();
       const follow = page.getByRole('button', { name: '外部跟随', exact: true });
       if (await follow.count() && await follow.isEnabled()) {
@@ -180,9 +187,7 @@ async function observeView(tick) {
   }));
   const record = { ...view, runtime_tick: tick, elapsed_s: elapsed(), following_carrier: followingCarrier };
   viewRecords.push(record);
-  const stages = streamRecords.filter(item => item.event === 'run.event'
-    && item.payload.event?.event_type === 'public.parcel-projection');
-  const lastStage = stages.at(-1);
+  const lastStage = streamEvidence.latestParcelRecord;
   const parcelState = lastStage?.payload.event.public_payload.find(field => field.name === 'parcel_state')?.value ?? null;
   const stage = `${parcelState}:${view.clock}`;
   if (tick !== null && followingCarrier && !capturedStages.has(stage)) {
@@ -215,7 +220,7 @@ async function captureSealedReplay(trace) {
   }
   const play = page.getByRole('button', { name: '▶ 播放', exact: true });
   await play.click();
-  const carrier = page.getByText('uav.p02.carrier', { exact: true }).first();
+  const carrier = page.locator('.operations-monitor-fleet-row[data-object-id="uav.p02.carrier"]');
   await carrier.click();
   await page.getByRole('button', { name: '外部跟随', exact: true }).click();
   if (await page.locator('#city-map').getAttribute('data-observation-camera-mode') !== 'chase') {
@@ -275,8 +280,11 @@ async function captureSealedReplay(trace) {
 }
 
 try {
-  browser = await chromium.launch({ channel: 'chromium', headless: true,
-    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-webgl'] });
+  streamEvidence = new NativeParcelStreamEvidence({ runId, path: resolve(out, 'runtime-stream-evidence.jsonl'), sanitize });
+  const rendererArgs = values.renderer === 'hardware'
+    ? ['--use-gl=angle', '--use-angle=vulkan', '--enable-features=Vulkan', '--disable-vulkan-surface', '--enable-webgl']
+    : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-webgl'];
+  browser = await chromium.launch({ channel: 'chromium', headless: true, args: rendererArgs });
   context = await browser.newContext({ viewport: { width: 1600, height: 1000 },
     recordVideo: { dir: resolve(out, 'runtime-video'), size: { width: 1600, height: 1000 } } });
   // Mirror only the public SSE envelopes consumed by the existing UI. Headers,
@@ -320,6 +328,22 @@ try {
     };
   });
   page = await context.newPage(); page.setDefaultTimeout(requestTimeoutMs);
+  rendererEvidence = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl');
+    if (gl === null) throw new Error('Capture renderer has no WebGL context');
+    const extension = gl.getExtension('WEBGL_debug_renderer_info');
+    if (extension === null) throw new Error('Capture renderer omitted its actual device identity');
+    const renderer = gl.getParameter(extension.UNMASKED_RENDERER_WEBGL);
+    const version = gl.getParameter(gl.VERSION);
+    const software = /SwiftShader|llvmpipe|software/i.test(renderer);
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return { renderer, version, backend: software ? 'software' : 'hardware' };
+  });
+  if (rendererEvidence.backend !== values.renderer) {
+    throw new Error(`Requested ${values.renderer} renderer but browser selected ${rendererEvidence.renderer}`);
+  }
+  log('renderer-selected', rendererEvidence);
   page.on('framenavigated', frame => {
     if (navigationStarted && frame === page.mainFrame()) needsLogin = true;
   });
@@ -331,7 +355,7 @@ try {
   await page.addStyleTag({ content: 'input[type="password"] { opacity: 0 !important; }' });
   await page.getByRole('button', { name: '正式运行控制', exact: true }).click();
   await login();
-  if ((values.attach || values.replay) && discoveredStartId === null) throw new Error('--attach/--replay requires an existing authenticated catalog start identity');
+  if (values.attach && discoveredStartId === null) throw new Error('--attach requires an existing authenticated catalog start identity');
   await start(discoveredStartId === null ? '启动运行' : '重连启动（复用已认证运行标识）');
   navigationStarted = true;
   while (true) {
@@ -393,12 +417,10 @@ try {
       if (snapshot.summary.status !== 'passed') throw new Error(`Runtime terminal status: ${snapshot.summary.status}`);
       if (!reconnected || !followingCarrier || !played) throw new Error('Viewer capture lacks reconnect, carrier follow or actual playback');
       const clocks = new Set(viewRecords.map(view => view.clock).filter(clock => clock !== null));
-      const states = streamRecords.filter(record => record.event === 'scene.state').map(record => record.payload.scene_state);
-      const displayedPositions = new Set(viewRecords.filter(view => view.map.sceneReady === 'true')
-        .map(view => states.find(state => String(state.at.tick) === view.map.sceneTick))
-        .filter(state => state !== undefined)
-        .map(state => state.samples.find(sample => sample.entity_id === 'uav.p02.carrier'))
-        .filter(sample => sample !== undefined).map(sample => JSON.stringify(sample.pose.position.enu)));
+      const displayedPositions = new Set(viewRecords.filter(view => view.map.sceneReady === 'true'
+          && view.map.sceneTick !== undefined && view.map.sceneTick !== '')
+        .map(view => streamEvidence.carrierPositionsByTick.get(Number(view.map.sceneTick)))
+        .filter(position => position !== undefined));
       if (clocks.size < 2 || displayedPositions.size < 2) throw new Error('Viewer capture lacks advancing displayed frames or displayed measured carrier motion');
       break;
     }
@@ -414,8 +436,7 @@ try {
       await screenshot('runtime-reconnected.png');
     }
     save('runtime-control-evidence.json', { run_id: runId, compilation_id: compiled.compilation_id,
-      start_records: startRecords, snapshots, view_records: viewRecords, reconnected, errors, elapsed_s: elapsed() });
-    save('runtime-stream-evidence.json', streamRecords);
+      renderer: rendererEvidence, stream: streamEvidence?.summary() ?? null, start_records: startRecords, snapshots, view_records: viewRecords, reconnected, errors, elapsed_s: elapsed() });
     await page.waitForTimeout(pollMs);
   }
 } catch (error) {
@@ -431,8 +452,8 @@ try {
     try { await collectStream(); } catch (error) { errors.push({ source: 'final-stream', message: sanitize(error.message) }); process.exitCode = 1; }
   }
   save('runtime-control-evidence.json', { run_id: runId, compilation_id: compiled.compilation_id,
-    start_records: startRecords, snapshots, view_records: viewRecords, reconnected,
+    renderer: rendererEvidence, stream: streamEvidence?.summary() ?? null, start_records: startRecords, snapshots, view_records: viewRecords, reconnected,
     terminal_status: terminal?.summary?.status ?? null, elapsed_s: elapsed(), errors });
-  save('runtime-stream-evidence.json', streamRecords);
+  streamEvidence?.close();
   await context?.close(); await browser?.close();
 }

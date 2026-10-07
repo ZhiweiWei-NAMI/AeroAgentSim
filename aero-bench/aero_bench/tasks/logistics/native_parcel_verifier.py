@@ -6,7 +6,6 @@ import hashlib
 from pathlib import Path
 
 from aero_bench.providers.logistics_business.native_parcel import NativeParcelBusinessConfig
-from aero_bench.providers.px4_gazebo.sealed_motion import load_sealed_px4_motion
 from aero_bench.providers.rpc import parse_json_object
 from aero_bench.serialization import canonical_json_bytes
 from aero_bench.tasks.logistics.native_parcel_rpc import NativeParcelRpcComponent, NativeParcelActionRecord
@@ -179,8 +178,13 @@ def verify_sealed_native_parcel(*, run, reader, seal, seal_root:Path, business_p
     provider = next(p for p in run.environment.providers if p.provider_id==business_provider_id)
     reader.validate_schema_bound_file(provider.config)
     config = NativeParcelBusinessConfig.model_validate(reader.load_document(provider.config.file))
-    native = load_sealed_px4_motion(run=run,reader=reader,seal=seal,seal_root=seal_root,
-        provider_id=config.native_parcel.contract.carrier.provider_id)
+    # The sealed logistics loader already validates the complete motion ledger,
+    # SceneState history and raw PX4 snapshot stream. Reuse that exact evidence.
+    sources = [source for source in validated.native_sources
+               if source.artifact.producer_id == config.native_parcel.contract.carrier.provider_id]
+    if len(sources) != 1 or sources[0].motion.seal != validated.seal:
+        raise ValueError("sealed parcel lacks its exact validated carrier motion source")
+    native = sources[0]
     raw = (seal_root/validated.business_artifact.relative_path).read_bytes()
     artifact = validated.business_artifact
     if len(raw)!=artifact.size_bytes or hashlib.sha256(raw).hexdigest()!=artifact.sha256:

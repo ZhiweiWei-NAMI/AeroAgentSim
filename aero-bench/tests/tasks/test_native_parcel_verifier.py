@@ -222,19 +222,20 @@ def test_only_sealed_loader_path_attests_a_valid_source_fixture(source,tmp_path,
     calls=[]
     def observations(**kwargs):
         calls.append("sealed_logistics")
-        return SimpleNamespace(business_artifact=artifact)
+        source=motion(**kwargs)
+        source.motion.seal=kwargs["seal"]
+        return SimpleNamespace(business_artifact=artifact,seal=kwargs["seal"],native_sources=(source,))
     frames=tuple(SimpleNamespace(scene_state=SimpleNamespace(at=b.at,
         scene_state_digest=b.source_scene_state_digest,
         stage_barrier=SimpleNamespace(barrier_digest=b.source_stage_barrier_digest)),
         events=(),stage_barriers=()) for b in batches)
     records,_=raw_records(component,batches)
-    native=SimpleNamespace(records=records,motion=SimpleNamespace(frames=frames,
+    native=SimpleNamespace(records=records,artifact=SimpleNamespace(producer_id=component.config.contract.carrier.provider_id),motion=SimpleNamespace(frames=frames,
         ledger=SimpleNamespace(records=lineage(component))))
     def motion(**kwargs):
         calls.append("sealed_px4")
         return native
     monkeypatch.setattr(verifier,"load_sealed_logistics_observations",observations)
-    monkeypatch.setattr(verifier,"load_sealed_px4_motion",motion)
     monkeypatch.setattr(verifier.NativeParcelBusinessConfig,"model_validate",lambda _:config)
     monkeypatch.setattr(verifier,"derive_physical_observations",
         lambda **kwargs:batches[kwargs["target"].tick-1].observations)
@@ -255,6 +256,20 @@ def test_only_sealed_loader_path_attests_a_valid_source_fixture(source,tmp_path,
     failed=verifier.verify_sealed_native_parcel(run=run,reader=reader,seal=object(),
         seal_root=tmp_path,business_provider_id="logistics.native-parcel")
     assert failed.source_verified and not failed.carrier_terminal and not failed.passed
+    test_seal=object()
+    native.motion.seal=test_seal
+    for source_set in ((native,native),()):
+        monkeypatch.setattr(verifier,"load_sealed_logistics_observations",lambda **kwargs:
+            SimpleNamespace(business_artifact=artifact,seal=test_seal,native_sources=source_set))
+        with pytest.raises(ValueError,match="exact validated carrier"):
+            verifier.verify_sealed_native_parcel(run=run,reader=reader,seal=test_seal,
+                seal_root=tmp_path,business_provider_id="logistics.native-parcel")
+    monkeypatch.setattr(verifier,"load_sealed_logistics_observations",lambda **kwargs:
+        SimpleNamespace(business_artifact=artifact,seal=test_seal,native_sources=(native,)))
+    native.motion.seal=object()
+    with pytest.raises(ValueError,match="exact validated carrier"):
+        verifier.verify_sealed_native_parcel(run=run,reader=reader,seal=test_seal,
+            seal_root=tmp_path,business_provider_id="logistics.native-parcel")
 
 
 def lineage(component):

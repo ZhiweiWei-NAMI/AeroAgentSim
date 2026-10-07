@@ -257,6 +257,24 @@ def _require_config_binds_package(
         )
 
 
+def prove_declared_native_config_matches_resolved_run(
+    *, run, reader: BundleReader,
+    business_provider_id: str = NATIVE_BUSINESS_PROVIDER_ID,
+) -> NativeParcelBusinessConfig:
+    """Read-only native package/config proof shared by runtime and sealed verifier."""
+    package = load_native_parcel_package(reader=reader, task=run.task)
+    _validate_package_identity(package=package, task=run.task)
+    _validate_scene_binding(package=package, scenario=run.scenario)
+    provider = _resolved_native_provider(
+        environment=run.environment, business_provider_id=business_provider_id,
+    )
+    config = _load_declared_native_config(
+        reader=reader, provider=provider, environment=run.environment,
+    )
+    _require_config_binds_package(config=config, package=package)
+    return config
+
+
 class NativeParcelTaskPackageResolver:
     """Resolve the single-parcel declarations against available providers."""
 
@@ -383,19 +401,10 @@ class NativeParcelTaskRuntimeHookFactory:
         ledger,
         runtime_hook_time,
     ):
-        package = load_native_parcel_package(reader=reader, task=run.task)
-        _validate_package_identity(package=package, task=run.task)
-        _validate_scene_binding(package=package, scenario=run.scenario)
-        provider = _resolved_native_provider(
-            environment=run.environment,
-            business_provider_id=self._business_provider_id,
+        config = prove_declared_native_config_matches_resolved_run(
+            run=run, reader=reader, business_provider_id=self._business_provider_id,
         )
-        config = _load_declared_native_config(
-            reader=reader,
-            provider=provider,
-            environment=run.environment,
-        )
-        _require_config_binds_package(config=config, package=package)
+        package = config.task_package
         # The base proof's remaining ingredients, over the same declared
         # config the run pins: binding the strict runtime-binding validator to
         # the exact declared observation plan, and the business session

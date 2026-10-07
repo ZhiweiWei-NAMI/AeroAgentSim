@@ -18,6 +18,26 @@ let app: PublicTraceApp | null = null;
 afterEach(() => { app?.dispose(); document.body.replaceChildren(); });
 
 describe("P02 live playback entry", () => {
+  it("refreshes the live mode badge when the authenticated session connects", () => {
+    const root = document.createElement("div"); document.body.append(root);
+    app = new PublicTraceApp(root, "live");
+    const state = app as unknown as {
+      session: { currentState: RunSessionState; dispose: () => void };
+      renderSession(session: RunSessionState): void;
+    };
+    const connected: RunSessionState = {
+      connection: "connected", catalog: null, catalogError: null, selectedRunId: null,
+      discoveredStartId: null, hasRunCredentials: false, snapshot: null, scenario: null,
+      runtimeControl: null, transitions: [], sceneStates: [], latestTick: null,
+      events: [], trafficLightFrame: null, sessionError: null, pendingControl: null,
+    };
+    state.session = { dispose: vi.fn(), currentState: connected };
+    expect(root.querySelector("#mode-pill")?.textContent).toBe("实时 · 未连接");
+    state.renderSession(connected);
+    expect(root.querySelector("#mode-pill")?.textContent).toBe("实时运行");
+    state.renderSession({ ...connected, connection: "closed" });
+    expect(root.querySelector("#mode-pill")?.textContent).toBe("实时 · 未连接");
+  });
   it("exposes the real playback action in the visible header when the footer is hidden", () => {
     const root = document.createElement("div"); document.body.append(root);
     app = new PublicTraceApp(root, "live");

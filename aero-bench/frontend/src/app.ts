@@ -1085,6 +1085,11 @@ export class PublicTraceApp {
 
   private renderSession(state: RunSessionState): void {
     const lang = currentLanguage();
+    if (this.mode === "live") {
+      this.shell.modePill.textContent = t(
+        state.connection === "idle" || state.connection === "closed"
+          ? "mode.liveDisconnected" : "mode.live", lang);
+    }
     this.shell.connPill.textContent = t(`conn.${state.connection}` as I18nKey, lang);
     this.shell.connPill.className = `pill tone-${
       state.connection === "connected" || state.connection === "closed-terminal"

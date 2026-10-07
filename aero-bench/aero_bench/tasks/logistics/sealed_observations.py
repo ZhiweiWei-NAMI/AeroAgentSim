@@ -15,7 +15,9 @@ from aero_bench.artifacts.contracts import ArtifactRecord, SealManifest
 from aero_bench.config.loader import BundleReader
 from aero_bench.config.resolver import ResolvedRunSpec
 from aero_bench.providers.logistics_business.config import LogisticsBusinessConfig
-from aero_bench.providers.px4_gazebo.sealed_motion import load_sealed_px4_motion
+from aero_bench.providers.px4_gazebo.sealed_motion import (
+    NativeMotionSourceEvidence, load_sealed_px4_motion,
+)
 from aero_bench.providers.rpc import parse_json_object
 from aero_bench.runtime.contracts import SimulationTime
 from aero_bench.runtime.ledger import LedgerRecord
@@ -59,6 +61,7 @@ class SealedLogisticsObservations:
     seal: SealManifest
     business_artifact: ArtifactRecord
     replay: ReplayedLogisticsObservations
+    native_sources: tuple[NativeMotionSourceEvidence, ...]
 
 
 def replay_logistics_motion(
@@ -303,9 +306,19 @@ def load_sealed_logistics_observations(
         )
     # Use the same digest-verified Task/config proof as the runtime factory.
     # No Provider session is created, and no factory is registered here.
-    LogisticsRuntimeHookFactory(
-        config=config, business_provider_id=business_provider_id
-    )._prove_declared_config_matches_resolved_run(run, reader)
+    if provider.adapter == NATIVE_PARCEL_ADAPTER:
+        from aero_bench.tasks.logistics.native_parcel_integration import (
+            prove_declared_native_config_matches_resolved_run,
+        )
+        declared = prove_declared_native_config_matches_resolved_run(
+            run=run, reader=reader, business_provider_id=business_provider_id,
+        )
+        if declared != config:
+            raise ValueError("sealed native parcel config differs from the resolved run declaration")
+    else:
+        LogisticsRuntimeHookFactory(
+            config=config, business_provider_id=business_provider_id
+        )._prove_declared_config_matches_resolved_run(run, reader)
     validate_logistics_runtime_bindings(
         bindings_document=config.observation.bindings.model_dump(mode="json"),
         reader=reader,
@@ -369,4 +382,4 @@ def load_sealed_logistics_observations(
         config=config,
         event_chain_root=seal.event_chain_root,
     )
-    return SealedLogisticsObservations(seal, artifact, replay)
+    return SealedLogisticsObservations(seal, artifact, replay, sources)
