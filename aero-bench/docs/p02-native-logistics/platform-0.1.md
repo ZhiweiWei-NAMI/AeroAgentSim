@@ -17,6 +17,11 @@ authenticated catalog for the recovered sealed run. Open
 reconnect. Close the controls panel to see the business dock, select
 `uav.p02.carrier`, choose `外部跟随` and play. The service is bound to the host
 loopback address; remote browsers need forwarding to that host.
+The local `final-connection.json` records the private credentials file path.
+Use its bootstrap values in the two password fields; the file is not in Git.
+The recorded first replay load fetched 418 embedded assets in about four
+minutes; loading progress remains visible. The viewer animates its carrier
+marker from sealed PX4/Gazebo telemetry.
 
 The local delivery directory is `validation/platform-0.1/`. The final-run
 paths are `final-scene/native-bundle/`, `final-registry/`,
@@ -37,9 +42,15 @@ summary nevertheless has status `error` with
 `public_trace_projection_failed`; public trace publication did not finish.
 Recovery completed that projection from the same immutable runtime and
 verification seals into `publication/<run_id>/`, whose summary is `passed`.
-The original failed summary stays unchanged. The new sealed-playback capture
-is in progress. See [the evidence manifest](platform-0.1-evidence.json)
-for the recorded source identities and outcomes.
+The original failed summary stays unchanged. The sealed replay was actually
+played from tick 1 through tick 300, with the carrier in external follow view
+and visible pickup, transport and delivery states. See
+[the evidence manifest](platform-0.1-evidence.json) for the recorded source
+identities and outcomes. The watchable video is
+`validation/platform-0.1/final-watchable/native-parcel-0.1.mp4`; its
+`video-evidence.json` records the source recording, measured trim offsets and
+file hashes. The adjacent `pickup.png`, `transport.png`, `delivered.png` and
+`result.png` are decoded frames from that actual recording.
 
 An earlier run completed physical pickup and delivery but failed formal
 verification because the loader selected the wrong task package resolver.
@@ -209,8 +220,8 @@ success.
 
 ## Recover publication and capture the read-only replay
 
-The recovery CLI is implemented; actual recovery and capture remain pending.
-It accepts only the recorded publication failure with passed sealed
+Publication recovery completed for the recorded run. The recovery CLI
+accepts only the recorded publication failure with passed sealed
 verification. It copies the seals independently, projects the same run, and
 records the original summary and recovery receipt. Use a fresh `publication/`
 output; preserve any previous attempt.
@@ -247,4 +258,7 @@ node tools/capture_native_parcel.mjs --origin http://127.0.0.1:5416 \
 and opens registered replay access without Start, runtime-status, SSE or
 live reconnect requests. Capture checks the same run's passed public report,
 all five goals and the complete history through tick 300, then records actual
-UI playback. These checks remain awaiting actual capture evidence.
+UI playback. The completed capture recorded continuous playback from tick 1
+through tick 300, all three parcel stages, and zero Start or live-control
+requests. The separate live capture retains the actual disconnect/login/
+reconnect evidence for this same run.

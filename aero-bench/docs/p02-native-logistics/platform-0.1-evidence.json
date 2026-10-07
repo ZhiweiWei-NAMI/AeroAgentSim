@@ -305,16 +305,239 @@
     }
   },
   "video": {
-    "status": "awaiting_complete_sealed_playback"
+    "status": "recorded",
+    "manifest": {
+      "path": "validation/platform-0.1/final-watchable/video-evidence.json",
+      "sha256": "bf6f99e59e7dfada8dc2bc23c2e45dd91e1a2237d6dbecad4912900a1ceaef57",
+      "size_bytes": 7784
+    },
+    "details": {
+      "schema_version": "aero-bench.native-parcel-video-evidence/v1",
+      "run_id": "4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb",
+      "compilation_id": "b76081905ec64aa146f74197d5e1daa605ba25a078b13a898f6c0f99edb91c44",
+      "capture_source_commit": "948a3079f99f419706ad5ec29d6ebac529b23892",
+      "publication_source_commit": "e67f97c6dcedc023a129ba5359fdeebe25418720",
+      "public_trace": {
+        "path": "public-trace.json",
+        "size_bytes": 277982456,
+        "sha256": "2af47dd1767197aa85e56465ff6e2a5340e252167365048ff071dfaad6049603"
+      },
+      "capture_mode": "sealed-only",
+      "read_only": true,
+      "renderer": {
+        "renderer": "ANGLE (NVIDIA, Vulkan 1.3.242 (NVIDIA NVIDIA GeForce RTX 3090 (0x00002204)), NVIDIA)",
+        "version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "backend": "hardware"
+      },
+      "sealed_public_verification_status": "passed",
+      "terminal_runtime_status": null,
+      "live_reconnect_performed": false,
+      "actual_start_records": [],
+      "actual_request_count": 439,
+      "actual_start_request_count": 0,
+      "actual_forbidden_runtime_request_count": 0,
+      "capture_errors": [],
+      "control_evidence": {
+        "path": "runtime-control-evidence.json",
+        "size_bytes": 119861,
+        "sha256": "106544fbfe3500342c6d1486e658c004ad8c667c99863fae1b2ffccaefe1377f"
+      },
+      "replay_evidence": {
+        "path": "replay-view-evidence.json",
+        "size_bytes": 173691,
+        "sha256": "6a12c3ae915c99a4145d9d3078f2c93a4c26d39d60e2ce0edfb1d08bae773f29"
+      },
+      "playback": {
+        "first_observed_tick": 1,
+        "last_observed_tick": 300,
+        "sampled_displayed_tick_count": 298,
+        "sealed_history_tick_count": 300,
+        "uninterrupted_playback": true,
+        "displayed_parcel_stages": [
+          "awaiting_pickup",
+          "loaded",
+          "in_transit",
+          "delivered"
+        ]
+      },
+      "source_video": {
+        "path": "runtime-video/page@7328466f45fa988f7a64e91ef92cf7ce.webm",
+        "size_bytes": 49515287,
+        "sha256": "0837f9e967fc7eecad542c8cab719572febe148697293a1e41cf5c9c74c6b35b",
+        "duration_s": 551.68,
+        "codec": "vp8",
+        "width": 1600,
+        "height": 1000,
+        "fps": 25,
+        "closed": true
+      },
+      "mp4": {
+        "path": "native-parcel-0.1.mp4",
+        "size_bytes": 63060245,
+        "sha256": "64097b8c4cb46a8248c99cd343ac4d8d59503ec5c9021e3de900efcc5f391111",
+        "duration_s": 302.68,
+        "codec": "h264",
+        "pixel_format": "yuv420p",
+        "width": 1600,
+        "height": 1000,
+        "fps": 25,
+        "source_start_s": 249.0,
+        "source_end_s": 551.68,
+        "first_decoded_tick": 1,
+        "last_decoded_tick": 300,
+        "encoding": {
+          "encoder": "libx264",
+          "preset": "fast",
+          "crf": 18,
+          "movflags": "+faststart",
+          "audio": false
+        }
+      },
+      "decoded_frames": [
+        {
+          "path": "replay-start.video-frame.png",
+          "size_bytes": 2147419,
+          "sha256": "2a030f833d726d339567f787ad8d432374d12f05b2f5093134aa2d6fc09946c1",
+          "source_video_timestamp_s": 249.0,
+          "mp4_timestamp_s": 0.0,
+          "visible_tick": 1,
+          "visible_simulation_clock_s": 1,
+          "visible_parcel_state": "awaiting_pickup",
+          "visible_camera_mode": "chase",
+          "visible_playback_paused": true,
+          "measured_carrier_position_enu": {
+            "east_m": -420.0000000000007,
+            "north_m": -450.00000000000017,
+            "up_m": 0.7069999992469166
+          },
+          "parcel_projection_event_id": "event.0000000000000568",
+          "mp4_decoded_proof": {
+            "path": "mp4-review/start.png",
+            "size_bytes": 2027534,
+            "sha256": "26586732461b70eb8a52855ab6c85e0312337094ae8acee172f778ff5aa5efc1"
+          }
+        },
+        {
+          "path": "pickup.png",
+          "size_bytes": 2140216,
+          "sha256": "178e27de049aa810a3e67fc3723e8680c46bef314cde5c345159d11329fecf12",
+          "source_video_timestamp_s": 309.9,
+          "mp4_timestamp_s": 60.9,
+          "visible_tick": 61,
+          "visible_simulation_clock_s": 61,
+          "visible_parcel_state": "loaded",
+          "visible_camera_mode": "chase",
+          "visible_playback_paused": false,
+          "measured_carrier_position_enu": {
+            "east_m": -449.96161279281466,
+            "north_m": -450.0027120357139,
+            "up_m": 3.3494997303475085
+          },
+          "parcel_projection_event_id": "event.0000000000033385",
+          "mp4_decoded_proof": {
+            "path": "mp4-review/pickup.png",
+            "size_bytes": 2077362,
+            "sha256": "c42977b7762a02f25bfea4ec3bc9a7827f2cee712ab30c0a0a4a778fe436edb4"
+          }
+        },
+        {
+          "path": "transport.png",
+          "size_bytes": 1839289,
+          "sha256": "bdea3d6c1081675e478a0512f55c186dcb4973306e8206e30b78bba9b89ab0b6",
+          "source_video_timestamp_s": 340.9,
+          "mp4_timestamp_s": 91.9,
+          "visible_tick": 92,
+          "visible_simulation_clock_s": 92,
+          "visible_parcel_state": "in_transit",
+          "visible_camera_mode": "chase",
+          "visible_playback_paused": false,
+          "measured_carrier_position_enu": {
+            "east_m": -428.0077988576982,
+            "north_m": -450.0193439843611,
+            "up_m": 20.71500934801822
+          },
+          "parcel_projection_event_id": "event.0000000000050335",
+          "mp4_decoded_proof": {
+            "path": "mp4-review/transport.png",
+            "size_bytes": 1800177,
+            "sha256": "ca2abc71476920e6b1e7723a1d0e2d96fc181199bccad609a35ebd5c29b29a6b"
+          }
+        },
+        {
+          "path": "delivered.png",
+          "size_bytes": 2326495,
+          "sha256": "6fc15a974a2b3798fef6393a0300cf538296993b7a0a67f0341fbe1aaee90804",
+          "source_video_timestamp_s": 377.8,
+          "mp4_timestamp_s": 128.8,
+          "visible_tick": 129,
+          "visible_simulation_clock_s": 129,
+          "visible_parcel_state": "delivered",
+          "visible_camera_mode": "chase",
+          "visible_playback_paused": false,
+          "measured_carrier_position_enu": {
+            "east_m": -419.9976869259402,
+            "north_m": -450.06879191877204,
+            "up_m": 0.706999711662998
+          },
+          "parcel_projection_event_id": "event.0000000000070570",
+          "mp4_decoded_proof": {
+            "path": "mp4-review/delivered.png",
+            "size_bytes": 2360170,
+            "sha256": "1d3feb0c64f1ea93586787f0f1e2f36fa9295ef77648781d2c530094a5bad05c"
+          }
+        },
+        {
+          "path": "result.png",
+          "size_bytes": 2423122,
+          "sha256": "74274338c0aaf87fa8206127a0af116f05e6023b5671cc953602255799b52c6f",
+          "source_video_timestamp_s": 551.4,
+          "mp4_timestamp_s": 302.4,
+          "visible_tick": 300,
+          "visible_simulation_clock_s": 300,
+          "visible_parcel_state": "delivered",
+          "visible_camera_mode": "chase",
+          "visible_playback_paused": true,
+          "measured_carrier_position_enu": {
+            "east_m": -419.9976869259402,
+            "north_m": -450.06879191877204,
+            "up_m": 0.706999711662998
+          },
+          "parcel_projection_event_id": "event.0000000000163939",
+          "mp4_decoded_proof": {
+            "path": "mp4-review/terminal.png",
+            "size_bytes": 2338961,
+            "sha256": "5a005030c9dfd79ce75d7bce1566c73c0c4b6a88643832c806e1bd7fb56d8464"
+          }
+        }
+      ],
+      "timestamp_calibration": {
+        "method": "Decode actual closed WebM and MP4 frames at the recorded seek timestamps; visually read their tick, clock, parcel state, and Chase UI. Node elapsed time is not used as a source timestamp.",
+        "trim_preserves_actual_paused_first_and_terminal_frames": true,
+        "source_pixel_editing": false,
+        "synthetic_overlays": false,
+        "ffmpeg_executable": "/home/weizhiwei/.local/lib/python3.10/site-packages/imageio_ffmpeg/binaries/ffmpeg-linux-x86_64-v7.0.2"
+      },
+      "visible_result": {
+        "order_id": "order.p02.single",
+        "parcel_id": "parcel.p02.single",
+        "destination_facility_id": "facility.p02.dropoff",
+        "delivered_frame_tick": 129,
+        "terminal_frame_tick": 300,
+        "verified_header_visible": true,
+        "terminal_parcel_marker_visible": true,
+        "carrier_rendering": "Existing UAV glyph; this recording does not establish native UAV GLB rendering."
+      }
+    }
   },
   "independent_audit": {
     "path": "validation/platform-0.1/final-run-evidence.json",
-    "sha256": "22bf6383697ce77220c045e5b72cb8b0561166d2ca5187bc5da6af9de54813c0",
-    "size_bytes": 34948
+    "sha256": "5dc2e3ce185370e9b91b38615e672c36648bf87054d16a534190fdb6a62a11cc",
+    "size_bytes": 54081
   },
   "source_delivery": {
     "pull_request": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/pull/13",
-    "target_branch": "main"
+    "target_branch": "main",
+    "viewer_capture_source_commit": "948a3079f99f419706ad5ec29d6ebac529b23892"
   },
   "measurement_scope": "One declared native city scenario, one carrier and one parcel, one seed, 300 provider-barrier ticks. No broader performance or reliability claim."
 }
