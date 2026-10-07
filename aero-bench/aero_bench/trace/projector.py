@@ -123,6 +123,7 @@ class SealedPublicArtifacts:
     def __init__(self, seal: SealManifest) -> None:
         records: dict[str, ArtifactRecord] = {}
         private_ids: set[str] = set()
+        private_records: dict[str, ArtifactRecord] = {}
         for artifact in seal.artifacts:
             if artifact.artifact_id in records or artifact.artifact_id in private_ids:
                 raise PublicProjectorError(
@@ -132,8 +133,10 @@ class SealedPublicArtifacts:
                 records[artifact.artifact_id] = artifact
             else:
                 private_ids.add(artifact.artifact_id)
+                private_records[artifact.artifact_id] = artifact
         self._records = records
         self._private_ids = private_ids
+        self._private_records = private_records
 
     @property
     def records(self) -> tuple[ArtifactRecord, ...]:
@@ -319,7 +322,8 @@ def project_public_trace(
         if record.event.event_type == PUBLIC_SENSOR_FRAME_EVENT_TYPE
     )
     verifier_public = (
-        None if report is None else _project_report(report, resources=resources)
+        None if report is None else _project_report(report, resources=resources,
+            run=run, scene_states=scene_states, public_events=events)
     )
     phase = (
         "aborted"
@@ -1241,9 +1245,14 @@ def _project_report(
     report: VerificationReport,
     *,
     resources: SealedPublicArtifacts,
+    run: ResolvedRunSpec | None = None,
+    scene_states: tuple[SceneState, ...] = (),
+    public_events: tuple[PublicRunEvent, ...] = (),
 ) -> PublicVerificationReport:
+    native = (None if run is None else _native_parcel_metric_support(
+        run=run, resources=resources, scene_states=scene_states, public_events=public_events))
     goals = tuple(
-        _project_goal(goal, resources=resources)
+        _project_goal(goal, resources=resources, native=native)
         for goal in sorted(report.goals, key=lambda item: item.goal_id)
     )
     return PublicVerificationReport(
@@ -1259,6 +1268,7 @@ def _project_goal(
     goal: GoalResult,
     *,
     resources: SealedPublicArtifacts,
+    native=None,
 ) -> PublicGoalResult:
     metrics = tuple(
         PublicMetricResult(
@@ -1269,6 +1279,8 @@ def _project_goal(
                 metric.evidence,
                 resources=resources,
                 context=f"verification metric {metric.metric_id}",
+                native_support=(None if native is None else
+                    (native[0], native[1].get(goal.goal_id), native[2], goal.passed)),
             ),
         )
         for metric in sorted(goal.metrics, key=lambda item: item.metric_id)
@@ -1286,17 +1298,170 @@ def _public_metric_evidence(
     *,
     resources: SealedPublicArtifacts,
     context: str,
+    native_support=None,
 ) -> tuple[ArtifactReference, ...]:
     # The full verifier report retains private inputs; viewers receive only
     # sealed public support without changing measurements or goal outcomes.
-    references = [
-        _evidence_reference(reference, resources=resources, context=context)
-        for reference in evidence
-        if resources.is_public(reference.artifact_id, context=context)
-    ]
+    references = []
+    for reference in evidence:
+        if resources.is_public(reference.artifact_id, context=context):
+            references.append(_evidence_reference(reference, resources=resources, context=context))
+        elif native_support is not None and reference.artifact_id == native_support[0]:
+            _, support, history, passed = native_support
+            if reference.selector != "logistics.business.state" or support is None:
+                raise PublicProjectorError(f"{context} has no bound native parcel public support")
+            if passed and not support:
+                raise PublicProjectorError(f"{context} lacks its real public parcel/physical condition")
+            # Failed goals retain the complete observed closed history. Their
+            # original outcome is never promoted by a missing positive witness.
+            references.extend(support if passed else (history,))
     if not references:
         raise PublicProjectorError(f"{context} has no sealed public evidence")
     return _canonical_references(references, context=context)
+
+
+def _native_parcel_metric_support(*, run, resources, scene_states, public_events):
+    """Expose physical stages bound to real public custody projections.
+
+    Custody admission proof remains in the original private verifier inputs.
+    A public reference names the actual SceneState supplying the projection's
+    source digest; the matching public event exposes its custody/state fact.
+    """
+    package = getattr(run.task, "package", None)
+    if package is None or package.package_id != "logistics.task.native-parcel.v1":
+        return None
+    businesses = [p for p in run.environment.providers if p.adapter == "logistics.native-parcel"]
+    carriers = [e for e in run.scenario.entities if e.kind == "uav" and e.state == "dynamic"]
+    if len(businesses) != 1 or len(carriers) != 1:
+        raise PublicProjectorError("native parcel public support requires one declared business/carrier")
+    business, carrier = businesses[0], carriers[0]
+    flights = [p for p in run.environment.providers
+               if p.provider_id == carrier.source_provider_id and p.adapter == "px4.gazebo"]
+    if len(flights) != 1 or carrier.owner_kind != "provider":
+        raise PublicProjectorError("native parcel public carrier lacks its exact PX4 Provider")
+    artifacts = [a for a in resources._private_records.values()
+                 if a.producer_id == business.provider_id and a.artifact_type == "logistics.business.state"
+                 and any(r.artifact_id == a.artifact_id and r.producer_id == a.producer_id
+                         and r.artifact_type == a.artifact_type and r.visibility == "private"
+                         and r.relative_path == a.relative_path for r in run.artifact_requirements)]
+    if len(artifacts) != 1:
+        raise PublicProjectorError("native parcel public support lacks its declared private business evidence")
+    histories = [a for a in resources.records if a.artifact_type == "scene.state-history"
+                 and a.producer_id == "harness"]
+    if len(histories) != 1 or not scene_states:
+        raise PublicProjectorError("native parcel public support lacks its sealed SceneState history")
+    history = histories[0]
+    states = {s.at.tick:s for s in scene_states}
+    samples = {}
+    for state in scene_states:
+        matching = [s for s in state.samples if s.entity_id == carrier.entity_id
+                    and s.provider_id == flights[0].provider_id and s.sample_kind == "dynamic"]
+        if len(matching) != 1:
+            raise PublicProjectorError("native parcel SceneState lacks its exact native carrier")
+        samples[state.at.tick] = matching[0]
+    projections = {}
+    identity = None
+    for event in public_events:
+        if event.event_type != PUBLIC_PARCEL_EVENT_TYPE:
+            continue
+        fields = {v.name:v.value for v in event.public_payload}
+        state = states.get(event.at.tick)
+        if (event.source != business.provider_id or event.provider_id != business.provider_id
+                or event.run_id != run.run_id or state is None or event.at != state.at
+                or fields.get("scenario_digest") != run.scenario.scenario_digest
+                or fields.get("source_scene_state_digest") != state.scene_state_digest
+                or fields.get("source_stage_barrier_digest") != state.stage_barrier.barrier_digest
+                or event.at.tick in projections
+                or event.payload_schema_id != PUBLIC_PARCEL_PAYLOAD_SCHEMA_ID
+                or event.interaction_type != "logistics.parcel_projection.v1"
+                or set(fields) != _SAFE_PUBLIC_INTERACTION_PAYLOADS["logistics.parcel_projection.v1"]):
+            raise PublicProjectorError("native parcel public projection differs from its sealed SceneState")
+        from aero_bench.tasks.logistics.native_parcel_rpc import NativeParcelProjection
+        typed = {key:value for key,value in fields.items() if key not in {
+            "frame_digest","parcel_state","x_m","y_m","z_m","qw","qx","qy","qz"}}
+        try:
+            NativeParcelProjection.model_validate({**typed,
+                "schema_version":NATIVE_PARCEL_PROJECTION_MODEL_VERSION,
+                "run_id":event.run_id,"at":event.at,"state":fields["parcel_state"],
+                "pose":{**{key:fields[key] for key in ("x_m","y_m","z_m")},
+                    "orientation":{key:fields[key] for key in ("qw","qx","qy","qz")}}})
+        except ValueError as exc:
+            raise PublicProjectorError("native parcel metric support contains an invalid typed projection") from exc
+        key = (fields.get("order_id"),fields.get("parcel_id"),fields.get("destination_id"))
+        if identity is None:
+            identity = key
+        if key != identity or event.entity_id != key[1]:
+            raise PublicProjectorError("native parcel public projection changes its declared identities")
+        if fields.get("parcel_state") in {"loaded","in_transit"}:
+            if (fields.get("carrier_entity_id") != carrier.entity_id
+                    or fields.get("custody_holder_kind") != "carrier"):
+                raise PublicProjectorError("native parcel public custody names another native carrier")
+        elif fields.get("parcel_state") == "delivered":
+            if (fields.get("carrier_entity_id") is not None
+                    or fields.get("custody_holder_kind") != "dropoff_facility"
+                    or fields.get("custody_holder_id") != fields.get("destination_id")):
+                raise PublicProjectorError("native parcel public delivery lacks its actual destination custody")
+        projections[event.at.tick] = fields
+    if set(projections) != set(states):
+        raise PublicProjectorError("native parcel public projections do not close over the sealed history")
+    def reference(tick=None):
+        return resources.reference(artifact_id=history.artifact_id,
+            selector=history.relative_path if tick is None else f"{history.relative_path}#ticks/{tick}",
+            context="native parcel public metric support")
+    def pad_token(facility_id):
+        from aero_bench.tasks.logistics.facility_physics import _injective_model_fragment
+        prefix = f"launch_pad.{_injective_model_fragment(facility_id)}."
+        sites = [s for s in run.scenario.launch_sites if s.launch_site_id.startswith(prefix)
+                 and carrier.entity_id in s.allowed_uav_entity_ids]
+        if len(sites) != 1:
+            raise PublicProjectorError("native parcel public facility pad is absent or ambiguous")
+        return f"launch_pad.{sites[0].launch_site_id}", sites[0]
+    def grounded(tick, token):
+        if tick not in samples:
+            return False
+        sample = samples[tick]
+        attributes = {a.name:a.value for a in sample.attributes}
+        return (sample.armed is False and attributes.get("landed") is True
+            and attributes.get("in_air") is False and attributes.get("ground_contact") is True
+            and attributes.get("collision_contact") is False and token in sample.contacts)
+    loaded = [t for t,p in projections.items() if p["parcel_state"] == "loaded"]
+    delivered = [t for t,p in projections.items() if p["parcel_state"] == "delivered"]
+    support = {goal:() for goal in ("parcel.pickup","parcel.transport","parcel.dropoff",
+                                   "parcel.delivered","carrier.terminal")}
+    destination_token, destination_site = pad_token(identity[2])
+    if loaded:
+        first = min(loaded)
+        before = projections.get(first-1)
+        if before is not None and before["parcel_state"] == "awaiting_pickup":
+            pickup_token, _ = pad_token(before["custody_holder_id"])
+            if grounded(first-1,pickup_token):
+                support["parcel.pickup"] = (reference(first-1),reference(first))
+    if delivered:
+        first = min(delivered)
+        if grounded(first-1,destination_token):
+            support["parcel.dropoff"] = (reference(first-1),reference(first))
+            support["parcel.delivered"] = (reference(first),)
+    if loaded and delivered:
+        origin = samples[min(loaded)].pose.position.enu
+        target = destination_site.pose.position.enu
+        baseline = (origin.east_m-target.east_m)**2 + (origin.north_m-target.north_m)**2
+        for tick,p in projections.items():
+            sample = samples[tick]
+            attributes = {a.name:a.value for a in sample.attributes}
+            position, velocity = sample.pose.position.enu, sample.linear_velocity_enu
+            if (min(loaded) < tick < min(delivered)-1 and p["parcel_state"] == "in_transit"
+                    and sample.armed is True and attributes.get("in_air") is True
+                    and attributes.get("landed") is False and attributes.get("ground_contact") is False
+                    and attributes.get("collision_contact") is False
+                    and velocity.east_mps**2 + velocity.north_mps**2 > 0
+                    and (position.east_m-target.east_m)**2 + (position.north_m-target.north_m)**2 < baseline):
+                support["parcel.transport"] = (reference(tick),)
+                break
+    horizon = run.environment.clock.max_steps
+    if (scene_states[-1].at.tick == horizon and projections[horizon]["parcel_state"] == "delivered"
+            and grounded(horizon,destination_token)):
+        support["carrier.terminal"] = (reference(horizon),)
+    return artifacts[0].artifact_id, support, reference()
 
 
 def _canonical_references(

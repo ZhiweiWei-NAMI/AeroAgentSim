@@ -9,20 +9,42 @@ verifier checks their sealed records, including actual airborne transport.
 ## Open the platform
 
 For the local delivery, open `http://127.0.0.1:5416/city-studio.html` to inspect
-the configuration, or `http://127.0.0.1:5416/?view=replay` to select a public
-trace after sealing. The service is bound to the host loopback address;
-remote browsers need forwarding to that host.
+the configuration. Publication recovery and its new browser capture are
+pending. After publication is ready, the read-only Control service on port
+8769 will expose the authenticated catalog. Open
+`http://127.0.0.1:5416/?view=live`, enter the private bootstrap values under
+`正式运行控制`, load the catalog, select the parcel run and click
+`打开已封存回放`. This service uses `SealedReplayManager` and needs no runtime
+reconnect. Close the controls panel to see the business dock, select
+`uav.p02.carrier`, choose `外部跟随` and play. The service is bound to the host
+loopback address; remote browsers need forwarding to that host.
 
 The local delivery directory is `validation/platform-0.1/`. The final-run
 paths are `final-scene/native-bundle/`, `final-registry/`,
 `final-configuration/`, `final-compilations/`, `execution/`, and
-`final-watchable/`. The image lock is `verifier-image/images.json`; use its
+`final-watchable/`. Recovered projection output is planned under
+`publication/<run_id>/`. The image lock is `verifier-image/images.json`; use its
 actual component digests. Raw runs, original city assets, recordings and
 credentials are retained in local storage rather than published in Git.
 
+The second physical run is
+`4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb`,
+compiled through the UI as
+`b76081905ec64aa146f74197d5e1daa605ba25a078b13a898f6c0f99edb91c44`.
+Its formal verifier report is `passed`, with complete coverage and all five
+goals passing. Actual pickup completed at tick 60, delivery at tick 128,
+and the declared observation horizon remained 300 ticks. Its original run
+summary nevertheless has status `error` with
+`public_trace_projection_failed`; public trace publication did not finish.
+Recovery will complete only that projection from the same immutable runtime
+and verification seals into `publication/<run_id>/`. The original failed
+summary stays unchanged. Recovery and the new sealed-playback capture have
+not yet been completed. See [the evidence manifest](platform-0.1-evidence.json)
+for the recorded source identities and outcomes.
+
 An earlier run completed physical pickup and delivery but failed formal
-sealed verification. Its original configuration and evidence remain
-historical results. A passing final sealed verdict has not yet been supplied.
+verification because the loader selected the wrong task package resolver.
+Its original failed result and raw evidence are retained separately.
 
 ## Inputs and preparation
 
@@ -123,7 +145,7 @@ node tools/capture_city_configuration.mjs --origin http://127.0.0.1:5416 \
   --output "$PARCEL_OUTPUT/final-configuration"
 ```
 
-## Start, reconnect and observe
+## Reproduce a live run, reconnect and observe
 
 After compilation, stop the two preparation services and launch the complete
 stack against that immutable compilation. The `--control-execution-output`
@@ -154,7 +176,10 @@ values only in the password fields under `正式运行控制`. Load the catalog,
 select the compiled run and start it. Use the visible play control and select
 the carrier's external follow view. Disconnecting the browser does not stop
 the runtime. After login, reconnect using the catalog's existing start
-identity; do not create a new start identity for the same operation.
+identity; do not create a new start identity for the same operation. This
+reproduction uses `ControlRunManager`. After sealing, click `加载封存回放`
+to load its history; this differs from the read-only publication catalog
+described above.
 
 The runtime capture automates this same UI flow, including disconnect,
 login and reconnect. Use `--renderer hardware` on the delivery host and
@@ -171,14 +196,56 @@ node tools/capture_native_parcel.mjs --origin http://127.0.0.1:5416 \
   --request-timeout-seconds 300 --renderer hardware --replay
 ```
 
-Add `--attach` to require an already started run. The append-only
+Add `--attach` to require an already started run, including a completed run
+for sealed playback. The append-only
 `runtime-stream-evidence.jsonl` contains sanitized connection and public
 event records; authoritative sealed trace bytes remain separate. The video,
 screenshots and replay evidence must show actual motion, pickup and delivery.
-A command receipt or a
-moving cursor alone is not a successful task. Wait for sealing and the
+A command receipt or a moving cursor alone is not a successful task. Wait for sealing and the
 independent verifier, then inspect the actual motion and parcel transitions
 in the public replay. The verifier requires loaded airborne progress toward
 the destination, exact destination contact, landing, disarm and consistent
 custody evidence; replaying business events alone cannot produce a verified
 success.
+
+## Recover publication and capture the read-only replay
+
+The recovery CLI is implemented; actual recovery and capture remain pending.
+It accepts only the recorded publication failure with passed sealed
+verification. It copies the seals independently, projects the same run, and
+records the original summary and recovery receipt. Use a fresh `publication/`
+output; preserve any previous attempt.
+
+```bash
+PARCEL_DELIVERY=validation/platform-0.1
+PARCEL_RECORDED_RUN_ID=4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb
+PARCEL_RECORDED_COMPILATION_ID=b76081905ec64aa146f74197d5e1daa605ba25a078b13a898f6c0f99edb91c44
+python tools/finalize_verified_run.py \
+  --compilation-root "$PARCEL_DELIVERY/final-compilations" \
+  --compilation-id "$PARCEL_RECORDED_COMPILATION_ID" \
+  --runner-config "$PARCEL_DELIVERY/runner.yaml" \
+  --source-run-root "$PARCEL_DELIVERY/execution/$PARCEL_RECORDED_RUN_ID" \
+  --output-root "$PARCEL_DELIVERY/publication"
+```
+
+After successful publication, its `replay-runner.json` supplies the read-only
+service's output root. The service uses the same immutable suite with
+`--sealed-run-id` under `SealedReplayManager`. Use the authenticated catalog
+and `打开已封存回放` as described above. Set `PARCEL_SEALED_CAPTURE_OUTPUT`
+to a fresh directory, then capture through that actual action:
+
+```bash
+node tools/capture_native_parcel.mjs --origin http://127.0.0.1:5416 \
+  --control http://127.0.0.1:8769 \
+  --credentials-file "$PARCEL_PRIVATE_CREDENTIALS" \
+  --compilation-result "$PARCEL_DELIVERY/final-configuration/compilation-result.json" \
+  --output "$PARCEL_SEALED_CAPTURE_OUTPUT" \
+  --renderer hardware --sealed-only --replay --timeout-seconds 9000 \
+  --request-timeout-seconds 300 --poll-seconds 5
+```
+
+`--sealed-only` requires `--replay` and rejects `--attach`. It authenticates
+and opens registered replay access without Start, runtime-status, SSE or
+live reconnect requests. Capture checks the same run's passed public report,
+all five goals and the complete history through tick 300, then records actual
+UI playback. These checks remain awaiting actual capture evidence.

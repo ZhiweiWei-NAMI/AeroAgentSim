@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { NativeParcelStreamEvidence } from './native_parcel_stream_evidence.mjs';
 import { readRuntimeStatusResponse } from './native_parcel_status_read.mjs';
+import { readonlyReplayCredentials, assertVerifiedParcelHistory, SealedCaptureRequestAudit } from './native_parcel_sealed_capture.mjs';
 
 const { values } = parseArgs({ options: {
   origin: { type: 'string' }, control: { type: 'string' },
@@ -15,23 +16,28 @@ const { values } = parseArgs({ options: {
   'poll-seconds': { type: 'string', default: '5' },
   'request-timeout-seconds': { type: 'string', default: '60' },
   attach: { type: 'boolean', default: false },
+  'sealed-only': { type: 'boolean', default: false },
   replay: { type: 'boolean', default: false },
   renderer: { type: 'string', default: 'software' },
   help: { type: 'boolean', short: 'h' },
 } });
 if (values.help) {
-  console.log(`Capture the existing native parcel platform through its actual live UI.
+  console.log(`Capture the existing native parcel platform through its actual UI.
 Usage: node tools/capture_native_parcel.mjs --origin URL --control URL
   --credentials-file PATH --compilation-result PATH --output DIRECTORY
 Options: --reconnect-tick 4 --timeout-seconds 1800 --poll-seconds 5
-  --request-timeout-seconds 60 --attach --replay --renderer software|hardware
+  --request-timeout-seconds 60 --attach --sealed-only --replay --renderer software|hardware
 Use --attach to require an existing authenticated catalog start identity.
 Use --replay to play the actual sealed history after the run completes.
+Use --sealed-only --replay for an already registered verified sealed execution.
+It opens the authenticated catalog and real Open sealed replay action without
+Start, runtime status, event-stream, or live disconnect/reconnect requests.
+The native parcel 0.1 sealed capture requires a complete history through tick300.
 Use --attach --replay to require an existing run and reuse its idempotent Start
 only for access credentials. Without --attach the UI may start the selected
 compiled run; an existing catalog start identity is still reused when present.
 The credentials file is the private JSON written by tools/run_stack.py.
-Starts through the UI, plays and follows the carrier, disconnects and logs in
+Runtime mode starts through the UI, plays and follows the carrier, disconnects and logs in
 again, reconnects to the same run/start identity, and waits for a real terminal.
 Writes sanitized control evidence, append-only runtime-stream-evidence.jsonl,
 screenshots and a Chromium video. Use a fresh output directory; the JSONL
@@ -46,6 +52,9 @@ function positiveNumber(key) {
   const value = Number(values[key]);
   if (!Number.isFinite(value) || value <= 0) throw new Error(`--${key} must be positive`);
   return value;
+}
+if (values['sealed-only'] && (!values.replay || values.attach)) {
+  throw new Error('--sealed-only requires --replay and cannot be combined with --attach');
 }
 const reconnectTick = positiveNumber('reconnect-tick');
 if (!Number.isInteger(reconnectTick)) throw new Error('--reconnect-tick must be an integer');
@@ -96,6 +105,9 @@ const capturedStages = new Set(), phases = new Set();
 let streamEvidence = null;
 let reconnected = false, followingCarrier = false, played = false, terminal = null;
 const statusFailureReceipts = [];
+let sealedVerificationStatus = null;
+const captureMode = values['sealed-only'] ? 'sealed-only' : 'runtime';
+const requestAudit = new SealedCaptureRequestAudit(endpoint);
 let discoveredStartId = null;
 let stopRequested = null;
 let navigationStarted = false, needsLogin = false;
@@ -208,11 +220,17 @@ async function observeView(tick) {
   }
 }
 
-async function captureSealedReplay(trace) {
+async function captureSealedReplay(trace, entry = 'terminal') {
   if (trace.run_id !== runId || trace.scene_states.length < 2) throw new Error('Sealed replay has no matching physical history');
-  await setControlsOpen(true);
-  const open = page.getByRole('button', { name: '加载封存回放', exact: true });
-  await open.waitFor(); await open.click();
+  assertVerifiedParcelHistory(trace, runId, 300);
+  sealedVerificationStatus = trace.verifier_public.status;
+  if (entry === 'terminal') {
+    await setControlsOpen(true);
+    const open = page.getByRole('button', { name: '加载封存回放', exact: true });
+    await open.waitFor(); await open.click();
+  } else if (entry !== 'registered') {
+    throw new Error('Unknown sealed replay entry');
+  }
   log('sealed-replay-loading', { run_id: runId, scene_states: trace.scene_states.length });
   let progressKey = null;
   while (true) {
@@ -238,7 +256,6 @@ async function captureSealedReplay(trace) {
   }
   await setControlsOpen(false);
   const play = page.getByRole('button', { name: '▶ 播放', exact: true });
-  await play.click();
   const carrier = page.locator('.operations-monitor-fleet-row[data-object-id="uav.p02.carrier"]');
   await carrier.click();
   await page.getByRole('button', { name: '外部跟随', exact: true }).click();
@@ -246,7 +263,7 @@ async function captureSealedReplay(trace) {
     throw new Error('Sealed replay carrier follow did not become active');
   }
   const replayFrames = [], displayedTicks = new Set(), positions = new Set(), stages = new Set();
-  let previousTick = null, previousState = null, previousMode = null;
+  let previousTick = null, previousState = null, previousMode = null, replayPlaying = false;
   const lastTick = trace.scene_states.at(-1).at.tick;
   const replayStarted = elapsed();
   log('sealed-replay-playing', { run_id: runId, last_tick: lastTick, replay_video_start_s: replayStarted });
@@ -262,10 +279,16 @@ async function captureSealedReplay(trace) {
     }));
     if (display.tick !== null && display.tick !== '' && display.tick !== previousTick) {
       const tick = Number(display.tick);
+      if (previousTick === null && tick !== trace.scene_states[0].at.tick) {
+        throw new Error('Sealed playback did not begin at its actual first physical frame');
+      }
+      if (previousTick !== null && tick <= Number(previousTick)) throw new Error('Sealed playback regressed its observed recorded tick');
+      if (replayPlaying && display.playing !== 'true') throw new Error('Sealed playback stopped before the observed terminal frame');
       const scene = trace.scene_states.find(state => state.at.tick === tick);
       if (!scene) throw new Error('Displayed replay tick is absent from the sealed trace');
       const sample = scene.samples.find(item => item.entity_id === 'uav.p02.carrier');
       if (!sample || display.rendered_uav_count !== '1') throw new Error('Replay frame does not render its measured carrier');
+      if (display.mode !== 'chase') throw new Error('Replay frame lost its actual carrier follow camera');
       const parcel = trace.events.filter(event => event.event_type === 'public.parcel-projection' && event.at.tick <= tick).at(-1);
       const parcelState = parcel?.public_payload.find(field => field.name === 'parcel_state')?.value ?? null;
       displayedTicks.add(tick); positions.add(JSON.stringify(sample.pose.position.enu));
@@ -287,12 +310,18 @@ async function captureSealedReplay(trace) {
         await screenshot('replay-terminal.png');
         if (positions.size < 2 || displayedTicks.size < 2 || !stages.has('loaded')
             || !stages.has('in_transit') || !stages.has('delivered')) {
-          throw new Error('Sealed replay lacks displayed measured motion, pickup, transit or delivery');
+          throw new Error('Sealed replay lacks observed continuous playback, measured motion, pickup, transit or delivery');
         }
         save('replay-view-evidence.json', { run_id: runId, source: 'same-run sealed authoritative public trace',
           replay_video_start_s: replayStarted, replay_video_end_s: elapsed(), frames: replayFrames,
-          displayed_stages: [...stages], displayed_tick_count: displayedTicks.size });
+          displayed_stages: [...stages], displayed_tick_count: displayedTicks.size,
+          first_observed_tick: replayFrames[0].tick, last_observed_tick: tick,
+          sealed_history_tick_count: trace.scene_states.length, uninterrupted_playback: true });
         break;
+      }
+      if (!replayPlaying) {
+        await play.click();
+        replayPlaying = true;
       }
     }
     await page.waitForTimeout(200);
@@ -348,6 +377,7 @@ try {
     };
   });
   page = await context.newPage(); page.setDefaultTimeout(requestTimeoutMs);
+  page.on('request', request => requestAudit.observe(request.url(), request.method(), elapsed()));
   rendererEvidence = await page.evaluate(() => {
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl');
@@ -375,98 +405,120 @@ try {
   await page.addStyleTag({ content: 'input[type="password"] { opacity: 0 !important; }' });
   await page.getByRole('button', { name: '正式运行控制', exact: true }).click();
   await login();
-  if (values.attach && discoveredStartId === null) throw new Error('--attach requires an existing authenticated catalog start identity');
-  await start(discoveredStartId === null ? '启动运行' : '重连启动（复用已认证运行标识）');
-  navigationStarted = true;
-  while (true) {
-    if (stopRequested !== null) throw new Error(`Capture interrupted by ${stopRequested}; actual run remains unchanged`);
-    if (performance.now() - started > timeoutMs) throw new Error(`Capture exceeded ${values['timeout-seconds']} seconds`);
-    if (needsLogin) {
-      needsLogin = false; followingCarrier = false;
-      await page.waitForLoadState('domcontentloaded');
-      await page.addStyleTag({ content: 'input[type="password"] { opacity: 0 !important; }' });
-      if (!await page.getByLabel('控制服务地址', { exact: true }).isVisible()) {
-        await page.getByRole('button', { name: '正式运行控制', exact: true }).click();
-      }
-      await login();
-      if (discoveredStartId !== startRecords[0].start_id) throw new Error('Reload lost the authenticated existing start identity');
-      await start('重连启动（复用已认证运行标识）');
-      log('page-reload-reconnected', { run_id: runId, start_id: discoveredStartId });
-    }
-    const response = await readRuntimeStatusResponse({
-      request: remainingMs => context.request.get(`${endpoint}/v1/runs/${runId}`, {
-        timeout: Math.min(remainingMs, requestTimeoutMs, timeoutMs - (performance.now() - started)),
-        headers: { Origin: origin, Authorization: `Bearer ${credentials.operator_token}` },
-      }),
-      timeoutMs: Math.min(requestTimeoutMs, timeoutMs - (performance.now() - started)),
-      backoffMs: pollMs, wait: ms => page.waitForTimeout(ms),
-      onFailure: receipt => {
-        statusFailureReceipts.push({ ...receipt, elapsed_s: elapsed() });
-        save('runtime-status-error.json', { run_id: runId, failures: statusFailureReceipts });
-        log('status-read-failed', receipt);
-      },
+  if (values['sealed-only']) {
+    const reply = page.waitForResponse(response => response.url() === `${endpoint}/v1/runs/${runId}/replay-access`
+      && response.request().method() === 'POST');
+    await page.getByRole('button', { name: '打开已封存回放', exact: true }).click();
+    const response = await reply;
+    if (!response.ok()) throw new Error(`Read-only replay access failed: HTTP ${response.status()}`);
+    credentials = readonlyReplayCredentials(await response.json(), runId);
+    secrets.add(credentials.operator_token); secrets.add(credentials.csrf_token);
+    requestAudit.assertReadOnly();
+    log('sealed-read-access', { run_id: runId, read_only: true, request_audit: requestAudit.summary() });
+    const traceResponse = await context.request.get(`${endpoint}/v1/runs/${runId}/public/trace`, {
+      timeout: requestTimeoutMs, headers: { Origin: origin, Authorization: `Bearer ${credentials.operator_token}` },
     });
-    const value = await response.json(); const snapshot = value.snapshot;
-    if (snapshot?.run_id !== runId) throw new Error('Status returned a different run');
-    snapshots.push(snapshot);
-    const tick = snapshot.runtime_control?.current?.tick ?? null;
-    if (tick !== null && (!Number.isInteger(tick) || tick < 0)) throw new Error('Status returned an invalid tick');
-    if (!phases.has(snapshot.phase)) { phases.add(snapshot.phase); log('phase', { phase: snapshot.phase, tick }); }
-    await collectStream(); await observeView(tick);
-    if (snapshot.summary !== null && snapshot.summary !== undefined) {
-      terminal = snapshot; save('runtime-summary.json', snapshot.summary);
-      let sealedTrace = null;
-      if (snapshot.summary.public_trace !== null) {
-        const traceResponse = await context.request.get(`${endpoint}/v1/runs/${runId}/public/trace`, {
-          timeout: requestTimeoutMs, headers: { Origin: origin, Authorization: `Bearer ${credentials.operator_token}` },
-        });
-        if (!traceResponse.ok()) throw new Error(`Sealed public trace failed: HTTP ${traceResponse.status()}`);
-        const traceBytes = await traceResponse.body();
-        sealedTrace = JSON.parse(traceBytes.toString('utf8'));
-        // The public endpoint returns authoritative sealed bytes. Preserve
-        // their exact float spelling and digest; diagnostic exports may use JSON.
-        writeFileSync(resolve(out, 'public-trace.json'), traceBytes);
+    if (!traceResponse.ok()) throw new Error(`Sealed public trace failed: HTTP ${traceResponse.status()}`);
+    const traceBytes = await traceResponse.body();
+    const trace = JSON.parse(traceBytes.toString('utf8'));
+    writeFileSync(resolve(out, 'public-trace.json'), traceBytes);
+    await captureSealedReplay(trace, 'registered');
+    requestAudit.assertReadOnly();
+    log('sealed-replay-complete', { run_id: runId, verification_status: sealedVerificationStatus });
+  } else {
+    if (values.attach && discoveredStartId === null) throw new Error('--attach requires an existing authenticated catalog start identity');
+    await start(discoveredStartId === null ? '启动运行' : '重连启动（复用已认证运行标识）');
+    navigationStarted = true;
+    while (true) {
+      if (stopRequested !== null) throw new Error(`Capture interrupted by ${stopRequested}; actual run remains unchanged`);
+      if (performance.now() - started > timeoutMs) throw new Error(`Capture exceeded ${values['timeout-seconds']} seconds`);
+      if (needsLogin) {
+        needsLogin = false; followingCarrier = false;
+        await page.waitForLoadState('domcontentloaded');
+        await page.addStyleTag({ content: 'input[type="password"] { opacity: 0 !important; }' });
+        if (!await page.getByLabel('控制服务地址', { exact: true }).isVisible()) {
+          await page.getByRole('button', { name: '正式运行控制', exact: true }).click();
+        }
+        await login();
+        if (discoveredStartId !== startRecords[0].start_id) throw new Error('Reload lost the authenticated existing start identity');
+        await start('重连启动（复用已认证运行标识）');
+        log('page-reload-reconnected', { run_id: runId, start_id: discoveredStartId });
       }
-      if (values.replay) {
+      const response = await readRuntimeStatusResponse({
+        request: remainingMs => context.request.get(`${endpoint}/v1/runs/${runId}`, {
+          timeout: Math.min(remainingMs, requestTimeoutMs, timeoutMs - (performance.now() - started)),
+          headers: { Origin: origin, Authorization: `Bearer ${credentials.operator_token}` },
+        }),
+        timeoutMs: Math.min(requestTimeoutMs, timeoutMs - (performance.now() - started)),
+        backoffMs: pollMs, wait: ms => page.waitForTimeout(ms),
+        onFailure: receipt => {
+          statusFailureReceipts.push({ ...receipt, elapsed_s: elapsed() });
+          save('runtime-status-error.json', { run_id: runId, failures: statusFailureReceipts });
+          log('status-read-failed', receipt);
+        },
+      });
+      const value = await response.json(); const snapshot = value.snapshot;
+      if (snapshot?.run_id !== runId) throw new Error('Status returned a different run');
+      snapshots.push(snapshot);
+      const tick = snapshot.runtime_control?.current?.tick ?? null;
+      if (tick !== null && (!Number.isInteger(tick) || tick < 0)) throw new Error('Status returned an invalid tick');
+      if (!phases.has(snapshot.phase)) { phases.add(snapshot.phase); log('phase', { phase: snapshot.phase, tick }); }
+      await collectStream(); await observeView(tick);
+      if (snapshot.summary !== null && snapshot.summary !== undefined) {
+        terminal = snapshot; save('runtime-summary.json', snapshot.summary);
+        let sealedTrace = null;
+        if (snapshot.summary.public_trace !== null) {
+          const traceResponse = await context.request.get(`${endpoint}/v1/runs/${runId}/public/trace`, {
+            timeout: requestTimeoutMs, headers: { Origin: origin, Authorization: `Bearer ${credentials.operator_token}` },
+          });
+          if (!traceResponse.ok()) throw new Error(`Sealed public trace failed: HTTP ${traceResponse.status()}`);
+          const traceBytes = await traceResponse.body();
+          sealedTrace = JSON.parse(traceBytes.toString('utf8'));
+          // The public endpoint returns authoritative sealed bytes. Preserve
+          // their exact float spelling and digest; diagnostic exports may use JSON.
+          writeFileSync(resolve(out, 'public-trace.json'), traceBytes);
+        }
+        if (values.replay) {
+          if (snapshot.summary.status !== 'passed') throw new Error(`Runtime terminal status: ${snapshot.summary.status}`);
+          if (sealedTrace === null) throw new Error('Completed run has no sealed authoritative trace');
+          await captureSealedReplay(sealedTrace);
+          log('sealed-replay-complete', { run_id: runId, status: snapshot.summary.status });
+          break;
+        }
+        // Let actual playback reach the final recorded UI frame before ending
+        // video recording. The sealed trace remains separate from live capture.
+        await page.waitForTimeout(Math.min(pollMs, 5000));
+        const last = page.getByRole('button', { name: '尾帧 ⏭', exact: true });
+        if (await last.count() && await last.isEnabled()) await last.click();
+        await collectStream(); await observeView(tick); await screenshot('runtime-terminal.png');
+        log('terminal', { phase: snapshot.phase, status: snapshot.summary.status,
+          failure_classes: snapshot.failure_classes, reconnected });
         if (snapshot.summary.status !== 'passed') throw new Error(`Runtime terminal status: ${snapshot.summary.status}`);
-        if (sealedTrace === null) throw new Error('Completed run has no sealed authoritative trace');
-        await captureSealedReplay(sealedTrace);
-        log('sealed-replay-complete', { run_id: runId, status: snapshot.summary.status });
+        if (!reconnected || !followingCarrier || !played) throw new Error('Viewer capture lacks reconnect, carrier follow or actual playback');
+        const clocks = new Set(viewRecords.map(view => view.clock).filter(clock => clock !== null));
+        const displayedPositions = new Set(viewRecords.filter(view => view.map.sceneReady === 'true'
+            && view.map.sceneTick !== undefined && view.map.sceneTick !== '')
+          .map(view => streamEvidence.carrierPositionsByTick.get(Number(view.map.sceneTick)))
+          .filter(position => position !== undefined));
+        if (clocks.size < 2 || displayedPositions.size < 2) throw new Error('Viewer capture lacks advancing displayed frames or displayed measured carrier motion');
         break;
       }
-      // Let actual playback reach the final recorded UI frame before ending
-      // video recording. The sealed trace remains separate from live capture.
-      await page.waitForTimeout(Math.min(pollMs, 5000));
-      const last = page.getByRole('button', { name: '尾帧 ⏭', exact: true });
-      if (await last.count() && await last.isEnabled()) await last.click();
-      await collectStream(); await observeView(tick); await screenshot('runtime-terminal.png');
-      log('terminal', { phase: snapshot.phase, status: snapshot.summary.status,
-        failure_classes: snapshot.failure_classes, reconnected });
-      if (snapshot.summary.status !== 'passed') throw new Error(`Runtime terminal status: ${snapshot.summary.status}`);
-      if (!reconnected || !followingCarrier || !played) throw new Error('Viewer capture lacks reconnect, carrier follow or actual playback');
-      const clocks = new Set(viewRecords.map(view => view.clock).filter(clock => clock !== null));
-      const displayedPositions = new Set(viewRecords.filter(view => view.map.sceneReady === 'true'
-          && view.map.sceneTick !== undefined && view.map.sceneTick !== '')
-        .map(view => streamEvidence.carrierPositionsByTick.get(Number(view.map.sceneTick)))
-        .filter(position => position !== undefined));
-      if (clocks.size < 2 || displayedPositions.size < 2) throw new Error('Viewer capture lacks advancing displayed frames or displayed measured carrier motion');
-      break;
+      if (tick !== null && tick >= reconnectTick && !reconnected) {
+        await screenshot('runtime-before-disconnect.png');
+        await setControlsOpen(true);
+        await page.getByRole('button', { name: '断开并清除凭据', exact: true }).click();
+        credentials = null;
+        await screenshot('runtime-disconnected.png');
+        reconnected = true; followingCarrier = false;
+        await login(); await start('重连启动（复用已认证运行标识）');
+        if (startRecords[0].run_id !== startRecords[1].run_id
+            || startRecords[0].start_id !== startRecords[1].start_id) throw new Error('Reconnect changed run_id or authenticated start_id');
+        await screenshot('runtime-reconnected.png');
+      }
+      save('runtime-control-evidence.json', { run_id: runId, compilation_id: compiled.compilation_id,
+        renderer: rendererEvidence, stream: streamEvidence?.summary() ?? null, start_records: startRecords, snapshots, view_records: viewRecords, reconnected, status_failures: statusFailureReceipts, errors, elapsed_s: elapsed() });
+      await page.waitForTimeout(pollMs);
     }
-    if (tick !== null && tick >= reconnectTick && !reconnected) {
-      await screenshot('runtime-before-disconnect.png');
-      await setControlsOpen(true);
-      await page.getByRole('button', { name: '断开并清除凭据', exact: true }).click();
-      credentials = null;
-      await screenshot('runtime-disconnected.png');
-      reconnected = true; followingCarrier = false;
-      await login(); await start('重连启动（复用已认证运行标识）');
-      if (startRecords[0].run_id !== startRecords[1].run_id
-          || startRecords[0].start_id !== startRecords[1].start_id) throw new Error('Reconnect changed run_id or authenticated start_id');
-      await screenshot('runtime-reconnected.png');
-    }
-    save('runtime-control-evidence.json', { run_id: runId, compilation_id: compiled.compilation_id,
-      renderer: rendererEvidence, stream: streamEvidence?.summary() ?? null, start_records: startRecords, snapshots, view_records: viewRecords, reconnected, status_failures: statusFailureReceipts, errors, elapsed_s: elapsed() });
-    await page.waitForTimeout(pollMs);
   }
 } catch (error) {
   errors.push({ source: 'capture', name: error.name, message: sanitize(error.message) });
@@ -482,7 +534,8 @@ try {
   }
   save('runtime-control-evidence.json', { run_id: runId, compilation_id: compiled.compilation_id,
     renderer: rendererEvidence, stream: streamEvidence?.summary() ?? null, start_records: startRecords, snapshots, view_records: viewRecords, reconnected, status_failures: statusFailureReceipts,
-    terminal_status: terminal?.summary?.status ?? null, elapsed_s: elapsed(), errors });
+    capture_mode: captureMode, terminal_status: terminal?.summary?.status ?? null,
+    sealed_verification_status: sealedVerificationStatus, request_audit: requestAudit.summary(), elapsed_s: elapsed(), errors });
   streamEvidence?.close();
   await context?.close(); await browser?.close();
 }

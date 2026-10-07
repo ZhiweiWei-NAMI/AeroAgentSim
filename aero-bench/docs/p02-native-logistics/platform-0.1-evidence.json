@@ -1,0 +1,197 @@
+{
+  "schema_version": "aero-bench.platform-delivery-evidence/v1",
+  "platform_version": "0.1.0",
+  "run_id": "4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb",
+  "compilation_id": "b76081905ec64aa146f74197d5e1daa605ba25a078b13a898f6c0f99edb91c44",
+  "scenario_digest": "171e10963568660d000e837e6a28f59ca75e0551a580486124a8a31f03df8d81",
+  "world_digest": "92076715458b2a33a3fd28360de8af53a751ece160f3a07cd75ef9ff724d9cf4",
+  "executor_kind": "docker_reference",
+  "local_entrypoints": {
+    "configuration": "http://127.0.0.1:5416/city-studio.html",
+    "replay": "http://127.0.0.1:5416/?view=live",
+    "control": "http://127.0.0.1:8769"
+  },
+  "retained_inputs": {
+    "compilation_result": {
+      "path": "validation/platform-0.1/final-configuration/compilation-result.json",
+      "sha256": "e8c6ce1b3c261cf6771724d7ee50879cb954ed787101879270a98361ca0bbdc5",
+      "size_bytes": 1005
+    },
+    "resolved_runs": {
+      "path": "validation/platform-0.1/final-compilations/b76081905ec64aa146f74197d5e1daa605ba25a078b13a898f6c0f99edb91c44/bundle/compiled-resolved-runs.json",
+      "sha256": "d64f8677b5a0e42a5b1a005ae4ff5246d331087af59d68732c66c4d8ad0e7315",
+      "size_bytes": 3990016
+    },
+    "image_lock": {
+      "path": "validation/platform-0.1/verifier-image/images.json",
+      "sha256": "e4d0e4a9edc8f01e8fef3fee7acbd7e81b47197aa99ae4e9c90a904dd3fd4f13",
+      "size_bytes": 2940
+    },
+    "calibration": {
+      "path": "docs/p02-native-logistics/calibration-review/calibration.json",
+      "sha256": "0772b261d8a492db1833a0ed2fa32eb69bf9d13b933f33c89359a40cda30c62f",
+      "size_bytes": 7185
+    }
+  },
+  "formal_verdict": {
+    "status": "passed",
+    "execution_scope": "formal_benchmark",
+    "coverage_complete": true,
+    "goals": [
+      {
+        "goal_id": "parcel.pickup",
+        "passed": true
+      },
+      {
+        "goal_id": "parcel.transport",
+        "passed": true
+      },
+      {
+        "goal_id": "parcel.dropoff",
+        "passed": true
+      },
+      {
+        "goal_id": "parcel.delivered",
+        "passed": true
+      },
+      {
+        "goal_id": "carrier.terminal",
+        "passed": true
+      }
+    ],
+    "report": {
+      "path": "validation/platform-0.1/execution/4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb/verification/verifier/report.json",
+      "sha256": "5cc9ebdc5c15e07c5e0c58039a7b8ceb42a93ccbb0dff337fbc2ae72483c1fd9",
+      "size_bytes": 1364
+    },
+    "verifier_workload": {
+      "implementation": {
+        "component_id": "logistics.parcel.verifier",
+        "kind": "production",
+        "source_revision": "ebed5923c7aa6595eabc2d18e598de3c1ea2b4ec69f18f8df3bff69bafbdfaf7",
+        "source_uri": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim",
+        "version": "0.1.0-native-parcel"
+      },
+      "resources": {
+        "cpu_millicores": 1000,
+        "gpu_count": 0,
+        "memory_mib": 49152
+      },
+      "runtime": {
+        "command": [
+          "verify"
+        ],
+        "image": "localhost:5000/aero-bench/verifier@sha256:5065807195f2dcf65cee9bcad351908ed9d64980fbeb7bf0ad490f750ca7efba"
+      }
+    }
+  },
+  "runtime_seal": {
+    "path": "validation/platform-0.1/execution/4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb/runtime-seal/seal-manifest.json",
+    "sha256": "bd066b5d80e7ede09b512a06981b167a0f8cdbd86883e8a247a1db613b997636",
+    "size_bytes": 1983,
+    "manifest_digest": "ad0491df97967b67f59d8bc09df6df88068697e71cc30e0eb2936aadbef49dca",
+    "attempt_id": "attempt.9be82c0381374935a2fabd68c6514008",
+    "event_chain_root": "debafa52654ee98a518a559b9f4986cf03edd77f99d09f64b19a85f8f37e4639",
+    "canonical_digest_verified": true
+  },
+  "verification_seal": {
+    "path": "validation/platform-0.1/execution/4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb/verification/verification-manifest.json",
+    "sha256": "1c6f06c243e2313ed4909163d0201b81c802a568ebe1fe4282971ef7af78259a",
+    "size_bytes": 676,
+    "manifest_digest": "a36e87914666d63fd58f93da78afab35f6faff6d5661b1bf32d042407669979b",
+    "same_runtime_attempt_and_event_chain": true,
+    "canonical_digest_verified": true
+  },
+  "measured_execution": {
+    "horizon_tick": 300,
+    "raw_flight_samples": 301,
+    "scene_state_samples": 300,
+    "pickup_tick": 60,
+    "dropoff_tick": 128,
+    "terminal_flight": {
+      "tick": 300,
+      "sim_time_ns": 300000000000,
+      "armed": false,
+      "in_air": false,
+      "landed": true,
+      "ground_contact": true,
+      "collision_contact": false,
+      "contacts": [
+        "launch_pad.launch_pad.facility.p02.dropoff.0"
+      ],
+      "position_enu_m": {
+        "east": -419.9976869259402,
+        "north": -450.06879191877204,
+        "up": 0.706999711662998
+      },
+      "velocity_ned_m_s": {
+        "down_m_s": -0.0046972716227173805,
+        "east_m_s": -0.00993305817246437,
+        "north_m_s": -0.0014082766138017178
+      },
+      "snapshot_sha256": "6a6169fa821fc501efaa612f22cd33f851121c14c004f762a5c79d9556742c00"
+    },
+    "unique_issued_commands": 11,
+    "unique_custody_transfers": 2,
+    "final_parcel_state": "delivered",
+    "final_custody_holder": {
+      "holder_id": "facility.p02.dropoff",
+      "holder_kind": "dropoff_facility",
+      "schema_version": "aero-bench.logistics-native-parcel-state/v1"
+    },
+    "command_reconnect_audit": {
+      "source": {
+        "path": "validation/platform-0.1/live-flight-recording/runtime-control-evidence.json",
+        "sha256": "c7f995b7be241755e25b23481384b9463be8f50927e871dea5a97a6df0980b6a",
+        "size_bytes": 569656
+      },
+      "run_id": "4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb",
+      "start_id": "start.129c8fec295e0135",
+      "records": [
+        {
+          "run_id": "4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb",
+          "start_id": "start.129c8fec295e0135",
+          "phase": "materializing",
+          "transition_sequence": 1
+        },
+        {
+          "run_id": "4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb",
+          "start_id": "start.129c8fec295e0135",
+          "phase": "running",
+          "transition_sequence": 4
+        }
+      ],
+      "reconnected": true,
+      "command_and_custody_uniqueness_after_reconnect_verified": true,
+      "stream_duplicate_count": 23,
+      "duplicate_count_meaning": "Deduplicated SSE retransmissions, not repeated issued commands or custody transfers."
+    }
+  },
+  "original_pipeline_result": {
+    "path": "validation/platform-0.1/execution/4e39a29217c0e15ad52b8d7fe5c5d5d7b256e83d0b644b00569bb4ee2ef2ceeb/run-summary.json",
+    "sha256": "72368981e873e407da8b8c85bbf4c59ade2ad3cfcaccb15dc623ba31f4020b00",
+    "size_bytes": 1896,
+    "status": "error",
+    "failure_classes": [
+      "public_trace_projection_failed"
+    ],
+    "retained_unchanged": true
+  },
+  "publication_recovery": {
+    "status": "pending",
+    "reason": "Complete public evidence binding from the same passed runtime and verification seals; original execution record is retained."
+  },
+  "video": {
+    "status": "awaiting_complete_sealed_playback"
+  },
+  "independent_audit": {
+    "path": "validation/platform-0.1/final-run-evidence.json",
+    "sha256": "22bf6383697ce77220c045e5b72cb8b0561166d2ca5187bc5da6af9de54813c0",
+    "size_bytes": 34948
+  },
+  "source_delivery": {
+    "pull_request": "https://github.com/ZhiweiWei-NAMI/AeroAgentSim/pull/13",
+    "target_branch": "main"
+  },
+  "measurement_scope": "One declared native city scenario, one carrier and one parcel, one seed, 300 provider-barrier ticks. No broader performance or reliability claim."
+}

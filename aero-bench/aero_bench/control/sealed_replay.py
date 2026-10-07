@@ -252,7 +252,8 @@ def _validate_public(
         )
         or trace.phase != "verified"
         or trace.verifier_public
-        != _project_report(report, resources=SealedPublicArtifacts(runtime))
+        != _project_report(report, resources=SealedPublicArtifacts(runtime),
+            run=run, scene_states=trace.scene_states, public_events=trace.events)
         or trace.scenario != project_public_scenario(run)
         or manifest.replay_mode != trace.scenario.replay_mode
     ):
