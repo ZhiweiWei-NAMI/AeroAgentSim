@@ -1,0 +1,31 @@
+{
+  "name": "aero-bench-public-viewer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "npm run typecheck && vite build",
+    "contracts:check": "python ../tools/generate_contracts.py --check",
+    "contracts:write": "python ../tools/generate_contracts.py --write",
+    "dev": "vite",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "22.20.1",
+    "@types/three": "0.185.4",
+    "jsdom": "27.4.0",
+    "json-schema-to-typescript": "16.0.0",
+    "typescript": "6.0.3",
+    "vite": "8.2.2",
+    "vitest": "4.1.11"
+  }
+}

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/aero-bench-icon.svg" />
+    <meta name="description" content="AERO-BENCH 城市场景编排预览工作区" />
+    <title>AERO-BENCH · 城市运行工作区</title>
+  </head>
+  <body>
+    <div id="city-studio" class="city-studio">
+      <header class="studio-topbar">
+        <div class="studio-topbar-identity">
+          <a class="studio-brand" href="./?scene=1" aria-label="返回 AERO-BENCH 城市视图"><span class="studio-brand-mark">◇</span><span>AERO-BENCH</span></a>
+          <span class="studio-topbar-rule" aria-hidden="true"></span>
+          <div class="studio-topbar-title"><span class="studio-eyebrow">SCENARIO STUDIO</span><strong>城市运行工作区</strong></div>
+        </div>
+        <div class="studio-topbar-center">
+          <label class="studio-scene-name" for="studio-name"><span>场景名称</span><input id="studio-name" type="text" aria-label="场景名称" maxlength="120" /></label>
+          <span id="studio-save-status" class="studio-save-status" role="status" aria-live="polite">读取草稿…</span>
+        </div>
+        <div class="studio-topbar-actions">
+          <button id="studio-save" type="button" class="studio-button studio-button-primary">保存草稿</button>
+          <button id="studio-export" type="button" class="studio-button">导出 JSON</button>
+          <label class="studio-button studio-import-label" for="studio-import">导入 JSON<input id="studio-import" type="file" accept=".json,application/json" aria-label="导入工作区 JSON" /></label>
+          <a class="studio-topbar-link" href="./?scene=1">城市视图</a>
+          <a class="studio-topbar-link" href="./asset-library.html">素材库</a>
+        </div>
+      </header>
+
+      <main class="studio-shell">
+        <aside id="studio-sidebar" class="studio-sidebar" aria-label="场景配置">
+          <div class="studio-sidebar-head">
+            <div><span class="studio-eyebrow">AUTHORING DRAFT</span><h1 id="studio-sidebar-title">场景配置</h1><p id="studio-sidebar-subtitle">按模块编辑，同一份草稿随时可导出。</p></div>
+            <button id="studio-collapse" type="button" class="studio-collapse" aria-label="收起配置面板" aria-expanded="true" title="收起配置面板">◀</button>
+          </div>
+          <nav id="studio-tabs" class="studio-tabs" aria-label="工作区模块">
+            <a href="?tab=runtime" data-tab="runtime" class="studio-tab" aria-label="场景机群"><span class="studio-tab-index">01</span><span>场景机群</span></a>
+            <a href="?tab=spatial" data-tab="spatial" class="studio-tab" aria-label="设施与空域"><span class="studio-tab-index">02</span><span>设施与空域</span></a>
+            <a href="?tab=algorithm" data-tab="algorithm" class="studio-tab" aria-label="调度算法"><span class="studio-tab-index">03</span><span>调度算法</span></a>
+            <a href="?tab=events" data-tab="events" class="studio-tab" aria-label="事件与标签"><span class="studio-tab-index">04</span><span>事件与标签</span></a>
+            <a href="?tab=compile" data-tab="compile" class="studio-tab" aria-label="编译与运行"><span class="studio-tab-index">05</span><span>编译运行</span></a>
+            <a href="?tab=region" data-tab="region" class="studio-tab" aria-label="OSM 区域选取"><span class="studio-tab-index">06</span><span>OSM 选区</span></a>
+          </nav>
+          <div id="studio-panel-scroll" class="studio-panel-scroll">
+            <div id="studio-panel" aria-live="off"></div>
+          </div>
+          <div class="studio-sidebar-foot"><span class="provenance-chip" data-provenance="authored">人工编排草稿</span> · 不产生正式运行或验证结论</div>
+        </aside>
+
+        <section class="studio-preview" aria-label="城市三维编排预览">
+          <header class="studio-preview-head">
+            <div><span class="studio-eyebrow">CITY OPERATIONS PREVIEW</span><h2>场景编排预览 <span id="studio-preview-kind" class="provenance-chip" data-provenance="recorded">／ SUMO 记录背景</span></h2></div>
+            <div class="studio-preview-head-right"><span id="studio-preview-state" class="studio-preview-state">城市加载中</span><button id="studio-open-sidebar" type="button" class="studio-button studio-open-sidebar" aria-label="展开配置面板" aria-expanded="false" hidden>展开配置</button></div>
+          </header>
+          <div class="studio-stage">
+            <div id="studio-map" class="studio-map" aria-label="可旋转和缩放的三维城市预览"></div>
+            <div class="studio-map-corner studio-map-corner-top"><span class="studio-map-cross" aria-hidden="true">✳</span><span id="studio-map-place">上海 · 黄浦</span><span class="studio-map-separator">/</span><span id="studio-map-mode">编排视图</span></div>
+          </div>
+          <div class="studio-preview-toolbar">
+            <div class="studio-transport"><button id="studio-play" type="button" class="studio-button studio-play" aria-label="播放编排预览" disabled>播放</button><label for="studio-time">编排时间</label><input id="studio-time" type="range" min="0" max="120" step="0.1" value="30" aria-label="编排预览时间" disabled /><output id="studio-clock" for="studio-time">0:30</output></div>
+            <div class="studio-preview-selection"><label for="studio-follow">跟随编排机群</label><select id="studio-follow" aria-label="跟随编排机群"><option value="">城市总览</option></select></div>
+            <div id="studio-preview-metrics" class="studio-preview-metrics" aria-live="polite">等待预览…</div>
+          </div>
+          <div id="studio-issues" class="studio-issues" role="status" aria-live="polite"></div>
+          <footer class="studio-preview-foot"><span id="studio-preview-foot-primary">交通参数是 SUMO 记录显示上限；只筛选已有轨迹，不生成交通。</span><span id="studio-preview-foot-secondary">草稿尚未接入 Business / Energy Provider。导出 JSON 后需按正式规格接入执行与验证流程。</span></footer>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/src/city-studio.ts"></script>
+  </body>
+</html>
