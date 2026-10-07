@@ -105,7 +105,7 @@ async function screenshot(name) {
   await page.locator('input[type="password"]').evaluateAll(inputs => {
     for (const input of inputs) input.value = '';
   });
-  await page.screenshot({ path: resolve(out, name), mask: [page.locator('input[type="password"]')] });
+  await page.screenshot({ path: resolve(out, name), mask: [page.locator('input[type="password"]:visible')] });
 }
 async function setControlsOpen(open) {
   const expanded = await page.evaluate(() => document.body.classList.contains('p02-controls-open'));

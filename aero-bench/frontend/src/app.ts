@@ -944,6 +944,9 @@ export class PublicTraceApp {
         || runId === null || runId === undefined || session.currentState.hasRunCredentials) {
       throw new ControlProtocolError("select a catalog run with bootstrap credentials for read-only replay");
     }
+    if (session.currentState.catalog?.runs.some(row => row.run_id === runId && typeof row.start_id === "string")) {
+      throw new ControlProtocolError("managed run requires reconnect before loading its sealed replay");
+    }
     this.replayAccessAbort?.abort();
     const controller = new AbortController(); this.replayAccessAbort = controller;
     this.renderRunControls(session.currentState);
@@ -1215,8 +1218,8 @@ export class PublicTraceApp {
     );
     this.shell.startButton.dataset.reconnect = reconnect;
     this.shell.startButton.disabled = !hasRun || started || state.pendingControl !== null || this.replayAccessAbort !== null;
-    this.shell.registeredReplayButton.disabled = !hasRun || started || this.bootstrap === null
-      || this.controlClient === null || this.replayAccessAbort !== null;
+    this.shell.registeredReplayButton.disabled = !hasRun || started || reconnect === "reconnect"
+      || this.bootstrap === null || this.controlClient === null || this.replayAccessAbort !== null;
     this.shell.pauseButton.disabled = !started || state.pendingControl !== null;
     this.shell.resumeButton.disabled = !started || state.pendingControl !== null;
     this.shell.stepButton.disabled = !started || state.pendingControl !== null;
