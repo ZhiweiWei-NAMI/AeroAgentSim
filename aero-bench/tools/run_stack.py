@@ -9,6 +9,7 @@ import os
 import secrets
 import signal
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -45,9 +46,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--frontend", choices=("dev", "preview"), default="dev")
     parser.add_argument("--frontend-dist", type=Path)
     parser.add_argument("--credentials-file", type=Path)
+    parser.add_argument("--reuse-credentials", action="store_true",
+                        help="reuse and retain an existing private --credentials-file")
     parser.add_argument("--run-dir", type=Path)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
+    if args.reuse_credentials and args.credentials_file is None:
+        parser.error("--reuse-credentials requires --credentials-file")
     compiled = args.control_compilation_id is not None
     if compiled and (not args.control_compilation_root or not args.control_execution_output):
         parser.error("compiled mode requires --control-compilation-root and --control-execution-output")
@@ -83,7 +88,9 @@ def choose_ports(args: argparse.Namespace) -> None:
             reservation = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             reservations.append(reservation)
             try:
+                reservation.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 reservation.bind(("127.0.0.1", port or 0))
+                reservation.listen(1)
             except OSError as error:
                 raise ValueError(f"{service} port {port} is unavailable: {error}") from error
             setattr(args, f"{service}_port", reservation.getsockname()[1])
@@ -124,7 +131,9 @@ def build_services(args: argparse.Namespace, run_dir: Path, token: str, csrf: st
     control = [sys.executable, "-m", "aero_bench.control.cli", "serve",
                "--runner-config", args.control_runner_config,
                "--bind-host", "127.0.0.1", "--port", str(args.control_port),
-               "--allowed-origin", origin, "--allowed-host", f"127.0.0.1:{args.control_port}",
+               "--allowed-origin", origin,
+               "--allowed-origin", f"http://localhost:{args.frontend_port}",
+               "--allowed-host", f"127.0.0.1:{args.control_port}",
                "--bootstrap-token-env", TOKEN_ENV, "--bootstrap-csrf-env", CSRF_ENV]
     if args.control_suite is not None:
         control += ["--suite", args.control_suite]
@@ -166,6 +175,25 @@ def create_credentials(path: Path, token: str, csrf: str) -> None:
     except BaseException:
         path.unlink(missing_ok=True)
         raise
+
+
+def read_credentials(path: Path) -> tuple[str, str]:
+    """Reuse private credentials without modifying or exposing their contents."""
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+    with os.fdopen(descriptor, "r", encoding="utf-8") as stream:
+        metadata = os.fstat(stream.fileno())
+        if (not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid()
+                or stat.S_IMODE(metadata.st_mode) != 0o600 or metadata.st_size > 4096):
+            raise ValueError("reused credentials must be an owned regular file with mode 0600")
+        document = json.load(stream)
+    if not isinstance(document, dict) or set(document) != {"bootstrap_token", "bootstrap_csrf"}:
+        raise ValueError("reused credentials must contain bootstrap_token and bootstrap_csrf")
+    token, csrf = document["bootstrap_token"], document["bootstrap_csrf"]
+    if (any(not isinstance(value, str) or len(value) < 32
+            or any(ord(char) < 33 or ord(char) > 126 for char in value)
+            for value in (token, csrf)) or token == csrf):
+        raise ValueError("reused credentials must be distinct valid bootstrap credentials")
+    return token, csrf
 
 
 def request(url: str, headers: dict[str, str]) -> tuple[int, str, bytes]:
@@ -264,6 +292,13 @@ def smoke_checks(args: argparse.Namespace, token: str) -> bool:
         runs = json.loads(body)["runs"]
         return bool(runs) and set(args.control_sealed_run_id) <= {run["run_id"] for run in runs}
 
+    def localhost_catalog() -> bool:
+        status, _, body = request(catalog_url, dict(headers, Origin=f"http://localhost:{args.frontend_port}"))
+        if status != 200:
+            return False
+        runs = json.loads(body)["runs"]
+        return bool(runs) and set(args.control_sealed_run_id) <= {run["run_id"] for run in runs}
+
     def rejected_origin() -> bool:
         status, _, body = request(catalog_url, dict(headers, Origin="http://127.0.0.1:1"))
         return status == 403 and json.loads(body)["error"]["code"] == "origin.rejected"
@@ -271,6 +306,7 @@ def smoke_checks(args: argparse.Namespace, token: str) -> bool:
     passed = True
     for name, check in (("viewer HTML", html), ("authoring native-scenes proxy", native_scenes),
                         ("workspace-traces catalog", workspace), ("authenticated Control catalog", catalog),
+                        ("Control localhost origin", localhost_catalog),
                         ("Control wrong origin rejected", rejected_origin)):
         try:
             result = check()
@@ -296,7 +332,7 @@ def main(argv: list[str] | None = None) -> int:
         run_dir = (args.run_dir.resolve() if args.run_dir else
                    Path(tempfile.mkdtemp(prefix="aero-stack-")))
         if args.run_dir is not None:
-            run_dir.mkdir(mode=0o700, parents=True, exist_ok=False)
+            run_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         print(f"Run directory: {run_dir}", flush=True)
         for signum in (signal.SIGINT, signal.SIGTERM):
             previous_handlers[signum] = signal.signal(signum, interrupted)
@@ -308,12 +344,15 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 private_dir = Path(tempfile.mkdtemp(prefix="aero-stack-credentials-"))
                 path = private_dir / "credentials.json"
-        token, csrf = secrets.token_hex(32), secrets.token_hex(32)
-        create_credentials(path, token, csrf)
+        if args.reuse_credentials:
+            token, csrf = read_credentials(path)
+        else:
+            token, csrf = secrets.token_hex(32), secrets.token_hex(32)
+            create_credentials(path, token, csrf)
         credentials_file = path.resolve()
         services = build_services(args, run_dir, token, csrf, dict(os.environ))
         for service in services:
-            with service.log.open("wb") as log:
+            with service.log.open("ab") as log:
                 try:
                     service.process = subprocess.Popen(
                         service.argv, cwd=service.cwd, env=service.env,
@@ -352,7 +391,7 @@ def main(argv: list[str] | None = None) -> int:
         for signum in previous_handlers:
             signal.signal(signum, signal.SIG_IGN)
         try:
-            shutdown(services, credentials_file)
+            shutdown(services, None if args.reuse_credentials else credentials_file)
             if private_dir is not None:
                 private_dir.rmdir()
         finally:

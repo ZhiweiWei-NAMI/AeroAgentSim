@@ -1,66 +1,42 @@
-# AERO-BENCH native parcel integration
+# AeroBench 0.1
 
-Platform 0.1 setup, UI execution and evidence replay: [native parcel guide](docs/p02-native-logistics/platform-0.1.md).
+This directory is the simulation platform inside
+[ZhiweiWei-NAMI/AeroAgentSim](https://github.com/ZhiweiWei-NAMI/AeroAgentSim).
+Platform source is maintained in this repository's `main` branch. Python,
+container and browser components share its resolved-run contracts.
 
-This directory contains the AERO-BENCH runtime used by AeroAgentSim's native
-parcel workflow. It keeps the integration under one project root so Python,
-container, schema, and browser builds use the same contracts.
-
-## Layout
-
-- `aero_bench/`: resolved-run contracts, authoring, executors, providers,
-  runtime hooks, public trace projection, agents, and the native parcel task.
-- `containers/`: logistics business, parcel participant, and parcel verifier
-  build contexts.
-- `schemas/`: generated JSON Schema and OpenAPI contracts.
-- `frontend/`: the public run viewer and native parcel presentation.
-- `tests/`: the provider, task, control, and integration tests required by this
-  delivery.
-- `docs/p02-native-logistics/calibration-review/`: the reviewed pose
-  calibration inputs and manifest.
-
-## Python checks
-
-Run commands from this directory:
+Start the retained local delivery from the repository root:
 
 ```bash
-python -m pip install -e '.[test]'
-python tools/generate_contracts.py --check
-pytest -q \
-  tests/providers/test_native_parcel_business_wiring.py \
-  tests/providers/test_native_parcel_provider_retry.py \
-  tests/tasks/test_logistics_signed_pose_reference.py \
-  tests/tasks/test_native_parcel_clock_integration.py \
-  tests/tasks/test_native_parcel_hook_projection.py \
-  tests/tasks/test_native_parcel_integration.py \
-  tests/tasks/test_native_parcel_review_regressions.py \
-  tests/tasks/test_native_parcel_rpc.py \
-  tests/tasks/test_native_parcel_runtime.py \
-  tests/tasks/test_native_parcel_stage.py \
-  tests/tasks/test_native_parcel_stage_integration.py \
-  tests/tasks/test_native_parcel_verifier.py \
-  tests/test_control_start_discovery.py
+./run-aero-bench
 ```
 
-## Frontend checks
+Open <http://127.0.0.1:5416/?view=live>, log in under `正式运行控制`, load the
+catalog and choose `打开已封存回放`. City Studio is at
+<http://127.0.0.1:5416/city-studio.html>. Forward only port 5416 for a remote
+browser; `/v1` uses the frontend origin. Private bootstrap values stay in
+`credentials/platform-0.1.json` with mode 0600. The safe pointer is
+`validation/platform-0.1/connection.json`.
 
-```bash
-cd frontend
-npm ci
-npm run typecheck
-npm test -- \
-  src/app.native-presentation.test.ts \
-  src/city-spatial-road-clearance.test.ts \
-  src/city-studio.test.ts \
-  src/control-reconnect-ui.test.ts \
-  src/map.native-presentation.test.ts \
-  src/native-city-presentation.test.ts \
-  src/native-parcel-view.test.ts \
-  src/p02-mission-records.test.ts \
-  src/run-start-identity.test.ts \
-  src/run-store.test.ts
-npm run build
-```
+The [platform guide](docs/p02-native-logistics/platform-0.1.md) covers
+prerequisites, configuration, physical reproduction and the preserved
+failure/recovery records. The [evidence manifest](docs/p02-native-logistics/platform-0.1-evidence.json)
+identifies the measured results. Local run data is under
+`validation/platform-0.1/`; the recorded video is
+`final-watchable/native-parcel-0.1.mp4`, also served at
+<http://127.0.0.1:5416/platform-0.1/native-parcel-0.1.mp4>.
 
-Container builds use this directory as their build context. Formal runs must
-use the resolved bundle and digest-pinned images selected by the executor.
+## Source layout
+
+- `aero_bench/`: authoring, compilation, executors, providers, tasks,
+  authoritative state, sealing and public trace projection.
+- `containers/`: explicit OCI workload build inputs.
+- `frontend/`: City Studio, authenticated run control and public replay.
+- `schemas/`: generated contracts.
+- `tests/`: module and integration checks.
+- `docs/p02-native-logistics/`: usage, evidence identities and pose calibration.
+
+Install Python dependencies with `python -m pip install -e '.[test]'` and
+frontend dependencies with `npm ci --prefix frontend`. Native physical runs
+also require a working Docker daemon and the declared digest-pinned images.
+Test fixtures and command receipts are not formal execution evidence.

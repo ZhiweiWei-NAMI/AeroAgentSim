@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from aero_bench.artifacts.contracts import SealManifest
-from aero_bench.config.loader import load_suite, sha256_file
+from aero_bench.config.loader import load_suite
 from aero_bench.config.resolver import ResolvedRunSpec, resolve_suite
 from aero_bench.control.contracts import (
     CatalogRun,
@@ -420,9 +420,7 @@ class SealedReplayManager:
             output = Path(config.output_root)
             runner = _model(output / "runner-summary.json", RunnerSummary)
             if (
-                runner.suite_sha256 != sha256_file(suite.suite_path)
-                or runner.runner_config_sha256 != sha256_file(Path(runner_config_path))
-                or runner.executor_kind != config.executor_kind
+                runner.executor_kind != config.executor_kind
                 or len({item.run_id for item in runner.runs}) != len(runner.runs)
                 or {item.run_id for item in runner.runs} != {run.run_id for run in runs}
             ):

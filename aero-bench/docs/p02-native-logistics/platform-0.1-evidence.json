@@ -9,7 +9,11 @@
   "local_entrypoints": {
     "configuration": "http://127.0.0.1:5416/city-studio.html",
     "replay": "http://127.0.0.1:5416/?view=live",
-    "control": "http://127.0.0.1:8769"
+    "control": "http://127.0.0.1:5416",
+    "video": "http://127.0.0.1:5416/platform-0.1/native-parcel-0.1.mp4",
+    "launch_command": "./run-aero-bench",
+    "repository_path": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim",
+    "data_directory": "aero-bench/validation/platform-0.1"
   },
   "retained_inputs": {
     "compilation_result": {

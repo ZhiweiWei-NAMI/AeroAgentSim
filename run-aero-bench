@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""Launch the completed platform 0.1 delivery from this repository."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import sys
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true", help="check readiness, then stop the stack")
+    args = parser.parse_args(argv)
+    package = Path(__file__).resolve().parent / "aero-bench"
+    os.chdir(package)
+    sys.path.insert(0, str(package))
+    from tools.run_stack import main as run_stack
+
+    platform = Path("validation/platform-0.1")
+    evidence = json.loads(Path("docs/p02-native-logistics/platform-0.1-evidence.json").read_text())
+    options = [
+        "--control-suite", str(platform / "final-compilations" / evidence["compilation_id"] / "bundle/suite.yaml"),
+        "--control-sealed-run-id", evidence["run_id"],
+        "--control-runner-config", str(platform / "replay-runner.json"),
+        "--authoring-output", str(platform / "authoring"),
+        "--sources-manifest", str(platform / "inputs/authoring-sources.json"),
+        "--native-scenes-manifest", str(platform / "final-registry/native-scenes.json"),
+        "--compilation-output", str(platform / "authoring/compilations"),
+        "--credentials-file", "credentials/platform-0.1.json", "--reuse-credentials",
+        "--run-dir", str(platform / "services"),
+        "--frontend-port", "5416", "--control-port", "8769", "--authoring-port", "8771",
+    ]
+    if args.check:
+        options.append("--check")
+    return run_stack(options)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

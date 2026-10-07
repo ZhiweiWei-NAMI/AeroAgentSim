@@ -12,6 +12,17 @@ import { RUN_ID, SCENARIO_DIGEST, CHAIN_ROOT, publicTrace } from "./testing/trac
 let app: PublicTraceApp | undefined;
 afterEach(() => { app?.dispose(); document.body.replaceChildren(); vi.unstubAllGlobals(); });
 
+it("defaults the editable Control endpoint to the current browser origin", () => {
+  const root = document.createElement("div"); document.body.append(root);
+  app = new PublicTraceApp(root, "live");
+  const endpoint = root.querySelector<HTMLInputElement>('input[type="text"].credential-input')!;
+  expect(endpoint.value).toBe(window.location.origin);
+  expect(endpoint.readOnly).toBe(false);
+  expect(endpoint.disabled).toBe(false);
+  endpoint.value = "http://localhost:9000";
+  expect(endpoint.value).toBe("http://localhost:9000");
+});
+
 it("replaces live controls with embedded Control replay and binds its verified asset directory", async () => {
   const root = document.createElement("div"); document.body.append(root);
   app = new PublicTraceApp(root, "live");

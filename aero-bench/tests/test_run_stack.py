@@ -1,9 +1,12 @@
-"""Launcher contracts without network access, Docker or existing servers."""
+"""Launcher contracts without external network access, Docker or existing servers."""
 
 from __future__ import annotations
 
 import errno
+import json
+import runpy
 import signal
+import socket
 import stat
 import sys
 from pathlib import Path
@@ -36,6 +39,7 @@ def configured(argv=BASE):
     BASE + ["--frontend-port", "0"],
     BASE + ["--traffic-preview-output", "preview"],
     BASE + ["--frontend-dist", "somewhere"],
+    BASE + ["--reuse-credentials"],
 ])
 def test_invalid_arguments(argv):
     with pytest.raises(SystemExit) as caught:
@@ -72,6 +76,12 @@ def test_port_in_use_refused_before_start(tmp_path, monkeypatch, capsys):
             if address[1] == 5403:
                 raise OSError(errno.EADDRINUSE, "Address already in use")
 
+        def setsockopt(self, level, option, value):
+            assert (level, option, value) == (socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        def listen(self, backlog):
+            assert backlog == 1
+
         def getsockname(self):
             return "127.0.0.1", 21000 + len(reservations)
 
@@ -85,6 +95,50 @@ def test_port_in_use_refused_before_start(tmp_path, monkeypatch, capsys):
     assert "frontend port 5403 is unavailable" in capsys.readouterr().err
     assert not run_dir.exists()
     assert all(reservation.closed for reservation in reservations)
+
+
+def test_port_reservation_accepts_time_wait_after_a_closed_connection():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        port = listener.getsockname()[1]
+        with socket.create_connection(("127.0.0.1", port), timeout=2) as client:
+            connection, _ = listener.accept()
+            with connection:
+                connection.settimeout(2)
+                connection.shutdown(socket.SHUT_WR)
+                assert client.recv(1) == b""
+                client.shutdown(socket.SHUT_WR)
+                assert connection.recv(1) == b""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as plain:
+        with pytest.raises(OSError) as caught:
+            plain.bind(("127.0.0.1", port))
+        assert caught.value.errno == errno.EADDRINUSE
+    args = stack.parse_args(BASE + ["--authoring-port", str(port)])
+    stack.choose_ports(args)
+    assert args.authoring_port == port
+    assert len({args.authoring_port, args.control_port, args.frontend_port}) == 3
+
+
+def test_reusable_port_reservation_still_rejects_an_active_listener():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        port = listener.getsockname()[1]
+        args = stack.parse_args(BASE + ["--authoring-port", str(port)])
+        with pytest.raises(ValueError, match="authoring port .* is unavailable"):
+            stack.choose_ports(args)
+
+
+def test_reusable_port_reservations_still_require_distinct_service_ports():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as temporary:
+        temporary.bind(("127.0.0.1", 0))
+        port = temporary.getsockname()[1]
+    args = stack.parse_args(BASE + ["--authoring-port", str(port), "--control-port", str(port)])
+    with pytest.raises(ValueError, match="control port .* is unavailable"):
+        stack.choose_ports(args)
 
 
 @pytest.mark.parametrize("argv", [BASE, COMPILED])
@@ -105,6 +159,7 @@ def test_child_commands_and_environments(argv, tmp_path):
                               "--traffic-preview-output", "traffic"]
     expected = [sys.executable, "-m", "aero_bench.control.cli", "serve", "--runner-config", "runner.yaml",
                 "--bind-host", "127.0.0.1", "--port", "20002", "--allowed-origin", "http://127.0.0.1:20003",
+                "--allowed-origin", "http://localhost:20003",
                 "--allowed-host", "127.0.0.1:20002", "--bootstrap-token-env", stack.TOKEN_ENV,
                 "--bootstrap-csrf-env", stack.CSRF_ENV]
     if argv == BASE:
@@ -163,6 +218,100 @@ def test_failed_credentials_write_removes_partial_file(tmp_path, monkeypatch):
     with pytest.raises(OSError, match="write failed"):
         stack.create_credentials(path, "a" * 64, "b" * 64)
     assert not path.exists()
+
+
+def test_reused_credentials_remain_private_and_unchanged_after_restarts(tmp_path, monkeypatch, capsys):
+    path = tmp_path / "credentials.json"
+    token, csrf = "a" * 64, "b" * 64
+    stack.create_credentials(path, token, csrf)
+    original = path.read_bytes()
+    run_dir = tmp_path / "services"
+    run_dir.mkdir()
+    log = run_dir / "fake.log"
+    log.write_text("retained earlier log\n")
+    monkeypatch.setattr(stack, "choose_ports", lambda args: None)
+    children = []
+
+    def build(_args, directory, actual_token, actual_csrf, _env):
+        assert (actual_token, actual_csrf) == (token, csrf)
+        service = stack.Service("fake", [sys.executable, "-c", "print('new launch', flush=True)"], {},
+                                tmp_path, "http://unused/", {}, directory / "fake.log")
+        children.append(service)
+        return [service]
+
+    def ready(service, _services):
+        service.process.wait(timeout=5)
+        signal.getsignal(signal.SIGTERM)(signal.SIGTERM, None)
+
+    monkeypatch.setattr(stack, "build_services", build)
+    monkeypatch.setattr(stack, "wait_ready", ready)
+    options = BASE + ["--run-dir", str(run_dir), "--credentials-file", str(path), "--reuse-credentials"]
+    for _ in range(2):
+        assert stack.main(options) == 130
+        assert path.read_bytes() == original
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    assert log.read_text() == "retained earlier log\nnew launch\nnew launch\n"
+    assert all(service.process.poll() is not None for service in children)
+    output = capsys.readouterr()
+    assert token not in output.out + output.err and csrf not in output.out + output.err
+
+
+@pytest.mark.parametrize("kind", ["missing", "public", "symlink", "invalid", "same-token"])
+def test_invalid_reused_credentials_never_start_services(tmp_path, monkeypatch, kind, capsys):
+    path = tmp_path / "credentials.json"
+    if kind != "missing":
+        stack.create_credentials(path, "a" * 64, "b" * 64)
+    if kind == "public":
+        path.chmod(0o644)
+    elif kind == "symlink":
+        target = tmp_path / "target.json"
+        path.rename(target)
+        path.symlink_to(target)
+    elif kind == "invalid":
+        path.write_text('{"bootstrap_token":null,"bootstrap_csrf":"invalid"}')
+    elif kind == "same-token":
+        path.write_text(json.dumps({"bootstrap_token": "a" * 64, "bootstrap_csrf": "a" * 64}))
+    existed = path.exists()
+    original = path.read_bytes() if existed else None
+    monkeypatch.setattr(stack, "choose_ports", lambda args: None)
+    monkeypatch.setattr(stack, "build_services", lambda *_: pytest.fail("services built"))
+    assert stack.main(BASE + ["--run-dir", str(tmp_path / "services"),
+                              "--credentials-file", str(path), "--reuse-credentials"]) == 1
+    assert path.exists() is existed
+    if existed:
+        assert path.read_bytes() == original
+    assert "a" * 64 not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("check", [False, True])
+def test_root_entry_uses_canonical_sealed_stack_from_any_directory(tmp_path, monkeypatch, check):
+    entry = stack.ROOT.parent / "run-aero-bench"
+    evidence = json.loads((stack.ROOT / "docs/p02-native-logistics/platform-0.1-evidence.json").read_text())
+    calls = []
+
+    def run(options):
+        calls.append((Path.cwd(), stack.parse_args(options)))
+        return 7
+
+    monkeypatch.setattr(stack, "main", run)
+    monkeypatch.chdir(tmp_path)
+    namespace = runpy.run_path(str(entry))
+    assert namespace["main"](["--check"] if check else []) == 7
+    directory, args = calls[0]
+    platform = Path("validation/platform-0.1")
+    assert directory == stack.ROOT
+    assert args.control_suite == str(platform / "final-compilations" / evidence["compilation_id"] / "bundle/suite.yaml")
+    assert args.control_sealed_run_id == [evidence["run_id"]]
+    assert args.control_compilation_id is None
+    assert args.control_runner_config == str(platform / "replay-runner.json")
+    assert args.authoring_output == str(platform / "authoring")
+    assert args.compilation_output == str(platform / "authoring/compilations")
+    assert args.sources_manifest == str(platform / "inputs/authoring-sources.json")
+    assert args.native_scenes_manifest == str(platform / "final-registry/native-scenes.json")
+    assert args.credentials_file == Path("credentials/platform-0.1.json")
+    assert args.reuse_credentials and args.run_dir == platform / "services"
+    assert (args.frontend_port, args.control_port, args.authoring_port) == (5416, 8769, 8771)
+    assert args.check is check
 
 
 @pytest.mark.parametrize("runtime_configured", [False, True])
@@ -351,8 +500,9 @@ def test_smoke_checks_validate_catalog_and_wrong_origin(runs, expected, monkeypa
 
     monkeypatch.setattr(stack, "request", request)
     assert stack.smoke_checks(args, "c" * 64) is expected
-    assert len(requests) == 5
+    assert len(requests) == 6
     output = capsys.readouterr().out
     assert "PASS Control wrong origin rejected" in output
+    assert ("PASS" if expected else "FAIL") + " Control localhost origin" in output
     assert ("PASS" if expected else "FAIL") + " authenticated Control catalog" in output
     assert "c" * 64 not in output

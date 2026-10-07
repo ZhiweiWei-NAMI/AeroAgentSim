@@ -4063,6 +4063,7 @@ function buildShell(root: HTMLElement, mode: AppMode): AppShell {
   const controlTitle = sectionTitle(t("control.title", lang));
   const endpointInput = document.createElement("input");
   endpointInput.type = "text";
+  endpointInput.value = window.location.origin;
   endpointInput.className = "credential-input";
   endpointInput.placeholder = t("control.endpointHint", lang);
   endpointInput.setAttribute("aria-label", t("control.endpoint", lang));
