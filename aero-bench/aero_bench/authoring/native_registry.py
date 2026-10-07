@@ -6,6 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Literal, TypeAlias
+from xml.etree import ElementTree
 
 from pydantic import Field, model_validator
 
@@ -623,6 +624,60 @@ def verify_logistics_arrivals_scene(root: Path, definition: LogisticsArrivalsSce
     return verified
 
 
+def native_parcel_traffic_counts(*, world: WorldPackage, reader: BundleReader) -> dict[str, int]:
+    """Classify the exact bound SUMO demand using its pinned vehicle classes."""
+    if world.sumo is None:
+        raise ValueError("native parcel traffic requires declared SUMO inputs")
+    assets = {item.artifact.artifact_id: item for item in world.assets}
+    routes_asset = assets[world.sumo.routes_asset_id]
+    if routes_asset.asset_role != "sumo_routes":
+        raise ValueError("native parcel traffic requires a SUMO routes asset")
+    reference = FileRef(path=routes_asset.artifact.selector,
+                        sha256=routes_asset.artifact.sha256)
+    raw = reader.resolve_file(reference).read_bytes()
+    if len(raw) != routes_asset.byte_size:
+        raise ValueError("native parcel SUMO route size differs from its pin")
+    try:
+        routes = ElementTree.fromstring(raw)
+    except ElementTree.ParseError as error:
+        raise ValueError("native parcel SUMO routes must be valid XML") from error
+    if routes.tag != "routes" or any(
+        element.tag not in {"vType", "route", "vehicle", "person"}
+        for element in routes
+    ):
+        raise ValueError("native parcel traffic requires explicit vehicle/person route demand")
+    classes = {}
+    for vehicle_type in routes.findall("vType"):
+        type_id, vehicle_class = vehicle_type.get("id"), vehicle_type.get("vClass")
+        if not type_id or not vehicle_class:
+            raise ValueError("native parcel SUMO vType requires an explicit id and vClass")
+        if type_id in classes:
+            raise ValueError("native parcel SUMO routes repeat a vType id")
+        classes[type_id] = vehicle_class
+    bindings = {item.sumo_object_id: item.kind for item in world.sumo.object_bindings}
+    objects = {}
+    counts = {"vehicles": 0, "pedestrians": 0, "bicycles": 0}
+    for element in routes:
+        if element.tag not in {"vehicle", "person"}:
+            continue
+        object_id = element.get("id")
+        if not object_id or object_id in objects:
+            raise ValueError("native parcel SUMO routes require unique explicit object ids")
+        if bindings.get(object_id) != element.tag:
+            raise ValueError("native parcel SUMO route objects differ from their exact bindings")
+        objects[object_id] = element.tag
+        if element.tag == "person":
+            counts["pedestrians"] += 1
+        else:
+            type_id = element.get("type")
+            if type_id not in classes:
+                raise ValueError("native parcel SUMO vehicle requires an explicit declared vType")
+            counts["bicycles" if classes[type_id] == "bicycle" else "vehicles"] += 1
+    if objects != bindings:
+        raise ValueError("native parcel SUMO route objects differ from their exact bindings")
+    return counts
+
+
 def verify_native_parcel_scene(root: Path, definition: NativeParcelSceneDefinition) -> VerifiedNativeScene:
     from aero_bench.authoring.reference_registration import _references
     from aero_bench.agent.native_parcel import NATIVE_PARCEL_AGENT_VERSION
@@ -655,6 +710,8 @@ def verify_native_parcel_scene(root: Path, definition: NativeParcelSceneDefiniti
     draft = definition.reference_draft
     if draft.seed != run.seed or draft.deployment.imageRef != run.agents[0].workload.runtime.image:
         raise ValueError("native parcel draft must retain its seed and participant image")
+    if draft.traffic.model_dump() != native_parcel_traffic_counts(world=world, reader=reader):
+        raise ValueError("native parcel draft traffic must match the pinned SUMO route classes")
     raw = _registered_metadata_bytes(root, definition, definition.scene_document)
     if PublicScenario.model_validate(parse_json_object(raw)) != project_public_scenario(run):
         raise ValueError("native parcel presentation differs from its actual public projection")

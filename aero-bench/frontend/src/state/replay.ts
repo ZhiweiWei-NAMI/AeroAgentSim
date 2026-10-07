@@ -21,14 +21,17 @@ export class ReplayState {
   private readonly speed = new Observable<PlaySpeed>(1);
   private readonly changes = new Observable<null>(null);
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private live = false;
 
   setSceneStates(states: readonly SceneState[]): void {
+    this.live = true;
     this.setTimeline(states.map(state => state.at.tick), states.map(state => state.at.sim_time_ns), 0);
   }
 
-  clear(): void { this.pause(); this.setTimeline([], [], 0); }
+  clear(): void { this.pause(); this.live = false; this.setTimeline([], [], 0); }
 
   setTrace(trace: PublicTrace): void {
+    this.live = false;
     const ticks = recordedTicks(trace);
     const times = ticks.map(tick => {
       const time = simTimeAtTick(trace, tick);
@@ -95,7 +98,7 @@ export class ReplayState {
   togglePlay(): void { if (this.playing.value) this.pause(); else this.play(); }
   play(): void {
     if (!this.ticks.length || this.playing.value) return;
-    if (this.index >= this.ticks.length - 1) this.first();
+    if (!this.live && this.index >= this.ticks.length - 1) this.first();
     this.reanchor();
     this.playing.set(true);
     this.schedule();
@@ -133,7 +136,9 @@ export class ReplayState {
       const middle = Math.ceil((low + high) / 2);
       if (this.timesMs[middle]! <= this.playheadMs) low = middle; else high = middle - 1;
     }
-    if (low === last) this.terminalShownAt = now;
+    // A live observer waits on the newest measured state. Only sealed replay
+    // loops recorded history after showing its terminal physical frame.
+    if (low === last && !this.live) this.terminalShownAt = now;
     this.present(low);
   }
 

@@ -206,6 +206,9 @@ class DockerExecutor:
         self._task_package_resolvers = tuple(task_package_resolvers)
         self._provider_registry = provider_registry
         self._handles: dict[str, DockerExecutionHandle] = {}
+        self._runtime_plan_bindings: dict[
+            int, tuple[DockerExecutionHandle, str]
+        ] = {}
         if attempt_id is not None and (
             len(attempt_id) > 128
             or re.fullmatch(r"[a-z][a-z0-9_.-]*", attempt_id) is None
@@ -781,6 +784,11 @@ class DockerExecutor:
             artifact_mount_path=self._artifact_mount_path,
             seal_mount_path=self._seal_mount_path,
         )
+        # Preflight has verified the full bundle. Live reads bind to the exact
+        # plan used to create the runtime instead of rebuilding its asset graph.
+        self._runtime_plan_bindings[id(handle)] = (
+            handle, self._runtime_plan_digest(plan)
+        )
         if self._attempt_id is not None:
             handle.attempt_id = self._attempt_id
         self._handles[plan.run.run_id] = handle
@@ -1244,7 +1252,7 @@ class DockerExecutor:
         operation: RuntimeControlOperation,
         control_id: str | None = None,
     ) -> RuntimeControlReceipt:
-        self._require_handle(plan, handle)
+        self._require_runtime_handle(plan, handle)
         if operation not in {"status", "pause", "resume", "step", "stop"}:
             raise ValueError("runtime control operation is invalid")
         if (operation == "status") != (control_id is None):
@@ -1327,7 +1335,7 @@ class DockerExecutor:
         max_scene_states: int = 1,
         max_events: int = 128,
     ) -> RuntimeProjectionBatch:
-        self._require_handle(plan, handle)
+        self._require_runtime_handle(plan, handle)
         if not handle.runtime_control_token:
             raise DockerExecutorError("runtime projection authority is unavailable")
         host = self._runtime_gateway_host(handle)
@@ -1850,6 +1858,7 @@ class DockerExecutor:
             handle.cleanup_errors = ()
             self._handles.pop(handle.run_id, None)
         finally:
+            self._runtime_plan_bindings.pop(id(handle), None)
             handle.agent_credentials.clear()
             handle.provider_credentials.clear()
             handle.session_credentials.clear()
@@ -3302,6 +3311,27 @@ class DockerExecutor:
         self._require_canonical_plan(plan)
         if plan.run.run_id != handle.run_id:
             raise ValueError("execution handle belongs to another run")
+
+    @staticmethod
+    def _runtime_plan_digest(plan: ExecutionPlan) -> str:
+        return hashlib.sha256(
+            canonical_json_bytes(plan.model_dump(mode="json"))
+        ).hexdigest()
+
+    def _require_runtime_handle(
+        self, plan: ExecutionPlan, handle: DockerExecutionHandle
+    ) -> None:
+        if plan.run.run_id != handle.run_id:
+            raise ValueError("execution handle belongs to another run")
+        digest = self._runtime_plan_digest(plan)
+        binding = self._runtime_plan_bindings.get(id(handle))
+        if binding is None:
+            # A handle supplied outside start_runtime must establish the same
+            # canonical binding before it can serve live control or projection.
+            self._require_canonical_plan(plan)
+            self._runtime_plan_bindings[id(handle)] = (handle, digest)
+        elif binding[0] is not handle or digest != binding[1]:
+            raise ValueError("live execution plan differs from the started runtime")
 
     def _run(
         self,

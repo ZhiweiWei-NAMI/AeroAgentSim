@@ -1,5 +1,7 @@
 # AERO-BENCH native parcel integration
 
+Platform 0.1 setup, UI execution and evidence replay: [native parcel guide](docs/p02-native-logistics/platform-0.1.md).
+
 This directory contains the AERO-BENCH runtime used by AeroAgentSim's native
 parcel workflow. It keeps the integration under one project root so Python,
 container, schema, and browser builds use the same contracts.

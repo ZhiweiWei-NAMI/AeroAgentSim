@@ -84,6 +84,15 @@ describe("map declared native city route", () => {
     expect(map.root.dataset.sceneReady).toBe("false");
     expect(map.renderObservation).toHaveBeenCalled();
   });
+  it("waits for the declared live scenario without requesting an unrelated default city", () => {
+    const { input, map, render } = fixture();
+    render({ ...input, scenario: null, nativePresentation: null,
+      operationContext: { sourceLabel: "Awaiting authenticated scenario", sourceKind: "live", clockState: "stopped", events: [] } });
+    expect(map.sourceKey).toBe("awaiting-live-scenario");
+    expect(map.loadPackedScene).not.toHaveBeenCalled();
+    expect(map.root.dataset.sceneReady).toBe("false");
+    expect(map.root.dataset.sceneError).toBeUndefined();
+  });
 
   it("rejects a mismatched presentation before replacing the active scene", () => {
     const { map, native, render } = fixture();

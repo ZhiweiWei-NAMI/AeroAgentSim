@@ -23,10 +23,12 @@ class NativeParcelPolicy(StrictModel):
     carrier_actor_id: LogisticsIdentifier
     order_id: Identifier
     parcel_id: Identifier
-    destination_east_m: float
-    destination_north_m: float
-    cruise_up_m: float = Field(gt=0)
-    dwell_s: float = Field(gt=0)
+    pickup_east_m: float = Field(allow_inf_nan=False)
+    pickup_north_m: float = Field(allow_inf_nan=False)
+    destination_east_m: float = Field(allow_inf_nan=False)
+    destination_north_m: float = Field(allow_inf_nan=False)
+    cruise_up_m: float = Field(gt=0, allow_inf_nan=False)
+    dwell_s: float = Field(gt=0, allow_inf_nan=False)
 
 
 class NativeParcelParticipant(InspectionReferenceParticipant):
@@ -68,6 +70,11 @@ class NativeParcelParticipant(InspectionReferenceParticipant):
         vehicle = {"vehicle_id": self.policy.vehicle_id}
         parcel = {"actor_id": self.policy.carrier_actor_id,
                   "order_id": self.policy.order_id, "parcel_id": self.policy.parcel_id}
+        self.command("flight.arm", vehicle)
+        self.command("flight.takeoff", {**vehicle, "altitude_m": self.policy.cruise_up_m})
+        self.goto(self.policy.pickup_east_m, self.policy.pickup_north_m,
+                  self.policy.cruise_up_m)
+        self.command("flight.land", vehicle)
         # Closed samples include the two endpoints of the declared dwell window.
         self.wait(self.policy.dwell_s + self.context.contract.clock.step_ns / 1e9)
         self.command("logistics.parcel.pickup", parcel)

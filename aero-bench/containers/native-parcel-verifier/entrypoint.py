@@ -38,10 +38,11 @@ def run():
         reader.validate_schema_bound_file(contract.run.task.verifier.config))
     result=verify_sealed_native_parcel(run=contract.run,reader=reader,seal=seal,
         seal_root=seal_root,business_provider_id=config.business_provider_id)
-    measures={"parcel.pickup":result.pickup_admitted,"parcel.dropoff":result.dropoff_admitted,
+    measures={"parcel.pickup":result.pickup_admitted,"parcel.transport":result.transport_observed,
+              "parcel.dropoff":result.dropoff_admitted,
               "parcel.delivered":result.delivered,"carrier.terminal":result.carrier_terminal}
     if set(g.goal_id for g in contract.run.task.goals)!=set(measures):
-        raise ValueError("native parcel task must declare the four exact verifier goals")
+        raise ValueError("native parcel task must declare the five exact verifier goals")
     business=next(a for a in seal.artifacts if a.producer_id==config.business_provider_id
                   and a.artifact_type=="logistics.business.state")
     payload_bytes=(seal_root/business.relative_path).read_bytes()

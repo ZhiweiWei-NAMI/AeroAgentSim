@@ -450,6 +450,7 @@ export class PublicTraceApp {
         if (status === "ready") {
           this.p02OverviewFramed = null;
           this.p02FrameOverview();
+          if (this.mode === "live") this.loadingProgress.clear();
         }
         if (this.mode !== "replay" || digest !== this.trace?.scenario_digest) return;
         this.loadingProgress.update({ stage: status, detail });
@@ -3042,7 +3043,14 @@ export class PublicTraceApp {
       const route = inspectNativeCityPresentation(scenario);
       if (route.kind === "unavailable") throw new Error(`Scene publication has no renderable native presentation: ${route.reason}`);
       if (route.kind === "native-city") {
-        const native = await loadNativeCityPresentation(route.plan, { baseHref, fetch: fetchImpl, signal: nativeAbort.signal });
+        this.loadingProgress.update({ stage: "scene" });
+        const native = await loadNativeCityPresentation(route.plan, { baseHref, fetch: fetchImpl, signal: nativeAbort.signal,
+          onProgress: progress => {
+            if (generation !== this.assetResolveGeneration || this.session !== session) return;
+            this.shell.map.dataset.controlNativeProgress = JSON.stringify(progress);
+            this.loadingProgress.update({ stage: "scene", completed: progress.completed, total: progress.total });
+          },
+        });
         if (generation !== this.assetResolveGeneration || this.session !== session
             || this.liveAssetScenario !== scenario.scenario_digest || this.disposed) {
           native.dispose(); resolver.dispose(); return;
@@ -3061,6 +3069,7 @@ export class PublicTraceApp {
     } catch (error) {
       resolver.dispose();
       if (generation !== this.assetResolveGeneration || this.session !== session || this.disposed) return;
+      this.loadingProgress.update({ stage: "failed", detail: error instanceof Error ? error.message : String(error) });
       this.showSourceNote(`Native scene asset failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -3495,6 +3504,13 @@ export class PublicTraceApp {
       () => this.replay.togglePlay(),
       this.replay.isPlaying(),
     );
+    // P02 hides the footer timeline. Keep its real playback action available
+    // in the header for live observations and verified sealed replay.
+    if (this.shell.p02ViewSwitch !== null) {
+      this.shell.p02ViewSwitch.querySelector('[data-role="p02-live-play"]')?.remove();
+      this.playButton.dataset.role = "p02-live-play";
+      this.shell.p02ViewSwitch.append(this.playButton);
+    }
     add(t("transport.next", lang), () => this.replay.step(1));
     add(t("transport.last", lang), () => this.replay.last());
     const speed = document.createElement("select");

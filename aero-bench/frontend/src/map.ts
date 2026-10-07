@@ -3514,6 +3514,17 @@ export class PublicTraceMap {
       return;
     }
     if (scene.scenario === null) {
+      if (scene.operationContext?.sourceKind === "live") {
+        if (this.sourceKey !== "awaiting-live-scenario") {
+          this.clearScene(); this.sourceKey = "awaiting-live-scenario"; this.conversionGeneration++;
+          this.root.dataset.sceneReady = "false"; this.root.dataset.texturesReady = "false";
+          delete this.root.dataset.sceneError; delete this.root.dataset.sceneErrorMessage;
+          delete this.root.dataset.sceneLoadStage;
+          this.sceneLoading.hidden = true;
+        }
+        this.renderObservation();
+        return;
+      }
       if (this.sourceKey !== "default-pack") {
         this.clearScene(); this.sourceKey = "default-pack"; this.conversionGeneration++;
         this.root.dataset.sceneReady = "false"; this.root.dataset.texturesReady = "false";

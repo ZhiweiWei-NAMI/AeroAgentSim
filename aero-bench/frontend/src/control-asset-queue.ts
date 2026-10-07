@@ -36,7 +36,9 @@ interface Pending { controller: AbortController; consumers: number; promise: Pro
 
 /** One authenticated run's immutable assets. No credentials or bytes are persisted. */
 export class ControlAssetQueue {
-  private tail: Promise<void> = Promise.resolve();
+  private startTail: Promise<void> = Promise.resolve();
+  private readonly lanes: Promise<void>[];
+  private nextLane = 0;
   private nextStart = 0;
   private readonly cached = new Map<string, StoredResponse>();
   private readonly pending = new Map<string, Pending>();
@@ -44,13 +46,17 @@ export class ControlAssetQueue {
   private readonly counts = { requests: 0, cacheHits: 0, inflightJoins: 0, rateLimits: 0, retries: 0, failures: 0 };
 
   constructor(private readonly request: (digest: string, signal?: AbortSignal) => Promise<Response>,
-      private readonly intervalMs = 1000) {
+      private readonly intervalMs = 600, concurrency = 4) {
     if (!Number.isSafeInteger(intervalMs) || intervalMs < 0) throw new Error("Invalid asset request interval");
+    if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 16) {
+      throw new Error("Invalid asset request concurrency");
+    }
+    this.lanes = Array.from({ length: concurrency }, () => Promise.resolve());
   }
 
   get diagnostics(): Readonly<Record<string, number>> {
     return Object.freeze({ ...this.counts, cachedAssets: this.cached.size, cachedBytes: this.cachedBytes,
-      pendingAssets: this.pending.size, intervalMs: this.intervalMs });
+      pendingAssets: this.pending.size, intervalMs: this.intervalMs, concurrency: this.lanes.length });
   }
 
   async fetch(digest: string, signal?: AbortSignal): Promise<Response> {
@@ -64,10 +70,11 @@ export class ControlAssetQueue {
     let job = this.pending.get(digest);
     if (job === undefined) {
       const controller = new AbortController();
-      const promise = this.tail.then(() => this.load(digest, controller.signal));
+      const lane = this.nextLane++ % this.lanes.length;
+      const promise = this.lanes[lane]!.then(() => this.load(digest, controller.signal));
       job = { controller, consumers: 0, promise };
       this.pending.set(digest, job);
-      this.tail = promise.then(() => undefined, () => undefined);
+      this.lanes[lane] = promise.then(() => undefined, () => undefined);
       const current = job;
       void promise.finally(() => { if (this.pending.get(digest) === current) this.pending.delete(digest); }).catch(() => {});
     } else this.counts.inflightJoins += 1;
@@ -99,14 +106,26 @@ export class ControlAssetQueue {
     return new Response(value.bytes.slice(0), { status: value.status, statusText: value.statusText, headers: value.headers });
   }
 
+  private async paceStart(signal: AbortSignal): Promise<void> {
+    // Starts share one rate budget even while earlier response bodies download.
+    // Recheck the deadline after a wait: any lane may have received a 429.
+    const turn = this.startTail.then(async () => {
+      assertNotAborted(signal);
+      while (Date.now() < this.nextStart) {
+        await waitForRetry(this.nextStart - Date.now(), signal);
+        assertNotAborted(signal);
+      }
+      this.nextStart = Date.now() + this.intervalMs;
+    });
+    this.startTail = turn.then(() => undefined, () => undefined);
+    await turn;
+  }
+
   private async load(digest: string, signal: AbortSignal): Promise<StoredResponse> {
     try {
       for (let retry = 0; ; retry += 1) {
         assertNotAborted(signal);
-        const wait = Math.max(0, this.nextStart - Date.now());
-        if (wait > 0) await waitForRetry(wait, signal);
-        assertNotAborted(signal);
-        this.nextStart = Date.now() + this.intervalMs;
+        await this.paceStart(signal);
         this.counts.requests += 1;
         const response = await this.request(digest, signal);
         if (response.status === 429) {
