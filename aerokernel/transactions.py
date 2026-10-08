@@ -53,10 +53,10 @@ def item_at(store: Store, ref: ItemRef) -> dict[str, Any]:
     """Resolve a strictly existing journal item."""
     if ref.record_index <= 0 or ref.record_index > len(store.records):
         raise KernelError("CAUSE_UNKNOWN", "unknown record reference")
-    items = store.records[ref.record_index - 1].get("items", [])
-    if ref.item_index < 0 or ref.item_index >= len(items):
-        raise KernelError("CAUSE_UNKNOWN", "unknown item reference")
-    return dict(items[ref.item_index])
+    try:
+        return store.records.item(ref.record_index - 1, ref.item_index)
+    except IndexError as exc:
+        raise KernelError("CAUSE_UNKNOWN", "unknown item reference") from exc
 
 
 def eligibility(
@@ -121,6 +121,10 @@ class Candidate:
         self.relation_affected: set[str] = set()
         self.relation_causes: dict[str, ItemRef] = {}
         self.relation_changes: list[tuple[Edge, Edge]] = []
+        self.cause_contexts: dict[
+            str, tuple[dict[str, Any], Cut, frozenset[ItemRef], set[ItemRef]]
+        ] = {}
+        self.learned_inboxes: dict[str, dict[str, Any]] = {}
 
     def add(self, item: dict[str, Any]) -> ItemRef:
         ref = ItemRef(self.index, len(self.items))
@@ -136,8 +140,17 @@ class Candidate:
         if not raw:
             return ()
         result = []
-        read: Cut = decode_record(intent["read_cut"])
-        authorized = [decode_record(v) for v in intent["authorized"]]
+        partition = intent["partition"]
+        context = self.cause_contexts.get(partition)
+        if context is None or context[0] is not intent:
+            context = (
+                intent,
+                decode_record(intent["read_cut"]),
+                frozenset(decode_record(v) for v in intent["authorized"]),
+                set(),
+            )
+            self.cause_contexts[partition] = context
+        _, read, authorized, validated = context
         for cause in raw:
             if isinstance(cause, LocalCause):
                 if cause.index < 0 or cause.index >= len(local):
@@ -146,6 +159,12 @@ class Candidate:
                     )
                 result.append(local[cause.index])
             elif isinstance(cause, ItemRef):
+                # The prestate, read cut and input authority are fixed throughout
+                # this invocation. Reusing its successful check preserves every
+                # scope/lag/dispatch rule; other intents have distinct caches.
+                if cause in validated:
+                    result.append(cause)
+                    continue
                 if cause in authorized:
                     item_at(self.before, cause)
                 elif cause.record_index <= read.index:
@@ -325,6 +344,7 @@ class Candidate:
                     raise KernelError(
                         "CAUSE_FUTURE", "cause exceeds read cut/authorized inbox"
                     )
+                validated.add(cause)
                 result.append(cause)
             else:
                 raise KernelError("CAUSE_TYPE", "typed cause required")
@@ -727,15 +747,18 @@ class Candidate:
             self.items[out.item_index]["message"] = encode(msg)
             self.enqueue(msg, op.target_or_topic, out)
         elif isinstance(op, (Receipt, Feedback, CancelDecision)):
-            inbox = tuple(decode_record(d) for d in intent["inbox"])
+            if self.learned_inboxes.get(partition) is not intent:
+                inbox = tuple(decode_record(d) for d in intent["inbox"])
+                self.state.actions._learn(inbox)
+                self.learned_inboxes[partition] = intent
             # Receipt ownership/dispatch remains authorized after its original call.
             if isinstance(op, Receipt):
-                item = self.state.actions.receipt(partition, op, out, inbox, causes)
+                item = self.state.actions.receipt(partition, op, out, (), causes)
             elif isinstance(op, Feedback):
-                item = self.state.actions.feedback(partition, op, out, inbox, causes)
+                item = self.state.actions.feedback(partition, op, out, (), causes)
             else:
                 item = self.state.actions.cancel_decision(
-                    partition, op, out, inbox, causes
+                    partition, op, out, (), causes
                 )
             item["causes"] = encode(causes)
             self.items[out.item_index]["receipt"] = item

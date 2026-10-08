@@ -327,6 +327,131 @@ checks, versions or history were dropped. Initial measurements are retained as
 The default benchmark WAL now uses a workspace-local temporary directory and
 streams the final hash; `--journal` still permits an explicitly retained WAL.
 
+## K3 causal lookup and command throughput
+
+Cause resolution now keeps an eight-record LRU of private decoded WAL trees and
+expands only the requested item. Keys include the immutable line's identity and
+coordinate; shared fork caches cannot confuse divergent suffixes or bypass prefix
+length checks. Returned diagnostic/item trees are detached. Mutable unacknowledged
+tails are never cached. Within one invocation, the pinned read cut, authorized
+input set and successful cause checks are reused; another invocation gets distinct
+scope/lag checks. Receipt processing learns the actual authorized inbox once,
+then continues to check target, dispatch, current head and every transition.
+
+Returned receipt/event/lifecycle proposals now use the existing standalone
+`$item` batch references instead of repeating their full encoding. Fact-only
+batches retain their existing path; immutable normalized scalar payloads avoid
+recursive thawing. Journal 1.2 still contains every proposal, raw/resolved cause,
+receipt and state version. Replay reproduces and checks both historical inline
+operations and the new reference encoding. Public `Kernel.records` still exposes
+the complete expanded vocabulary. The retained pre-K3 toy WAL has literal digest
+`1b75a0cc904cd3833d7357a4eddb44ad1a18c34bcee4bf851fcb5e0b57f7413d`;
+its complete expanded records equal the current run, including causal edges.
+The compressed byte digest is separately pinned across hash seeds and all engine
+registration permutations.
+
+`benchmarks/command_burst.py` measures actual command work, rather than initial
+velocity publication. Each entity has a scalar authoritative position, accepts a
+bootstrap target, starts on the subsequent one-second native step, and succeeds
+only when the measured position reaches that target on the following step. A DES
+producer sends new targets every five seconds. The 60-second run verifies every
+final field and all 12 cohorts' accepted/executing/succeeded receipts. Causes are
+scoped to each independent command's real dispatch, head, prior field version and
+completion write. Callers that attach every inbox item to every operation still
+request a quadratic causal graph; the kernel preserves those edges.
+
+The before measurements use the untouched pre-K3 runtime copied into workspace
+scratch; the after measurements use the same benchmark and interpreter. The
+platform review's 1.4/21/>30-second results are a different workload and are not
+substituted for this paired comparison. Wall time includes bind/start and final
+state/receipt verification, excluding file hashing and close. Byte rates include
+the header/bootstrap; periodic-only rates are also reported. All runs use file WAL
+and complete history. Absolute wall times remain sensitive to host activity.
+
+| Workload | Before | After |
+| --- | --- | --- |
+| 25 commands, bootstrap acceptance | 0.821 s | 0.104 s |
+| 100 commands, bootstrap acceptance | 11.041 s | 0.391 s |
+| 1000 commands, bootstrap acceptance | 30 s timeout; incomplete | 4.016 s; all accepted |
+| 25 entities, 60 s / 300 completed commands | 32.996 s | 3.309 s |
+| Same 25-entity WAL | 6,084,975 B; 101,416 B/s | 5,752,508 B; 95,875 B/s |
+| Same 25-entity largest line | 82,083 B | 81,073 B |
+
+The paired 25-entity run is 9.97x faster and retains 5.46% fewer journal bytes;
+its largest line decreases 1.23%. This reduction removes repeated proposals, not
+authoritative information. These one-field/one-second byte rates are not directly
+comparable to the platform slice's multi-field/high-frequency 0.407 MiB/s rate.
+
+Final sequential scaling completed every requested receipt and final field:
+
+| Entities / completed commands | Bootstrap | Periodic run | Total wall | WAL B/s | Peak RSS |
+| --- | --- | --- | --- | --- | --- |
+| 100 / 1,200 | 0.391 s | 14.540 s | 14.931 s | 367,995 | 106.97 MiB |
+| 1000 / 12,000 | 4.016 s | 153.437 s | 157.454 s | 3,661,687 | 803.86 MiB |
+
+10x entities take **10.55x periodic wall time** and **9.95x journal bytes**, below
+the explicit scaling bounds. Periodic-only WAL rates are 356,111 and 3,543,220 B/s.
+The final raw report is [k3-final-scaling.json](../benchmarks/evidence/k3-final-scaling.json).
+
+The complete original 600-step dense publication gates also pass:
+
+| Workload | M2 reference wall | K3 wall | K3 peak RSS | K3 journal |
+| --- | --- | --- | --- | --- |
+| 100 × 3 fields, 60 s | 7.647 s | **7.310 s** | 65.30 MiB | 16,700,521 B |
+| 1000 × 3 fields, 60 s | 84.840 s | **86.164 s** | 385.82 MiB | 147,199,222 B |
+
+Both retain all 180,300 / 1,803,000 versions and satisfy the unchanged ≤10/90-second,
+≤300/1536-MiB limits. The 1000-entity wall time differs from the historical M2
+measurement by 1.56%; this is not claimed as a speedup on the dense workload.
+The first K3 dense run missed the 90-second gate at 94.603 s. Short profiling led
+to leaving already compact fact-only batches intact and avoiding recursive thaw
+for validated scalar values; the rerun passed at 86.164 s. Initial and final
+reports are retained as `k3-kernel-1000-initial.json` and `k3-kernel-1000.json`.
+
+Relation decoder registration was already fixed in M2: `_record_classes` includes
+`relations`. The new regression pins nondefault `RelationRule`/`ObligationRule`
+scopes and priorities through manifest cloning, then asserts and closes a real
+edge while activating and ending a minimum-one obligation. Every journal prefix
+replays the same declarations and graph versions; pre-creation history reads still
+raise their explicit unknown-identity errors.
+
+Paired measurements and final scaling reports live in `benchmarks/evidence/k3-*.json`.
+Reproduce command acceptance and the complete linear-scaling gate with:
+
+```sh
+.venv/bin/python benchmarks/command_burst.py --entities 1000 \
+  --bootstrap-only --check-targets
+.venv/bin/python benchmarks/command_burst.py --check-scaling
+```
+
+The scaling command runs 100 then 1000 entities in separate sequential processes,
+requires bootstrap acceptance below five seconds at N=1000, and permits at most
+15x periodic wall time and 8–12x journal bytes for 10x entities. It fails on any
+exception, incomplete command cohort or missing authoritative final value.
+Full-memory retention remains intentional and unbounded over run duration;
+the LRU bounds decoded-record count, not the complete required history.
+
+K3 final validation: **527 ordinary tests plus 2 opt-in performance tests pass**;
+coverage is **94.51%** (4854/5136 statements). Ruff lint/formatting and strict mypy
+pass; all three examples run; all 32 runtime modules parse with Python 3.10 grammar.
+The final benchmark, tests, perf tests, lint, type checking and examples were run
+sequentially. Gate logs, coverage and source hashes are retained under
+`benchmarks/evidence/k3-*`. No commit/branch/reset or upstream source write occurred.
+
+Two actual concurrent workspace-local DSH sessions used
+`workbuddy/glm-5.3-flash`, maxTokens=131072, no effort option, and disjoint owned
+scratch. Session `01c7796e-3f8e-4137-86c4-61fab8ba25c2` delivered the lookup/encoding
+second opinion; session `e48c3d1f-f594-40db-af65-6cd790a979b2` delivered six codec/graph
+fixtures. Both completed with exit code zero; root inspected their actual sessions
+and independently reran the six fixtures (**6 passed**). The production relation
+regression is narrower and uses a live minimum-one obligation; the GLM staging
+tests are not counted among the 529 repository tests. Root accepted the existing
+batch-reference reuse suggestion and tested it, rejected a candidate-only cache
+requirement because immutable line identity safely isolates forks, and kept the
+raw/resolved cause columns because an inverse codec was not part of this compatible
+change. Adjudication and root verification are in `k3-glm-review.txt` and
+`k3-glm-tests.txt`; scratch sessions remain under `.k3-work/`.
+
 ## M1 review decisions, updated for M2
 
 1. **Completed in M2:** the earlier M1 subset now includes all requested v0.1

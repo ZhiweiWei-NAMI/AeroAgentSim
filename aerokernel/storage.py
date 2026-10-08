@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from collections.abc import Iterator, Mapping, MutableMapping, Sequence
+from copy import deepcopy
 from typing import Any, Generic, TypeVar, cast, overload
 
 K = TypeVar("K")
@@ -128,7 +130,12 @@ class AppendList(Sequence[T], Generic[T]):
 
 
 class RecordLog(AppendList[Any]):
-    """Private encoded records, expanded lazily for historical cause lookups."""
+    """Encoded prefixes with eight decoded records shared safely across forks.
+
+    Cache keys include the actual immutable line identity, so divergent suffixes
+    at the same index cannot alias. Only private raw trees are cached; diagnostic
+    reads and single-item reads always detach their returned trees.
+    """
 
     def __init__(
         self,
@@ -138,14 +145,48 @@ class RecordLog(AppendList[Any]):
     ) -> None:
         super().__init__(values, count)
         self.budget = budget
+        self._decoded: OrderedDict[tuple[int, int], tuple[bytes, dict[str, Any]]] = (
+            OrderedDict()
+        )
 
     def fork(self) -> RecordLog:
         """Retain this exact prefix of the shared encoded log."""
-        return RecordLog(self.data, self.length, self.budget)
+        result = RecordLog(self.data, self.length, self.budget)
+        result._decoded = self._decoded
+        return result
 
     def freeze_tail(self, line: bytes) -> None:
         """Replace the newly acknowledged private tail with its compact bytes."""
         self.data[self.length - 1] = line
+
+    def _raw(self, index: int) -> dict[str, Any]:
+        from .values import parse_json
+
+        value = super().__getitem__(index)
+        if not isinstance(value, bytes):
+            return cast(dict[str, Any], value)
+        if index < 0:
+            index += self.length
+        key = (index, id(value))
+        cached = self._decoded.get(key)
+        if cached is not None:
+            self._decoded.move_to_end(key)
+            return cached[1]
+        record = cast(dict[str, Any], parse_json(value, self.budget))
+        self._decoded[key] = (value, record)
+        if len(self._decoded) > 8:
+            self._decoded.popitem(last=False)
+        return record
+
+    def item(self, record_index: int, item_index: int) -> dict[str, Any]:
+        """Resolve one item without expanding other facts or returned batches."""
+        from .compact import expand_item
+
+        record = self._raw(record_index)
+        items = record.get("items", [])
+        if not 0 <= item_index < len(items):
+            raise IndexError(item_index)
+        return deepcopy(expand_item(record, item_index))
 
     @overload
     def __getitem__(self, index: int) -> dict[str, Any]: ...
@@ -155,23 +196,10 @@ class RecordLog(AppendList[Any]):
 
     def __getitem__(self, index: int | slice) -> dict[str, Any] | list[dict[str, Any]]:
         from .compact import expand_record
-        from .values import parse_json
 
-        result = super().__getitem__(index)
-        if isinstance(result, list):
-            return [
-                expand_record(
-                    cast(dict[str, Any], parse_json(v, self.budget))
-                    if isinstance(v, bytes)
-                    else v
-                )
-                for v in result
-            ]
-        return expand_record(
-            cast(dict[str, Any], parse_json(result, self.budget))
-            if isinstance(result, bytes)
-            else result
-        )
+        if isinstance(index, slice):
+            return [self[i] for i in range(*index.indices(self.length))]
+        return deepcopy(expand_record(self._raw(index)))
 
     def __iter__(self) -> Iterator[dict[str, Any]]:
         for index in range(self.length):

@@ -62,12 +62,20 @@ class FactRows:
             if stamp is None:
                 stamp = self.intern("stamps", op.acquired, encode(op.acquired))
             assert isinstance(fact, Fact)
+            value = fact.value
+            # Frozen scalar values are already portable and immutable. Only
+            # compound values need recursive tuple/mapping conversion.
+            payload = (
+                value
+                if value is None or type(value) in (bool, int, float, str)
+                else thaw(value)
+            )
             return {
                 "$fact": [
                     partition,
                     entity,
                     field_index,
-                    thaw(fact.value),
+                    payload,
                     stamp,
                     interval,
                     raw,
@@ -106,41 +114,88 @@ def proposal(record: dict[str, Any], item_index: int) -> FactWrite | RetractFact
         raise KernelError("JOURNAL_FACT_ROW", "malformed fact row reference") from exc
 
 
+def expand_item(record: dict[str, Any], index: int) -> dict[str, Any]:
+    """Expand exactly one fact/retraction; ordinary items require no decoding."""
+    item: dict[str, Any] = record["items"][index]
+    if "$fact" not in item and "$retract" not in item:
+        return item
+    at = decode_record(record["instant"])
+    op = proposal(record, index)
+    row: Any = item.get("$fact", item.get("$retract"))
+    version = ItemRef(record["index"], index)
+    if isinstance(op, FactWrite):
+        fact: Fact | Retraction = Fact(
+            op.key,
+            freeze_normalized(cast(Value, op.value)),
+            op.acquired,
+            row[8],
+            at,
+            op.valid,
+            row[0],
+            version,
+        )
+        causes = row[7]
+    else:
+        fact = Retraction(op.key, op.valid, op.reason, at, row[0], version)
+        causes = row[6]
+    return {
+        "kind": "operation",
+        "partition": row[0],
+        "proposal": encode(op),
+        "version": encode(fact),
+        "causes": causes,
+    }
+
+
+def compact_operations(record: dict[str, Any]) -> dict[str, Any]:
+    """Reference every returned proposal once using the existing item codec.
+
+    Receipt/event/lifecycle proposals used to be repeated verbatim in batches.
+    Empty fact tables allow the same standalone expansion for receipt-only waves.
+    """
+    if record.get("type") != "transaction":
+        return record
+    if not any(item.get("kind") == "operation" for item in record["items"]):
+        # Fact-only batches already use item references. Leave their dense
+        # native publication path intact rather than rebuilding every wrapper.
+        return record
+    result = dict(record)
+    result.setdefault("fact_tables", FactRows().tables)
+    batches = []
+    for entry in record["batches"]:
+        partition = entry["partition"]
+        indices = [
+            i
+            for i, item in enumerate(record["items"])
+            if (item.get("kind") == "operation" and item.get("partition") == partition)
+            or (
+                ("$fact" in item or "$retract" in item)
+                and item.get("$fact", item.get("$retract"))[0] == partition
+            )
+        ]
+        batch = entry["batch"]
+        batches.append(
+            {
+                **entry,
+                "batch": {
+                    **batch,
+                    "fields": {
+                        **batch["fields"],
+                        "operations": [{"$item": i} for i in indices],
+                    },
+                },
+            }
+        )
+    result["batches"] = batches
+    return result
+
+
 def expand_record(record: dict[str, Any]) -> dict[str, Any]:
-    """Expand compact rows into detached, ordinary diagnostic record trees."""
+    """Expand compact rows into ordinary diagnostic record trees."""
     if "fact_tables" not in record:
         return record
     result = {key: value for key, value in record.items() if key != "fact_tables"}
-    items = list(record["items"])
-    at = decode_record(record["instant"])
-    for index, item in enumerate(items):
-        if "$fact" not in item and "$retract" not in item:
-            continue
-        op = proposal(record, index)
-        row = item.get("$fact", item.get("$retract"))
-        version = ItemRef(record["index"], index)
-        if isinstance(op, FactWrite):
-            fact: Fact | Retraction = Fact(
-                op.key,
-                freeze_normalized(cast(Value, op.value)),
-                op.acquired,
-                row[8],
-                at,
-                op.valid,
-                row[0],
-                version,
-            )
-            causes = row[7]
-        else:
-            fact = Retraction(op.key, op.valid, op.reason, at, row[0], version)
-            causes = row[6]
-        items[index] = {
-            "kind": "operation",
-            "partition": row[0],
-            "proposal": encode(op),
-            "version": encode(fact),
-            "causes": causes,
-        }
+    items = [expand_item(record, i) for i in range(len(record["items"]))]
     result["items"] = items
     batches = []
     for entry in record["batches"]:

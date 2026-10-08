@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from .codec import decode_record, encode
-from .compact import expand_record
+from .compact import compact_operations, expand_record
 from .control import boundary_control, publish_ingress, reserve
 from .engine import Batch, Partition
 from .errors import KernelError, MicrostepLimitExceeded
@@ -421,12 +421,16 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
         state.cuts.append(Cut(record["index"], instant))
     else:
         raise KernelError("JOURNAL_RECORD", "unknown record type")
-    if canonical_json(
-        expected if "fact_tables" in record else expand_record(expected), self.budget
-    ) != canonical_json(record, self.budget):
-        raise KernelError(
-            "JOURNAL_SEMANTICS", "record differs from normalized legal effects"
-        )
+    actual_bytes = canonical_json(record, self.budget)
+    historical = expected if "fact_tables" in record else expand_record(expected)
+    if canonical_json(historical, self.budget) != actual_bytes:
+        # Both issued encodings are lossless and fully reproduced from validated
+        # proposals: historical inline operations and standalone item references.
+        expected = compact_operations(expected)
+        if canonical_json(expected, self.budget) != actual_bytes:
+            raise KernelError(
+                "JOURNAL_SEMANTICS", "record differs from normalized legal effects"
+            )
     state.records.freeze_tail(canonical_json(expected, self.budget))
     if state.actions.states.writes:
         state.action_snapshots[state.cut.index] = state.actions

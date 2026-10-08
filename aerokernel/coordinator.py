@@ -381,6 +381,9 @@ class Kernel:
             raise KernelError("RUN_FAULTED", "run is closed or faulted")
 
     def _publish(self, state: Store, record: dict[str, Any]) -> None:
+        from .compact import compact_operations
+
+        record = compact_operations(record)
         line = self.journal.append(record, trusted_fact_rows="fact_tables" in record)
         state.records.freeze_tail(line)
         if state.actions.states.writes:
@@ -971,9 +974,7 @@ class Kernel:
     @property
     def records(self) -> tuple[dict[str, Any], ...]:
         """Detached diagnostic record trees; mutating them cannot alter kernel state."""
-        import copy
-
-        return tuple(copy.deepcopy(record) for record in self._store.records)
+        return tuple(self._store.records)
 
     def close(self) -> None:
         """Close engines idempotently and report cleanup errors."""

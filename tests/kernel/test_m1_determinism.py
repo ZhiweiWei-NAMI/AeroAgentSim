@@ -60,7 +60,7 @@ LITERAL_FIRST_GETRENDBITS64 = {
     "c": [11480091421325811636, 12564448299957212986],
 }
 # sha256 of the complete committed toy journal (make_toy(); start; run_until(13ms)).
-TOY_JOURNAL_SHA256 = "1b75a0cc904cd3833d7357a4eddb44ad1a18c34bcee4bf851fcb5e0b57f7413d"
+TOY_JOURNAL_SHA256 = "415bd04e584b14b1da01853f14ad2c43551a5583438a01e7b6495294d45ef164"
 
 CHILD_JOURNAL_SHA = (
     "import hashlib\n"
