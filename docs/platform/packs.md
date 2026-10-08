@@ -177,28 +177,64 @@ consumption and 0.475 utilization over a 20s run.
 ## PX4 scenario and verification
 
 `logistics-px4.yaml` is a 300s, one-carrier PX4/Gazebo scenario using
-`px4_gazebo`. Arm and takeoff are authored commands. Release at 56s, pickup
-dwell and destination dwell target the AeroBench native-parcel schedule near
-60s pickup and 128s delivery. Those are reference expectations, **not observed
-results**. Receipt success and real stopped telemetry gate the transfers;
-timers cannot manufacture them. The Docker test admits explicit reference
-windows (56–75s pickup, 110–150s delivery), later acceptance and offline replay
-equality. It will fail if the native run does not satisfy them. The orchestrator
-must run it against the real backend; Docker was not invoked in this task.
+`px4_gazebo`. The `launch` workflow submits arm at 1s, submits takeoff only
+after that child's succeeded receipt, and records readiness only after the
+takeoff child's succeeded receipt. Failures/rejections enter its failed phase.
+After the separate business workflow accepts delivery, launch submits land
+and awaits actual `ON_GROUND`/disarmed native completion. No flight state is
+written by the workflow: Gazebo/PX4 remains the sole telemetry writer.
+
+Release is at 56s and pickup dwell is 1s. The destination dwell is explicitly
+55s (previously 45s): measured stopped arrival near 72s plus 55s service and
+one 0.5s delivery polling interval aligns delivery with the reference near
+tick 128. This changes the authored facility service duration, not native
+flight accuracy or custody evidence. Both facility points are **aerial handoff
+positions** at ENU z=5m, not ground pads; landing follows acceptance. PX4 goto
+uses the backend's reset-measured vertical datum and world ENU coordinates.
+
+The position radius remains **1.0m in 3D**, with speed **at most 0.5m/s**.
+A native goto receipt alone permits up to 2m/1.5m/s and cannot authorize a
+transfer. Logistics additionally requires its tighter measured position and
+speed gates throughout the facility dwell; leaving either gate resets dwell.
+The communication boundary remains **200ms**, with an explicit
+`control_step_ns: 20000000`: the PX4 adapter reaches each granted boundary
+through ten **20ms native barriers**, five native 4ms physics steps each.
+The energy admission model uses the 200ms publication/command-latching step.
+Intermediate contacts and command updates are accumulated with their original
+native timestamps; final telemetry and receipt/event availability use the
+granted communication boundary. Delayed contacts retain their acquisition
+time. A missed native frontier or a future/invalid native event time faults
+the run before any partial observations are published.
+The generic lockstep adapter gains only an overridable native advance hook;
+SUMO/ns-3 behavior and PX4 configurations without this option retain their
+existing advancement behavior. Exact
+Gazebo timestamps alone did not ensure stable PX4 control in faster 200ms
+batch runs: two full native reruns picked up but never accumulated a complete
+destination dwell, with metre-scale vertical excursions (one touched ground
+while its cached landed telemetry still read `IN_AIR`). Finer barriers keep
+the external controller and physics more closely coupled; tolerances were
+not widened to accept those failed trajectories.
+The Docker regression checks every actual 0.5s polling sample across both
+dwell windows, armed/`IN_AIR` telemetry, five succeeded commands in sequence,
+three explicit custodians, later acceptance, completed landing, and offline
+receipt/telemetry/custody/KPI equality. Reference windows remain 56–75s pickup
+and 110–150s delivery to permit native numerical variation.
 
 ```bash
-"$P5_PYTHON" -m pytest --confcutdir=tests/packs \
-  -o cache_dir=tests/packs/.pytest_cache --basetemp=tests/packs/.pytest_tmp \
-  tests/packs -m docker -q
+export MYPYPATH=../aerokernel
+export PYTHONPATH=src:../aerokernel:.venv/lib/python3.11/site-packages
+for attempt in 1 2; do
+  "$P5_PYTHON" -m pytest --confcutdir=tests/packs \
+    -o cache_dir=/tmp/aas-p5f/pytest-cache \
+    --basetemp=/tmp/aas-p5f/verify-$attempt tests/packs -m docker -q
+done
 ```
 
-For an explicit container-backed run, use the existing adapter runner:
-
-```bash
-"$P5_PYTHON" -m aeroagentsim.adapters.runner \
-  scenarios/packs/logistics-px4.yaml --containers \
-  --journal tests/packs/px4-journal.jsonl
-```
+The test scopes the existing lifecycle helper to `aeroagentsim.job=p5f`;
+containers use the allowlisted `aeroagentsim/px4-gazebo:dev-p2b` image, eight
+CPUs, dynamic loopback ports and ownership-checked removal. The helper's
+production defaults are unchanged. Journals and `measurements.json` are
+preserved under each attempt's test directory.
 
 The full gate completed with **19 passed, 1 Docker test skipped**; two subsequent
 focused tests for competing native-command rejection and dwell reset also
@@ -235,9 +271,10 @@ observations were checked against the SDK and the real cardinality tests;
 speculative kernel defect claims were not adopted. No completed independent
 custody review is claimed. Logs remain in the two `tests/packs/glm-*` folders.
 
-## Platform changes
+## Original P5 platform integration
 
-Two additive hooks were necessary to make the owned pack files reachable
+In the original P5 delivery, two additive hooks were necessary to make the
+owned pack files reachable
 through the existing platform. `platform/plugins.py` adds two lazy builtin
 factory paths (`logistics`, `inspection`); `services/cli.py` adds the `metrics`
 subcommand and lazily calls the pack metrics module. No scheduling, schema,
@@ -249,9 +286,82 @@ It was not cleaned or otherwise edited because that directory is outside P5
 ownership; later runs explicitly used `tests/packs/.hypothesis`, and the pack
 conftest now sets that location before importing pack modules.
 
-## Known failure (orchestrator run, 2026-10-08)
+## P5-F resolution (real PX4/Gazebo, 2026-10-08)
 
-`pytest tests/packs -m docker` (real PX4/Gazebo via `aeroagentsim/px4-gazebo:dev-p2b`)
-fails: `test_logistics_px4_native_parcel_and_replay` never records an `in_transit`
-custody state (`KeyError: 'in_transit'`), i.e. pickup did not complete in the real
-flight. Kinematic logistics scenarios pass. Under investigation.
+The original failure was reproduced against the real image in a full 300s
+run. Arm succeeded at 2.2s, but the fixed takeoff schedule waited until 20s.
+Telemetry showed PX4 auto-disarmed on the ground at 13.2s. The later takeoff
+never reached its completion predicate; pickup goto was rejected at 56.6s
+with `vehicle already has active command`, the order failed at 57s, and
+takeoff finally failed at 200.2s with its native 180s completion timeout.
+The resulting missing `in_transit` state caused the reported KeyError.
+
+The fix combines the receipt-driven launch workflow with the PX4 adapter's
+fine internal control barriers. Kernel code did not need changes.
+`scenarios/packs/generate.py` produces the same repaired
+document; the non-Docker regression compares its PX4 output against the YAML
+without invoking the AeroGraph compiler or writing any generated files.
+The first characterization with the original 45s
+destination dwell measured pickup at 59.5s, handoff at 117s, delivery at
+117.5s and acceptance at 118.5s. The final 55s dwell explicitly aligns this
+service schedule with the requested reference while keeping all physical
+transfer gates.
+
+Measured final-scenario timelines (seconds, equivalent to the reference's
+1s ticks); `handoff` is the actual custody transfer, and `delivered` follows
+one polling interval later:
+
+| Native run | Pickup / carrier custody | Destination custody | Delivered | Business accepted | Pickup error | Destination custody error | Delivery error |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| control1 | 59.5 | 126.5 | 127.0 | 128.0 | 0.121907m | 0.168407m | 0.174746m |
+| control2 | 59.5 | 126.5 | 127.0 | 128.0 | 0.172475m | 0.121831m | 0.118322m |
+
+Errors are distances from actual Gazebo ENU poses to the authored 3D facility
+positions, using the actual last published pose at each polling instant
+(for example, custody at 126.5s reads the native 126.4s pose). Across the 55s
+destination dwell's 0.5s polling samples, maximum errors were
+**0.565705m / 0.497896m**, and maximum observed MAVSDK speeds were
+**0.443716m/s / 0.402087m/s**, respectively. These measured margins support
+retaining the existing 1m and 0.5m/s gates. Native trajectories differ even
+when these custody times match; offline replay reproduces each individual
+recorded run, not a claim of bitwise repeatable PX4 flights.
+Land completed natively at **140.02s / 141.02s**, with succeeded receipt
+availability at **140.2s / 141.2s**, after independent acceptance at 128s.
+
+Two earlier 20ms-publication characterizations also completed both real
+300s flights and live assertions, but produced about 75,662 records per run
+and made replay impractically expensive. Their replay processes were stopped
+after the final internally substepped runs had completed their live gates;
+they are not counted as completed Docker test passes. Internal substeps keep
+the native control granularity without forcing every physical substep into
+the kernel journal. Their journals remain under `step20`/`step20-repeat`.
+
+Final verification: **two real Docker test passes**, each completing 300s
+and an independent engine-free replay with identical telemetry, command
+receipts, historical custody edges and KPIs. End-to-end pytest wall times
+were **479.80s / 467.71s** with both runs launched concurrently. Non-Docker
+packs: **21 passed** (49.66s). Non-Docker adapters: **136 passed** (6.93s),
+including four new substep tests for native event/receipt timestamps, atomic
+publication (including delayed contact acquisition), and immediate failure on
+incorrect frontiers or future/invalid event times.
+`ruff check --no-cache` and strict mypy passed for all 17 targeted source
+files. All job containers were removed through ownership-checked cleanup.
+
+The final artifacts are `/tmp/aas-p5f/control1.txt`,
+`/tmp/aas-p5f/control2.txt`, and each
+`/tmp/aas-p5f/control{1,2}/test_logistics_px4_native_parc0/` directory's
+`journal.jsonl` and `measurements.json`. Non-Docker logs are
+`/tmp/aas-p5f/final-packs.txt` and `/tmp/aas-p5f/final-adapters.txt`; the
+subsequent delayed-contact regression suite is recorded in
+`/tmp/aas-p5f/final-adapters-delayed.txt`.
+
+Two independent GLM audit sessions were actually launched concurrently with
+`workbuddy/glm-5.3-flash`, maxTokens 131072 and no effort setting:
+`b5024001-9de4-4319-ae46-1700cf32b3a2` (receipt/presence review) and
+`3e5b713d-2543-423c-b1e3-38d343579417` (regression cases). Their intermediate
+output was inspected; both exceeded the useful review time and were stopped
+without final reports. Their suggestion to align logistics with the looser
+native goto tolerance was not adopted. Native journals established the actual
+command timing failure and the additional coarse-barrier instability. Logs
+are under `/tmp/aas-p5f/glm-contract`, `/tmp/aas-p5f/glm-tests` and
+`/tmp/aas-p5f/dsh-home`; no completed GLM audit is claimed.

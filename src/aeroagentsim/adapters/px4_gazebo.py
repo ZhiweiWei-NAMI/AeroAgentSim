@@ -73,6 +73,11 @@ class PX4GazeboEngine(LockstepEngine):
                 ),
             ),
         )
+        self.control_step_ns = integer(
+            config.get("control_step_ns", config["step_ns"]), "control_step_ns", 1
+        )
+        if config["step_ns"] % self.control_step_ns:
+            raise ValueError("control step must divide the communication step")
 
     @property
     def pose_clock_mapping(self) -> ClockMapping:
@@ -122,10 +127,46 @@ class PX4GazeboEngine(LockstepEngine):
             )
         quantum = integer(result["physics_step_ns"], "actual physics quantum", 1)
         step = self.partition.timing.step_ns
-        if step is None or step % quantum:
+        if step is None or step % quantum or self.control_step_ns % quantum:
             raise KernelError(
                 "ADAPTER_BOUNDARY", "actual physics step not communication-aligned"
             )
+
+    def advance_native(self, ctx: EngineContext) -> dict[str, Any]:
+        """Couple PX4 at fine native barriers, publish once at the granted boundary.
+
+        A large Gazebo multi_step can outrun asynchronous PX4 feedback. Native
+        contacts and command updates retain their original times; only their
+        availability and the final telemetry use the communication boundary.
+        """
+        boundaries = range(
+            self.confirmed_ns + self.control_step_ns,
+            ctx.now.ns + 1,
+            self.control_step_ns,
+        )
+        if not boundaries or boundaries[-1] != ctx.now.ns:
+            raise KernelError(
+                "ADAPTER_BOUNDARY", "control step misses granted boundary"
+            )
+        contacts: list[dict[str, Any]] = []
+        updates: list[dict[str, Any]] = []
+        result: dict[str, Any]
+        for at in boundaries:
+            result = self.client.request("advance", {"to_sim_ns": at})
+            if integer(result["reached_sim_ns"], "native frontier") != at:
+                raise KernelError("ADAPTER_TIME", "native control step missed frontier")
+            for key, collected in (
+                ("contacts", contacts),
+                ("command_updates", updates),
+            ):
+                for entry in records(result[key]):
+                    when = integer(entry["sim_ns"], "native event time")
+                    if when > at:
+                        raise KernelError(
+                            "ADAPTER_TIME", "native event ahead of control frontier"
+                        )
+                    collected.append(entry)
+        return {**result, "contacts": contacts, "command_updates": updates}
 
     def project(
         self, ctx: EngineContext, result: dict[str, Any], *, bootstrap: bool

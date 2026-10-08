@@ -205,6 +205,13 @@ registry:
     metadata:
       role: observation
       time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+  - id: packs.flight.phase
+    type: aas:Carrier
+    schema:
+      type: string
+    metadata:
+      role: state
+      time_semantics: canonical workflow phase from native command receipts
   messages:
   - id: packs.motion.move_to
     kind: command
@@ -919,7 +926,8 @@ entities:
     - 5.0
     packs.facility.pad_capacity: 1
     packs.facility.locker_capacity: 1
-    packs.facility.dwell_ns: 45000000000
+    # Measured native arrival is near 72s; a 55s stopped handoff targets tick 128.
+    packs.facility.dwell_ns: 55000000000
 - id: restriction-1
   type: agp:type:ActivityRestriction
   facts:
@@ -980,6 +988,10 @@ bindings:
     - e1.px4.armed
     - e1.px4.mode
     - e1.px4.landed
+  - writer: launch
+    type: aas:Carrier
+    fields:
+    - packs.flight.phase
   lifecycle:
   - controller: logistics
     type: oo:Order
@@ -995,19 +1007,99 @@ bindings:
   - writer: logistics
     relation: packs.parcel.custodian
     type: aas:Parcel
-  commands:
-  - schema: adapters.px4_gazebo.arm
-    target: flight
-    at_ns: 1000000000
-    payload:
-      entity: carrier-1
-  - schema: adapters.px4_gazebo.takeoff
-    target: flight
-    at_ns: 20000000000
-    payload:
-      entity: carrier-1
-      altitude_m: 5.0
+  commands: []
 engines:
+  launch:
+    plugin: workflow
+    config:
+      produces:
+      - packs.flight.phase
+      consumes:
+      - packs.order.state
+      emits:
+      - adapters.px4_gazebo.arm
+      - adapters.px4_gazebo.takeoff
+      - adapters.px4_gazebo.land
+      subscribes: []
+      targets:
+      - flight
+      lifecycle: false
+      machines:
+      - entity: carrier-1
+        field: packs.flight.phase
+        initial: waiting
+        states:
+          waiting:
+            transitions:
+            - to: arming
+              timer_ns: 1000000000
+          arming:
+            on_enter:
+            - kind: command
+              id: arm
+              schema: adapters.px4_gazebo.arm
+              target: flight
+              payload:
+                entity: carrier-1
+            transitions:
+            - to: taking_off
+              receipt:
+                status: succeeded
+                children: [arm]
+                policy: all
+            - to: failed
+              receipt: failed
+            - to: failed
+              receipt: rejected
+          taking_off:
+            on_enter:
+            - kind: command
+              id: takeoff
+              schema: adapters.px4_gazebo.takeoff
+              target: flight
+              payload:
+                entity: carrier-1
+                altitude_m: 5.0
+            transitions:
+            - to: ready
+              receipt:
+                status: succeeded
+                children: [takeoff]
+                policy: all
+            - to: failed
+              receipt: failed
+            - to: failed
+              receipt: rejected
+          ready:
+            transitions:
+            - to: landing
+              predicate:
+                entity: order-1
+                field: packs.order.state
+                op: eq
+                value: accepted
+          landing:
+            on_enter:
+            - kind: command
+              id: land
+              schema: adapters.px4_gazebo.land
+              target: flight
+              payload:
+                entity: carrier-1
+            transitions:
+            - to: landed
+              receipt:
+                status: succeeded
+                children: [land]
+                policy: all
+            - to: failed
+              receipt: failed
+            - to: failed
+              receipt: rejected
+          landed:
+            transitions: []
+          failed:
+            transitions: []
   logistics:
     plugin: logistics
     config:
@@ -1149,6 +1241,8 @@ engines:
       host: 127.0.0.1
       port: 19001
       step_ns: 200000000
+      # Five native 4ms steps per internal barrier keep feedback coupled.
+      control_step_ns: 20000000
       clock_id: px4.observation
       pose_clock_id: gazebo.simulation
       pose_mapping_id: gazebo.warmup/v1

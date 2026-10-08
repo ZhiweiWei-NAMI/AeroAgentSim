@@ -659,6 +659,7 @@ def px4(digest: str) -> dict[str, Any]:
     config = copy.deepcopy(native["engines"]["flight"]["config"])
     config["vehicles"] = {"carrier-1": "u1"}
     config["fields"]["position"] = POS
+    config["control_step_ns"] = 20_000_000
     d["engines"]["flight"] = {"plugin": "px4_gazebo", "config": config}
     d["clock_mappings"] = native["clock_mappings"]
     d["bindings"]["rules"] = [
@@ -691,6 +692,7 @@ def px4(digest: str) -> dict[str, Any]:
         accel_m_s2=1.0,
         idle_w=100.0,
         per_m_j=10.0,
+        motion_step_ns=config["step_ns"],
     )
     c["motion"] = {
         "schema": "adapters.px4_gazebo.goto",
@@ -704,21 +706,90 @@ def px4(digest: str) -> dict[str, Any]:
     # transfer time. Pad dwell can only start after actual stopped telemetry.
     for e in d["entities"]:
         if e["id"] == "locker":
-            e["facts"]["packs.facility.dwell_ns"] = 45 * SECOND
-    d["bindings"]["commands"] = [
+            e["facts"]["packs.facility.dwell_ns"] = 55 * SECOND
+    # A long fixed arm-to-takeoff delay expires PX4's preflight auto-disarm.
+    # Use actual successful child receipts; telemetry stays owned by flight.
+    d["bindings"]["commands"] = []
+    phase = "packs.flight.phase"
+    d["registry"]["fields"].append(
         {
-            "schema": "adapters.px4_gazebo.arm",
-            "target": "flight",
-            "at_ns": SECOND,
-            "payload": {"entity": "carrier-1"},
+            "id": phase,
+            "type": "aas:Carrier",
+            "schema": STRING,
+            "metadata": {
+                "role": "state",
+                "time_semantics": "canonical workflow phase from native command receipts",
+            },
+        }
+    )
+    d["bindings"]["rules"].append(
+        {"writer": "launch", "type": "aas:Carrier", "fields": [phase]}
+    )
+    states: dict[str, Any] = {
+        "waiting": {"transitions": [{"to": "arming", "timer_ns": SECOND}]},
+        "ready": {
+            "transitions": [
+                {
+                    "to": "landing",
+                    "predicate": {
+                        "entity": "order-1",
+                        "field": "packs.order.state",
+                        "op": "eq",
+                        "value": "accepted",
+                    },
+                }
+            ]
         },
-        {
-            "schema": "adapters.px4_gazebo.takeoff",
-            "target": "flight",
-            "at_ns": 20 * SECOND,
-            "payload": {"entity": "carrier-1", "altitude_m": 5.0},
+        "landed": {"transitions": []},
+        "failed": {"transitions": []},
+    }
+    for state, action, next_state, params in (
+        ("arming", "arm", "taking_off", {}),
+        ("taking_off", "takeoff", "ready", {"altitude_m": 5.0}),
+        ("landing", "land", "landed", {}),
+    ):
+        states[state] = {
+            "on_enter": [
+                {
+                    "kind": "command",
+                    "id": action,
+                    "schema": f"adapters.px4_gazebo.{action}",
+                    "target": "flight",
+                    "payload": {"entity": "carrier-1", **params},
+                }
+            ],
+            "transitions": [
+                {
+                    "to": next_state,
+                    "receipt": {
+                        "status": "succeeded",
+                        "children": [action],
+                        "policy": "all",
+                    },
+                },
+                {"to": "failed", "receipt": "failed"},
+                {"to": "failed", "receipt": "rejected"},
+            ],
+        }
+    d["engines"]["launch"] = {
+        "plugin": "workflow",
+        "config": {
+            "produces": [phase],
+            "consumes": ["packs.order.state"],
+            "emits": [f"adapters.px4_gazebo.{a}" for a in ("arm", "takeoff", "land")],
+            "subscribes": [],
+            "targets": ["flight"],
+            "lifecycle": False,
+            "machines": [
+                {
+                    "entity": "carrier-1",
+                    "field": phase,
+                    "initial": "waiting",
+                    "states": states,
+                }
+            ],
         },
-    ]
+    }
     d["run"].update(until_ns=300 * SECOND)
     return d
 

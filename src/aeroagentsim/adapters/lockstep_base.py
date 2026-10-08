@@ -293,6 +293,10 @@ class LockstepEngine(SimpleEngine):
     def advance_payload(self, ctx: EngineContext) -> dict[str, Any]:
         return {"to_sim_ns": ctx.now.ns}
 
+    def advance_native(self, ctx: EngineContext) -> dict[str, Any]:
+        """Reach the communication boundary using the backend's native stepping."""
+        return self.client.request("advance", self.advance_payload(ctx))
+
     def project(
         self, ctx: EngineContext, result: dict[str, Any], *, bootstrap: bool
     ) -> None:
@@ -301,7 +305,7 @@ class LockstepEngine(SimpleEngine):
     def integrate(self, view: StateView) -> tuple[object, ...]:
         def integrate_native() -> tuple[object, ...]:
             ctx = EngineContext(view, commands=self.commands)
-            result = self.client.request("advance", self.advance_payload(ctx))
+            result = self.advance_native(ctx)
             reached = integer(result["reached_sim_ns"], "native frontier")
             if reached != view.instant.ns or reached <= self.confirmed_ns:
                 raise KernelError(

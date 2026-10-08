@@ -22,7 +22,7 @@ SCENARIOS = ROOT / "scenarios" / "packs"
 
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
-        "markers", "docker: orchestrator-only real PX4/Gazebo integration"
+        "markers", "docker: opt-in real PX4/Gazebo integration"
     )
 
 
@@ -35,7 +35,7 @@ def pytest_collection_modifyitems(
         if "docker" in item.keywords:
             item.add_marker(
                 pytest.mark.skip(
-                    reason="Docker forbidden for P5 worker; orchestrator opts in with -m docker"
+                    reason="real PX4/Gazebo integration requires -m docker"
                 )
             )
 
