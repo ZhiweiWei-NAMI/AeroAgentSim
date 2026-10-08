@@ -11,19 +11,21 @@ from pathlib import Path
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
-from airfogsim.core.environment import Environment
-from airfogsim.agent.drone import DroneAgent
 
 
 @pytest.fixture
 def env():
-    """Create a test environment."""
+    """Create a test environment (legacy SimPy runtime, imported lazily)."""
+    from airfogsim.core.environment import Environment
+
     return Environment()
 
 
 @pytest.fixture
 def drone_agent(env):
     """Create a test drone agent."""
+    from airfogsim.agent.drone import DroneAgent
+
     return env.create_agent(
         DroneAgent,
         "test_drone",
