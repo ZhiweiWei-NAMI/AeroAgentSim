@@ -22,6 +22,8 @@ def main() -> None:
     run.add_argument("--out", type=Path, default=Path("runs"))
     check = sub.add_parser("replay")
     check.add_argument("run", type=Path)
+    metrics_command = sub.add_parser("metrics")
+    metrics_command.add_argument("run", type=Path)
     serve = sub.add_parser("serve")
     serve.add_argument("--out", type=Path, default=Path("runs"))
     serve.add_argument("--scenario-root", type=Path, default=Path.cwd())
@@ -47,6 +49,10 @@ def main() -> None:
                 }
             )
         )
+    elif args.command == "metrics":
+        from aeroagentsim.packs.metrics import metrics
+
+        print(json.dumps(metrics(args.run), sort_keys=True, indent=2))
     elif args.command == "replay":
         kernel = replay(args.run / "journal.jsonl")
         print(

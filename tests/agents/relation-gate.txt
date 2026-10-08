@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.12, pytest-9.1.1, pluggy-1.6.0 -- /mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python
+hypothesis profile 'default'
+rootdir: /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform
+configfile: pytest.ini
+plugins: hypothesis-6.168.5, cov-7.1.0
+collecting ... collected 1 item
+
+tests/agents/test_decision.py::test_absence_and_granted_relations_retain_knowledge_semantics PASSED [100%]
+
+============================== 1 passed in 5.93s ===============================

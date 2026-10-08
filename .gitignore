@@ -84,3 +84,11 @@ frontend/yarn-error.log*
 =1.21.0
 # dev_plan/
 runs/
+tests/agents/runs/
+tests/agents/frontend-build/
+tests/agents/dsh-home/
+dsh-home/
+.pytest_tmp/
+glm-review/
+glm-cases/
+.glm/

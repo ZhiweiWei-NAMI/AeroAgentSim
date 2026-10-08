@@ -1,0 +1,11 @@
+.deps/
+.mypy-cache/
+.pytest-tmp*/
+dsh-home/
+node_modules
+frontend-build/
+*glm*.txt
+llm-journal.jsonl
+runs/
+*.timestamp-*.mjs
+*.timestamp-*.js

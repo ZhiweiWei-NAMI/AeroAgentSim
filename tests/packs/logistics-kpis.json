@@ -1,0 +1,15 @@
+{
+  "duration_s": 180.0,
+  "logistics": {
+    "accepted": 30,
+    "delivered": 30,
+    "energy_per_parcel_j": 291.6666666666667,
+    "mean_delivery_time_s": 27.0642473286,
+    "on_time_rate": 1.0,
+    "pack": "logistics",
+    "rejected": 0,
+    "released": 30,
+    "utilization": 0.48333333333333334
+  },
+  "run_id": "logistics-small"
+}

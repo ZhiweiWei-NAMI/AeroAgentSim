@@ -225,6 +225,7 @@ def create_app(
         app.mount("/assets", StaticFiles(directory=frontend / "assets"), name="assets")
 
         @app.get("/runs/{path:path}")
+        @app.get("/agents/{path:path}")
         @app.get("/runs")
         @app.get("/")
         def page(path: str = "") -> FileResponse:

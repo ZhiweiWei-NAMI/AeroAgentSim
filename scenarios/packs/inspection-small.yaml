@@ -1,0 +1,448 @@
+format: aeroagentsim.scenario/v1
+id: inspection-small
+registry:
+  snapshot: aerograph.snapshot.json
+  digest: 2e8374426ca802e45aa2eeed7dbea6a8cbbfcf788a0e90eea369562e7066fd01
+  types:
+  - id: aas:Custodian
+    parents:
+    - oo:ModelObject
+    abstract: true
+  - id: aas:Carrier
+    parents:
+    - oo:UAV
+    - aas:Custodian
+    abstract: false
+  - id: aas:Facility
+    parents:
+    - oo:Facility
+    - aas:Custodian
+    abstract: false
+  - id: aas:Parcel
+    parents:
+    - oo:ModelObject
+    abstract: false
+  - id: aas:Camera
+    parents:
+    - oo:ModelObject
+    abstract: false
+  - id: aas:InspectionObservation
+    parents:
+    - oo:ObservationRecord
+    abstract: false
+  fields:
+  - id: packs.velocity
+    type: oo:UAV
+    schema: &id002
+      type: vector
+      length: 3
+      items: &id001
+        type: number
+    metadata:
+      role: observation
+      unit: m/s
+      time_semantics: explicit canonical model computation and half-open validity
+      frame: enu
+      transform_revision: packs.local/v1
+  - id: packs.energy
+    type: oo:UAV
+    schema: *id001
+    metadata:
+      role: observation
+      unit: J
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.camera.attitude_deg
+    type: aas:Camera
+    schema: *id002
+    metadata:
+      role: observation
+      unit: deg
+      time_semantics: explicit canonical model computation and half-open validity
+      frame: enu
+      transform_revision: packs.local/v1
+  - id: packs.camera.horizontal_fov_deg
+    type: aas:Camera
+    schema: *id001
+    metadata:
+      role: observation
+      unit: deg
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.camera.vertical_fov_deg
+    type: aas:Camera
+    schema: *id001
+    metadata:
+      role: observation
+      unit: deg
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.inspection.sample
+    type: aas:InspectionObservation
+    schema: &id006
+      type: record
+      members:
+        model: &id003
+          type: string
+        subject: *id003
+        position_enu_m: *id002
+        attitude_deg: *id002
+        horizontal_fov_deg: *id001
+        vertical_fov_deg: *id001
+        ground_z_m: *id001
+        pose_acquisition:
+          type: record
+          members:
+            clock: *id003
+            mapping: *id003
+            numerator: &id004
+              type: integer
+              minimum: 0
+            denominator:
+              type: integer
+              minimum: 1
+          required:
+          - clock
+          - mapping
+          - numerator
+          - denominator
+          extra: false
+        pose_available_ns: *id004
+        valid:
+          type: boolean
+        footprint:
+          type: array
+          items:
+            type: vector
+            length: 2
+            items: *id001
+          nullable: true
+        reason: *id003
+      required:
+      - model
+      - subject
+      - position_enu_m
+      - attitude_deg
+      - horizontal_fov_deg
+      - vertical_fov_deg
+      - ground_z_m
+      - pose_acquisition
+      - pose_available_ns
+      - valid
+      - footprint
+      extra: false
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.inspection.acquired_ns
+    type: aas:InspectionObservation
+    schema: *id004
+    metadata:
+      role: observation
+      unit: ns
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.inspection.available_ns
+    type: aas:InspectionObservation
+    schema: *id004
+    metadata:
+      role: observation
+      unit: ns
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.inspection.subject
+    type: aas:InspectionObservation
+    schema:
+      type: ref
+      target_type: aas:Carrier
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  messages:
+  - id: packs.motion.move_to
+    kind: command
+    schema:
+      type: record
+      members:
+        entity: *id003
+        target: *id002
+      required:
+      - entity
+      - target
+      extra: false
+    result_schema: &id005
+      type: record
+      members:
+        entity: *id003
+        position: *id002
+        reason: *id003
+      required: []
+      extra: false
+    feedback_schema:
+      type: record
+      members:
+        entity: *id003
+        position: *id002
+        velocity: *id002
+        energy_j: *id001
+      required: []
+      extra: true
+    cancel_support: true
+  - id: packs.motion.hold
+    kind: command
+    schema:
+      type: record
+      members:
+        entity: *id003
+      required:
+      - entity
+      extra: false
+    result_schema: *id005
+    feedback_schema:
+      type: record
+      members:
+        entity: *id003
+        position: *id002
+        velocity: *id002
+        energy_j: *id001
+      required: []
+      extra: true
+    cancel_support: true
+  - id: packs.motion.stop
+    kind: command
+    schema:
+      type: record
+      members:
+        entity: *id003
+      required:
+      - entity
+      extra: false
+    result_schema: *id005
+    feedback_schema:
+      type: record
+      members:
+        entity: *id003
+        position: *id002
+        velocity: *id002
+        energy_j: *id001
+      required: []
+      extra: true
+    cancel_support: true
+  - id: packs.motion.arrived
+    kind: event
+    schema:
+      type: record
+      members:
+        entity: *id003
+        position: *id002
+      required:
+      - entity
+      - position
+      extra: false
+  - id: packs.inspection.observation
+    kind: event
+    schema:
+      type: record
+      members:
+        record: *id003
+        acquired_ns: *id004
+        available_ns: *id004
+        sample: *id006
+      required:
+      - record
+      - acquired_ns
+      - available_ns
+      - sample
+      extra: false
+  relations:
+  - id: packs.inspection.subject
+    source_type: aas:InspectionObservation
+    target_type: aas:Carrier
+    targets_per_source:
+      minimum: 0
+      maximum: 1
+    sources_per_target:
+      minimum: 0
+      maximum: null
+    identity_policy: edge_id
+    metadata:
+      validity: record availability onward
+  field_metadata:
+    he.aircraft.position_enu_m:
+      frame: enu
+      transform_revision: packs.local/v1
+entities:
+- id: carrier-1
+  type: aas:Carrier
+  facts:
+    he.aircraft.position_enu_m:
+    - 0.0
+    - 0.0
+    - 10.0
+    packs.velocity:
+    - 0.0
+    - 0.0
+    - 0.0
+    packs.energy: 100000.0
+- id: camera-1
+  type: aas:Camera
+  facts:
+    packs.camera.attitude_deg:
+    - 0.0
+    - 0.0
+    - 0.0
+    packs.camera.horizontal_fov_deg: 90.0
+    packs.camera.vertical_fov_deg: 90.0
+bindings:
+  rules:
+  - writer: motion
+    type: aas:Carrier
+    fields:
+    - he.aircraft.position_enu_m
+    - packs.velocity
+    - packs.energy
+  - writer: inspection
+    type: aas:Camera
+    fields:
+    - packs.camera.attitude_deg
+    - packs.camera.horizontal_fov_deg
+    - packs.camera.vertical_fov_deg
+  - writer: inspection
+    type: aas:InspectionObservation
+    fields:
+    - packs.inspection.sample
+    - packs.inspection.acquired_ns
+    - packs.inspection.available_ns
+    - packs.inspection.subject
+  lifecycle:
+  - controller: motion
+    type: aas:Carrier
+  - controller: inspection
+    type: aas:Camera
+  - controller: inspection
+    type: aas:InspectionObservation
+  relations:
+  - writer: inspection
+    relation: packs.inspection.subject
+    type: aas:InspectionObservation
+  commands:
+  - schema: packs.motion.move_to
+    target: motion
+    at_ns: 2000000000
+    payload:
+      entity: carrier-1
+      target:
+      - 40.0
+      - 0.0
+      - 10.0
+  - schema: packs.motion.move_to
+    target: motion
+    at_ns: 11000000000
+    payload:
+      entity: carrier-1
+      target:
+      - 0.0
+      - 0.0
+      - 10.0
+engines:
+  motion:
+    plugin: kinematic
+    config:
+      model: enu_point_mass
+      type_id: aas:Carrier
+      position_field: he.aircraft.position_enu_m
+      velocity_field: packs.velocity
+      energy_field: packs.energy
+      max_speed_m_s: 10.0
+      max_accel_m_s2: 5.0
+      energy:
+        capacity_j: 100000.0
+        idle_w: 10.0
+        per_m_j: 2.0
+      commands:
+        move_to: packs.motion.move_to
+        hold: packs.motion.hold
+        stop: packs.motion.stop
+      arrival_schema: packs.motion.arrived
+      arrival_topic: motion-arrivals
+      arrival_payload:
+        entity: $entity
+        position: $position
+      result_fields:
+        entity: entity
+        position: position
+        reason: reason
+      step_ns: 200000000
+      lifecycle: true
+      frame:
+        convention: enu
+        unit: m
+        transform_revision: packs.local/v1
+  inspection:
+    plugin: inspection
+    config:
+      fields:
+        position: he.aircraft.position_enu_m
+        attitude: packs.camera.attitude_deg
+        horizontal_fov: packs.camera.horizontal_fov_deg
+        vertical_fov: packs.camera.vertical_fov_deg
+        sample: packs.inspection.sample
+        acquired: packs.inspection.acquired_ns
+        available: packs.inspection.available_ns
+        subject: packs.inspection.subject
+      produces:
+      - packs.camera.attitude_deg
+      - packs.camera.horizontal_fov_deg
+      - packs.camera.vertical_fov_deg
+      - packs.inspection.sample
+      - packs.inspection.acquired_ns
+      - packs.inspection.available_ns
+      - packs.inspection.subject
+      consumes:
+      - he.aircraft.position_enu_m
+      - packs.camera.attitude_deg
+      - packs.camera.horizontal_fov_deg
+      - packs.camera.vertical_fov_deg
+      subjects:
+      - carrier-1
+      sensors:
+        carrier-1: camera-1
+      record_type: aas:InspectionObservation
+      subject_relation: packs.inspection.subject
+      sample_period_ns: 1000000000
+      availability_delay_ns: 100000000
+      start_ns: 1000000000
+      end_ns: 19000000000
+      ground_z_m: 0.0
+      event_schema: packs.inspection.observation
+      event_topic: inspection-observations
+      targets:
+      - id: origin
+        kind: waypoint
+        point:
+        - 0.0
+        - 0.0
+      - id: destination
+        kind: waypoint
+        point:
+        - 40.0
+        - 0.0
+      - id: corridor
+        kind: area
+        bounds:
+        - -10.0
+        - -10.0
+        - 50.0
+        - 10.0
+presentation:
+- typeId: aas:Carrier
+  positionField: he.aircraft.position_enu_m
+  frame: enu
+  visual:
+    kind: marker
+    color: '#50c9ff'
+    scale: 1.5
+run:
+  seed: 42
+  until_ns: 20000000000
+  advance_ns: 10000000000
+  pacing: fast
+outputs:
+  durability: flush

@@ -1,0 +1,69 @@
+{
+  "duration_s": 20.0,
+  "inspection": {
+    "coverage_pct": 100.0,
+    "invalid_observations": 0,
+    "observations": 19,
+    "pack": "inspection",
+    "targets": {
+      "corridor": {
+        "acquisitions": 19,
+        "coverage_pct": 99.99999999999997,
+        "max_revisit_s": 1.0,
+        "mean_revisit_s": 1.0,
+        "revisit_times_s": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "destination": {
+        "acquisitions": 8,
+        "coverage_pct": 100.0,
+        "max_revisit_s": 1.0,
+        "mean_revisit_s": 1.0,
+        "revisit_times_s": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "origin": {
+        "acquisitions": 9,
+        "coverage_pct": 100.0,
+        "max_revisit_s": 11.0,
+        "mean_revisit_s": 2.25,
+        "revisit_times_s": [
+          1.0,
+          1.0,
+          1.0,
+          11.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
+  },
+  "run_id": "inspection-small"
+}

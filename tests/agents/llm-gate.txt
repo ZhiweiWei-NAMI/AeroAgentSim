@@ -1,0 +1,43 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.12, pytest-9.1.1, pluggy-1.6.0 -- /mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python
+hypothesis profile 'default'
+rootdir: /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform
+configfile: pytest.ini
+plugins: hypothesis-6.168.5, cov-7.1.0
+collecting ... collected 1 item
+
+tests/agents/test_llm.py::test_live_dispatch_sixty_seconds {
+  "model": "glm-5.3-flashx",
+  "simulated_s": 60,
+  "runs": {
+    "llm": {
+      "orders_completed": 10,
+      "mean_completion_time_s": 9.599999999999998,
+      "wall_s": 237.57798514235765,
+      "decisions": 7,
+      "valid_tool_calls": 22,
+      "invalid_tool_calls": 0,
+      "failures": [
+        {
+          "code": "WALL_TIMEOUT",
+          "message": "WALL_TIMEOUT: model wall deadline expired"
+        }
+      ],
+      "model_calls": 7
+    },
+    "deterministic": {
+      "orders_completed": 10,
+      "mean_completion_time_s": 10.66,
+      "wall_s": 21.34508888889104
+    }
+  },
+  "replay": {
+    "model_calls": 0,
+    "wall_s": 42.840569163672626,
+    "same_cut": true,
+    "incomplete": false
+  }
+}
+PASSED
+
+======================== 1 passed in 306.47s (0:05:06) =========================

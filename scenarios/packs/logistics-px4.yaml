@@ -1,0 +1,1202 @@
+format: aeroagentsim.scenario/v1
+id: logistics-px4
+registry:
+  snapshot: aerograph.snapshot.json
+  digest: 2e8374426ca802e45aa2eeed7dbea6a8cbbfcf788a0e90eea369562e7066fd01
+  types:
+  - id: aas:Custodian
+    parents:
+    - oo:ModelObject
+    abstract: true
+  - id: aas:Carrier
+    parents:
+    - oo:UAV
+    - aas:Custodian
+    abstract: false
+  - id: aas:Facility
+    parents:
+    - oo:Facility
+    - aas:Custodian
+    abstract: false
+  - id: aas:Parcel
+    parents:
+    - oo:ModelObject
+    abstract: false
+  - id: aas:Camera
+    parents:
+    - oo:ModelObject
+    abstract: false
+  - id: aas:InspectionObservation
+    parents:
+    - oo:ObservationRecord
+    abstract: false
+  fields:
+  - id: packs.velocity
+    type: oo:UAV
+    schema: &id002
+      type: vector
+      length: 3
+      items: &id001
+        type: number
+    metadata:
+      role: observation
+      unit: m/s
+      time_semantics: explicit canonical model computation and half-open validity
+      frame: enu
+      transform_revision: packs.local/v1
+  - id: packs.energy
+    type: oo:UAV
+    schema: *id001
+    metadata:
+      role: observation
+      unit: J
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.facility.position
+    type: aas:Facility
+    schema: *id002
+    metadata:
+      role: observation
+      unit: m
+      time_semantics: explicit canonical model computation and half-open validity
+      frame: enu
+      transform_revision: packs.local/v1
+  - id: packs.facility.pad_capacity
+    type: aas:Facility
+    schema: &id003
+      type: integer
+      minimum: 0
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.facility.locker_capacity
+    type: aas:Facility
+    schema: *id003
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.facility.dwell_ns
+    type: aas:Facility
+    schema: *id003
+    metadata:
+      role: observation
+      unit: ns
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.restriction.active
+    type: agp:type:ActivityRestriction
+    schema:
+      type: boolean
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.restriction.start_ns
+    type: agp:type:ActivityRestriction
+    schema: *id003
+    metadata:
+      role: observation
+      unit: ns
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.restriction.end_ns
+    type: agp:type:ActivityRestriction
+    schema: *id003
+    metadata:
+      role: observation
+      unit: ns
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.restriction.lower
+    type: agp:type:ActivityRestriction
+    schema: *id002
+    metadata:
+      role: observation
+      unit: m
+      time_semantics: explicit canonical model computation and half-open validity
+      frame: enu
+      transform_revision: packs.local/v1
+  - id: packs.restriction.upper
+    type: agp:type:ActivityRestriction
+    schema: *id002
+    metadata:
+      role: observation
+      unit: m
+      time_semantics: explicit canonical model computation and half-open validity
+      frame: enu
+      transform_revision: packs.local/v1
+  - id: packs.restriction.activities
+    type: agp:type:ActivityRestriction
+    schema:
+      type: array
+      items: &id004
+        type: string
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.order.state
+    type: oo:Order
+    schema: *id004
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.order.review
+    type: oo:Order
+    schema: *id004
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: e1.px4.velocity
+    type: aas:Carrier
+    schema:
+      type: vector
+      items:
+        type: number
+      length: 3
+    metadata:
+      role: observation
+      time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+      frame: enu
+  - id: e1.px4.attitude
+    type: aas:Carrier
+    schema:
+      type: vector
+      items:
+        type: number
+      length: 4
+    metadata:
+      role: observation
+      time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+      frame: enu
+  - id: e1.px4.battery
+    type: aas:Carrier
+    schema:
+      type: record
+      members:
+        remaining_fraction: &id005
+          type: number
+        voltage_v: *id005
+      required:
+      - remaining_fraction
+      - voltage_v
+      extra: false
+    metadata:
+      role: observation
+      time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+  - id: e1.px4.armed
+    type: aas:Carrier
+    schema:
+      type: boolean
+    metadata:
+      role: observation
+      time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+  - id: e1.px4.mode
+    type: aas:Carrier
+    schema:
+      type: string
+    metadata:
+      role: observation
+      time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+  - id: e1.px4.landed
+    type: aas:Carrier
+    schema:
+      type: string
+    metadata:
+      role: observation
+      time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+  messages:
+  - id: packs.motion.move_to
+    kind: command
+    schema:
+      type: record
+      members:
+        entity: *id004
+        target: *id002
+      required:
+      - entity
+      - target
+      extra: false
+    result_schema: &id006
+      type: record
+      members:
+        entity: *id004
+        position: *id002
+        reason: *id004
+      required: []
+      extra: false
+    feedback_schema:
+      type: record
+      members:
+        entity: *id004
+        position: *id002
+        velocity: *id002
+        energy_j: *id001
+      required: []
+      extra: true
+    cancel_support: true
+  - id: packs.motion.hold
+    kind: command
+    schema:
+      type: record
+      members:
+        entity: *id004
+      required:
+      - entity
+      extra: false
+    result_schema: *id006
+    feedback_schema:
+      type: record
+      members:
+        entity: *id004
+        position: *id002
+        velocity: *id002
+        energy_j: *id001
+      required: []
+      extra: true
+    cancel_support: true
+  - id: packs.motion.stop
+    kind: command
+    schema:
+      type: record
+      members:
+        entity: *id004
+      required:
+      - entity
+      extra: false
+    result_schema: *id006
+    feedback_schema:
+      type: record
+      members:
+        entity: *id004
+        position: *id002
+        velocity: *id002
+        energy_j: *id001
+      required: []
+      extra: true
+    cancel_support: true
+  - id: packs.motion.arrived
+    kind: event
+    schema:
+      type: record
+      members:
+        entity: *id004
+        position: *id002
+      required:
+      - entity
+      - position
+      extra: false
+  - id: packs.logistics.transition
+    kind: event
+    schema:
+      type: record
+      members:
+        order: *id004
+        state: *id004
+        carrier:
+          type: string
+          nullable: true
+        release_ns:
+          type: integer
+          minimum: 0
+          nullable: true
+        deadline_ns: *id003
+        energy_start_j: *id001
+        energy_used_j: *id001
+        reason: *id004
+      required:
+      - order
+      - state
+      - carrier
+      - release_ns
+      - deadline_ns
+      extra: false
+  - id: packs.business.decision
+    kind: event
+    schema:
+      type: record
+      members:
+        order: *id004
+        accepted:
+          type: boolean
+      required:
+      - order
+      - accepted
+      extra: false
+  - id: packs.logistics.assign
+    kind: command
+    schema:
+      type: record
+      members:
+        order: *id004
+        carrier: *id004
+      required:
+      - order
+      - carrier
+      extra: false
+    result_schema:
+      type: record
+      members:
+        reason: *id004
+      required: []
+      extra: false
+  - id: packs.logistics.decide
+    kind: command
+    schema:
+      type: record
+      members:
+        order: *id004
+        accepted:
+          type: boolean
+      required:
+      - order
+      - accepted
+      extra: false
+    result_schema:
+      type: record
+      members:
+        reason: *id004
+      required: []
+      extra: false
+  - id: packs.logistics.cancel
+    kind: command
+    schema:
+      type: record
+      members:
+        order: *id004
+      required:
+      - order
+      extra: false
+    result_schema:
+      type: record
+      members:
+        reason: *id004
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.arm
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.disarm
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.goto
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+        position_enu:
+          type: vector
+          length: 3
+          items:
+            type: number
+            minimum: -1.0e+300
+            maximum: 1.0e+300
+        yaw_deg:
+          type: number
+      required:
+      - entity
+      - position_enu
+      - yaw_deg
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.hold
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.land
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.takeoff
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+        altitude_m:
+          type: number
+      required:
+      - entity
+      - altitude_m
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.contact
+    kind: event
+    schema:
+      type: record
+      members:
+        sim_ns:
+          type: integer
+          minimum: 0
+        topic:
+          type: string
+          min_length: 1
+        collision1:
+          type: string
+          min_length: 1
+        collision2:
+          type: string
+          min_length: 1
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        available_ns:
+          type: integer
+          minimum: 0
+      required:
+      - sim_ns
+      - topic
+      - collision1
+      - collision2
+      - available_ns
+      extra: false
+  relations:
+  - id: packs.parcel.custodian
+    source_type: aas:Parcel
+    target_type: aas:Custodian
+    targets_per_source:
+      minimum: 0
+      maximum: 1
+    sources_per_target:
+      minimum: 0
+      maximum: null
+    identity_policy: edge_id
+    metadata:
+      validity: half-open; close before transfer
+  field_metadata:
+    he.aircraft.position_enu_m:
+      frame: enu
+      transform_revision: packs.local/v1
+entities:
+- id: carrier-1
+  type: aas:Carrier
+  facts: {}
+- id: depot
+  type: aas:Facility
+  facts:
+    packs.facility.position:
+    - 0.0
+    - 0.0
+    - 5.0
+    packs.facility.pad_capacity: 1
+    packs.facility.locker_capacity: 1
+    packs.facility.dwell_ns: 1000000000
+- id: locker
+  type: aas:Facility
+  facts:
+    packs.facility.position:
+    - 40.0
+    - 0.0
+    - 5.0
+    packs.facility.pad_capacity: 1
+    packs.facility.locker_capacity: 1
+    packs.facility.dwell_ns: 45000000000
+- id: restriction-1
+  type: agp:type:ActivityRestriction
+  facts:
+    packs.restriction.active: true
+    packs.restriction.start_ns: 0
+    packs.restriction.end_ns: 180000000000
+    packs.restriction.lower:
+    - 100.0
+    - -10.0
+    - 0.0
+    packs.restriction.upper:
+    - 120.0
+    - 10.0
+    - 30.0
+    packs.restriction.activities:
+    - parcel_transport
+- id: order-1
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-1
+  type: aas:Parcel
+  facts: {}
+bindings:
+  rules:
+  - writer: logistics
+    type: oo:Order
+    fields:
+    - packs.order.state
+  - writer: logistics
+    type: aas:Facility
+    fields:
+    - packs.facility.position
+    - packs.facility.pad_capacity
+    - packs.facility.locker_capacity
+    - packs.facility.dwell_ns
+  - writer: logistics
+    type: agp:type:ActivityRestriction
+    fields:
+    - packs.restriction.active
+    - packs.restriction.start_ns
+    - packs.restriction.end_ns
+    - packs.restriction.lower
+    - packs.restriction.upper
+    - packs.restriction.activities
+  - writer: acceptance
+    type: oo:Order
+    fields:
+    - packs.order.review
+  - writer: flight
+    type: aas:Carrier
+    fields:
+    - he.aircraft.position_enu_m
+    - e1.px4.velocity
+    - e1.px4.attitude
+    - e1.px4.battery
+    - e1.px4.armed
+    - e1.px4.mode
+    - e1.px4.landed
+  lifecycle:
+  - controller: logistics
+    type: oo:Order
+  - controller: logistics
+    type: aas:Parcel
+  - controller: logistics
+    type: aas:Facility
+  - controller: logistics
+    type: agp:type:ActivityRestriction
+  - controller: flight
+    type: aas:Carrier
+  relations:
+  - writer: logistics
+    relation: packs.parcel.custodian
+    type: aas:Parcel
+  commands:
+  - schema: adapters.px4_gazebo.arm
+    target: flight
+    at_ns: 1000000000
+    payload:
+      entity: carrier-1
+  - schema: adapters.px4_gazebo.takeoff
+    target: flight
+    at_ns: 20000000000
+    payload:
+      entity: carrier-1
+      altitude_m: 5.0
+engines:
+  logistics:
+    plugin: logistics
+    config:
+      fields:
+        position: he.aircraft.position_enu_m
+        velocity: e1.px4.velocity
+        energy: e1.px4.battery
+        state: packs.order.state
+        facility_position: packs.facility.position
+        pad_capacity: packs.facility.pad_capacity
+        locker_capacity: packs.facility.locker_capacity
+        dwell_ns: packs.facility.dwell_ns
+        restriction_active: packs.restriction.active
+        restriction_start_ns: packs.restriction.start_ns
+        restriction_end_ns: packs.restriction.end_ns
+        restriction_lower: packs.restriction.lower
+        restriction_upper: packs.restriction.upper
+        restriction_activities: packs.restriction.activities
+      produces:
+      - packs.order.state
+      - packs.facility.position
+      - packs.facility.pad_capacity
+      - packs.facility.locker_capacity
+      - packs.facility.dwell_ns
+      - packs.restriction.active
+      - packs.restriction.start_ns
+      - packs.restriction.end_ns
+      - packs.restriction.lower
+      - packs.restriction.upper
+      - packs.restriction.activities
+      consumes:
+      - he.aircraft.position_enu_m
+      - e1.px4.velocity
+      - e1.px4.battery
+      - packs.facility.position
+      - packs.facility.pad_capacity
+      - packs.facility.locker_capacity
+      - packs.facility.dwell_ns
+      - packs.restriction.active
+      - packs.restriction.start_ns
+      - packs.restriction.end_ns
+      - packs.restriction.lower
+      - packs.restriction.upper
+      - packs.restriction.activities
+      fleet:
+      - carrier-1
+      facilities:
+      - depot
+      - locker
+      restrictions:
+      - restriction-1
+      restriction_type: agp:type:ActivityRestriction
+      activity: parcel_transport
+      orders:
+      - order: order-1
+        parcel: parcel-1
+        source: depot
+        destination: locker
+        deadline_ns: 250000000000
+      arrivals:
+        mode: scheduled
+        times_ns:
+        - 56000000000
+      policy: deterministic
+      poll_ns: 500000000
+      arrival_radius_m: 1.0
+      stopped_speed_m_s: 0.5
+      energy:
+        source: battery_fraction
+        speed_m_s: 2.0
+        accel_m_s2: 1.0
+        idle_w: 100.0
+        per_m_j: 10.0
+        reserve_j: 500.0
+        motion_step_ns: 200000000
+        capacity_j: 1000000.0
+      custody_relation: packs.parcel.custodian
+      event_schema: packs.logistics.transition
+      event_topic: logistics-events
+      decision_schema: packs.business.decision
+      decision_topic: business-decisions
+      commands:
+        assign: packs.logistics.assign
+        decide: packs.logistics.decide
+        cancel: packs.logistics.cancel
+      motion:
+        schema: adapters.px4_gazebo.goto
+        target: flight
+        entity_key: entity
+        target_key: position_enu
+        extra_payload:
+          yaw_deg: 90.0
+  acceptance:
+    plugin: workflow
+    config:
+      produces:
+      - packs.order.review
+      consumes:
+      - packs.order.state
+      emits:
+      - packs.business.decision
+      subscribes:
+      - logistics-events
+      targets:
+      - business-decisions
+      lifecycle: false
+      correlation_key: order
+      machines:
+      - entity: order-1
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-1
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-1
+                accepted: true
+  flight:
+    plugin: px4_gazebo
+    config:
+      image: aeroagentsim/px4-gazebo:dev-p2b
+      host: 127.0.0.1
+      port: 19001
+      step_ns: 200000000
+      clock_id: px4.observation
+      pose_clock_id: gazebo.simulation
+      pose_mapping_id: gazebo.warmup/v1
+      mapping_id: px4.elapsed/v1
+      event_topic: native-events
+      vehicles:
+        carrier-1: u1
+      fields:
+        position: he.aircraft.position_enu_m
+        velocity: e1.px4.velocity
+        attitude: e1.px4.attitude
+        battery: e1.px4.battery
+        armed: e1.px4.armed
+        mode: e1.px4.mode
+        landed: e1.px4.landed
+      reset:
+        world: default
+        warmup: 10000000000
+        vehicles:
+        - id: u1
+          model: x500
+          spawn:
+          - 0
+          - 0
+          - 0.2
+          - 0
+          - 0
+          - 0
+presentation:
+- typeId: aas:Carrier
+  positionField: he.aircraft.position_enu_m
+  frame: enu
+  visual:
+    kind: marker
+    color: '#50c9ff'
+    scale: 1.5
+run:
+  seed: 42
+  until_ns: 300000000000
+  advance_ns: 10000000000
+  pacing: fast
+outputs:
+  durability: flush
+clock_mappings:
+- clock_id: canonical
+  mapping_id: canonical
+- clock_id: px4.observation
+  mapping_id: px4.elapsed/v1
+- clock_id: gazebo.simulation
+  mapping_id: gazebo.warmup/v1
+  offset_ns: -10000000000

@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.12, pytest-9.1.1, pluggy-1.6.0 -- /mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python
+hypothesis profile 'default'
+rootdir: /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform
+configfile: pytest.ini
+plugins: hypothesis-6.168.5, cov-7.1.0
+collecting ... collected 21 items / 1 deselected / 20 selected
+
+tests/agents/test_decision.py::test_malformed_retry_grants_recording_and_zero_call_replay PASSED [  5%]
+tests/agents/test_decision.py::test_failure_budgets_never_synthesize_commands[timeout-WALL_TIMEOUT] PASSED [ 10%]
+tests/agents/test_decision.py::test_failure_budgets_never_synthesize_commands[tokens-TOKEN_BUDGET] PASSED [ 15%]
+tests/agents/test_decision.py::test_failure_budgets_never_synthesize_commands[calls-CALL_BUDGET] PASSED [ 20%]
+tests/agents/test_decision.py::test_failure_budgets_never_synthesize_commands[retries-RETRY_BUDGET] PASSED [ 25%]
+tests/agents/test_decision.py::test_failure_budgets_never_synthesize_commands[rounds-ROUND_BUDGET] PASSED [ 30%]
+tests/agents/test_decision.py::test_failure_budgets_never_synthesize_commands[prompt-PROMPT_BUDGET] PASSED [ 35%]
+tests/agents/test_decision.py::test_command_and_receipt_correlate_to_replayed_state PASSED [ 40%]
+tests/agents/test_decision.py::test_compiled_tools_and_argument_authority PASSED [ 45%]
+tests/agents/test_decision.py::test_ungranted_predicate_fails_binding PASSED [ 50%]
+tests/agents/test_decision.py::test_events_receipts_predicate_transitions_and_wait_preserve_time PASSED [ 55%]
+tests/agents/test_decision.py::test_absence_and_granted_relations_retain_knowledge_semantics PASSED [ 60%]
+tests/agents/test_provider.py::test_success_shape_and_usage PASSED       [ 65%]
+tests/agents/test_provider.py::test_from_config_defaults_and_env PASSED  [ 70%]
+tests/agents/test_provider.py::test_malformed_bodies_map_to_protocol PASSED [ 75%]
+tests/agents/test_provider.py::test_http_status_is_distinct PASSED       [ 80%]
+tests/agents/test_provider.py::test_wall_timeout_on_stalled_server PASSED [ 85%]
+tests/agents/test_provider.py::test_transport_error_on_refused_connection PASSED [ 90%]
+tests/agents/test_provider.py::test_provider_protocol_and_deadline_bounds_request PASSED [ 95%]
+tests/agents/test_provider.py::test_no_env_leakage_between_calls PASSED  [100%]
+
+====================== 20 passed, 1 deselected in 56.27s =======================

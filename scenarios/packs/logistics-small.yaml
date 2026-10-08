@@ -1,0 +1,1803 @@
+format: aeroagentsim.scenario/v1
+id: logistics-small
+registry:
+  snapshot: aerograph.snapshot.json
+  digest: 2e8374426ca802e45aa2eeed7dbea6a8cbbfcf788a0e90eea369562e7066fd01
+  types:
+  - id: aas:Custodian
+    parents:
+    - oo:ModelObject
+    abstract: true
+  - id: aas:Carrier
+    parents:
+    - oo:UAV
+    - aas:Custodian
+    abstract: false
+  - id: aas:Facility
+    parents:
+    - oo:Facility
+    - aas:Custodian
+    abstract: false
+  - id: aas:Parcel
+    parents:
+    - oo:ModelObject
+    abstract: false
+  - id: aas:Camera
+    parents:
+    - oo:ModelObject
+    abstract: false
+  - id: aas:InspectionObservation
+    parents:
+    - oo:ObservationRecord
+    abstract: false
+  fields:
+  - id: packs.velocity
+    type: oo:UAV
+    schema: &id002
+      type: vector
+      length: 3
+      items: &id001
+        type: number
+    metadata:
+      role: observation
+      unit: m/s
+      time_semantics: explicit canonical model computation and half-open validity
+      frame: enu
+      transform_revision: packs.local/v1
+  - id: packs.energy
+    type: oo:UAV
+    schema: *id001
+    metadata:
+      role: observation
+      unit: J
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.facility.position
+    type: aas:Facility
+    schema: *id002
+    metadata:
+      role: observation
+      unit: m
+      time_semantics: explicit canonical model computation and half-open validity
+      frame: enu
+      transform_revision: packs.local/v1
+  - id: packs.facility.pad_capacity
+    type: aas:Facility
+    schema: &id003
+      type: integer
+      minimum: 0
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.facility.locker_capacity
+    type: aas:Facility
+    schema: *id003
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.facility.dwell_ns
+    type: aas:Facility
+    schema: *id003
+    metadata:
+      role: observation
+      unit: ns
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.restriction.active
+    type: agp:type:ActivityRestriction
+    schema:
+      type: boolean
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.restriction.start_ns
+    type: agp:type:ActivityRestriction
+    schema: *id003
+    metadata:
+      role: observation
+      unit: ns
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.restriction.end_ns
+    type: agp:type:ActivityRestriction
+    schema: *id003
+    metadata:
+      role: observation
+      unit: ns
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.restriction.lower
+    type: agp:type:ActivityRestriction
+    schema: *id002
+    metadata:
+      role: observation
+      unit: m
+      time_semantics: explicit canonical model computation and half-open validity
+      frame: enu
+      transform_revision: packs.local/v1
+  - id: packs.restriction.upper
+    type: agp:type:ActivityRestriction
+    schema: *id002
+    metadata:
+      role: observation
+      unit: m
+      time_semantics: explicit canonical model computation and half-open validity
+      frame: enu
+      transform_revision: packs.local/v1
+  - id: packs.restriction.activities
+    type: agp:type:ActivityRestriction
+    schema:
+      type: array
+      items: &id004
+        type: string
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.order.state
+    type: oo:Order
+    schema: *id004
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  - id: packs.order.review
+    type: oo:Order
+    schema: *id004
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: explicit canonical model computation and half-open validity
+  messages:
+  - id: packs.motion.move_to
+    kind: command
+    schema:
+      type: record
+      members:
+        entity: *id004
+        target: *id002
+      required:
+      - entity
+      - target
+      extra: false
+    result_schema: &id005
+      type: record
+      members:
+        entity: *id004
+        position: *id002
+        reason: *id004
+      required: []
+      extra: false
+    feedback_schema:
+      type: record
+      members:
+        entity: *id004
+        position: *id002
+        velocity: *id002
+        energy_j: *id001
+      required: []
+      extra: true
+    cancel_support: true
+  - id: packs.motion.hold
+    kind: command
+    schema:
+      type: record
+      members:
+        entity: *id004
+      required:
+      - entity
+      extra: false
+    result_schema: *id005
+    feedback_schema:
+      type: record
+      members:
+        entity: *id004
+        position: *id002
+        velocity: *id002
+        energy_j: *id001
+      required: []
+      extra: true
+    cancel_support: true
+  - id: packs.motion.stop
+    kind: command
+    schema:
+      type: record
+      members:
+        entity: *id004
+      required:
+      - entity
+      extra: false
+    result_schema: *id005
+    feedback_schema:
+      type: record
+      members:
+        entity: *id004
+        position: *id002
+        velocity: *id002
+        energy_j: *id001
+      required: []
+      extra: true
+    cancel_support: true
+  - id: packs.motion.arrived
+    kind: event
+    schema:
+      type: record
+      members:
+        entity: *id004
+        position: *id002
+      required:
+      - entity
+      - position
+      extra: false
+  - id: packs.logistics.transition
+    kind: event
+    schema:
+      type: record
+      members:
+        order: *id004
+        state: *id004
+        carrier:
+          type: string
+          nullable: true
+        release_ns:
+          type: integer
+          minimum: 0
+          nullable: true
+        deadline_ns: *id003
+        energy_start_j: *id001
+        energy_used_j: *id001
+        reason: *id004
+      required:
+      - order
+      - state
+      - carrier
+      - release_ns
+      - deadline_ns
+      extra: false
+  - id: packs.business.decision
+    kind: event
+    schema:
+      type: record
+      members:
+        order: *id004
+        accepted:
+          type: boolean
+      required:
+      - order
+      - accepted
+      extra: false
+  - id: packs.logistics.assign
+    kind: command
+    schema:
+      type: record
+      members:
+        order: *id004
+        carrier: *id004
+      required:
+      - order
+      - carrier
+      extra: false
+    result_schema:
+      type: record
+      members:
+        reason: *id004
+      required: []
+      extra: false
+  - id: packs.logistics.decide
+    kind: command
+    schema:
+      type: record
+      members:
+        order: *id004
+        accepted:
+          type: boolean
+      required:
+      - order
+      - accepted
+      extra: false
+    result_schema:
+      type: record
+      members:
+        reason: *id004
+      required: []
+      extra: false
+  - id: packs.logistics.cancel
+    kind: command
+    schema:
+      type: record
+      members:
+        order: *id004
+      required:
+      - order
+      extra: false
+    result_schema:
+      type: record
+      members:
+        reason: *id004
+      required: []
+      extra: false
+  relations:
+  - id: packs.parcel.custodian
+    source_type: aas:Parcel
+    target_type: aas:Custodian
+    targets_per_source:
+      minimum: 0
+      maximum: 1
+    sources_per_target:
+      minimum: 0
+      maximum: null
+    identity_policy: edge_id
+    metadata:
+      validity: half-open; close before transfer
+  field_metadata:
+    he.aircraft.position_enu_m:
+      frame: enu
+      transform_revision: packs.local/v1
+entities:
+- id: carrier-1
+  type: aas:Carrier
+  facts:
+    he.aircraft.position_enu_m:
+    - 0.0
+    - 0.0
+    - 10.0
+    packs.velocity:
+    - 0.0
+    - 0.0
+    - 0.0
+    packs.energy: 100000.0
+- id: carrier-2
+  type: aas:Carrier
+  facts:
+    he.aircraft.position_enu_m:
+    - 0.0
+    - 0.0
+    - 10.0
+    packs.velocity:
+    - 0.0
+    - 0.0
+    - 0.0
+    packs.energy: 100000.0
+- id: carrier-3
+  type: aas:Carrier
+  facts:
+    he.aircraft.position_enu_m:
+    - 0.0
+    - 0.0
+    - 10.0
+    packs.velocity:
+    - 0.0
+    - 0.0
+    - 0.0
+    packs.energy: 100000.0
+- id: carrier-4
+  type: aas:Carrier
+  facts:
+    he.aircraft.position_enu_m:
+    - 0.0
+    - 0.0
+    - 10.0
+    packs.velocity:
+    - 0.0
+    - 0.0
+    - 0.0
+    packs.energy: 100000.0
+- id: carrier-5
+  type: aas:Carrier
+  facts:
+    he.aircraft.position_enu_m:
+    - 0.0
+    - 0.0
+    - 10.0
+    packs.velocity:
+    - 0.0
+    - 0.0
+    - 0.0
+    packs.energy: 100000.0
+- id: depot
+  type: aas:Facility
+  facts:
+    packs.facility.position:
+    - 0.0
+    - 0.0
+    - 10.0
+    packs.facility.pad_capacity: 5
+    packs.facility.locker_capacity: 30
+    packs.facility.dwell_ns: 1000000000
+- id: locker
+  type: aas:Facility
+  facts:
+    packs.facility.position:
+    - 40.0
+    - 0.0
+    - 10.0
+    packs.facility.pad_capacity: 5
+    packs.facility.locker_capacity: 30
+    packs.facility.dwell_ns: 1000000000
+- id: restriction-1
+  type: agp:type:ActivityRestriction
+  facts:
+    packs.restriction.active: true
+    packs.restriction.start_ns: 0
+    packs.restriction.end_ns: 180000000000
+    packs.restriction.lower:
+    - 100.0
+    - -10.0
+    - 0.0
+    packs.restriction.upper:
+    - 120.0
+    - 10.0
+    - 30.0
+    packs.restriction.activities:
+    - parcel_transport
+- id: order-1
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-1
+  type: aas:Parcel
+  facts: {}
+- id: order-2
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-2
+  type: aas:Parcel
+  facts: {}
+- id: order-3
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-3
+  type: aas:Parcel
+  facts: {}
+- id: order-4
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-4
+  type: aas:Parcel
+  facts: {}
+- id: order-5
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-5
+  type: aas:Parcel
+  facts: {}
+- id: order-6
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-6
+  type: aas:Parcel
+  facts: {}
+- id: order-7
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-7
+  type: aas:Parcel
+  facts: {}
+- id: order-8
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-8
+  type: aas:Parcel
+  facts: {}
+- id: order-9
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-9
+  type: aas:Parcel
+  facts: {}
+- id: order-10
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-10
+  type: aas:Parcel
+  facts: {}
+- id: order-11
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-11
+  type: aas:Parcel
+  facts: {}
+- id: order-12
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-12
+  type: aas:Parcel
+  facts: {}
+- id: order-13
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-13
+  type: aas:Parcel
+  facts: {}
+- id: order-14
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-14
+  type: aas:Parcel
+  facts: {}
+- id: order-15
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-15
+  type: aas:Parcel
+  facts: {}
+- id: order-16
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-16
+  type: aas:Parcel
+  facts: {}
+- id: order-17
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-17
+  type: aas:Parcel
+  facts: {}
+- id: order-18
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-18
+  type: aas:Parcel
+  facts: {}
+- id: order-19
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-19
+  type: aas:Parcel
+  facts: {}
+- id: order-20
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-20
+  type: aas:Parcel
+  facts: {}
+- id: order-21
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-21
+  type: aas:Parcel
+  facts: {}
+- id: order-22
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-22
+  type: aas:Parcel
+  facts: {}
+- id: order-23
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-23
+  type: aas:Parcel
+  facts: {}
+- id: order-24
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-24
+  type: aas:Parcel
+  facts: {}
+- id: order-25
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-25
+  type: aas:Parcel
+  facts: {}
+- id: order-26
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-26
+  type: aas:Parcel
+  facts: {}
+- id: order-27
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-27
+  type: aas:Parcel
+  facts: {}
+- id: order-28
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-28
+  type: aas:Parcel
+  facts: {}
+- id: order-29
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-29
+  type: aas:Parcel
+  facts: {}
+- id: order-30
+  type: oo:Order
+  facts:
+    packs.order.state: unreleased
+    packs.order.review: pending
+- id: parcel-30
+  type: aas:Parcel
+  facts: {}
+bindings:
+  rules:
+  - writer: motion
+    type: aas:Carrier
+    fields:
+    - he.aircraft.position_enu_m
+    - packs.velocity
+    - packs.energy
+  - writer: logistics
+    type: oo:Order
+    fields:
+    - packs.order.state
+  - writer: logistics
+    type: aas:Facility
+    fields:
+    - packs.facility.position
+    - packs.facility.pad_capacity
+    - packs.facility.locker_capacity
+    - packs.facility.dwell_ns
+  - writer: logistics
+    type: agp:type:ActivityRestriction
+    fields:
+    - packs.restriction.active
+    - packs.restriction.start_ns
+    - packs.restriction.end_ns
+    - packs.restriction.lower
+    - packs.restriction.upper
+    - packs.restriction.activities
+  - writer: acceptance
+    type: oo:Order
+    fields:
+    - packs.order.review
+  lifecycle:
+  - controller: motion
+    type: aas:Carrier
+  - controller: logistics
+    type: oo:Order
+  - controller: logistics
+    type: aas:Parcel
+  - controller: logistics
+    type: aas:Facility
+  - controller: logistics
+    type: agp:type:ActivityRestriction
+  relations:
+  - writer: logistics
+    relation: packs.parcel.custodian
+    type: aas:Parcel
+  commands: []
+engines:
+  motion:
+    plugin: kinematic
+    config:
+      model: enu_point_mass
+      type_id: aas:Carrier
+      position_field: he.aircraft.position_enu_m
+      velocity_field: packs.velocity
+      energy_field: packs.energy
+      max_speed_m_s: 10.0
+      max_accel_m_s2: 5.0
+      energy:
+        capacity_j: 100000.0
+        idle_w: 10.0
+        per_m_j: 2.0
+      commands:
+        move_to: packs.motion.move_to
+        hold: packs.motion.hold
+        stop: packs.motion.stop
+      arrival_schema: packs.motion.arrived
+      arrival_topic: motion-arrivals
+      arrival_payload:
+        entity: $entity
+        position: $position
+      result_fields:
+        entity: entity
+        position: position
+        reason: reason
+      step_ns: 200000000
+      lifecycle: true
+      frame:
+        convention: enu
+        unit: m
+        transform_revision: packs.local/v1
+  logistics:
+    plugin: logistics
+    config:
+      fields:
+        position: he.aircraft.position_enu_m
+        velocity: packs.velocity
+        energy: packs.energy
+        state: packs.order.state
+        facility_position: packs.facility.position
+        pad_capacity: packs.facility.pad_capacity
+        locker_capacity: packs.facility.locker_capacity
+        dwell_ns: packs.facility.dwell_ns
+        restriction_active: packs.restriction.active
+        restriction_start_ns: packs.restriction.start_ns
+        restriction_end_ns: packs.restriction.end_ns
+        restriction_lower: packs.restriction.lower
+        restriction_upper: packs.restriction.upper
+        restriction_activities: packs.restriction.activities
+      produces:
+      - packs.order.state
+      - packs.facility.position
+      - packs.facility.pad_capacity
+      - packs.facility.locker_capacity
+      - packs.facility.dwell_ns
+      - packs.restriction.active
+      - packs.restriction.start_ns
+      - packs.restriction.end_ns
+      - packs.restriction.lower
+      - packs.restriction.upper
+      - packs.restriction.activities
+      consumes:
+      - he.aircraft.position_enu_m
+      - packs.velocity
+      - packs.energy
+      - packs.facility.position
+      - packs.facility.pad_capacity
+      - packs.facility.locker_capacity
+      - packs.facility.dwell_ns
+      - packs.restriction.active
+      - packs.restriction.start_ns
+      - packs.restriction.end_ns
+      - packs.restriction.lower
+      - packs.restriction.upper
+      - packs.restriction.activities
+      fleet:
+      - carrier-1
+      - carrier-2
+      - carrier-3
+      - carrier-4
+      - carrier-5
+      facilities:
+      - depot
+      - locker
+      restrictions:
+      - restriction-1
+      restriction_type: agp:type:ActivityRestriction
+      activity: parcel_transport
+      orders:
+      - order: order-1
+        parcel: parcel-1
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-2
+        parcel: parcel-2
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-3
+        parcel: parcel-3
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-4
+        parcel: parcel-4
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-5
+        parcel: parcel-5
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-6
+        parcel: parcel-6
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-7
+        parcel: parcel-7
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-8
+        parcel: parcel-8
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-9
+        parcel: parcel-9
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-10
+        parcel: parcel-10
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-11
+        parcel: parcel-11
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-12
+        parcel: parcel-12
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-13
+        parcel: parcel-13
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-14
+        parcel: parcel-14
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-15
+        parcel: parcel-15
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-16
+        parcel: parcel-16
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-17
+        parcel: parcel-17
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-18
+        parcel: parcel-18
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-19
+        parcel: parcel-19
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-20
+        parcel: parcel-20
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-21
+        parcel: parcel-21
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-22
+        parcel: parcel-22
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-23
+        parcel: parcel-23
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-24
+        parcel: parcel-24
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-25
+        parcel: parcel-25
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-26
+        parcel: parcel-26
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-27
+        parcel: parcel-27
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-28
+        parcel: parcel-28
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-29
+        parcel: parcel-29
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      - order: order-30
+        parcel: parcel-30
+        source: depot
+        destination: locker
+        deadline_ns: 150000000000
+      arrivals:
+        mode: poisson
+        rate_per_s: 0.4
+        start_ns: 0
+      policy: deterministic
+      poll_ns: 500000000
+      arrival_radius_m: 0.1
+      stopped_speed_m_s: 0.01
+      energy:
+        source: joules
+        speed_m_s: 10.0
+        accel_m_s2: 5.0
+        idle_w: 10.0
+        per_m_j: 2.0
+        reserve_j: 500.0
+        motion_step_ns: 200000000
+      custody_relation: packs.parcel.custodian
+      event_schema: packs.logistics.transition
+      event_topic: logistics-events
+      decision_schema: packs.business.decision
+      decision_topic: business-decisions
+      commands:
+        assign: packs.logistics.assign
+        decide: packs.logistics.decide
+        cancel: packs.logistics.cancel
+      motion:
+        schema: packs.motion.move_to
+        target: motion
+        entity_key: entity
+        target_key: target
+        extra_payload: {}
+  acceptance:
+    plugin: workflow
+    config:
+      produces:
+      - packs.order.review
+      consumes:
+      - packs.order.state
+      emits:
+      - packs.business.decision
+      subscribes:
+      - logistics-events
+      targets:
+      - business-decisions
+      lifecycle: false
+      correlation_key: order
+      machines:
+      - entity: order-1
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-1
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-1
+                accepted: true
+      - entity: order-2
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-2
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-2
+                accepted: true
+      - entity: order-3
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-3
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-3
+                accepted: true
+      - entity: order-4
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-4
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-4
+                accepted: true
+      - entity: order-5
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-5
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-5
+                accepted: true
+      - entity: order-6
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-6
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-6
+                accepted: true
+      - entity: order-7
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-7
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-7
+                accepted: true
+      - entity: order-8
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-8
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-8
+                accepted: true
+      - entity: order-9
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-9
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-9
+                accepted: true
+      - entity: order-10
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-10
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-10
+                accepted: true
+      - entity: order-11
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-11
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-11
+                accepted: true
+      - entity: order-12
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-12
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-12
+                accepted: true
+      - entity: order-13
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-13
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-13
+                accepted: true
+      - entity: order-14
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-14
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-14
+                accepted: true
+      - entity: order-15
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-15
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-15
+                accepted: true
+      - entity: order-16
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-16
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-16
+                accepted: true
+      - entity: order-17
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-17
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-17
+                accepted: true
+      - entity: order-18
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-18
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-18
+                accepted: true
+      - entity: order-19
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-19
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-19
+                accepted: true
+      - entity: order-20
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-20
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-20
+                accepted: true
+      - entity: order-21
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-21
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-21
+                accepted: true
+      - entity: order-22
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-22
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-22
+                accepted: true
+      - entity: order-23
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-23
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-23
+                accepted: true
+      - entity: order-24
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-24
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-24
+                accepted: true
+      - entity: order-25
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-25
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-25
+                accepted: true
+      - entity: order-26
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-26
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-26
+                accepted: true
+      - entity: order-27
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-27
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-27
+                accepted: true
+      - entity: order-28
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-28
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-28
+                accepted: true
+      - entity: order-29
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-29
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-29
+                accepted: true
+      - entity: order-30
+        field: packs.order.review
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: packs.logistics.transition
+              guard:
+                entity: order-30
+                field: packs.order.state
+                op: eq
+                value: delivered
+          reviewing:
+            transitions:
+            - to: decided
+              timer_ns: 1000000000
+          decided:
+            transitions: []
+            on_enter:
+            - kind: emit
+              schema: packs.business.decision
+              topic: business-decisions
+              payload:
+                order: order-30
+                accepted: true
+presentation:
+- typeId: aas:Carrier
+  positionField: he.aircraft.position_enu_m
+  frame: enu
+  visual:
+    kind: marker
+    color: '#50c9ff'
+    scale: 1.5
+run:
+  seed: 42
+  until_ns: 180000000000
+  advance_ns: 10000000000
+  pacing: fast
+outputs:
+  durability: flush
