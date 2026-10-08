@@ -1,0 +1,82 @@
+[
+  {
+    "name": "base",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":0,\"id\":1,\"op\":\"hello\",\"payload\":{}}\n",
+    "valid": true
+  },
+  {
+    "name": "id9007199254740993",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":0,\"id\":9007199254740993,\"op\":\"hello\",\"payload\":{}}\n",
+    "valid": true
+  },
+  {
+    "name": "payload_nested_string_with_escaped_bracket",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":0,\"id\":1,\"op\":\"hello\",\"payload\":{\"text\":\"}]\"}}\n",
+    "valid": true
+  },
+  {
+    "name": "duplicate_id_key",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":0,\"id\":1,\"id\":1,\"op\":\"hello\",\"payload\":{}}\n",
+    "valid": false
+  },
+  {
+    "name": "major_true",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":true,\"minor\":0,\"id\":1,\"op\":\"hello\",\"payload\":{}}\n",
+    "valid": false
+  },
+  {
+    "name": "id_true",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":0,\"id\":true,\"op\":\"hello\",\"payload\":{}}\n",
+    "valid": false
+  },
+  {
+    "name": "id0",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":0,\"id\":0,\"op\":\"hello\",\"payload\":{}}\n",
+    "valid": false
+  },
+  {
+    "name": "minor1",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":1,\"id\":1,\"op\":\"hello\",\"payload\":{}}\n",
+    "valid": false
+  },
+  {
+    "name": "protocolwrong",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v2\",\"major\":1,\"minor\":0,\"id\":1,\"op\":\"hello\",\"payload\":{}}\n",
+    "valid": false
+  },
+  {
+    "name": "payloadnull",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":0,\"id\":1,\"op\":\"hello\",\"payload\":null}\n",
+    "valid": false
+  },
+  {
+    "name": "payloadarray",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":0,\"id\":1,\"op\":\"hello\",\"payload\":[]}\n",
+    "valid": false
+  },
+  {
+    "name": "missingid",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":0,\"op\":\"hello\",\"payload\":{}}\n",
+    "valid": false
+  },
+  {
+    "name": "extrafield",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":0,\"id\":1,\"op\":\"hello\",\"payload\":{},\"extra\":1}\n",
+    "valid": false
+  },
+  {
+    "name": "nan_payload",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":0,\"id\":1,\"op\":\"hello\",\"payload\":{\"x\":NaN}}\n",
+    "valid": false
+  },
+  {
+    "name": "exponent_1e999_payload",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":0,\"id\":1,\"op\":\"hello\",\"payload\":{\"x\":1e999}}\n",
+    "valid": false
+  },
+  {
+    "name": "missinglf",
+    "frame": "{\"protocol\":\"aeroagentsim.sumo/v1\",\"major\":1,\"minor\":0,\"id\":1,\"op\":\"hello\",\"payload\":{}}",
+    "valid": false
+  }
+]
