@@ -46,6 +46,7 @@ from aeroagentsim.utils.logging_config import get_logger
 logger = get_logger(__name__)
 
 class Environment(simpy.Environment):
+    """Deprecated v1 SimPy runtime; see docs/platform/MIGRATION-v1.md."""
     def __init__(self, initial_time=0, visual_interval=5, logger=None, **kwargs):
         super().__init__(initial_time=initial_time)
         self.id = f"env_{uuid.uuid4().hex[:8]}"

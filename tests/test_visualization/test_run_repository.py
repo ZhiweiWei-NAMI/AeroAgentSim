@@ -44,3 +44,41 @@ def test_delete_active_run_is_rejected(tmp_path):
     assert raised is not None
     assert "Active run cannot be deleted" in str(raised)
     assert (repository.runs_dir / manifest.run_id).exists()
+
+
+def test_live_log_tail_waits_for_complete_append(tmp_path):
+    """Reading during a split append must wait, then return the real record."""
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    repository = RunRepository(base_dir=str(tmp_path / "runtime"))
+    path = tmp_path / "events.jsonl"
+    attempted, finished = Event(), Event()
+
+    def read():
+        attempted.set()
+        try:
+            return repository._tail_jsonl(path, 1)
+        finally:
+            finished.set()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with repository._lock:
+            path.write_text('{"message":')
+            future = pool.submit(read)
+            assert attempted.wait(1)
+            assert not finished.wait(0.05)
+            with path.open("a") as stream:
+                stream.write('"complete"}\n')
+        assert future.result(timeout=1) == [{"message": "complete"}]
+
+
+def test_completed_invalid_log_is_not_skipped(tmp_path):
+    import json
+    import pytest
+
+    repository = RunRepository(base_dir=str(tmp_path / "runtime"))
+    path = tmp_path / "events.jsonl"
+    path.write_text('{"message":\n')
+    with pytest.raises(json.JSONDecodeError):
+        repository._tail_jsonl(path, 1)

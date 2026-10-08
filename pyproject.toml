@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "aeroagentsim"
 version = "1.1.1"
-description = "Discrete-event simulation and developer workbench for low-altitude autonomous systems"
+description = "General-purpose ontology-driven multi-engine simulation platform"
 readme = "README.md"
 authors = [
     {name = "Zhiwei Wei", email = "2311769@tongji.edu.cn"}
@@ -16,29 +16,14 @@ dependencies = ["aerokernel>=0.1.0.dev0,<0.2", "pyyaml>=6"]
 [project.optional-dependencies]
 server = ["fastapi>=0.115", "uvicorn>=0.30"]
 legacy = [
-    "simpy",
-    "numpy",
-    "pint",
-    "python-dotenv",
-    "gunicorn", # 用于生产 Docker
-    "requests",
-    "pandas",
-    "openai",
-    "tqdm",
-    "fastapi",
-    "tabulate",
-    "pydantic",
-    "uvicorn[standard]", # 添加 uvicorn, [standard] 包含性能优化库
-    "pyyaml" # 用于YAML配置文件解析
+    "simpy>=4", "numpy", "pint", "python-dotenv", "requests", "pandas",
+    "matplotlib",
+    "openai", "tqdm", "fastapi>=0.115", "tabulate", "pydantic>=2",
+    "uvicorn>=0.30",
 ]
-
 dev = [
-    "pytest",
-    "pytest-cov",
-    "pytest-asyncio",
-    "black",
-    "flake8",
-    "pip-tools"
+    "pytest", "hypothesis", "pytest-cov", "pytest-asyncio", "httpx",
+    "ruff", "mypy", "types-PyYAML",
 ]
 docs = [
     "sphinx>=4.0",
@@ -59,3 +44,15 @@ include = ["aeroagentsim", "aeroagentsim.*", "airfogsim"]
 [project.scripts]
 airfogsim = "aeroagentsim.cli:main"
 aeroagentsim = "aeroagentsim.services.cli:main"
+
+# Editable local development: pip install -e ../aerokernel -e '.[server]'.
+# PEP 508 has no portable relative path. The version requirement above is
+# satisfied by that sibling checkout; release publication requires a published
+# matching kernel, or an immutable VCS URL configured by the release owner.
+[project.entry-points."aeroagentsim.engines"]
+px4_gazebo = "aeroagentsim.adapters.px4_gazebo:build"
+sumo = "aeroagentsim.adapters.sumo:build"
+ns3 = "aeroagentsim.adapters.ns3:build"
+
+[tool.uv.sources]
+aerokernel = {path = "../aerokernel", editable = true}

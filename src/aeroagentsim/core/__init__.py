@@ -7,6 +7,10 @@ AirFogSim核心模块初始化文件
 作者: zhiwei wei 2311769@tongji.edu.cn
 """
 
+from aeroagentsim import _require_legacy
+
+_require_legacy()
+
 from .agent import Agent, AgentMeta
 from .workflow import Workflow, WorkflowMeta
 from .task import Task

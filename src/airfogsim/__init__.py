@@ -5,10 +5,20 @@ kept working by exposing the same public exports and forwarding submodule
 resolution through the new package path.
 """
 
+import sys
+import warnings
 from importlib import abc, import_module, util
 from pathlib import Path
-import sys
 
+from aeroagentsim import _require_legacy
+
+_require_legacy()
+warnings.warn(
+    "airfogsim is deprecated; use aeroagentsim.Simulation. "
+    "See docs/platform/MIGRATION-v1.md",
+    DeprecationWarning,
+    stacklevel=2,
+)
 _compat_dir = Path(__file__).resolve().parent
 _compat_prefix = __name__
 _primary_prefix = "aeroagentsim"
@@ -45,7 +55,9 @@ class _AliasFinder(abc.MetaPathFinder):
             is_package=target_spec.submodule_search_locations is not None,
         )
         if spec is not None and target_spec.submodule_search_locations is not None:
-            spec.submodule_search_locations = list(target_spec.submodule_search_locations)
+            spec.submodule_search_locations = list(
+                target_spec.submodule_search_locations
+            )
         return spec
 
 
@@ -68,14 +80,10 @@ for module_name, module in list(sys.modules.items()):
         sys.modules.setdefault(legacy_name, module)
 
 Environment = _primary.Environment
-AirFogSimEnv = getattr(_primary, "AirFogSimEnv", Environment)
-AeroAgentSimEnv = getattr(_primary, "AeroAgentSimEnv", Environment)
-__version__ = getattr(_primary, "__version__", "0.0.0")
-__all__ = getattr(
-    _primary,
-    "__all__",
-    ["Environment", "AirFogSimEnv", "AeroAgentSimEnv", "__version__"],
-)
+AirFogSimEnv = Environment
+AeroAgentSimEnv = Environment
+__version__ = _primary.__version__
+__all__ = ["AeroAgentSimEnv", "AirFogSimEnv", "Environment", "__version__"]
 
 
 def __getattr__(name):

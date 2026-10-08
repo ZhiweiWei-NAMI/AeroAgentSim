@@ -1,11 +1,31 @@
 AeroAgentSim Documentation
 ==========================
 
-AeroAgentSim combines a discrete-event simulation core with a developer workbench for configuration editing, workflow inspection, runtime validation, and execution analysis.
+AeroAgentSim is an ontology-driven, multi-engine simulation platform built on
+an independent aerokernel. New applications use ``aeroagentsim.Simulation``.
+The retained SimPy runtime is deprecated and requires the ``legacy`` extra.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents
+   :caption: Kernel platform
+
+   platform/CAPABILITIES
+   platform/MIGRATION-v1
+   platform/PLAN
+   platform/p1
+   platform/aerograph-compiler
+   platform/adapters
+   platform/px4-backend
+   platform/sumo-backend
+   platform/ns3-backend
+   platform/packs
+   platform/agents
+   platform/frontend
+   platform/studio
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Historical v1 references (legacy extra)
 
    getting_started
    user_guide
@@ -14,51 +34,27 @@ AeroAgentSim combines a discrete-event simulation core with a developer workbenc
    guides/index
    contributing
 
-Overview
---------
+Install and run
+---------------
 
-AeroAgentSim is organized around these developer workflows:
-
-* define and inspect agents, components, tasks, and workflows
-* build configs from builtin and custom definitions
-* validate drafts and run preflight checks
-* launch runs and observe structured logs plus live spatial snapshots
-* replay trajectories and inspect stored run artifacts
-
-.. image:: images/workflow-studio-relation-graph.png
-   :alt: Workflow Studio relation graph with auto layout and interactive canvas controls
-   :width: 100%
-
-Quick Start
------------
+Use Python 3.10+ and compatible sibling kernel source. The P1 scenario also
+requires its pinned AeroGraph source; consult INSTALL.md for alternate layouts
+and a portable snapshot-based pack example.
 
 .. code-block:: bash
 
-   python -m venv aeroagentsim_env
-   source aeroagentsim_env/bin/activate
-   pip install -e .[dev]
-   python -c "import aeroagentsim, airfogsim; from aeroagentsim import Environment; from airfogsim import Environment as LegacyEnvironment; print(Environment.__name__, Environment is LegacyEnvironment)"
+   pip install -e ../aerokernel -e '.[server]'
+   aeroagentsim run scenarios/p1-slice.yaml --out runs
+   aeroagentsim replay runs/<printed-directory>
+   aeroagentsim serve --help
 
-Key Docs
---------
+Each run pins its scenario and registry, records an append-only kernel journal,
+and exposes a committed viewer feed. Replay executes no engines or model calls.
+The capability checklist distinguishes verified results and pending migration
+work; source presence does not establish that a native integration is complete.
 
-* :doc:`getting_started`
-* :doc:`user_guide`
-* :doc:`api/index`
-* :doc:`examples`
-
-Runtime Model
--------------
-
-* Config snapshots are stored under ``runtime/aeroagentsim/configs/``
-* Each launched run receives its own ``run_id``
-* Run artifacts are stored under ``runtime/aeroagentsim/runs/<run_id>/``
-* Run start performs runtime preflight; ``warning`` entries remain visible and ``error`` entries block launch
-* The workbench uses REST for control and WebSocket for live updates
-* Custom ``agent`` / ``task`` / ``workflow`` definitions are file-backed under ``registry/aeroagentsim/``
-
-Indices and tables
-==================
+Indices
+-------
 
 * :ref:`genindex`
 * :ref:`modindex`

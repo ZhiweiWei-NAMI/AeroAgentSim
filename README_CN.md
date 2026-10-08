@@ -1,194 +1,155 @@
-<a href="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9"><img src="https://joss.theoj.org/papers/3bf61975c569326131f0bf169bfe4db9/status.svg" alt="JOSS 状态"></a>
-[![DOI](https://zenodo.org/badge/735258267.svg)](https://doi.org/10.5281/zenodo.15779000)
-
 # AeroAgentSim
 
-<div align="center">
-<img src="src/aeroagentsim/docs/img/logo.png" alt="AeroAgentSim Logo" width="300">
-</div>
+AeroAgentSim 是通用、本体驱动的多引擎仿真平台，以独立的 **aerokernel**
+包提供执行语义。实体类型、状态、关系、谓词和事件由注册表描述；DES 工作流、
+固定步长模型、PX4/Gazebo、SUMO、ns-3 等锁步外部模拟器可共同运行，也可选择
+实时节奏。航空器、道路车辆、无线网络与业务记录属于场景；内核没有无人机专用假设。
 
-AeroAgentSim 是一个面向低空自主系统的离散事件仿真平台与开发者工作台，适用于工作流建模、算法验证、运行调试、轨迹回放和执行链路分析。
+AeroAgentSim 是最终平台，AeroBench 是能力迁移来源。旧 SimPy 代码仍保留，
+通过 `legacy` extra 使用并已标记弃用。当前尚不能宣布 AeroBench 全部退役，
+以[能力清单](docs/platform/CAPABILITIES.md)中的逐项证据为准。
 
-当前仓库、工作台与源码分发统一使用 `AeroAgentSim` 与 `aeroagentsim`。已有项目仍可继续导入 `airfogsim`，下文引用部分则对应以 `AirFogSim` 题目发表的 JOSS 论文。
-
-[English Version](README.md)
-
-## 项目概览
-
-- 推荐开发安装方式：`pip install -e .[dev]`
-- 推荐 Python 导入方式：`from aeroagentsim import Environment`
-- 当前工作台页面：`Overview`、`Class Catalog`、`Workflow Studio`、`Run Console`、`Trajectories & Logs`
-- 运行产物目录：`runtime/aeroagentsim/`
-- 自定义 `agent` / `task` / `workflow` 文件主源目录：`registry/aeroagentsim/`
-- 工作台内置工作流聚焦于可运行的 inspection、charging、logistics、image-processing 场景
-
-## 开发者工作台
-
-当前 AeroAgentSim 工作台面向配置、校验、执行与运行验证：
-
-1. `Overview`：当前配置版本、最近一次运行、校验状态
-2. `Class Catalog`：内置与自定义元数据以及兼容关系查询
-3. `Workflow Studio`：表格/表单编辑与 workflow-agent-state 关系图
-4. `Run Console`：启动、暂停、恢复、重置、实时日志、关键路径和实时 2D 地图
-5. `Trajectories & Logs`：按 `run_id` 查看历史轨迹与结构化日志
-
-可视化层保持轻量、明确、易验证：
-
-- 基于 Leaflet 的 2D 空间视图
-- `simulation_plane` 模式使用 `CRS.Simple`
-- `geo_osm` 模式使用地理坐标
-- 实时 marker 展示 workflow、task、状态和近期日志上下文
-- 历史轨迹以 2D polyline 形式回放
-
-`Workflow Studio` 以表格和表单作为持久化配置主源。关系图是交互式检查画布，支持自动布局、画布内滚轮或触控板缩放、空白背景拖拽平移，以及节点拖拽微调布局。
-
-![Workflow Studio 关系图](docs/images/workflow-studio-relation-graph.png)
-
-当前工作台还提供：
-
-- 全局 `zh-CN` / `en-US` 界面切换
-- `Workflow Studio` 页内 `Validate`
-- 集中式 `Review / Validate` 草稿一致性与运行前校验
-- 内置定义与自定义定义的统一浏览
-- 基于 `run_id` 的结构化日志与轨迹检查
-
-## Registry 与运行时
-
-自定义定义采用文件主源：
-
-- `registry/aeroagentsim/agents/`
-- `registry/aeroagentsim/tasks/`
-- `registry/aeroagentsim/workflows/`
-
-配置快照与运行时产物分层存放：
-
-- 配置快照：`runtime/aeroagentsim/configs/`
-- 运行目录：`runtime/aeroagentsim/runs/<run_id>/`
-- 常见子目录：`logs/`、`workflow_states/`、`trajectories/`、`spatial/`、`metrics/`
-
-运行启动前会执行 runtime preflight。像默认 `create_airspace` 或 `create_frequency` 注入被跳过这样的兼容性发现，会保留为 `warning`；只有 preflight `errors` 才会阻塞 `POST /api/runs`。
-
-## 开发配置
-
-本地开发和自动化最常用的公开环境变量如下：
-
-- 后端存储：
-  - `AEROAGENTSIM_RUNTIME_DIR`
-  - `AEROAGENTSIM_REGISTRY_DIR`
-  - `AEROAGENTSIM_DB_PATH`
-  - `AEROAGENTSIM_LOG_LEVEL`
-- 后端兼容别名：
-  - `AIRFOGSIM_RUNTIME_DIR`
-  - `AIRFOGSIM_REGISTRY_DIR`
-  - `AIRFOGSIM_DB_PATH`
-  - `AIRFOGSIM_LOG_LEVEL`
-- 前端地址：
-  - `REACT_APP_API_BASE_URL`
-  - `REACT_APP_WS_BASE_URL`
-  - `REACT_APP_ENABLE_MOCK_FALLBACK`
-- 示例依赖：
-  - `OPENWEATHERMAP_API_KEY`：天气相关示例
-  - `SUMO_HOME`：SUMO 交通工作流
-
-## 安装
-
-针对当前仓库和开发者工作台，推荐直接从源码安装：
-
-```bash
-python -m venv aeroagentsim_env
-source aeroagentsim_env/bin/activate
-pip install -e .[dev]
+```text
+AeroGraph 类型 / 字段 / 关系 / 谓词定义（只读）
+                    ↓ 编译与固定 registry snapshot
+场景 YAML → Simulation / RunSession → 独立 aerokernel
+                    ├─ kinematic / workflow / records / predicates
+                    ├─ PX4+Gazebo / SUMO / ns-3 适配器
+                    ├─ logistics / inspection 领域包
+                    └─ decision：授权观测 → 有类型命令
+                                  ↓ 原子提交 / action receipts
+                           journal / run storage
+                                  ↓ 无引擎 replay / committed feed
+                       CLI / HTTP+SSE / Three.js viewer / Studio
 ```
 
-如果还需要文档构建能力：
+字段写入者、生命周期控制者和时钟映射均由场景明确绑定。查看器刷新不改变物理状态
+或仿真时间；缺失观测保持缺失，模拟器与模型错误保留真实失败。
+
+## 快速开始
+
+使用 Python 3.10+（本轮测试为 3.11），并在同级准备兼容的 `../aerokernel`：
 
 ```bash
-pip install -e ".[dev,docs]"
+python3.11 -m venv --symlinks .venv
+source .venv/bin/activate
+pip install -e ../aerokernel -e '.[server]'
+aeroagentsim run scenarios/p1-slice.yaml --out runs
+aeroagentsim replay runs/<run输出的目录名>
+aeroagentsim serve --help
 ```
 
-### 安装后验证
-
-```bash
-python -c "import aeroagentsim, airfogsim; from aeroagentsim import Environment; from airfogsim import Environment as LegacyEnvironment; print(Environment.__name__, Environment is LegacyEnvironment)"
-```
-
-## 快速示例
+依赖与匹配的 AeroGraph 源码已就绪时，22 秒 kinematic 场景在实测主机上可在两分钟内
+运行完成，本轮实测 8.02 秒。下载和安装时间另计。场景目前固定
+`/mnt/data2/weizhiwei/AeroGraph` 与谓词源码摘要；其他目录布局需要修改自己的场景副本，
+指向真实路径。[INSTALL.md](INSTALL.md)说明 snapshot 方式与不依赖本地 AeroGraph
+源码的 logistics 示例，不用演示注册表替代真实来源。
 
 ```python
-from aeroagentsim import Environment
-from aeroagentsim.agent import DroneAgent
-from aeroagentsim.component import ChargingComponent, MoveToComponent
-from aeroagentsim.workflow.inspection import create_inspection_workflow
+from aeroagentsim import Simulation
+from aeroagentsim.scenario import load_scenario
 
-env = Environment()
-
-drone = env.create_agent(
-    DroneAgent,
-    "drone1",
-    properties={
-        "position": [10, 10, 0],
-        "battery_level": 100,
-    },
-)
-
-drone.add_component(MoveToComponent(env, drone))
-drone.add_component(ChargingComponent(env, drone))
-
-workflow = create_inspection_workflow(
-    env,
-    drone,
-    [
-        (10, 10, 50),
-        (100, 40, 80),
-        (180, 120, 60),
-        (10, 10, 0),
-    ],
-)
-
-workflow.start()
-env.run(until=600)
+sim = Simulation(load_scenario("scenarios/p1-slice.yaml"))
+try:
+    sim.start()
+    view = sim.run_until(1_000_000_000)
+    print(view.instant.ns)
+finally:
+    sim.close()
 ```
 
-## 启动工作台
+## 外部模拟器与 LLM
+
+PX4/Gazebo、SUMO、ns-3 分别在容器中运行。示例使用本地主机实测镜像
+`aeroagentsim/px4-gazebo:dev-p2b`、`aeroagentsim/sumo:dev-p3a-5`、
+`aeroagentsim/ns3:dev-p4b`；这不意味着镜像已发布到公共仓库。
+构建与运行条件见 [PX4](containers/px4-gazebo/README.md)、
+[SUMO](containers/sumo/README.md)、[ns-3](containers/ns3/README.md)。
 
 ```bash
-python main_for_visualization.py --backend-port 8002 --frontend-port 3000
+python -m aeroagentsim.adapters.runner scenarios/adapters/px4-flight.yaml \
+  --containers --flight --journal /tmp/flight-new.jsonl
+python -m aeroagentsim.adapters.runner scenarios/adapters/sumo-grid.yaml \
+  --containers --journal /tmp/traffic-new.jsonl
+python -m aeroagentsim.adapters.runner scenarios/adapters/coupled.yaml \
+  --containers --journal /tmp/coupled-new.jsonl
 ```
 
-## API 概览
+journal 路径必须是新文件。分发包已注册三种适配器入口；普通 `Simulation` 可发现
+工厂，adapter runner 另负责容器生命周期和飞行动作序列。
+[适配器说明](docs/platform/adapters.md)明确原生结果、时间、lag 与 freshness。
+原生适配器尚不支持取消，耦合示例尚未建模 UAV 与道路车辆接触。
 
-当前工作台的主要接口分组如下：
+LLM 通过 stdlib HTTP provider 与有类型、受授权范围限制的工具进行决策。
+修改 `scenarios/agents/llm-dispatch.yaml` 的副本以配置真实 endpoint/model 后使用
+`aeroagentsim run`。原示例连接本地 8788 端口。凭据由环境变量提供；内核不导入
+模型 SDK。离线决策期间仿真时间不推进，replay 不调用模型。
+[Agent 文档](docs/platform/agents.md)包含真实会话和超时记录。
 
-- `GET /api/catalog/agents|components|tasks|workflows`
-- `GET /api/catalog/compatibility`
-- `GET/POST /api/registry/{kind}`
-- `GET/PUT/DELETE /api/registry/{kind}/{definition_id}`
-- `POST /api/registry/{kind}/{definition_id}/validate`
-- `GET/PUT /api/configs/{config_id}`
-- `GET/POST /api/configs/{config_id}/graph`
-- `POST /api/configs/{config_id}/preflight`
-- `POST /api/configs/{config_id}/validate`
-- `GET /api/health`
-- `POST /api/runtime/reset`
-- `GET /api/runs`
-- `POST /api/runs`
-- `POST /api/runs/{run_id}/pause|resume|reset`
-- `DELETE /api/runs/{run_id}`
-- `GET /api/runs/{run_id}/status|logs|trajectories|spatial`
+## 查看器与 Studio
 
-## 文档入口
+```bash
+cd frontend
+npm ci
+npm run build
+cd ..
+aeroagentsim serve --out runs --scenario-root . --frontend frontend/dist
+```
 
-- [安装指南](INSTALL.md)
-- [文档导航](DOCUMENTATION_GUIDE.md)
-- [文档中心](docs/README.md)
-- [系统架构](src/aeroagentsim/docs/cn/architecture.md)
+打开 `http://127.0.0.1:8002/runs`，查看 live/replay、任意实体、时间戳事实、关系、
+命令和回执。Three.js 对显示做插值，检查器保留原始记录。决策页面为
+`/agents/<run-id>?mode=replay`；`npm run dev` 提供的 `/viewer-demo` 明确是人工编写的示例。
+城市资产需要可核验的 source/mesh pack。
+
+P7b 正在集成描述符驱动的 Studio/authoring。保留的旧 Workflow Studio 仍使用旧版
+`/api` 后端。可选服务见 [Studio](docs/platform/studio.md)，启动 `serve` 时设置
+`AEROAGENTSIM_STUDIO_ROOT` 与 `AEROAGENTSIM_AEROGRAPH_ROOT`；P7b 验证仍在进行。
+本轮不宣称完整 AeroBench City Studio、OSM 导入与地形/道路/建筑编辑
+已经完成；也不宣称已达到 60 Hz 城市场景验收。
+
+## 实测性能
+
+| Engine / workload | Simulation | Wall time | RTF | Evidence / limits |
+| --- | ---: | ---: | ---: | --- |
+| Kinematic + workflow P1 (5 movers, 10 orders) | 22 s | 8.02 s | 2.74 | Fresh P8 clean install; compile/run/index/close, flush WAL; replay complete. |
+| PX4/Gazebo arm → takeoff → goto → land | 27.2 s | 6.42 s | 4.24 | Component-job real container run; startup 13.77 s excluded; replay passed. |
+| SUMO, 50 vehicles | 60 s | 24.47 s | 2.45 | Component-job real container run; startup 2.22 s excluded; replay passed. |
+| PX4 + SUMO + ns-3, 29 packet deliveries | 30 s | 19.22 s | 1.56 | Component-job real container run; startup 16.99 s excluded; replay passed. |
+| ns-3 standalone, 5 nodes / 2,400 datagrams | 61 s | 4.18 s | 14.58 | Native radio run: 430 deliveries, 1,970 application timeouts. |
+
+RTF = 仿真秒数 / 墙钟秒数。原生适配器测量包括 reset 后协调与 journal 成本，
+不含启动；本轮 CLI 测量包含编译、bootstrap、index 和 close。不同负载与精度不能
+作为直接性能排名，也不能推断大规模舰队性能。数据来自
+[adapter measurements](tests/adapters/measurements.json)、
+[ns-3 measurements](containers/ns3/verification/metrics.json) 和
+[P8 验证记录](docs/platform/CAPABILITIES.md#p8-verification)。
+另有 [P1 1,000 实体测量](tests/platform/measurements.json)。
+
+## AeroGraph 与当前边界
+
+编译器读取七类目录中的类型、字段、关系与语义信息；调研源码包含 970 种实体类型。
+它固定选定切片的继承、schema、单位/坐标系、review disposition 和 provenance，
+不运行 AeroGraph 构建器，也不把概念 ownership 自动变成运行时写入权限。
+[source compiler](docs/platform/aerograph-compiler.md)说明 admission 策略。
+`scenarios/p1-spectrum.yaml` 展示无位置字段的频谱与约束实体。
+当前 threshold 是受限比较 AST，任意谓词解释器尚待实现。
+
+P1、原生适配器、P5 领域包、P6 决策已有真实交付证据；P5-F 与 P7b 仍在并行整合。
+运动/能耗/巡检几何是明确建模的参数，尚不能称为经过现实标定的物理与传感器模型。
+ns-3 当前采用共享信道的单无线接口 ad-hoc 模型；部分 MAVSDK 缓存遥测缺少源时间，
+会明确记录。跨模拟器接触、长时间 bounded history、原生取消与完整城市编辑均有限制。
+浏览器软件渲染检查不证明硬件 GPU 帧率。
+
+默认依赖仅 `aerokernel` 与 `PyYAML`；可选项为 `server`、`legacy`、`dev`、`docs`。
+旧 `Environment` 的迁移与可运行前后对照见
+[MIGRATION-v1.md](docs/platform/MIGRATION-v1.md)。
+[安装指南](INSTALL.md)、[文档索引](docs/README.md)、
+[整合计划](docs/platform/PLAN.md)与能力清单说明完整状态。
 
 ## 引用
 
-如果您在研究中使用 AeroAgentSim，请引用 JOSS 论文：
-
-- JOSS 页面：<https://joss.theoj.org/papers/10.21105/joss.08267>
-- PDF：<https://www.theoj.org/joss-papers/joss.08267/10.21105.joss.08267.pdf>
+保留 AirFogSim 论文作为本项目科研来源；该论文描述历史包，不能视为新平台全部能力的
+验证。[JOSS 论文](https://joss.theoj.org/papers/10.21105/joss.08267)。
 
 ```bibtex
 @article{Wei2025,

@@ -304,7 +304,10 @@ class RunRepository:
     def _tail_jsonl(self, path: Path, limit: int) -> List[Dict[str, Any]]:
         if not path.exists():
             return []
-        lines = path.read_text().splitlines()
+        # Share the append lock so a live tail cannot observe a partial line.
+        # Invalid completed records still raise; never silently skip them.
+        with self._lock:
+            lines = path.read_text().splitlines()
         return [_json_safe(json.loads(line)) for line in lines[-limit:]]
 
     def _run_dir(self, run_id: str) -> Path:
