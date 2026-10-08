@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+from bisect import bisect_left
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -10,6 +13,14 @@ from aerokernel.values import canonical_json
 
 if TYPE_CHECKING:
     from aeroagentsim.scenario import Scenario
+
+
+@lru_cache(maxsize=16)
+def _read_index(
+    path: Path, identity: tuple[int, int, int, int]
+) -> list[dict[str, int]]:
+    """Cache only immutable atomic index versions; WAL records stay authoritative."""
+    return json.loads(path.read_text())  # type: ignore[no-any-return]
 
 
 class RunStorage:
@@ -42,7 +53,10 @@ class RunStorage:
                 "kernel_run_id": scenario.run_id,
                 "scenario": scenario.document["id"],
                 "scenario_digest": scenario.digest,
-                "registry_digest": scenario.compiled.digest,
+                "registry_digest": hashlib.sha256(
+                    canonical_json(scenario.registry.to_data())
+                ).hexdigest(),
+                "compiled_registry_digest": scenario.compiled.digest,
                 "until_ns": str(scenario.until_ns),
                 "status": "created",
             },
@@ -60,6 +74,11 @@ class RunStorage:
     def status(self, status: str, *, error: str | None = None) -> None:
         result = self.metadata()
         result["status"] = status
+        if status in {"completed", "stopped", "faulted", "interrupted"}:
+            self.index()
+            result["final_cursor"] = max(
+                1, self.entries[-1]["index"] + 1 if self.entries else 1
+            )
         if error is not None:
             result["error"] = error
         self._atomic("manifest.json", result)
@@ -68,6 +87,7 @@ class RunStorage:
         journal = self.directory / "journal.jsonl"
         if not journal.exists():
             return
+        previous_count = len(self.entries)
         with journal.open("rb") as stream:
             stream.seek(self.offset)
             while line := stream.readline():
@@ -75,23 +95,34 @@ class RunStorage:
                     break
                 record = json.loads(line)
                 index = record["index"]
+                expected = self.entries[-1]["index"] + 1 if self.entries else 0
+                if type(index) is not int or index != expected:
+                    raise ValueError(f"WAL index gap: expected {expected}, got {index}")
                 self.entries.append(
                     {"index": index, "offset": self.offset, "length": len(line)}
                 )
                 self.offset += len(line)
-        self._atomic("index.json", self.entries)
+        if (
+            len(self.entries) != previous_count
+            or not (self.directory / "index.json").exists()
+        ):
+            self._atomic("index.json", self.entries)
 
     def records(self, start: int = 0, limit: int = 1000) -> list[dict[str, Any]]:
         """Read only complete indexed records; never advance or rewrite a run."""
         index = self.directory / "index.json"
         if not index.exists():
             raise FileNotFoundError(f"Run index missing: {index}")
-        entries: list[dict[str, int]] = json.loads(index.read_text())
+        info = index.stat()
+        entries = _read_index(
+            index, (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns)
+        )
         result: list[dict[str, Any]] = []
+        if not entries:
+            return result
+        offset = bisect_left(entries, start, key=lambda entry: entry["index"])
         with (self.directory / "journal.jsonl").open("rb") as stream:
-            for entry in entries:
-                if entry["index"] < start:
-                    continue
+            for entry in entries[offset : offset + limit]:
                 stream.seek(entry["offset"])
                 result.append(json.loads(stream.read(entry["length"])))
                 if len(result) >= limit:

@@ -1,0 +1,69 @@
+{
+  "task": "P1-F",
+  "date": "2026-10-08",
+  "python_interpreter": "/mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python",
+  "pytest": {
+    "full_platform_and_integrations": 151,
+    "additional_bounded_entry_test": 1,
+    "runtime_registry_digest_and_links_rechecked": true,
+    "warning": "Installed Starlette/httpx test-client deprecation"
+  },
+  "ruff": {
+    "scope": [
+      "platform",
+      "scenario",
+      "engines",
+      "services",
+      "tests/platform"
+    ],
+    "passed": true,
+    "legacy_cli_findings_out_of_scope": 26
+  },
+  "mypy_strict": {
+    "MYPYPATH": "../aerokernel",
+    "source_files": 17,
+    "passed": true
+  },
+  "frontend": {
+    "tests": 59,
+    "typecheck": "passed",
+    "build": "passed"
+  },
+  "browser": {
+    "growing_slice": {
+      "run": "run-afd0fee6a52344f99dab3a38c96da232",
+      "finalCursor": 1646,
+      "streams": 2,
+      "commits": 1645,
+      "console_errors": 0,
+      "screenshots": "tests/platform/screenshots"
+    },
+    "nonspatial_replay": {
+      "run": "run-f4e089f90cdf4ebcb50d01fae3ce48ed",
+      "nonspatial": "passed",
+      "errors": []
+    },
+    "original_demo": {
+      "demo": "passed",
+      "errors": []
+    }
+  },
+  "offline_replay_and_same_seed_bytes": [
+    "p1-slice",
+    "p1-scale",
+    "p1-spectrum"
+  ],
+  "glm": {
+    "concurrent_sessions": 4,
+    "model": "workbuddy/glm-5.3-flash",
+    "max_output_tokens": 131072,
+    "effort_parameter": false,
+    "outcome": "Connected, stalled in analysis, stopped; no unverified output integrated"
+  },
+  "remaining": [
+    "Kernel causal lookup performance (fix 7), no platform workaround",
+    "Full atomic index snapshot on growth and complete viewer history retention",
+    "Legacy CLI lint findings remain untouched"
+  ],
+  "retained_artifacts": "tests/platform/runtime/runs/p1-f-verification"
+}

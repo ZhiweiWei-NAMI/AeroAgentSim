@@ -83,6 +83,9 @@ registry:
           type: string
         machine: *id002
         target: *id001
+        subject:
+          type: ref
+          target_type: oo:UAV
       required:
       - entity
       - machine
@@ -97,6 +100,7 @@ registry:
       required: []
       extra: false
     feedback_schema: *id003
+    cancel_support: true
   - id: aas.motion.hold
     kind: command
     schema: &id004
@@ -104,17 +108,22 @@ registry:
       members:
         entity: *id002
         machine: *id002
+        subject:
+          type: ref
+          target_type: oo:UAV
       required:
       - entity
       - machine
       extra: false
     result_schema: *id003
     feedback_schema: *id003
+    cancel_support: true
   - id: aas.motion.stop
     kind: command
     schema: *id004
     result_schema: *id003
     feedback_schema: *id003
+    cancel_support: true
   - id: aas.motion.arrived
     kind: event
     schema:
@@ -166,6 +175,10 @@ registry:
       inverse_policy: authored unconstrained many records per subject; source declares
         no inverse direction
       reviewStatus: proposed
+  field_metadata:
+    he.aircraft.position_enu_m:
+      frame: enu
+      transform_revision: p1-local-1
 entities:
 - id: uav-1
   type: oo:UAV
@@ -383,6 +396,15 @@ engines:
       arrival_schema: aas.motion.arrived
       arrival_topic: arrival
       lifecycle: true
+      model: enu_point_mass
+      arrival_payload:
+        entity: $entity
+        position: $position
+        machine: $payload.machine
+      result_fields:
+        entity: entity
+        position: position
+        reason: reason
   operations:
     plugin: workflow
     config:
@@ -419,6 +441,14 @@ engines:
                 - 30.0
                 - 0.0
                 - 10.0
+                subject:
+                  $ref:
+                    run_id: p1-slice
+                    epoch: '0'
+                    id: uav-1
+                    generation: 0
+                    type_id: oo:UAV
+              id: order-1/0/move
             transitions:
             - to: awaiting_acceptance
               event: aas.motion.arrived
@@ -454,6 +484,14 @@ engines:
                 - 30.0
                 - 12.0
                 - 10.0
+                subject:
+                  $ref:
+                    run_id: p1-slice
+                    epoch: '0'
+                    id: uav-2
+                    generation: 0
+                    type_id: oo:UAV
+              id: order-2/0/move
             transitions:
             - to: awaiting_acceptance
               event: aas.motion.arrived
@@ -489,6 +527,14 @@ engines:
                 - 30.0
                 - 24.0
                 - 10.0
+                subject:
+                  $ref:
+                    run_id: p1-slice
+                    epoch: '0'
+                    id: uav-3
+                    generation: 0
+                    type_id: oo:UAV
+              id: order-3/0/move
             transitions:
             - to: awaiting_acceptance
               event: aas.motion.arrived
@@ -524,6 +570,14 @@ engines:
                 - 30.0
                 - 36.0
                 - 10.0
+                subject:
+                  $ref:
+                    run_id: p1-slice
+                    epoch: '0'
+                    id: uav-4
+                    generation: 0
+                    type_id: oo:UAV
+              id: order-4/0/move
             transitions:
             - to: awaiting_acceptance
               event: aas.motion.arrived
@@ -559,6 +613,14 @@ engines:
                 - 30.0
                 - 48.0
                 - 10.0
+                subject:
+                  $ref:
+                    run_id: p1-slice
+                    epoch: '0'
+                    id: uav-5
+                    generation: 0
+                    type_id: oo:UAV
+              id: order-5/0/move
             transitions:
             - to: awaiting_acceptance
               event: aas.motion.arrived
@@ -594,6 +656,14 @@ engines:
                 - 60.0
                 - 0.0
                 - 10.0
+                subject:
+                  $ref:
+                    run_id: p1-slice
+                    epoch: '0'
+                    id: uav-1
+                    generation: 0
+                    type_id: oo:UAV
+              id: order-6/0/move
             transitions:
             - to: awaiting_acceptance
               event: aas.motion.arrived
@@ -629,6 +699,14 @@ engines:
                 - 60.0
                 - 12.0
                 - 10.0
+                subject:
+                  $ref:
+                    run_id: p1-slice
+                    epoch: '0'
+                    id: uav-2
+                    generation: 0
+                    type_id: oo:UAV
+              id: order-7/0/move
             transitions:
             - to: awaiting_acceptance
               event: aas.motion.arrived
@@ -664,6 +742,14 @@ engines:
                 - 60.0
                 - 24.0
                 - 10.0
+                subject:
+                  $ref:
+                    run_id: p1-slice
+                    epoch: '0'
+                    id: uav-3
+                    generation: 0
+                    type_id: oo:UAV
+              id: order-8/0/move
             transitions:
             - to: awaiting_acceptance
               event: aas.motion.arrived
@@ -699,6 +785,14 @@ engines:
                 - 60.0
                 - 36.0
                 - 10.0
+                subject:
+                  $ref:
+                    run_id: p1-slice
+                    epoch: '0'
+                    id: uav-4
+                    generation: 0
+                    type_id: oo:UAV
+              id: order-9/0/move
             transitions:
             - to: awaiting_acceptance
               event: aas.motion.arrived
@@ -734,6 +828,14 @@ engines:
                 - 60.0
                 - 48.0
                 - 10.0
+                subject:
+                  $ref:
+                    run_id: p1-slice
+                    epoch: '0'
+                    id: uav-5
+                    generation: 0
+                    type_id: oo:UAV
+              id: order-10/0/move
             transitions:
             - to: awaiting_acceptance
               event: aas.motion.arrived
@@ -749,6 +851,7 @@ engines:
             transitions: []
           failed:
             transitions: []
+      correlation_key: machine
   observations:
     plugin: records
     config:
@@ -999,6 +1102,7 @@ engines:
               payload:
                 machine: order-10
             transitions: []
+      correlation_key: machine
 presentation:
 - typeId: oo:UAV
   positionField: he.aircraft.position_enu_m

@@ -12,7 +12,6 @@ from aerokernel.state import StateView
 from aeroagentsim.scenario import Scenario, ScenarioError, load_scenario
 from aeroagentsim.services.storage import RunStorage
 
-from .kernel_compat import register_relation_records
 from .plugins import EngineBuild, EngineCatalog
 
 
@@ -20,7 +19,6 @@ class Simulation:
     """Bind arbitrary registered types and plugins; the kernel owns mutable state."""
 
     def __init__(self, scenario: Scenario, *, journal: Journal | None = None) -> None:
-        register_relation_records()
         self.scenario = scenario
         catalog = EngineCatalog()
         partitions: dict[str, Partition] = {}
@@ -55,6 +53,7 @@ class Simulation:
                     )
         self.kernel = Kernel(
             root_seed=scenario.seed,
+            mappings=scenario.clock_mappings,
             journal=journal,
             configuration={
                 "scenario_digest": scenario.digest,
@@ -103,14 +102,24 @@ class RunSession:
         self.started_wall = 0.0
 
     def start(self) -> StateView:
+        if self.closed:
+            raise RuntimeError("run session is closed")
+        if self.started:
+            return self.simulation.kernel.view()
         self.started_wall = time.perf_counter()
         self.storage.status("running")
-        view = self.simulation.start()
+        try:
+            view = self.simulation.start()
+        except Exception as exc:
+            self._fault(exc)
+            raise
         self.started = True
         self.storage.index()
         return view
 
     def run_until(self, ns: int) -> StateView:
+        if self.closed:
+            raise RuntimeError("run session is closed")
         if not self.started:
             self.start()
         try:
@@ -119,9 +128,17 @@ class RunSession:
             self.storage.index()
             return view
         except Exception as exc:
-            self.storage.index()
-            self.storage.status("faulted", error=f"{type(exc).__name__}: {exc}")
+            self._fault(exc)
             raise
+
+    def _fault(self, failure: Exception) -> None:
+        error = f"{type(failure).__name__}: {failure}"
+        try:
+            self.close()
+        except Exception as cleanup:  # noqa: BLE001 - preserve both real failures
+            error += f"; cleanup: {type(cleanup).__name__}: {cleanup}"
+        self.storage.index()
+        self.storage.status("faulted", error=error)
 
     def run(self) -> StateView:
         if not self.started:
@@ -137,6 +154,7 @@ class RunSession:
                 )
                 if remaining > 0:
                     time.sleep(remaining)
+        self.close()
         self.storage.status("completed")
         return view
 
@@ -144,13 +162,20 @@ class RunSession:
         if self.closed:
             return
         self.closed = True
+        failure: Exception | None = None
         try:
             self.simulation.close()
-        except Exception as exc:
-            self.storage.status("faulted", error=f"cleanup: {exc}")
-            raise
+        except Exception as exc:  # noqa: BLE001 - finalize before terminal outcome
+            failure = exc
         finally:
             self.storage.index()
+        if failure is not None:
+            previous = self.storage.metadata().get("error")
+            self.storage.status(
+                "faulted",
+                error=f"{previous + '; ' if previous else ''}cleanup: {type(failure).__name__}: {failure}",
+            )
+            raise failure
 
     def __enter__(self) -> RunSession:  # noqa: PYI034 - Python 3.10 runtime
         return self

@@ -17,6 +17,8 @@ def execute(scenario: Scenario, directory: Path, paused: Any, stopped: Any) -> N
     session: RunSession | None = None
     storage = RunStorage(directory)
     wait = threading.Event()
+    outcome = "completed"
+    error: str | None = None
     try:
         session = RunSession(scenario, directory, prepared=True)
         session.start()
@@ -41,9 +43,16 @@ def execute(scenario: Scenario, directory: Path, paused: Any, stopped: Any) -> N
                     and not paused.is_set()
                 ):
                     wait.wait(min(0.02, max(0.0, deadline - time.perf_counter())))
-        storage.status("stopped" if stopped.is_set() else "completed")
+        outcome = "stopped" if stopped.is_set() else "completed"
     except Exception as exc:  # noqa: BLE001 - persist the actual worker fault
-        storage.status("faulted", error=f"{type(exc).__name__}: {exc}")
+        outcome = "faulted"
+        error = storage.metadata().get("error") or f"{type(exc).__name__}: {exc}"
     finally:
         if session is not None:
-            session.close()
+            try:
+                session.close()
+            except Exception as exc:  # noqa: BLE001 - retain actual cleanup failure
+                outcome = "faulted"
+                error = f"{error + '; ' if error else ''}cleanup: {type(exc).__name__}: {exc}"
+        storage.index()
+        storage.status(outcome, error=error)

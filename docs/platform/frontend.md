@@ -48,7 +48,7 @@ Implementation references: [postprocessing SSAO](https://pmndrs.github.io/postpr
 
 ## Contract and time notes
 
-The pinned contract has one additive optional field: `facts[].discontinuity`. A producer can explicitly mark a teleport/discontinuous update without retracting its new exact fact. This is needed because distance alone cannot distinguish a teleport from fast movement for arbitrary entity types and engines. Older feeds remain compatible. The flag inserts a display interpolation barrier; it changes no authoritative value, timestamp or event. `RunHeader.presentation` remains the only source of spatial field/visual bindings. The demo exercises nearest-ancestor fallback for its Amber type. Records have no binding and appear only in the inspector. A model binding must name an asset; a missing/failed model never turns into a generic marker. Decoder assets ship under `public/decoders/` and can be overridden through `ViewportOptions`.
+The original pinned contract added the optional field: `facts[].discontinuity`. A producer can explicitly mark a teleport/discontinuous update without retracting its new exact fact. This is needed because distance alone cannot distinguish a teleport from fast movement for arbitrary entity types and engines. Older feeds remain compatible. The flag inserts a display interpolation barrier; it changes no authoritative value, timestamp or event. `RunHeader.presentation` remains the only source of spatial field/visual bindings. The demo exercises nearest-ancestor fallback for its Amber type. Records have no binding and appear only in the inspector. A model binding must name an asset; a missing/failed model never turns into a generic marker. Decoder assets ship under `public/decoders/` and can be overridden through `ViewportOptions`.
 
 Times are canonical decimal strings, parsed as BigInt; only short relative durations and interpolation ratios become Numbers. The demo deliberately starts above `Number.MAX_SAFE_INTEGER`. Samples are displayed on their commit availability time. `validFrom` remains visible as recorded metadata and does not retroactively revise an earlier committed cut. Display interpolation uses known bracketing samples; before the first sample, after removal, or across a retraction gap it has no pose. After the last valid sample it holds. Generation changes create separate buffers. Discontinuous motion uses the optional explicit flag or a retraction barrier; there is no guessed speed/distance threshold. Orientation-free visuals use an authored renderer orientation, not an invented committed quaternion.
 
@@ -83,3 +83,54 @@ P7 adds City Studio as optional authoring: region/OSM import, build artifacts, c
 `npm run build` passes; `npm test` passes 46 tests in 11 files; `npm run typecheck` passes. `npm run test:e2e` passes its production-browser test, including no console/page errors, both camera screenshots, a nonspatial entity and zh-CN switching. The software renderer visibly degraded medium to low during the browser run; the screenshots record the effective setting. This is functional verification, not a hardware performance benchmark. GLB compressed-asset loaders are wired with local codecs; the browser demonstration intentionally exercises markers and no city. A binary mesh-pack loader fixture separately verifies layout, origin placement and corrupt-content rejection.
 
 Production JS+CSS is 2,363.92 kB total (735.32 kB gzip, decimal units). The lazy viewer JS chunk is 936.48 kB (288.15 kB gzip); workbench and shared chunks load separately. Static optional codec files and screenshots are excluded from that bundle total. Artifacts are `frontend/test-results/viewer-demo-orbit.png` and `frontend/test-results/viewer-demo-follow.png`.
+
+
+## P1-F additive feed contract and temporal viewer
+
+The optional additions in `src/contracts/viewer-feed.ts` preserve authored demo
+compatibility while real P1 services publish full temporal data:
+
+| Addition | Meaning |
+| --- | --- |
+| `EntityKey.generation: number|string` | Large exact generations use canonical decimal strings |
+| `acquired` | Source `clockId/mappingId` and exact decimal rational numerator/denominator |
+| `available`, `validFrom`, `validTo` | Publication instant and half-open physical validity interval; null end is open |
+| `version`, `causes` | Exact journal/item identity and retained cause references |
+| Retraction interval/reason | Shadows only the declared interval at its known prefix |
+| Edge `assert|close|cancel` and intervals | Each version carries the resulting interval; cancellation has no active interval |
+| Field `schema/metadata`, header `runtimeRegistry/messages` | Complete runtime descriptors, including command capability and result schemas |
+| Message `subjects` | Typed entity refs explicitly declared in message payloads, including command subject refs |
+
+`registryDigest` hashes canonical `runtime.registry.json`, including authored
+local descriptors. The compiled source snapshot digest is retained separately
+in the run manifest. Wire encoding does not change the semantic registry digest.
+Units and frames come from field descriptors; scalar records never acquire ENU.
+Values beyond JavaScript's safe integer range use `{"$integer":"decimal"}`;
+large integral floats use `{"$number":"decimal"}` to preserve their numeric
+kind. Single-member authored records that collide with these tags or `$record`
+are escaped as `{"$record":{...}}`. Raw unsafe numeric values are rejected.
+The inspector prints tagged integers exactly and shows relative seconds with
+exact nanoseconds on hover, alongside source stamps and version identities.
+Scenario JSON submission preserves the user's decimal tokens instead of
+round-tripping them through JavaScript numbers; strict backend schema validation
+still rejects incompatible numeric kinds.
+
+Real Runs pages use `feeds/temporal-store.ts`. It resolves facts and edges by
+physical validity and the selected journal knowledge prefix, including finite,
+future and backdated versions. Scoped retractions do not erase unrelated physical
+intervals; later publication is invisible at earlier knowledge cuts. The explicit
+cut survives live ingest. Initial/removed entity generations remain distinct.
+Interpolation is confined to ordinary continuously published motion and does
+not bridge finite/future/backdated intervals. The authored demo retains its
+original availability-oriented store; the preceding demo time notes describe
+that older store, not real P1 temporal semantics.
+
+Terminal manifests pin the next `final_cursor`; pages and SSE advertise
+`finalCursor`, and clients verify it before stream completion. Fetch/open and
+reader transport exceptions resume from the acknowledged cursor with bounded
+retry; malformed JSON, contracts and sequence gaps remain explicit errors.
+Typed `subjects` associate commands and receipts with entities, never partition
+name comparisons. `p1-e2e.mjs` verifies the actual growing run and reconnect.
+The owned gate config places all generated frontend assets and screenshots in
+`tests/platform/`. P1-F frontend tests: **59 passed**, strict typecheck and
+production build passed; browser screenshots are in that test tree.

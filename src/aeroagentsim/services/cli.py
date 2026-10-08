@@ -11,7 +11,6 @@ from pathlib import Path
 
 from aerokernel.journal import replay
 
-from aeroagentsim.platform.kernel_compat import register_relation_records
 from aeroagentsim.platform.simulation import RunSession
 
 
@@ -49,7 +48,6 @@ def main() -> None:
             )
         )
     elif args.command == "replay":
-        register_relation_records()
         kernel = replay(args.run / "journal.jsonl")
         print(
             json.dumps(

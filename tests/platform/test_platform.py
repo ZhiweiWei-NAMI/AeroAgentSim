@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
@@ -204,6 +206,26 @@ def test_projector_contract_and_lossless_times(
     session, directory = slice_run
     run_header = header(directory)
     assert run_header["contract"] == "aeroagentsim.viewer-feed/v1"
+    runtime_bytes = (directory / "runtime.registry.json").read_bytes()
+    assert run_header["registryDigest"] == hashlib.sha256(runtime_bytes).hexdigest()
+    assert run_header["runtimeRegistry"] == json.loads(runtime_bytes)
+    assert run_header["messages"] == run_header["runtimeRegistry"]["messages"]
+    commands = [m for m in run_header["messages"] if m["kind"] == "command"]
+    assert commands and all(
+        "schema" in m and "result_schema" in m and "cancel_support" in m
+        for m in commands
+    )
+    sample = next(
+        f for f in run_header["fields"] if f["fieldId"] == "aas.p1.position_sample"
+    )
+    assert sample["frame"] == session.scenario.registry.field("aas.p1.position_sample").metadata["frame"]
+    linked = [
+        m
+        for record in session.simulation.kernel.records
+        for m in project(record)["messages"]
+        if m["kind"] == "command"
+    ]
+    assert linked and all(m["subjects"][0]["id"].startswith("uav-") for m in linked)
     assert all(isinstance(f["unit"], (str, type(None))) for f in run_header["fields"])
     assert all(isinstance(f["frame"], (str, type(None))) for f in run_header["fields"])
     shape = {

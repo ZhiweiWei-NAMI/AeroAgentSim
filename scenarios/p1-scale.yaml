@@ -40,6 +40,9 @@ registry:
           type: string
         machine: *id001
         target: *id002
+        subject:
+          type: ref
+          target_type: oo:UAV
       required:
       - entity
       - machine
@@ -54,6 +57,7 @@ registry:
       required: []
       extra: false
     feedback_schema: *id003
+    cancel_support: true
   - id: aas.motion.hold
     kind: command
     schema: &id004
@@ -61,17 +65,22 @@ registry:
       members:
         entity: *id001
         machine: *id001
+        subject:
+          type: ref
+          target_type: oo:UAV
       required:
       - entity
       - machine
       extra: false
     result_schema: *id003
     feedback_schema: *id003
+    cancel_support: true
   - id: aas.motion.stop
     kind: command
     schema: *id004
     result_schema: *id003
     feedback_schema: *id003
+    cancel_support: true
   - id: aas.motion.arrived
     kind: event
     schema:
@@ -109,6 +118,10 @@ registry:
       - to_ns
       extra: false
   relations: []
+  field_metadata:
+    he.aircraft.position_enu_m:
+      frame: enu
+      transform_revision: p1-local-1
 entities:
 - id: mover-0000
   type: oo:UAV
@@ -12147,6 +12160,15 @@ engines:
       arrival_schema: aas.motion.arrived
       arrival_topic: arrival
       lifecycle: true
+      model: enu_point_mass
+      arrival_payload:
+        entity: $entity
+        position: $position
+        machine: $payload.machine
+      result_fields:
+        entity: entity
+        position: position
+        reason: reason
 presentation:
 - typeId: oo:UAV
   positionField: he.aircraft.position_enu_m

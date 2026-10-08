@@ -1,0 +1,31 @@
+import {createRequire} from 'node:module';
+import {homedir} from 'node:os';
+import {join} from 'node:path';
+const require=createRequire(new URL('../../frontend/package.json',import.meta.url));
+const {chromium,expect}=require('@playwright/test');
+const api=process.env.P1_API ?? 'http://127.0.0.1:8002';
+const response=await fetch(`${api}/v1/runs`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenario_path:'scenarios/p1-spectrum.yaml'})});
+if(!response.ok)throw Error(await response.text());
+const run=await response.json();
+const browser=await chromium.launch({executablePath:join(homedir(),'.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell'),headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader','--use-angle=swiftshader']});
+try {
+const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];
+page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});page.on('pageerror',error=>errors.push(error.message));
+await expect.poll(async()=>{const rows=await(await fetch(`${api}/v1/runs`)).json();return rows.find(row=>row.id===run.id).status;},{timeout:60000}).toBe('completed');
+await page.goto(`${api}/runs/${run.id}?mode=replay`);
+await expect(page.getByText('completed',{exact:true})).toBeVisible({timeout:60000});
+await page.getByRole('slider').focus();await page.keyboard.press('End');
+const select=page.getByRole('combobox',{name:'Entity',exact:true});
+await select.press('Enter');await select.fill('receiver');await select.press('ArrowDown');await select.press('Enter');
+await expect(page.getByTestId('inspector')).toContainText('dBm');
+await expect(page.getByTestId('inspector')).toContainText('-20');
+await expect(page.locator('.viewport-caption')).toContainText('no spatial binding');
+await select.press('Enter');await select.fill('restriction');await select.press('ArrowDown');await select.press('Enter');
+await expect(page.getByTestId('inspector')).toContainText('active');
+const header=await(await fetch(`${api}/v1/runs/${run.id}/header`)).json();
+if(header.presentation.length || header.fields.some(field=>field.fieldId==='review.power_sample' && field.frame))throw Error('Spatial metadata leaked into scalar sample');
+await select.press('Escape');await page.locator('.viewport-caption').click();
+await page.screenshot({path:'tests/platform/screenshots/p1-spectrum-replay.png',fullPage:true});
+if(errors.length)throw Error(JSON.stringify(errors));
+console.log(JSON.stringify({run:run.id,nonspatial:'passed',errors}));
+} finally {await browser.close();}

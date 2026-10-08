@@ -20,6 +20,7 @@ from aerokernel.operations import (
 )
 from aerokernel.registry import MemoryRegistry
 from aerokernel.time import Instant
+from aerokernel.values import thaw
 
 from .storage import RunStorage
 
@@ -29,7 +30,35 @@ def instant(at: Instant) -> dict[str, Any]:
 
 
 def entity(ref: EntityRef) -> dict[str, Any]:
-    return {"id": ref.id, "generation": ref.generation}
+    return {
+        "id": ref.id,
+        "generation": ref.generation if ref.generation < 2**53 else str(ref.generation),
+    }
+
+
+def lossless(value: Any) -> Any:
+    """Tag large portable integers without changing kernel schema/value types."""
+    if type(value) is int and abs(value) >= 2**53:
+        return {"$integer": str(value)}
+    if type(value) is float and abs(value) >= 2**53:
+        return {"$number": repr(value)}
+    if isinstance(value, dict):
+        encoded = {key: lossless(child) for key, child in value.items()}
+        if len(value) == 1 and set(value) & {"$integer", "$number", "$record"}:
+            return {"$record": encoded}
+        return encoded
+    if isinstance(value, (tuple, list)):
+        return [lossless(child) for child in value]
+    return value
+
+
+def stamp(value: Any) -> dict[str, str]:
+    return {
+        "clockId": value.clock_id,
+        "mappingId": value.mapping_id,
+        "numerator": str(value.numerator),
+        "denominator": str(value.denominator),
+    }
 
 
 def project(record: dict[str, Any]) -> dict[str, Any]:
@@ -52,7 +81,9 @@ def project(record: dict[str, Any]) -> dict[str, Any]:
         for item in record["items"]
         if item.get("kind") == "enqueue"
     }
-    for item in record["items"]:
+    for ordinal, item in enumerate(record["items"]):
+        version = {"journalIndex": record["index"], "itemOrdinal": ordinal}
+        available = result["at"]
         if "proposal" in item:
             op = decode_record(item["proposal"])
             if isinstance(op, Create):
@@ -70,7 +101,21 @@ def project(record: dict[str, Any]) -> dict[str, Any]:
                         "relationId": edge.relation_id,
                         "source": entity(edge.source),
                         "target": entity(edge.target),
-                        "op": "assert" if isinstance(op, AssertEdge) else "close",
+                        "op": "assert"
+                        if isinstance(op, AssertEdge)
+                        else "close"
+                        if isinstance(op, CloseEdge)
+                        else "cancel",
+                        "validFrom": None
+                        if edge.valid is None
+                        else instant(edge.valid.start),
+                        "validTo": None
+                        if edge.valid is None or edge.valid.end is None
+                        else instant(edge.valid.end),
+                        "acquired": stamp(edge.acquired),
+                        "available": instant(edge.available),
+                        "version": version,
+                        "causes": item.get("causes", []),
                     }
                 )
             elif isinstance(op, Remove):
@@ -80,14 +125,32 @@ def project(record: dict[str, Any]) -> dict[str, Any]:
                     {
                         "entity": entity(op.key[0]),
                         "fieldId": op.key[1],
-                        "value": op.value,
+                        "value": lossless(op.value),
                         "producer": item["partition"],
                         "validFrom": instant(op.valid.start),
+                        "validTo": None
+                        if op.valid.end is None
+                        else instant(op.valid.end),
+                        "acquired": stamp(op.acquired),
+                        "available": available,
+                        "version": version,
+                        "causes": item.get("causes", []),
                     }
                 )
             elif isinstance(op, RetractFact):
                 result["retracted"].append(
-                    {"entity": entity(op.key[0]), "fieldId": op.key[1]}
+                    {
+                        "entity": entity(op.key[0]),
+                        "fieldId": op.key[1],
+                        "validFrom": instant(op.valid.start),
+                        "validTo": None
+                        if op.valid.end is None
+                        else instant(op.valid.end),
+                        "available": available,
+                        "version": version,
+                        "reason": op.reason,
+                        "causes": item.get("causes", []),
+                    }
                 )
         if "message" in item and isinstance(item["message"], dict):
             message = decode_record(item["message"])
@@ -99,9 +162,10 @@ def project(record: dict[str, Any]) -> dict[str, Any]:
                     "schemaId": message.schema_id,
                     "source": message.source,
                     "at": instant(message.at),
-                    "payload": json.loads(
-                        json.dumps(item["message"]["fields"]["payload"])
-                    ),
+                    "payload": lossless(thaw(message.payload)),
+                    "subjects": [
+                        entity(ref) for ref in _message_subjects(thaw(message.payload))
+                    ],
                 }
                 if "proposal" in item:
                     proposal = decode_record(item["proposal"])
@@ -129,6 +193,24 @@ def project(record: dict[str, Any]) -> dict[str, Any]:
                     "result": receipt.get("result"),
                 }
             )
+    for receipt in result["receipts"]:
+        if "result" in receipt:
+            receipt["result"] = lossless(receipt["result"])
+    return result
+
+
+def _message_subjects(payload: Any) -> list[EntityRef]:
+    """Only explicit typed refs establish entity links; scalar names do not."""
+    result: list[EntityRef] = []
+    if isinstance(payload, dict):
+        if set(payload) == {"$ref"}:
+            result.append(EntityRef.from_data(payload["$ref"]))
+        else:
+            for child in payload.values():
+                result.extend(_message_subjects(child))
+    elif isinstance(payload, list):
+        for child in payload:
+            result.extend(_message_subjects(child))
     return result
 
 
@@ -141,16 +223,12 @@ def _unit(value: Any) -> str | None:
     return None
 
 
-def _frame(field: str, scenario: dict[str, Any]) -> str | None:
-    for binding in scenario["presentation"]:
-        if field in {binding["positionField"], binding.get("orientationField")}:
-            return str(binding["frame"])
-    for engine in scenario["engines"].values():
-        config = engine["config"]
-        if field in {config.get("velocity_field"), config.get("sample_field")}:
-            return (
-                "enu"  # These local plugins explicitly declare ENU in their contracts.
-            )
+def _frame(value: Any) -> str | None:
+    if isinstance(value, str):
+        return value
+    if hasattr(value, "get"):
+        convention = value.get("convention")
+        return convention if isinstance(convention, str) else None
     return None
 
 
@@ -187,19 +265,23 @@ def header(directory: Path) -> dict[str, Any]:
                 "displayName": f.id,
                 "valueType": f.schema["type"],
                 "unit": _unit(f.metadata.get("unit")),
-                "frame": _frame(f.id, scenario),
+                "frame": _frame(f.metadata.get("frame")),
+                "schema": thaw(f.schema),
+                "metadata": thaw(f.metadata),
                 **({"role": f.metadata["role"]} if "role" in f.metadata else {}),
             }
             for f in registry.fields
         ],
-        "presentation": scenario["presentation"],
+        "presentation": scenario.get("presentation", []),
         "start": {"ns": "0", "microstep": 0},
+        "runtimeRegistry": lossless(registry.to_data()),
+        "messages": lossless(registry.to_data()["messages"]),
     }
     if "origin" in scenario:
         result["origin"] = scenario["origin"]
     entries = storage.entries
     if entries:
         record = storage.records(entries[-1]["index"], 1)[0]
-        if metadata["status"] in {"completed", "stopped", "faulted"}:
+        if metadata["status"] in {"completed", "stopped", "faulted", "interrupted"}:
             result["end"] = instant(decode_record(record["instant"]))
     return result

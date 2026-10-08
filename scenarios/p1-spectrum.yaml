@@ -1,0 +1,235 @@
+format: aeroagentsim.scenario/v1
+id: p1-spectrum
+registry:
+  compile:
+    root: /mnt/data2/weizhiwei/AeroGraph
+    types:
+    - oo:RadioSignalObservation
+    - oo:Regulation
+    - oo:MetricObservation
+    fields:
+    - he.radio.branch_a_power_dbm
+    - oo:shared.observationRecord.acquisitionTime
+    - oo:shared.observationRecord.availableTime
+    - oo:shared.observationRecord.observedSubjectRef
+    relations:
+    - oo:relation:observation-subject
+  types:
+  - id: review:SpectrumSample
+    parents:
+    - oo:MetricObservation
+    abstract: false
+  fields:
+  - id: review.scan_phase
+    type: oo:RadioSignalObservation
+    schema:
+      type: string
+      enum:
+      - idle
+      - busy
+      - finished
+    metadata:
+      clock: canonical
+  - id: review.restriction_state
+    type: oo:Regulation
+    schema:
+      type: string
+      enum:
+      - inactive
+      - active
+    metadata:
+      clock: canonical
+  - id: review.power_sample
+    type: review:SpectrumSample
+    schema:
+      type: number
+    metadata:
+      clock: canonical
+      unit: dBm
+  messages:
+  - id: review.spectrum.overlimit
+    kind: event
+    schema:
+      type: record
+      members:
+        subject:
+          type: string
+      required:
+      - subject
+      extra: false
+  relations:
+  - id: oo:relation:observation-subject
+    source_type: oo:ObservationRecord
+    target_type: oo:ModelObject
+    targets_per_source:
+      minimum: 1
+      maximum: 1
+    sources_per_target:
+      minimum: 0
+      maximum: null
+    identity_policy: edge_id
+    metadata: {}
+entities:
+- id: receiver
+  type: oo:RadioSignalObservation
+  facts:
+    review.scan_phase: idle
+    he.radio.branch_a_power_dbm: -80.0
+- id: restriction
+  type: oo:Regulation
+  facts:
+    review.restriction_state: inactive
+bindings:
+  rules:
+  - writer: scanner
+    type: oo:RadioSignalObservation
+    fields:
+    - review.scan_phase
+    - he.radio.branch_a_power_dbm
+  - writer: rule
+    type: oo:Regulation
+    fields:
+    - review.restriction_state
+  - writer: samples
+    type: review:SpectrumSample
+    fields:
+    - oo:shared.observationRecord.acquisitionTime
+    - oo:shared.observationRecord.availableTime
+    - oo:shared.observationRecord.observedSubjectRef
+    - review.power_sample
+  lifecycle:
+  - controller: scanner
+    type: oo:RadioSignalObservation
+  - controller: rule
+    type: oo:Regulation
+  - controller: samples
+    type: review:SpectrumSample
+    ids: obs/*
+  relations:
+  - writer: samples
+    relation: oo:relation:observation-subject
+    type: review:SpectrumSample
+    ids: obs/*
+  obligations:
+  - controller: samples
+    relation: oo:relation:observation-subject
+    direction: targets_per_source
+    type: review:SpectrumSample
+    ids: obs/*
+  samples:
+  - context: review.power_limit
+    partition: threshold
+    upstream:
+    - scanner
+    bindings:
+      receiver: receiver
+    sources:
+      receiver: scanner
+    clocks:
+      receiver:
+      - canonical
+      - canonical
+    parameters:
+      limit_dbm: -30.0
+engines:
+  scanner:
+    plugin: workflow
+    config:
+      produces:
+      - review.scan_phase
+      - he.radio.branch_a_power_dbm
+      consumes: []
+      emits: []
+      subscribes: []
+      targets: []
+      lifecycle: true
+      machines:
+      - entity: receiver
+        field: review.scan_phase
+        initial: idle
+        states:
+          idle:
+            transitions:
+            - to: busy
+              timer_ns: 1000000
+          busy:
+            on_enter:
+            - kind: set
+              entity: receiver
+              field: he.radio.branch_a_power_dbm
+              value: -20.0
+            transitions:
+            - to: finished
+              timer_ns: 1000000
+          finished:
+            transitions: []
+      correlation_key: null
+  rule:
+    plugin: workflow
+    config:
+      produces:
+      - review.restriction_state
+      consumes: []
+      emits: []
+      subscribes:
+      - spectrum
+      targets: []
+      lifecycle: true
+      machines:
+      - entity: restriction
+        field: review.restriction_state
+        initial: inactive
+        states:
+          inactive:
+            transitions:
+            - to: active
+              event: review.spectrum.overlimit
+          active:
+            transitions: []
+      correlation_key: null
+  samples:
+    plugin: records
+    config:
+      trigger_schema: review.spectrum.overlimit
+      topic: spectrum
+      subject_key: subject
+      type_id: review:SpectrumSample
+      release_delay_ns: 20000000
+      relation_id: oo:relation:observation-subject
+      source_field: he.radio.branch_a_power_dbm
+      slots:
+        acquired: oo:shared.observationRecord.acquisitionTime
+        available: oo:shared.observationRecord.availableTime
+        subject: oo:shared.observationRecord.observedSubjectRef
+        sample: review.power_sample
+      id_template: obs/{subject}/{generation}/{sequence:06d}
+  threshold:
+    plugin: threshold
+    config:
+      event: review.spectrum.overlimit
+      topic: spectrum
+      context: review.power_limit
+      ast:
+        op: gte
+        args:
+        - op: field
+          field: he.radio.branch_a_power_dbm
+          role: subject
+          path: []
+        - op: parameter
+          parameter: limit_dbm
+      parameters:
+        limit_dbm: -30.0
+      event_payload:
+        subject: $entity
+      native_reference:
+        path: /mnt/data2/weizhiwei/AeroGraph/semantic-directory/src/expanded_runtime.js
+        sha256: 3780dc2f3d6fc7d7e01850595d10f60d98f378f9036e8722e4c7d820bd75f869
+presentation: []
+run:
+  seed: 42
+  until_ns: 100000000
+  advance_ns: 10000000
+  pacing: fast
+outputs:
+  durability: flush

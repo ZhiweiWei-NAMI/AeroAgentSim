@@ -8,13 +8,21 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+import pytest
+from aerokernel import Interval
+from aerokernel.sdk import EngineContext
 from aerokernel.values import thaw
+from test_sample_missing import RetractionWriter
 
+from aeroagentsim.platform import Simulation
+from aeroagentsim.platform.plugins import EngineBuild, EngineCatalog
 from aeroagentsim.scenario import load_scenario
+from aeroagentsim.services.projector import project
 
 
 def test_native_expanded_positive_negative_missing_first_true(
     document: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     scenario = load_scenario(document)
     config = scenario.engines["threshold"]["config"]
@@ -71,6 +79,71 @@ def test_native_expanded_positive_negative_missing_first_true(
     inputs = [frame(0.0, 0), frame(10.0, 1), frame(None, 2)]
     inputs[1]["history"] = [inputs[0]]
     inputs.append(frame(10.0, 3))
+
+    # Run precisely those four inputs through the actual Python plugin.
+    class SharedFrames(RetractionWriter):
+        def step(self, ctx: EngineContext) -> None:
+            ref = self.build.entities[0]
+            if ctx.now.ns == 2_000_000_000:
+                ctx.retract(
+                    ref, config["field"], Interval(ctx.now, None), "shared unknown"
+                )
+            else:
+                ctx.set(ref, config["field"], [10.0, 0.0, 0.0])
+
+    entity = document["entities"][0]
+    entity["facts"] = {config["field"]: [0.0, 0.0, 0.0]}
+    document["entities"] = [entity]
+    document["engines"] = {
+        "motion": {"plugin": "shared-frames", "config": {}},
+        "threshold": document["engines"]["threshold"],
+    }
+    sample = document["bindings"]["samples"][0]
+    sample.update(
+        upstream=["motion"],
+        bindings={entity["id"]: entity["id"]},
+        sources={entity["id"]: "motion"},
+        clocks={entity["id"]: ["canonical", "canonical"]},
+    )
+    document["bindings"] = {
+        "rules": [
+            {"writer": "motion", "type": entity["type"], "fields": [config["field"]]}
+        ],
+        "lifecycle": [{"controller": "motion", "type": entity["type"]}],
+        "samples": [sample],
+    }
+    original = EngineCatalog.build
+
+    def factory(catalog: EngineCatalog, plugin: str, build: EngineBuild) -> Any:
+        return (
+            SharedFrames(build)
+            if plugin == "shared-frames"
+            else original(catalog, plugin, build)
+        )
+
+    monkeypatch.setattr(EngineCatalog, "build", factory)
+    simulation = Simulation(load_scenario(document))
+    try:
+        simulation.start()
+        view = simulation.run_until(3_000_000_000)
+        frames = view.sample_frames(sample["context"])
+        assert [f.frame.result["states"][entity["id"]]["status"] for f in frames] == [
+            "known",
+            "known",
+            "required_input",
+            "known",
+        ]
+        python_entered = {
+            int(m["at"]["ns"]) // 1_000_000_000
+            for r in simulation.kernel.records
+            for m in project(r)["messages"]
+            if m["schemaId"] == config["event"]
+        }
+    finally:
+        simulation.close()
+    for index, item in enumerate(inputs):
+        if index:
+            item["history"] = [inputs[index - 1]]
     payload = {"data": data, "inputs": inputs}
     script = "const fs=require('fs'); const {AeroGraphExpandedRuntime:R}=require('/mnt/data2/weizhiwei/AeroGraph/semantic-directory/src/expanded_runtime.js'); const p=JSON.parse(fs.readFileSync(0,'utf8')); const r=new R(p.data); console.log(JSON.stringify(p.inputs.map(x=>r.evaluate('entered',x))));"
     result = subprocess.run(
@@ -81,6 +154,9 @@ def test_native_expanded_positive_negative_missing_first_true(
         check=True,
     )
     rows = json.loads(result.stdout)
+    assert [row["value"] is True for row in rows] == [
+        i in python_entered for i in range(len(inputs))
+    ]
     assert rows[1]["status"] == "known" and rows[1]["value"] is True, rows
     assert all(
         row["value"] is not True for index, row in enumerate(rows) if index != 1

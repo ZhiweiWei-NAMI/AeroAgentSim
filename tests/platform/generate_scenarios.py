@@ -405,6 +405,49 @@ for machine in base["engines"]["operations"]["config"]["machines"]:
         {"to": "accepted", "event": "aas.business.accepted"}
     ]
     machine["states"]["accepted"] = {"transitions": []}
+motion_config = base["engines"]["motion"]["config"]
+motion_config["model"] = "enu_point_mass"
+motion_config["arrival_payload"] = {
+    "entity": "$entity",
+    "position": "$position",
+    "machine": "$payload.machine",
+}
+motion_config["result_fields"] = {
+    "entity": "entity",
+    "position": "position",
+    "reason": "reason",
+}
+base["registry"]["field_metadata"] = {
+    POS: {
+        "frame": "enu",
+        "transform_revision": motion_config["frame"]["transform_revision"],
+    }
+}
+for message in base["registry"]["messages"]:
+    if message["kind"] == "command":
+        message["cancel_support"] = True
+        message["schema"]["members"]["subject"] = {
+            "type": "ref",
+            "target_type": "oo:UAV",
+        }
+for engine in base["engines"].values():
+    if engine["plugin"] != "workflow":
+        continue
+    engine["config"]["correlation_key"] = "machine"
+    for machine in engine["config"]["machines"]:
+        for state in machine["states"].values():
+            for index, action in enumerate(state.get("on_enter", [])):
+                if action["kind"] == "command":
+                    action["id"] = f"{machine['entity']}/{index}/move"
+                    action["payload"]["subject"] = {
+                        "$ref": {
+                            "run_id": base["id"],
+                            "epoch": "0",
+                            "id": action["payload"]["entity"],
+                            "generation": 0,
+                            "type_id": "oo:UAV",
+                        }
+                    }
 Path("scenarios/p1-slice.yaml").write_text(yaml.safe_dump(base, sort_keys=False))
 scale = deepcopy(base)
 scale["id"] = "p1-scale"

@@ -20,8 +20,12 @@ export interface Instant {
 
 export interface EntityKey {
   id: string;
-  generation: number;
+  generation: number | string;
 }
+
+export interface SourceStamp { clockId: string; mappingId: string; numerator: string; denominator: string }
+export interface VersionKey { journalIndex: number; itemOrdinal: number }
+export interface TemporalMetadata { validTo?: Instant | null; available?: Instant; version?: VersionKey; acquired?: SourceStamp; causes?: unknown[] }
 
 /** Registry descriptors, delivered once per run (from the pinned snapshot). */
 export interface TypeInfo {
@@ -40,6 +44,8 @@ export interface FieldInfo {
   unit?: string | null;
   frame?: string | null;
   valueType: string;
+  schema?: unknown;
+  metadata?: unknown;
 }
 
 /**
@@ -65,6 +71,8 @@ export interface RunHeader {
   presentation: PresentationBinding[];
   start: Instant;
   end?: Instant;
+  runtimeRegistry?: unknown;
+  messages?: unknown[];
 }
 
 /** One committed kernel transaction, projected for viewing. */
@@ -74,14 +82,14 @@ export interface FeedCommit {
   created: Array<EntityKey & { typeId: string }>;
   removed: EntityKey[];
   /** Latest committed value per (entity, field) in this commit. */
-  facts: Array<{
+  facts: Array<TemporalMetadata & {
     entity: EntityKey; fieldId: string; value: unknown; producer: string; validFrom: Instant;
     /** Display-only barrier for an explicitly reported teleport/discontinuous update. */
     discontinuity?: boolean;
   }>;
-  retracted: Array<{ entity: EntityKey; fieldId: string }>;
-  edges: Array<{ edgeId: string; relationId: string; source: EntityKey; target: EntityKey; op: "assert" | "close" }>;
-  messages: Array<{ id: string; kind: "command" | "event"; schemaId: string; source: string; target?: string; topic?: string; at: Instant; payload: unknown }>;
+  retracted: Array<TemporalMetadata & { entity: EntityKey; fieldId: string; validFrom?: Instant; reason?: string }>;
+  edges: Array<TemporalMetadata & { edgeId: string; relationId: string; source: EntityKey; target: EntityKey; op: "assert" | "close" | "cancel"; validFrom?: Instant | null }>;
+  messages: Array<{ id: string; kind: "command" | "event"; schemaId: string; source: string; target?: string; topic?: string; at: Instant; payload: unknown; subjects?: EntityKey[] }>;
   receipts: Array<{ commandId: string; status: string; result?: unknown }>;
 }
 

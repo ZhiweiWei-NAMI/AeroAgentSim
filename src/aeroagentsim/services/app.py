@@ -43,6 +43,9 @@ def create_app(
         if (path / "manifest.json").exists():
             storage = RunStorage(path)
             if storage.metadata()["status"] not in TERMINAL:
+                storage.offset = 0
+                storage.entries = []
+                storage.index()
                 storage.status(
                     "interrupted",
                     error="service restarted; journal replay is available; execution is not resumed",
@@ -107,8 +110,10 @@ def create_app(
             validation.close()
         except Exception as exc:
             raise HTTPException(422, str(exc)) from exc
-        run_id = f"{scenario.run_id}-{uuid.uuid4().hex[:12]}"
-        path = root / run_id
+        run_id = f"run-{uuid.uuid4().hex}"
+        path = (root / run_id).resolve()
+        if not path.is_relative_to(root):
+            raise HTTPException(422, "run storage path escapes configured output root")
         storage = RunStorage(path)
         storage.prepare(scenario)
         paused, stopped = context.Event(), context.Event()
@@ -138,12 +143,18 @@ def create_app(
         limit: int = Query(256, ge=1, le=4096),
     ) -> dict[str, Any]:
         storage = RunStorage(directory(run_id))
+        metadata = storage.metadata()
         records = storage.records(max(1, from_index), limit)
         result = [project(record) for record in records]
         return {
             "commits": result,
             "next": result[-1]["commitIndex"] + 1 if result else max(1, from_index),
-            "status": storage.metadata()["status"],
+            "status": metadata["status"],
+            **(
+                {"finalCursor": metadata["final_cursor"]}
+                if "final_cursor" in metadata
+                else {}
+            ),
         }
 
     @app.get("/v1/runs/{run_id}/stream")
@@ -166,10 +177,13 @@ def create_app(
                     commit = project(record)
                     cursor = commit["commitIndex"] + 1
                     yield f"id: {commit['commitIndex']}\nevent: commit\ndata: {json.dumps(commit, separators=(',', ':'))}\n\n"
-                status = storage.metadata()["status"]
+                metadata = storage.metadata()
+                status = metadata["status"]
                 if not records and status in TERMINAL:
-                    yield f"event: end\ndata: {json.dumps({'status': status})}\n\n"
-                    return
+                    final_cursor = metadata["final_cursor"]
+                    if cursor >= final_cursor:
+                        yield f"event: end\ndata: {json.dumps({'status': status, 'finalCursor': final_cursor})}\n\n"
+                        return
                 if not records:
                     yield ": waiting\n\n"
                     await asyncio.sleep(0.1)

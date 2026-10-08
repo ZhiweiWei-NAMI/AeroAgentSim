@@ -3,7 +3,7 @@ import { HttpViewerFeed, RunsApi, validateCommit, validateHeader } from './http'
 import fixture from './contract-fixture.json';
 import type { FeedCommit } from '../contracts/viewer-feed';
 const commit = (index: number): FeedCommit => ({ commitIndex: index, at: { ns: '9223372036854775815', microstep: index }, created: [], removed: [], facts: [], retracted: [], edges: [], messages: [], receipts: [] });
-const page = (commits: FeedCommit[], next: number, status = 'running') => new Response(JSON.stringify({ commits, next, status }), { headers: { 'Content-Type': 'application/json' } });
+const page = (commits: FeedCommit[], next: number, status = 'running') => new Response(JSON.stringify({ commits, next, status, ...(['completed','stopped','faulted','interrupted'].includes(status) ? {finalCursor: next} : {}) }), { headers: { 'Content-Type': 'application/json' } });
 afterEach(() => { vi.unstubAllGlobals(); });
 describe('HTTP viewer transport', () => {
   it('accepts the GLM-authored pinned contract fixture with a nonspatial record', () => {
@@ -20,7 +20,7 @@ describe('HTTP viewer transport', () => {
   });
   it('tails fragmented CRLF SSE and ignores a repeated committed prefix', async () => {
     const encoder = new TextEncoder();
-    const text = `event: commit\r\ndata: ${JSON.stringify(commit(1))}\r\n\r\nevent: commit\r\ndata: ${JSON.stringify(commit(2))}\r\n\r\nevent: end\r\ndata: {"status":"completed"}\r\n\r\n`;
+    const text = `event: commit\r\ndata: ${JSON.stringify(commit(1))}\r\n\r\nevent: commit\r\ndata: ${JSON.stringify(commit(2))}\r\n\r\nevent: end\r\ndata: {"status":"completed","finalCursor":3}\r\n\r\n`;
     const stream = new ReadableStream<Uint8Array>({ start(controller) {
       for (let index = 0; index < text.length; index += 7) controller.enqueue(encoder.encode(text.slice(index, index + 7)));
       controller.close();
