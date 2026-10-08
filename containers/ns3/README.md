@@ -4,27 +4,27 @@ A real ns-3.48 Wi-Fi ad-hoc/IPv4/UDP backend with a stdlib Python TCP service.
 Nodes are opaque identities with ENU positions. There are no entity-type,
 mission, workload, session-token or AeroBench artifact dependencies.
 
-Build from the recovered, digest-pinned production image already stored locally:
+Build from the public digest-pinned Ubuntu 24.04 base and SHA-256-verified
+ns-3.48 release archive:
 
 ```sh
-DOCKER_BUILDKIT=0 docker build --memory 8g --cpu-period 100000 --cpu-quota 800000 \
-  -t aeroagentsim/ns3:dev-p4b containers/ns3
+containers/ns3/build.sh
 ```
 
-The Dockerfile reuses its SHA-verified ns-3 tree and compiler, then copies only
-runtime files into a fresh rootfs derived from that image's Ubuntu 24.04. The
-compiler, ns-3 sources, old backend and recovered archives stay outside the
-runtime image. This avoids a fresh Docker Hub/download dependency.
+The build uses the existing platform native provider, with the original optimized
+ns-3 module configuration. Only its binary, dynamic libraries, Python stdlib and
+input provenance are copied into the runtime rootfs. Recovered AeroBench sources
+remain archival inputs for provenance, outside the build context.
 
 Run the service and smoke test from the repository root:
 
 ```sh
-docker run -d --name aas-ns3-p4 --label aeroagentsim.job=p4 \
-  --cpus 8 --memory 8g -p 127.0.0.1:19004:9000 aeroagentsim/ns3:dev-p4b
+docker run -d --name aas-p9-ns3 --label aeroagentsim.job=p9 \
+  --cpus 16 --memory 8g -p 127.0.0.1:19004:9000 aeroagentsim/ns3:standalone
 /mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python \
-  containers/ns3/smoke.py --port 19004 --output /tmp/aas-p4/smoke
+  containers/ns3/smoke.py --port 19004 --output /tmp/aas-p9/ns3-smoke
 # Remove only the container you just created.
-docker rm -f aas-ns3-p4
+docker rm -f aas-p9-ns3
 ```
 
 The smoke sends 2,400 packets from one source to four nodes moving apart over
@@ -47,3 +47,14 @@ model assumptions, recovered source hashes, measured results and limitations.
 The original sources from all inspected tags are retained in
 `recovered/sources.tar.gz`, with per-tag hashes in `recovered/provenance.json`;
 they are archival and excluded from the Docker build context.
+
+## Standalone build provenance
+
+The Dockerfile has no AeroBench base image or repository dependency. Public bases,
+verified source archives, vendored dependency locks/patches, build timings, image
+sizes and real validation results are listed in
+[the container build record](../../docs/platform/containers.md). APT-selected
+artifact URLs/SHA-256 values and installed package versions are retained under
+`/opt/aeroagentsim/build-inputs`; Python wheel selection is recorded alongside
+its enforced hash lock. Build-only caches, wheels and compilers are excluded
+from the runtime where a separate build stage is used.

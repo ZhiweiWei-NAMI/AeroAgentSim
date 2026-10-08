@@ -1,16 +1,16 @@
 # PX4/Gazebo backend
 
-AeroAgentSim's container-side lockstep flight simulator. It starts the inherited PX4 SITL, Gazebo Harmonic and patched MAVSDK binaries, without loading the AeroBench service or its workload/evidence machinery. Runtime Python dependencies come from the pinned base image; the host smoke client uses only the standard library.
+AeroAgentSim's container-side lockstep flight simulator. It starts PX4 SITL and Gazebo Harmonic from a public digest-pinned base, and MAVSDK 3.17.2 built from verified source with the inherited patch, without loading the AeroBench service or its workload/evidence machinery. Runtime Python dependencies are installed from the vendored hash lock; the host smoke client uses only the standard library.
 
 ```bash
-docker build -t aeroagentsim/px4-gazebo:dev-p2b containers/px4-gazebo
-docker run -d --name aas-p2a --label aeroagentsim.job=p2a \
-  --cpus 8 --memory 16g -p 127.0.0.1:19000:9000 \
-  aeroagentsim/px4-gazebo:dev-p2b
+containers/px4-gazebo/build.sh
+docker run -d --name aas-p9-px4 --label aeroagentsim.job=p9 \
+  --cpus 16 --memory 16g -p 127.0.0.1:19000:9000 \
+  aeroagentsim/px4-gazebo:standalone
 /mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python \
-  containers/px4-gazebo/smoke.py --port 19000 --runs 2 --step-ms 4,20,100,200 \
-  --output /tmp/aas-p2a/p2b-flight-sweep.json
-docker rm -f aas-p2a
+  containers/px4-gazebo/smoke.py --port 19000 --vehicles 1 --runs 1 --step-ms 20 \
+  --output /tmp/aas-p9-px4/p2b-flight-sweep.json
+docker rm -f aas-p9-px4
 ```
 
 Each container owns one world and accepts one connection at a time. `close` cleans up its world and leaves the TCP listener available for a new run. A disconnect also cleans up. Every reset starts new native processes and fresh PX4 parameter/data directories. There is one reset per connection, with no crash resume or automatic retries.
@@ -56,8 +56,31 @@ Use `--step-ms 20` for one cadence, or `--step-ms 4,20,100,200` for a sweep. Eac
 Run the host contract checks with:
 
 ```bash
-TMPDIR=/tmp/aas-p2a PYTHONPATH=containers/px4-gazebo PYTHONDONTWRITEBYTECODE=1 \
+TMPDIR=/tmp/aas-p9-px4 PYTHONPATH=containers/px4-gazebo PYTHONDONTWRITEBYTECODE=1 \
   /mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python -m pytest \
-  -q -p no:cacheprovider --basetemp /tmp/aas-p2a/p2b-pytest \
+  -q -p no:cacheprovider --basetemp /tmp/aas-p9-px4/p2b-pytest \
   containers/px4-gazebo/tests
 ```
+
+## Standalone build provenance
+
+The Dockerfile has no AeroBench base image or repository dependency. Public bases,
+verified source archives, vendored dependency locks/patches, build timings, image
+sizes and real validation results are listed in
+[the container build record](../../docs/platform/containers.md). APT-selected
+artifact URLs/SHA-256 values and installed package versions are retained under
+`/opt/aeroagentsim/build-inputs`; Python wheel selection is recorded alongside
+its enforced hash lock. Build-only caches, wheels and compilers are excluded
+from the runtime where a separate build stage is used.
+
+`mavsdk-incoming-heartbeat-timeout.patch`, `mavlink-offline-python.patch`,
+`pymavlink-build-requirements.lock`, `requirements.lock`,
+`inject_contact_sensors.py` and `patch_camera_model.py` were copied byte-for-byte
+from AeroBench's `containers/px4-gazebo/`. Its Dockerfile supplies the adapted
+source-build recipe. The patch includes the audit-journal argument still required
+by the slim launcher and local, verified third-party archives for offline CMake
+compilation. Camera/contact post-patch hashes are enforced. The slim service
+never loads or references AeroBench's airspace transition plugin, so that plugin
+is excluded. The compiled MAVSDK output hash is measured per build; source and
+patch hashes are the reproducibility constraints because compilers/system
+libraries can change its binary bytes.

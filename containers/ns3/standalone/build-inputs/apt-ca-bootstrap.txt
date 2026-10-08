@@ -1,0 +1,15 @@
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  libssl3t64 openssl
+The following NEW packages will be installed:
+  ca-certificates openssl
+The following packages will be upgraded:
+  libssl3t64
+1 upgraded, 2 newly installed, 0 to remove and 31 not upgraded.
+Need to get 3088 kB of archives.
+After this operation, 2272 kB of additional disk space will be used.
+'http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl3t64_3.0.13-0ubuntu3.16_amd64.deb' libssl3t64_3.0.13-0ubuntu3.16_amd64.deb 1945300 SHA256:219f43b1cd836a4da550938db5fda93160d269d39a4edcf1f1ce698a470db797
+'http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/openssl_3.0.13-0ubuntu3.16_amd64.deb' openssl_3.0.13-0ubuntu3.16_amd64.deb 1003702 SHA256:675b84971ffd4467707008c25ef7520f90ea7c23ef27b7a76b0dccf1d7c4dc3f
+'http://archive.ubuntu.com/ubuntu/pool/main/c/ca-certificates/ca-certificates_20260601%7e24.04.1_all.deb' ca-certificates_20260601~24.04.1_all.deb 139430 SHA256:6bac2a01979e210d9eac1d4d56747ec709ea60654744d66705dc3c36e7629e50

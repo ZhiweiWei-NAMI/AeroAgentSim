@@ -1,15 +1,15 @@
 # SUMO backend
 
-Build from the existing local SUMO 1.27.1/TraCI image:
+Build SUMO 1.27.1/TraCI from the public digest-pinned Python base and vendored wheel hash lock:
 
 ~~~sh
-docker build -t aeroagentsim/sumo:dev-p3a-5 containers/sumo
-docker run -d --name aas-p3a-sumo --label aeroagentsim.job=p3a \
-  --cpus 8 --memory 8g -p 127.0.0.1:19003:9000 aeroagentsim/sumo:dev-p3a-5
+containers/sumo/build.sh
+docker run -d --name aas-p9-sumo --label aeroagentsim.job=p9 \
+  --cpus 16 --memory 8g -p 127.0.0.1:19003:9000 aeroagentsim/sumo:standalone
 /mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python \
-  containers/sumo/smoke.py --output /tmp/aas-p3a/results
-docker stop aas-p3a-sumo
-docker rm aas-p3a-sumo
+  containers/sumo/smoke.py --seconds 60 --repeats 2 --output /tmp/aas-p9/sumo-smoke
+docker stop aas-p9-sumo
+docker rm aas-p9-sumo
 ~~~
 
 The generated 3×3 grid has two driving lanes per direction, sidewalks, walking
@@ -126,3 +126,16 @@ PYTHONDONTWRITEBYTECODE=1 /mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin
 This backend profile is designed for a future aerokernel lockstep adapter.
 The adapter must wrap it in the kernel RPC envelope and provide partition,
 invocation, cuts and frontiers; the backend itself does not claim kernel commits.
+
+## Standalone build provenance
+
+The Dockerfile has no AeroBench base image or repository dependency. Public bases,
+verified source archives, vendored dependency locks/patches, build timings, image
+sizes and real validation results are listed in
+[the container build record](../../docs/platform/containers.md). APT-selected
+artifact URLs/SHA-256 values and installed package versions are retained under
+`/opt/aeroagentsim/build-inputs`; Python wheel selection is recorded alongside
+its enforced hash lock. Build-only caches, wheels and compilers are excluded
+from the runtime where a separate build stage is used.
+
+`requirements.lock` is copied byte-for-byte from AeroBench `containers/sumo/`.

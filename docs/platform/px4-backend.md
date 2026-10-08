@@ -140,3 +140,18 @@ The final service uses MAVSDK’s native `MavlinkDirect.send_message` to release
 Orchestrator re-verification of `dev-p2b` (2026-10-08): one vehicle, `--step-ms 20`,
 arm/takeoff/goto/land all observed terminal success; 45.02 s simulated in 10.6 s wall
 (about 4.25x), hello-to-reset 12.6 s.
+
+## Standalone build (P9)
+
+`containers/px4-gazebo/Dockerfile` now uses public, digest-pinned bases and verified
+source/dependency inputs. Build with `containers/px4-gazebo/build.sh`; the output tag
+is `aeroagentsim/px4-gazebo:standalone`. No AeroBench image or checkout is required.
+The existing backend service/native model is unchanged.
+
+The final image is `sha256:2c973f0fb2bb0bc18f3f23f2b4a5d8ed2a5932eb0335e7cb7865fd6a8dd31444`, **2,335,561,749 bytes**.
+Its existing real smoke client passed on this image; the three standalone Docker
+adapter/replay tests also passed. Input hashes, command timings, RTF/repeatability,
+build-network failure history and artifact links are recorded in
+[containers.md](containers.md). Verification artifacts are in
+`containers/px4-gazebo/standalone/`; the original dev-image measurements above remain
+historical and are not substituted for standalone results.

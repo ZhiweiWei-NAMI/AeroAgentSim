@@ -92,3 +92,5 @@ dsh-home/
 glm-review/
 glm-cases/
 .glm/
+containers/*/standalone/**/*metrics*.json
+containers/*/standalone/*.jsonl.gz

@@ -1,0 +1,7 @@
+tests/
+standalone/
+validation/
+**/__pycache__/
+*.md
+smoke.py
+measurements*.json

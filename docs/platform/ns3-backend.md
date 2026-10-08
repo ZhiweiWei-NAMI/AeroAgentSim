@@ -345,3 +345,18 @@ Subsequent test runs use `HYPOTHESIS_STORAGE_DIRECTORY=/tmp/aas-p4/hypothesis`,
 `PYTHONDONTWRITEBYTECODE=1`, disabled pytest cache and a scratch Ruff cache.
 Created runtime containers were removed after verification. No git commit,
 branch/reset, protected-repository build or image cleanup operation was performed.
+
+## Standalone build (P9)
+
+`containers/ns3/Dockerfile` now uses public, digest-pinned bases and verified
+source/dependency inputs. Build with `containers/ns3/build.sh`; the output tag
+is `aeroagentsim/ns3:standalone`. No AeroBench image or checkout is required.
+The existing backend service/native model is unchanged.
+
+The final image is `sha256:ca03e1d2f4ca8e9a2f78ed41ef8192b374248226073f4394727d8705109de036`, **72,841,777 bytes**.
+Its existing real smoke client passed on this image; the three standalone Docker
+adapter/replay tests also passed. Input hashes, command timings, RTF/repeatability,
+build-network failure history and artifact links are recorded in
+[containers.md](containers.md). Verification artifacts are in
+`containers/ns3/standalone/`; the original dev-image measurements above remain
+historical and are not substituted for standalone results.

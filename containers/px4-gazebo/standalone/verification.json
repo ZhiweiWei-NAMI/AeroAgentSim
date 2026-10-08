@@ -1,0 +1,31 @@
+{
+  "image": "aeroagentsim/px4-gazebo:standalone",
+  "image_id": "sha256:2c973f0fb2bb0bc18f3f23f2b4a5d8ed2a5932eb0335e7cb7865fd6a8dd31444",
+  "size_bytes": 2335561749,
+  "container_startup_s": 0.7384580252692103,
+  "smoke_wall_s": 26.882338877767324,
+  "command": [
+    "/mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python",
+    "containers/px4-gazebo/smoke.py",
+    "--port",
+    "32802",
+    "--vehicles",
+    "1",
+    "--runs",
+    "1",
+    "--step-ms",
+    "20",
+    "--output",
+    "/tmp/aas-p9/px4-gazebo/smoke.json"
+  ],
+  "returncode": 0,
+  "nano_cpus": 16000000000,
+  "labels": {
+    "aeroagentsim.backend": "px4-gazebo",
+    "aeroagentsim.job": "p9",
+    "description": "PX4 SITL with Gazebo Harmonic simulation",
+    "maintainer": "PX4 Development Team",
+    "org.opencontainers.image.base.name": "px4io/px4-sitl-gazebo@sha256:6f687ce0dad52b648c6f882ebaee93a03254001a8857b761312bafb689f7803e",
+    "org.opencontainers.image.version": "24.04"
+  }
+}

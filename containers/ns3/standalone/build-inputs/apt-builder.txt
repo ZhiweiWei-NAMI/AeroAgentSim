@@ -1,0 +1,135 @@
+Reading package lists...
+Building dependency tree...
+Reading state information...
+ca-certificates is already the newest version (20260601~24.04.1).
+The following additional packages will be installed:
+  binutils binutils-common binutils-x86-64-linux-gnu cmake-data cpp cpp-13
+  cpp-13-x86-64-linux-gnu cpp-x86-64-linux-gnu g++-13 g++-13-x86-64-linux-gnu
+  g++-x86-64-linux-gnu gcc gcc-13 gcc-13-base gcc-13-x86-64-linux-gnu
+  gcc-x86-64-linux-gnu libarchive13t64 libasan8 libatomic1 libbinutils
+  libbrotli1 libbz2-1.0 libc-bin libc-dev-bin libc6 libc6-dev libcc1-0
+  libcrypt-dev libctf-nobfd0 libctf0 libcurl4t64 libexpat1 libgcc-13-dev
+  libgomp1 libgprofng0 libgssapi-krb5-2 libhwasan0 libicu74 libisl23 libitm1
+  libjansson4 libjsoncpp25 libk5crypto3 libkeyutils1 libkrb5-3 libkrb5support0
+  libldap2 liblsan0 libmpc3 libmpfr6 libnghttp2-14 libpsl5t64
+  libpython3-stdlib libpython3.12-minimal libpython3.12-stdlib libquadmath0
+  libreadline8t64 librhash0 librtmp1 libsasl2-2 libsasl2-modules-db libsframe1
+  libsqlite3-0 libssh-4 libstdc++-13-dev libtsan2 libubsan1 libuv1t64 libxml2
+  linux-libc-dev media-types netbase python3-minimal python3.12
+  python3.12-minimal readline-common rpcsvc-proto tzdata
+Suggested packages:
+  binutils-doc gprofng-gui bzip2-doc cmake-doc cmake-format elpa-cmake-mode
+  cpp-doc gcc-13-locales cpp-13-doc g++-multilib g++-13-multilib gcc-13-doc
+  gcc-multilib manpages-dev autoconf automake libtool flex bison gdb gcc-doc
+  gcc-13-multilib gdb-x86-64-linux-gnu lrzip manpages glibc-doc locales
+  libnss-nis libnss-nisplus krb5-doc krb5-user libstdc++-13-doc make-doc
+  python3-doc python3-tk python3-venv python3.12-venv python3.12-doc
+  binfmt-support readline-doc
+Recommended packages:
+  manpages manpages-dev libc-devtools krb5-locales libldap-common publicsuffix
+  libsasl2-modules
+The following NEW packages will be installed:
+  binutils binutils-common binutils-x86-64-linux-gnu bzip2 cmake cmake-data
+  cpp cpp-13 cpp-13-x86-64-linux-gnu cpp-x86-64-linux-gnu g++ g++-13
+  g++-13-x86-64-linux-gnu g++-x86-64-linux-gnu gcc gcc-13 gcc-13-base
+  gcc-13-x86-64-linux-gnu gcc-x86-64-linux-gnu libarchive13t64 libasan8
+  libatomic1 libbinutils libbrotli1 libc-dev-bin libc6-dev libcc1-0
+  libcrypt-dev libctf-nobfd0 libctf0 libcurl4t64 libexpat1 libgcc-13-dev
+  libgomp1 libgprofng0 libgssapi-krb5-2 libhwasan0 libicu74 libisl23 libitm1
+  libjansson4 libjsoncpp25 libk5crypto3 libkeyutils1 libkrb5-3 libkrb5support0
+  libldap2 liblsan0 libmpc3 libmpfr6 libnghttp2-14 libpsl5t64
+  libpython3-stdlib libpython3.12-minimal libpython3.12-stdlib libquadmath0
+  libreadline8t64 librhash0 librtmp1 libsasl2-2 libsasl2-modules-db libsframe1
+  libsqlite3-0 libssh-4 libstdc++-13-dev libtsan2 libubsan1 libuv1t64 libxml2
+  linux-libc-dev make media-types netbase ninja-build python3 python3-minimal
+  python3.12 python3.12-minimal readline-common rpcsvc-proto tzdata wget
+The following packages will be upgraded:
+  libbz2-1.0 libc-bin libc6
+3 upgraded, 82 newly installed, 0 to remove and 28 not upgraded.
+Need to get 109 MB of archives.
+After this operation, 371 MB of additional disk space will be used.
+'https://security.ubuntu.com/ubuntu/pool/main/libx/libxml2/libxml2_2.9.14%2bdfsg-1.3ubuntu3.10_amd64.deb' libxml2_2.9.14+dfsg-1.3ubuntu3.10_amd64.deb 763592 SHA256:c5a065f85c1e6f605741e365e40cad71c3ceb0e85e2791400bd35b8896e12ad1
+'https://archive.ubuntu.com/ubuntu/pool/main/g/glibc/libc6_2.39-0ubuntu8.9_amd64.deb' libc6_2.39-0ubuntu8.9_amd64.deb 3264314 SHA256:ff5557d99b51f761c4b7c92368b9cc45565eda17df9bf9eb4b134d09825008be
+'https://archive.ubuntu.com/ubuntu/pool/main/g/glibc/libc-bin_2.39-0ubuntu8.9_amd64.deb' libc-bin_2.39-0ubuntu8.9_amd64.deb 682164 SHA256:066398a06ef1a218d4109461d4c636eafe83322ad19b179de9ef7af42b3fec58
+'https://archive.ubuntu.com/ubuntu/pool/main/p/python3.12/libpython3.12-minimal_3.12.3-1ubuntu0.17_amd64.deb' libpython3.12-minimal_3.12.3-1ubuntu0.17_amd64.deb 838536 SHA256:d646ad7112b5adec21ba0e1af015f04ae8ca7f5efdc619622547dd6673c4c14b
+'https://archive.ubuntu.com/ubuntu/pool/main/e/expat/libexpat1_2.6.1-2ubuntu0.6_amd64.deb' libexpat1_2.6.1-2ubuntu0.6_amd64.deb 98940 SHA256:494b8e672f722130c6bca6a7bc4cc31a43ca891a31d60d868bfdd699a3c20b13
+'https://archive.ubuntu.com/ubuntu/pool/main/p/python3.12/python3.12-minimal_3.12.3-1ubuntu0.17_amd64.deb' python3.12-minimal_3.12.3-1ubuntu0.17_amd64.deb 2334634 SHA256:d452689b9660845345a4c3e05e4ad82c082d5474e04031b7aa47f1a6d5610a6e
+'https://archive.ubuntu.com/ubuntu/pool/main/p/python3-defaults/python3-minimal_3.12.3-0ubuntu2.1_amd64.deb' python3-minimal_3.12.3-0ubuntu2.1_amd64.deb 27442 SHA256:9ba5dd55cdcf6121c147dc5cb87403169b5933e3a56da0de57774f2ce819cf06
+'https://archive.ubuntu.com/ubuntu/pool/main/m/media-types/media-types_10.1.0_all.deb' media-types_10.1.0_all.deb 27474 SHA256:31bfb7eec55ab6d34a50ba995150e1498d4cb897714085d8025e330d3b529747
+'https://archive.ubuntu.com/ubuntu/pool/main/n/netbase/netbase_6.4_all.deb' netbase_6.4_all.deb 13112 SHA256:8cdbc9c3dca01e660759bf9d840f72e45ac72faf5d19ca1faecacaf6a60c1a87
+'https://archive.ubuntu.com/ubuntu/pool/main/t/tzdata/tzdata_2026c-0ubuntu0.24.04.1_all.deb' tzdata_2026c-0ubuntu0.24.04.1_all.deb 279816 SHA256:ef12c9ef81905b5ac558504b2f8c20da9be5f28861020b3fb5e8b15fb3fae2f6
+'https://archive.ubuntu.com/ubuntu/pool/main/b/bzip2/libbz2-1.0_1.0.8-5.1ubuntu0.1_amd64.deb' libbz2-1.0_1.0.8-5.1ubuntu0.1_amd64.deb 34562 SHA256:36ee08b00b1ee5018b2fce02881b7d2d73c9b4e32990bde3388400d86c48126a
+'https://archive.ubuntu.com/ubuntu/pool/main/r/readline/readline-common_8.2-4build1_all.deb' readline-common_8.2-4build1_all.deb 56484 SHA256:879bfd7f8a9bc4c0f7cdc777cdd8bc6de5f8c4a2ac80c060322a1b22f13504bb
+'https://archive.ubuntu.com/ubuntu/pool/main/r/readline/libreadline8t64_8.2-4build1_amd64.deb' libreadline8t64_8.2-4build1_amd64.deb 152856 SHA256:563977a16df03b611f5239cc1e9a0426e86479fcc616b5c9e200ea32063119e5
+'https://archive.ubuntu.com/ubuntu/pool/main/s/sqlite3/libsqlite3-0_3.45.1-1ubuntu2.8_amd64.deb' libsqlite3-0_3.45.1-1ubuntu2.8_amd64.deb 701602 SHA256:b1190bb72359f5fcc47406aa46065eaf4f1ca208085c51224a52b04bedc0b4bb
+'https://archive.ubuntu.com/ubuntu/pool/main/p/python3.12/libpython3.12-stdlib_3.12.3-1ubuntu0.17_amd64.deb' libpython3.12-stdlib_3.12.3-1ubuntu0.17_amd64.deb 2070530 SHA256:45d3f530ba1f9d6e879ad46b92046fabab13fe50a82450e4f65557a3bbad1489
+'https://archive.ubuntu.com/ubuntu/pool/main/p/python3.12/python3.12_3.12.3-1ubuntu0.17_amd64.deb' python3.12_3.12.3-1ubuntu0.17_amd64.deb 650732 SHA256:6745c9463432e619d7402b117ad4ac86c31dcd3999ba20daa9e395f6f9909d86
+'https://archive.ubuntu.com/ubuntu/pool/main/p/python3-defaults/libpython3-stdlib_3.12.3-0ubuntu2.1_amd64.deb' libpython3-stdlib_3.12.3-0ubuntu2.1_amd64.deb 10080 SHA256:57ebb378c59d2f9ef479bee0abc933c560878cc10e2c3af8e05d6fdb2ed63da4
+'https://archive.ubuntu.com/ubuntu/pool/main/p/python3-defaults/python3_3.12.3-0ubuntu2.1_amd64.deb' python3_3.12.3-0ubuntu2.1_amd64.deb 23004 SHA256:e691b9cc40841c41bbdc50bd794c876cb1b1801306ea27b06e9a1458180df1e9
+'https://archive.ubuntu.com/ubuntu/pool/main/k/krb5/libkrb5support0_1.20.1-6ubuntu2.10_amd64.deb' libkrb5support0_1.20.1-6ubuntu2.10_amd64.deb 34942 SHA256:9224ede3246a82a845ea97652ecfae57f88e8d8f520d8a186f9157167574fb34
+'https://archive.ubuntu.com/ubuntu/pool/main/k/krb5/libk5crypto3_1.20.1-6ubuntu2.10_amd64.deb' libk5crypto3_1.20.1-6ubuntu2.10_amd64.deb 81944 SHA256:273f7cc95a68d927d7f71c3e78b7717a16a8d86e646a206bae7bf797150ae9db
+'https://archive.ubuntu.com/ubuntu/pool/main/k/keyutils/libkeyutils1_1.6.3-3build1_amd64.deb' libkeyutils1_1.6.3-3build1_amd64.deb 9490 SHA256:0679f198b0128179e46cdf956fb2022c23c758664c00bc8efa0382d509683a8a
+'https://archive.ubuntu.com/ubuntu/pool/main/k/krb5/libkrb5-3_1.20.1-6ubuntu2.10_amd64.deb' libkrb5-3_1.20.1-6ubuntu2.10_amd64.deb 347568 SHA256:60b48c5a3233f1d8caba30d6573edc8e131911ab6d63adcd664f7cbe62708362
+'https://archive.ubuntu.com/ubuntu/pool/main/k/krb5/libgssapi-krb5-2_1.20.1-6ubuntu2.10_amd64.deb' libgssapi-krb5-2_1.20.1-6ubuntu2.10_amd64.deb 142830 SHA256:0d4a0187bcdbbe3e6a10bfa574100087d12052d0d0ef28614fd6210021c587b2
+'https://archive.ubuntu.com/ubuntu/pool/main/i/icu/libicu74_74.2-1ubuntu3.1_amd64.deb' libicu74_74.2-1ubuntu3.1_amd64.deb 10860078 SHA256:c9a70989678660eed9a1e904c74fa043da8bec8e2036856fc16e31ced79b04f8
+'https://archive.ubuntu.com/ubuntu/pool/main/j/jansson/libjansson4_2.14-2build2_amd64.deb' libjansson4_2.14-2build2_amd64.deb 32830 SHA256:0cf79113f5d193ce9af2be2ff4b2c3b30dd4e55a0b6c47f7d28f6c849ff3aa60
+'https://archive.ubuntu.com/ubuntu/pool/main/n/nghttp2/libnghttp2-14_1.59.0-1ubuntu0.4_amd64.deb' libnghttp2-14_1.59.0-1ubuntu0.4_amd64.deb 74590 SHA256:73adcbb9df32cd7c9d46b1c7598bbbbcf249be705d62d966694cfc9976a15dfe
+'https://archive.ubuntu.com/ubuntu/pool/main/libp/libpsl/libpsl5t64_0.21.2-1.1build1_amd64.deb' libpsl5t64_0.21.2-1.1build1_amd64.deb 57072 SHA256:a6c85d1303ae90b6a3209d73c4f047f82c27cdc963c48adfd95dd7abca64f039
+'https://archive.ubuntu.com/ubuntu/pool/main/libu/libuv1/libuv1t64_1.48.0-1.1build1_amd64.deb' libuv1t64_1.48.0-1.1build1_amd64.deb 97288 SHA256:72a1856b30af1e533494ab90742a2446f4491b15ddebcade6661a6e8d61b4359
+'https://archive.ubuntu.com/ubuntu/pool/main/w/wget/wget_1.21.4-1ubuntu4.5_amd64.deb' wget_1.21.4-1ubuntu4.5_amd64.deb 334118 SHA256:2aa5a734b21b49ff6bd2239546b3f88275f8abb55dd8a984249e6cd0c1173a92
+'https://archive.ubuntu.com/ubuntu/pool/main/b/binutils/binutils-common_2.42-4ubuntu2.10_amd64.deb' binutils-common_2.42-4ubuntu2.10_amd64.deb 240286 SHA256:d136073f5e2153f3df11c1d08d66727b9466b28ff483f50085f14bbe3464b5ee
+'https://archive.ubuntu.com/ubuntu/pool/main/b/binutils/libsframe1_2.42-4ubuntu2.10_amd64.deb' libsframe1_2.42-4ubuntu2.10_amd64.deb 15724 SHA256:72093fb456864db55f1352bfa5e952a94f7abaff64e71dff1fbf001db1984564
+'https://archive.ubuntu.com/ubuntu/pool/main/b/binutils/libbinutils_2.42-4ubuntu2.10_amd64.deb' libbinutils_2.42-4ubuntu2.10_amd64.deb 576834 SHA256:064dce00ce94e1fc2d33779cb0071088f4c8aac79e85345f2e78a020f7d14699
+'https://archive.ubuntu.com/ubuntu/pool/main/b/binutils/libctf-nobfd0_2.42-4ubuntu2.10_amd64.deb' libctf-nobfd0_2.42-4ubuntu2.10_amd64.deb 98012 SHA256:da352eb7fa6c4369d2a6c1e5e680f574eda2e38576563326b18d9e47e61c4078
+'https://archive.ubuntu.com/ubuntu/pool/main/b/binutils/libctf0_2.42-4ubuntu2.10_amd64.deb' libctf0_2.42-4ubuntu2.10_amd64.deb 94474 SHA256:7ec86d697c3668503c85f308a6832f092075b5880ad002f22185264da0bd4645
+'https://archive.ubuntu.com/ubuntu/pool/main/b/binutils/libgprofng0_2.42-4ubuntu2.10_amd64.deb' libgprofng0_2.42-4ubuntu2.10_amd64.deb 848684 SHA256:1b7e3c2fc162e8358ca6e5a3fffdb4d0d632f790630323215841bb36a63c0ab8
+'https://archive.ubuntu.com/ubuntu/pool/main/b/binutils/binutils-x86-64-linux-gnu_2.42-4ubuntu2.10_amd64.deb' binutils-x86-64-linux-gnu_2.42-4ubuntu2.10_amd64.deb 2462744 SHA256:1e510a15f30208d39edcd840e48f26a77bbca7c417805eeccb1e3f7de198ef29
+'https://archive.ubuntu.com/ubuntu/pool/main/b/binutils/binutils_2.42-4ubuntu2.10_amd64.deb' binutils_2.42-4ubuntu2.10_amd64.deb 18154 SHA256:b3b5a84181a38fd191820b2cdcc1a3eeb1cd6333ad472f2092f96e81047e9c74
+'https://archive.ubuntu.com/ubuntu/pool/main/b/bzip2/bzip2_1.0.8-5.1ubuntu0.1_amd64.deb' bzip2_1.0.8-5.1ubuntu0.1_amd64.deb 34560 SHA256:60fb79214dd8366fa39d7e69911294e72b9f1a4425a3d22f211359c8626e4b9e
+'https://archive.ubuntu.com/ubuntu/pool/main/liba/libarchive/libarchive13t64_3.7.2-2ubuntu0.9_amd64.deb' libarchive13t64_3.7.2-2ubuntu0.9_amd64.deb 383406 SHA256:b4e618d2237da9b00b88947113ebad8f93134f07f670a2df59cc5201c6c4307f
+'https://archive.ubuntu.com/ubuntu/pool/main/b/brotli/libbrotli1_1.1.0-2build2_amd64.deb' libbrotli1_1.1.0-2build2_amd64.deb 330730 SHA256:74492419b8fda803774b8c9acef6afc5d2f9ff31782635aae212906adae7b277
+'https://archive.ubuntu.com/ubuntu/pool/main/c/cyrus-sasl2/libsasl2-modules-db_2.1.28%2bdfsg1-5ubuntu3.1_amd64.deb' libsasl2-modules-db_2.1.28+dfsg1-5ubuntu3.1_amd64.deb 20354 SHA256:1f13548b1774cd9c70c50b8c3267204a101334a4d2f979338896ba5a4c6f81b8
+'https://archive.ubuntu.com/ubuntu/pool/main/c/cyrus-sasl2/libsasl2-2_2.1.28%2bdfsg1-5ubuntu3.1_amd64.deb' libsasl2-2_2.1.28+dfsg1-5ubuntu3.1_amd64.deb 53194 SHA256:eda097f98dcb3a08b9ce157d6191d140e4885c1cba47b683c94b8ca45e88f458
+'https://archive.ubuntu.com/ubuntu/pool/main/o/openldap/libldap2_2.6.10%2bdfsg-0ubuntu0.24.04.1_amd64.deb' libldap2_2.6.10+dfsg-0ubuntu0.24.04.1_amd64.deb 197620 SHA256:7f3f8e565401256f21d5aa562c9f92dbb63537b73aaea6283e4db5264f1598f4
+'https://archive.ubuntu.com/ubuntu/pool/main/r/rtmpdump/librtmp1_2.4%2b20151223.gitfa8646d.1-2build7_amd64.deb' librtmp1_2.4+20151223.gitfa8646d.1-2build7_amd64.deb 56342 SHA256:967a39dbc14236d1580ede01d80fd78444668572e716734e1ac66c175052594e
+'https://archive.ubuntu.com/ubuntu/pool/main/libs/libssh/libssh-4_0.10.6-2ubuntu0.5_amd64.deb' libssh-4_0.10.6-2ubuntu0.5_amd64.deb 191284 SHA256:2448ce5f99e49721d12f8b227f2472dd08ed7a78184dd819fd03a42693024a16
+'https://archive.ubuntu.com/ubuntu/pool/main/c/curl/libcurl4t64_8.5.0-2ubuntu10.15_amd64.deb' libcurl4t64_8.5.0-2ubuntu10.15_amd64.deb 343472 SHA256:02f8f39727a43d5a7057cba35cda866be00d929b91ea67ed02dd9d6402fa551c
+'https://archive.ubuntu.com/ubuntu/pool/main/libj/libjsoncpp/libjsoncpp25_1.9.5-6build1_amd64.deb' libjsoncpp25_1.9.5-6build1_amd64.deb 82754 SHA256:8efea5b75952f3ad1c40e6b5b31de687c297ea29f87f8b63efebb55e13467211
+'https://archive.ubuntu.com/ubuntu/pool/main/r/rhash/librhash0_1.4.3-3build1_amd64.deb' librhash0_1.4.3-3build1_amd64.deb 128748 SHA256:e9ee69963ff1a56378b9c5ffdd21ea0feaec9647c522349b7612b25103490528
+'https://archive.ubuntu.com/ubuntu/pool/main/c/cmake/cmake-data_3.28.3-1build7_all.deb' cmake-data_3.28.3-1build7_all.deb 2154936 SHA256:20a3b644211ce82f35c24f1f5052199adeb0ac159978a8740fd6c0959611557f
+'https://archive.ubuntu.com/ubuntu/pool/main/c/cmake/cmake_3.28.3-1build7_amd64.deb' cmake_3.28.3-1build7_amd64.deb 11190006 SHA256:4b0a7f8c0daf27b26b46997d994ae5d1ee7a3d11dfcda9f7627bb1462c162295
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/gcc-13-base_13.3.0-6ubuntu2%7e24.04.1_amd64.deb' gcc-13-base_13.3.0-6ubuntu2~24.04.1_amd64.deb 51616 SHA256:e859aca26585bb91113a451f1e66bc0e5283cb08797d679aacc1d936ae6dff8e
+'https://archive.ubuntu.com/ubuntu/pool/main/i/isl/libisl23_0.26-3build1.1_amd64.deb' libisl23_0.26-3build1.1_amd64.deb 679812 SHA256:4e040926e50fb961fae9bf95660189d468336a4a17bc321872c434fc8f777e7f
+'https://archive.ubuntu.com/ubuntu/pool/main/m/mpfr4/libmpfr6_4.2.1-1build1.1_amd64.deb' libmpfr6_4.2.1-1build1.1_amd64.deb 353020 SHA256:aebc1c8b69a1f98bb43dfc268daecd181116dbf40b13ee4e822eb4bdd52b493a
+'https://archive.ubuntu.com/ubuntu/pool/main/m/mpclib3/libmpc3_1.3.1-1build1.1_amd64.deb' libmpc3_1.3.1-1build1.1_amd64.deb 54636 SHA256:cebe6098bb3d66fdacac9dc6fe406a651216d9c00f27c3f9c159d15d96cdf864
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/cpp-13-x86-64-linux-gnu_13.3.0-6ubuntu2%7e24.04.1_amd64.deb' cpp-13-x86-64-linux-gnu_13.3.0-6ubuntu2~24.04.1_amd64.deb 10714542 SHA256:2ca48bf0c2d6465bc39322899715a85d934b4d7442dd5586a7bebbe3ce0f806b
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/cpp-13_13.3.0-6ubuntu2%7e24.04.1_amd64.deb' cpp-13_13.3.0-6ubuntu2~24.04.1_amd64.deb 1042 SHA256:c7535331fbb183c802c3bf4b6b210872dcc12d0421b3212b3c4b940f2c59ed3a
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-defaults/cpp-x86-64-linux-gnu_13.2.0-7ubuntu1_amd64.deb' cpp-x86-64-linux-gnu_4%3a13.2.0-7ubuntu1_amd64.deb 5326 SHA256:85059b30960de3582e8612740614da3dfe47241d0368a28dea686188cf7648dd
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-defaults/cpp_13.2.0-7ubuntu1_amd64.deb' cpp_4%3a13.2.0-7ubuntu1_amd64.deb 22442 SHA256:b51f8094760f7b41afdcb1fe1b5a57fc64b75a090859918af17450a10f8c7d31
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libcc1-0_14.2.0-4ubuntu2%7e24.04.1_amd64.deb' libcc1-0_14.2.0-4ubuntu2~24.04.1_amd64.deb 48002 SHA256:454456436ca767817a860557263d7cc2489f0a410f03efff4c0bb236d579ec09
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libgomp1_14.2.0-4ubuntu2%7e24.04.1_amd64.deb' libgomp1_14.2.0-4ubuntu2~24.04.1_amd64.deb 148062 SHA256:e8a95ec58125b4933597f30ff56c2ae10edf90f287262e366d4b6edea3019144
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libitm1_14.2.0-4ubuntu2%7e24.04.1_amd64.deb' libitm1_14.2.0-4ubuntu2~24.04.1_amd64.deb 29702 SHA256:1fca498129dd3510294809d77ee754f72a9de281111200e9b7b9a5adf37faa9f
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libatomic1_14.2.0-4ubuntu2%7e24.04.1_amd64.deb' libatomic1_14.2.0-4ubuntu2~24.04.1_amd64.deb 10466 SHA256:fe49cbbc7be753528380c724a8eef5f1e31dffa9221f692c5069048d81c7449d
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libasan8_14.2.0-4ubuntu2%7e24.04.1_amd64.deb' libasan8_14.2.0-4ubuntu2~24.04.1_amd64.deb 3026656 SHA256:8321aac6230fa1da320e76eb6288b7436164624aec449ed3933ea6c4cc86daac
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/liblsan0_14.2.0-4ubuntu2%7e24.04.1_amd64.deb' liblsan0_14.2.0-4ubuntu2~24.04.1_amd64.deb 1321652 SHA256:dc0c2a1a053e833ba4d71e1ec2ba4244fe301761ad4a91d6725f927a52d86a14
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libtsan2_14.2.0-4ubuntu2%7e24.04.1_amd64.deb' libtsan2_14.2.0-4ubuntu2~24.04.1_amd64.deb 2771910 SHA256:8cbcc9b3ae5ef23b449383d47a9035b27596e307d7dce7df9b83d47a7acd1d91
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libubsan1_14.2.0-4ubuntu2%7e24.04.1_amd64.deb' libubsan1_14.2.0-4ubuntu2~24.04.1_amd64.deb 1183812 SHA256:a16dea3abe2dcac99bcfae27e7e5672fde64573c3c170dcb0cd55631238f9814
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libhwasan0_14.2.0-4ubuntu2%7e24.04.1_amd64.deb' libhwasan0_14.2.0-4ubuntu2~24.04.1_amd64.deb 1640706 SHA256:2195318cfe68fe16b601913ef7b33c9a900372f57861643fdc9ae6fef84534cd
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-14/libquadmath0_14.2.0-4ubuntu2%7e24.04.1_amd64.deb' libquadmath0_14.2.0-4ubuntu2~24.04.1_amd64.deb 153316 SHA256:dc8f0ca542e09d662f29370c8393c016440dd4bc5c996c5fcc19f632b63ce3b0
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/libgcc-13-dev_13.3.0-6ubuntu2%7e24.04.1_amd64.deb' libgcc-13-dev_13.3.0-6ubuntu2~24.04.1_amd64.deb 2680642 SHA256:cd689db2691edaa10f37329307292796bb599e722e0505c79e14caaa1fe9a93a
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/gcc-13-x86-64-linux-gnu_13.3.0-6ubuntu2%7e24.04.1_amd64.deb' gcc-13-x86-64-linux-gnu_13.3.0-6ubuntu2~24.04.1_amd64.deb 21084546 SHA256:a134b0319a82d14581b3a14820d2832af4ec9778ed8b9b4ddaeecfb0555ec325
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/gcc-13_13.3.0-6ubuntu2%7e24.04.1_amd64.deb' gcc-13_13.3.0-6ubuntu2~24.04.1_amd64.deb 494262 SHA256:7438ff160b020a74970672189ecae25d0ca650de6d7f543f12a3134192cffbd9
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-defaults/gcc-x86-64-linux-gnu_13.2.0-7ubuntu1_amd64.deb' gcc-x86-64-linux-gnu_4%3a13.2.0-7ubuntu1_amd64.deb 1212 SHA256:72e79089a10e381360bfc6f03c5e5d8c2ff177d6dbac2cd7ffb3cc1383f57591
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-defaults/gcc_13.2.0-7ubuntu1_amd64.deb' gcc_4%3a13.2.0-7ubuntu1_amd64.deb 5018 SHA256:0e0bb8b25153ed1c44ab92bc219eed469fcb5820c5c0bc6454b2fd366a33d3ee
+'https://archive.ubuntu.com/ubuntu/pool/main/g/glibc/libc-dev-bin_2.39-0ubuntu8.9_amd64.deb' libc-dev-bin_2.39-0ubuntu8.9_amd64.deb 20402 SHA256:77db23aba4582d034d9a95e4818a16e7e51a2d4fb17a9204439688e288d67f4c
+'https://archive.ubuntu.com/ubuntu/pool/main/l/linux/linux-libc-dev_6.8.0-146.146_amd64.deb' linux-libc-dev_6.8.0-146.146_amd64.deb 1540030 SHA256:1a7bb04132d01cd14bea3d615e5861096ca1f70c4659902eb14b36c21993cadc
+'https://archive.ubuntu.com/ubuntu/pool/main/libx/libxcrypt/libcrypt-dev_4.4.36-4build1_amd64.deb' libcrypt-dev_1%3a4.4.36-4build1_amd64.deb 111780 SHA256:2edff420ef80b4a3f3751e65c33423ef30e563122a58b759e4854ea8d84ba1b1
+'https://archive.ubuntu.com/ubuntu/pool/main/r/rpcsvc-proto/rpcsvc-proto_1.4.2-0ubuntu7_amd64.deb' rpcsvc-proto_1.4.2-0ubuntu7_amd64.deb 67446 SHA256:7eb710fe148d224c159ddec1ceb0ba53ead52a80a6793dcdae1474acf20d8f71
+'https://archive.ubuntu.com/ubuntu/pool/main/g/glibc/libc6-dev_2.39-0ubuntu8.9_amd64.deb' libc6-dev_2.39-0ubuntu8.9_amd64.deb 2125612 SHA256:e13d5fcc1b2a86f75bca8e0026a8e39f24fe97ca86e92be79991f8697eb1306f
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/libstdc%2b%2b-13-dev_13.3.0-6ubuntu2%7e24.04.1_amd64.deb' libstdc++-13-dev_13.3.0-6ubuntu2~24.04.1_amd64.deb 2419834 SHA256:ee5633e863e19c3381ed97842ce35ed32ede96a3d1ae4e94c051d3036fe21347
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/g%2b%2b-13-x86-64-linux-gnu_13.3.0-6ubuntu2%7e24.04.1_amd64.deb' g++-13-x86-64-linux-gnu_13.3.0-6ubuntu2~24.04.1_amd64.deb 12161938 SHA256:0bd6af6164252d4ea9170d201ee4c10a3120fe0fc04985a00be3bc9076353844
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-13/g%2b%2b-13_13.3.0-6ubuntu2%7e24.04.1_amd64.deb' g++-13_13.3.0-6ubuntu2~24.04.1_amd64.deb 16048 SHA256:0f3ef964b8a91a9cd7bebfd126839a21941c55547cadcf4aa00204bc8cc43985
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-defaults/g%2b%2b-x86-64-linux-gnu_13.2.0-7ubuntu1_amd64.deb' g++-x86-64-linux-gnu_4%3a13.2.0-7ubuntu1_amd64.deb 964 SHA256:145b027a542db5b21f85d4f9e242f51c62c69914fc484adb3a4881ca8e2f3913
+'https://archive.ubuntu.com/ubuntu/pool/main/g/gcc-defaults/g%2b%2b_13.2.0-7ubuntu1_amd64.deb' g++_4%3a13.2.0-7ubuntu1_amd64.deb 1100 SHA256:800a84b369c64b18d65f0fb5c1533de0446c880ee4f1cadad64e3363327f63f0
+'https://archive.ubuntu.com/ubuntu/pool/main/m/make-dfsg/make_4.3-4.1build2_amd64.deb' make_4.3-4.1build2_amd64.deb 179752 SHA256:1fe6a815b56c7b6e9ce4086a363f09444bbd0a0d30e230c453d0b78e44b57a99
+'https://archive.ubuntu.com/ubuntu/pool/universe/n/ninja-build/ninja-build_1.11.1-2_amd64.deb' ninja-build_1.11.1-2_amd64.deb 128926 SHA256:6a17f76a0f75586f1292f6c61a9b07fd0dec963baf6a102b17673f601c6b323a

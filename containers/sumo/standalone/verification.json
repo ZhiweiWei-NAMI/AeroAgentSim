@@ -1,0 +1,26 @@
+{
+  "image": "aeroagentsim/sumo:standalone",
+  "image_id": "sha256:7e3bdf8db7a7f1df726ef39c7df82e2cf887c414bb1d576bb5d02e10083f9530",
+  "size_bytes": 860715317,
+  "container_startup_s": 1.1230275314301252,
+  "smoke_wall_s": 34.221321617253125,
+  "command": [
+    "/mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python",
+    "containers/sumo/smoke.py",
+    "--port",
+    "32800",
+    "--seconds",
+    "60",
+    "--repeats",
+    "2",
+    "--output",
+    "/tmp/aas-p9/sumo/smoke"
+  ],
+  "returncode": 0,
+  "nano_cpus": 16000000000,
+  "labels": {
+    "aeroagentsim.backend": "sumo",
+    "aeroagentsim.job": "p9",
+    "org.opencontainers.image.base.name": "python@sha256:c00fc7b44d844b6da22861ec24af43968a5200eac4ec607b4725d585165d6b49"
+  }
+}

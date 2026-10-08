@@ -218,3 +218,18 @@ contains the actual prefix counts and first geo sample.
 All created containers were labeled, limited and removed. All new image tags
 remain local. No existing image was removed/retagged/pushed/pruned, no other
 container was stopped, and no git commit/branch/reset was run.
+
+## Standalone build (P9)
+
+`containers/sumo/Dockerfile` now uses public, digest-pinned bases and verified
+source/dependency inputs. Build with `containers/sumo/build.sh`; the output tag
+is `aeroagentsim/sumo:standalone`. No AeroBench image or checkout is required.
+The existing backend service/native model is unchanged.
+
+The final image is `sha256:7e3bdf8db7a7f1df726ef39c7df82e2cf887c414bb1d576bb5d02e10083f9530`, **860,715,317 bytes**.
+Its existing real smoke client passed on this image; the three standalone Docker
+adapter/replay tests also passed. Input hashes, command timings, RTF/repeatability,
+build-network failure history and artifact links are recorded in
+[containers.md](containers.md). Verification artifacts are in
+`containers/sumo/standalone/`; the original dev-image measurements above remain
+historical and are not substituted for standalone results.

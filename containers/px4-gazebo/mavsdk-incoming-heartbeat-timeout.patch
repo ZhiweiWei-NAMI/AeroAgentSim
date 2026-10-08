@@ -1,0 +1,962 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3041bc8..2038afe 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -15,18 +15,11 @@ if (NOT MAVLINK_DIALECT)
+     set(MAVLINK_DIALECT "ardupilotmega")
+ endif()
+
+-execute_process(
+-    COMMAND git describe --abbrev=8 --dirty --always --tags
+-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+-    OUTPUT_VARIABLE VERSION_STR
+-    OUTPUT_STRIP_TRAILING_WHITESPACE
+-    RESULT_VARIABLE GITVER
+-)
+-
+-if (NOT GITVER EQUAL "0")
+-    message(STATUS "No git version found. Falling back to empty version no")
+-    set(VERSION_STR "0.0.0")
++set(MAVSDK_SOURCE_VERSION "" CACHE STRING "Pinned MAVSDK source version")
++if(NOT MAVSDK_SOURCE_VERSION MATCHES "^v[0-9]+[.][0-9]+[.][0-9]+$")
++    message(FATAL_ERROR "MAVSDK_SOURCE_VERSION must be a pinned semantic version")
+ endif()
++set(VERSION_STR "${MAVSDK_SOURCE_VERSION}")
+
+ message(STATUS "Version: ${VERSION_STR}")
+ STRING(REGEX REPLACE v\([0-9]+\).[0-9]+.[0-9]+.*$ \\1 MAVSDK_VERSION_MAJOR "${VERSION_STR}")
+diff --git a/src/mavsdk/core/mavlink_command_sender.cpp b/src/mavsdk/core/mavlink_command_sender.cpp
+index cf86b19..1ccdf64 100644
+--- a/src/mavsdk/core/mavlink_command_sender.cpp
++++ b/src/mavsdk/core/mavlink_command_sender.cpp
+@@ -2,9 +2,338 @@
+ #include "mavlink_address.h"
+ #include "system_impl.h"
+ #include "unused.h"
++#include <array>
++#include <cerrno>
++#include <chrono>
+ #include <cmath>
++#include <filesystem>
++#include <fcntl.h>
+ #include <future>
++#include <locale>
+ #include <memory>
++#include <sstream>
++#include <string_view>
++#include <sys/stat.h>
++#include <unistd.h>
++
++namespace {
++
++using SteadyClock = std::chrono::steady_clock;
++
++bool write_all(const int fd, const std::string& payload)
++{
++    std::size_t offset = 0;
++    while (offset < payload.size()) {
++        const auto* bytes = payload.data() + offset;
++        const auto remaining = payload.size() - offset;
++        const auto written = ::write(fd, bytes, remaining);
++        if (written < 0) {
++            if (errno == EINTR) {
++                continue;
++            }
++            return false;
++        }
++        if (written == 0) {
++            return false;
++        }
++        offset += static_cast<std::size_t>(written);
++    }
++    return true;
++}
++
++bool is_normalized_absolute_path(const std::string& text)
++{
++    if (text.empty() || text.front() != '/') {
++        return false;
++    }
++    if (text.find('\0') != std::string::npos) {
++        return false;
++    }
++    std::filesystem::path candidate{text};
++    return candidate.is_absolute() && candidate.lexically_normal().generic_string() == text;
++}
++
++uint64_t monotonic_timestamp_ns()
++{
++    return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
++                                     SteadyClock::now().time_since_epoch())
++                                     .count());
++}
++
++std::string bytes_to_hex(const uint8_t* bytes, const std::size_t length)
++{
++    static constexpr char alphabet[] = "0123456789abcdef";
++    std::string encoded(length * 2, '0');
++    for (std::size_t index = 0; index < length; ++index) {
++        encoded[index * 2] = alphabet[bytes[index] >> 4];
++        encoded[index * 2 + 1] = alphabet[bytes[index] & 0x0f];
++    }
++    return encoded;
++}
++
++struct CanonicalMavlinkFrame {
++    uint16_t frame_length{};
++    uint8_t wire_version{};
++    bool signed_frame{};
++    std::string frame_hex{};
++    std::string payload_hex{};
++    std::string signature_hex{};
++};
++
++CanonicalMavlinkFrame canonical_frame(const mavlink_message_t& message)
++{
++    std::array<uint8_t, MAVLINK_MAX_PACKET_LEN> frame{};
++    const auto frame_length = mavlink_msg_to_send_buffer(frame.data(), &message);
++    const bool signed_frame =
++        message.magic == MAVLINK_STX &&
++        (message.incompat_flags & MAVLINK_IFLAG_SIGNED) != 0;
++    const auto wire_version = static_cast<uint8_t>(
++        message.magic == MAVLINK_STX ? 2 : message.magic == 0xfe ? 1 : 0);
++    return CanonicalMavlinkFrame{
++        frame_length,
++        wire_version,
++        signed_frame,
++        bytes_to_hex(frame.data(), frame_length),
++        bytes_to_hex(
++            reinterpret_cast<const uint8_t*>(_MAV_PAYLOAD(&message)), message.len),
++        signed_frame
++            ? bytes_to_hex(
++                  frame.data() + frame_length - MAVLINK_SIGNATURE_BLOCK_LEN,
++                  MAVLINK_SIGNATURE_BLOCK_LEN)
++            : ""};
++}
++
++class CommandAuditJournal {
++public:
++    static CommandAuditJournal& instance()
++    {
++        static CommandAuditJournal journal{};
++        return journal;
++    }
++
++    bool configure(const std::string& path)
++    {
++        std::lock_guard<std::mutex> lock(_mutex);
++
++        if (!is_normalized_absolute_path(path)) {
++            mavsdk::LogErrDetailed(FILENAME, __LINE__) << "Command audit journal path must be normalized and absolute";
++            return false;
++        }
++
++        if (_fd >= 0) {
++            if (_path == path) {
++                return true;
++            }
++            mavsdk::LogErrDetailed(FILENAME, __LINE__) << "Command audit journal path cannot change after configuration";
++            return false;
++        }
++
++        const int fd = ::open(
++            path.c_str(),
++            O_WRONLY | O_CREAT | O_EXCL | O_APPEND | O_CLOEXEC | O_NOFOLLOW,
++            S_IRUSR | S_IWUSR);
++        if (fd < 0) {
++            mavsdk::LogErrDetailed(FILENAME, __LINE__) << "Failed to open command audit journal";
++            return false;
++        }
++
++        struct stat st {};
++        if (::fstat(fd, &st) != 0 || !S_ISREG(st.st_mode)) {
++            mavsdk::LogErrDetailed(FILENAME, __LINE__) << "Command audit journal is not a regular file";
++            ::close(fd);
++            return false;
++        }
++
++        _fd = fd;
++        _path = path;
++        _sequence = 0;
++        return true;
++    }
++
++    bool append_transport_accept_record(
++        const mavlink_message_t& message, const uint8_t accepted_connection_count)
++    {
++        std::string_view wire_type{};
++        uint16_t command{};
++        uint8_t target_system_id{};
++        uint8_t target_component_id{};
++        uint8_t confirmation{};
++        if (message.msgid == MAVLINK_MSG_ID_COMMAND_INT) {
++            mavlink_command_int_t command_int{};
++            mavlink_msg_command_int_decode(&message, &command_int);
++            wire_type = "COMMAND_INT";
++            command = command_int.command;
++            target_system_id = command_int.target_system;
++            target_component_id = command_int.target_component;
++        } else if (message.msgid == MAVLINK_MSG_ID_COMMAND_LONG) {
++            mavlink_command_long_t command_long{};
++            mavlink_msg_command_long_decode(&message, &command_long);
++            wire_type = "COMMAND_LONG";
++            command = command_long.command;
++            target_system_id = command_long.target_system;
++            target_component_id = command_long.target_component;
++            confirmation = command_long.confirmation;
++        } else {
++            return false;
++        }
++
++        const auto frame = canonical_frame(message);
++        std::lock_guard<std::mutex> lock(_mutex);
++        return append_locked(
++            "{\"acceptance_boundary\":\"mavsdk_impl.deliver_message.connection_send_return\"",
++            ",\"accepted_connection_count\":",
++            static_cast<unsigned>(accepted_connection_count),
++            ",\"canonical_frame_hex\":\"",
++            frame.frame_hex,
++            "\",\"canonical_frame_length\":",
++            frame.frame_length,
++            ",\"checksum\":",
++            message.checksum,
++            ",\"command\":",
++            command,
++            ",\"compat_flags\":",
++            static_cast<unsigned>(message.compat_flags),
++            ",\"confirmation\":",
++            static_cast<unsigned>(confirmation),
++            ",\"frame_encoding\":\"mavlink_msg_to_send_buffer_from_packed_message\"",
++            ",\"incompat_flags\":",
++            static_cast<unsigned>(message.incompat_flags),
++            ",\"kind\":\"command_transport_accept\",\"magic\":",
++            static_cast<unsigned>(message.magic),
++            ",\"message_id\":",
++            message.msgid,
++            ",\"packet_sequence\":",
++            static_cast<unsigned>(message.seq),
++            ",\"payload_hex\":\"",
++            frame.payload_hex,
++            "\",\"payload_length\":",
++            static_cast<unsigned>(message.len),
++            ",\"seq\":",
++            next_sequence_locked(),
++            ",\"signature_hex\":\"",
++            frame.signature_hex,
++            "\",\"signed_frame\":",
++            frame.signed_frame ? "true" : "false",
++            ",\"source_component_id\":",
++            static_cast<unsigned>(message.compid),
++            ",\"source_system_id\":",
++            static_cast<unsigned>(message.sysid),
++            ",\"target_component_id\":",
++            static_cast<unsigned>(target_component_id),
++            ",\"target_system_id\":",
++            static_cast<unsigned>(target_system_id),
++            ",\"timestamp_ns\":",
++            monotonic_timestamp_ns(),
++            ",\"wire_type\":\"",
++            wire_type,
++            "\",\"wire_version\":",
++            static_cast<unsigned>(frame.wire_version),
++            "}\n");
++    }
++
++    std::optional<uint64_t> append_ack_ingress_record(
++        const mavlink_message_t& message, const mavlink_command_ack_t& command_ack)
++    {
++        const auto frame = canonical_frame(message);
++        std::lock_guard<std::mutex> lock(_mutex);
++        const auto record_sequence = next_sequence_locked();
++        if (!append_locked(
++                "{\"canonical_frame_hex\":\"",
++                frame.frame_hex,
++                "\",\"canonical_frame_length\":",
++                frame.frame_length,
++                ",\"capture_boundary\":\"mavlink_command_sender.receive_command_ack.decoded_handler\"",
++                ",\"checksum\":",
++                message.checksum,
++                ",\"command\":",
++                command_ack.command,
++                ",\"compat_flags\":",
++                static_cast<unsigned>(message.compat_flags),
++                ",\"frame_encoding\":\"mavlink_msg_to_send_buffer_from_decoded_message\"",
++                ",\"incompat_flags\":",
++                static_cast<unsigned>(message.incompat_flags),
++                ",\"kind\":\"command_ack_ingress\",\"magic\":",
++                static_cast<unsigned>(message.magic),
++                ",\"message_id\":",
++                message.msgid,
++                ",\"packet_sequence\":",
++                static_cast<unsigned>(message.seq),
++                ",\"payload_hex\":\"",
++                frame.payload_hex,
++                "\",\"payload_length\":",
++                static_cast<unsigned>(message.len),
++                ",\"progress\":",
++                static_cast<unsigned>(command_ack.progress),
++                ",\"result\":",
++                static_cast<unsigned>(command_ack.result),
++                ",\"result_param2\":",
++                command_ack.result_param2,
++                ",\"seq\":",
++                record_sequence,
++                ",\"signature_hex\":\"",
++                frame.signature_hex,
++                "\",\"signed_frame\":",
++                frame.signed_frame ? "true" : "false",
++                ",\"source_component_id\":",
++                static_cast<unsigned>(message.compid),
++                ",\"source_system_id\":",
++                static_cast<unsigned>(message.sysid),
++                ",\"target_component_id\":",
++                static_cast<unsigned>(command_ack.target_component),
++                ",\"target_system_id\":",
++                static_cast<unsigned>(command_ack.target_system),
++                ",\"timestamp_ns\":",
++                monotonic_timestamp_ns(),
++                ",\"wire_version\":",
++                static_cast<unsigned>(frame.wire_version),
++                "}\n")) {
++            return std::nullopt;
++        }
++        return record_sequence;
++    }
++
++    bool append_ack_disposition_record(
++        const uint64_t ack_ingress_seq,
++        const uint16_t command,
++        const std::string_view status)
++    {
++        std::lock_guard<std::mutex> lock(_mutex);
++        return append_locked(
++            "{\"ack_ingress_seq\":",
++            ack_ingress_seq,
++            ",\"command\":",
++            command,
++            ",\"kind\":\"command_ack_disposition\",\"seq\":",
++            next_sequence_locked(),
++            ",\"status\":\"",
++            status,
++            "\",\"timestamp_ns\":",
++            monotonic_timestamp_ns(),
++            "}\n");
++    }
++
++private:
++    template<typename... Parts> bool append_locked(const Parts&... parts)
++    {
++        if (_fd < 0) {
++            mavsdk::LogErrDetailed(FILENAME, __LINE__) << "Command audit journal is not configured";
++            return false;
++        }
++        std::ostringstream stream;
++        stream.imbue(std::locale::classic());
++        (stream << ... << parts);
++        return write_all(_fd, stream.str());
++    }
++
++    uint64_t next_sequence_locked() { return ++_sequence; }
++
++    std::mutex _mutex{};
++    int _fd{-1};
++    std::string _path{};
++    uint64_t _sequence{0};
++};
++
++} // namespace
+
+ namespace mavsdk {
+
+@@ -83,6 +412,18 @@ MavlinkCommandSender::Result MavlinkCommandSender::send_command(
+     return res.get();
+ }
+
++bool MavlinkCommandSender::configure_command_audit_journal_path(const std::string& path)
++{
++    return CommandAuditJournal::instance().configure(path);
++}
++
++bool MavlinkCommandSender::audit_command_transport_accept(
++    const mavlink_message_t& message, const uint8_t accepted_connection_count)
++{
++    return CommandAuditJournal::instance().append_transport_accept_record(
++        message, accepted_connection_count);
++}
++
+ void MavlinkCommandSender::queue_command_async(
+     const CommandInt& command, const CommandResultCallback& callback, unsigned retries)
+ {
+@@ -152,13 +493,27 @@ void MavlinkCommandSender::queue_command_async(
+
+ void MavlinkCommandSender::receive_command_ack(const mavlink_message_t& message)
+ {
+-    mavlink_command_ack_t command_ack;
++    mavlink_command_ack_t command_ack{};
+     mavlink_msg_command_ack_decode(&message, &command_ack);
+
++    const auto ingress_sequence =
++        CommandAuditJournal::instance().append_ack_ingress_record(message, command_ack);
++    if (!ingress_sequence) {
++        LogErr() << "COMMAND_ACK decoded-ingress audit failed; ACK will not be processed";
++        return;
++    }
++    const auto append_disposition = [&](const std::string_view status) {
++        return CommandAuditJournal::instance().append_ack_disposition_record(
++            *ingress_sequence, command_ack.command, status);
++    };
++
+     if ((command_ack.target_system &&
+          command_ack.target_system != _system_impl.get_own_system_id()) ||
+         (command_ack.target_component &&
+          command_ack.target_component != _system_impl.get_own_component_id())) {
++        if (!append_disposition("target_filtered_before_match")) {
++            LogErr() << "COMMAND_ACK target-filter disposition audit failed";
++        }
+         if (_command_debugging) {
+             LogDebug() << "Ignoring command ack for command "
+                        << static_cast<int>(command_ack.command) << " from "
+@@ -175,6 +530,9 @@ void MavlinkCommandSender::receive_command_ack(const mavlink_message_t& message)
+         const auto& work = *it;
+
+         if (!work) {
++            if (!append_disposition("matcher_internal_error")) {
++                LogErr() << "COMMAND_ACK matcher-error disposition audit failed";
++            }
+             LogErr() << "No work available! (should not happen #1)";
+             return;
+         }
+@@ -205,6 +563,15 @@ void MavlinkCommandSender::receive_command_ack(const mavlink_message_t& message)
+
+         CommandResultCallback temp_callback = work->callback;
+         std::pair<Result, float> temp_result{Result::UnknownError, NAN};
++        if (!append_disposition("matched_outstanding_command")) {
++            _system_impl.unregister_timeout_handler(work->timeout_cookie);
++            temp_result = {Result::Failed, NAN};
++            _work_queue.erase(it);
++            if (temp_callback != nullptr) {
++                call_callback(temp_callback, temp_result.first, temp_result.second);
++            }
++            return;
++        }
+
+         switch (command_ack.result) {
+             case MAV_RESULT_ACCEPTED:
+@@ -295,6 +662,9 @@ void MavlinkCommandSender::receive_command_ack(const mavlink_message_t& message)
+         return;
+     }
+
++    if (!append_disposition("unmatched_no_outstanding_command")) {
++        LogErr() << "COMMAND_ACK unmatched disposition audit failed";
++    }
+     if (_command_debugging) {
+         LogDebug() << "Received ack from " << static_cast<int>(message.sysid) << '/'
+                    << static_cast<int>(message.compid)
+diff --git a/src/mavsdk/core/mavlink_command_sender.h b/src/mavsdk/core/mavlink_command_sender.h
+index 4bafdae..e9e8183 100644
+--- a/src/mavsdk/core/mavlink_command_sender.h
++++ b/src/mavsdk/core/mavlink_command_sender.h
+@@ -78,6 +78,10 @@ public:
+     Result send_command(const CommandInt& command, unsigned retries = DEFAULT_RETRIES);
+     Result send_command(const CommandLong& command, unsigned retries = DEFAULT_RETRIES);
+
++    static bool configure_command_audit_journal_path(const std::string& path);
++    static bool audit_command_transport_accept(
++        const mavlink_message_t& message, uint8_t accepted_connection_count);
++
+     void queue_command_async(
+         const CommandInt& command,
+         const CommandResultCallback& callback,
+diff --git a/src/mavsdk/core/mavsdk_impl.cpp b/src/mavsdk/core/mavsdk_impl.cpp
+index b8a381b..53f60bb 100644
+--- a/src/mavsdk/core/mavsdk_impl.cpp
++++ b/src/mavsdk/core/mavsdk_impl.cpp
+@@ -6,6 +6,7 @@
+
+ #include "connection.h"
+ #include "log.h"
++#include "mavlink_command_sender.h"
+ #include "tcp_client_connection.h"
+ #include "tcp_server_connection.h"
+ #include "udp_connection.h"
+@@ -804,6 +805,11 @@ void MavsdkImpl::deliver_message(mavlink_message_t& message)
+
+     if (successful_emissions == 0) {
+         LogErr() << "Sending message failed";
++    } else if (
++        (message.msgid == MAVLINK_MSG_ID_COMMAND_INT ||
++         message.msgid == MAVLINK_MSG_ID_COMMAND_LONG) &&
++        !MavlinkCommandSender::audit_command_transport_accept(message, successful_emissions)) {
++        LogErr() << "Accepted command transport could not be written to the audit journal";
+     }
+ }
+
+diff --git a/src/mavsdk_server/src/mavsdk_server.cpp b/src/mavsdk_server/src/mavsdk_server.cpp
+index b9a2b9d..0506b98 100644
+--- a/src/mavsdk_server/src/mavsdk_server.cpp
++++ b/src/mavsdk_server/src/mavsdk_server.cpp
+@@ -3,6 +3,7 @@
+ #include <memory>
+
+ #include "connection_initiator.h"
++#include "mavlink_command_sender.h"
+ #include "mavsdk.h"
+ #include "grpc_server.h"
+
+@@ -46,6 +47,13 @@ public:
+         _mavsdk.set_configuration(mavsdk::Mavsdk::Configuration{system_id, component_id, false});
+     }
+
++    void setHeartbeatTimeoutS(double timeout_s) { _mavsdk.set_heartbeat_timeout_s(timeout_s); }
++
++    bool setCommandAuditJournalPath(const std::string& path)
++    {
++        return MavlinkCommandSender::configure_command_audit_journal_path(path);
++    }
++
+ private:
+     mavsdk::Mavsdk _mavsdk;
+     ConnectionInitiator<mavsdk::Mavsdk> _connection_initiator;
+@@ -85,3 +93,13 @@ void MavsdkServer::setMavlinkIds(uint8_t system_id, uint8_t component_id)
+ {
+     _impl->setMavlinkIds(system_id, component_id);
+ }
++
++void MavsdkServer::setHeartbeatTimeoutS(double timeout_s)
++{
++    _impl->setHeartbeatTimeoutS(timeout_s);
++}
++
++bool MavsdkServer::setCommandAuditJournalPath(const std::string& path)
++{
++    return _impl->setCommandAuditJournalPath(path);
++}
+diff --git a/src/mavsdk_server/src/mavsdk_server.h b/src/mavsdk_server/src/mavsdk_server.h
+index c6f7d5f..f3ca0b7 100644
+--- a/src/mavsdk_server/src/mavsdk_server.h
++++ b/src/mavsdk_server/src/mavsdk_server.h
+@@ -17,6 +17,8 @@ public:
+     void stop();
+     int getPort();
+     void setMavlinkIds(uint8_t system_id, uint8_t component_id);
++    void setHeartbeatTimeoutS(double timeout_s);
++    bool setCommandAuditJournalPath(const std::string& path);
+
+ private:
+     class Impl;
+diff --git a/src/mavsdk_server/src/mavsdk_server_bin.cpp b/src/mavsdk_server/src/mavsdk_server_bin.cpp
+index b784e16..6e75bc7 100644
+--- a/src/mavsdk_server/src/mavsdk_server_bin.cpp
++++ b/src/mavsdk_server/src/mavsdk_server_bin.cpp
+@@ -1,6 +1,11 @@
+ #include "mavsdk_server_api.h"
++#include "mavsdk_server.h"
+
++#include <cerrno>
+ #include <cctype>
++#include <cmath>
++#include <cstdlib>
++#include <filesystem>
+ #include <iostream>
+ #include <limits>
+ #include <string>
+@@ -12,6 +17,8 @@ static auto constexpr default_compid = 190;
+
+ static void usage(const char* bin_name);
+ static bool is_integer(const std::string& tested_integer);
++static bool parse_positive_finite_double(const std::string& text, double& value);
++static bool is_normalized_absolute_path(const std::string& text);
+
+ int main(int argc, char** argv)
+ {
+@@ -19,6 +26,10 @@ int main(int argc, char** argv)
+     int mavsdk_server_port = default_mavsdk_server_port;
+     int mavsdk_sysid = default_sysid;
+     int mavsdk_compid = default_compid;
++    std::string command_audit_journal_path{};
++    double incoming_heartbeat_timeout_s = 0.0;
++    bool incoming_heartbeat_timeout_set = false;
++    bool command_audit_journal_path_set = false;
+
+     for (int i = 1; i < argc; i++) {
+         const std::string current_arg = argv[i];
+@@ -41,6 +52,32 @@ int main(int argc, char** argv)
+             }
+
+             mavsdk_server_port = std::stoi(port);
++        } else if (current_arg == "--incoming-heartbeat-timeout-s") {
++            if (argc <= i + 1) {
++                usage(argv[0]);
++                return 1;
++            }
++
++            const std::string timeout(argv[i + 1]);
++            i++;
++            if (!parse_positive_finite_double(timeout, incoming_heartbeat_timeout_s)) {
++                usage(argv[0]);
++                return 1;
++            }
++            incoming_heartbeat_timeout_set = true;
++        } else if (current_arg == "--command-audit-journal-path") {
++            if (argc <= i + 1) {
++                usage(argv[0]);
++                return 1;
++            }
++
++            command_audit_journal_path = argv[i + 1];
++            i++;
++            if (!is_normalized_absolute_path(command_audit_journal_path)) {
++                usage(argv[0]);
++                return 1;
++            }
++            command_audit_journal_path_set = true;
+         } else if (current_arg == "--sysid") {
+             if (argc <= i + 1) {
+                 usage(argv[0]);
+@@ -86,8 +123,25 @@ int main(int argc, char** argv)
+         }
+     }
+
++    if (!incoming_heartbeat_timeout_set) {
++        std::cerr << "--incoming-heartbeat-timeout-s is required\n";
++        usage(argv[0]);
++        return 1;
++    }
++    if (!command_audit_journal_path_set) {
++        std::cerr << "--command-audit-journal-path is required\n";
++        usage(argv[0]);
++        return 1;
++    }
++
+     MavsdkServer* mavsdk_server;
+     mavsdk_server_init(&mavsdk_server);
++    mavsdk_server->setHeartbeatTimeoutS(incoming_heartbeat_timeout_s);
++    if (!mavsdk_server->setCommandAuditJournalPath(command_audit_journal_path)) {
++        std::cerr << "Failed to configure --command-audit-journal-path\n";
++        mavsdk_server_destroy(mavsdk_server);
++        return 1;
++    }
+     const int ret = mavsdk_server_run_with_mavlink_ids(
+         mavsdk_server,
+         connection_url.c_str(),
+@@ -125,6 +179,10 @@ void usage(const char* bin_name)
+               << "  -p          : set the port on which to run the gRPC server,\n"
+               << "                set to 0 to choose a free port automatically\n"
+               << "                (default is " << default_mavsdk_server_port << ")\n"
++              << "  --incoming-heartbeat-timeout-s\n"
++              << "              : required positive timeout for incoming vehicle heartbeats\n"
++              << "  --command-audit-journal-path\n"
++              << "              : required JSONL audit path for transport-accepted COMMAND_* and decoded COMMAND_ACK ingress\n"
+               << "  --sysid     : set the MAVLink system ID of the MAVSDK server itself,\n"
+               << "                (default is " << default_sysid << ", range 1..255)\n"
+               << "  --compid    : set the MAVLink component ID of the MAVSDK server itself,\n"
+@@ -141,3 +199,24 @@ bool is_integer(const std::string& tested_integer)
+
+     return true;
+ }
++
++bool parse_positive_finite_double(const std::string& text, double& value)
++{
++    if (text.empty()) {
++        return false;
++    }
++    errno = 0;
++    char* end = nullptr;
++    value = std::strtod(text.c_str(), &end);
++    return errno == 0 && end == text.c_str() + text.size() && std::isfinite(value) &&
++           value > 0.0;
++}
++
++bool is_normalized_absolute_path(const std::string& text)
++{
++    if (text.empty() || text.front() != '/' || text.find('\0') != std::string::npos) {
++        return false;
++    }
++    const std::filesystem::path candidate{text};
++    return candidate.is_absolute() && candidate.lexically_normal().generic_string() == text;
++}
+diff --git a/third_party/absl/CMakeLists.txt b/third_party/absl/CMakeLists.txt
+index d26de3d..25336e5 100644
+--- a/third_party/absl/CMakeLists.txt
++++ b/third_party/absl/CMakeLists.txt
+@@ -31,9 +31,9 @@ endforeach()
+
+ ExternalProject_add(
+     absl
+-    GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
+-    GIT_TAG cd75cb4ae32c46c84cef9a9c78b42174f22ed0ac
++    URL file:///opt/sources/absl.tar.gz
++    URL_HASH SHA256=f17bec838a89633561fdfadbdc89efaca36a6bac04999290adb7c13559dfd504
+     PREFIX absl
+-    PATCH_COMMAND git checkout . && git apply ${PROJECT_SOURCE_DIR}/rpi-no-crypto.patch
++    PATCH_COMMAND patch --batch --forward -p1 -i ${PROJECT_SOURCE_DIR}/rpi-no-crypto.patch
+     CMAKE_ARGS "${CMAKE_ARGS}"
+     )
+diff --git a/third_party/cares/CMakeLists.txt b/third_party/cares/CMakeLists.txt
+index 3244996..aa16ef5 100644
+--- a/third_party/cares/CMakeLists.txt
++++ b/third_party/cares/CMakeLists.txt
+@@ -29,7 +29,8 @@ endforeach()
+
+ ExternalProject_add(
+     cares
+-    URL https://github.com/c-ares/c-ares/releases/download/v1.34.5/c-ares-1.34.5.tar.gz
++    URL file:///opt/sources/cares.tar.gz
++    URL_HASH SHA256=dcd919635f01b7c8c9c2f5fb38063cd86500f7c6d4d32ecf4deff5e3497fb157
+     PREFIX cares
+     CMAKE_ARGS "${CMAKE_ARGS}"
+     )
+diff --git a/third_party/cmake/build_target.cmake b/third_party/cmake/build_target.cmake
+index 706fcc3..192c9b1 100644
+--- a/third_party/cmake/build_target.cmake
++++ b/third_party/cmake/build_target.cmake
+@@ -25,6 +25,7 @@ function(build_target TARGET_NAME)
+             "-DMAVLINK_DIALECT=${MAVLINK_DIALECT}"
+             "-DMAVLINK_URL=${MAVLINK_URL}"
+             "-DMAVLINK_HASH=${MAVLINK_HASH}"
++            "-DMAVLINK_SOURCE_DIR=${MAVLINK_SOURCE_DIR}"
+             "${TARGET_SOURCE_DIR}"
+         WORKING_DIRECTORY "${TARGET_BINARY_DIR}"
+         RESULT_VARIABLE CONFIGURE_FAILED
+diff --git a/third_party/grpc/CMakeLists.txt b/third_party/grpc/CMakeLists.txt
+index 6e5889f..c24ffec 100644
+--- a/third_party/grpc/CMakeLists.txt
++++ b/third_party/grpc/CMakeLists.txt
+@@ -64,7 +64,8 @@ endif()
+
+ ExternalProject_add(
+     grpc
+-    URL https://github.com/grpc/grpc/archive/v1.68.2.tar.gz
++    URL file:///opt/sources/grpc.tar.gz
++    URL_HASH SHA256=afbc5d78d6ba6d509cc6e264de0d49dcd7304db435cbf2d630385bacf49e066c
+     PREFIX grpc
+     CMAKE_ARGS "${CMAKE_ARGS}"
+     )
+diff --git a/third_party/jsoncpp/CMakeLists.txt b/third_party/jsoncpp/CMakeLists.txt
+index ba5f5b6..9472db3 100644
+--- a/third_party/jsoncpp/CMakeLists.txt
++++ b/third_party/jsoncpp/CMakeLists.txt
+@@ -29,8 +29,8 @@ endforeach()
+
+ ExternalProject_Add(
+     jsoncpp
+-    GIT_REPOSITORY https://github.com/open-source-parsers/jsoncpp
+-    GIT_TAG 1.9.6
++    URL file:///opt/sources/jsoncpp.tar.gz
++    URL_HASH SHA256=f93b6dd7ce796b13d02c108bc9f79812245a82e577581c4c9aabe57075c90ea2
+     PREFIX jsoncpp
+     CMAKE_ARGS "${CMAKE_ARGS}"
+     )
+diff --git a/third_party/libevents/CMakeLists.txt b/third_party/libevents/CMakeLists.txt
+index 6440cf6..f6f8308 100644
+--- a/third_party/libevents/CMakeLists.txt
++++ b/third_party/libevents/CMakeLists.txt
+@@ -31,8 +31,8 @@ endforeach()
+
+ ExternalProject_Add(
+         libevents
+-        GIT_REPOSITORY https://github.com/mavlink/libevents.git
+-        GIT_TAG 7c1720749dfe555ec2e71d5f9f753e6ac1244e1c
++        URL file:///opt/sources/libevents.tar.gz
++        URL_HASH SHA256=03a940cf47863e9c943cb1466bd26cc225ee3549c2eb8bed5978a9d0ea488191
+         SOURCE_SUBDIR libs/cpp
+         CMAKE_ARGS "${CMAKE_ARGS}"
+ )
+diff --git a/third_party/liblzma/CMakeLists.txt b/third_party/liblzma/CMakeLists.txt
+index 3654669..262110b 100644
+--- a/third_party/liblzma/CMakeLists.txt
++++ b/third_party/liblzma/CMakeLists.txt
+@@ -30,7 +30,7 @@ endforeach()
+
+ ExternalProject_Add(
+         liblzma
+-        URL https://github.com/tukaani-project/xz/releases/download/v5.4.5/xz-5.4.5.tar.gz
+-        URL_MD5 d2bb81e1a1a7808352c4ca28622f5c72
++        URL file:///opt/sources/liblzma.tar.gz
++        URL_HASH SHA256=135c90b934aee8fbc0d467de87a05cb70d627da36abe518c357a873709e5b7d6
+         CMAKE_ARGS "${CMAKE_ARGS}"
+ )
+diff --git a/third_party/libmavlike/CMakeLists.txt b/third_party/libmavlike/CMakeLists.txt
+index 90abc6a..4bca9bf 100644
+--- a/third_party/libmavlike/CMakeLists.txt
++++ b/third_party/libmavlike/CMakeLists.txt
+@@ -28,8 +28,8 @@ endforeach()
+
+ ExternalProject_add(
+     libmavlike
+-    GIT_REPOSITORY https://github.com/julianoes/libmavlike
+-    GIT_TAG 90498b14262137ae10b633705810e81bdb85de9c
++    URL file:///opt/sources/libmavlike.tar.gz
++    URL_HASH SHA256=7ca84d49104b615b00f9cb4af12241438d03581c6b0c2478197fa9b3831cdbd7
+     PREFIX libmavlike
+     CMAKE_ARGS ${CMAKE_ARGS}
+     )
+diff --git a/third_party/mavlink/CMakeLists.txt b/third_party/mavlink/CMakeLists.txt
+index 23f814c..043657f 100644
+--- a/third_party/mavlink/CMakeLists.txt
++++ b/third_party/mavlink/CMakeLists.txt
+@@ -10,16 +10,21 @@ list(APPEND CMAKE_ARGS
+     )
+
+ set(MAVLINK_GIT_HASH d6a7eeaf43319ce6da19a1973ca40180a4210643)
++set(MAVLINK_SOURCE_DIR "" CACHE PATH "Pinned MAVLink source tree")
++if(NOT IS_DIRECTORY "${MAVLINK_SOURCE_DIR}" OR
++   NOT EXISTS "${MAVLINK_SOURCE_DIR}/pymavlink/requirements.txt")
++    message(FATAL_ERROR "MAVLINK_SOURCE_DIR must contain the pinned pymavlink submodule")
++endif()
+
+ if(IOS)
+     ExternalProject_add(
+         mavlink
+-        GIT_REPOSITORY "${MAVLINK_URL}"
+-        GIT_TAG "${MAVLINK_HASH}"
++        SOURCE_DIR "${MAVLINK_SOURCE_DIR}"
++        DOWNLOAD_COMMAND ""
++        UPDATE_COMMAND ""
+         PREFIX mavlink
+-        PATCH_COMMAND git checkout .
+-        COMMAND git apply ${PROJECT_SOURCE_DIR}/mavlink.patch
+-        COMMAND git apply ${PROJECT_SOURCE_DIR}/mavlink_ios.patch
++        PATCH_COMMAND patch --batch --forward -p1 -i ${PROJECT_SOURCE_DIR}/mavlink.patch
++                COMMAND patch --batch --forward -p1 -i ${PROJECT_SOURCE_DIR}/mavlink_ios.patch
+         CMAKE_ARGS "${CMAKE_ARGS}"
+         INSTALL_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target install
+                 COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_INSTALL_PREFIX}/include/mavlink/message_definitions/v1.0
+@@ -31,10 +36,11 @@ if(IOS)
+ else()
+     ExternalProject_add(
+         mavlink
+-        GIT_REPOSITORY "${MAVLINK_URL}"
+-        GIT_TAG "${MAVLINK_HASH}"
++        SOURCE_DIR "${MAVLINK_SOURCE_DIR}"
++        DOWNLOAD_COMMAND ""
++        UPDATE_COMMAND ""
+         PREFIX mavlink
+-        PATCH_COMMAND git checkout . && git apply ${PROJECT_SOURCE_DIR}/mavlink.patch
++        PATCH_COMMAND patch --batch --forward -p1 -i ${PROJECT_SOURCE_DIR}/mavlink.patch
+         CMAKE_ARGS "${CMAKE_ARGS}"
+         INSTALL_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target install
+                 COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_INSTALL_PREFIX}/include/mavlink/message_definitions/v1.0
+diff --git a/third_party/openssl/CMakeLists.txt b/third_party/openssl/CMakeLists.txt
+index c7cd01b..58e4cf0 100644
+--- a/third_party/openssl/CMakeLists.txt
++++ b/third_party/openssl/CMakeLists.txt
+@@ -42,7 +42,8 @@ if(ANDROID)
+
+     ExternalProject_add(
+         openssl
+-        URL https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz
++        URL file:///opt/sources/openssl.tar.gz
++        URL_HASH SHA256=b6a5f44b7eb69e3fa35dbf15524405b44837a481d43d81daddde3ff21fcbb8e9
+         PREFIX openssl
+         PATCH_COMMAND patch -p 0 < ${PROJECT_SOURCE_DIR}/dockcross-android.patch
+         CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env ANDROID_NDK=$ENV{CROSS_ROOT} <SOURCE_DIR>/Configure --sysroot=$ENV{CROSS_ROOT}/sysroot ${OPENSSL_PLATFORM} --prefix=${CMAKE_INSTALL_PREFIX} ${OPENSSL_BUILD_TYPE} no-asm no-shared
+@@ -65,7 +66,8 @@ elseif(IOS)
+
+     ExternalProject_add(
+         openssl
+-        URL https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz
++        URL file:///opt/sources/openssl.tar.gz
++        URL_HASH SHA256=b6a5f44b7eb69e3fa35dbf15524405b44837a481d43d81daddde3ff21fcbb8e9
+         PREFIX openssl
+         CONFIGURE_COMMAND <SOURCE_DIR>/Configure ${OPENSSL_PLATFORM} --prefix=${CMAKE_INSTALL_PREFIX} ${OPENSSL_BUILD_TYPE} no-shared no-tests
+         )
+@@ -83,7 +85,8 @@ elseif(CMAKE_CROSSCOMPILING AND NOT MSVC) # This assumes we use dockcross
+
+     ExternalProject_add(
+         openssl
+-        URL https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz
++        URL file:///opt/sources/openssl.tar.gz
++        URL_HASH SHA256=b6a5f44b7eb69e3fa35dbf15524405b44837a481d43d81daddde3ff21fcbb8e9
+         PREFIX openssl
+         CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CROSS_COMPILE="" <SOURCE_DIR>/Configure ${OPENSSL_PLATFORM} --prefix=${CMAKE_INSTALL_PREFIX} ${OPENSSL_BUILD_TYPE} no-shared no-tests
+         BUILD_COMMAND make -j${BUILD_PARALLEL_JOBS} build_libs
+@@ -118,7 +121,8 @@ elseif(MSVC)
+         # See: https://github.com/openssl/openssl/issues/9931
+         ExternalProject_add(
+             openssl
+-            URL https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz
++            URL file:///opt/sources/openssl.tar.gz
++            URL_HASH SHA256=b6a5f44b7eb69e3fa35dbf15524405b44837a481d43d81daddde3ff21fcbb8e9
+             PREFIX openssl
+             CONFIGURE_COMMAND perl <SOURCE_DIR>/Configure ${OPENSSL_PLATFORM} --prefix=${NATIVE_INSTALL_PREFIX} --openssldir=${NATIVE_INSTALL_PREFIX} ${OPENSSL_BUILD_TYPE} no-shared no-asm no-tests /FS
+             BUILD_COMMAND set MAKEFLAGS= && set set CL=/O2 /MT /DNDEBUG /FS && jom -j ${BUILD_PARALLEL_JOBS} build_libs
+@@ -128,7 +132,8 @@ elseif(MSVC)
+         message(STATUS "Falling back to nmake for OpenSSL build using single core")
+            ExternalProject_add(
+             openssl
+-            URL https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz
++            URL file:///opt/sources/openssl.tar.gz
++            URL_HASH SHA256=b6a5f44b7eb69e3fa35dbf15524405b44837a481d43d81daddde3ff21fcbb8e9
+             PREFIX openssl
+             CONFIGURE_COMMAND perl <SOURCE_DIR>/Configure ${OPENSSL_PLATFORM} --prefix=${NATIVE_INSTALL_PREFIX} --openssldir=${NATIVE_INSTALL_PREFIX} ${OPENSSL_BUILD_TYPE} no-shared no-asm no-tests
+             BUILD_COMMAND set MAKEFLAGS= && nmake build_libs
+@@ -139,7 +144,8 @@ elseif(MSVC)
+ else()
+     ExternalProject_add(
+         openssl
+-        URL https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz
++        URL file:///opt/sources/openssl.tar.gz
++        URL_HASH SHA256=b6a5f44b7eb69e3fa35dbf15524405b44837a481d43d81daddde3ff21fcbb8e9
+         PREFIX openssl
+         CONFIGURE_COMMAND <SOURCE_DIR>/config ${OPENSSL_BUILD_TYPE} --prefix=${CMAKE_INSTALL_PREFIX} --libdir=lib no-shared
+         BUILD_COMMAND make -j${BUILD_PARALLEL_JOBS} build_libs
+diff --git a/third_party/picosha2/CMakeLists.txt b/third_party/picosha2/CMakeLists.txt
+index f29cd77..69666bd 100644
+--- a/third_party/picosha2/CMakeLists.txt
++++ b/third_party/picosha2/CMakeLists.txt
+@@ -27,8 +27,8 @@ endforeach()
+
+ ExternalProject_add(
+     picosha2
+-    GIT_REPOSITORY https://github.com/julianoes/PicoSHA2
+-    GIT_TAG cmake-install-support
++    URL file:///opt/sources/picosha2.tar.gz
++    URL_HASH SHA256=b99ca6df2c596b68c4587a56007aa2305b715f379729a665ebeb18ec1b99f28f
+     PREFIX picosha2
+     CMAKE_ARGS ${CMAKE_ARGS}
+     )
+diff --git a/third_party/protobuf/CMakeLists.txt b/third_party/protobuf/CMakeLists.txt
+index 9ac92d2..1e12f36 100644
+--- a/third_party/protobuf/CMakeLists.txt
++++ b/third_party/protobuf/CMakeLists.txt
+@@ -39,7 +39,8 @@ endforeach()
+
+ ExternalProject_add(
+     protobuf
+-    URL https://github.com/protocolbuffers/protobuf/releases/download/v29.1/protobuf-29.1.tar.gz
++    URL file:///opt/sources/protobuf.tar.gz
++    URL_HASH SHA256=3d32940e975c4ad9b8ba69640e78f5527075bae33ca2890275bf26b853c0962c
+     PREFIX protobuf
+     CMAKE_ARGS "${CMAKE_ARGS}"
+     )
+diff --git a/third_party/re2/CMakeLists.txt b/third_party/re2/CMakeLists.txt
+index 451aaf6..ad10a2c 100644
+--- a/third_party/re2/CMakeLists.txt
++++ b/third_party/re2/CMakeLists.txt
+@@ -27,8 +27,8 @@ endforeach()
+
+ ExternalProject_add(
+     re2
+-    GIT_REPOSITORY https://github.com/google/re2
+-    GIT_TAG b84e3ff189980a33d4a0c6fa1201aa0b3b8bab4a
++    URL file:///opt/sources/re2.tar.gz
++    URL_HASH SHA256=d59276d828823b73fd567d7f238d11a47fdab6e5542fbcf98e754e9319925141
+     PREFIX re2
+     CMAKE_ARGS "${CMAKE_ARGS}"
+     )
+diff --git a/third_party/tinyxml2/CMakeLists.txt b/third_party/tinyxml2/CMakeLists.txt
+index c3f0406..457407d 100644
+--- a/third_party/tinyxml2/CMakeLists.txt
++++ b/third_party/tinyxml2/CMakeLists.txt
+@@ -28,8 +28,8 @@ endforeach()
+
+ ExternalProject_add(
+     tinyxml2
+-    GIT_REPOSITORY https://github.com/leethomason/tinyxml2
+-    GIT_TAG 11.0.0
++    URL file:///opt/sources/tinyxml2.tar.gz
++    URL_HASH SHA256=5556deb5081fb246ee92afae73efd943c889cef0cafea92b0b82422d6a18f289
+     PREFIX tinyxml2
+     CMAKE_ARGS "${CMAKE_ARGS}"
+     )
