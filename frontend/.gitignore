@@ -33,3 +33,4 @@ pnpm-debug.log*
 .tmp/
 test-results/
 playwright-report/
+public/assets/

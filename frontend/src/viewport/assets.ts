@@ -36,6 +36,7 @@ export class Assets {
     let task = this.models.get(url);
     if (!task) {
       task = this.loader.loadAsync(url).then(gltf => {
+        gltf.scene.userData.bodyToAssetQuaternion = gltf.parser.json.asset?.extras?.bodyToAssetQuaternion;
         const lights: T.Object3D[] = [];
         gltf.scene.traverse(node => {
           if (node instanceof T.Light) lights.push(node);

@@ -22,7 +22,7 @@ test('authored descriptor feed renders orbit/follow and keeps inspector exact', 
   await page.getByRole('combobox', { name: 'Camera mode' }).press('Enter');
   await page.getByRole('combobox', { name: 'Camera mode' }).press('ArrowDown');
   await page.getByRole('combobox', { name: 'Camera mode' }).press('Enter');
-  await expect(page.getByText('Follow', { exact: true }).first()).toBeVisible();
+  await expect(viewport).toHaveAttribute('data-camera', 'follow');
   await page.waitForTimeout(2000);
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: 'test-results/viewer-demo-follow.png' });

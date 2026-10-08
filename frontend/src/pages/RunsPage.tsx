@@ -19,6 +19,7 @@ export default function RunsPage() {
   const id = location.pathname.slice('/runs/'.length);
   const runId = location.pathname.startsWith('/runs/') && id ? decodeURIComponent(id) : undefined;
   const mode = query.get('mode') === 'live' ? 'live' : 'replay';
+  const requestedEntity = query.get('entity');
   const [runs, setRuns] = useState<RunInfo[]>([]), [error, setError] = useState<string>();
   const [scenarioPath, setScenarioPath] = useState('scenarios/p1-slice.yaml'), [body, setBody] = useState('');
   const [session, setSession] = useState<{ store: FeedStore; clock: PlaybackClock }>();
@@ -56,7 +57,7 @@ export default function RunsPage() {
   }, [api, runId, mode]);
   useEffect(() => {
     if (!selected && session) {
-      const entity = [...session.store.entities.values()].find(entity => resolveBinding(session.store.header, entity.typeId)) ?? session.store.entities.values().next().value;
+      const entity = [...session.store.entities.values()].find(entity => entity.key.id === requestedEntity) ?? [...session.store.entities.values()].find(entity => resolveBinding(session.store.header, entity.typeId)) ?? session.store.entities.values().next().value;
       if (entity) setSelected(entity.key);
     }
   });
@@ -92,6 +93,7 @@ export default function RunsPage() {
   return <div className="viewer-demo">
     <header className="viewer-header"><div><Link to={`/runs${suffix}`}>AeroAgentSim / Runs</Link><div>{runId}</div></div>
       <Space><Tag>{status}</Tag><Select aria-label="Feed mode" value={mode} options={[{ value: 'live', label: 'Live' }, { value: 'replay', label: 'Replay' }]} onChange={value => navigate(`/runs/${encodeURIComponent(runId)}?api=${encodeURIComponent(apiBase)}&mode=${value}`)} />
+      <Link to={`/agents/${encodeURIComponent(runId)}${suffix}`}>Agent decisions</Link>
       {(['pause', 'resume', 'stop'] as const).map(action => <Button key={action} onClick={() => control(action)}>{action}</Button>)}</Space></header>
     {error && <Alert type="error" message={error} />}
     {session && <><main className="viewer-main"><section className="viewer-stage">

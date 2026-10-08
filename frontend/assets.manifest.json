@@ -1,0 +1,617 @@
+{
+  "schema": "aeroagentsim.assets/v1",
+  "assets": [
+    {
+      "path": "city/assets/1138e4118aeee4e24fb82fbdfd0b68a5f2c1400d7a8f0f017b555851c30de046",
+      "sha256": "1138e4118aeee4e24fb82fbdfd0b68a5f2c1400d7a8f0f017b555851c30de046",
+      "size": 27918,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/1138e4118aeee4e24fb82fbdfd0b68a5f2c1400d7a8f0f017b555851c30de046",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/137bed338ac2365cd1700478125167d7963071072396f26e66bc0a401225ca7e",
+      "sha256": "137bed338ac2365cd1700478125167d7963071072396f26e66bc0a401225ca7e",
+      "size": 43894,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/137bed338ac2365cd1700478125167d7963071072396f26e66bc0a401225ca7e",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/13c79cd871f3a78e5e296b0202a94db561e4370a5b715eb59171167b5bf0d04a",
+      "sha256": "13c79cd871f3a78e5e296b0202a94db561e4370a5b715eb59171167b5bf0d04a",
+      "size": 466470,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/13c79cd871f3a78e5e296b0202a94db561e4370a5b715eb59171167b5bf0d04a",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/1b962131854eb36597c6391806b885848cea78a8b89876400b2307aa7db40c64",
+      "sha256": "1b962131854eb36597c6391806b885848cea78a8b89876400b2307aa7db40c64",
+      "size": 23779,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/1b962131854eb36597c6391806b885848cea78a8b89876400b2307aa7db40c64",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/1dc232067de634eb2e7ce45a248db95650487a3b52b48d35ac337d7bde2bc9c3",
+      "sha256": "1dc232067de634eb2e7ce45a248db95650487a3b52b48d35ac337d7bde2bc9c3",
+      "size": 34363,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/1dc232067de634eb2e7ce45a248db95650487a3b52b48d35ac337d7bde2bc9c3",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/23c218772c21fa9da4cc351d6d2cd10720215fe490f83e6458fa69ca34dc9c37",
+      "sha256": "23c218772c21fa9da4cc351d6d2cd10720215fe490f83e6458fa69ca34dc9c37",
+      "size": 2783,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/23c218772c21fa9da4cc351d6d2cd10720215fe490f83e6458fa69ca34dc9c37",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/274326caa86dd494913a40cd57a01022956c01abc6498023463a1311a49b1d0b",
+      "sha256": "274326caa86dd494913a40cd57a01022956c01abc6498023463a1311a49b1d0b",
+      "size": 9898,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/274326caa86dd494913a40cd57a01022956c01abc6498023463a1311a49b1d0b",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/309935a1141ec60dc25fff1c1f130bb29ea2c495353109f0aceac7ff36263a12",
+      "sha256": "309935a1141ec60dc25fff1c1f130bb29ea2c495353109f0aceac7ff36263a12",
+      "size": 756,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/309935a1141ec60dc25fff1c1f130bb29ea2c495353109f0aceac7ff36263a12",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/311ded243f5dce1b484cf801f1e63ba4ce2119b6671e29505a9fc130ffbb50a1",
+      "sha256": "311ded243f5dce1b484cf801f1e63ba4ce2119b6671e29505a9fc130ffbb50a1",
+      "size": 123044,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/311ded243f5dce1b484cf801f1e63ba4ce2119b6671e29505a9fc130ffbb50a1",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/3b63691f68061e4ec0f896a1f24e0acfadcd0d544f53356b1a6679b86812583e",
+      "sha256": "3b63691f68061e4ec0f896a1f24e0acfadcd0d544f53356b1a6679b86812583e",
+      "size": 67800,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/3b63691f68061e4ec0f896a1f24e0acfadcd0d544f53356b1a6679b86812583e",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/41a574cc2880d7be0894605757b3df79a30e4b7f87a9e0f1840ea060f9ece467",
+      "sha256": "41a574cc2880d7be0894605757b3df79a30e4b7f87a9e0f1840ea060f9ece467",
+      "size": 3888,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/41a574cc2880d7be0894605757b3df79a30e4b7f87a9e0f1840ea060f9ece467",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/44023f2e90ee7aa99a77575e3aa8d8848050619746963597504b3ec817cb366e",
+      "sha256": "44023f2e90ee7aa99a77575e3aa8d8848050619746963597504b3ec817cb366e",
+      "size": 14378,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/44023f2e90ee7aa99a77575e3aa8d8848050619746963597504b3ec817cb366e",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/4a7b25d4ea807944992447bfcbea48a2a86400f05652ad204a40d1fae8b1721d",
+      "sha256": "4a7b25d4ea807944992447bfcbea48a2a86400f05652ad204a40d1fae8b1721d",
+      "size": 3456,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/4a7b25d4ea807944992447bfcbea48a2a86400f05652ad204a40d1fae8b1721d",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/4affd76f1dc7a02bef111b1d2f80a726478c7b6c61f0f9a4fc1e736978a356f4",
+      "sha256": "4affd76f1dc7a02bef111b1d2f80a726478c7b6c61f0f9a4fc1e736978a356f4",
+      "size": 120960,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/4affd76f1dc7a02bef111b1d2f80a726478c7b6c61f0f9a4fc1e736978a356f4",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/4e4fe71485540c33e3579e7bc2f1889d3070a11922ec7b141cdb9e5e016e4210",
+      "sha256": "4e4fe71485540c33e3579e7bc2f1889d3070a11922ec7b141cdb9e5e016e4210",
+      "size": 4552,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/4e4fe71485540c33e3579e7bc2f1889d3070a11922ec7b141cdb9e5e016e4210",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/50d938df7d22be5876ad8cafe08e6aff01ac087302f1d3c2153633b9d79cf739",
+      "sha256": "50d938df7d22be5876ad8cafe08e6aff01ac087302f1d3c2153633b9d79cf739",
+      "size": 10800,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/50d938df7d22be5876ad8cafe08e6aff01ac087302f1d3c2153633b9d79cf739",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/570295ee287d63db0b0e4291ebc3440494c9181adaa9427fc5aa64480e58492a",
+      "sha256": "570295ee287d63db0b0e4291ebc3440494c9181adaa9427fc5aa64480e58492a",
+      "size": 33083,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/570295ee287d63db0b0e4291ebc3440494c9181adaa9427fc5aa64480e58492a",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/59062236ec3097c42c4f5597f71978143339ca9579b0d7cca22b4c536d1a3275",
+      "sha256": "59062236ec3097c42c4f5597f71978143339ca9579b0d7cca22b4c536d1a3275",
+      "size": 1296,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/59062236ec3097c42c4f5597f71978143339ca9579b0d7cca22b4c536d1a3275",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/616d880f53d94c69b0341582c2cadbac02ada52f077e12825b4237edfa5e475f",
+      "sha256": "616d880f53d94c69b0341582c2cadbac02ada52f077e12825b4237edfa5e475f",
+      "size": 2160,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/616d880f53d94c69b0341582c2cadbac02ada52f077e12825b4237edfa5e475f",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/61a18cfc2191c6346ae04d1f0f46316d76d558a8e0a3c761a926a29e24e6bb50",
+      "sha256": "61a18cfc2191c6346ae04d1f0f46316d76d558a8e0a3c761a926a29e24e6bb50",
+      "size": 27491,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/61a18cfc2191c6346ae04d1f0f46316d76d558a8e0a3c761a926a29e24e6bb50",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/693921057bfec527ed4527eef835c340fbdb0d83b78722f8d0670084a1b0bcd4",
+      "sha256": "693921057bfec527ed4527eef835c340fbdb0d83b78722f8d0670084a1b0bcd4",
+      "size": 57447,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/693921057bfec527ed4527eef835c340fbdb0d83b78722f8d0670084a1b0bcd4",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/6948a5a2611145a4c3f4283d756d580fbd8155b049379de91d80bccd8bc2465b",
+      "sha256": "6948a5a2611145a4c3f4283d756d580fbd8155b049379de91d80bccd8bc2465b",
+      "size": 658802,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/6948a5a2611145a4c3f4283d756d580fbd8155b049379de91d80bccd8bc2465b",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/6b8c02c2986d8cb374785d692da72d9b322d132756e91a0288df580a06a9969d",
+      "sha256": "6b8c02c2986d8cb374785d692da72d9b322d132756e91a0288df580a06a9969d",
+      "size": 31773,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/6b8c02c2986d8cb374785d692da72d9b322d132756e91a0288df580a06a9969d",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/7070f8595b31962744105bee2036f3874f99b5166af5342a79d2f5291cce40cc",
+      "sha256": "7070f8595b31962744105bee2036f3874f99b5166af5342a79d2f5291cce40cc",
+      "size": 71963,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/7070f8595b31962744105bee2036f3874f99b5166af5342a79d2f5291cce40cc",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/74ad57be1362f700ac0ce939860326afa41a5d8467643139a9df414af66f440e",
+      "sha256": "74ad57be1362f700ac0ce939860326afa41a5d8467643139a9df414af66f440e",
+      "size": 32469,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/74ad57be1362f700ac0ce939860326afa41a5d8467643139a9df414af66f440e",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/74f883a093a6ec0daca60bf4d6ebf11ba9ebac36938c98d06b8af3675b94fd65",
+      "sha256": "74f883a093a6ec0daca60bf4d6ebf11ba9ebac36938c98d06b8af3675b94fd65",
+      "size": 17809,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/74f883a093a6ec0daca60bf4d6ebf11ba9ebac36938c98d06b8af3675b94fd65",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/79325312cea5e3f8715da1499d90c1e2d3cc0814a7356ed5e8bbd55c886390ed",
+      "sha256": "79325312cea5e3f8715da1499d90c1e2d3cc0814a7356ed5e8bbd55c886390ed",
+      "size": 43848,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/79325312cea5e3f8715da1499d90c1e2d3cc0814a7356ed5e8bbd55c886390ed",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/7b0e4d51fbd4673aa79e65db96a4b4fca0545b319f6a65b36a72e23a29b52f1c",
+      "sha256": "7b0e4d51fbd4673aa79e65db96a4b4fca0545b319f6a65b36a72e23a29b52f1c",
+      "size": 2896,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/7b0e4d51fbd4673aa79e65db96a4b4fca0545b319f6a65b36a72e23a29b52f1c",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/7f0795d630e0960326437315bd4f06253d7a9753b0696d9c11ac84c9e463ec70",
+      "sha256": "7f0795d630e0960326437315bd4f06253d7a9753b0696d9c11ac84c9e463ec70",
+      "size": 9612,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/7f0795d630e0960326437315bd4f06253d7a9753b0696d9c11ac84c9e463ec70",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/92e9033a45d2753b445d9171fb548f287c09bfe7ec66d7c054de0a10676806e4",
+      "sha256": "92e9033a45d2753b445d9171fb548f287c09bfe7ec66d7c054de0a10676806e4",
+      "size": 44887,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/92e9033a45d2753b445d9171fb548f287c09bfe7ec66d7c054de0a10676806e4",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/97d4878ca2ae2ca9b54906da4e76ac11659325070f455059b27381b424a9b67d",
+      "sha256": "97d4878ca2ae2ca9b54906da4e76ac11659325070f455059b27381b424a9b67d",
+      "size": 11556,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/97d4878ca2ae2ca9b54906da4e76ac11659325070f455059b27381b424a9b67d",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/9b0bfe1c2fa21b6f9b0be2ecdaa597bd86d6adc638bdd92074aa60bf6b1d5eaf",
+      "sha256": "9b0bfe1c2fa21b6f9b0be2ecdaa597bd86d6adc638bdd92074aa60bf6b1d5eaf",
+      "size": 2423986,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/9b0bfe1c2fa21b6f9b0be2ecdaa597bd86d6adc638bdd92074aa60bf6b1d5eaf",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/9cdb91c7b7eb2a81fb565675dc7eeb19a37ff1d1f719eaa7b55b1b2d947b3639",
+      "sha256": "9cdb91c7b7eb2a81fb565675dc7eeb19a37ff1d1f719eaa7b55b1b2d947b3639",
+      "size": 13366,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/9cdb91c7b7eb2a81fb565675dc7eeb19a37ff1d1f719eaa7b55b1b2d947b3639",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/9e0710881488c01460c8e183d7f4362a02917e0f9905a498808adc9eba58db4a",
+      "sha256": "9e0710881488c01460c8e183d7f4362a02917e0f9905a498808adc9eba58db4a",
+      "size": 204228,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/9e0710881488c01460c8e183d7f4362a02917e0f9905a498808adc9eba58db4a",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/a0c148fc3b66ef81b2851ac8f16d7784232e07cc6212b0bc991e9b4e33f4dd76",
+      "sha256": "a0c148fc3b66ef81b2851ac8f16d7784232e07cc6212b0bc991e9b4e33f4dd76",
+      "size": 15615,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/a0c148fc3b66ef81b2851ac8f16d7784232e07cc6212b0bc991e9b4e33f4dd76",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/a30ee8730799ba4817671789d4300302532caa70c0b19e82b257e43054fc42df",
+      "sha256": "a30ee8730799ba4817671789d4300302532caa70c0b19e82b257e43054fc42df",
+      "size": 167184,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/a30ee8730799ba4817671789d4300302532caa70c0b19e82b257e43054fc42df",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/a3dacf3dff2d7a7a3aa43e0a4dff58945de5dd780767912aa6558974e527ca13",
+      "sha256": "a3dacf3dff2d7a7a3aa43e0a4dff58945de5dd780767912aa6558974e527ca13",
+      "size": 82551,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/a3dacf3dff2d7a7a3aa43e0a4dff58945de5dd780767912aa6558974e527ca13",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/a9164af5df8c78fadbe4b689435d934d8a1f423627f6f89bb3294d29f3eed065",
+      "sha256": "a9164af5df8c78fadbe4b689435d934d8a1f423627f6f89bb3294d29f3eed065",
+      "size": 10407,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/a9164af5df8c78fadbe4b689435d934d8a1f423627f6f89bb3294d29f3eed065",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/b3c6823ce475d45ba8790d5bb285c69e57f64f7b7ebd82f16f41539c0ef57e7a",
+      "sha256": "b3c6823ce475d45ba8790d5bb285c69e57f64f7b7ebd82f16f41539c0ef57e7a",
+      "size": 52354,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/b3c6823ce475d45ba8790d5bb285c69e57f64f7b7ebd82f16f41539c0ef57e7a",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/b7fcfcf0215725fe4ce5372b328fbdbf4e77fc8ad90387bf0d8c95ddac9939e6",
+      "sha256": "b7fcfcf0215725fe4ce5372b328fbdbf4e77fc8ad90387bf0d8c95ddac9939e6",
+      "size": 466776,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/b7fcfcf0215725fe4ce5372b328fbdbf4e77fc8ad90387bf0d8c95ddac9939e6",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/bc634c83bc26e68d56a65cce43e4b7ff4794c377b9920d18213f985c5b1e7c9b",
+      "sha256": "bc634c83bc26e68d56a65cce43e4b7ff4794c377b9920d18213f985c5b1e7c9b",
+      "size": 262989,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/bc634c83bc26e68d56a65cce43e4b7ff4794c377b9920d18213f985c5b1e7c9b",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/c984e16ad62bf9896a3e8a7e52914d5d017524491c9151c0dfa0e8691c2c9e3c",
+      "sha256": "c984e16ad62bf9896a3e8a7e52914d5d017524491c9151c0dfa0e8691c2c9e3c",
+      "size": 30169,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/c984e16ad62bf9896a3e8a7e52914d5d017524491c9151c0dfa0e8691c2c9e3c",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/cd656f457551a43f21efecbbe36ad680e58dee68f1cf420c9cbe56e2ffc3817f",
+      "sha256": "cd656f457551a43f21efecbbe36ad680e58dee68f1cf420c9cbe56e2ffc3817f",
+      "size": 24284,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/cd656f457551a43f21efecbbe36ad680e58dee68f1cf420c9cbe56e2ffc3817f",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/d07cd2f7c789de8cf9d436cc16440b7652623eafb688a1af7309a1a57837463e",
+      "sha256": "d07cd2f7c789de8cf9d436cc16440b7652623eafb688a1af7309a1a57837463e",
+      "size": 851256,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/d07cd2f7c789de8cf9d436cc16440b7652623eafb688a1af7309a1a57837463e",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/d46886cf17895b6b7f26dd923fbcacab679cbe9ee0a2023d9ef058b724726a45",
+      "sha256": "d46886cf17895b6b7f26dd923fbcacab679cbe9ee0a2023d9ef058b724726a45",
+      "size": 463752,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/d46886cf17895b6b7f26dd923fbcacab679cbe9ee0a2023d9ef058b724726a45",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/d5ad53b758e3a3a5c1d7072d9e33c97e16a1a63aedac1eb719bcadc5cd536902",
+      "sha256": "d5ad53b758e3a3a5c1d7072d9e33c97e16a1a63aedac1eb719bcadc5cd536902",
+      "size": 35462,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/d5ad53b758e3a3a5c1d7072d9e33c97e16a1a63aedac1eb719bcadc5cd536902",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/d9c5887dd40aadb65500cde448e64dbf80eb339cd80b4db77642bc41d3a4535a",
+      "sha256": "d9c5887dd40aadb65500cde448e64dbf80eb339cd80b4db77642bc41d3a4535a",
+      "size": 15443,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/d9c5887dd40aadb65500cde448e64dbf80eb339cd80b4db77642bc41d3a4535a",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/dd258378c81544c4b8f793dc1f6299a4ef6be110d4a0cb907c0e970ed97d0912",
+      "sha256": "dd258378c81544c4b8f793dc1f6299a4ef6be110d4a0cb907c0e970ed97d0912",
+      "size": 32926,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/dd258378c81544c4b8f793dc1f6299a4ef6be110d4a0cb907c0e970ed97d0912",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/e82c8c98ea159a15e562ebe0520a2f6208c50755a8cfd9eff53b428db1e457cb",
+      "sha256": "e82c8c98ea159a15e562ebe0520a2f6208c50755a8cfd9eff53b428db1e457cb",
+      "size": 16437,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/e82c8c98ea159a15e562ebe0520a2f6208c50755a8cfd9eff53b428db1e457cb",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/eb0b27c18f8c9d8b5030ad227a5f7700dfa07fa4fe0f87e5e9fdcb899df568e8",
+      "sha256": "eb0b27c18f8c9d8b5030ad227a5f7700dfa07fa4fe0f87e5e9fdcb899df568e8",
+      "size": 144936,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/eb0b27c18f8c9d8b5030ad227a5f7700dfa07fa4fe0f87e5e9fdcb899df568e8",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/f19be916c88c86a4308fc23df41c0dd6eb8bea88301f7a848d23d391837ee725",
+      "sha256": "f19be916c88c86a4308fc23df41c0dd6eb8bea88301f7a848d23d391837ee725",
+      "size": 36109,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/f19be916c88c86a4308fc23df41c0dd6eb8bea88301f7a848d23d391837ee725",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/fbd8c4c6fa25fa35cc7ab8e7085d93f8c1cffd6d66a5e951dc2d12ddc840d9f4",
+      "sha256": "fbd8c4c6fa25fa35cc7ab8e7085d93f8c1cffd6d66a5e951dc2d12ddc840d9f4",
+      "size": 38411,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/fbd8c4c6fa25fa35cc7ab8e7085d93f8c1cffd6d66a5e951dc2d12ddc840d9f4",
+      "transform": "copy"
+    },
+    {
+      "path": "city/assets/fe3b82fd9b3942540b25f0f9dd1270cde872815524e556e866e1d19389a01908",
+      "sha256": "fe3b82fd9b3942540b25f0f9dd1270cde872815524e556e866e1d19389a01908",
+      "size": 9504,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/assets/fe3b82fd9b3942540b25f0f9dd1270cde872815524e556e866e1d19389a01908",
+      "transform": "copy"
+    },
+    {
+      "path": "city/manifest.json",
+      "sha256": "8f70bc96be129d5458336464026070fdab2af22ef12fa7435ead255e0300bc98",
+      "size": 494457,
+      "license": "ODbL-1.0; CC0-1.0 textures",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work; OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/packs/shanghai-huangpu-east-v1/manifest.json",
+      "transform": "copy"
+    },
+    {
+      "path": "environment/day.hdr",
+      "sha256": "dfec7972ab2bf086c0a3e5f96e648d63fbf8509025fd7cf2cd53d307042a3f0d",
+      "size": 2097216,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public/osm2world/style/textures/sky/DaySkyHDRI041B.hdr",
+      "transform": "copy"
+    },
+    {
+      "path": "licenses/OSM-attribution.txt",
+      "sha256": "5738dd1e11c85d5290cecdcc39bfcb9e618f3a7998447a1230df97c3b48c94f0",
+      "size": 249,
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work",
+      "source": "https://www.openstreetmap.org/copyright",
+      "transform": "copy"
+    },
+    {
+      "path": "licenses/OSM2World-CC0.txt",
+      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "size": 7048,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "https://raw.githubusercontent.com/tordanik/OSM2World-default-style/master/COPYING.txt",
+      "transform": "copy"
+    },
+    {
+      "path": "licenses/PX4-BSD.txt",
+      "sha256": "5fcb2a52fc0390cc8c7eccaa0cde9316c810f38811efb357e1ede7858e26e289",
+      "size": 1532,
+      "license": "BSD-3-Clause",
+      "attribution": "Copyright (c) 2022 Rudis Laboratories (x500_base); PX4 Autopilot for Drones; https://github.com/PX4/PX4-gazebo-models",
+      "source": "https://raw.githubusercontent.com/PX4/PX4-gazebo-models/main/LICENSE",
+      "transform": "copy"
+    },
+    {
+      "path": "licenses/X500-BSD.txt",
+      "sha256": "cee4ef94e73cd38fb2886f5d7e7a04d6488f54b1e70cd8b1b29d74f38bfdba5b",
+      "size": 1526,
+      "license": "BSD-3-Clause",
+      "attribution": "Copyright (c) 2022 Rudis Laboratories (x500_base); PX4 Autopilot for Drones; https://github.com/PX4/PX4-gazebo-models",
+      "source": "https://raw.githubusercontent.com/PX4/PX4-gazebo-models/main/models/x500_base/LICENSE",
+      "transform": "copy"
+    },
+    {
+      "path": "models/car.bin",
+      "sha256": "4379ea8ac119b639a0b39e57698f0e07c8a1762993d6cd176c8222f98cbb5ef1",
+      "size": 26148,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "https://raw.githubusercontent.com/tordanik/OSM2World-default-style/master/models/car/car.bin",
+      "transform": "copy"
+    },
+    {
+      "path": "models/car.gltf",
+      "sha256": "7e5b5df88059b583c0ef728a0c14a5c2b684406057b79931d9fa98ee7522d3db",
+      "size": 7166,
+      "license": "CC0-1.0",
+      "attribution": "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)",
+      "source": "https://raw.githubusercontent.com/tordanik/OSM2World-default-style/master/models/car/car.gltf",
+      "transform": "copy"
+    },
+    {
+      "path": "models/x500.glb",
+      "sha256": "074b2d6d883858b51157420f3b4887e7a0dd10377766b805127687c1c63d34ab",
+      "size": 130276,
+      "license": "BSD-3-Clause",
+      "attribution": "Copyright (c) 2022 Rudis Laboratories (x500_base); PX4 Autopilot for Drones; https://github.com/PX4/PX4-gazebo-models",
+      "source": "https://raw.githubusercontent.com/PX4/PX4-gazebo-models/main/models/x500_base/model.sdf",
+      "transform": "PX4 SDF visual poses + Collada units, Y-up metres, authored PBR and welded smooth display normals; source labels/planes omitted; gltf-transform meshopt; simplify ratio 0.05/error 0.01/border unlocked"
+    }
+  ],
+  "sources": [
+    {
+      "source": "https://raw.githubusercontent.com/PX4/PX4-gazebo-models/main/models/x500_base/model.sdf",
+      "sha256": "6eccbff824a0e1ceaaf3bc12fe18cd0eb3ece890bf995a2607b477c3d2ae5772",
+      "size": 17726,
+      "license": "BSD-3-Clause",
+      "attribution": "Copyright (c) 2022 Rudis Laboratories (x500_base); PX4 Autopilot for Drones; https://github.com/PX4/PX4-gazebo-models"
+    },
+    {
+      "source": "https://raw.githubusercontent.com/PX4/PX4-gazebo-models/main/models/x500_base/meshes/NXP-HGD-CF.dae",
+      "sha256": "7321861b113866996dfa79b403def5666d4b796810840d2c057c7b51fc315b0a",
+      "size": 22399616,
+      "license": "BSD-3-Clause",
+      "attribution": "Copyright (c) 2022 Rudis Laboratories (x500_base); PX4 Autopilot for Drones; https://github.com/PX4/PX4-gazebo-models"
+    },
+    {
+      "source": "https://raw.githubusercontent.com/PX4/PX4-gazebo-models/main/models/x500_base/meshes/5010Base.dae",
+      "sha256": "798396a1945c7ff55a0840b77869e27affdd35fed0d784fff96b68f50f160ea0",
+      "size": 369574,
+      "license": "BSD-3-Clause",
+      "attribution": "Copyright (c) 2022 Rudis Laboratories (x500_base); PX4 Autopilot for Drones; https://github.com/PX4/PX4-gazebo-models"
+    },
+    {
+      "source": "https://raw.githubusercontent.com/PX4/PX4-gazebo-models/main/models/x500_base/meshes/5010Bell.dae",
+      "sha256": "b90a1b2dd63a8ebbe1f3339ed18cef23673e0d8f03314fd9b9533a68b6b66668",
+      "size": 393792,
+      "license": "BSD-3-Clause",
+      "attribution": "Copyright (c) 2022 Rudis Laboratories (x500_base); PX4 Autopilot for Drones; https://github.com/PX4/PX4-gazebo-models"
+    },
+    {
+      "source": "https://raw.githubusercontent.com/PX4/PX4-gazebo-models/main/models/x500_base/meshes/1345_prop_ccw.stl",
+      "sha256": "ba197e0961117a3462b555d65edf3433ba8ff5691624100a185242cb5f456244",
+      "size": 522784,
+      "license": "BSD-3-Clause",
+      "attribution": "Copyright (c) 2022 Rudis Laboratories (x500_base); PX4 Autopilot for Drones; https://github.com/PX4/PX4-gazebo-models"
+    },
+    {
+      "source": "https://raw.githubusercontent.com/PX4/PX4-gazebo-models/main/models/x500_base/meshes/1345_prop_cw.stl",
+      "sha256": "7aa4b61c1ddc5304c9c1f5602eacf5e2ec5eafb95dd1f2a3368342f256122fc0",
+      "size": 521884,
+      "license": "BSD-3-Clause",
+      "attribution": "Copyright (c) 2022 Rudis Laboratories (x500_base); PX4 Autopilot for Drones; https://github.com/PX4/PX4-gazebo-models"
+    }
+  ],
+  "excluded": [
+    {
+      "path": "models/city-runtime/holybro-x500-textured-preview.glb",
+      "reason": "No local redistribution license; preview-normalized, replaced by BSD PX4 source"
+    },
+    {
+      "path": "models/bigcity/**",
+      "reason": "Unity package redistribution rights not established"
+    }
+  ]
+}
