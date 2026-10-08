@@ -1,0 +1,893 @@
+[
+  {
+    "tag": "aero-bench/ns3-native-diagnostic:selfcheck-fixed",
+    "image_id": "sha256:161ddc2a4aaeadb4340ebd2e1be22e68a058e0232905caa736efa387eb012ebf",
+    "created": "2026-09-30T19:48:06.518216175+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "1905276367c61fe04445ed2c17f142c4790f1ad6821d4cb77ad52bea1060f89d",
+        "bytes": 11726
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "07cc1f3fc7e3af4dd1984c512cae41158a38f56db07b8189295e532faacf889c",
+        "bytes": 194136
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "846783c8963aed27e374c3e25b7faaa2349234ba9b5f80f28e785b03d368203e",
+        "bytes": 121217
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "2c3f4616713b43132104215c3947d3a757a2029591a616631404a3978504787c",
+        "bytes": 17399
+      }
+    }
+  },
+  {
+    "tag": "aero-bench/ns3-native-diagnostic:delay-probe",
+    "image_id": "sha256:b55cdde4fbd330627ff1675f3fe7f9ccf33722e50e5523b42167f38204969caa",
+    "created": "2026-09-30T19:44:56.576665033+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "5f78f0b6e76599444468f5585d2ac0b1e30c50ceaceef9d8f025a036f0cb2381",
+        "bytes": 11658
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "a05b3b9b8ec47c8beda5a4232e4e26ee727deef85adc352bfb8d94f269c362e7",
+        "bytes": 194060
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "846783c8963aed27e374c3e25b7faaa2349234ba9b5f80f28e785b03d368203e",
+        "bytes": 121217
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "2c3f4616713b43132104215c3947d3a757a2029591a616631404a3978504787c",
+        "bytes": 17399
+      }
+    }
+  },
+  {
+    "tag": "aero-bench/ns3-native-diagnostic:20260930",
+    "image_id": "sha256:db18a475df05c2a8a57756713f7d9fa15c7caebdba728ccf2cc453bc264a4215",
+    "created": "2026-09-30T19:36:34.6058097+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "d1922f30604f5b20619d05fc1af1798f899cedb9fc9700ce0ccf76d7ee4e8631",
+        "bytes": 11470
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "a05b3b9b8ec47c8beda5a4232e4e26ee727deef85adc352bfb8d94f269c362e7",
+        "bytes": 194060
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "846783c8963aed27e374c3e25b7faaa2349234ba9b5f80f28e785b03d368203e",
+        "bytes": 121217
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "2c3f4616713b43132104215c3947d3a757a2029591a616631404a3978504787c",
+        "bytes": 17399
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:osm-rpc-verification",
+    "image_id": "sha256:7dbb3f6c442b0e09464b427551088e276a1393eaaf91029a539f465b278279c3",
+    "created": "2026-09-06T12:00:19.152519172+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "da23282147c9c85df79a3ac95013ff4f7314983570dac724e6b7200a8198705a",
+        "bytes": 193763
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "f9760864f0879b7d74c4f867db15cb76d68a34c972209fc876c3574dba5eb528",
+        "bytes": 113665
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:osm-scene-verification",
+    "image_id": "sha256:258b73ba44e9af7e3aacbc5898551c1cc1e8d4c6488f61713cd1f45f8db35991",
+    "created": "2026-09-06T11:13:20.903883047+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "f9760864f0879b7d74c4f867db15cb76d68a34c972209fc876c3574dba5eb528",
+        "bytes": 113665
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:osm-signal-verification",
+    "image_id": "sha256:3b6ebf58b1e359af82cff8ba855bd0bfc782f5e93a56a555d9b6f9dc96d1191d",
+    "created": "2026-09-06T11:13:20.903883047+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "f9760864f0879b7d74c4f867db15cb76d68a34c972209fc876c3574dba5eb528",
+        "bytes": 113665
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-7885d4cf",
+    "image_id": "sha256:e15155560678e076c34151df05b5d327684bab148818ab5a5f2214b525e5c564",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-06af2081",
+    "image_id": "sha256:0f9065d71b0e7804e2a4c9c832d256dc795aedd9532200802da9067ab3f68e0b",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-7d00e6",
+    "image_id": "sha256:9fe1bebd440de9f6329cf696b210c676f4314a73e792b1da6852003894470880",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-98f7cd7b39e8",
+    "image_id": "sha256:85d71fea083140d6f7fc82854e482f794af2173c7da8f26af3dba85f3628c8b6",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-89f27baab92c",
+    "image_id": "sha256:338885fc8b64488800e6f8ebd2b6d7808468034b0d02ceb09f1943a6777a9251",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-d2b0dba6",
+    "image_id": "sha256:4be732dccd7f537c05115ba4680c8bbab5a1e4719c295c95d04ec0b94e03fd40",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-841708",
+    "image_id": "sha256:f99df71fe9c184f742be08caef6f1fa9b29b581dc5f505d787dbd8118ef1e9a6",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-d2aa4ec5",
+    "image_id": "sha256:0e18d70f727a7a6bd4690dcb03201b4c4b11218151fbceca8ac6f0950164aeaf",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-2428bc3a",
+    "image_id": "sha256:8a00233fbcd9970e2bc23b36120f308bf35f84b45bf3428b14c95680ae9d876d",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-1b7c69",
+    "image_id": "sha256:5e1b05fc4c29cccdb45d267c40ef667a7059c4bd349bbbfccfe1f9ef66dcd4f1",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-915b8b65c50f",
+    "image_id": "sha256:4b2de26e26d7c9d026e37243e0baa38b85beba41bf1cbc4622643d099274113f",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-current",
+    "image_id": "sha256:4b2de26e26d7c9d026e37243e0baa38b85beba41bf1cbc4622643d099274113f",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-9f8f94",
+    "image_id": "sha256:81d22823954ead40efdb87ea2b0bf357cf205630b01f588629d1009583d84efb",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-8c6402",
+    "image_id": "sha256:0ba7d45de6ffba2020dfc2754827e4ac64224610bbdb17990c619c4d499a6e89",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-8d6cf40e",
+    "image_id": "sha256:05477db5b584332d10eb2bcb9ad9ab10d4362a27c14751cc5546cfe8fcdd2bd6",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-c1e439f4b6a9",
+    "image_id": "sha256:15a5b354f266f2823a2d7bfff9acdc1aa8d6feaf4c6f5e588d89ee57582ef7e9",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-56c39013907e",
+    "image_id": "sha256:5f076b01c467b43b58376abbd07e9dd15d3fff02c97b110cc11a042bf60f59ad",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-01a9bc9c",
+    "image_id": "sha256:49850c5c408c6eaff668ed6410e11302ed8861b5154e40767e439317064a2299",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-5fd06da1",
+    "image_id": "sha256:e7bef4268826b283f1dca06033687ae11e934985e235e030f9835c3320c0f5c9",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-9088b51fe2d4",
+    "image_id": "sha256:4e91144dff92eeed7293be51a41424b3831f2bdf4924dd3e0d6def3a522c1c7e",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-7eeba566",
+    "image_id": "sha256:d61d4614314ff9bcc290438cf45bd092518c8191b223486d6fa91ae64a2e05f4",
+    "created": "2026-09-03T18:38:43.153159296+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "8c0ccaaae64a3fb97ab5da98998af0673b4e839ef84ac796e235ca2c6312d4f6",
+        "bytes": 51760
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-87e17bf63b2a",
+    "image_id": "sha256:3d86962f47555e5f53ffece7d2d925c3fdad0e8220ffe1cdbc440eb023c9ffb1",
+    "created": "2026-09-03T18:33:18.466020012+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "34276380802e24f2beb6cfe29752574215461e43ad70efdb282c86982b426e40",
+        "bytes": 51460
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-4ba52ec73444",
+    "image_id": "sha256:ef6de3681a470b4d029ce52e7831184393e79c64e6552fd5743ccacd5df51819",
+    "created": "2026-09-03T12:32:10.7666017+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "de628c6cfafac67fc4e647178ea173a6ee6c0cf7b7801b0d52ca147abb47b5e7",
+        "bytes": 51221
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-a3ee22eb62d5",
+    "image_id": "sha256:cc2cb72a53f7f9f0be074509246c8366c9208d92ac2598d7952521f63449d2c8",
+    "created": "2026-09-02T13:51:56.537780701+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "de628c6cfafac67fc4e647178ea173a6ee6c0cf7b7801b0d52ca147abb47b5e7",
+        "bytes": 51221
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-7c5ce6446c36",
+    "image_id": "sha256:e4be78f5cbce2b123ccf46b8d4788d2de3b8f5028ab52236e7b7256cbd766014",
+    "created": "2026-09-02T13:51:56.537780701+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "de628c6cfafac67fc4e647178ea173a6ee6c0cf7b7801b0d52ca147abb47b5e7",
+        "bytes": 51221
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-30944d405de4",
+    "image_id": "sha256:efb519d07e1d7d899cb77922070d4bb6912701892c8672b7a793d0bbe15e8718",
+    "created": "2026-09-02T13:51:56.537780701+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "de628c6cfafac67fc4e647178ea173a6ee6c0cf7b7801b0d52ca147abb47b5e7",
+        "bytes": 51221
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  },
+  {
+    "tag": "127.0.0.1:5000/aero-bench/ns3:urban-ac3babed3832",
+    "image_id": "sha256:bde9b3dc05fddb30e7870a9cd7ceef905b88c6c2f28ce0f03b7f34bd73d2ff08",
+    "created": "2026-09-02T13:51:56.537780701+08:00",
+    "files": {
+      "/opt/ns-3.48/scratch/aero-ns3-provider.cc": {
+        "sha256": "de628c6cfafac67fc4e647178ea173a6ee6c0cf7b7801b0d52ca147abb47b5e7",
+        "bytes": 51221
+      },
+      "/opt/ns-3.48/scratch/aero-ns3-selfcheck.cc": {
+        "sha256": "b12377dd7132c0b6f14651c17d99b0e88359335577c6ae7b0c9a47e609da6c67",
+        "bytes": 10828
+      },
+      "/opt/aero-bench/ns3-server.py": {
+        "sha256": "1cd54fe5de78a2101fbcfca03dc274b6e9f4c54a7807100f5eaeeb9f4237b0f9",
+        "bytes": 193484
+      },
+      "/opt/aero-bench/workload_scenario.py": {
+        "sha256": "3216434060546d65c47bf2c5e3f0a7fc75bad923ebe516a965ee668d4397d997",
+        "bytes": 113418
+      },
+      "/opt/aero-bench/readiness_probe.py": {
+        "sha256": "1b7567f2e2eea296a71319bdb86188ebce4f992d8a45f652f0e7b5275f7ebf6f",
+        "bytes": 17351
+      }
+    }
+  }
+]

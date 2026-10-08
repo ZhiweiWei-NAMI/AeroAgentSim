@@ -1,0 +1,5 @@
+# These two archives are intentional recovery/verification deliverables.
+!recovered/sources.tar.gz
+!verification/run-a.jsonl.gz
+__pycache__/
+.pytest_cache/

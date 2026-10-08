@@ -1,0 +1,117 @@
+{
+  "same_seed_byte_equal": true,
+  "runs": [
+    {
+      "startup_s": 0.041078850626945496,
+      "wall_s": 4.183050024323165,
+      "rtf_61s": 14.58266089224454,
+      "advance_100ms_latency_ms": {
+        "median": 4.364678,
+        "p95": 6.621579,
+        "max": 12.334934
+      },
+      "near_0_to_1s_delivery_rate": 1.0,
+      "accepted": 2400,
+      "delivered": 430,
+      "dropped": 1970,
+      "delivery_bins": [
+        {
+          "start_s": 0,
+          "sent": 400,
+          "delivered": 312,
+          "rate": 0.78
+        },
+        {
+          "start_s": 10,
+          "sent": 400,
+          "delivered": 104,
+          "rate": 0.26
+        },
+        {
+          "start_s": 20,
+          "sent": 400,
+          "delivered": 14,
+          "rate": 0.035
+        },
+        {
+          "start_s": 30,
+          "sent": 400,
+          "delivered": 0,
+          "rate": 0.0
+        },
+        {
+          "start_s": 40,
+          "sent": 400,
+          "delivered": 0,
+          "rate": 0.0
+        },
+        {
+          "start_s": 50,
+          "sent": 400,
+          "delivered": 0,
+          "rate": 0.0
+        }
+      ],
+      "rssi_samples": 430,
+      "drop_reasons": {
+        "delivery_timeout": 1970
+      }
+    },
+    {
+      "startup_s": 0.042832329869270325,
+      "wall_s": 4.1081211771816015,
+      "rtf_61s": 14.848636972741241,
+      "advance_100ms_latency_ms": {
+        "median": 4.265573,
+        "p95": 6.683411,
+        "max": 12.149121
+      },
+      "near_0_to_1s_delivery_rate": 1.0,
+      "accepted": 2400,
+      "delivered": 430,
+      "dropped": 1970,
+      "delivery_bins": [
+        {
+          "start_s": 0,
+          "sent": 400,
+          "delivered": 312,
+          "rate": 0.78
+        },
+        {
+          "start_s": 10,
+          "sent": 400,
+          "delivered": 104,
+          "rate": 0.26
+        },
+        {
+          "start_s": 20,
+          "sent": 400,
+          "delivered": 14,
+          "rate": 0.035
+        },
+        {
+          "start_s": 30,
+          "sent": 400,
+          "delivered": 0,
+          "rate": 0.0
+        },
+        {
+          "start_s": 40,
+          "sent": 400,
+          "delivered": 0,
+          "rate": 0.0
+        },
+        {
+          "start_s": 50,
+          "sent": 400,
+          "delivered": 0,
+          "rate": 0.0
+        }
+      ],
+      "rssi_samples": 430,
+      "drop_reasons": {
+        "delivery_timeout": 1970
+      }
+    }
+  ]
+}
