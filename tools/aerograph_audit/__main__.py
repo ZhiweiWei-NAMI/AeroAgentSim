@@ -7,13 +7,13 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from . import entities, report, semantics, states
+from . import entities, report, selection, semantics, states
 from .core import Audit
 
 WORKSPACE = Path(__file__).resolve().parents[2]
 
 
-def audit_tree(root: Path | str) -> tuple[Audit, dict]:
+def audit_tree(root: Path | str, selected: tuple[str, ...] = ()) -> tuple[Audit, dict]:
     audit = Audit(root)
     git = audit.git_state()
     audit.load()
@@ -21,7 +21,8 @@ def audit_tree(root: Path | str) -> tuple[Audit, dict]:
     semantics.prepare(audit)
     entities.run(audit)
     semantics.run(audit)
-    # Detect a concurrently edited input snapshot without mutating or rerunning upstream builds.
+    # Detect a concurrently edited input snapshot without mutating or rerunning
+    # upstream builds.
     import hashlib
 
     for path, entry in audit.inventory.items():
@@ -34,10 +35,12 @@ def audit_tree(root: Path | str) -> tuple[Audit, dict]:
                 "input.changed_during_audit",
                 "blocker",
                 path,
-                "Input changed during the read-only audit; rerun for a consistent snapshot",
+                "Input changed during the read-only audit; rerun for a "
+                "consistent snapshot",
             )
     audit.finish()
     report.summarize(audit)
+    selection.summarize(audit, selected)
     return audit, git
 
 
@@ -47,9 +50,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, default=Path("docs/audit"))
     parser.add_argument("--examples", type=int, default=3)
     parser.add_argument(
+        "--select",
+        default="",
+        help="Comma-separated type IDs; report their compilation blockers separately.",
+    )
+    parser.add_argument(
         "--fail-on-blocker",
         action="store_true",
-        help="Return 1 when blocker findings exist (default is success after report generation).",
+        help="Return 1 when blocker findings exist (default is success "
+        "after report generation).",
     )
     args = parser.parse_args(argv)
     output = args.out.resolve()
@@ -57,12 +66,14 @@ def main(argv: list[str] | None = None) -> int:
         args.root.resolve()
     ):
         parser.error(
-            "Output must be inside the aerokernel workspace and outside the audited source root"
+            "Output must be inside the aerokernel workspace and outside the "
+            "audited source root"
         )
     if args.examples < 1:
         parser.error("--examples must be at least 1")
     try:
-        audit, git = audit_tree(args.root)
+        selected = tuple(t.strip() for t in args.select.split(",") if t.strip())
+        audit, git = audit_tree(args.root, selected)
         report.write(audit, git, output, args.examples)
     except (OSError, ValueError, TypeError, KeyError) as error:
         parser.exit(2, f"Audit could not complete: {error}\n")
@@ -75,12 +86,16 @@ def main(argv: list[str] | None = None) -> int:
                 "relations": len(audit.relations),
                 "findings": len(audit.findings),
                 "severity": dict(sorted(counts.items())),
+                "selection_blockers": audit.metrics["selection"]["blocker_records"],
                 "out": str(output),
             },
             ensure_ascii=False,
         )
     )
-    return 1 if args.fail_on_blocker and counts["blocker"] else 0
+    blockers = (
+        audit.metrics["selection"]["blocker_records"] if selected else counts["blocker"]
+    )
+    return 1 if args.fail_on_blocker and blockers else 0
 
 
 if __name__ == "__main__":

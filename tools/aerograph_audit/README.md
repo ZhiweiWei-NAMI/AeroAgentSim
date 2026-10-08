@@ -1,68 +1,76 @@
-# Read-only AeroGraph audit
+# Read-only AeroGraph audit (v2)
 
-Run from the aerokernel workspace with Python 3.10 or newer (stdlib only):
+Run with Python >=3.10, pure stdlib at runtime:
 
 ```bash
-.venv/bin/python -m tools.aerograph_audit /mnt/data2/weizhiwei/AeroGraph --out docs/audit
-.venv/bin/python -m pytest -q
-.venv/bin/python -m ruff check tools tests
+.venv/bin/python -m tools.aerograph_audit /mnt/data2/weizhiwei/AeroGraph --out docs/audit --select oo:UAV,oo:Order,oo:ObservationRecord
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest tests/test_aerograph_audit.py --basetemp tools/aerograph_audit/.pytest-tmp -q
+.venv/bin/python -m ruff check tools/aerograph_audit tests/test_aerograph_audit.py
 ```
 
-The CLI produces deterministic `aerograph-audit.json` and `aerograph-audit.md`.
-`--examples N` controls examples per check. Reports default to exit status 0 when
-successfully written, even when findings exist; `--fail-on-blocker` returns 1
-for blocker findings. Invalid invocation or a failure to finish returns 2.
-Output must stay inside this workspace and outside the source tree. Input is
-read as JSON/text; no source Python, JavaScript, build scripts or tests run.
-Only `git rev-parse HEAD` and `git status --porcelain` are used for source Git
-metadata, with optional locks disabled. No commits, branches or resets occur.
+Reports are deterministic JSON and Markdown. `--examples N` controls examples.
+Successful report generation exits 0; `--fail-on-blocker` exits 1 for corpus
+blockers without `--select`, or selected compilation blockers with it. Unknown
+selected IDs and incomplete audits exit 2. Output must remain inside this
+workspace and outside the audited source. Source files are read as JSON/text;
+no upstream modules, builders, tests, Git commands or simulation run. HEAD is
+read directly from Git metadata; dirty status is unmeasured. Input hashes are
+checked once at completion to detect concurrent source changes.
 
-Each finding has a stable content-derived ID, check, severity, artifact,
-object_id, message, evidence path/pointer and count. Paths are source-relative;
-pointers identify actual JSON containers, or `line:N` in text. Missing keys
-and audit-local generated wrappers point to the nearest existing container;
-`details.requested_pointer` retains the requested member location. Grouped
-schema findings include individual key failures. `count` is the number of
-occurrences/violations for a finding, not necessarily distinct objects.
+Corpus findings respect review gates: proposal IDs, proposed/conflict reviews,
+quarantined/unaccepted dispositions are reported as info. Preserved original
+AST blockers are capped at major and marked `preserved_source`. Each finding
+retains `contract_severity`, independently of corpus severity. Neither gating
+nor a severity cap makes an invalid expression statically executable.
 
-The JSON includes source HEAD/dirty status, SHA-256 inventory, all findings,
-recomputed metadata claims, inherited field status, AST dependency closures,
-capability reconstruction, seven-directory readiness and three vertical-slice
-fix lists. It checks input hashes again once at the end to detect concurrent
-source edits. Report generation does not repair or normalize source files.
+`--select` collects each type's own and actually inherited fields, relations
+incident on that ancestry, contracts in its declared type/role scope, and their
+transitive semantic, field and relation dependencies. Suggested parents and
+unadopted mappings never become inheritance. The selected report restores
+contract severity for these definitions, including gated and archived ones;
+selection does not approve candidates or bind real producers. Shared blockers
+are counted once in the selected union. Unbound field writers are listed
+separately as integration requirements. Corpus findings remain unchanged by
+selection. Contracts without type scopes are selected by field/relation use;
+shared support fields do not pull in unrelated typed contracts. Full dependency
+and finding IDs are in JSON; Markdown groups the
+blockers and gives example IDs.
 
-The tool checks shipped schema keywords (required, type, enum, minimum,
-anyOf, const, properties, items, additionalProperties); it is not a complete
-JSON Schema implementation. Value-schema references are resolved locally.
-Explicit member units are propagated through typed structures. Dynamic
-quantity units remain requirements, not fabricated dimensionless values.
-Native `r` dependencies execute canonical targets; `b` validates the source
-label and executes inline AST. Parameters/defaults remain local to their
-native target/leaf or object definition. A guarded unknown branch is preserved.
-Specialized native geometry/graph operators lack a complete static proof and
-are excluded from static readiness; no expression is evaluated on live data.
+Findings have stable content-derived IDs, source-relative evidence paths and
+JSON pointers. Missing members point to the nearest existing container and
+retain the requested pointer in details. Finding records and affected
+occurrences are distinct: native parameter defaults are grouped by
+(rule, parameter name), but `count` and pointer lists retain every occurrence.
+Context-derived unit suggestions never alter source defaults or declarations.
+Writer counts also split by integration disposition and requiredWhen kind.
 
-Current source profile mapping is reconstructed from adopted inheritance,
-current fields and the generator's literal candidate mapping policies, including
-813 source mappings, 20 explicit candidates and 22 unadopted mappings in the
-reviewed tree. These counts are not hard-coded as correctness assertions.
-A new mapping policy is reported for inspection rather than silently guessed.
-Auto-generated leaf-state contracts/browser coverage metadata are not persisted
-source data and are excluded, with that limit stated in the report. Cross-artifact
-identity checks use a separate materialized semantic identity set when available;
-otherwise the shared-input arrangement is reported explicitly.
+The audit recognizes explicit directional null-as-unbounded cardinality,
+unit.members/memberUnits, declared reference identity integers, dynamic sibling
+unit contexts, and alternate timing dialects. Identity/config/spec metadata
+needs no outer sampling time. Actual numeric observations still need quantity
+units and timing; actual spatial vectors still need frame declarations. Count
+annotations can match dimensionless units at equal scale and physical
+dimensions; different semantic counts, opaque dimensions and logarithmic
+flavors remain distinct. Quaternion norm is dimensionless; ordinary vector
+norm retains its component unit. Structured membership does not inherit an
+unrelated scalar collection unit.
 
-`units.py` is an audit-owned, stdlib-only copy of AeroGraph's
-`semantic-directory/src/expanded_units.py`, read from source HEAD
-`20da07f1599940eb2ea3d6997f61eb132ac6879c`; its original SHA-256 is recorded below.
-It preserves strict unit inference, scale, affine/log and counting-unit semantics.
-Only formatting/lint changes and an attribution header were applied to that copy;
-no upstream module is imported. The remaining audit implementation is independent.
+The bundled schema checker covers shipped keywords, not all JSON Schema.
+Native `r` executes canonical targets; `b` audits inline execution and retains
+its provenance label. Guarded unknown branches remain unknown. Specialized
+native geometry/graph operators without an audit-owned proof are excluded from
+static readiness. Browser-generated leaf-state contracts and metadata are not
+materialized source inputs and are not fabricated by running upstream builders.
+Static readiness does not establish producer integration or live execution.
 
-Original unit helper SHA-256:
+`units.py` began as an audit-owned copy of AeroGraph's pure-stdlib
+`semantic-directory/src/expanded_units.py` at HEAD
+`20da07f1599940eb2ea3d6997f61eb132ac6879c`, original SHA-256
 `63afae4ff49647041b98e58e2951d38b0f22ac0c60cb3ed1c1fbd5eafd0a4855`.
+V2 changes the audit copy's counting compatibility, norm typing and structured
+item inheritance; no upstream module is imported or modified.
 
-Implementation delegation attempts are retained in the ignored workspace directory
-`.audit-agents/`: two distinct DSH session stores and two logs confirm concurrent
-`workbuddy/glm-5.3-flash` attempts with 131072 maxTokens and no effort argument.
-Both exited with TRANSPORT errors; they produced no source changes.
+The generated Markdown includes **Audit corrections (v2)** with accepted and
+rejected verifier proposals and **Upstream fix list for AeroGraph maintainers**
+with priorities, recomputed counts, examples and concrete source-owner actions.
+The v1 baseline is 431 blocker, 9,832 major, 0 minor and 1,034 info records.

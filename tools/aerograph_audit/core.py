@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -30,8 +29,19 @@ class Record:
         return identity if isinstance(identity, str) else None
 
 
+def gated(data: dict) -> bool:
+    """Review disposition is independent of whether a descriptor is well formed."""
+    return (
+        str(data.get("id", "")).startswith("proposal:")
+        or data.get("reviewStatus") in ("proposed", "conflict")
+        or data.get("integrationDisposition")
+        in ("quarantined", "candidate_not_accepted")
+        or data.get("acceptedAsCompleteContract") is False
+    )
+
+
 def schema_errors(value: Any, schema: dict, pointer: str = "") -> list[tuple[str, str]]:
-    """Validate the keywords present in the shipped contract schemas, not all JSON Schema."""
+    """Validate the shipped schema keywords, not all JSON Schema."""
     errors: list[tuple[str, str]] = []
     kinds = {
         "object": lambda v: isinstance(v, dict),
@@ -155,6 +165,21 @@ class Audit:
             },
             "count": count,
         }
+        finding["contract_severity"] = severity
+        preserved = (
+            artifact == "research/original-graph/decoded.json"
+            and check.startswith("semantic.")
+        ) or (
+            isinstance(record, Record) and record.data.get("origin") == "original_graph"
+        )
+        if preserved:
+            finding["preserved_source"] = True
+            if severity == "blocker":
+                finding["severity"] = "major"
+        if isinstance(record, Record):
+            if gated(record.data):
+                finding["gated"] = True
+                finding["severity"] = "info"
         if details is not None:
             finding["details"] = details
         self.findings.append(finding)
@@ -240,7 +265,8 @@ class Audit:
                     label + ".duplicate_id",
                     "blocker",
                     row,
-                    "Duplicate identity; first definition retained for continued diagnostics",
+                    "Duplicate identity; first definition retained for continued "
+                    "diagnostics",
                     details={
                         "first": {
                             "path": result[row.id].artifact,
@@ -301,7 +327,8 @@ class Audit:
                             "cross.shard_integrity",
                             "blocker",
                             "semantic-directory/data/definitions.json",
-                            f"Shard {part['path']} {key}: claimed {part[key]}, actual {observed[key]}",
+                            f"Shard {part['path']} {key}: claimed "
+                            f"{part[key]}, actual {observed[key]}",
                             pointer=f"/parts/{i}/{key}",
                         )
             if manifest.get("recordCount") != len(self.field_rows):
@@ -309,7 +336,8 @@ class Audit:
                     "cross.field_count",
                     "major",
                     "semantic-directory/data/definitions.json",
-                    f"Claimed {manifest.get('recordCount')} source fields; loaded {len(self.field_rows)}",
+                    f"Claimed {manifest.get('recordCount')} source fields; "
+                    f"loaded {len(self.field_rows)}",
                     pointer="/recordCount",
                 )
             semantic_hash = hashlib.sha256(
@@ -328,7 +356,8 @@ class Audit:
                     "cross.semantic_hash",
                     "blocker",
                     "semantic-directory/data/definitions.json",
-                    "Insertion-order source field semantic digest differs from manifest",
+                    "Insertion-order source field semantic digest differs from "
+                    "manifest",
                     pointer="/semanticSha256",
                 )
         self.metrics["source_field_count"] = len(self.field_rows)
@@ -357,7 +386,9 @@ class Audit:
                     source_rows.extend(self.rows(name, "sources"))
                 if "contracts" in doc:
                     for row in self.rows(name, "contracts"):
-                        # Local audit descriptors mirror documented ID construction; no upstream code execution.
+                        # Local audit descriptors mirror
+                        # documented ID construction; no
+                        # upstream code execution.
                         common = dict(row.data, contractId=row.id)
                         rule_id = "expanded:rule:" + row.id
                         groups["rules"].append(
@@ -405,41 +436,52 @@ class Audit:
             )
 
     def git_state(self) -> dict:
-        if not (self.root / ".git").exists():
+        metadata = self.root / ".git"
+        if not metadata.exists():
             self.add(
                 "input.git_unavailable",
                 "info",
                 ".git",
-                "No Git metadata at source root; parent repository is not attributed to this fixture",
+                "No Git metadata at source root; parent repository is "
+                "not attributed "
+                "to this fixture",
             )
             return {"head": None, "status_porcelain": None, "dirty": None}
-        result: dict = {}
-        for label, args in (
-            ("head", ["rev-parse", "HEAD"]),
-            ("status_porcelain", ["status", "--porcelain"]),
-        ):
-            process = subprocess.run(
-                ["git", "--no-optional-locks", "-C", str(self.root), *args],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if process.returncode:
-                result[label] = None
-                self.add(
-                    "input.git_unavailable",
-                    "info",
-                    ".git",
-                    f"Cannot read {label}: {process.stderr.strip()}",
-                )
+        # No Git operations in the source checkout. Read identity only; working
+        # tree cleanliness is not inferred from an incomplete file inventory.
+        if metadata.is_file():
+            declaration = metadata.read_text().strip()
+            if not declaration.startswith("gitdir: "):
+                raise ValueError("Invalid .git indirection")
+            metadata = (self.root / declaration[8:]).resolve()
+        head = (metadata / "HEAD").read_text().strip()
+        if head.startswith("ref: "):
+            ref = head[5:]
+            target = (metadata / ref).resolve()
+            if not target.is_relative_to(metadata.resolve()):
+                raise ValueError("Git HEAD reference escapes metadata directory")
+            if target.is_file():
+                head = target.read_text().strip()
             else:
-                result[label] = process.stdout.rstrip("\n")
-        result["dirty"] = (
-            bool(result["status_porcelain"])
-            if result["status_porcelain"] is not None
-            else None
-        )
-        return result
+                packed = metadata / "packed-refs"
+                matches = (
+                    [
+                        line.split()[0]
+                        for line in packed.read_text().splitlines()
+                        if not line.startswith(("#", "^")) and line.endswith(" " + ref)
+                    ]
+                    if packed.is_file()
+                    else []
+                )
+                head = matches[0] if len(matches) == 1 else None
+        return {
+            "head": head,
+            "status_porcelain": None,
+            "dirty": None,
+            "method": (
+                "Metadata files read directly; no Git command; dirty state unmeasured"
+            ),
+        }
 
     def finish(self) -> None:
         self.findings.sort(

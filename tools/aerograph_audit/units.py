@@ -1,4 +1,4 @@
-# Vendored read-only inference helper from AeroGraph semantic-directory/src/expanded_units.py.
+# Audit-owned copy of AeroGraph semantic-directory/src/expanded_units.py.
 # Audit owns this copy; no upstream code is imported or executed.
 """Strict value-type and unit inference for expanded semantic expressions.
 
@@ -159,7 +159,8 @@ _PREFIXABLE = {
 def _mul(a, b):
     if a.flavor or b.flavor:
         raise UnitInferenceError(
-            "affine/logarithmic units require an explicit conversion before multiplication"
+            "affine/logarithmic units require an explicit conversion "
+            "before multiplication"
         )
     powers = a.powers()
     for name, value in b.dimensions:
@@ -448,10 +449,30 @@ def format_unit(unit):
     return expression
 
 
+def _compatible(left, right):
+    if left.scale != right.scale or left.flavor != right.flavor:
+        return False
+    physical_left = tuple(
+        (k, v) for k, v in left.dimensions if not k.startswith("semantic:")
+    )
+    physical_right = tuple(
+        (k, v) for k, v in right.dimensions if not k.startswith("semantic:")
+    )
+    semantic_left = tuple(
+        (k, v) for k, v in left.dimensions if k.startswith("semantic:")
+    )
+    semantic_right = tuple(
+        (k, v) for k, v in right.dimensions if k.startswith("semantic:")
+    )
+    return physical_left == physical_right and (
+        not semantic_left or not semantic_right or semantic_left == semantic_right
+    )
+
+
 def units_compatible(left, right):
     """Exact compatibility without an implicit scale or offset conversion."""
     left, right = parse_unit(left), parse_unit(right)
-    return left is not None and right is not None and left == right
+    return left is not None and right is not None and _compatible(left, right)
 
 
 def _schema_unit(schema, inherited=None):
@@ -618,12 +639,24 @@ def _known_compatible(numbers, op):
         return None
     if any(item.unit is None for item in nonzero):
         raise UnitInferenceError(f"{op} mixes a declared unit with a missing unit")
-    selected = nonzero[0].unit
-    if any(item.unit != selected for item in nonzero[1:]):
+    if any(
+        not _compatible(left.unit, right.unit)
+        for i, left in enumerate(nonzero)
+        for right in nonzero[i + 1 :]
+    ):
         raise UnitInferenceError(f"{op} has incompatible numeric units")
     # Zero is dimension-neutral only when another operand establishes a known
     # unit.  It must never turn an unknown unit into a known result.
-    return selected
+    # Retain counting identity through nested arithmetic: (1 + packet) must
+    # still be incompatible with person in its enclosing expression.
+    return next(
+        (
+            item.unit
+            for item in nonzero
+            if any(name.startswith("semantic:") for name, _ in item.unit.dimensions)
+        ),
+        nonzero[0].unit,
+    )
 
 
 def _result(kind, unit=None, **extra):
@@ -749,7 +782,11 @@ def _array(schema, op):
     if not isinstance(items, dict):
         raise UnitInferenceError(f"{op} requires a declared item schema")
     inherited = _schema_unit(schema)
-    if inherited is not None and _schema_unit(items) is None:
+    if (
+        inherited is not None
+        and _schema_unit(items) is None
+        and _generic_kinds(items) <= {"number"}
+    ):
         items = {**items, "unit": inherited}
     return items
 
@@ -831,7 +868,8 @@ def infer_operator(op, arg_schemas, arg_nodes):
             "operator schemas and AST arguments have different lengths"
         )
     schemas = [
-        _with_literal(schema, node) for schema, node in zip(arg_schemas, arg_nodes)
+        _with_literal(schema, node)
+        for schema, node in zip(arg_schemas, arg_nodes, strict=True)
     ]
 
     if op in ("and", "or"):
@@ -970,7 +1008,10 @@ def infer_operator(op, arg_schemas, arg_nodes):
             raise UnitInferenceError(
                 f"{op} cannot infer a tensor whose numeric unit is missing"
             )
-        return _result("number", number.unit)
+        return _result(
+            "number",
+            _ONE if number.unit == _u({"opaque:quaternion": 1}) else number.unit,
+        )
 
     if op in ("dot", "cross"):
         _require_arity(op, schemas, exact=2)

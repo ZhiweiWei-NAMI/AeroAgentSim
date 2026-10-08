@@ -96,8 +96,112 @@ def unit_symbol(field):
     )
 
 
+def static_role(field, schema):
+    nodes = list(schema_nodes(schema))
+    identity_wrapper = (
+        kind(schema) == "record"
+        and any(
+            kind(node) == "ref" and node.get("identityComponents") for _, node in nodes
+        )
+        and all(kind(node) in ("record", "ref", "string", "enum") for _, node in nodes)
+    )
+    return field.get("role") in (
+        "identity",
+        "identity_or_configuration",
+        "config",
+        "configuration",
+        "spec",
+        "specification",
+        "metadata",
+    ) or (
+        field.get("role") not in ("observation", "derived", "state")
+        and (kind(schema) in ("string", "enum", "ref") or identity_wrapper)
+    )
+
+
+def temporal_dialect(field, schema):
+    """Locate declarations; partial alternate dialects still need normalization."""
+    declarations = []
+    policy = field.get("bindingPolicy")
+    if isinstance(policy, str) and re.search(
+        r"clock|valid time|available time|时钟|有效时间", policy, re.I
+    ):
+        declarations.append("bindingPolicy")
+    if field.get("clockRef"):
+        declarations.append("clockRef")
+    lifetime = field.get("lifetime")
+    if isinstance(lifetime, str) and re.search(
+        r"configuration|revision.config|versioned.config", lifetime, re.I
+    ):
+        declarations.append("lifetime")
+    writer = field.get("writer")
+    description = writer.get("description") if isinstance(writer, dict) else writer
+    if isinstance(description, str) and re.search(
+        r"clock|时钟|同钟|时刻|时窗|时间序列|有效期|生命周期|修订|版本化|配置版本",
+        description,
+        re.I,
+    ):
+        declarations.append("writer.description")
+    names = {
+        "clockRef",
+        "playbackClockRef",
+        "sourceClock",
+        "clock",
+        "startSeconds",
+        "endSeconds",
+        "startS",
+        "endS",
+        "ageS",
+        "softAgeS",
+        "hardAgeS",
+        "acquiredAt",
+        "availableAt",
+        "validFrom",
+        "validUntil",
+    }
+    for pointer, node in schema_nodes(schema):
+        for key in ("members", "properties"):
+            for name in node.get(key, {}):
+                if name not in names and not re.search(
+                    r"clock|timestamp|(?:AgeS|AgeSeconds)$", name, re.I
+                ):
+                    continue
+                declarations.append("valueSchema" + pointer + "/" + key + "/" + name)
+    return sorted(declarations)
+
+
+def clock_declared(field, schema):
+    time = field.get("time")
+    if isinstance(time, dict) and any(
+        time.get(k)
+        for k in (
+            "clock",
+            "clockBinding",
+            "clockRequired",
+            "clockRef",
+        )
+    ):
+        return True
+    if field.get("clockRef"):
+        return True
+    writer = field.get("writer")
+    writer_text = writer.get("description") if isinstance(writer, dict) else writer
+    if any(
+        isinstance(text, str) and re.search(r"clock|时钟|同钟", text, re.I)
+        for text in (field.get("bindingPolicy"), writer_text)
+    ):
+        return True
+    return any(
+        re.search(r"clock", name, re.I)
+        for _, node in schema_nodes(schema)
+        for key in ("members", "properties")
+        for name in node.get(key, {})
+        if kind(node[key][name]) in ("ref", "string")
+    )
+
+
 def with_units(schema, inherited=None):
-    """Propagate declared quantity units to nested numeric members, preserving mixed/dynamic units."""
+    """Propagate declared units while preserving mixed and dynamic quantities."""
     if not isinstance(schema, dict):
         return schema
     result = dict(schema)
@@ -112,7 +216,9 @@ def with_units(schema, inherited=None):
                 for name, value in schema[key].items()
             }
     if isinstance(schema.get("items"), dict):
-        result["items"] = with_units(schema["items"], unit)
+        # A scalar collection unit describes numeric items, not record members.
+        item_unit = None if kind(schema["items"]) == "record" else unit
+        result["items"] = with_units(schema["items"], item_unit)
     for key in ("oneOf", "anyOf", "branches"):
         if key in schema:
             result[key] = [with_units(branch, unit) for branch in schema[key]]
@@ -127,24 +233,49 @@ def typed_schema(field, resolved):
     ):
         unit = None
     schema = with_units(resolved, unit)
-    declarations = (
-        field.get("unit", {}).get("members", {})
-        if isinstance(field.get("unit"), dict)
-        else {}
-    )
+    # Mirror the source-backed adapter dialect, without importing its code or
+    # deriving units from member names alone. Retain the exact source quotation.
+    quotation = "所有秒值使用明确来源时钟"
+    if field.get(
+        "id"
+    ) == "oo:human_urban.Incident.occurrenceTimeEvidence" and quotation in field.get(
+        "meaning", field.get("description", "")
+    ):
+        for _, branch in schema_nodes(schema):
+            for name, member in branch.get("members", {}).items():
+                if name in ("atS", "startS", "endS", "firstObservedAtS"):
+                    member["unit"] = "s"
+                    member["unitBasis"] = {
+                        "kind": "source_meaning",
+                        "quotation": quotation,
+                    }
+    declarations = {}
+    if isinstance(field.get("unit"), dict):
+        for key in ("memberUnits", "members"):
+            declarations.update(field["unit"].get(key, {}))
 
-    def annotate(node, path=()):
+    def annotate(node, path=(), identity=False):
         if not isinstance(node, dict):
             return
         import fnmatch
+
+        reference = str(node.get("x-referenceSemantics", ""))
+        identity = (
+            identity
+            or bool(node.get("identityComponents"))
+            or "InstanceRef" in reference
+        )
+        if identity and kind(node) == "integer" and node.get("unit") is None:
+            node["unit"] = "1"
+            node["audit_identity_integer"] = True
 
         for pattern, symbol in declarations.items():
             actual = path if "*" in pattern else tuple(p for p in path if p != "*")
             if len(pattern.split(".")) == len(actual) and all(
                 fnmatch.fnmatchcase(str(v), p)
-                for p, v in zip(pattern.split("."), actual)
+                for p, v in zip(pattern.split("."), actual, strict=True)
             ):
-                # Remove synthesized absent units so the source's explicit member unit can propagate.
+                # Remove synthesized absence before propagating an explicit unit.
                 def clean(value):
                     if isinstance(value, dict):
                         if value.get("unit") is None:
@@ -160,15 +291,26 @@ def typed_schema(field, resolved):
                 node.clear()
                 node.update(replacement)
         for key in ("members", "properties"):
+            members = node.get(key, {})
+            context = members.get("unit")
+            value = members.get("value")
+            if (
+                isinstance(context, dict)
+                and kind(context) in ("string", "enum", "ref")
+                and isinstance(value, dict)
+                and kind(value) in ("number", "integer")
+                and value.get("unit") is None
+            ):
+                value["unitField"] = "unit"
             for name, child in node.get(key, {}).items():
-                annotate(child, path + (name,))
+                annotate(child, path + (name,), identity)
         if isinstance(node.get("items"), dict):
-            annotate(node["items"], path + ("*",))
+            annotate(node["items"], path + ("*",), identity)
         for key in ("oneOf", "anyOf", "branches"):
             for branch in node.get(key, []):
-                annotate(branch, path)
+                annotate(branch, path, identity)
 
-    annotate(schema)
+    annotate(schema, identity=field.get("role") == "identity")
     return schema
 
 
@@ -281,7 +423,8 @@ def run(audit: Audit) -> None:
                     "field.schema_conformance",
                     "major",
                     row,
-                    f"{len(errors)} violations of state.schema.json; source and extension dialects require explicit normalization",
+                    f"{len(errors)} violations of state.schema.json; "
+                    "source and extension dialects require explicit normalization",
                     count=len(errors),
                     details=[
                         {"pointer": row.pointer + p, "message": m} for p, m in errors
@@ -292,7 +435,8 @@ def run(audit: Audit) -> None:
                 "field.role_drift",
                 "major",
                 row,
-                f"Role {field['role']!r} must map to {'config' if field['role'] == 'configuration' else 'spec'}",
+                f"Role {field['role']!r} must map to "
+                f"{'config' if field['role'] == 'configuration' else 'spec'}",
                 pointer=row.pointer + "/role",
             )
         for owner in [field.get("declaringClass"), *field.get("declaredOnTypeIds", [])]:
@@ -331,7 +475,9 @@ def run(audit: Audit) -> None:
                     "field.empty_enum",
                     "blocker",
                     row,
-                    "Enum has no values",
+                    "Enum has no values; "
+                    f"vocabularyStatus={node.get('vocabularyStatus')!r}, "
+                    f"closed={node.get('closed')!r}",
                     pointer=row.pointer + "/valueSchema" + pointer,
                 )
             if kind(node) == "ref":
@@ -413,10 +559,20 @@ def run(audit: Audit) -> None:
             and unit.get("status") in ("exact", "explicit")
             and not unit.get("symbol")
             and not unit.get("members")
+            and not unit.get("memberUnits")
         ):
             static_units = False
         unit_ok = static_units and not missing_units and not dynamic_units
-        if not static_units or missing_units:
+        numeric_not_applicable = (
+            isinstance(unit, dict)
+            and unit.get("status") == "not_applicable"
+            and (
+                missing_units
+                or kind(schema) in ("number", "integer", "vector", "matrix")
+                and any(not n.get("audit_identity_integer") for _, n in numeric_nodes)
+            )
+        )
+        if (not static_units or missing_units) and not numeric_not_applicable:
             audit.add(
                 "field.unit_unresolved",
                 "blocker",
@@ -430,21 +586,19 @@ def run(audit: Audit) -> None:
                 "field.dynamic_unit_context",
                 "major",
                 row,
-                "Numeric unit depends on an explicit instance quantity/unit context; not counted as statically unit-resolved",
+                "Numeric unit depends on an explicit instance quantity/unit "
+                "context; not counted as statically unit-resolved",
                 pointer=row.pointer + "/unit",
                 details={"dynamic_numeric_paths": dynamic_units},
             )
-        if (
-            kind(schema) in ("number", "integer", "vector", "matrix")
-            and isinstance(unit, dict)
-            and unit.get("status") == "not_applicable"
-        ):
+        if numeric_not_applicable:
             unit_ok = False
             audit.add(
                 "field.numeric_unit_not_applicable",
                 "major",
                 row,
-                "Numeric quantity needs a physical unit or an explicit dimensionless declaration",
+                "Numeric quantity needs a physical unit or an explicit "
+                "dimensionless declaration",
                 pointer=row.pointer + "/unit",
             )
         frame = field.get("frame")
@@ -458,7 +612,15 @@ def run(audit: Audit) -> None:
                 )
             )
             and kind(schema) in ("array", "record")
+            and bool(numeric_nodes)
         )
+        if (
+            kind(schema) not in ("vector", "matrix")
+            and isinstance(frame, dict)
+            and frame.get("status") == "not_applicable"
+            and (frame.get("notes") or frame.get("reason"))
+        ):
+            spatial = False
         if spatial and (
             not frame
             or isinstance(frame, dict)
@@ -478,10 +640,20 @@ def run(audit: Audit) -> None:
                 "field.frame_binding",
                 "major",
                 row,
-                "Frame delegated to record; concrete reference and transform revision required at binding",
+                "Frame delegated to record; concrete reference and transform "
+                "revision required at binding",
                 pointer=row.pointer + "/frame",
             )
-        if not field.get("time"):
+        if not field.get("time") and temporal_dialect(field, schema):
+            audit.add(
+                "field.time_dialect",
+                "major",
+                row,
+                "Temporal declaration exists outside time; normalize its "
+                "clock/validity binding without inventing timestamps",
+                details={"declarations": temporal_dialect(field, schema)},
+            )
+        elif not field.get("time") and not static_role(field, schema):
             audit.add(
                 "field.time_missing",
                 "blocker",
@@ -489,10 +661,7 @@ def run(audit: Audit) -> None:
                 "No temporal contract declaration",
                 pointer=row.pointer + "/time",
             )
-        elif isinstance(field["time"], dict) and not any(
-            k in field["time"]
-            for k in ("clock", "clockBinding", "clockRequired", "clockRef")
-        ):
+        elif isinstance(field.get("time"), dict) and not clock_declared(field, schema):
             audit.add(
                 "field.clock_missing",
                 "major",
@@ -518,7 +687,9 @@ def run(audit: Audit) -> None:
                 {
                     "missing": "Writer declaration missing",
                     "alias_only": "Producer alias only; no concrete instance writer",
-                    "declared": "Producer requirement declared; no concrete instance writer",
+                    "declared": (
+                        "Producer requirement declared; no concrete instance writer"
+                    ),
                 }[status],
                 pointer=row.pointer + "/writer",
             )
@@ -547,15 +718,35 @@ def run(audit: Audit) -> None:
             "field.inheritance_conflict",
             "blocker",
             row,
-            f"Property {path!r} has conflicting types/units across inherited declarations",
+            f"Property {path!r} has conflicting types/units across "
+            "inherited declarations",
             details={"field_ids": list(ids), "affected_types": sorted(types)},
             count=len(types),
         )
     endpoint_groups = defaultdict(list)
     for row in audit.relation_rows:
         rel = row.data
+        cardinality = rel.get("cardinality")
+        directional = isinstance(cardinality, dict) and any(
+            k in cardinality
+            for k in (
+                "targets_per_source",
+                "sources_per_target",
+                "targetsPerSource",
+                "sourcesPerTarget",
+            )
+        )
         if isinstance(relation_schema, dict):
             errors = audit.schema_errors(rel, relation_schema)
+            if directional:
+                errors = [
+                    (p, m)
+                    for p, m in errors
+                    if not (
+                        p in ("/cardinality/min", "/cardinality/max")
+                        and m == "Required key missing"
+                    )
+                ]
             if errors:
                 audit.add(
                     "relation.schema_conformance",
@@ -598,19 +789,21 @@ def run(audit: Audit) -> None:
                     "relation.cardinality_dialect",
                     "major",
                     row,
-                    "Bidirectional minimum/maximum dialect requires normalization; preserve inverse cardinality and explicit null-as-unbounded source semantics",
+                    "Bidirectional minimum/maximum dialect requires normalization; "
+                    "preserve inverse cardinality and explicit "
+                    "null-as-unbounded source semantics",
                     pointer=row.pointer + "/cardinality",
                 )
-            elif "targetsPerSource" in cardinality:
+            elif "targetsPerSource" in cardinality or "sourcesPerTarget" in cardinality:
                 bounds = [
                     (
-                        cardinality["targetsPerSource"],
+                        cardinality.get("targetsPerSource", {}),
                         "min",
                         "max",
                         "/cardinality/targetsPerSource",
                     )
                 ]
-                if isinstance(cardinality.get("sourcesPerTarget"), dict):
+                if "sourcesPerTarget" in cardinality:
                     bounds.append(
                         (
                             cardinality["sourcesPerTarget"],
@@ -623,7 +816,8 @@ def run(audit: Audit) -> None:
                     "relation.cardinality_dialect",
                     "major",
                     row,
-                    "Camel-case directional cardinality requires normalization; preserve declared scope",
+                    "Camel-case directional cardinality requires normalization; "
+                    "preserve declared scope",
                     pointer=row.pointer + "/cardinality",
                 )
             elif isinstance(cardinality.get("inverse"), dict):
@@ -631,14 +825,18 @@ def run(audit: Audit) -> None:
                     (cardinality["inverse"], "min", "max", "/cardinality/inverse")
                 )
             for bound, low_key, high_key, pointer in bounds:
+                if not isinstance(bound, dict):
+                    audit.add(
+                        "relation.cardinality",
+                        "blocker",
+                        row,
+                        f"Cardinality bound must be an object: {bound!r}",
+                        pointer=row.pointer + pointer,
+                    )
+                    continue
                 lo, hi = bound.get(low_key), bound.get(high_key)
                 unbounded = (
-                    hi == "*"
-                    or hi is None
-                    and any(
-                        t in str(cardinality.get("scope", ""))
-                        for t in ("无固定上限", "不限", "unbounded")
-                    )
+                    hi == "*" or hi is None and directional and high_key in bound
                 )
                 if (
                     type(lo) is not int
@@ -682,7 +880,8 @@ def run(audit: Audit) -> None:
                     "relation.inverse",
                     "blocker",
                     row,
-                    f"Inverse {inverse!r} is missing or not reciprocal with swapped endpoints",
+                    f"Inverse {inverse!r} is missing or not reciprocal "
+                    "with swapped endpoints",
                 )
         endpoint_groups[
             (

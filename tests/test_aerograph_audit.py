@@ -619,7 +619,7 @@ def test_native_references_applicability_parameters_temporal_and_cycle(audit):
         "semantic.reference",
         "semantic.reference_cycle",
         "semantic.parameter_default_unit",
-        "semantic.temporal_clock_binding",
+        "semantic.preserved_temporal_inputs",
     } <= checks(audit)
 
 
@@ -1063,3 +1063,567 @@ def test_provenance_current_counts_and_config_reference(audit):
         "cross.restoration_counts",
         "cross.source_registry_integrity",
     } <= checks(audit)
+
+
+@pytest.mark.parametrize("camel", [False, True])
+def test_v2_null_directional_bounds_without_scope_and_missing_key(audit, camel):
+    low, high = ("min", "max") if camel else ("minimum", "maximum")
+    forward, reverse = (
+        ("targetsPerSource", "sourcesPerTarget")
+        if camel
+        else ("targets_per_source", "sources_per_target")
+    )
+    card = {forward: {low: 0, high: None}, reverse: {low: 0, high: None}}
+    audit.relation_rows = [record(relation(cardinality=card))]
+    audit.relations = audit.index(audit.relation_rows, "relation")
+    states.run(audit)
+    assert "relation.cardinality" not in checks(audit)
+    assert (
+        sum(f["check"] == "relation.cardinality_dialect" for f in audit.findings) == 1
+    )
+    card[forward].pop(high)
+    audit.findings.clear()
+    states.run(audit)
+    assert "relation.cardinality" in checks(audit)
+
+
+def test_v2_dialect_does_not_duplicate_schema_required_bounds(audit):
+    audit.documents["semantic-directory/data/relation.schema.json"] = {
+        "type": "object",
+        "properties": {"cardinality": {"type": "object", "required": ["min", "max"]}},
+    }
+    audit.relation_rows = [
+        record(
+            relation(
+                cardinality={
+                    "targets_per_source": {"minimum": 0, "maximum": None},
+                    "sources_per_target": {"minimum": 0, "maximum": None},
+                }
+            )
+        )
+    ]
+    audit.relations = audit.index(audit.relation_rows, "relation")
+    states.run(audit)
+    assert "relation.cardinality_dialect" in checks(audit)
+    assert "relation.schema_conformance" not in checks(audit)
+
+
+@pytest.mark.parametrize(
+    ("left", "right", "expected"),
+    [
+        ("count", "1", True),
+        ("count/s", "1/s", True),
+        ("packet/s", "1/s", True),
+        ("packet", "person", False),
+        ("packet/s", "person/s", False),
+        ("m", "cm", False),
+        ("dB", "1", False),
+        ("quaternion", "1", False),
+        ("measurement_unit", "1", False),
+        ("count/s", "Hz", True),
+        ("count/s", "m/s", False),
+        ("percent", "count", False),
+    ],
+)
+def test_v2_count_compatibility_preserves_scales_and_semantic_identities(
+    left, right, expected
+):
+    from tools.aerograph_audit.units import units_compatible
+
+    assert units_compatible(left, right) is expected
+
+
+def test_v2_contains_record_does_not_inherit_scalar_container_count(audit):
+    from tools.aerograph_audit.units import UnitInferenceError, infer_operator
+
+    items = {
+        "type": "record",
+        "members": {"high32": {"type": "integer"}, "low32": {"type": "integer"}},
+    }
+    schema = states.typed_schema(
+        field(unit={"symbol": "count", "status": "exact"}),
+        {"type": "array", "items": items},
+    )
+    result = infer_operator("contains", [schema, {**items, "unit": "count"}], [{}, {}])
+    assert result["type"] == "boolean"
+    left = {
+        "type": "array",
+        "items": {"type": "record", "members": {"n": {"type": "number", "unit": "m"}}},
+    }
+    right = {"type": "record", "members": {"n": {"type": "number", "unit": "s"}}}
+    with pytest.raises(UnitInferenceError):
+        infer_operator("contains", [left, right], [{}, {}])
+
+
+@pytest.mark.parametrize("symbol", ["quaternion", "m"])
+def test_v2_native_and_expanded_norm_component_units(audit, symbol):
+    from tools.aerograph_audit.units import infer_operator, units_compatible
+
+    replace_field(
+        audit,
+        valueSchema={"type": "array", "items": {"type": "number"}},
+        unit={"symbol": symbol, "status": "exact"},
+    )
+    states.run(audit)
+    native_model(audit, [["eq", ["norm", ["s", 0]], ["norm", ["s", 0]]]])
+    semantics.prepare(audit)
+    checker = semantics.SemanticAudit(audit)
+    checker.scan()
+    row = checker.registry["t0"]
+    result = checker.native_type(row, ["norm", ["s", 0]], row.pointer)
+    expected = "1" if symbol == "quaternion" else "m"
+    assert units_compatible(result["unit"], expected)
+    expanded = infer_operator(
+        "vector_norm",
+        [
+            states.typed_schema(
+                audit.fields["f"].data, audit.metrics["resolved_schemas"]["f"]
+            )
+        ],
+        [{}],
+    )
+    assert units_compatible(expanded["unit"], expected)
+
+
+@pytest.mark.parametrize("key", ["members", "memberUnits"])
+def test_v2_member_unit_keys(audit, key):
+    replace_field(
+        audit,
+        valueSchema={"type": "record", "members": {"rateScale": {"type": "number"}}},
+        unit={"status": "structured", key: {"rateScale": "1"}},
+    )
+    states.run(audit)
+    assert audit.metrics["field_status"]["f"]["typed_unit_resolved"]
+    assert "field.unit_unresolved" not in checks(audit)
+
+
+def test_v2_identity_integer_exception_is_contextual(audit):
+    schema = {
+        "type": "record",
+        "x-referenceSemantics": "versioned InstanceRef components",
+        "properties": {
+            "epoch": {"type": "integer"},
+            "generation": {"type": "integer"},
+            "id": {"type": "string"},
+        },
+    }
+    replace_field(audit, valueSchema=schema, unit={"status": "not_applicable"})
+    states.run(audit)
+    assert "field.unit_unresolved" not in checks(audit)
+    assert "field.numeric_unit_not_applicable" not in checks(audit)
+    assert audit.metrics["field_status"]["f"]["typed_unit_resolved"]
+    # An unrelated measurement with a similarly named member is not identity.
+    schema.pop("x-referenceSemantics")
+    audit.findings.clear()
+    states.run(audit)
+    assert "field.numeric_unit_not_applicable" in checks(audit)
+    assert not audit.metrics["field_status"]["f"]["typed_unit_resolved"]
+
+
+def test_v2_numeric_not_applicable_emits_one_severity(audit):
+    replace_field(
+        audit,
+        valueSchema={
+            "type": "record",
+            "members": {"values": {"type": "array", "items": {"type": "number"}}},
+        },
+        unit={"status": "not_applicable"},
+    )
+    states.run(audit)
+    assert "field.numeric_unit_not_applicable" in checks(audit)
+    assert "field.unit_unresolved" not in checks(audit)
+
+
+def test_v2_dynamic_sibling_quantity_unit_does_not_excuse_other_missing_units(audit):
+    schema = {
+        "type": "record",
+        "members": {
+            "value": {"type": "number"},
+            "unit": {"type": "enum", "values": ["m", "s"]},
+        },
+    }
+    replace_field(
+        audit,
+        valueSchema=schema,
+        unit={"status": "exact", "symbol": "mixed:unit member"},
+    )
+    states.run(audit)
+    assert "field.dynamic_unit_context" in checks(audit)
+    assert "field.unit_unresolved" not in checks(audit)
+    schema["members"]["uncalibrated"] = {"type": "number"}
+    audit.findings.clear()
+    states.run(audit)
+    assert "field.unit_unresolved" in checks(audit)
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {
+            "bindingPolicy": (
+                "valid time, available time and source/clock explicitly bound"
+            )
+        },
+        {
+            "valueSchema": {
+                "type": "record",
+                "members": {
+                    "clockRef": {"type": "ref", "targetClass": ROOT},
+                    "startSeconds": {"type": "number", "unit": "s"},
+                },
+            }
+        },
+        {"writer": {"description": "绑定采样时钟"}},
+        {"lifetime": "versioned-configuration"},
+    ],
+)
+def test_v2_temporal_dialects(audit, extra):
+    replace_field(audit, time=None, **extra)
+    states.run(audit)
+    assert "field.time_missing" not in checks(audit)
+    assert "field.time_dialect" in checks(audit)
+
+
+@pytest.mark.parametrize(
+    "role",
+    [
+        "identity",
+        "config",
+        "configuration",
+        "spec",
+        "specification",
+        "identity_or_configuration",
+        "metadata",
+    ],
+)
+def test_v2_static_role_time_exemptions(audit, role):
+    replace_field(audit, role=role, time=None, lifetime=None)
+    states.run(audit)
+    assert "field.time_missing" not in checks(audit)
+
+
+def test_v2_observation_without_clock_does_not_get_lifetime_fallback(audit):
+    replace_field(audit, time=None, lifetime="per-observation")
+    states.run(audit)
+    assert "field.time_missing" in checks(audit)
+
+
+@pytest.mark.parametrize(
+    "schema",
+    [
+        {"type": "array", "items": {"type": "string"}},
+        {"type": "array", "items": {"type": "number"}},
+    ],
+)
+def test_v2_frame_not_applicable_for_label_and_joint_arrays(audit, schema):
+    replace_field(
+        audit,
+        propertyPath="joint.positions",
+        valueSchema=schema,
+        frame={
+            "status": "not_applicable",
+            "reason": "internal joint positions, not external coordinates",
+        },
+    )
+    states.run(audit)
+    assert "field.frame_missing" not in checks(audit)
+
+
+def test_v2_explicit_spatial_vector_cannot_hide_missing_frame_in_prose(audit):
+    replace_field(
+        audit,
+        valueSchema={"type": "vector", "shape": [3], "items": {"type": "number"}},
+        frame={"status": "not_applicable", "notes": "not a coordinate"},
+    )
+    states.run(audit)
+    assert "field.frame_missing" in checks(audit)
+
+
+def test_v2_enum_vocabulary_status_in_evidence(audit):
+    replace_field(
+        audit,
+        valueSchema={
+            "type": "enum",
+            "values": [],
+            "vocabularyStatus": "source_enum_values_not_supplied",
+            "closed": False,
+        },
+    )
+    states.run(audit)
+    finding = next(f for f in audit.findings if f["check"] == "field.empty_enum")
+    assert "source_enum_values_not_supplied" in finding["message"]
+    assert finding["contract_severity"] == "blocker"
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"id": "proposal:f"},
+        {"reviewStatus": "proposed"},
+        {"integrationDisposition": "quarantined"},
+        {"acceptedAsCompleteContract": False},
+    ],
+)
+def test_v2_gates_preserve_contract_severity(audit, extra):
+    row = record(field(reviewStatus="reviewed") | extra)
+    audit.add("field.test", "blocker", row, "bad contract")
+    finding = audit.findings[-1]
+    assert finding["severity"] == "info"
+    assert finding["contract_severity"] == "blocker"
+    assert finding["gated"]
+
+
+def test_v2_archived_null_caps_severity_but_stays_unexecutable(audit):
+    states.run(audit)
+    native_model(audit, [["c", None]])
+    semantics.prepare(audit)
+    semantics.run(audit)
+    finding = next(
+        f for f in audit.findings if f["check"] == "semantic.null_expression"
+    )
+    assert finding["severity"] == "major"
+    assert finding["preserved_source"]
+    assert not audit.metrics["semantic_executable"]["t0"]
+    assert "README" in finding["message"]
+
+
+def test_v2_clock_declarations_follow_native_references(audit):
+    states.run(audit)
+    native_model(audit, [["eq", ["s", 0], ["s", 0]], ["hold", ["r", 0], ["c", 1]]])
+    semantics.prepare(audit)
+    semantics.run(audit)
+    assert "semantic.temporal_clock_binding" not in checks(audit)
+    assert "semantic.preserved_temporal_inputs" in checks(audit)
+    audit.fields["f"].data["time"] = {}
+    audit.findings.clear()
+    semantics.run(audit)
+    assert "semantic.temporal_clock_binding" in checks(audit)
+
+
+def test_v2_native_parameters_group_per_name_and_retain_occurrences(audit):
+    states.run(audit)
+    native_model(
+        audit,
+        [
+            [
+                "and",
+                ["gt", ["s", 0], ["p", "limit", 3]],
+                ["lt", ["s", 0], ["p", "limit", 3]],
+            ]
+        ],
+    )
+    semantics.prepare(audit)
+    semantics.run(audit)
+    findings = [
+        f for f in audit.findings if f["check"] == "semantic.parameter_default_unit"
+    ]
+    assert len(findings) == 1
+    assert findings[0]["count"] == 2
+    assert len(findings[0]["details"]["pointers"]) == 2
+    assert findings[0]["details"]["suggested_units"] == ["m"]
+    assert findings[0]["severity"] == "minor"
+
+
+def test_v2_selection_closure_and_unselected_gated_rows(audit):
+    from tools.aerograph_audit import selection
+
+    audit.entities[ROOT] = record(entity(ownFieldIds=["f"]))
+    audit.entities["child"] = record(entity("child", ROOT))
+    audit.entities["other"] = record(entity("other"))
+    audit.add("field.test", "blocker", audit.fields["f"], "selected inherited failure")
+    outside = record(field("outside", "other"))
+    audit.add("field.test", "blocker", outside, "unselected candidate failure")
+    audit.add(
+        "semantic.test",
+        "blocker",
+        record({"id": "dependency"}),
+        "contract dependency failure",
+    )
+    audit.metrics["semantic_inputs"] = {
+        "contract": {
+            "fields": ["f", "support"],
+            "relations": [],
+            "dependencies": ["dependency"],
+        }
+    }
+    audit.rules["contract"] = record({"id": "contract"})
+    audit.rules["dependency"] = record({"id": "dependency"})
+    audit.finish()
+    selection.summarize(audit, ("child", ROOT))
+    chosen = audit.metrics["selection"]
+    assert chosen["blocker_records"] == 2
+    assert len(chosen["slices"]["child"]["blockers"]) == 2
+    assert "support" in chosen["slices"]["child"]["additional_contract_field_ids"]
+    assert all(f["object_id"] != "outside" for f in chosen["blockers"])
+    assert (
+        next(f for f in chosen["blockers"] if f["object_id"] == "f")["corpus_severity"]
+        == "info"
+    )
+    with pytest.raises(ValueError, match="do not exist"):
+        selection.summarize(audit, ("missing",))
+
+
+def test_v2_git_identity_reads_metadata_without_commands(tmp_path, monkeypatch):
+    import subprocess
+
+    metadata = tmp_path / ".git"
+    metadata.mkdir()
+    (metadata / "HEAD").write_text("ref: refs/heads/main\n")
+    (metadata / "packed-refs").write_text("abc123 refs/heads/main\n")
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("No Git commands authorized")
+
+    monkeypatch.setattr(subprocess, "run", forbidden)
+    result = Audit(tmp_path).git_state()
+    assert result["head"] == "abc123"
+    assert result["dirty"] is None
+
+
+def test_v2_count_compatibility_does_not_bridge_two_different_counts():
+    from tools.aerograph_audit.units import UnitInferenceError, infer_operator
+
+    schemas = [{"type": "number", "unit": u} for u in ("1", "packet", "person")]
+    with pytest.raises(UnitInferenceError):
+        infer_operator("add", schemas, [{}, {}, {}])
+
+
+def test_v2_cli_selected_exit_policy_and_corpus_invariance(tmp_path):
+    root = tree(tmp_path)
+    path = root / "semantic-directory/data/definitions/part-001.json"
+    rows = json.loads(path.read_text())
+    rows[0]["unit"] = {"status": "unresolved", "symbol": None}
+    path.write_text(json.dumps(rows))
+    descriptor = root / "semantic-directory/data/definitions.json"
+    manifest = json.loads(descriptor.read_text())
+    manifest["parts"][0]["bytes"] = path.stat().st_size
+    manifest["parts"][0]["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    descriptor.write_text(json.dumps(manifest))
+    out = tmp_path / "selected-out"
+    assert main([str(root), "--out", str(out), "--fail-on-blocker"]) == 0
+    before = json.loads((out / "aerograph-audit.json").read_text())["findings"]
+    assert (
+        main([str(root), "--out", str(out), "--select", ROOT, "--fail-on-blocker"]) == 1
+    )
+    after = json.loads((out / "aerograph-audit.json").read_text())
+    assert after["findings"] == before
+    assert after["metrics"]["selection"]["blocker_records"] > 0
+    with pytest.raises(SystemExit) as error:
+        main([str(root), "--out", str(out), "--select", "absent"])
+    assert error.value.code == 2
+
+
+def test_v2_identity_wrapper_without_sampling_time(audit):
+    replace_field(
+        audit,
+        role=None,
+        time=None,
+        valueSchema={
+            "type": "record",
+            "members": {
+                "sourceToken": {"type": "string"},
+                "instanceRef": {
+                    "type": "ref",
+                    "targetClass": ROOT,
+                    "identityComponents": [
+                        "runId",
+                        "epoch",
+                        "id",
+                        "generation",
+                        "refType",
+                    ],
+                },
+            },
+        },
+    )
+    states.run(audit)
+    assert "field.time_missing" not in checks(audit)
+
+
+def test_v2_incident_seconds_require_exact_source_evidence(audit):
+    schema = {
+        "type": "record",
+        "members": {"startS": {"type": "number"}, "endS": {"type": "number"}},
+    }
+    replace_field(
+        audit,
+        id="oo:human_urban.Incident.occurrenceTimeEvidence",
+        valueSchema=schema,
+        unit={"status": "not_applicable"},
+        meaning="所有秒值使用明确来源时钟。",
+    )
+    states.run(audit)
+    identity = "oo:human_urban.Incident.occurrenceTimeEvidence"
+    annotated = states.typed_schema(audit.fields[identity].data, schema)
+    assert annotated["members"]["startS"]["unit"] == "s"
+    assert (
+        annotated["members"]["startS"]["unitBasis"]["quotation"]
+        == "所有秒值使用明确来源时钟"
+    )
+    audit.fields[identity].data["meaning"] = "Start and end of interval"
+    audit.findings.clear()
+    states.run(audit)
+    assert "field.numeric_unit_not_applicable" in checks(audit)
+
+
+def test_v2_nested_count_arithmetic_retains_identity():
+    from tools.aerograph_audit.units import UnitInferenceError, infer_operator
+
+    schemas = [{"type": "number", "unit": u} for u in ("1", "packet")]
+    inner = infer_operator("add", schemas, [{}, {}])
+    assert inner["unit"] == "packet"
+    with pytest.raises(UnitInferenceError):
+        infer_operator("add", [inner, {"type": "number", "unit": "person"}], [{}, {}])
+
+
+def test_v2_archival_structure_severity_cap_does_not_mask_input_failure(audit):
+    path = "research/original-graph/decoded.json"
+    audit.add("semantic.original_columns", "blocker", path, "bad historic columns")
+    audit.add("input.invalid_json", "blocker", path, "malformed JSON")
+    assert audit.findings[-2]["severity"] == "major"
+    assert audit.findings[-2]["preserved_source"]
+    assert audit.findings[-1]["severity"] == "blocker"
+
+
+def test_v2_shared_support_field_does_not_select_unrelated_typed_contract(audit):
+    from tools.aerograph_audit import selection
+
+    audit.entities[ROOT] = record(entity(ownFieldIds=["f"]))
+    audit.entities["child"] = record(entity("child", ROOT))
+    audit.entities["other"] = record(entity("other"))
+    audit.rules["unrelated"] = record(
+        {
+            "id": "unrelated",
+            "entityTypeIds": ["other"],
+            "roles": [{"typeIds": ["other"]}],
+        }
+    )
+    audit.metrics["semantic_inputs"] = {
+        "unrelated": {"fields": ["f"], "dependencies": []}
+    }
+    audit.add("semantic.test", "blocker", audit.rules["unrelated"], "unrelated failure")
+    audit.finish()
+    selection.summarize(audit, ("child",))
+    assert audit.metrics["selection"]["blocker_records"] == 0
+    assert (
+        "unrelated" not in audit.metrics["selection"]["slices"]["child"]["contract_ids"]
+    )
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"bindingPolicy": "source/clock explicitly bound"},
+        {
+            "valueSchema": {
+                "type": "record",
+                "members": {"playbackClockRef": {"type": "ref", "targetClass": ROOT}},
+            }
+        },
+    ],
+)
+def test_v2_clock_declaration_dialects_apply_with_existing_time(audit, extra):
+    replace_field(audit, time={"kind": "configuration_validity"}, **extra)
+    states.run(audit)
+    assert "field.clock_missing" not in checks(audit)
+    assert semantics.SemanticAudit.field_has_clock(audit.fields["f"].data)

@@ -68,7 +68,8 @@ def run(audit: Audit) -> None:
                 "entity.unreachable_root",
                 "major" if identity in detached or suggested else "blocker",
                 row,
-                "No adopted is-a path to oo:ModelObject; original/suggested parent is not promoted",
+                "No adopted is-a path to oo:ModelObject; original/suggested parent "
+                "is not promoted",
             )
         name = data.get("name")
         if isinstance(name, str):
@@ -88,7 +89,9 @@ def run(audit: Audit) -> None:
                         "entity.cross_directory_inheritance",
                         "info",
                         row,
-                        f"Browsing directory {view!r} differs from actual parent's {parent_nav.get('view')!r}; categories are not is-a edges",
+                        f"Browsing directory {view!r} differs from actual "
+                        f"parent's {parent_nav.get('view')!r}; categories "
+                        f"are not is-a edges",
                     )
         for key in ("ownFieldIds", "originalOwnFieldIds"):
             for i, field in enumerate(data.get(key, [])):
@@ -147,7 +150,8 @@ def run(audit: Audit) -> None:
             "profile.unattached",
             "major",
             "entity-directory/data/concepts.json",
-            f"{len(detached)} unattached identities require reviewed identity/owner bindings; no implicit parent repair",
+            f"{len(detached)} unattached identities require reviewed "
+            f"identity/owner bindings; no implicit parent repair",
             count=len(detached),
             details={"ids": detached},
         )
@@ -185,7 +189,8 @@ def run(audit: Audit) -> None:
                 "cross.navigation_count",
                 "minor",
                 nav_path,
-                f"View {key}: claimed count {entry.get('count')}, actual {len(set(ids))}",
+                f"View {key}: claimed count {entry.get('count')}, actual "
+                f"{len(set(ids))}",
             )
         actual_primary = set(categories.get(key, []))
         if entry.get("primaryCount") is not None and entry["primaryCount"] != len(
@@ -195,7 +200,8 @@ def run(audit: Audit) -> None:
                 "cross.navigation_primary_count",
                 "major",
                 nav_path,
-                f"View {key}: claimed primary {entry['primaryCount']}, actual {len(actual_primary)}",
+                f"View {key}: claimed primary {entry['primaryCount']}, "
+                f"actual {len(actual_primary)}",
             )
         if actual_primary - set(ids):
             audit.add(
@@ -318,7 +324,8 @@ def run(audit: Audit) -> None:
                         "cross.readme_identity_count",
                         "minor",
                         name,
-                        f"README claims {claim} identities; actual {len(audit.entities)}",
+                        f"README claims {claim} identities; actual "
+                        f"{len(audit.entities)}",
                         pointer=f"line:{text[: match.start()].count(chr(10)) + 1}",
                     )
             if (
@@ -341,7 +348,8 @@ def run(audit: Audit) -> None:
                         "cross.readme_information_count",
                         "minor",
                         name,
-                        f"Information claim 265+62=327; actual {info_primary}+{actual - info_primary}={actual}",
+                        f"Information claim 265+62=327; actual "
+                        f"{info_primary}+{actual - info_primary}={actual}",
                     )
             for label, actual in (
                 ("源字段", audit.metrics.get("source_field_count")),
@@ -373,9 +381,21 @@ def run(audit: Audit) -> None:
                         "cross.readme_directory_count",
                         "minor",
                         name,
-                        f"{cells[1]} primary claimed {cells[2]}, actual {len(categories[next(k for k in categories if labels.get(k, k) == cells[1])])}",
+                        f"{cells[1]} primary claimed {cells[2]}, actual "
+                        + str(
+                            len(
+                                categories[
+                                    next(
+                                        k
+                                        for k in categories
+                                        if labels.get(k, k) == cells[1]
+                                    )
+                                ]
+                            )
+                        ),
                     )
-    # Current semantic data uses the shared entity catalog as input; do not invent a second materialized identity set.
+    # Current semantic data uses the shared entity catalog as input; do not invent
+    # a second materialized identity set.
     semantic_docs = [
         (p, d)
         for p, d in audit.documents.items()
@@ -401,7 +421,10 @@ def run(audit: Audit) -> None:
             "cross.semantic_materialization",
             "info",
             "semantic-directory/src/build_semantics.py",
-            "No separate materialized semantic entity JSON; generator reads entity-directory/data/concepts.json. Referenced classes are checked against this catalog; second identity set cannot be independently compared.",
+            "No separate materialized semantic entity JSON; generator reads "
+            "entity-directory/data/concepts.json. Referenced classes are checked "
+            "against this catalog; second identity set cannot be independently "
+            "compared.",
         )
     for row in [*audit.field_rows, *audit.relation_rows, *audit.semantic_rows]:
         for i, source in enumerate(row.data.get("sources", [])):
@@ -463,7 +486,8 @@ def run(audit: Audit) -> None:
                                         "navigation.config_reference",
                                         "blocker",
                                         artifact,
-                                        f"Hierarchy config references absent type {identity!r}",
+                                        f"Hierarchy config references absent "
+                                        f"type {identity!r}",
                                         pointer=pointer + "/" + key + f"/{i}",
                                     )
                         else:
@@ -534,7 +558,8 @@ def run(audit: Audit) -> None:
                     "cross.source_registry_integrity",
                     "blocker",
                     "semantic-directory/data/provenance.json",
-                    f"Source registry {key} differs from current file: {registry[key]} vs {actual}",
+                    f"Source registry {key} differs from current file: "
+                    f"{registry[key]} vs {actual}",
                     pointer="/sourceRegistry/" + key,
                 )
     catalog = audit.documents.get("entity-directory/data/catalog-source.json", {}).get(
@@ -590,7 +615,8 @@ def check_profiles(audit: Audit) -> None:
                         "profile.inheritance",
                         "blocker",
                         row,
-                        f"Type {identity!r} does not inherit the advertised source base",
+                        f"Type {identity!r} does not inherit the advertised "
+                        f"source base",
                     )
         elif profile.get("kind") in (
             "record_subject_adapter",
@@ -602,5 +628,6 @@ def check_profiles(audit: Audit) -> None:
                 "profile.subject_projection",
                 "info",
                 row,
-                "Explicit subject capability application; source producer record fields remain separate from effective inheritance",
+                "Explicit subject capability application; source producer record "
+                "fields remain separate from effective inheritance",
             )

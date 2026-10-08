@@ -7,8 +7,8 @@ import copy
 from collections import Counter, defaultdict
 
 from .core import Audit, Record
-from .states import kind, path_schema, typed_schema
-from .units import UnitInferenceError, infer_operator, units_compatible
+from .states import clock_declared, kind, path_schema, typed_schema
+from .units import UnitInferenceError, infer_operator, parse_unit, units_compatible
 
 TEMPORAL = {
     "hold",
@@ -187,7 +187,7 @@ def prepare(audit: Audit) -> None:
 
 
 def derive_profiles(audit: Audit) -> None:
-    """Recompute mapping counts from the documented policy without running its generator."""
+    "Recompute mapping counts from the documented policy without running its generator."
     source_path = "semantic-directory/src/capability_profiles.py"
     path = audit.root / source_path
     em = {}
@@ -255,7 +255,8 @@ def derive_profiles(audit: Audit) -> None:
                     "profile.policy_unmapped",
                     "major",
                     record,
-                    "Candidate has no recognized explicit policy; inspect capability_profiles.py for policy drift",
+                    "Candidate has no recognized explicit policy; inspect "
+                    "capability_profiles.py for policy drift",
                 )
                 continue
             rows.append(
@@ -324,7 +325,10 @@ def derive_profiles(audit: Audit) -> None:
         "kinds": dict(sorted(counts.items())),
         "covered_types": len({t for r in rows for t in r.data["compatibleTypeIds"]}),
         "candidate_types": len(candidates),
-        "method": "Audit-local reconstruction from current own fields, actual parent chains, literal EM_APPLICATIONS and explicit candidate prefix policy; not execution or verification of generated browser metadata.",
+        "method": "Audit-local reconstruction from current own fields, actual parent "
+        "chains, literal EM_APPLICATIONS and explicit candidate prefix "
+        "policy; not execution or verification of generated browser "
+        "metadata.",
     }
     readme = audit.root / "semantic-directory/README.md"
     if readme.is_file() and "855" in audit.read_text(readme) and len(rows) != 855:
@@ -414,7 +418,8 @@ class SemanticAudit:
                 )
                 return
             if op == "b":
-                # Canonical label resolves, while the supplied inline AST is the executed dependency.
+                # Canonical label resolves, while the supplied inline
+                # AST is the executed dependency.
                 if ids[n] not in self.registry:
                     self.problem(
                         row,
@@ -448,7 +453,8 @@ class SemanticAudit:
                 self.problem(
                     row,
                     "null_expression",
-                    "Root null constant cannot establish executable truth",
+                    "Root null constant cannot establish executable truth; "
+                    "semantic-directory/README.md documents this preserved artifact",
                     pointer,
                 )
             return
@@ -458,7 +464,7 @@ class SemanticAudit:
                 return
             self.parameter_scope[row.id].add(node[1])
             if len(node) == 3:
-                self.missing_default_units[row.id].append(pointer)
+                self.missing_default_units[row.id].append((node[1], pointer))
             return
         if op in TEMPORAL:
             self.temporal.append((row, pointer, op))
@@ -541,7 +547,8 @@ class SemanticAudit:
                         "semantic.parameter_default_unit",
                         "major",
                         row,
-                        f"Parameter {name!r} has a default without unit; missing is not dimensionless",
+                        f"Parameter {name!r} has a default without unit; "
+                        f"missing is not dimensionless",
                     )
             if "native_ast" in row.data:
                 self.scan_native(row, row.data["native_ast"], row.pointer)
@@ -580,41 +587,101 @@ class SemanticAudit:
                     self.problem(
                         row, "entity_type", f"Applicable entity type {typ!r} missing"
                     )
-        for identity, pointers in sorted(self.missing_default_units.items()):
+        for identity, occurrences in sorted(self.missing_default_units.items()):
             row = self.registry[identity]
-            self.a.add(
-                "semantic.parameter_default_unit",
-                "major",
-                row,
-                f"{len(pointers)} native parameter defaults lack declared units; defaults and scope preserved",
-                count=len(pointers),
-                details={"pointers": pointers},
-            )
+            by_name = defaultdict(list)
+            for name, pointer in occurrences:
+                by_name[name].append(pointer)
+            for name, pointers in sorted(by_name.items()):
+                suggestions = self.parameter_unit_suggestions(row, name)
+                self.a.add(
+                    "semantic.parameter_default_unit",
+                    "minor",
+                    row,
+                    f"Native parameter {name!r} default lacks declared unit; "
+                    f"source default and scope preserved",
+                    pointer=pointers[0],
+                    count=len(pointers),
+                    details={
+                        "parameter": name,
+                        "pointers": pointers,
+                        "suggested_units": suggestions,
+                        "suggestions_applied": False,
+                    },
+                )
+        preserved_temporal = set()
         for row, pointer, op in self.temporal:
-            field_times = [
-                self.a.fields[f].data.get("time") for f in self.field_refs[row.id]
+            fields = self.closure(row.id, self.field_refs)
+            clock_fields = [
+                f for f in sorted(fields) if self.field_has_clock(self.a.fields[f].data)
             ]
+            if row.data.get("clock") or op == "entered":
+                continue
+            if clock_fields:
+                # Declaration establishes a binding requirement, not a live clock.
+                continue
             if row.data.get("origin") == "original_graph":
-                # Native interpreter consumes caller-supplied monotonic seconds, not an ontology clock instance.
+                preserved_temporal.add(row.id)
                 self.a.add(
                     "semantic.temporal_clock_binding",
                     "major",
                     row,
-                    f"{op} uses external event-time history; concrete clock identity/mapping and sampling gap require binding",
+                    f"{op} has no clock declaration in its transitive input "
+                    f"fields; bind external event-time history and sampling "
+                    f"gap",
                     pointer=pointer,
                 )
-            elif (
-                not row.data.get("clock")
-                and not any(
-                    isinstance(t, dict)
-                    and any(k in t for k in ("clock", "clockBinding", "clockRequired"))
-                    for t in field_times
-                )
-                and op != "entered"
-            ):
+            else:
                 self.problem(
                     row, "temporal_clock", f"{op} has no clock contract", pointer
                 )
+        if any(
+            row.data.get("origin") == "original_graph" for row, _, _ in self.temporal
+        ):
+            self.a.add(
+                "semantic.preserved_temporal_inputs",
+                "info",
+                "research/original-graph/decoded.json",
+                "Preserved temporal rules consume declared history; clock "
+                "declarations do not prove concrete instance bindings",
+                details={
+                    "rules_without_clock_declarations": sorted(preserved_temporal)
+                },
+            )
+
+    @staticmethod
+    def field_has_clock(field):
+        return clock_declared(field, field.get("valueSchema", {}))
+
+    def parameter_unit_suggestions(self, row, name):
+        """Suggest units from adjacent operands without changing source declarations."""
+        suggestions = set()
+
+        def walk(node):
+            if not isinstance(node, list) or not node:
+                return
+            if node[0] in ("gt", "gte", "lt", "lte", "eq", "ne", "add", "sub"):
+                for i, child in enumerate(node[1:], 1):
+                    if (
+                        isinstance(child, list)
+                        and len(child) >= 2
+                        and child[:2] == ["p", name]
+                    ):
+                        for j, other in enumerate(node[1:], 1):
+                            if j != i:
+                                try:
+                                    unit = self.native_type(
+                                        row, other, row.pointer
+                                    ).get("unit")
+                                    if unit:
+                                        suggestions.add(unit)
+                                except UnitInferenceError:
+                                    pass
+            for child in node[1:]:
+                walk(child)
+
+        walk(row.data.get("native_ast"))
+        return sorted(suggestions)
 
     def field_schema(self, identity, path):
         field = self.a.fields[identity].data
@@ -726,7 +793,11 @@ class SemanticAudit:
             if (
                 all(k in NUMERIC for k in kinds)
                 and len(declared) > 1
-                and any(not units_compatible(declared[0], u) for u in declared[1:])
+                and any(
+                    not units_compatible(left, right)
+                    for i, left in enumerate(declared)
+                    for right in declared[i + 1 :]
+                )
             ):
                 raise UnitInferenceError(f"{op} incompatible declared units {units}")
             return {"type": "boolean"}
@@ -780,6 +851,8 @@ class SemanticAudit:
                 and kinds[0] not in ("array", "vector", "matrix", None)
             ):
                 raise UnitInferenceError(f"{op} needs numeric collection")
+            if op == "norm" and args:
+                return infer_operator("vector_norm", args, [{"native": node[1]}])
             return {
                 "type": "number",
                 "unit": args[0].get("unit")
@@ -804,12 +877,26 @@ class SemanticAudit:
             if (
                 op in ("add", "sub", "min", "max")
                 and len(units) > 1
-                and any(not units_compatible(units[0], u) for u in units[1:])
+                and any(
+                    not units_compatible(left, right)
+                    for i, left in enumerate(units)
+                    for right in units[i + 1 :]
+                )
             ):
                 raise UnitInferenceError(f"{op} incompatible declared units {units}")
+            result_unit = next(
+                (
+                    u
+                    for u in units
+                    if any(
+                        k.startswith("semantic:") for k, _ in parse_unit(u).dimensions
+                    )
+                ),
+                units[0] if units else None,
+            )
             return {
                 "type": "number",
-                "unit": units[0]
+                "unit": result_unit
                 if units and op in ("abs", "min", "max", "add", "sub")
                 else None,
             }
@@ -910,7 +997,8 @@ class SemanticAudit:
                 self.problem(
                     row,
                     "result_type",
-                    f"Rule/predicate/event root produces {kind(result)!r}, expected boolean",
+                    f"Rule/predicate/event root produces {kind(result)!r}, "
+                    f"expected boolean",
                 )
         except (
             UnitInferenceError,
@@ -937,7 +1025,8 @@ class SemanticAudit:
 
     def run(self):
         self.scan()
-        # DFS colors diagnose execution cycles only; b provenance labels do not execute canonical targets.
+        # DFS colors diagnose execution cycles only; b provenance labels do
+        # not execute canonical targets.
         colors = {}
         trail = []
         reported = set()
@@ -973,7 +1062,9 @@ class SemanticAudit:
                 "semantic.specialized_inference",
                 "info",
                 self.registry[identity],
-                "Specialized geometry/graph/temporal operator needs a dedicated compiler; dependency audit complete, static type/unit proof unavailable",
+                "Specialized geometry/graph/temporal operator needs a dedicated "
+                "compiler; dependency audit complete, static type/unit proof "
+                "unavailable",
             )
         executable = {}
         inputs = {}
@@ -1003,9 +1094,11 @@ class SemanticAudit:
                     "semantic.event_unresolved",
                     "major",
                     row,
-                    "Event cannot establish a fully typed, unit-resolved predicate dependency closure; no synthetic transition",
+                    "Event cannot establish a fully typed, unit-resolved predicate "
+                    "dependency closure; no synthetic transition",
                 )
-        # Reconstruct referenced source targets from audited dependency closures for every profile.
+        # Reconstruct referenced source targets from audited dependency
+        # closures for every profile.
         native_targets = set(self.model.get("TC", [[]])[0])
         targets_by_field = defaultdict(set)
         for target in native_targets:
@@ -1073,7 +1166,8 @@ class SemanticAudit:
         self.a.metrics.get("capability_profiles", {})[
             "source_targets_without_applications"
         ] = sorted(native_targets - connected)
-        # Fields/types were checked earlier; verify all reconstructed target references now.
+        # Fields/types were checked earlier; verify all reconstructed target
+        # references now.
         for profile in self.a.profiles.values():
             for target in profile.data.get("sourceTargetIds", []):
                 if target not in targets:
@@ -1098,7 +1192,8 @@ class SemanticAudit:
                 "semantic.unused_field",
                 "info",
                 self.a.fields[identity],
-                "Field not consumed by supplied original/pilot/capability/domain contracts; schema-generated conditions are outside this count",
+                "Field not consumed by supplied original/pilot/capability/domain "
+                "contracts; schema-generated conditions are outside this count",
             )
         # Pilot inputs are explicitly authored examples, never actual writer bindings.
         pilot_path = "semantic-directory/data/pilot.json"
@@ -1163,7 +1258,10 @@ class SemanticAudit:
             "failed_definitions": len(self.failed),
             "specialized_unproven": len(self.unproven),
             "statically_executable_targets": sum(executable[t] for t in targets),
-            "scope": "Supplied native roots and authored/domain-pack contracts. Auto-generated leaf-state predicates are not materialized input and are excluded; no simulation, observation acquisition or event dispatch is performed.",
+            "scope": "Supplied native roots and authored/domain-pack contracts. "
+            "Auto-generated leaf-state predicates are not materialized "
+            "input and are excluded; no simulation, observation acquisition "
+            "or event dispatch is performed.",
         }
         self.a.metrics["semantic_inputs"] = inputs
         self.a.metrics["semantic_executable"] = executable
