@@ -1,0 +1,55 @@
+{
+  "px4-flight": {
+    "simulated_ns": 27200000000,
+    "journal_bytes": 9643884,
+    "offline_replay": "passed",
+    "startup_s": 13.76660912297666,
+    "wall_s": 6.421933087520301,
+    "rtf": 4.235484803299737,
+    "phases": [
+      {
+        "action": "arm",
+        "command_id": "[\"aerokernel.message/v1\",\"e1-px4-flight\",\"0\",\"ingress\",\"host\",0]",
+        "terminal_ns": 1200000000
+      },
+      {
+        "action": "takeoff",
+        "command_id": "[\"aerokernel.message/v1\",\"e1-px4-flight\",\"0\",\"ingress\",\"host\",1]",
+        "terminal_ns": 10200000000
+      },
+      {
+        "action": "goto",
+        "command_id": "[\"aerokernel.message/v1\",\"e1-px4-flight\",\"0\",\"ingress\",\"host\",2]",
+        "terminal_ns": 14600000000
+      },
+      {
+        "action": "land",
+        "command_id": "[\"aerokernel.message/v1\",\"e1-px4-flight\",\"0\",\"ingress\",\"host\",3]",
+        "terminal_ns": 27200000000
+      }
+    ]
+  },
+  "sumo-grid": {
+    "simulated_ns": 60000000000,
+    "journal_bytes": 17257302,
+    "offline_replay": "passed",
+    "startup_s": 2.2183589302003384,
+    "wall_s": 24.470675583928823,
+    "rtf": 2.451914324727722,
+    "vehicles_created": 50,
+    "reroute": "succeeded"
+  },
+  "coupled": {
+    "simulated_ns": 30000000000,
+    "journal_bytes": 15338593,
+    "offline_replay": "passed",
+    "startup_s": 16.99045949615538,
+    "wall_s": 19.220868965610862,
+    "rtf": 1.5608035231744564,
+    "deliveries": 29,
+    "drops": 0,
+    "link_samples": 150,
+    "consumer_lag_ns": 200000000,
+    "vehicles_created": 50
+  }
+}

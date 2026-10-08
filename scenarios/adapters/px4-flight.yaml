@@ -1,0 +1,650 @@
+format: aeroagentsim.scenario/v1
+id: e1-px4-flight
+registry:
+  snapshot: authored-registry.json
+  digest: d0519bdbbb0dde27d8488ee5c0408c87fe6a550f4353b330e2bba344cd64c75a
+  types:
+  - id: e1:Aircraft
+    parents: []
+    abstract: false
+  fields:
+  - id: e1.px4.position
+    type: e1:Aircraft
+    schema: &id001
+      type: vector
+      items: &id002
+        type: number
+      length: 3
+    metadata:
+      role: observation
+      time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+      frame: enu
+  - id: e1.px4.velocity
+    type: e1:Aircraft
+    schema: *id001
+    metadata:
+      role: observation
+      time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+      frame: enu
+  - id: e1.px4.attitude
+    type: e1:Aircraft
+    schema:
+      type: vector
+      items: *id002
+      length: 4
+    metadata:
+      role: observation
+      time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+      frame: enu
+  - id: e1.px4.battery
+    type: e1:Aircraft
+    schema:
+      type: record
+      members:
+        remaining_fraction: *id002
+        voltage_v: *id002
+      required:
+      - remaining_fraction
+      - voltage_v
+      extra: false
+    metadata:
+      role: observation
+      time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+  - id: e1.px4.armed
+    type: e1:Aircraft
+    schema:
+      type: boolean
+    metadata:
+      role: observation
+      time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+  - id: e1.px4.mode
+    type: e1:Aircraft
+    schema: &id003
+      type: string
+    metadata:
+      role: observation
+      time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+  - id: e1.px4.landed
+    type: e1:Aircraft
+    schema: *id003
+    metadata:
+      role: observation
+      time_semantics: backend boundary observation; MAVSDK source acquisition unavailable
+  messages:
+  - id: adapters.px4_gazebo.arm
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.disarm
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.goto
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+        position_enu:
+          type: vector
+          length: 3
+          items:
+            type: number
+            minimum: -1.0e+300
+            maximum: 1.0e+300
+        yaw_deg:
+          type: number
+      required:
+      - entity
+      - position_enu
+      - yaw_deg
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.hold
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.land
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+      required:
+      - entity
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.takeoff
+    kind: command
+    schema:
+      type: record
+      members:
+        entity:
+          type: string
+          min_length: 1
+        altitude_m:
+          type: number
+      required:
+      - entity
+      - altitude_m
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members: {}
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.px4_gazebo.contact
+    kind: event
+    schema:
+      type: record
+      members:
+        sim_ns:
+          type: integer
+          minimum: 0
+        topic:
+          type: string
+          min_length: 1
+        collision1:
+          type: string
+          min_length: 1
+        collision2:
+          type: string
+          min_length: 1
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        available_ns:
+          type: integer
+          minimum: 0
+      required:
+      - sim_ns
+      - topic
+      - collision1
+      - collision2
+      - available_ns
+      extra: false
+entities:
+- id: aircraft
+  type: e1:Aircraft
+  facts: {}
+bindings:
+  rules:
+  - writer: flight
+    type: e1:Aircraft
+    fields:
+    - e1.px4.position
+    - e1.px4.velocity
+    - e1.px4.attitude
+    - e1.px4.battery
+    - e1.px4.armed
+    - e1.px4.mode
+    - e1.px4.landed
+  lifecycle:
+  - controller: flight
+    type: e1:Aircraft
+  commands: []
+engines:
+  flight:
+    plugin: px4_gazebo
+    config:
+      image: aeroagentsim/px4-gazebo:dev-p2b
+      host: 127.0.0.1
+      port: 19001
+      step_ns: 200000000
+      clock_id: px4.observation
+      pose_clock_id: gazebo.simulation
+      pose_mapping_id: gazebo.warmup/v1
+      mapping_id: px4.elapsed/v1
+      event_topic: native-events
+      vehicles:
+        aircraft: u1
+      fields:
+        position: e1.px4.position
+        velocity: e1.px4.velocity
+        attitude: e1.px4.attitude
+        battery: e1.px4.battery
+        armed: e1.px4.armed
+        mode: e1.px4.mode
+        landed: e1.px4.landed
+      reset:
+        world: default
+        warmup: 10000000000
+        vehicles:
+        - id: u1
+          model: x500
+          spawn:
+          - 0
+          - 0
+          - 0.2
+          - 0
+          - 0
+          - 0
+clock_mappings:
+- clock_id: canonical
+  mapping_id: canonical
+- clock_id: px4.observation
+  mapping_id: px4.elapsed/v1
+- clock_id: gazebo.simulation
+  mapping_id: gazebo.warmup/v1
+  offset_ns: -10000000000
+run:
+  seed: 42
+  until_ns: 100000000000
+  advance_ns: 1000000000
+  pacing: fast
+outputs:
+  durability: flush

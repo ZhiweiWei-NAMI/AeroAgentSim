@@ -1,0 +1,2242 @@
+format: aeroagentsim.scenario/v1
+id: e1-sumo-grid
+registry:
+  snapshot: authored-registry.json
+  digest: d0519bdbbb0dde27d8488ee5c0408c87fe6a550f4353b330e2bba344cd64c75a
+  types:
+  - id: e1:RoadVehicle
+    parents: []
+    abstract: false
+  - id: e1:Person
+    parents: []
+    abstract: false
+  - id: e1:TrafficLight
+    parents: []
+    abstract: false
+  fields:
+  - id: e1.sumo.vehicle.position
+    type: e1:RoadVehicle
+    schema:
+      type: record
+      members:
+        xy:
+          type: vector
+          items: &id001
+            type: number
+          length: 2
+      required:
+      - xy
+      extra: false
+    metadata:
+      role: observation
+      frame: sumo-network-xy
+  - id: e1.sumo.vehicle.speed
+    type: e1:RoadVehicle
+    schema: *id001
+    metadata:
+      role: observation
+      frame: scalar
+  - id: e1.sumo.vehicle.route
+    type: e1:RoadVehicle
+    schema:
+      type: array
+      items: &id002
+        type: string
+    metadata:
+      role: observation
+      frame: scalar
+  - id: e1.sumo.person.position
+    type: e1:Person
+    schema:
+      type: record
+      members:
+        xy:
+          type: vector
+          items: *id001
+          length: 2
+      required:
+      - xy
+      extra: false
+    metadata:
+      role: observation
+      frame: sumo-network-xy
+  - id: e1.sumo.person.speed
+    type: e1:Person
+    schema: *id001
+    metadata:
+      role: observation
+      frame: scalar
+  - id: e1.sumo.tls.state
+    type: e1:TrafficLight
+    schema: *id002
+    metadata:
+      role: observation
+      frame: scalar
+  - id: e1.sumo.tls.phase
+    type: e1:TrafficLight
+    schema:
+      type: integer
+    metadata:
+      role: observation
+      frame: scalar
+  - id: e1.sumo.tls.program
+    type: e1:TrafficLight
+    schema: *id002
+    metadata:
+      role: observation
+      frame: scalar
+  messages:
+  - id: adapters.sumo.add_vehicle
+    kind: command
+    schema:
+      type: record
+      members:
+        vehicle:
+          type: string
+          min_length: 1
+        route_id:
+          type: string
+          min_length: 1
+        type:
+          type: string
+          min_length: 1
+        depart:
+          type: number
+      required:
+      - vehicle
+      - route_id
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members:
+            applied_at_sim_ns:
+              type: integer
+              minimum: 0
+            reason:
+              type: string
+              min_length: 1
+            speed:
+              type: number
+            requested_speed:
+              type: number
+            route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            expected_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            before_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            requested_target:
+              type: string
+              min_length: 1
+            lane:
+              type: string
+              min_length: 1
+            disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            before_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            requested_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            tls:
+              type: string
+              min_length: 1
+            phase:
+              type: integer
+              minimum: 0
+            requested_phase:
+              type: integer
+              minimum: 0
+            state:
+              type: string
+              min_length: 1
+            vehicle:
+              type: string
+              min_length: 1
+            present:
+              type: boolean
+            type:
+              type: string
+              min_length: 1
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.sumo.change_target
+    kind: command
+    schema:
+      type: record
+      members:
+        vehicle:
+          type: string
+          min_length: 1
+        edge:
+          type: string
+          min_length: 1
+      required:
+      - vehicle
+      - edge
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members:
+            applied_at_sim_ns:
+              type: integer
+              minimum: 0
+            reason:
+              type: string
+              min_length: 1
+            speed:
+              type: number
+            requested_speed:
+              type: number
+            route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            expected_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            before_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            requested_target:
+              type: string
+              min_length: 1
+            lane:
+              type: string
+              min_length: 1
+            disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            before_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            requested_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            tls:
+              type: string
+              min_length: 1
+            phase:
+              type: integer
+              minimum: 0
+            requested_phase:
+              type: integer
+              minimum: 0
+            state:
+              type: string
+              min_length: 1
+            vehicle:
+              type: string
+              min_length: 1
+            present:
+              type: boolean
+            type:
+              type: string
+              min_length: 1
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.sumo.lane_restriction
+    kind: command
+    schema:
+      type: record
+      members:
+        lane:
+          type: string
+          min_length: 1
+        disallowed:
+          type: array
+          items:
+            type: string
+            enum:
+            - ignoring
+            - private
+            - emergency
+            - authority
+            - army
+            - vip
+            - pedestrian
+            - passenger
+            - hov
+            - taxi
+            - bus
+            - coach
+            - delivery
+            - truck
+            - trailer
+            - motorcycle
+            - moped
+            - bicycle
+            - evehicle
+            - tram
+            - rail_urban
+            - rail
+            - rail_electric
+            - rail_fast
+            - ship
+            - container
+            - cable_car
+            - subway
+            - aircraft
+            - wheelchair
+            - scooter
+            - drone
+            - custom1
+            - custom2
+          min_length: 0
+          max_length: 65536
+        at_sim_ns:
+          type: integer
+          minimum: 0
+      required:
+      - lane
+      - disallowed
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members:
+            applied_at_sim_ns:
+              type: integer
+              minimum: 0
+            reason:
+              type: string
+              min_length: 1
+            speed:
+              type: number
+            requested_speed:
+              type: number
+            route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            expected_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            before_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            requested_target:
+              type: string
+              min_length: 1
+            lane:
+              type: string
+              min_length: 1
+            disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            before_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            requested_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            tls:
+              type: string
+              min_length: 1
+            phase:
+              type: integer
+              minimum: 0
+            requested_phase:
+              type: integer
+              minimum: 0
+            state:
+              type: string
+              min_length: 1
+            vehicle:
+              type: string
+              min_length: 1
+            present:
+              type: boolean
+            type:
+              type: string
+              min_length: 1
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.sumo.remove_vehicle
+    kind: command
+    schema:
+      type: record
+      members:
+        vehicle:
+          type: string
+          min_length: 1
+      required:
+      - vehicle
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members:
+            applied_at_sim_ns:
+              type: integer
+              minimum: 0
+            reason:
+              type: string
+              min_length: 1
+            speed:
+              type: number
+            requested_speed:
+              type: number
+            route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            expected_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            before_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            requested_target:
+              type: string
+              min_length: 1
+            lane:
+              type: string
+              min_length: 1
+            disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            before_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            requested_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            tls:
+              type: string
+              min_length: 1
+            phase:
+              type: integer
+              minimum: 0
+            requested_phase:
+              type: integer
+              minimum: 0
+            state:
+              type: string
+              min_length: 1
+            vehicle:
+              type: string
+              min_length: 1
+            present:
+              type: boolean
+            type:
+              type: string
+              min_length: 1
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.sumo.reroute
+    kind: command
+    schema:
+      type: record
+      members:
+        vehicle:
+          type: string
+          min_length: 1
+        edges:
+          type: array
+          items:
+            type: string
+            min_length: 1
+          min_length: 0
+          max_length: 65536
+      required:
+      - vehicle
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members:
+            applied_at_sim_ns:
+              type: integer
+              minimum: 0
+            reason:
+              type: string
+              min_length: 1
+            speed:
+              type: number
+            requested_speed:
+              type: number
+            route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            expected_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            before_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            requested_target:
+              type: string
+              min_length: 1
+            lane:
+              type: string
+              min_length: 1
+            disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            before_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            requested_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            tls:
+              type: string
+              min_length: 1
+            phase:
+              type: integer
+              minimum: 0
+            requested_phase:
+              type: integer
+              minimum: 0
+            state:
+              type: string
+              min_length: 1
+            vehicle:
+              type: string
+              min_length: 1
+            present:
+              type: boolean
+            type:
+              type: string
+              min_length: 1
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.sumo.set_speed
+    kind: command
+    schema:
+      type: record
+      members:
+        vehicle:
+          type: string
+          min_length: 1
+        speed:
+          type: number
+          minimum: 0.0
+      required:
+      - vehicle
+      - speed
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members:
+            applied_at_sim_ns:
+              type: integer
+              minimum: 0
+            reason:
+              type: string
+              min_length: 1
+            speed:
+              type: number
+            requested_speed:
+              type: number
+            route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            expected_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            before_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            requested_target:
+              type: string
+              min_length: 1
+            lane:
+              type: string
+              min_length: 1
+            disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            before_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            requested_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            tls:
+              type: string
+              min_length: 1
+            phase:
+              type: integer
+              minimum: 0
+            requested_phase:
+              type: integer
+              minimum: 0
+            state:
+              type: string
+              min_length: 1
+            vehicle:
+              type: string
+              min_length: 1
+            present:
+              type: boolean
+            type:
+              type: string
+              min_length: 1
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.sumo.tls_phase
+    kind: command
+    schema:
+      type: record
+      members:
+        tls:
+          type: string
+          min_length: 1
+        phase:
+          type: integer
+          minimum: 0
+        duration_s:
+          type: number
+      required:
+      - tls
+      - phase
+      extra: false
+    result_schema:
+      type: record
+      members:
+        command_id:
+          type: string
+          min_length: 1
+        vehicle:
+          type: string
+          min_length: 1
+        action:
+          type: string
+          min_length: 1
+        status:
+          type: string
+          enum:
+          - accepted
+          - rejected
+          - queued
+          - running
+          - executing
+          - succeeded
+          - failed
+        sim_ns:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          min_length: 1
+        observation:
+          type: record
+          members:
+            applied_at_sim_ns:
+              type: integer
+              minimum: 0
+            reason:
+              type: string
+              min_length: 1
+            speed:
+              type: number
+            requested_speed:
+              type: number
+            route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            expected_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            before_route:
+              type: array
+              items:
+                type: string
+                min_length: 1
+              min_length: 0
+              max_length: 65536
+            requested_target:
+              type: string
+              min_length: 1
+            lane:
+              type: string
+              min_length: 1
+            disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            before_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            requested_disallowed:
+              type: array
+              items:
+                type: string
+                enum:
+                - ignoring
+                - private
+                - emergency
+                - authority
+                - army
+                - vip
+                - pedestrian
+                - passenger
+                - hov
+                - taxi
+                - bus
+                - coach
+                - delivery
+                - truck
+                - trailer
+                - motorcycle
+                - moped
+                - bicycle
+                - evehicle
+                - tram
+                - rail_urban
+                - rail
+                - rail_electric
+                - rail_fast
+                - ship
+                - container
+                - cable_car
+                - subway
+                - aircraft
+                - wheelchair
+                - scooter
+                - drone
+                - custom1
+                - custom2
+              min_length: 0
+              max_length: 65536
+            tls:
+              type: string
+              min_length: 1
+            phase:
+              type: integer
+              minimum: 0
+            requested_phase:
+              type: integer
+              minimum: 0
+            state:
+              type: string
+              min_length: 1
+            vehicle:
+              type: string
+              min_length: 1
+            present:
+              type: boolean
+            type:
+              type: string
+              min_length: 1
+          required: []
+          extra: false
+        packet_id:
+          type: string
+          min_length: 1
+        src:
+          type: string
+          min_length: 1
+        dst:
+          type: string
+          min_length: 1
+        sent_ns:
+          type: integer
+          minimum: 0
+        received_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        payload_ref:
+          type: string
+          min_length: 1
+        rssi_dbm:
+          type: number
+        snr_db:
+          type: number
+        available_ns:
+          type: integer
+          minimum: 0
+      required: []
+      extra: false
+  - id: adapters.sumo.arrived
+    kind: event
+    schema:
+      type: record
+      members:
+        id:
+          type: string
+          min_length: 1
+        kind:
+          type: string
+          enum:
+          - vehicle
+          - person
+        sim_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        available_ns:
+          type: integer
+          minimum: 0
+      required:
+      - id
+      - kind
+      - sim_ns
+      - available_ns
+      extra: false
+  - id: adapters.sumo.collisions
+    kind: event
+    schema:
+      type: record
+      members:
+        collider:
+          type: string
+          min_length: 1
+        victim:
+          type: string
+          min_length: 1
+        collider_type:
+          type: string
+          min_length: 1
+        victim_type:
+          type: string
+          min_length: 1
+        collider_speed:
+          type: number
+        victim_speed:
+          type: number
+        type:
+          type: string
+          min_length: 1
+        lane:
+          type: string
+          min_length: 1
+        position:
+          type: number
+        sim_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        available_ns:
+          type: integer
+          minimum: 0
+      required:
+      - collider
+      - victim
+      - collider_type
+      - victim_type
+      - collider_speed
+      - victim_speed
+      - type
+      - lane
+      - position
+      - sim_ns
+      - available_ns
+      extra: false
+  - id: adapters.sumo.departed
+    kind: event
+    schema:
+      type: record
+      members:
+        id:
+          type: string
+          min_length: 1
+        kind:
+          type: string
+          enum:
+          - vehicle
+          - person
+        sim_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        available_ns:
+          type: integer
+          minimum: 0
+      required:
+      - id
+      - kind
+      - sim_ns
+      - available_ns
+      extra: false
+  - id: adapters.sumo.removed
+    kind: event
+    schema:
+      type: record
+      members:
+        id:
+          type: string
+          min_length: 1
+        kind:
+          type: string
+          enum:
+          - vehicle
+          - person
+        sim_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        available_ns:
+          type: integer
+          minimum: 0
+      required:
+      - id
+      - kind
+      - sim_ns
+      - available_ns
+      extra: false
+  - id: adapters.sumo.teleported_end
+    kind: event
+    schema:
+      type: record
+      members:
+        id:
+          type: string
+          min_length: 1
+        kind:
+          type: string
+          enum:
+          - vehicle
+          - person
+        sim_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        available_ns:
+          type: integer
+          minimum: 0
+      required:
+      - id
+      - kind
+      - sim_ns
+      - available_ns
+      extra: false
+  - id: adapters.sumo.teleported_start
+    kind: event
+    schema:
+      type: record
+      members:
+        id:
+          type: string
+          min_length: 1
+        kind:
+          type: string
+          enum:
+          - vehicle
+          - person
+        sim_ns:
+          type: integer
+          minimum: 0
+        available_sim_ns:
+          type: integer
+          minimum: 0
+        available_ns:
+          type: integer
+          minimum: 0
+      required:
+      - id
+      - kind
+      - sim_ns
+      - available_ns
+      extra: false
+entities: []
+bindings:
+  rules:
+  - writer: traffic
+    type: e1:RoadVehicle
+    fields:
+    - e1.sumo.vehicle.position
+    - e1.sumo.vehicle.speed
+    - e1.sumo.vehicle.route
+    ids: vehicle/*
+  - writer: traffic
+    type: e1:Person
+    fields:
+    - e1.sumo.person.position
+    - e1.sumo.person.speed
+    ids: person/*
+  - writer: traffic
+    type: e1:TrafficLight
+    fields:
+    - e1.sumo.tls.state
+    - e1.sumo.tls.phase
+    - e1.sumo.tls.program
+    ids: tls/*
+  lifecycle:
+  - controller: traffic
+    type: e1:RoadVehicle
+    ids: vehicle/*
+  - controller: traffic
+    type: e1:Person
+    ids: person/*
+  - controller: traffic
+    type: e1:TrafficLight
+    ids: tls/*
+  commands:
+  - schema: adapters.sumo.reroute
+    target: traffic
+    at_ns: 5000000000
+    payload:
+      vehicle: v0
+engines:
+  traffic:
+    plugin: sumo
+    config:
+      image: aeroagentsim/sumo:dev-p3a-5
+      host: 127.0.0.1
+      port: 19002
+      step_ns: 100000000
+      clock_id: sumo.simulation
+      mapping_id: sumo.elapsed/v1
+      event_topic: native-events
+      kinds:
+        vehicle:
+          type_id: e1:RoadVehicle
+          prefix: vehicle/
+          fields:
+            position: e1.sumo.vehicle.position
+            speed: e1.sumo.vehicle.speed
+            route: e1.sumo.vehicle.route
+        person:
+          type_id: e1:Person
+          prefix: person/
+          fields:
+            position: e1.sumo.person.position
+            speed: e1.sumo.person.speed
+        tls:
+          type_id: e1:TrafficLight
+          prefix: tls/
+          fields:
+            state: e1.sumo.tls.state
+            phase: e1.sumo.tls.phase
+            program: e1.sumo.tls.program
+      reset:
+        scenario:
+          kind: grid
+          vehicles: 50
+          persons: 3
+          depart_interval_s: 0.1
+clock_mappings:
+- clock_id: canonical
+  mapping_id: canonical
+- clock_id: sumo.simulation
+  mapping_id: sumo.elapsed/v1
+run:
+  seed: 42
+  until_ns: 60000000000
+  advance_ns: 1000000000
+  pacing: fast
+outputs:
+  durability: flush
