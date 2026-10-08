@@ -1,5 +1,20 @@
 #!/usr/bin/env python3
-"""Measure real backend flight runs; preserve actual errors and partial traces."""
+"""Measure real backend flight runs; preserve actual errors and partial traces.
+
+``--step-ms`` accepts either one cadence in milliseconds (``20``, the historical
+form) or a comma-separated sweep of cadences (``4,20,100,200``). Every cadence
+is flown ``--runs`` times, each run on its own fresh connection and reset, and
+every run records its own ``step_ns``. Trajectory comparisons are taken only
+between runs that share one cadence, never across cadences. A single cadence
+keeps the historical output schema (top-level ``step_ns``, ``runs`` and
+``trajectory_comparisons``); a sweep groups runs under ``cadences`` with
+per-cadence ``step_ns`` and comparisons instead of any top-level ``step_ns``.
+
+A run may also carry a ``barrier_profile`` summary built from the optional
+``profile_wall_ns`` diagnostic object enabled with AAS_PROFILE=1 on the service.
+When that field is absent,
+the summary is omitted entirely instead of being filled with zeros or guesses.
+"""
 
 import argparse
 import json
@@ -13,6 +28,19 @@ from pathlib import Path
 PROTOCOL = "aeroagentsim.px4/v1"
 LIMIT = 8 * 1024 * 1024
 TIMEOUTS = {"hello": 10, "reset": 180, "advance": 30, "command": 30, "close": 20}
+
+
+def parse_step_ms(value):
+    """Parse one cadence in ms or a comma-separated sweep of cadences."""
+    try:
+        steps = [int(token.strip()) for token in str(value).split(",")]
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"invalid step-ms {value!r}") from None
+    if not steps or any(step < 1 for step in steps):
+        raise argparse.ArgumentTypeError("step-ms values must be positive integers")
+    if len(set(steps)) != len(steps):
+        raise argparse.ArgumentTypeError("step-ms sweep values must be distinct")
+    return steps
 
 
 def pairs(items):
@@ -154,7 +182,36 @@ def summarize(values):
     }
 
 
-def run(args, number, record):
+def barrier_profile(result):
+    """Validate the optional service phase timings without inventing values."""
+    if "profile_wall_ns" not in result:
+        return None
+    profile = result["profile_wall_ns"]
+    if not isinstance(profile, dict):
+        raise ValueError("profile_wall_ns must be an object when present")
+    for name, duration in profile.items():
+        if not isinstance(name, str) or type(duration) is not int or duration < 0:
+            raise ValueError("profile phases must be nonnegative integer nanoseconds")
+    return profile
+
+
+def barrier_profile_summary(profiles):
+    if not profiles:
+        return None
+    phases = {}
+    for profile in profiles:
+        for name, duration in profile.items():
+            phases.setdefault(name, []).append(duration)
+    return {
+        "advance_count": len(profiles),
+        "phases": {
+            name: {"count": len(values), **summarize(values)}
+            for name, values in phases.items()
+        },
+    }
+
+
+def run(args, number, step_ms, record):
     before_hello = time.monotonic()
     client, hello = ready_client(args)
     after_hello = time.monotonic()
@@ -168,7 +225,13 @@ def run(args, number, record):
         dict(id=f"v{i}", model="x500", spawn=[0, 8 * i, 0, 0, 0, 0])
         for i in range(args.vehicles)
     ]
-    record.update(trajectory=[], command_updates=[], phases={}, contacts_count=0)
+    record.update(
+        trajectory=[],
+        command_updates=[],
+        phases={},
+        contacts_count=0,
+        barrier_profiles=[],
+    )
     freshness, advance_wall = {}, []
     try:
         started = time.monotonic()
@@ -189,9 +252,11 @@ def run(args, number, record):
             )
         if type(reset["reached_sim_ns"]) is not int or reset["reached_sim_ns"] != 0:
             raise ValueError("reset did not establish integer time zero")
-        if args.step_ms * 1_000_000 % reset["physics_step_ns"]:
+        if step_ms * 1_000_000 % reset["physics_step_ns"]:
             raise ValueError("step does not align to world physics interval")
-        sim_ns, step_ns, samples = 0, args.step_ms * 1_000_000, reset["telemetry"]
+        step_ns = step_ms * 1_000_000
+        record["step_ns"] = step_ns
+        sim_ns, samples = 0, reset["telemetry"]
         flight_started = time.monotonic()
         for phase in ("arm", "takeoff", "goto_location", "land"):
             pending = set()
@@ -223,6 +288,9 @@ def run(args, number, record):
                 start = time.monotonic()
                 result = client.request("advance", {"to_sim_ns": target})
                 advance_wall.append(time.monotonic() - start)
+                profile = barrier_profile(result)
+                if profile is not None:
+                    record["barrier_profiles"].append(profile)
                 if (
                     type(result["reached_sim_ns"]) is not int
                     or result["reached_sim_ns"] != target
@@ -300,6 +368,12 @@ def run(args, number, record):
         record["freshness"] = {
             key: summarize(value) for key, value in freshness.items()
         }
+        # A failed run keeps its raw partial barrier_profiles as a trace; only a
+        # completed run collapses them into one summary, and the key is omitted
+        # entirely when the service sent no profile_wall_ns at all.
+        profile = barrier_profile_summary(record.pop("barrier_profiles"))
+        if profile is not None:
+            record["barrier_profile"] = profile
         record["success"] = True
     finally:
         # Close errors are real failures as well; disconnect cleanup is used on
@@ -318,8 +392,9 @@ def run(args, number, record):
 
 
 def compare(runs):
+    """Compare trajectory positions only between runs of one same cadence."""
     comparisons = []
-    if not runs:
+    if len(runs) < 2:
         return comparisons
     base = {
         t["sim_ns"]: {s["vehicle"]: s["position_enu"] for s in t["telemetry"]}
@@ -361,33 +436,61 @@ def main():
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--world", default="default")
-    parser.add_argument("--step-ms", type=int, default=20)
+    parser.add_argument(
+        "--step-ms",
+        type=parse_step_ms,
+        default=[20],
+        help="advance cadence in ms; one value or a comma-separated sweep, e.g. 4,20,100,200",
+    )
     parser.add_argument("--container-start-monotonic", type=float)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    if args.runs < 1 or args.step_ms < 1:
-        parser.error("runs and step-ms must be positive")
+    if args.runs < 1:
+        parser.error("runs must be positive")
+    sweep = args.step_ms
     output = {
         "protocol": PROTOCOL,
         "seed": args.seed,
         "vehicles": args.vehicles,
-        "step_ns": args.step_ms * 1_000_000,
-        "runs": [],
     }
     status = 0
+    record = None
     try:
-        for index in range(args.runs):
-            record = {"run": index + 1, "success": False}
-            output["runs"].append(record)
-            run(args, index, record)
+        if len(sweep) == 1:
+            # Historical single-cadence schema, unchanged.
+            output["step_ns"] = sweep[0] * 1_000_000
+            output["runs"] = []
+            for index in range(args.runs):
+                record = {"run": index + 1, "success": False}
+                output["runs"].append(record)
+                run(args, index, sweep[0], record)
+        else:
+            # Each cadence is measured independently on fresh connections and
+            # resets; comparisons stay inside one cadence, and no top-level
+            # step_ns or cross-cadence comparison exists.
+            output["cadences"] = []
+            for step_ms in sweep:
+                group = {
+                    "step_ms": step_ms,
+                    "step_ns": step_ms * 1_000_000,
+                    "runs": [],
+                }
+                output["cadences"].append(group)
+                for index in range(args.runs):
+                    record = {"run": index + 1, "success": False}
+                    group["runs"].append(record)
+                    run(args, index, step_ms, record)
     except Exception as error:
         status = 1
+        if record is not None:
+            record["success"] = False
         output["error"] = {"type": type(error).__name__, "message": str(error)}
-        if output["runs"]:
-            output["runs"][-1]["success"] = False
         print(f"{type(error).__name__}: {error}", file=sys.stderr)
     finally:
-        output["trajectory_comparisons"] = compare(output["runs"])
+        if "runs" in output:
+            output["trajectory_comparisons"] = compare(output["runs"])
+        for group in output.get("cadences", []):
+            group["trajectory_comparisons"] = compare(group["runs"])
         args.output.write_text(json.dumps(output, allow_nan=False, indent=2) + "\n")
     return status
 

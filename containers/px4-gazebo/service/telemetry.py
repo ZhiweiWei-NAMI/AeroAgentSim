@@ -5,6 +5,7 @@ import time
 from types import SimpleNamespace
 
 from .config import number
+from .heartbeat import Heartbeat
 
 
 class Telemetry:
@@ -21,6 +22,7 @@ class Telemetry:
         from mavsdk.action import Action
         from mavsdk.async_plugin_manager import AsyncPluginManager
         from mavsdk.core import Core
+        from mavsdk.mavlink_direct import MavlinkDirect, MavlinkMessage
         from mavsdk.telemetry import Telemetry as MavTelemetry
 
         for vehicle in self.vehicles:
@@ -30,6 +32,7 @@ class Telemetry:
             session = SimpleNamespace(
                 action=Action(manager),
                 core=Core(manager),
+                mavlink_direct=MavlinkDirect(manager),
                 telemetry=MavTelemetry(manager),
                 _channel=manager.channel,
             )
@@ -48,6 +51,8 @@ class Telemetry:
                 self.tasks.append(
                     asyncio.create_task(self.consume(vehicle.id, field, stream))
                 )
+
+        self.heartbeat = Heartbeat(self.sessions, MavlinkMessage)
 
     @staticmethod
     async def connected(session):

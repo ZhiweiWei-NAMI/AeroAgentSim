@@ -22,6 +22,9 @@ class Gazebo:
         self.contacts = []
         self.failure = None
         self.active = True
+        self.profile = {}
+        self.changed = asyncio.Event()
+        self.loop = None
 
     @staticmethod
     def stamp(stamp):
@@ -29,10 +32,15 @@ class Gazebo:
             raise ValueError("invalid Gazebo source timestamp")
         return stamp.sec * 1_000_000_000 + stamp.nsec
 
+    def notify(self):
+        if self.loop is not None and not self.loop.is_closed():
+            self.loop.call_soon_threadsafe(self.changed.set)
+
     def fail(self, error):
         with self.lock:
             if self.failure is None:
                 self.failure = error
+        self.notify()
 
     def check(self):
         with self.lock:
@@ -52,6 +60,7 @@ class Gazebo:
         self.topics.append(topic)
 
     async def start(self):
+        self.loop = asyncio.get_running_loop()
         sys.path.append("/usr/lib/python3/dist-packages")
         from gz.msgs10.contacts_pb2 import Contacts
         from gz.msgs10.pose_v_pb2 import Pose_V
@@ -61,10 +70,13 @@ class Gazebo:
         options = NodeOptions()
         options.partition = self.partition
         self.node = Node(options)
+        # The sole server in this UUID partition publishes identical native
+        # WorldStatistics on /stats without the namespaced 10 Hz throttle.
+        # No clock/pose-derived or locally synthesized time confirmation.
+        await self.subscribe(WorldStatistics, "/stats", self.on_stats)
         await self.subscribe(
-            WorldStatistics, f"/world/{self.world}/stats", self.on_stats
+            Pose_V, f"/world/{self.world}/dynamic_pose/info", self.on_pose
         )
-        await self.subscribe(Pose_V, f"/world/{self.world}/pose/info", self.on_pose)
         await self.wait(
             lambda: self.stats is not None and self.stats[1],
             30,
@@ -130,7 +142,10 @@ class Gazebo:
             with self.lock:
                 if self.stats is not None and ns < self.stats[0]:
                     raise ValueError("Gazebo time regressed")
+                changed = self.stats != (ns, message.paused)
                 self.stats = ns, message.paused
+            if changed:
+                self.notify()
         except Exception as error:
             self.fail(error)
 
@@ -160,7 +175,13 @@ class Gazebo:
                     "attitude_quat": quaternion,
                 }
             with self.lock:
+                changed = any(
+                    name not in self.poses or self.poses[name]["sim_ns"] != ns
+                    for name in poses
+                )
                 self.poses.update(poses)
+            if changed:
+                self.notify()
         except Exception as error:
             self.fail(error)
 
@@ -190,13 +211,23 @@ class Gazebo:
 
     async def wait(self, predicate, timeout, label):
         deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
+        while True:
+            # Clear before checking state: callbacks update under the lock then
+            # schedule a wakeup, so an update cannot fall into a lost-wakeup gap.
+            self.changed.clear()
             self.check()
             with self.lock:
                 ready = predicate()
             if ready:
                 return
-            await asyncio.sleep(0.001)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            try:
+                await asyncio.wait_for(self.changed.wait(), remaining)
+            except asyncio.TimeoutError:
+                break
+        self.check()
         raise TimeoutError(f"Gazebo timed out waiting for {label}; stats={self.stats}")
 
     async def step(self, iterations, physics_step_ns):
@@ -207,6 +238,7 @@ class Gazebo:
         process = self.control_process
         if process.returncode is not None:
             raise RuntimeError(f"WorldControl child exited {process.returncode}")
+        started = time.perf_counter_ns()
         process.stdin.write((json.dumps(iterations) + "\n").encode())
         await process.stdin.drain()
         frame = await asyncio.wait_for(process.stdout.readline(), 12)
@@ -216,25 +248,18 @@ class Gazebo:
         if acknowledgment != {"result": True, "data": True}:
             raise RuntimeError(f"WorldControl failed {acknowledgment}; no retry")
 
-        async def barrier():
-            deadline = time.monotonic() + 15
-            while time.monotonic() < deadline:
-                self.check()
-                with self.lock:
-                    stats = self.stats
-                if stats is not None:
-                    if stats[0] > expected:
-                        raise RuntimeError(
-                            f"Gazebo overshot target {expected}: {stats}"
-                        )
-                    if stats == (expected, True):
-                        return
-                await asyncio.sleep(0.001)
-            raise TimeoutError(
-                f"WorldStatistics never confirmed {expected} paused; observed {stats}"
-            )
+        self.profile = {"control_request": time.perf_counter_ns() - started}
+        started = time.perf_counter_ns()
 
-        await barrier()
+        def confirmed():
+            stats = self.stats
+            if stats is not None and stats[0] > expected:
+                raise RuntimeError(f"Gazebo overshot target {expected}: {stats}")
+            return stats == (expected, True)
+
+        await self.wait(confirmed, 15, f"WorldStatistics {expected} paused")
+        self.profile["stats_confirmation"] = time.perf_counter_ns() - started
+        started = time.perf_counter_ns()
         self.sim_ns = expected
         await self.wait(
             lambda: all(
@@ -244,6 +269,8 @@ class Gazebo:
             10,
             f"pose source timestamp {expected}",
         )
+
+        self.profile["pose_confirmation"] = time.perf_counter_ns() - started
 
     async def sample(self, vehicle_model):
         self.check()

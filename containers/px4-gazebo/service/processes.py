@@ -23,6 +23,7 @@ class Processes:
             XDG_CACHE_HOME=str(directory / "cache"),
             GZ_PARTITION=partition,
             GZ_IP="127.0.0.1",
+            GZ_SIM_SERVER_CONFIG_PATH=str(directory / "server.config"),
             HEADLESS="1",
             LP_NUM_THREADS="4",
         )

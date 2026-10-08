@@ -2,7 +2,7 @@
 
 P2a extracts the real native flight stack into `containers/px4-gazebo/service`, underneath AeroAgentSim. It has no AeroBench workload, ResolvedScenario, session-token, inspection, urban, evidence-verifier or command-audit decoder dependency. The independent aerokernel remains general; a later host adapter binds these backend-specific fields/actions into the kernel's registry and lockstep timing contract.
 
-The runnable image is **`aeroagentsim/px4-gazebo:dev-p2a-ipc2`**, ID `sha256:9a421a10219067220de9b337d3d9af018e43f5758bd77cdc18a4ecb0bad04ed0`. Its base is the user-specified local flight image, inspected before use: PX4 `v1.17.0-alpha1-1551-g381149fb01`, Gazebo Harmonic `8.11.0`, patched MAVSDK `3.17.2`. No native binaries were rebuilt. The image retains the non-root user and native dependencies. Its reported size is 2,370,450,139 bytes: the service is slim, but inheriting the 2.37 GB base cannot remove those inherited layers.
+The current runnable image is **`aeroagentsim/px4-gazebo:dev-p2b`**, ID `sha256:14dbec72f4acbdcff604f3ee3c3adc29eef80ba8689730a046fc269767040446`. P2a’s baseline remains `aeroagentsim/px4-gazebo:dev-p2a-ipc2`, ID `sha256:9a421a10219067220de9b337d3d9af018e43f5758bd77cdc18a4ecb0bad04ed0`; its measurements below are historical. Its base is the user-specified local flight image, inspected before use: PX4 `v1.17.0-alpha1-1551-g381149fb01`, Gazebo Harmonic `8.11.0`, patched MAVSDK `3.17.2`. No native binaries were rebuilt. The image retains the non-root user and native dependencies. Its reported size is 2,370,456,329 bytes: the service is slim, but inheriting the 2.37 GB base cannot remove those inherited layers.
 
 ## Extraction map
 
@@ -62,7 +62,7 @@ An additional real sequence verified arm→disarm→arm→takeoff→hold→goto�
 
 The initial native Python request on the subscriber node returned false after a 10 s timeout. The original per-call `gz service` path completed a flight to 50 m (0.868 m error) but later returned `Service call timed out` during landing; the failed trace is preserved as `/tmp/aas-p2a/single-cli-failure.json`. These failures were not counted as successful final runs. Two early reset integration errors—Contacts timestamp location and MAVSDK channel ownership—were fixed against the installed API. MAVSDK 3.17.2 reports battery remaining as 0–100 percent, which is explicitly converted to a fraction.
 
-The final implementation uses a persistent request-only Python child, separate from subscriber callbacks. The Transport13 [blocking request binding](https://github.com/gazebosim/gz-transport/blob/gz-transport13/python/src/transport/_gz_transport_pybind11.cc#L217) retains the GIL; isolating requests avoids interference with Python subscription callbacks and removes per-call CLI startup/discovery. It sends once, then independently requires exact paused simulation time and pose confirmation. All final flight runs completed without control-call faults.
+The P2a implementation uses a persistent request-only Python child, separate from subscriber callbacks. The Transport13 [blocking request binding](https://github.com/gazebosim/gz-transport/blob/gz-transport13/python/src/transport/_gz_transport_pybind11.cc#L217) retains the GIL; isolating requests avoids interference with Python subscription callbacks and removes per-call CLI startup/discovery. It sends once, then independently requires exact paused simulation time and pose confirmation. All final flight runs completed without control-call faults.
 
 MAVSDK has no exact source simulation timestamps for the selected field streams; the service exposes that limitation explicitly. Contacts are received events and can lag a barrier; an empty list is not a proof of absence. Only x500 has been validated; other catalogued airframes require instrumented contact topics. Mounted worlds must supply ENU spherical coordinates and an explicit physics step. Bitwise determinism, larger-fleet capacity, camera payload transport and the host aerokernel adapter remain outside this verified slice.
 
@@ -72,6 +72,71 @@ A separate one-vehicle rerun with the smoke client defaults (`--step-ms 20`) suc
 (arm/takeoff/goto/land all reached observed terminal states; hello-to-reset 13.1 s) but
 ran at about **0.2x** real time (221 s wall for ~44 s simulated flight) while the host was
 shared with other jobs. The ~2x figures above apply to 200 ms barriers only. Per-barrier
-overhead is therefore on the order of 100 ms wall; reducing it (e.g. in-process
-gz-transport world control instead of per-call `gz service` subprocesses) is the main P2
-performance item before fine-grained lockstep coupling.
+overhead is therefore on the order of 100 ms wall; P2b below measures and removes it. The baseline already used a persistent requester;
+per-call `gz service` startup was not the cause in that image.
+
+## P2b barrier performance, 2026-10-08
+
+The final image achieves **4.24–4.52× real time for one x500 at 20 ms barriers**, and **2.66–2.81× for three x500s at 20 ms**. Every final flight completed arm→takeoff to 10 m→goto `[50,north,10]`→land, with observed terminal results and final ON_GROUND/disarmed state. Physics remains 4 ms, with exact native WorldStatistics and pose confirmation at every returned boundary.
+
+All measurements use the same local flight base, seed 42, default world, 10 s native warmup, `--cpus 8 --memory 16g`, and `AAS_PROFILE=1`. Each final cadence and fleet size has two fresh-process repeats. The host is shared with other jobs; these are measured runs, not isolated-host capacity guarantees. RTF includes all flight phase RPCs, command submission and host observation processing, excluding reset/warmup and output-file writing.
+
+| Vehicles | Barrier | Repeat 1 sim / wall seconds; RTF | Repeat 2 sim / wall seconds; RTF | Median advance latency, repeats 1 / 2 |
+|---|---:|---|---|---:|
+| 1 | 4 ms | 44.004 / 34.045; **1.293×** | 44.004 / 34.477; **1.276×** | 2.999 / 3.014 ms |
+| 1 | 20 ms | 45.020 / 10.609; **4.243×** | 44.020 / 9.741; **4.519×** | 4.386 / 4.160 ms |
+| 1 | 100 ms | 44.100 / 5.142; **8.577×** | 45.100 / 4.839; **9.320×** | 10.382 / 9.644 ms |
+| 1 | 200 ms | 45.200 / 4.686; **9.646×** | 45.200 / 4.098; **11.030×** | 18.760 / 16.301 ms |
+| 3 | 20 ms | 44.020 / 16.533; **2.663×** | 44.020 / 15.656; **2.812×** | 7.075 / 6.452 ms |
+
+Across these ten final flights, Gazebo pose source age was **0 ns for every returned vehicle sample**. Largest observed terminal goto error was **0.886 m**, and largest final horizontal landing error **0.395 m**. MAVSDK fields remain real cached stream observations with exposed wall receipt ages and an unmapped source simulation timestamp; faster barriers do not turn them into synchronous physics samples. The original acknowledgment-plus-fresh-observation completion predicates and dwell times are unchanged.
+
+### Matched before/after probes
+
+These are stationary on-ground probes, separate from the flight table: two fresh resets, then 60 consecutive advances at each cadence in the same order. Both versions require exact source-time poses. Ground contacts make this workload different from flight.
+
+| Barrier | P2a RTF, repeats 1 / 2 | P2b RTF, repeats 1 / 2 | P2a median RPC, repeats 1 / 2 | P2b median RPC, repeats 1 / 2 |
+|---|---:|---:|---:|---:|
+| 4 ms | 0.0397 / 0.0397× | 1.1926 / 1.1773× | 100.735 / 100.587 ms | 3.252 / 3.251 ms |
+| 20 ms | 0.1986 / 0.1985× | 3.6205 / 3.5283× | 100.662 / 100.585 ms | 5.208 / 5.447 ms |
+| 100 ms | 0.9939 / 0.9932× | 5.8812 / 5.8570× | 100.660 / 100.534 ms | 16.795 / 17.140 ms |
+| 200 ms | 1.9853 / 1.9885× | 6.7952 / 6.9088× | 100.691 / 100.573 ms | 29.598 / 28.680 ms |
+
+### End-to-end 20 ms barrier profile
+
+Durations below are measured wall milliseconds. Runtime phases use `perf_counter_ns`; encoding/drain/total RPC come from server logs, and RTT comes from the host client. Before uses a separate two-repeat 20 ms probe; after uses the two matched ground probes above. Ranges are the two per-run medians, except the before encode/drain/RPC total, which are pooled medians over 120 barriers. Runtime total and RPC total contain the component phases; component medians should not be summed.
+
+| Span | Before | After |
+|---|---:|---:|
+| Strict RPC decode/validation | 0.078–0.080 | 0.053–0.060 |
+| Command dispatch | 10.150–10.151 | 0.0015–0.0017 |
+| SDK simulation heartbeat release/check | absent | 0.0015–0.0017 |
+| Persistent WorldControl request + acknowledgment | 0.667–0.676 | 0.441–0.483 |
+| Integration + exact paused WorldStatistics confirmation | 88.711–88.789 | 3.969–4.162 |
+| Exact pose timestamp confirmation | 0.015–0.016 | 0.164–0.210 |
+| Process check, pose/cache projection | 0.037–0.038 | 0.024–0.026 |
+| Observed command evaluation | 0.004–0.005 | 0.0027–0.0030 |
+| Contact drain/time mapping | 0.009–0.011 | 0.0063–0.0067 |
+| Response JSON encoding | 0.134 | 0.112–0.117 |
+| Response socket drain | 0.101 | 0.069–0.080 |
+| Runtime total | 99.676–99.786 | 4.589–4.868 |
+| Server RPC total | 100.180 | 4.894–5.115 |
+| Client RTT | 100.598–100.672 | 5.208–5.447 |
+
+The dominant P2a cost was waiting for the **10 Hz namespaced WorldStatistics publisher**, not parsing, JSON size or subprocess creation. The persistent request-only child was already sub-millisecond and remains isolated from subscription callbacks because the installed blocking Transport13 binding retains the GIL. Gazebo publishes the same native WorldStatistics unthrottled on `/stats` within the backend’s unique, single-world partition. [Gazebo 8.11 SimulationRunner source](https://github.com/gazebosim/gz-sim/blob/gz-sim8_8.11.0/src/SimulationRunner.cc) shows both publisher configurations.
+
+After changing the statistics source, the fixed 60 Hz `pose/info` publisher became visible as a roughly 16–17 ms wait. P2b subscribes once to the native `dynamic_pose/info` stream and sets SceneBroadcaster’s configurable `dynamic_pose_hertz` to 1000 in a private copy of the installed system configuration and any explicit world SceneBroadcaster plugin. It preserves the system list, physics step and geometry. The dynamic stream carries the same controlled model pose and native timestamp while omitting static visuals. [SceneBroadcaster 8.11 source](https://github.com/gazebosim/gz-sim/blob/gz-sim8_8.11.0/src/systems/scene_broadcaster/SceneBroadcaster.cc) defines the configurable rate and source timestamp.
+
+Thread-safe event notifications replace 1 ms polling sleeps. The clear→locked-check→event-wait order prevents lost wakeups; source errors wake and fault the waiter. The 10 ms command-release delay runs only when a command is newly queued, rather than on every advance. There is no deliberate per-barrier MAVSDK settle timer: the service projects the real stream cache and exposes its ages. WorldControl acknowledgment alone still cannot release a barrier; exact paused statistics and exact pose timestamps are independently required.
+
+### Heartbeat timing and retained failure
+
+An intermediate image with the transport optimizations but ordinary SDK wall-clock GCS heartbeat cadence failed one 200 ms goto: PX4 entered RETURN_TO_LAUNCH at 24.2 sim seconds, returned to the origin, and the command correctly failed its 180 sim-second completion deadline. The failed run is retained in `/tmp/aas-p2a/p2b-flight-sweep.json` and excluded from the final image’s table. Its timing is consistent with a GCS heartbeat gap at accelerated simulation speed; native logs were not retained for that particular failure, so the exact failsafe trigger is an inference. Two subsequent diagnostic repeats without the heartbeat fix succeeded; the failure was intermittent.
+
+The final service uses MAVSDK’s native `MavlinkDirect.send_message` to release an actual GCS HEARTBEAT once per native simulation second before integration chunks, including warmup. MAVSDK supplies its configured sender identity and native framing; the backend adds no audit decoder or CRC implementation. PX4 failsafe parameters are unchanged. A send failure propagates before integration, and heartbeat transmission is never treated as PX4 state, a vehicle acknowledgment or command success. The inherited incoming-heartbeat timeout remains 3600 wall seconds for paused agent decisions. Both final 200 ms flights completed, including the 11.03× repeat.
+
+[measurements-p2b.json](../../containers/px4-gazebo/measurements-p2b.json) retains per-run metrics, phase profiles, source-age summaries, observed command updates, terminal telemetry and artifact paths. Full traces, RPC logs and final native logs are under `/tmp/aas-p2a/p2b-*`. The smoke client supports `--step-ms 4,20,100,200 --runs 2` and `--vehicles 3 --step-ms 20 --runs 2`. **39 host tests pass**, including strict framing, false-success protection, barrier acknowledgment/unpaused/stale-pose rejection, overshoot and subscription faults without resend, event wakeups, pose-rate configuration preservation, heartbeat send failure, sweep grouping and partial/cleanup failure recording. Focused Ruff checks (`E4,E7,E9,F,I`) and formatting pass; all service modules remain below 600 lines.
+
+Orchestrator re-verification of `dev-p2b` (2026-10-08): one vehicle, `--step-ms 20`,
+arm/takeoff/goto/land all observed terminal success; 45.02 s simulated in 10.6 s wall
+(about 4.25x), hello-to-reset 12.6 s.

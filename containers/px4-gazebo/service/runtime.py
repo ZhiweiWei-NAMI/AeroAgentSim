@@ -1,7 +1,9 @@
 """Lockstep lifecycle and physical barriers, independent of benchmark workload."""
 
+import os
 import shutil
 import tempfile
+import time
 import uuid
 from pathlib import Path
 
@@ -43,6 +45,7 @@ class Runtime:
         await self.telemetry.connect()
         steps = config.warmup // config.physics_step_ns
         for offset in range(0, steps, 125):
+            await self.telemetry.heartbeat.pulse(self.gazebo.sim_ns)
             await self.gazebo.step(min(125, steps - offset), config.physics_step_ns)
             self.processes.check()
         await self.telemetry.wait_ready()
@@ -97,29 +100,55 @@ class Runtime:
                 "contacts": [],
                 "command_updates": [],
             }
+        started = time.perf_counter_ns()
+        profile = {}
+        mark = time.perf_counter_ns()
         await self.commands.dispatch(self.sim_ns)
+        profile["command_dispatch"] = time.perf_counter_ns() - mark
         steps = (target - self.sim_ns) // self.config.physics_step_ns
         samples = []
         for offset in range(0, steps, 125):
+            mark = time.perf_counter_ns()
+            await self.telemetry.heartbeat.pulse(self.gazebo.sim_ns)
+            profile["heartbeat_release"] = (
+                profile.get("heartbeat_release", 0) + time.perf_counter_ns() - mark
+            )
             await self.gazebo.step(
                 min(125, steps - offset), self.config.physics_step_ns
             )
+            for key, duration in self.gazebo.profile.items():
+                profile[key] = profile.get(key, 0) + duration
+            mark = time.perf_counter_ns()
             self.processes.check()
             self.sim_ns = self.gazebo.sim_ns - self.origin_ns
             poses = await self.poses()
             samples = self.telemetry.samples(self.sim_ns, poses, self.origin_ns)
+            profile["telemetry_projection"] = (
+                profile.get("telemetry_projection", 0) + time.perf_counter_ns() - mark
+            )
+            mark = time.perf_counter_ns()
             self.commands.observe(samples, self.sim_ns)
+            profile["command_observation"] = (
+                profile.get("command_observation", 0) + time.perf_counter_ns() - mark
+            )
         if self.sim_ns != target:
             raise RuntimeError(f"native frontier mismatch {self.sim_ns} != {target}")
+        mark = time.perf_counter_ns()
         contacts = self.gazebo.drain_contacts()
         for event in contacts:
             event["sim_ns"] -= self.origin_ns
-        return {
+        profile["contacts_drain"] = time.perf_counter_ns() - mark
+        profile["runtime_total"] = time.perf_counter_ns() - started
+        result = {
             "reached_sim_ns": self.sim_ns,
             "telemetry": samples,
             "contacts": contacts,
             "command_updates": self.commands.drain(),
         }
+
+        if os.environ.get("AAS_PROFILE") == "1":
+            result["profile_wall_ns"] = profile
+        return result
 
     def command(self, payload):
         return self.commands.accept(payload, self.sim_ns)

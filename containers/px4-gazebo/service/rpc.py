@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import signal
+import time
 
 from .config import catalog, fields, integer
 from .runtime import Runtime
@@ -88,9 +89,11 @@ class Server:
                 data = await asyncio.wait_for(reader.readline(), 3600)
                 if not data:
                     break
+                rpc_started = time.perf_counter_ns()
                 request = None
                 try:
                     request = decode(data)
+                    decode_ns = time.perf_counter_ns() - rpc_started
                     if request["id"] <= last_id:
                         raise ValueError("request id must strictly increase")
                     last_id = request["id"]
@@ -155,6 +158,8 @@ class Server:
                         for key in ("protocol", "major", "minor", "id")
                     }
                     response["result"] = result
+                    if op == "advance" and "profile_wall_ns" in result:
+                        result["profile_wall_ns"]["rpc_decode"] = decode_ns
                 except Exception as error:
                     state = "TAINTED"
                     LOG.exception("request failed")
@@ -169,13 +174,32 @@ class Server:
                         "message": str(error),
                         "state": state,
                     }
+                encode_started = time.perf_counter_ns()
                 frame = (
                     json.dumps(response, allow_nan=False, separators=(",", ":")) + "\n"
                 ).encode()
                 if len(frame) > MAX_FRAME:
                     raise ValueError("response exceeds frame budget")
+                encode_ns = time.perf_counter_ns() - encode_started
+                drain_started = time.perf_counter_ns()
                 writer.write(frame)
                 await asyncio.wait_for(writer.drain(), 10)
+                if (
+                    request is not None
+                    and request["op"] == "advance"
+                    and os.environ.get("AAS_PROFILE") == "1"
+                ):
+                    LOG.info(
+                        "barrier_profile %s",
+                        json.dumps(
+                            {
+                                "id": request["id"],
+                                "encode_ns": encode_ns,
+                                "drain_ns": time.perf_counter_ns() - drain_started,
+                                "rpc_total_ns": time.perf_counter_ns() - rpc_started,
+                            }
+                        ),
+                    )
         except (ConnectionError, asyncio.TimeoutError, ValueError) as error:
             LOG.warning("connection fault: %s", error)
         finally:

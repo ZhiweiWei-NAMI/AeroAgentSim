@@ -117,8 +117,10 @@ class Commands:
             await getattr(session.action, action)()
 
     async def dispatch(self, sim_ns):
+        dispatched = False
         for record in self.records.values():
             if record["status"] == "queued":
+                dispatched = True
                 record["status"] = "running"
                 record["versions_at_dispatch"] = dict(
                     self.telemetry.versions[record["vehicle"]]
@@ -129,7 +131,8 @@ class Commands:
                 self.emit(record, "running", sim_ns)
         # Allow grpc dispatch and native subscriber threads to latch commands
         # while physics remains paused. No hidden integration occurs here.
-        await asyncio.sleep(0.01)
+        if dispatched:
+            await asyncio.sleep(0.01)
 
     def emit(self, record, status, sim_ns, reason=None):
         record["status"] = status

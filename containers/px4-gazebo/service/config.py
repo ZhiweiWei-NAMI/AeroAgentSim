@@ -158,6 +158,18 @@ def prepare(payload, directory):
         ET.SubElement(include, "uri").text = f"model://{model}"
         ET.SubElement(include, "name").text = vehicle.model_name
         ET.SubElement(include, "pose").text = " ".join(format(v, ".17g") for v in pose)
+    # Preserve the installed system list, changing only pose publication.
+    # SceneBroadcaster's dynamic topic has native model poses and timestamps;
+    # 1000 Hz bounds wall-time publication delay (pose/info is fixed at 60 Hz).
+    server = ET.parse(ROOT / "share/gz/server.config")
+    for element in (server.getroot(), world):
+        for plugin in element.iter("plugin"):
+            if plugin.get("name") == "gz::sim::systems::SceneBroadcaster":
+                hertz = plugin.find("dynamic_pose_hertz")
+                if hertz is None:
+                    hertz = ET.SubElement(plugin, "dynamic_pose_hertz")
+                hertz.text = "1000"
+    server.write(directory / "server.config", encoding="utf-8", xml_declaration=True)
     destination = directory / "world.sdf"
     ET.ElementTree(root).write(destination, encoding="utf-8", xml_declaration=True)
     return Config(seed, name, destination, vehicles, warmup, step, origin)
