@@ -1,0 +1,48 @@
+# PX4/Gazebo backend
+
+AeroAgentSim's container-side lockstep flight simulator. It starts the inherited PX4 SITL, Gazebo Harmonic and patched MAVSDK binaries, without loading the AeroBench service or its workload/evidence machinery. Runtime Python dependencies come from the pinned base image; the host smoke client uses only the standard library.
+
+```bash
+docker build -t aeroagentsim/px4-gazebo:dev-p2a-ipc2 containers/px4-gazebo
+docker run -d --name aas-p2a --label aeroagentsim.job=p2a \
+  --cpus 8 --memory 16g -p 127.0.0.1:19000:9000 \
+  aeroagentsim/px4-gazebo:dev-p2a-ipc2
+/mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python \
+  containers/px4-gazebo/smoke.py --port 19000 --runs 3 \
+  --output /tmp/aas-p2a/single.json
+docker rm -f aas-p2a
+```
+
+Each container owns one world and accepts one connection at a time. `close` cleans up its world and leaves the TCP listener available for a new run. A disconnect also cleans up. Every reset starts new native processes and fresh PX4 parameter/data directories. There is one reset per connection, with no crash resume or automatic retries.
+
+Every frame is a strict UTF-8 JSON object ending in LF. The 8 MiB limit includes LF. Requests carry `protocol`, `major`, `minor`, increasing integer `id`, `op` and object `payload`. Responses echo protocol/version/id and contain exactly one `result` or structured `error`. The protocol is `aeroagentsim.px4/v1`, major 1, minor 0. Duplicate keys, nonfinite values, wrong version, incomplete frames and invalid IDs fault the connection. Operation failures taint the connection: only `close` is then legal.
+
+Example request sequence (one request in flight):
+
+```json
+{"protocol":"aeroagentsim.px4/v1","major":1,"minor":0,"id":1,"op":"hello","payload":{}}
+{"protocol":"aeroagentsim.px4/v1","major":1,"minor":0,"id":2,"op":"reset","payload":{"seed":42,"world":"default","vehicles":[{"id":"v0","model":"x500","spawn":[0,0,0,0,0,0]}],"warmup":10000000000}}
+{"protocol":"aeroagentsim.px4/v1","major":1,"minor":0,"id":3,"op":"advance","payload":{"to_sim_ns":20000000}}
+{"protocol":"aeroagentsim.px4/v1","major":1,"minor":0,"id":4,"op":"command","payload":{"vehicle":"v0","action":"arm","params":{},"command_id":"arm_1"}}
+```
+
+`hello` declares installed models, telemetry/contact capabilities, default-world physics step and operation deadlines. `reset` accepts an image world name or absolute mounted SDF path, integer seed, explicit vehicle declarations and warmup nanoseconds. Spawn uses ENU metres and roll/pitch/yaw radians. The actual physics step comes from SDF and is returned by reset. Native warmup precedes logical time zero. World physics runs paused, with wall-time throttling disabled; the world must provide ENU spherical coordinates for geographic commands.
+
+`advance` requires a nondecreasing integer target aligned to the physics step. Equal-time advance holds native time and does not dispatch pending commands. Integration uses paused `WorldControl.multi_step` through a persistent request-only Gazebo node in a separate Python process; `WorldStatistics` must confirm the exact target and paused state. No stateful operation is resent. Per-vehicle pose/attitude come from timestamped Gazebo data. PX4 velocity, battery fraction, armed/mode/landed/health come from MAVSDK streams. Freshness metadata distinguishes source-time Gazebo pose from MAVSDK receipt age; a missing MAVSDK source-time mapping is explicit and never replaced with a guessed time. Contacts preserve raw collision names and source simulation timestamps. They are events received since the preceding result; subscriber delivery can lag a physics boundary, and an empty list does not certify contact absence. The installed model list is inventory; only x500 is validated here. Models require instrumented contact topics, which reset reports explicitly.
+
+`command` accepts one active command per vehicle and a run-unique command ID. Acceptance queues execution at the next positive advance; it is not an autopilot acknowledgment or success result. Later advances emit `running`, `failed` or `succeeded` updates with the observation boundary time. A successful MAVSDK call alone cannot complete a command: PX4 status and position/velocity completion conditions must also hold. All completion-predicate fields require observations after the action acknowledgment and receipt ages at most 30 wall seconds. State observations are asynchronous and their first observed boundary is an upper bound on the native state transition time.
+
+| Action | Params | Observed success |
+|---|---|---|
+| arm | `{}` | fresh PX4 armed=true |
+| takeoff | `{"altitude_m":10}` | PX4 IN_AIR, armed, relative height within 1 m, speed <1.5 m/s for 1 sim second |
+| goto_location | `{"position_enu":[50,0,10],"yaw_deg":0}` | PX4 IN_AIR/armed, Gazebo distance <=2 m, speed <1.5 m/s for 1 sim second |
+| hold | `{}` | PX4 HOLD, speed <1 m/s for 1 sim second |
+| land | `{}` | PX4 ON_GROUND and disarmed for 1 sim second |
+| disarm | `{}` | fresh PX4 armed=false |
+
+ENU destinations convert through the SDF's WGS84 local tangent origin. Vertical conversion uses the reported PX4 absolute-altitude datum measured against stationary Gazebo pose at reset; reset returns this offset. `yaw_deg` uses MAVSDK's compass heading (0° north, clockwise), whereas spawn yaw uses ENU radians (0 east, counterclockwise). Takeoff height is relative to the PX4 home position. Commands have a 30-second wall deadline for the MAVSDK call and a 180-second simulation deadline for observed completion. A timeout or PX4 action rejection produces failure, not synthetic success.
+
+The MAVSDK heartbeat timeout is 3600 wall seconds, matching the advertised connection idle deadline and allowing pauses for agent decisions. The inherited patch requires a private audit-journal output argument; this service does not decode, validate, export or consume that journal. `AAS_PORT` changes the TCP port. `AAS_DIAGNOSTIC_DIR` optionally copies native logs and generated SDF after cleanup into a writable mounted directory. Default files are private and removed.
+
+The later aerokernel adapter must wrap this backend with `aerokernel.rpc` invocation identity, partition, frontier and input-cut validation. This native service is deliberately not a kernel implementation. See [measured validation and extraction map](../../docs/platform/px4-backend.md).

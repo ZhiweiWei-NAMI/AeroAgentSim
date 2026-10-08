@@ -1,0 +1,2820 @@
+{
+  "image": "aeroagentsim/px4-gazebo:dev-p2a-ipc2",
+  "image_id": "sha256:9a421a10219067220de9b337d3d9af018e43f5758bd77cdc18a4ecb0bad04ed0",
+  "seed": 42,
+  "physics_step_ns": 4000000,
+  "flight_agent_barrier_ns": 200000000,
+  "single_runs": [
+    {
+      "run": 1,
+      "success": true,
+      "hello_ready_wall_s": 0.054646736942231655,
+      "container_to_hello_wall_s": 0.569707958959043,
+      "command_updates": [
+        {
+          "command_id": "r0_arm_v0",
+          "vehicle": "v0",
+          "action": "arm",
+          "status": "running",
+          "sim_ns": 0
+        },
+        {
+          "command_id": "r0_arm_v0",
+          "vehicle": "v0",
+          "action": "arm",
+          "status": "succeeded",
+          "sim_ns": 1200000000
+        },
+        {
+          "command_id": "r0_takeoff_v0",
+          "vehicle": "v0",
+          "action": "takeoff",
+          "status": "running",
+          "sim_ns": 1200000000
+        },
+        {
+          "command_id": "r0_takeoff_v0",
+          "vehicle": "v0",
+          "action": "takeoff",
+          "status": "succeeded",
+          "sim_ns": 14000000000
+        },
+        {
+          "command_id": "r0_goto_location_v0",
+          "vehicle": "v0",
+          "action": "goto_location",
+          "status": "running",
+          "sim_ns": 14000000000
+        },
+        {
+          "command_id": "r0_goto_location_v0",
+          "vehicle": "v0",
+          "action": "goto_location",
+          "status": "succeeded",
+          "sim_ns": 27200000000
+        },
+        {
+          "command_id": "r0_land_v0",
+          "vehicle": "v0",
+          "action": "land",
+          "status": "running",
+          "sim_ns": 27200000000
+        },
+        {
+          "command_id": "r0_land_v0",
+          "vehicle": "v0",
+          "action": "land",
+          "status": "succeeded",
+          "sim_ns": 44200000000
+        }
+      ],
+      "phases": {
+        "arm": {
+          "sim_s": 1.2,
+          "wall_s": 0.6060922360047698,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 1200000000,
+              "position_enu": [
+                -3.2019145359451337e-18,
+                5.906204581639557e-19,
+                -0.013000184415735444
+              ],
+              "attitude_quat": [
+                -1.2738662163293485e-17,
+                1.0564371098371838e-18,
+                -5.416284958714759e-18,
+                1.0
+              ],
+              "velocity_enu": [
+                0.012200785800814629,
+                0.015882449224591255,
+                -0.006528403609991074
+              ],
+              "battery": {
+                "remaining_fraction": 1.0,
+                "voltage_v": 16.200000762939453
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "ON_GROUND",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 89215844,
+                  "flight_mode": 89141419,
+                  "health": 89086493,
+                  "landed_state": 188840124,
+                  "battery": 590935033,
+                  "velocity_enu": 59384450,
+                  "global_position": 58215762
+                },
+                "mavsdk_versions": {
+                  "armed": 74,
+                  "flight_mode": 74,
+                  "health": 74,
+                  "landed_state": 113,
+                  "battery": 6,
+                  "velocity_enu": 329,
+                  "global_position": 402
+                }
+              }
+            }
+          ]
+        },
+        "takeoff": {
+          "sim_s": 12.8,
+          "wall_s": 6.444541468285024,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 14000000000,
+              "position_enu": [
+                -0.003447083179481863,
+                0.008166036034599887,
+                9.579902333786496
+              ],
+              "attitude_quat": [
+                -0.0005327716593460711,
+                -0.00042613101755555825,
+                0.00015603161279764246,
+                0.9999997551103954
+              ],
+              "velocity_enu": [
+                0.0005151687655597925,
+                -0.011463092640042305,
+                0.20238949358463287
+              ],
+              "battery": {
+                "remaining_fraction": 0.82,
+                "voltage_v": 15.840001106262207
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "IN_AIR",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 490651565,
+                  "flight_mode": 490586631,
+                  "health": 490544518,
+                  "landed_state": 89393918,
+                  "battery": 993238069,
+                  "velocity_enu": 78474802,
+                  "global_position": 77967679
+                },
+                "mavsdk_versions": {
+                  "armed": 86,
+                  "flight_mode": 86,
+                  "health": 86,
+                  "landed_state": 126,
+                  "battery": 12,
+                  "velocity_enu": 713,
+                  "global_position": 1042
+                }
+              }
+            }
+          ]
+        },
+        "goto_location": {
+          "sim_s": 13.2,
+          "wall_s": 6.644147427752614,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 27200000000,
+              "position_enu": [
+                49.137803136381144,
+                -0.13352025642691884,
+                10.022086097415201
+              ],
+              "attitude_quat": [
+                -0.018067364053623827,
+                -0.01651731884838635,
+                0.7079675850417478,
+                0.7058205487688567
+              ],
+              "velocity_enu": [
+                0.6703253984451294,
+                0.07453809678554535,
+                -0.002719635609537363
+              ],
+              "battery": {
+                "remaining_fraction": 0.58,
+                "voltage_v": 15.420001029968262
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "IN_AIR",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 87731031,
+                  "flight_mode": 87618744,
+                  "health": 87520454,
+                  "landed_state": 188829593,
+                  "battery": 591386168,
+                  "velocity_enu": 71566418,
+                  "global_position": 71093051
+                },
+                "mavsdk_versions": {
+                  "armed": 100,
+                  "flight_mode": 100,
+                  "health": 100,
+                  "landed_state": 139,
+                  "battery": 19,
+                  "velocity_enu": 1109,
+                  "global_position": 1702
+                }
+              }
+            }
+          ]
+        },
+        "land": {
+          "sim_s": 17.0,
+          "wall_s": 8.557051673531532,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 44200000000,
+              "position_enu": [
+                49.665922368280455,
+                -0.026671937850030854,
+                -0.013000109962950368
+              ],
+              "attitude_quat": [
+                -6.183884961280749e-08,
+                1.370825152698521e-07,
+                0.7013081475691801,
+                0.7128582482885798
+              ],
+              "velocity_enu": [
+                -0.009351592510938644,
+                0.002033635275438428,
+                0.011912708170711994
+              ],
+              "battery": {
+                "remaining_fraction": 0.82,
+                "voltage_v": 16.200000762939453
+              },
+              "armed": false,
+              "flight_mode": "HOLD",
+              "landed_state": "ON_GROUND",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 86859441,
+                  "flight_mode": 86800280,
+                  "health": 86760606,
+                  "landed_state": 187652554,
+                  "battery": 86727305,
+                  "velocity_enu": 61828739,
+                  "global_position": 61088176
+                },
+                "mavsdk_versions": {
+                  "armed": 117,
+                  "flight_mode": 117,
+                  "health": 117,
+                  "landed_state": 156,
+                  "battery": 28,
+                  "velocity_enu": 1619,
+                  "global_position": 2552
+                }
+              }
+            }
+          ]
+        }
+      },
+      "contacts_count": 4437,
+      "reset_wall_s": 13.123103450983763,
+      "hello_to_reset_wall_s": 13.123126680962741,
+      "container_to_reset_wall_s": 13.692836320959032,
+      "last_sim_ns": 44200000000,
+      "goto_error_m": {
+        "v0": 0.8727536228567231
+      },
+      "land_horizontal_error_m": {
+        "v0": 0.3351406514942879
+      },
+      "flight_wall_s": 22.25203947816044,
+      "flight_sim_s": 44.2,
+      "real_time_factor": 1.9863347826333257,
+      "advance_wall_s": {
+        "min": 0.09736769180744886,
+        "median": 0.10063243377953768,
+        "p95": 0.10177767369896173,
+        "max": 0.1040486516430974
+      },
+      "freshness": {
+        "gazebo_pose_age_sim_ns": {
+          "min": 0,
+          "median": 0,
+          "p95": 0,
+          "max": 0
+        },
+        "armed_receipt_age_wall_ns": {
+          "min": 85407313,
+          "median": 289066220,
+          "p95": 491137171,
+          "max": 492915700
+        },
+        "flight_mode_receipt_age_wall_ns": {
+          "min": 85289851,
+          "median": 288989951,
+          "p95": 491059201,
+          "max": 492858129
+        },
+        "health_receipt_age_wall_ns": {
+          "min": 85196427,
+          "median": 288934291,
+          "p95": 491000306,
+          "max": 492816284
+        },
+        "landed_state_receipt_age_wall_ns": {
+          "min": 85975214,
+          "median": 289106999,
+          "p95": 491314547,
+          "max": 492742638
+        },
+        "battery_receipt_age_wall_ns": {
+          "min": 85022547,
+          "median": 491698569,
+          "p95": 993890067,
+          "max": 995499425
+        },
+        "velocity_enu_receipt_age_wall_ns": {
+          "min": 51896405,
+          "median": 74423579,
+          "p95": 77779616,
+          "max": 80014713
+        },
+        "global_position_receipt_age_wall_ns": {
+          "min": 50722274,
+          "median": 73849859,
+          "p95": 77466272,
+          "max": 79647452
+        }
+      }
+    },
+    {
+      "run": 2,
+      "success": true,
+      "hello_ready_wall_s": 0.0025895368307828903,
+      "command_updates": [
+        {
+          "command_id": "r1_arm_v0",
+          "vehicle": "v0",
+          "action": "arm",
+          "status": "running",
+          "sim_ns": 0
+        },
+        {
+          "command_id": "r1_arm_v0",
+          "vehicle": "v0",
+          "action": "arm",
+          "status": "succeeded",
+          "sim_ns": 1200000000
+        },
+        {
+          "command_id": "r1_takeoff_v0",
+          "vehicle": "v0",
+          "action": "takeoff",
+          "status": "running",
+          "sim_ns": 1200000000
+        },
+        {
+          "command_id": "r1_takeoff_v0",
+          "vehicle": "v0",
+          "action": "takeoff",
+          "status": "succeeded",
+          "sim_ns": 14000000000
+        },
+        {
+          "command_id": "r1_goto_location_v0",
+          "vehicle": "v0",
+          "action": "goto_location",
+          "status": "running",
+          "sim_ns": 14000000000
+        },
+        {
+          "command_id": "r1_goto_location_v0",
+          "vehicle": "v0",
+          "action": "goto_location",
+          "status": "succeeded",
+          "sim_ns": 27400000000
+        },
+        {
+          "command_id": "r1_land_v0",
+          "vehicle": "v0",
+          "action": "land",
+          "status": "running",
+          "sim_ns": 27400000000
+        },
+        {
+          "command_id": "r1_land_v0",
+          "vehicle": "v0",
+          "action": "land",
+          "status": "succeeded",
+          "sim_ns": 45200000000
+        }
+      ],
+      "phases": {
+        "arm": {
+          "sim_s": 1.2,
+          "wall_s": 0.6030304245650768,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 1200000000,
+              "position_enu": [
+                -3.2019145359451337e-18,
+                5.906204581639557e-19,
+                -0.013000184415735444
+              ],
+              "attitude_quat": [
+                -1.2738662163293485e-17,
+                1.0564371098371838e-18,
+                -5.416284958714759e-18,
+                1.0
+              ],
+              "velocity_enu": [
+                0.01817643828690052,
+                -0.004308792296797037,
+                -0.0018322505056858063
+              ],
+              "battery": {
+                "remaining_fraction": 1.0,
+                "voltage_v": 16.200000762939453
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "ON_GROUND",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 87590646,
+                  "flight_mode": 87528121,
+                  "health": 87480459,
+                  "landed_state": 187835232,
+                  "battery": 588336007,
+                  "velocity_enu": 57689985,
+                  "global_position": 58365389
+                },
+                "mavsdk_versions": {
+                  "armed": 75,
+                  "flight_mode": 75,
+                  "health": 75,
+                  "landed_state": 114,
+                  "battery": 6,
+                  "velocity_enu": 329,
+                  "global_position": 426
+                }
+              }
+            }
+          ]
+        },
+        "takeoff": {
+          "sim_s": 12.8,
+          "wall_s": 6.442550331354141,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 14000000000,
+              "position_enu": [
+                -0.014394755622499826,
+                -0.04335304531723009,
+                9.549963134891824
+              ],
+              "attitude_quat": [
+                0.0005490286102142407,
+                0.00013993191265992817,
+                -0.0009050555209420421,
+                0.999999429930412
+              ],
+              "velocity_enu": [
+                -0.005425577983260155,
+                0.0011688597733154893,
+                0.2103758305311203
+              ],
+              "battery": {
+                "remaining_fraction": 0.82,
+                "voltage_v": 15.840001106262207
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "IN_AIR",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 491393154,
+                  "flight_mode": 491334239,
+                  "health": 491295523,
+                  "landed_state": 87931737,
+                  "battery": 994830593,
+                  "velocity_enu": 74545827,
+                  "global_position": 74846479
+                },
+                "mavsdk_versions": {
+                  "armed": 87,
+                  "flight_mode": 87,
+                  "health": 87,
+                  "landed_state": 127,
+                  "battery": 12,
+                  "velocity_enu": 713,
+                  "global_position": 1066
+                }
+              }
+            }
+          ]
+        },
+        "goto_location": {
+          "sim_s": 13.4,
+          "wall_s": 6.739097450859845,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 27400000000,
+              "position_enu": [
+                49.232645642455374,
+                -0.11524875668762385,
+                9.937933539974308
+              ],
+              "attitude_quat": [
+                -0.015778522623895477,
+                -0.014832270830907462,
+                0.707846684810729,
+                0.7060340733762545
+              ],
+              "velocity_enu": [
+                0.5734786987304688,
+                0.08555405586957932,
+                0.004050686024129391
+              ],
+              "battery": {
+                "remaining_fraction": 0.58,
+                "voltage_v": 15.420001029968262
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "IN_AIR",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 188473290,
+                  "flight_mode": 188413197,
+                  "health": 188371621,
+                  "landed_state": 288535462,
+                  "battery": 690519821,
+                  "velocity_enu": 75973502,
+                  "global_position": 76182324
+                },
+                "mavsdk_versions": {
+                  "armed": 101,
+                  "flight_mode": 101,
+                  "health": 101,
+                  "landed_state": 140,
+                  "battery": 19,
+                  "velocity_enu": 1115,
+                  "global_position": 1736
+                }
+              }
+            }
+          ]
+        },
+        "land": {
+          "sim_s": 17.8,
+          "wall_s": 8.959005326963961,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 45200000000,
+              "position_enu": [
+                49.63971213992839,
+                -0.03630375798991262,
+                -0.013000276317365583
+              ],
+              "attitude_quat": [
+                6.153953151686115e-07,
+                -1.8029101086151493e-07,
+                0.703569153233114,
+                0.7106267984099865
+              ],
+              "velocity_enu": [
+                -0.013701836578547955,
+                0.024337923154234886,
+                -0.0020320380572229624
+              ],
+              "battery": {
+                "remaining_fraction": 0.79,
+                "voltage_v": 16.200000762939453
+              },
+              "armed": false,
+              "flight_mode": "HOLD",
+              "landed_state": "ON_GROUND",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 86067333,
+                  "flight_mode": 85980608,
+                  "health": 85917577,
+                  "landed_state": 187233284,
+                  "battery": 588112246,
+                  "velocity_enu": 60424244,
+                  "global_position": 61034121
+                },
+                "mavsdk_versions": {
+                  "armed": 119,
+                  "flight_mode": 119,
+                  "health": 119,
+                  "landed_state": 158,
+                  "battery": 28,
+                  "velocity_enu": 1649,
+                  "global_position": 2626
+                }
+              }
+            }
+          ]
+        }
+      },
+      "contacts_count": 4863,
+      "reset_wall_s": 13.81948085129261,
+      "hello_to_reset_wall_s": 13.81950515974313,
+      "last_sim_ns": 45200000000,
+      "goto_error_m": {
+        "v0": 0.7784389709032363
+      },
+      "land_horizontal_error_m": {
+        "v0": 0.3621122822539562
+      },
+      "flight_wall_s": 22.743902577087283,
+      "flight_sim_s": 45.2,
+      "real_time_factor": 1.9873458324401854,
+      "advance_wall_s": {
+        "min": 0.09868792910128832,
+        "median": 0.10063409525901079,
+        "p95": 0.10150049906224012,
+        "max": 0.10242281667888165
+      },
+      "freshness": {
+        "gazebo_pose_age_sim_ns": {
+          "min": 0,
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "armed_receipt_age_wall_ns": {
+          "min": 84836268,
+          "median": 289172461.5,
+          "p95": 491080193,
+          "max": 492252528
+        },
+        "flight_mode_receipt_age_wall_ns": {
+          "min": 84762711,
+          "median": 289093035.5,
+          "p95": 491013957,
+          "max": 492175931
+        },
+        "health_receipt_age_wall_ns": {
+          "min": 84711231,
+          "median": 289024314.5,
+          "p95": 490950010,
+          "max": 492113357
+        },
+        "landed_state_receipt_age_wall_ns": {
+          "min": 85856747,
+          "median": 288609887.5,
+          "p95": 490837384,
+          "max": 492983310
+        },
+        "battery_receipt_age_wall_ns": {
+          "min": 84666974,
+          "median": 491778415.5,
+          "p95": 993423121,
+          "max": 996475026
+        },
+        "velocity_enu_receipt_age_wall_ns": {
+          "min": 55590522,
+          "median": 74507121.5,
+          "p95": 77881540,
+          "max": 79796146
+        },
+        "global_position_receipt_age_wall_ns": {
+          "min": 56239341,
+          "median": 74768960.0,
+          "p95": 78119428,
+          "max": 79883416
+        }
+      }
+    },
+    {
+      "run": 3,
+      "success": true,
+      "hello_ready_wall_s": 0.0021143388003110886,
+      "command_updates": [
+        {
+          "command_id": "r2_arm_v0",
+          "vehicle": "v0",
+          "action": "arm",
+          "status": "running",
+          "sim_ns": 0
+        },
+        {
+          "command_id": "r2_arm_v0",
+          "vehicle": "v0",
+          "action": "arm",
+          "status": "succeeded",
+          "sim_ns": 1200000000
+        },
+        {
+          "command_id": "r2_takeoff_v0",
+          "vehicle": "v0",
+          "action": "takeoff",
+          "status": "running",
+          "sim_ns": 1200000000
+        },
+        {
+          "command_id": "r2_takeoff_v0",
+          "vehicle": "v0",
+          "action": "takeoff",
+          "status": "succeeded",
+          "sim_ns": 14000000000
+        },
+        {
+          "command_id": "r2_goto_location_v0",
+          "vehicle": "v0",
+          "action": "goto_location",
+          "status": "running",
+          "sim_ns": 14000000000
+        },
+        {
+          "command_id": "r2_goto_location_v0",
+          "vehicle": "v0",
+          "action": "goto_location",
+          "status": "succeeded",
+          "sim_ns": 27400000000
+        },
+        {
+          "command_id": "r2_land_v0",
+          "vehicle": "v0",
+          "action": "land",
+          "status": "running",
+          "sim_ns": 27400000000
+        },
+        {
+          "command_id": "r2_land_v0",
+          "vehicle": "v0",
+          "action": "land",
+          "status": "succeeded",
+          "sim_ns": 45200000000
+        }
+      ],
+      "phases": {
+        "arm": {
+          "sim_s": 1.2,
+          "wall_s": 0.5998947964981198,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 1200000000,
+              "position_enu": [
+                -3.2019145359451337e-18,
+                5.906204581639557e-19,
+                -0.013000184415735444
+              ],
+              "attitude_quat": [
+                -1.2738662163293485e-17,
+                1.0564371098371838e-18,
+                -5.416284958714759e-18,
+                1.0
+              ],
+              "velocity_enu": [
+                -0.02380845881998539,
+                -0.00961983297020197,
+                0.0007853332790546119
+              ],
+              "battery": {
+                "remaining_fraction": 1.0,
+                "voltage_v": 16.200000762939453
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "ON_GROUND",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 86141610,
+                  "flight_mode": 86070999,
+                  "landed_state": 186684342,
+                  "health": 86016717,
+                  "battery": 584724316,
+                  "velocity_enu": 62526438,
+                  "global_position": 62147097
+                },
+                "mavsdk_versions": {
+                  "armed": 75,
+                  "flight_mode": 75,
+                  "landed_state": 114,
+                  "health": 75,
+                  "battery": 6,
+                  "velocity_enu": 329,
+                  "global_position": 402
+                }
+              }
+            }
+          ]
+        },
+        "takeoff": {
+          "sim_s": 12.8,
+          "wall_s": 6.441707732155919,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 14000000000,
+              "position_enu": [
+                -0.04015215478951561,
+                -0.021465088522617016,
+                9.619914278483634
+              ],
+              "attitude_quat": [
+                -0.0006451778230420794,
+                -0.00023304782427494345,
+                -0.00231582520245689,
+                0.999997083189706
+              ],
+              "velocity_enu": [
+                0.006965115666389465,
+                0.004440979100763798,
+                0.20144648849964142
+              ],
+              "battery": {
+                "remaining_fraction": 0.82,
+                "voltage_v": 15.840001106262207
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "IN_AIR",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 490506022,
+                  "flight_mode": 490438741,
+                  "landed_state": 88580618,
+                  "health": 490402826,
+                  "battery": 994278214,
+                  "velocity_enu": 74761518,
+                  "global_position": 74480675
+                },
+                "mavsdk_versions": {
+                  "armed": 87,
+                  "flight_mode": 87,
+                  "landed_state": 127,
+                  "health": 87,
+                  "battery": 12,
+                  "velocity_enu": 713,
+                  "global_position": 1042
+                }
+              }
+            }
+          ]
+        },
+        "goto_location": {
+          "sim_s": 13.4,
+          "wall_s": 6.74189692735672,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 27400000000,
+              "position_enu": [
+                49.26590953278154,
+                -0.09412355136184032,
+                9.99049256183339
+              ],
+              "attitude_quat": [
+                -0.01633796600870878,
+                -0.01621365882787109,
+                0.7068259406085616,
+                0.7070129262021548
+              ],
+              "velocity_enu": [
+                0.5816118121147156,
+                0.06596437096595764,
+                0.0003715205821208656
+              ],
+              "battery": {
+                "remaining_fraction": 0.58,
+                "voltage_v": 15.420001029968262
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "IN_AIR",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 188786374,
+                  "flight_mode": 188711052,
+                  "landed_state": 289728006,
+                  "health": 188663916,
+                  "battery": 693092297,
+                  "velocity_enu": 74437292,
+                  "global_position": 74195334
+                },
+                "mavsdk_versions": {
+                  "armed": 101,
+                  "flight_mode": 101,
+                  "landed_state": 140,
+                  "health": 101,
+                  "battery": 19,
+                  "velocity_enu": 1115,
+                  "global_position": 1712
+                }
+              }
+            }
+          ]
+        },
+        "land": {
+          "sim_s": 17.8,
+          "wall_s": 8.954332830384374,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 45200000000,
+              "position_enu": [
+                49.69865158674726,
+                -0.0068655047829490005,
+                -0.01300010087586162
+              ],
+              "attitude_quat": [
+                8.876991306566592e-08,
+                4.921433359393981e-08,
+                0.7036237843723859,
+                0.7105727056856828
+              ],
+              "velocity_enu": [
+                -0.006065961439162493,
+                0.015669245272874832,
+                -0.0015009285416454077
+              ],
+              "battery": {
+                "remaining_fraction": 0.78,
+                "voltage_v": 16.200000762939453
+              },
+              "armed": false,
+              "flight_mode": "HOLD",
+              "landed_state": "ON_GROUND",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 86693403,
+                  "flight_mode": 86621977,
+                  "landed_state": 187614636,
+                  "health": 86580014,
+                  "battery": 589232071,
+                  "velocity_enu": 61594485,
+                  "global_position": 61194719
+                },
+                "mavsdk_versions": {
+                  "armed": 119,
+                  "flight_mode": 119,
+                  "landed_state": 158,
+                  "health": 119,
+                  "battery": 28,
+                  "velocity_enu": 1649,
+                  "global_position": 2602
+                }
+              }
+            }
+          ]
+        }
+      },
+      "contacts_count": 4834,
+      "reset_wall_s": 13.87579152174294,
+      "hello_to_reset_wall_s": 13.875809513032436,
+      "last_sim_ns": 45200000000,
+      "goto_error_m": {
+        "v0": 0.7401610962232956
+      },
+      "land_horizontal_error_m": {
+        "v0": 0.3014266101820949
+      },
+      "flight_wall_s": 22.738023427315056,
+      "flight_sim_s": 45.2,
+      "real_time_factor": 1.9878596811410398,
+      "advance_wall_s": {
+        "min": 0.09829478804022074,
+        "median": 0.10051873046904802,
+        "p95": 0.10151768662035465,
+        "max": 0.10222434811294079
+      },
+      "freshness": {
+        "gazebo_pose_age_sim_ns": {
+          "min": 0,
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "armed_receipt_age_wall_ns": {
+          "min": 84267892,
+          "median": 288937149.0,
+          "p95": 491062471,
+          "max": 492369947
+        },
+        "flight_mode_receipt_age_wall_ns": {
+          "min": 84202365,
+          "median": 288868400.0,
+          "p95": 490989338,
+          "max": 492278110
+        },
+        "landed_state_receipt_age_wall_ns": {
+          "min": 86365520,
+          "median": 288736946.5,
+          "p95": 490980714,
+          "max": 491766663
+        },
+        "health_receipt_age_wall_ns": {
+          "min": 84147622,
+          "median": 288818275.5,
+          "p95": 490928110,
+          "max": 492195155
+        },
+        "battery_receipt_age_wall_ns": {
+          "min": 84092496,
+          "median": 491436032.5,
+          "p95": 993294896,
+          "max": 995403404
+        },
+        "velocity_enu_receipt_age_wall_ns": {
+          "min": 55616959,
+          "median": 74427305.0,
+          "p95": 78296394,
+          "max": 79574187
+        },
+        "global_position_receipt_age_wall_ns": {
+          "min": 55303697,
+          "median": 74177061.5,
+          "p95": 78094473,
+          "max": 79350385
+        }
+      }
+    }
+  ],
+  "three_vehicle_runs": [
+    {
+      "run": 1,
+      "success": true,
+      "hello_ready_wall_s": 0.10522426851093769,
+      "container_to_hello_wall_s": 0.595826143398881,
+      "command_updates": [
+        {
+          "command_id": "r0_arm_v0",
+          "vehicle": "v0",
+          "action": "arm",
+          "status": "running",
+          "sim_ns": 0
+        },
+        {
+          "command_id": "r0_arm_v1",
+          "vehicle": "v1",
+          "action": "arm",
+          "status": "running",
+          "sim_ns": 0
+        },
+        {
+          "command_id": "r0_arm_v2",
+          "vehicle": "v2",
+          "action": "arm",
+          "status": "running",
+          "sim_ns": 0
+        },
+        {
+          "command_id": "r0_arm_v0",
+          "vehicle": "v0",
+          "action": "arm",
+          "status": "succeeded",
+          "sim_ns": 1200000000
+        },
+        {
+          "command_id": "r0_arm_v1",
+          "vehicle": "v1",
+          "action": "arm",
+          "status": "succeeded",
+          "sim_ns": 1200000000
+        },
+        {
+          "command_id": "r0_arm_v2",
+          "vehicle": "v2",
+          "action": "arm",
+          "status": "succeeded",
+          "sim_ns": 1200000000
+        },
+        {
+          "command_id": "r0_takeoff_v0",
+          "vehicle": "v0",
+          "action": "takeoff",
+          "status": "running",
+          "sim_ns": 1200000000
+        },
+        {
+          "command_id": "r0_takeoff_v1",
+          "vehicle": "v1",
+          "action": "takeoff",
+          "status": "running",
+          "sim_ns": 1200000000
+        },
+        {
+          "command_id": "r0_takeoff_v2",
+          "vehicle": "v2",
+          "action": "takeoff",
+          "status": "running",
+          "sim_ns": 1200000000
+        },
+        {
+          "command_id": "r0_takeoff_v1",
+          "vehicle": "v1",
+          "action": "takeoff",
+          "status": "succeeded",
+          "sim_ns": 14000000000
+        },
+        {
+          "command_id": "r0_takeoff_v2",
+          "vehicle": "v2",
+          "action": "takeoff",
+          "status": "succeeded",
+          "sim_ns": 14000000000
+        },
+        {
+          "command_id": "r0_takeoff_v0",
+          "vehicle": "v0",
+          "action": "takeoff",
+          "status": "succeeded",
+          "sim_ns": 14200000000
+        },
+        {
+          "command_id": "r0_goto_location_v0",
+          "vehicle": "v0",
+          "action": "goto_location",
+          "status": "running",
+          "sim_ns": 14200000000
+        },
+        {
+          "command_id": "r0_goto_location_v1",
+          "vehicle": "v1",
+          "action": "goto_location",
+          "status": "running",
+          "sim_ns": 14200000000
+        },
+        {
+          "command_id": "r0_goto_location_v2",
+          "vehicle": "v2",
+          "action": "goto_location",
+          "status": "running",
+          "sim_ns": 14200000000
+        },
+        {
+          "command_id": "r0_goto_location_v2",
+          "vehicle": "v2",
+          "action": "goto_location",
+          "status": "succeeded",
+          "sim_ns": 27400000000
+        },
+        {
+          "command_id": "r0_goto_location_v0",
+          "vehicle": "v0",
+          "action": "goto_location",
+          "status": "succeeded",
+          "sim_ns": 27600000000
+        },
+        {
+          "command_id": "r0_goto_location_v1",
+          "vehicle": "v1",
+          "action": "goto_location",
+          "status": "succeeded",
+          "sim_ns": 27600000000
+        },
+        {
+          "command_id": "r0_land_v0",
+          "vehicle": "v0",
+          "action": "land",
+          "status": "running",
+          "sim_ns": 27600000000
+        },
+        {
+          "command_id": "r0_land_v1",
+          "vehicle": "v1",
+          "action": "land",
+          "status": "running",
+          "sim_ns": 27600000000
+        },
+        {
+          "command_id": "r0_land_v2",
+          "vehicle": "v2",
+          "action": "land",
+          "status": "running",
+          "sim_ns": 27600000000
+        },
+        {
+          "command_id": "r0_land_v0",
+          "vehicle": "v0",
+          "action": "land",
+          "status": "succeeded",
+          "sim_ns": 45200000000
+        },
+        {
+          "command_id": "r0_land_v1",
+          "vehicle": "v1",
+          "action": "land",
+          "status": "succeeded",
+          "sim_ns": 45200000000
+        },
+        {
+          "command_id": "r0_land_v2",
+          "vehicle": "v2",
+          "action": "land",
+          "status": "succeeded",
+          "sim_ns": 45200000000
+        }
+      ],
+      "phases": {
+        "arm": {
+          "sim_s": 1.2,
+          "wall_s": 0.6033137179911137,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 1200000000,
+              "position_enu": [
+                -3.2019145359451337e-18,
+                5.906204581639557e-19,
+                -0.013000184415735444
+              ],
+              "attitude_quat": [
+                -1.2738662163293485e-17,
+                1.0564371098371838e-18,
+                -5.416284958714759e-18,
+                1.0
+              ],
+              "velocity_enu": [
+                -0.015521530993282795,
+                0.0048173340037465096,
+                0.002909270580857992
+              ],
+              "battery": {
+                "remaining_fraction": 1.0,
+                "voltage_v": 16.200000762939453
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "ON_GROUND",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 86063524,
+                  "flight_mode": 85996707,
+                  "health": 85944909,
+                  "landed_state": 85822983,
+                  "battery": 586274108,
+                  "velocity_enu": 34275455,
+                  "global_position": 27035038
+                },
+                "mavsdk_versions": {
+                  "armed": 76,
+                  "flight_mode": 76,
+                  "health": 76,
+                  "landed_state": 116,
+                  "battery": 6,
+                  "velocity_enu": 329,
+                  "global_position": 427
+                }
+              }
+            },
+            {
+              "vehicle": "v1",
+              "sim_ns": 1200000000,
+              "position_enu": [
+                6.6360680973899616e-18,
+                8.0,
+                -0.013000184415735444
+              ],
+              "attitude_quat": [
+                2.0302178696215276e-17,
+                -3.4131131645094e-19,
+                1.9718697554796633e-17,
+                1.0
+              ],
+              "velocity_enu": [
+                -0.018153401091694832,
+                -0.010784422047436237,
+                -0.0024681331124156713
+              ],
+              "battery": {
+                "remaining_fraction": 1.0,
+                "voltage_v": 16.200000762939453
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "ON_GROUND",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 85915443,
+                  "flight_mode": 85886373,
+                  "landed_state": 187497597,
+                  "health": 85853493,
+                  "battery": 586303177,
+                  "velocity_enu": 31860554,
+                  "global_position": 30713030
+                },
+                "mavsdk_versions": {
+                  "armed": 76,
+                  "flight_mode": 76,
+                  "landed_state": 115,
+                  "health": 75,
+                  "battery": 6,
+                  "velocity_enu": 329,
+                  "global_position": 402
+                }
+              }
+            },
+            {
+              "vehicle": "v2",
+              "sim_ns": 1200000000,
+              "position_enu": [
+                1.1024492241808603e-18,
+                16.0,
+                -0.013000184415735444
+              ],
+              "attitude_quat": [
+                3.3680288776968456e-19,
+                -8.318869495601987e-19,
+                -1.850351140122952e-20,
+                1.0
+              ],
+              "velocity_enu": [
+                -0.009161751717329025,
+                2.051299816230312e-05,
+                0.004524668678641319
+              ],
+              "battery": {
+                "remaining_fraction": 1.0,
+                "voltage_v": 16.200000762939453
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "ON_GROUND",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 85770529,
+                  "flight_mode": 85742788,
+                  "health": 85711293,
+                  "landed_state": 187558095,
+                  "battery": 586245657,
+                  "velocity_enu": 33187801,
+                  "global_position": 29469432
+                },
+                "mavsdk_versions": {
+                  "armed": 75,
+                  "flight_mode": 75,
+                  "health": 75,
+                  "landed_state": 114,
+                  "battery": 6,
+                  "velocity_enu": 329,
+                  "global_position": 402
+                }
+              }
+            }
+          ]
+        },
+        "takeoff": {
+          "sim_s": 13.0,
+          "wall_s": 6.548173885792494,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 14200000000,
+              "position_enu": [
+                -0.04602005134950929,
+                0.0014415743803385971,
+                9.652386687868027
+              ],
+              "attitude_quat": [
+                0.00032809746326047963,
+                -3.913058350086263e-05,
+                -0.00179451470428638,
+                0.9999983352675285
+              ],
+              "velocity_enu": [
+                -0.002623538486659527,
+                0.01609034277498722,
+                0.18300475180149078
+              ],
+              "battery": {
+                "remaining_fraction": 0.78,
+                "voltage_v": 15.780000686645508
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "IN_AIR",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 87311448,
+                  "flight_mode": 87278285,
+                  "health": 87241634,
+                  "landed_state": 87039420,
+                  "battery": 87140259,
+                  "velocity_enu": 62359788,
+                  "global_position": 59449637
+                },
+                "mavsdk_versions": {
+                  "armed": 89,
+                  "flight_mode": 89,
+                  "health": 89,
+                  "landed_state": 129,
+                  "battery": 13,
+                  "velocity_enu": 719,
+                  "global_position": 1077
+                }
+              }
+            },
+            {
+              "vehicle": "v1",
+              "sim_ns": 14200000000,
+              "position_enu": [
+                0.0023748967487788,
+                7.984768861876286,
+                9.647974779538373
+              ],
+              "attitude_quat": [
+                0.0002552814546927411,
+                -0.0026191103454016335,
+                -0.0007161135115993756,
+                0.999996281129993
+              ],
+              "velocity_enu": [
+                0.013311995193362236,
+                -0.000550153199583292,
+                0.17598161101341248
+              ],
+              "battery": {
+                "remaining_fraction": 0.78,
+                "voltage_v": 15.780000686645508
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "IN_AIR",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 87360065,
+                  "flight_mode": 87220769,
+                  "landed_state": 188327983,
+                  "health": 87199122,
+                  "battery": 87164094,
+                  "velocity_enu": 61372890,
+                  "global_position": 60869753
+                },
+                "mavsdk_versions": {
+                  "armed": 89,
+                  "flight_mode": 89,
+                  "landed_state": 128,
+                  "health": 88,
+                  "battery": 13,
+                  "velocity_enu": 719,
+                  "global_position": 1052
+                }
+              }
+            },
+            {
+              "vehicle": "v2",
+              "sim_ns": 14200000000,
+              "position_enu": [
+                -0.027727051025260484,
+                15.983918930659959,
+                9.65043385662689
+              ],
+              "attitude_quat": [
+                0.0007350830749582339,
+                -0.0003540020687601519,
+                -0.003064725038825462,
+                0.9999949708852763
+              ],
+              "velocity_enu": [
+                0.009307672269642353,
+                0.0017982997233048081,
+                0.17511799931526184
+              ],
+              "battery": {
+                "remaining_fraction": 0.78,
+                "voltage_v": 15.780000686645508
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "IN_AIR",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 87122257,
+                  "flight_mode": 87103353,
+                  "health": 87082170,
+                  "landed_state": 188265823,
+                  "battery": 87060730,
+                  "velocity_enu": 61927813,
+                  "global_position": 60503972
+                },
+                "mavsdk_versions": {
+                  "armed": 88,
+                  "flight_mode": 88,
+                  "health": 88,
+                  "landed_state": 127,
+                  "battery": 13,
+                  "velocity_enu": 719,
+                  "global_position": 1052
+                }
+              }
+            }
+          ]
+        },
+        "goto_location": {
+          "sim_s": 13.4,
+          "wall_s": 6.744926682673395,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 27600000000,
+              "position_enu": [
+                49.26986905374362,
+                -0.06304459754449127,
+                10.052905467433726
+              ],
+              "attitude_quat": [
+                -0.01403955874268714,
+                -0.016878916223822833,
+                0.707469715060983,
+                0.7064025730763949
+              ],
+              "velocity_enu": [
+                0.5695793032646179,
+                0.08041626960039139,
+                -0.010842273943126202
+              ],
+              "battery": {
+                "remaining_fraction": 0.58,
+                "voltage_v": 15.421000480651855
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "IN_AIR",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 290804936,
+                  "flight_mode": 290782253,
+                  "health": 290758087,
+                  "landed_state": 290731269,
+                  "battery": 792692202,
+                  "velocity_enu": 59451780,
+                  "global_position": 55723364
+                },
+                "mavsdk_versions": {
+                  "armed": 102,
+                  "flight_mode": 102,
+                  "health": 102,
+                  "landed_state": 142,
+                  "battery": 19,
+                  "velocity_enu": 1121,
+                  "global_position": 1747
+                }
+              }
+            },
+            {
+              "vehicle": "v1",
+              "sim_ns": 27600000000,
+              "position_enu": [
+                49.2988690700609,
+                7.889357159856234,
+                9.986407188494018
+              ],
+              "attitude_quat": [
+                -0.015526021962154668,
+                -0.016963133648104384,
+                0.7074538101811947,
+                0.7063853772544966
+              ],
+              "velocity_enu": [
+                0.5892497301101685,
+                0.09262365102767944,
+                -0.007362626492977142
+              ],
+              "battery": {
+                "remaining_fraction": 0.58,
+                "voltage_v": 15.420001029968262
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "IN_AIR",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 290915475,
+                  "flight_mode": 290893494,
+                  "landed_state": 390778714,
+                  "health": 290852381,
+                  "battery": 792442089,
+                  "velocity_enu": 58136758,
+                  "global_position": 57530937
+                },
+                "mavsdk_versions": {
+                  "armed": 102,
+                  "flight_mode": 102,
+                  "landed_state": 141,
+                  "health": 101,
+                  "battery": 19,
+                  "velocity_enu": 1121,
+                  "global_position": 1722
+                }
+              }
+            },
+            {
+              "vehicle": "v2",
+              "sim_ns": 27600000000,
+              "position_enu": [
+                49.28932392393796,
+                15.857598667839557,
+                9.989685356484133
+              ],
+              "attitude_quat": [
+                -0.015834536844747223,
+                -0.016086848468383458,
+                0.7080473846293565,
+                0.7058040676198996
+              ],
+              "velocity_enu": [
+                0.5546554923057556,
+                0.08415156602859497,
+                -0.004660537466406822
+              ],
+              "battery": {
+                "remaining_fraction": 0.58,
+                "voltage_v": 15.420001029968262
+              },
+              "armed": true,
+              "flight_mode": "HOLD",
+              "landed_state": "IN_AIR",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 291009296,
+                  "flight_mode": 290942346,
+                  "health": 290827069,
+                  "landed_state": 390836576,
+                  "battery": 792774477,
+                  "velocity_enu": 58849668,
+                  "global_position": 56960703
+                },
+                "mavsdk_versions": {
+                  "armed": 101,
+                  "flight_mode": 101,
+                  "health": 101,
+                  "landed_state": 140,
+                  "battery": 19,
+                  "velocity_enu": 1121,
+                  "global_position": 1722
+                }
+              }
+            }
+          ]
+        },
+        "land": {
+          "sim_s": 17.6,
+          "wall_s": 8.86528932582587,
+          "final_telemetry": [
+            {
+              "vehicle": "v0",
+              "sim_ns": 45200000000,
+              "position_enu": [
+                49.646071256123676,
+                0.013007139653710198,
+                -0.013000486905730801
+              ],
+              "attitude_quat": [
+                4.910979409256851e-07,
+                8.27839141523117e-07,
+                0.7040491359953662,
+                0.7101512614248121
+              ],
+              "velocity_enu": [
+                -0.003136244835332036,
+                0.008473086170852184,
+                0.003220148151740432
+              ],
+              "battery": {
+                "remaining_fraction": 0.72,
+                "voltage_v": 16.200000762939453
+              },
+              "armed": false,
+              "flight_mode": "HOLD",
+              "landed_state": "ON_GROUND",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 85254964,
+                  "flight_mode": 85234481,
+                  "health": 85205933,
+                  "landed_state": 85145733,
+                  "battery": 586619282,
+                  "velocity_enu": 31632775,
+                  "global_position": 30399007
+                },
+                "mavsdk_versions": {
+                  "armed": 120,
+                  "flight_mode": 120,
+                  "health": 120,
+                  "landed_state": 160,
+                  "battery": 28,
+                  "velocity_enu": 1649,
+                  "global_position": 2626
+                }
+              }
+            },
+            {
+              "vehicle": "v1",
+              "sim_ns": 45200000000,
+              "position_enu": [
+                49.69735519596912,
+                8.016978537140975,
+                -0.013000729038883191
+              ],
+              "attitude_quat": [
+                -4.0014162730792544e-07,
+                4.094944844517897e-07,
+                0.7030485512974342,
+                0.7111418525992205
+              ],
+              "velocity_enu": [
+                -0.006952384952455759,
+                0.010871024802327156,
+                0.003057482186704874
+              ],
+              "battery": {
+                "remaining_fraction": 0.7,
+                "voltage_v": 16.200000762939453
+              },
+              "armed": false,
+              "flight_mode": "HOLD",
+              "landed_state": "ON_GROUND",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 85368323,
+                  "flight_mode": 85334370,
+                  "landed_state": 187495345,
+                  "health": 85295406,
+                  "battery": 586944356,
+                  "velocity_enu": 36689454,
+                  "global_position": 34690047
+                },
+                "mavsdk_versions": {
+                  "armed": 120,
+                  "flight_mode": 120,
+                  "landed_state": 159,
+                  "health": 119,
+                  "battery": 28,
+                  "velocity_enu": 1649,
+                  "global_position": 2602
+                }
+              }
+            },
+            {
+              "vehicle": "v2",
+              "sim_ns": 45200000000,
+              "position_enu": [
+                49.66101911854787,
+                15.993330605261022,
+                -0.01300018039636211
+              ],
+              "attitude_quat": [
+                3.349403069869563e-07,
+                2.149621061739932e-07,
+                0.7042375655623352,
+                0.7099644013967724
+              ],
+              "velocity_enu": [
+                0.008649835363030434,
+                -4.110794543521479e-05,
+                0.004986211191862822
+              ],
+              "battery": {
+                "remaining_fraction": 0.72,
+                "voltage_v": 16.200000762939453
+              },
+              "armed": false,
+              "flight_mode": "HOLD",
+              "landed_state": "ON_GROUND",
+              "health": {
+                "is_gyrometer_calibration_ok": true,
+                "is_accelerometer_calibration_ok": true,
+                "is_magnetometer_calibration_ok": true,
+                "is_local_position_ok": true,
+                "is_global_position_ok": true,
+                "is_home_position_ok": true,
+                "is_armable": true
+              },
+              "freshness": {
+                "gazebo_pose_age_sim_ns": 0,
+                "mavsdk_source_sim_ns": null,
+                "mavsdk_receipt_age_wall_ns": {
+                  "armed": 85418540,
+                  "flight_mode": 85274400,
+                  "health": 85175526,
+                  "landed_state": 187432330,
+                  "battery": 586648379,
+                  "velocity_enu": 38171795,
+                  "global_position": 32887871
+                },
+                "mavsdk_versions": {
+                  "armed": 119,
+                  "flight_mode": 119,
+                  "health": 119,
+                  "landed_state": 158,
+                  "battery": 28,
+                  "velocity_enu": 1649,
+                  "global_position": 2602
+                }
+              }
+            }
+          ]
+        }
+      },
+      "contacts_count": 14182,
+      "reset_wall_s": 15.096539515070617,
+      "hello_to_reset_wall_s": 15.096559030003846,
+      "container_to_reset_wall_s": 15.69238665793091,
+      "last_sim_ns": 45200000000,
+      "goto_error_m": {
+        "v0": 0.7347549308750272,
+        "v1": 0.7099374504257254,
+        "v2": 0.7248758627233156
+      },
+      "land_horizontal_error_m": {
+        "v0": 0.3541676741655619,
+        "v1": 0.3031206824522785,
+        "v2": 0.33904648474250176
+      },
+      "flight_wall_s": 22.76192957162857,
+      "flight_sim_s": 45.2,
+      "real_time_factor": 1.98577189415168,
+      "advance_wall_s": {
+        "min": 0.09739230945706367,
+        "median": 0.1006643190048635,
+        "p95": 0.10189136303961277,
+        "max": 0.10413499735295773
+      },
+      "freshness": {
+        "gazebo_pose_age_sim_ns": {
+          "min": 0,
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "armed_receipt_age_wall_ns": {
+          "min": 82200875,
+          "median": 288430140.5,
+          "p95": 491072044,
+          "max": 493737636
+        },
+        "flight_mode_receipt_age_wall_ns": {
+          "min": 82175042,
+          "median": 288336921.0,
+          "p95": 490974210,
+          "max": 493664297
+        },
+        "health_receipt_age_wall_ns": {
+          "min": 82145758,
+          "median": 288292664.5,
+          "p95": 490910030,
+          "max": 493555513
+        },
+        "landed_state_receipt_age_wall_ns": {
+          "min": 82018400,
+          "median": 288445461.0,
+          "p95": 490764510,
+          "max": 519020915
+        },
+        "battery_receipt_age_wall_ns": {
+          "min": 82046357,
+          "median": 490668876.0,
+          "p95": 993348553,
+          "max": 997732354
+        },
+        "velocity_enu_receipt_age_wall_ns": {
+          "min": 15615321,
+          "median": 58168509.5,
+          "p95": 64439836,
+          "max": 67074786
+        },
+        "global_position_receipt_age_wall_ns": {
+          "min": 14458933,
+          "median": 56093988.5,
+          "p95": 62745706,
+          "max": 65643529
+        }
+      }
+    }
+  ],
+  "trajectory_comparisons": [
+    {
+      "run": 2,
+      "reference_run": 1,
+      "shared_vehicle_samples": 221,
+      "position_rms_m": 0.10877983907296038,
+      "position_max_m": 0.2218864168397527,
+      "bitwise_identical_positions": false
+    },
+    {
+      "run": 3,
+      "reference_run": 1,
+      "shared_vehicle_samples": 221,
+      "position_rms_m": 0.1073494455165222,
+      "position_max_m": 0.276602634834501,
+      "bitwise_identical_positions": false
+    }
+  ],
+  "extra_actions": {
+    "actions": [
+      {
+        "action": "arm",
+        "update": {
+          "command_id": "extra0_arm",
+          "vehicle": "v0",
+          "action": "arm",
+          "status": "succeeded",
+          "sim_ns": 1200000000
+        },
+        "telemetry": [
+          {
+            "vehicle": "v0",
+            "sim_ns": 1200000000,
+            "position_enu": [
+              -3.2019145359451337e-18,
+              5.906204581639557e-19,
+              -0.013000184415735444
+            ],
+            "attitude_quat": [
+              -1.2738662163293485e-17,
+              1.0564371098371838e-18,
+              -5.416284958714759e-18,
+              1.0
+            ],
+            "velocity_enu": [
+              -0.01130682323127985,
+              -0.011196942068636417,
+              -0.009137153625488281
+            ],
+            "battery": {
+              "remaining_fraction": 1.0,
+              "voltage_v": 16.200000762939453
+            },
+            "armed": true,
+            "flight_mode": "HOLD",
+            "landed_state": "ON_GROUND",
+            "health": {
+              "is_gyrometer_calibration_ok": true,
+              "is_accelerometer_calibration_ok": true,
+              "is_magnetometer_calibration_ok": true,
+              "is_local_position_ok": true,
+              "is_global_position_ok": true,
+              "is_home_position_ok": true,
+              "is_armable": true
+            },
+            "freshness": {
+              "gazebo_pose_age_sim_ns": 0,
+              "mavsdk_source_sim_ns": null,
+              "mavsdk_receipt_age_wall_ns": {
+                "armed": 87701950,
+                "flight_mode": 87601801,
+                "health": 87522111,
+                "landed_state": 87445801,
+                "battery": 589748115,
+                "velocity_enu": 66842635,
+                "global_position": 67219725
+              },
+              "mavsdk_versions": {
+                "armed": 73,
+                "flight_mode": 73,
+                "health": 73,
+                "landed_state": 113,
+                "battery": 6,
+                "velocity_enu": 329,
+                "global_position": 426
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action": "disarm",
+        "update": {
+          "command_id": "extra1_disarm",
+          "vehicle": "v0",
+          "action": "disarm",
+          "status": "succeeded",
+          "sim_ns": 2200000000
+        },
+        "telemetry": [
+          {
+            "vehicle": "v0",
+            "sim_ns": 2200000000,
+            "position_enu": [
+              -3.2019145359451337e-18,
+              5.906204581639557e-19,
+              -0.013000184415735444
+            ],
+            "attitude_quat": [
+              -1.2738662163293485e-17,
+              1.0564371098371838e-18,
+              -5.416284958714759e-18,
+              1.0
+            ],
+            "velocity_enu": [
+              -0.011324366554617882,
+              -0.0020881216041743755,
+              -0.0076475199311971664
+            ],
+            "battery": {
+              "remaining_fraction": 1.0,
+              "voltage_v": 16.200000762939453
+            },
+            "armed": false,
+            "flight_mode": "HOLD",
+            "landed_state": "ON_GROUND",
+            "health": {
+              "is_gyrometer_calibration_ok": true,
+              "is_accelerometer_calibration_ok": true,
+              "is_magnetometer_calibration_ok": true,
+              "is_local_position_ok": true,
+              "is_global_position_ok": true,
+              "is_home_position_ok": true,
+              "is_armable": true
+            },
+            "freshness": {
+              "gazebo_pose_age_sim_ns": 0,
+              "mavsdk_source_sim_ns": null,
+              "mavsdk_receipt_age_wall_ns": {
+                "armed": 86385445,
+                "flight_mode": 86316587,
+                "health": 86263278,
+                "landed_state": 86179853,
+                "battery": 86212884,
+                "velocity_enu": 67304724,
+                "global_position": 67612582
+              },
+              "mavsdk_versions": {
+                "armed": 74,
+                "flight_mode": 74,
+                "health": 74,
+                "landed_state": 114,
+                "battery": 7,
+                "velocity_enu": 359,
+                "global_position": 476
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action": "arm",
+        "update": {
+          "command_id": "extra2_arm",
+          "vehicle": "v0",
+          "action": "arm",
+          "status": "succeeded",
+          "sim_ns": 3200000000
+        },
+        "telemetry": [
+          {
+            "vehicle": "v0",
+            "sim_ns": 3200000000,
+            "position_enu": [
+              -3.2019145359451337e-18,
+              5.906204581639557e-19,
+              -0.013000184415735444
+            ],
+            "attitude_quat": [
+              -1.2738662163293485e-17,
+              1.0564371098371838e-18,
+              -5.416284958714759e-18,
+              1.0
+            ],
+            "velocity_enu": [
+              0.001836893381550908,
+              -0.003248445689678192,
+              -0.004285220522433519
+            ],
+            "battery": {
+              "remaining_fraction": 1.0,
+              "voltage_v": 16.200000762939453
+            },
+            "armed": true,
+            "flight_mode": "HOLD",
+            "landed_state": "ON_GROUND",
+            "health": {
+              "is_gyrometer_calibration_ok": true,
+              "is_accelerometer_calibration_ok": true,
+              "is_magnetometer_calibration_ok": true,
+              "is_local_position_ok": true,
+              "is_global_position_ok": true,
+              "is_home_position_ok": true,
+              "is_armable": true
+            },
+            "freshness": {
+              "gazebo_pose_age_sim_ns": 0,
+              "mavsdk_source_sim_ns": null,
+              "mavsdk_receipt_age_wall_ns": {
+                "armed": 86701787,
+                "flight_mode": 86615976,
+                "health": 86554392,
+                "landed_state": 86511783,
+                "battery": 588587239,
+                "velocity_enu": 65135856,
+                "global_position": 65483573
+              },
+              "mavsdk_versions": {
+                "armed": 75,
+                "flight_mode": 75,
+                "health": 75,
+                "landed_state": 115,
+                "battery": 7,
+                "velocity_enu": 389,
+                "global_position": 526
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action": "takeoff",
+        "update": {
+          "command_id": "extra3_takeoff",
+          "vehicle": "v0",
+          "action": "takeoff",
+          "status": "succeeded",
+          "sim_ns": 16200000000
+        },
+        "telemetry": [
+          {
+            "vehicle": "v0",
+            "sim_ns": 16200000000,
+            "position_enu": [
+              0.015250605709088262,
+              -0.009309968006889916,
+              9.637020556070006
+            ],
+            "attitude_quat": [
+              -0.0012883715505361416,
+              -0.0012979375591507317,
+              -0.0031885835606264715,
+              0.999993244173038
+            ],
+            "velocity_enu": [
+              -0.008348530158400536,
+              -0.024449888616800308,
+              0.1666983664035797
+            ],
+            "battery": {
+              "remaining_fraction": 0.79,
+              "voltage_v": 15.786001205444336
+            },
+            "armed": true,
+            "flight_mode": "HOLD",
+            "landed_state": "IN_AIR",
+            "health": {
+              "is_gyrometer_calibration_ok": true,
+              "is_accelerometer_calibration_ok": true,
+              "is_magnetometer_calibration_ok": true,
+              "is_local_position_ok": true,
+              "is_global_position_ok": true,
+              "is_home_position_ok": true,
+              "is_armable": true
+            },
+            "freshness": {
+              "gazebo_pose_age_sim_ns": 0,
+              "mavsdk_source_sim_ns": null,
+              "mavsdk_receipt_age_wall_ns": {
+                "armed": 88458233,
+                "flight_mode": 88410686,
+                "health": 88379027,
+                "landed_state": 88322855,
+                "battery": 88342598,
+                "velocity_enu": 77356546,
+                "global_position": 77495555
+              },
+              "mavsdk_versions": {
+                "armed": 88,
+                "flight_mode": 88,
+                "health": 88,
+                "landed_state": 128,
+                "battery": 14,
+                "velocity_enu": 779,
+                "global_position": 1176
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action": "hold",
+        "update": {
+          "command_id": "extra4_hold",
+          "vehicle": "v0",
+          "action": "hold",
+          "status": "succeeded",
+          "sim_ns": 18200000000
+        },
+        "telemetry": [
+          {
+            "vehicle": "v0",
+            "sim_ns": 18200000000,
+            "position_enu": [
+              -0.010672735911599236,
+              -0.037117766395008654,
+              9.848527119320757
+            ],
+            "attitude_quat": [
+              -0.00025965418698081853,
+              -0.0011936854533863357,
+              -0.003840016443099271,
+              0.9999918809512697
+            ],
+            "velocity_enu": [
+              -0.004991958383470774,
+              0.0035154270008206367,
+              0.04701978713274002
+            ],
+            "battery": {
+              "remaining_fraction": 0.75,
+              "voltage_v": 15.726000785827637
+            },
+            "armed": true,
+            "flight_mode": "HOLD",
+            "landed_state": "IN_AIR",
+            "health": {
+              "is_gyrometer_calibration_ok": true,
+              "is_accelerometer_calibration_ok": true,
+              "is_magnetometer_calibration_ok": true,
+              "is_local_position_ok": true,
+              "is_global_position_ok": true,
+              "is_home_position_ok": true,
+              "is_armable": true
+            },
+            "freshness": {
+              "gazebo_pose_age_sim_ns": 0,
+              "mavsdk_source_sim_ns": null,
+              "mavsdk_receipt_age_wall_ns": {
+                "armed": 87279619,
+                "flight_mode": 87205439,
+                "health": 87153028,
+                "landed_state": 86557398,
+                "battery": 86658763,
+                "velocity_enu": 73741572,
+                "global_position": 73929450
+              },
+              "mavsdk_versions": {
+                "armed": 90,
+                "flight_mode": 90,
+                "health": 90,
+                "landed_state": 130,
+                "battery": 15,
+                "velocity_enu": 839,
+                "global_position": 1276
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action": "goto_location",
+        "update": {
+          "command_id": "extra5_goto_location",
+          "vehicle": "v0",
+          "action": "goto_location",
+          "status": "succeeded",
+          "sim_ns": 31600000000
+        },
+        "telemetry": [
+          {
+            "vehicle": "v0",
+            "sim_ns": 31600000000,
+            "position_enu": [
+              49.24660330181142,
+              -0.05108805869499488,
+              9.96274929025843
+            ],
+            "attitude_quat": [
+              -0.01565885324141782,
+              -0.015224583410874185,
+              0.709726036816727,
+              0.7041391659605017
+            ],
+            "velocity_enu": [
+              0.5613287687301636,
+              0.04973601549863815,
+              -0.005205067340284586
+            ],
+            "battery": {
+              "remaining_fraction": 0.55,
+              "voltage_v": 15.36600112915039
+            },
+            "armed": true,
+            "flight_mode": "HOLD",
+            "landed_state": "IN_AIR",
+            "health": {
+              "is_gyrometer_calibration_ok": true,
+              "is_accelerometer_calibration_ok": true,
+              "is_magnetometer_calibration_ok": true,
+              "is_local_position_ok": true,
+              "is_global_position_ok": true,
+              "is_home_position_ok": true,
+              "is_armable": true
+            },
+            "freshness": {
+              "gazebo_pose_age_sim_ns": 0,
+              "mavsdk_source_sim_ns": null,
+              "mavsdk_receipt_age_wall_ns": {
+                "armed": 288745077,
+                "flight_mode": 288687641,
+                "health": 288650155,
+                "landed_state": 288617520,
+                "battery": 790945125,
+                "velocity_enu": 74221151,
+                "global_position": 74427479
+              },
+              "mavsdk_versions": {
+                "armed": 103,
+                "flight_mode": 103,
+                "health": 103,
+                "landed_state": 143,
+                "battery": 21,
+                "velocity_enu": 1241,
+                "global_position": 1946
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action": "hold",
+        "update": {
+          "command_id": "extra6_hold",
+          "vehicle": "v0",
+          "action": "hold",
+          "status": "succeeded",
+          "sim_ns": 33200000000
+        },
+        "telemetry": [
+          {
+            "vehicle": "v0",
+            "sim_ns": 33200000000,
+            "position_enu": [
+              49.85071048832336,
+              -0.04296678191449114,
+              9.960475588339023
+            ],
+            "attitude_quat": [
+              -0.005826089813621255,
+              -0.006231941398531695,
+              0.7074215652164668,
+              0.7067403686295082
+            ],
+            "velocity_enu": [
+              0.12074194103479385,
+              0.018595915287733078,
+              0.0015466406475752592
+            ],
+            "battery": {
+              "remaining_fraction": 0.52,
+              "voltage_v": 15.306000709533691
+            },
+            "armed": true,
+            "flight_mode": "HOLD",
+            "landed_state": "IN_AIR",
+            "health": {
+              "is_gyrometer_calibration_ok": true,
+              "is_accelerometer_calibration_ok": true,
+              "is_magnetometer_calibration_ok": true,
+              "is_local_position_ok": true,
+              "is_global_position_ok": true,
+              "is_home_position_ok": true,
+              "is_armable": true
+            },
+            "freshness": {
+              "gazebo_pose_age_sim_ns": 0,
+              "mavsdk_source_sim_ns": null,
+              "mavsdk_receipt_age_wall_ns": {
+                "armed": 88444703,
+                "flight_mode": 88376130,
+                "health": 88323440,
+                "landed_state": 88295974,
+                "battery": 590670715,
+                "velocity_enu": 77654972,
+                "global_position": 77714422
+              },
+              "mavsdk_versions": {
+                "armed": 105,
+                "flight_mode": 105,
+                "health": 105,
+                "landed_state": 145,
+                "battery": 22,
+                "velocity_enu": 1289,
+                "global_position": 2026
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action": "land",
+        "update": {
+          "command_id": "extra7_land",
+          "vehicle": "v0",
+          "action": "land",
+          "status": "succeeded",
+          "sim_ns": 50200000000
+        },
+        "telemetry": [
+          {
+            "vehicle": "v0",
+            "sim_ns": 50200000000,
+            "position_enu": [
+              49.92848187603281,
+              0.027178188260832573,
+              -0.013000255186098791
+            ],
+            "attitude_quat": [
+              6.080981323367422e-07,
+              -8.199707967911711e-08,
+              0.7067708421783844,
+              0.7074425606691193
+            ],
+            "velocity_enu": [
+              -0.012492124922573566,
+              0.018045147880911827,
+              0.008499431423842907
+            ],
+            "battery": {
+              "remaining_fraction": 0.83,
+              "voltage_v": 16.200000762939453
+            },
+            "armed": false,
+            "flight_mode": "HOLD",
+            "landed_state": "ON_GROUND",
+            "health": {
+              "is_gyrometer_calibration_ok": true,
+              "is_accelerometer_calibration_ok": true,
+              "is_magnetometer_calibration_ok": true,
+              "is_local_position_ok": true,
+              "is_global_position_ok": true,
+              "is_home_position_ok": true,
+              "is_armable": true
+            },
+            "freshness": {
+              "gazebo_pose_age_sim_ns": 0,
+              "mavsdk_source_sim_ns": null,
+              "mavsdk_receipt_age_wall_ns": {
+                "armed": 86422460,
+                "flight_mode": 86340574,
+                "health": 86284659,
+                "landed_state": 86197802,
+                "battery": 86232868,
+                "velocity_enu": 60868178,
+                "global_position": 61413102
+              },
+              "mavsdk_versions": {
+                "armed": 122,
+                "flight_mode": 122,
+                "health": 122,
+                "landed_state": 162,
+                "battery": 31,
+                "velocity_enu": 1799,
+                "global_position": 2876
+              }
+            }
+          }
+        ]
+      },
+      {
+        "action": "disarm",
+        "update": {
+          "command_id": "extra8_disarm",
+          "vehicle": "v0",
+          "action": "disarm",
+          "status": "succeeded",
+          "sim_ns": 51200000000
+        },
+        "telemetry": [
+          {
+            "vehicle": "v0",
+            "sim_ns": 51200000000,
+            "position_enu": [
+              49.92848187603281,
+              0.027178188260832573,
+              -0.013000255186098791
+            ],
+            "attitude_quat": [
+              6.080981323367422e-07,
+              -8.199707967911711e-08,
+              0.7067708421783844,
+              0.7074425606691193
+            ],
+            "velocity_enu": [
+              -0.009117238223552704,
+              0.024431278929114342,
+              0.00708251167088747
+            ],
+            "battery": {
+              "remaining_fraction": 0.83,
+              "voltage_v": 16.200000762939453
+            },
+            "armed": false,
+            "flight_mode": "HOLD",
+            "landed_state": "ON_GROUND",
+            "health": {
+              "is_gyrometer_calibration_ok": true,
+              "is_accelerometer_calibration_ok": true,
+              "is_magnetometer_calibration_ok": true,
+              "is_local_position_ok": true,
+              "is_global_position_ok": true,
+              "is_home_position_ok": true,
+              "is_armable": true
+            },
+            "freshness": {
+              "gazebo_pose_age_sim_ns": 0,
+              "mavsdk_source_sim_ns": null,
+              "mavsdk_receipt_age_wall_ns": {
+                "armed": 85029870,
+                "flight_mode": 84765832,
+                "health": 84606268,
+                "landed_state": 84521787,
+                "battery": 588654558,
+                "velocity_enu": 64902404,
+                "global_position": 65217367
+              },
+              "mavsdk_versions": {
+                "armed": 123,
+                "flight_mode": 123,
+                "health": 123,
+                "landed_state": 163,
+                "battery": 31,
+                "velocity_enu": 1829,
+                "global_position": 2926
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "success": true
+  },
+  "on_ground_20ms_cadence": {
+    "kind": "on-ground cadence probe, not flight RTF",
+    "advances": 100,
+    "step_ns": 20000000,
+    "sim_s": 2,
+    "wall_s": 10.07094865012914,
+    "real_time_factor": 0.19859102349552285,
+    "advance_median_wall_s": 0.10069805942475796,
+    "advance_min_wall_s": 0.09914676379412413,
+    "advance_max_wall_s": 0.10227309260517359,
+    "pose_age_sim_ns_max": 0
+  }
+}
