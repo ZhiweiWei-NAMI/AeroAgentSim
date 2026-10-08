@@ -1,0 +1,198 @@
+{
+  "header": {
+    "contract": "aeroagentsim.viewer-feed/v1",
+    "runId": "fixture-run-0001",
+    "registryDigest": "sha256:fixture-registry-digest-0001",
+    "origin": {
+      "lat": 45.764,
+      "lon": 4.836,
+      "alt": 168.0
+    },
+    "types": [
+      {
+        "typeId": "fixture.entity",
+        "displayName": "Entity",
+        "ancestors": [],
+        "directory": "root"
+      },
+      {
+        "typeId": "fixture.device",
+        "displayName": "Fixture Device",
+        "ancestors": [
+          "fixture.entity"
+        ],
+        "directory": "dynamics"
+      },
+      {
+        "typeId": "fixture.record",
+        "displayName": "Fixture Record",
+        "ancestors": [
+          "fixture.entity"
+        ],
+        "directory": "records"
+      }
+    ],
+    "fields": [
+      {
+        "fieldId": "fixture.position",
+        "displayName": "Position",
+        "role": "pose",
+        "unit": "m",
+        "frame": "enu",
+        "valueType": "vec3"
+      },
+      {
+        "fieldId": "fixture.status",
+        "displayName": "Status",
+        "role": "state",
+        "unit": null,
+        "frame": null,
+        "valueType": "string"
+      },
+      {
+        "fieldId": "fixture.title",
+        "displayName": "Title",
+        "role": "label",
+        "unit": null,
+        "frame": null,
+        "valueType": "string"
+      },
+      {
+        "fieldId": "fixture.annotation",
+        "displayName": "Annotation",
+        "role": "note",
+        "unit": null,
+        "frame": null,
+        "valueType": "string"
+      }
+    ],
+    "presentation": [
+      {
+        "typeId": "fixture.device",
+        "positionField": "fixture.position",
+        "frame": "enu",
+        "visual": {
+          "kind": "model",
+          "asset": "fixtures/device.glb",
+          "scale": 1.0,
+          "color": "#38bdf8"
+        }
+      }
+    ],
+    "start": {
+      "ns": "9223372036854775815",
+      "microstep": 0
+    }
+  },
+  "commit": {
+    "commitIndex": 0,
+    "at": {
+      "ns": "9223372036854775815",
+      "microstep": 3
+    },
+    "created": [
+      {
+        "id": "fixture-device-0001",
+        "generation": 1,
+        "typeId": "fixture.device"
+      },
+      {
+        "id": "fixture-record-0001",
+        "generation": 1,
+        "typeId": "fixture.record"
+      }
+    ],
+    "removed": [],
+    "facts": [
+      {
+        "entity": {
+          "id": "fixture-device-0001",
+          "generation": 1
+        },
+        "fieldId": "fixture.position",
+        "value": [
+          120.5,
+          -64.25,
+          3.75
+        ],
+        "producer": "fixture-author",
+        "validFrom": {
+          "ns": "9223372036854775815",
+          "microstep": 3
+        }
+      }
+    ],
+    "retracted": [
+      {
+        "entity": {
+          "id": "fixture-record-0001",
+          "generation": 1
+        },
+        "fieldId": "fixture.annotation"
+      }
+    ],
+    "edges": [
+      {
+        "edgeId": "fixture-edge-0001",
+        "relationId": "fixture.observed-by",
+        "source": {
+          "id": "fixture-device-0001",
+          "generation": 1
+        },
+        "target": {
+          "id": "fixture-record-0001",
+          "generation": 1
+        },
+        "op": "assert"
+      }
+    ],
+    "messages": [
+      {
+        "id": "fixture-msg-0001",
+        "kind": "command",
+        "schemaId": "fixture.command.set-position/v1",
+        "source": "fixture-operator",
+        "target": "fixture-device-0001",
+        "topic": "fixture.commands.position",
+        "at": {
+          "ns": "9223372036854775815",
+          "microstep": 1
+        },
+        "payload": {
+          "device": "fixture-device-0001",
+          "positionEnuM": [
+            120.5,
+            -64.25,
+            3.75
+          ]
+        }
+      },
+      {
+        "id": "fixture-msg-0002",
+        "kind": "event",
+        "schemaId": "fixture.event.position-changed/v1",
+        "source": "fixture-device-0001",
+        "target": "fixture-record-0001",
+        "topic": "fixture.events.position",
+        "at": {
+          "ns": "9223372036854775815",
+          "microstep": 2
+        },
+        "payload": {
+          "positionEnuM": [
+            120.5,
+            -64.25,
+            3.75
+          ],
+          "fixture": true
+        }
+      }
+    ],
+    "receipts": [
+      {
+        "commandId": "fixture-msg-0001",
+        "status": "executing"
+      }
+    ]
+  }
+}

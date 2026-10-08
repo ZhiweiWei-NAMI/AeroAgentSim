@@ -1,0 +1,81 @@
+"""Local execution, engine-free replay checking and optional API host."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import resource
+import time
+import uuid
+from pathlib import Path
+
+from aerokernel.journal import replay
+
+from aeroagentsim.platform.kernel_compat import register_relation_records
+from aeroagentsim.platform.simulation import RunSession
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(prog="aeroagentsim")
+    sub = parser.add_subparsers(dest="command", required=True)
+    run = sub.add_parser("run")
+    run.add_argument("scenario", type=Path)
+    run.add_argument("--out", type=Path, default=Path("runs"))
+    check = sub.add_parser("replay")
+    check.add_argument("run", type=Path)
+    serve = sub.add_parser("serve")
+    serve.add_argument("--out", type=Path, default=Path("runs"))
+    serve.add_argument("--scenario-root", type=Path, default=Path.cwd())
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8002)
+    serve.add_argument("--frontend", type=Path)
+    args = parser.parse_args()
+    if args.command == "run":
+        start = time.perf_counter()
+        directory = args.out / f"{args.scenario.stem}-{uuid.uuid4().hex[:12]}"
+        with RunSession(args.scenario, directory) as session:
+            session.run()
+            simulated = session.now_ns / 1e9
+        elapsed = time.perf_counter() - start
+        print(
+            json.dumps(
+                {
+                    "run": str(directory),
+                    "elapsed_wall_s": elapsed,
+                    "simulated_s": simulated,
+                    "rtf": simulated / elapsed,
+                    "peak_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+                }
+            )
+        )
+    elif args.command == "replay":
+        register_relation_records()
+        kernel = replay(args.run / "journal.jsonl")
+        print(
+            json.dumps(
+                {
+                    "run": str(args.run),
+                    "cut": kernel.view().cut.index,
+                    "ns": str(kernel.view().instant.ns),
+                    "incomplete": kernel.incomplete,
+                }
+            )
+        )
+    else:
+        try:
+            import uvicorn
+
+            from .app import create_app
+        except ImportError as exc:
+            parser.error(f"serve requires aeroagentsim[server]: {exc}")
+        uvicorn.run(
+            create_app(
+                args.out, scenario_root=args.scenario_root, frontend=args.frontend
+            ),
+            host=args.host,
+            port=args.port,
+        )
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,1016 @@
+format: aeroagentsim.scenario/v1
+id: p1-slice
+registry:
+  compile:
+    root: /mnt/data2/weizhiwei/AeroGraph
+    types:
+    - oo:UAV
+    - oo:Order
+    - oo:MetricObservation
+    fields:
+    - he.aircraft.position_enu_m
+    - oo:shared.observationRecord.acquisitionTime
+    - oo:shared.observationRecord.availableTime
+    - oo:shared.observationRecord.observedSubjectRef
+    relations:
+    - oo:relation:observation-subject
+  types:
+  - id: aas:KinematicObservation
+    parents:
+    - oo:MetricObservation
+    abstract: false
+  fields:
+  - id: aas.p1.velocity_enu_m_s
+    type: oo:UAV
+    schema: &id001
+      type: vector
+      items:
+        type: number
+      length: 3
+    metadata:
+      unit: m/s
+      frame: enu
+      role: derived
+      clock: canonical
+  - id: aas.p1.energy_j
+    type: oo:UAV
+    schema:
+      type: number
+    metadata:
+      unit: J
+      role: derived
+      clock: canonical
+  - id: aas.p1.order_state
+    type: oo:Order
+    schema:
+      type: string
+      enum:
+      - submitted
+      - executing
+      - awaiting_acceptance
+      - accepted
+      - failed
+      - canceled
+    metadata:
+      role: state
+      clock: canonical
+  - id: aas.p1.position_sample
+    type: aas:KinematicObservation
+    schema: *id001
+    metadata:
+      unit: m
+      frame: enu
+      role: observation
+      clock: canonical
+  - id: aas.p1.acceptance_state
+    type: oo:Order
+    schema:
+      type: string
+      enum:
+      - pending
+      - reviewing
+      - acknowledged
+    metadata:
+      role: state
+      clock: canonical
+  messages:
+  - id: aas.motion.move_to
+    kind: command
+    schema:
+      type: record
+      members:
+        entity: &id002
+          type: string
+        machine: *id002
+        target: *id001
+      required:
+      - entity
+      - machine
+      - target
+      extra: false
+    result_schema: &id003
+      type: record
+      members:
+        entity: *id002
+        position: *id001
+        reason: *id002
+      required: []
+      extra: false
+    feedback_schema: *id003
+  - id: aas.motion.hold
+    kind: command
+    schema: &id004
+      type: record
+      members:
+        entity: *id002
+        machine: *id002
+      required:
+      - entity
+      - machine
+      extra: false
+    result_schema: *id003
+    feedback_schema: *id003
+  - id: aas.motion.stop
+    kind: command
+    schema: *id004
+    result_schema: *id003
+    feedback_schema: *id003
+  - id: aas.motion.arrived
+    kind: event
+    schema:
+      type: record
+      members:
+        entity: *id002
+        machine: *id002
+        position: *id001
+      required:
+      - entity
+      - machine
+      - position
+      extra: false
+  - id: aas.business.accepted
+    kind: event
+    schema:
+      type: record
+      members:
+        machine: *id002
+      required:
+      - machine
+      extra: false
+  - id: aas.p1.reached_x
+    kind: event
+    schema:
+      type: record
+      members:
+        entity: *id002
+        from_ns: &id005
+          type: integer
+        to_ns: *id005
+      required:
+      - entity
+      - from_ns
+      - to_ns
+      extra: false
+  relations:
+  - id: oo:relation:observation-subject
+    source_type: oo:ObservationRecord
+    target_type: oo:ModelObject
+    targets_per_source:
+      minimum: 1
+      maximum: 1
+    sources_per_target:
+      minimum: 0
+      maximum: null
+    identity_policy: edge_id
+    metadata:
+      inverse_policy: authored unconstrained many records per subject; source declares
+        no inverse direction
+      reviewStatus: proposed
+entities:
+- id: uav-1
+  type: oo:UAV
+  facts:
+    he.aircraft.position_enu_m:
+    - 0.0
+    - 0.0
+    - 10.0
+    aas.p1.velocity_enu_m_s:
+    - 0.0
+    - 0.0
+    - 0.0
+    aas.p1.energy_j: 100000.0
+- id: uav-2
+  type: oo:UAV
+  facts:
+    he.aircraft.position_enu_m:
+    - 0.0
+    - 12.0
+    - 10.0
+    aas.p1.velocity_enu_m_s:
+    - 0.0
+    - 0.0
+    - 0.0
+    aas.p1.energy_j: 100000.0
+- id: uav-3
+  type: oo:UAV
+  facts:
+    he.aircraft.position_enu_m:
+    - 0.0
+    - 24.0
+    - 10.0
+    aas.p1.velocity_enu_m_s:
+    - 0.0
+    - 0.0
+    - 0.0
+    aas.p1.energy_j: 100000.0
+- id: uav-4
+  type: oo:UAV
+  facts:
+    he.aircraft.position_enu_m:
+    - 0.0
+    - 36.0
+    - 10.0
+    aas.p1.velocity_enu_m_s:
+    - 0.0
+    - 0.0
+    - 0.0
+    aas.p1.energy_j: 100000.0
+- id: uav-5
+  type: oo:UAV
+  facts:
+    he.aircraft.position_enu_m:
+    - 0.0
+    - 48.0
+    - 10.0
+    aas.p1.velocity_enu_m_s:
+    - 0.0
+    - 0.0
+    - 0.0
+    aas.p1.energy_j: 100000.0
+- id: order-1
+  type: oo:Order
+  facts:
+    aas.p1.order_state: submitted
+    aas.p1.acceptance_state: pending
+- id: order-2
+  type: oo:Order
+  facts:
+    aas.p1.order_state: submitted
+    aas.p1.acceptance_state: pending
+- id: order-3
+  type: oo:Order
+  facts:
+    aas.p1.order_state: submitted
+    aas.p1.acceptance_state: pending
+- id: order-4
+  type: oo:Order
+  facts:
+    aas.p1.order_state: submitted
+    aas.p1.acceptance_state: pending
+- id: order-5
+  type: oo:Order
+  facts:
+    aas.p1.order_state: submitted
+    aas.p1.acceptance_state: pending
+- id: order-6
+  type: oo:Order
+  facts:
+    aas.p1.order_state: submitted
+    aas.p1.acceptance_state: pending
+- id: order-7
+  type: oo:Order
+  facts:
+    aas.p1.order_state: submitted
+    aas.p1.acceptance_state: pending
+- id: order-8
+  type: oo:Order
+  facts:
+    aas.p1.order_state: submitted
+    aas.p1.acceptance_state: pending
+- id: order-9
+  type: oo:Order
+  facts:
+    aas.p1.order_state: submitted
+    aas.p1.acceptance_state: pending
+- id: order-10
+  type: oo:Order
+  facts:
+    aas.p1.order_state: submitted
+    aas.p1.acceptance_state: pending
+bindings:
+  rules:
+  - writer: motion
+    type: oo:UAV
+    fields:
+    - he.aircraft.position_enu_m
+    - aas.p1.velocity_enu_m_s
+    - aas.p1.energy_j
+  - writer: operations
+    type: oo:Order
+    fields:
+    - aas.p1.order_state
+  - writer: observations
+    type: aas:KinematicObservation
+    fields:
+    - oo:shared.observationRecord.acquisitionTime
+    - oo:shared.observationRecord.availableTime
+    - oo:shared.observationRecord.observedSubjectRef
+    - aas.p1.position_sample
+  - writer: acceptance
+    type: oo:Order
+    fields:
+    - aas.p1.acceptance_state
+  lifecycle:
+  - controller: motion
+    type: oo:UAV
+  - controller: operations
+    type: oo:Order
+  - controller: observations
+    type: aas:KinematicObservation
+    ids: obs/*
+  relations:
+  - writer: observations
+    relation: oo:relation:observation-subject
+    type: aas:KinematicObservation
+    ids: obs/*
+  obligations:
+  - controller: observations
+    relation: oo:relation:observation-subject
+    direction: targets_per_source
+    type: aas:KinematicObservation
+    ids: obs/*
+  samples:
+  - context: aas.p1.reached_x
+    partition: threshold
+    upstream:
+    - motion
+    - operations
+    - observations
+    - acceptance
+    bindings:
+      uav-1: uav-1
+      uav-2: uav-2
+      uav-3: uav-3
+      uav-4: uav-4
+      uav-5: uav-5
+    sources:
+      uav-1: motion
+      uav-2: motion
+      uav-3: motion
+      uav-4: motion
+      uav-5: motion
+    clocks:
+      uav-1:
+      - canonical
+      - canonical
+      uav-2:
+      - canonical
+      - canonical
+      uav-3:
+      - canonical
+      - canonical
+      uav-4:
+      - canonical
+      - canonical
+      uav-5:
+      - canonical
+      - canonical
+    parameters:
+      thresholdXM: 10.0
+engines:
+  motion:
+    plugin: kinematic
+    config:
+      type_id: oo:UAV
+      position_field: he.aircraft.position_enu_m
+      velocity_field: aas.p1.velocity_enu_m_s
+      energy_field: aas.p1.energy_j
+      step_ns: 100000000
+      frame:
+        convention: enu
+        unit: m
+        transform_revision: p1-local-1
+      max_speed_m_s: 10.0
+      max_accel_m_s2: 5.0
+      energy:
+        capacity_j: 100000.0
+        idle_w: 20.0
+        per_m_j: 5.0
+      commands:
+        move_to: aas.motion.move_to
+        hold: aas.motion.hold
+        stop: aas.motion.stop
+      arrival_schema: aas.motion.arrived
+      arrival_topic: arrival
+      lifecycle: true
+  operations:
+    plugin: workflow
+    config:
+      produces:
+      - aas.p1.order_state
+      consumes: []
+      emits:
+      - aas.motion.move_to
+      subscribes:
+      - arrival
+      - business-acceptance
+      targets:
+      - motion
+      lifecycle: true
+      message_lag_ns: 10000000
+      machines:
+      - entity: order-1
+        field: aas.p1.order_state
+        initial: submitted
+        states:
+          submitted:
+            transitions:
+            - to: executing
+              timer_ns: 10000000
+          executing:
+            on_enter:
+            - kind: command
+              schema: aas.motion.move_to
+              target: motion
+              payload:
+                entity: uav-1
+                machine: order-1
+                target:
+                - 30.0
+                - 0.0
+                - 10.0
+            transitions:
+            - to: awaiting_acceptance
+              event: aas.motion.arrived
+            - to: failed
+              receipt: failed
+            - to: failed
+              receipt: rejected
+          awaiting_acceptance:
+            transitions:
+            - to: accepted
+              event: aas.business.accepted
+          accepted:
+            transitions: []
+          failed:
+            transitions: []
+      - entity: order-2
+        field: aas.p1.order_state
+        initial: submitted
+        states:
+          submitted:
+            transitions:
+            - to: executing
+              timer_ns: 10000000
+          executing:
+            on_enter:
+            - kind: command
+              schema: aas.motion.move_to
+              target: motion
+              payload:
+                entity: uav-2
+                machine: order-2
+                target:
+                - 30.0
+                - 12.0
+                - 10.0
+            transitions:
+            - to: awaiting_acceptance
+              event: aas.motion.arrived
+            - to: failed
+              receipt: failed
+            - to: failed
+              receipt: rejected
+          awaiting_acceptance:
+            transitions:
+            - to: accepted
+              event: aas.business.accepted
+          accepted:
+            transitions: []
+          failed:
+            transitions: []
+      - entity: order-3
+        field: aas.p1.order_state
+        initial: submitted
+        states:
+          submitted:
+            transitions:
+            - to: executing
+              timer_ns: 10000000
+          executing:
+            on_enter:
+            - kind: command
+              schema: aas.motion.move_to
+              target: motion
+              payload:
+                entity: uav-3
+                machine: order-3
+                target:
+                - 30.0
+                - 24.0
+                - 10.0
+            transitions:
+            - to: awaiting_acceptance
+              event: aas.motion.arrived
+            - to: failed
+              receipt: failed
+            - to: failed
+              receipt: rejected
+          awaiting_acceptance:
+            transitions:
+            - to: accepted
+              event: aas.business.accepted
+          accepted:
+            transitions: []
+          failed:
+            transitions: []
+      - entity: order-4
+        field: aas.p1.order_state
+        initial: submitted
+        states:
+          submitted:
+            transitions:
+            - to: executing
+              timer_ns: 10000000
+          executing:
+            on_enter:
+            - kind: command
+              schema: aas.motion.move_to
+              target: motion
+              payload:
+                entity: uav-4
+                machine: order-4
+                target:
+                - 30.0
+                - 36.0
+                - 10.0
+            transitions:
+            - to: awaiting_acceptance
+              event: aas.motion.arrived
+            - to: failed
+              receipt: failed
+            - to: failed
+              receipt: rejected
+          awaiting_acceptance:
+            transitions:
+            - to: accepted
+              event: aas.business.accepted
+          accepted:
+            transitions: []
+          failed:
+            transitions: []
+      - entity: order-5
+        field: aas.p1.order_state
+        initial: submitted
+        states:
+          submitted:
+            transitions:
+            - to: executing
+              timer_ns: 10000000
+          executing:
+            on_enter:
+            - kind: command
+              schema: aas.motion.move_to
+              target: motion
+              payload:
+                entity: uav-5
+                machine: order-5
+                target:
+                - 30.0
+                - 48.0
+                - 10.0
+            transitions:
+            - to: awaiting_acceptance
+              event: aas.motion.arrived
+            - to: failed
+              receipt: failed
+            - to: failed
+              receipt: rejected
+          awaiting_acceptance:
+            transitions:
+            - to: accepted
+              event: aas.business.accepted
+          accepted:
+            transitions: []
+          failed:
+            transitions: []
+      - entity: order-6
+        field: aas.p1.order_state
+        initial: submitted
+        states:
+          submitted:
+            transitions:
+            - to: executing
+              timer_ns: 11000000000
+          executing:
+            on_enter:
+            - kind: command
+              schema: aas.motion.move_to
+              target: motion
+              payload:
+                entity: uav-1
+                machine: order-6
+                target:
+                - 60.0
+                - 0.0
+                - 10.0
+            transitions:
+            - to: awaiting_acceptance
+              event: aas.motion.arrived
+            - to: failed
+              receipt: failed
+            - to: failed
+              receipt: rejected
+          awaiting_acceptance:
+            transitions:
+            - to: accepted
+              event: aas.business.accepted
+          accepted:
+            transitions: []
+          failed:
+            transitions: []
+      - entity: order-7
+        field: aas.p1.order_state
+        initial: submitted
+        states:
+          submitted:
+            transitions:
+            - to: executing
+              timer_ns: 11000000000
+          executing:
+            on_enter:
+            - kind: command
+              schema: aas.motion.move_to
+              target: motion
+              payload:
+                entity: uav-2
+                machine: order-7
+                target:
+                - 60.0
+                - 12.0
+                - 10.0
+            transitions:
+            - to: awaiting_acceptance
+              event: aas.motion.arrived
+            - to: failed
+              receipt: failed
+            - to: failed
+              receipt: rejected
+          awaiting_acceptance:
+            transitions:
+            - to: accepted
+              event: aas.business.accepted
+          accepted:
+            transitions: []
+          failed:
+            transitions: []
+      - entity: order-8
+        field: aas.p1.order_state
+        initial: submitted
+        states:
+          submitted:
+            transitions:
+            - to: executing
+              timer_ns: 11000000000
+          executing:
+            on_enter:
+            - kind: command
+              schema: aas.motion.move_to
+              target: motion
+              payload:
+                entity: uav-3
+                machine: order-8
+                target:
+                - 60.0
+                - 24.0
+                - 10.0
+            transitions:
+            - to: awaiting_acceptance
+              event: aas.motion.arrived
+            - to: failed
+              receipt: failed
+            - to: failed
+              receipt: rejected
+          awaiting_acceptance:
+            transitions:
+            - to: accepted
+              event: aas.business.accepted
+          accepted:
+            transitions: []
+          failed:
+            transitions: []
+      - entity: order-9
+        field: aas.p1.order_state
+        initial: submitted
+        states:
+          submitted:
+            transitions:
+            - to: executing
+              timer_ns: 11000000000
+          executing:
+            on_enter:
+            - kind: command
+              schema: aas.motion.move_to
+              target: motion
+              payload:
+                entity: uav-4
+                machine: order-9
+                target:
+                - 60.0
+                - 36.0
+                - 10.0
+            transitions:
+            - to: awaiting_acceptance
+              event: aas.motion.arrived
+            - to: failed
+              receipt: failed
+            - to: failed
+              receipt: rejected
+          awaiting_acceptance:
+            transitions:
+            - to: accepted
+              event: aas.business.accepted
+          accepted:
+            transitions: []
+          failed:
+            transitions: []
+      - entity: order-10
+        field: aas.p1.order_state
+        initial: submitted
+        states:
+          submitted:
+            transitions:
+            - to: executing
+              timer_ns: 11000000000
+          executing:
+            on_enter:
+            - kind: command
+              schema: aas.motion.move_to
+              target: motion
+              payload:
+                entity: uav-5
+                machine: order-10
+                target:
+                - 60.0
+                - 48.0
+                - 10.0
+            transitions:
+            - to: awaiting_acceptance
+              event: aas.motion.arrived
+            - to: failed
+              receipt: failed
+            - to: failed
+              receipt: rejected
+          awaiting_acceptance:
+            transitions:
+            - to: accepted
+              event: aas.business.accepted
+          accepted:
+            transitions: []
+          failed:
+            transitions: []
+  observations:
+    plugin: records
+    config:
+      trigger_schema: aas.motion.arrived
+      topic: arrival
+      subject_key: entity
+      position_field: he.aircraft.position_enu_m
+      type_id: aas:KinematicObservation
+      acquired_field: oo:shared.observationRecord.acquisitionTime
+      available_field: oo:shared.observationRecord.availableTime
+      subject_field: oo:shared.observationRecord.observedSubjectRef
+      sample_field: aas.p1.position_sample
+      release_delay_ns: 20000000
+      relation_id: oo:relation:observation-subject
+  threshold:
+    plugin: threshold
+    config:
+      field: he.aircraft.position_enu_m
+      index: 0
+      value: 10.0
+      event: aas.p1.reached_x
+      topic: threshold-events
+      context: aas.p1.reached_x
+      ast:
+        op: gte
+        args:
+        - field: he.aircraft.position_enu_m
+          role: subject
+          path:
+          - 0
+        - parameter: thresholdXM
+      parameters:
+        thresholdXM: 10.0
+      native_reference:
+        path: /mnt/data2/weizhiwei/AeroGraph/semantic-directory/src/expanded_runtime.js
+        sha256: 3780dc2f3d6fc7d7e01850595d10f60d98f378f9036e8722e4c7d820bd75f869
+  acceptance:
+    plugin: workflow
+    config:
+      produces:
+      - aas.p1.acceptance_state
+      consumes: []
+      emits:
+      - aas.business.accepted
+      subscribes:
+      - arrival
+      targets:
+      - business-acceptance
+      lifecycle: false
+      machines:
+      - entity: order-1
+        field: aas.p1.acceptance_state
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: aas.motion.arrived
+          reviewing:
+            transitions:
+            - to: acknowledged
+              timer_ns: 100000000
+          acknowledged:
+            on_enter:
+            - kind: emit
+              schema: aas.business.accepted
+              topic: business-acceptance
+              payload:
+                machine: order-1
+            transitions: []
+      - entity: order-2
+        field: aas.p1.acceptance_state
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: aas.motion.arrived
+          reviewing:
+            transitions:
+            - to: acknowledged
+              timer_ns: 100000000
+          acknowledged:
+            on_enter:
+            - kind: emit
+              schema: aas.business.accepted
+              topic: business-acceptance
+              payload:
+                machine: order-2
+            transitions: []
+      - entity: order-3
+        field: aas.p1.acceptance_state
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: aas.motion.arrived
+          reviewing:
+            transitions:
+            - to: acknowledged
+              timer_ns: 100000000
+          acknowledged:
+            on_enter:
+            - kind: emit
+              schema: aas.business.accepted
+              topic: business-acceptance
+              payload:
+                machine: order-3
+            transitions: []
+      - entity: order-4
+        field: aas.p1.acceptance_state
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: aas.motion.arrived
+          reviewing:
+            transitions:
+            - to: acknowledged
+              timer_ns: 100000000
+          acknowledged:
+            on_enter:
+            - kind: emit
+              schema: aas.business.accepted
+              topic: business-acceptance
+              payload:
+                machine: order-4
+            transitions: []
+      - entity: order-5
+        field: aas.p1.acceptance_state
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: aas.motion.arrived
+          reviewing:
+            transitions:
+            - to: acknowledged
+              timer_ns: 100000000
+          acknowledged:
+            on_enter:
+            - kind: emit
+              schema: aas.business.accepted
+              topic: business-acceptance
+              payload:
+                machine: order-5
+            transitions: []
+      - entity: order-6
+        field: aas.p1.acceptance_state
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: aas.motion.arrived
+          reviewing:
+            transitions:
+            - to: acknowledged
+              timer_ns: 100000000
+          acknowledged:
+            on_enter:
+            - kind: emit
+              schema: aas.business.accepted
+              topic: business-acceptance
+              payload:
+                machine: order-6
+            transitions: []
+      - entity: order-7
+        field: aas.p1.acceptance_state
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: aas.motion.arrived
+          reviewing:
+            transitions:
+            - to: acknowledged
+              timer_ns: 100000000
+          acknowledged:
+            on_enter:
+            - kind: emit
+              schema: aas.business.accepted
+              topic: business-acceptance
+              payload:
+                machine: order-7
+            transitions: []
+      - entity: order-8
+        field: aas.p1.acceptance_state
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: aas.motion.arrived
+          reviewing:
+            transitions:
+            - to: acknowledged
+              timer_ns: 100000000
+          acknowledged:
+            on_enter:
+            - kind: emit
+              schema: aas.business.accepted
+              topic: business-acceptance
+              payload:
+                machine: order-8
+            transitions: []
+      - entity: order-9
+        field: aas.p1.acceptance_state
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: aas.motion.arrived
+          reviewing:
+            transitions:
+            - to: acknowledged
+              timer_ns: 100000000
+          acknowledged:
+            on_enter:
+            - kind: emit
+              schema: aas.business.accepted
+              topic: business-acceptance
+              payload:
+                machine: order-9
+            transitions: []
+      - entity: order-10
+        field: aas.p1.acceptance_state
+        initial: pending
+        states:
+          pending:
+            transitions:
+            - to: reviewing
+              event: aas.motion.arrived
+          reviewing:
+            transitions:
+            - to: acknowledged
+              timer_ns: 100000000
+          acknowledged:
+            on_enter:
+            - kind: emit
+              schema: aas.business.accepted
+              topic: business-acceptance
+              payload:
+                machine: order-10
+            transitions: []
+presentation:
+- typeId: oo:UAV
+  positionField: he.aircraft.position_enu_m
+  frame: enu
+  visual:
+    kind: marker
+    color: '#50c9ff'
+    scale: 1.5
+run:
+  seed: 42
+  until_ns: 22000000000
+  pacing: fast
+  advance_ns: 1000000000
+outputs:
+  durability: flush

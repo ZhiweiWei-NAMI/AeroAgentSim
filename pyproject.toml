@@ -10,8 +10,12 @@ readme = "README.md"
 authors = [
     {name = "Zhiwei Wei", email = "2311769@tongji.edu.cn"}
 ]
-requires-python = ">=3.8"
-dependencies = [
+requires-python = ">=3.10"
+dependencies = ["aerokernel>=0.1.0.dev0,<0.2", "pyyaml>=6"]
+
+[project.optional-dependencies]
+server = ["fastapi>=0.115", "uvicorn>=0.30"]
+legacy = [
     "simpy",
     "numpy",
     "pint",
@@ -28,7 +32,6 @@ dependencies = [
     "pyyaml" # 用于YAML配置文件解析
 ]
 
-[project.optional-dependencies]
 dev = [
     "pytest",
     "pytest-cov",
@@ -55,4 +58,4 @@ include = ["aeroagentsim", "aeroagentsim.*", "airfogsim"]
 
 [project.scripts]
 airfogsim = "aeroagentsim.cli:main"
-aeroagentsim = "aeroagentsim.cli:main"
+aeroagentsim = "aeroagentsim.services.cli:main"
