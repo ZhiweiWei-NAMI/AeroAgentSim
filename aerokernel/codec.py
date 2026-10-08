@@ -31,14 +31,72 @@ def encode(value: object) -> Any:
 
 @lru_cache(maxsize=1)
 def _record_classes() -> dict[str, type[Any]]:
-    from . import engine, ids, messages, operations, time, values
+    from . import (
+        engine,
+        ids,
+        ingress,
+        messages,
+        operations,
+        relations,
+        sampling,
+        state,
+        time,
+        values,
+    )
 
     return {
         name: cls
-        for module in (engine, ids, messages, operations, time, values)
+        for module in (
+            engine,
+            ids,
+            ingress,
+            messages,
+            operations,
+            relations,
+            sampling,
+            state,
+            time,
+            values,
+        )
         for name, cls in vars(module).items()
         if isinstance(cls, type) and dataclasses.is_dataclass(cls)
     }
+
+
+# Complete declaration shapes issued by journal 1.1. Only these historical
+# shapes may omit additive declarations; arbitrary missing fields still fail.
+_M1_DECLARATION_FIELDS = {
+    "Timing": frozenset({"mode", "step_ns", "origin_ns", "latch"}),
+    "Partition": frozenset(
+        {
+            "id",
+            "engine_id",
+            "produces",
+            "consumes",
+            "commands",
+            "emits",
+            "subscribes",
+            "timing",
+            "reactive",
+            "lifecycle",
+            "rng_streams",
+            "lifecycle_reads",
+            "features",
+            "message_targets",
+            "message_lag_ns",
+        }
+    ),
+    "Horizon": frozenset(
+        {
+            "reached",
+            "native_reached_ns",
+            "next_wakeup_ns",
+            "output_lb_ns",
+            "grant_limit_ns",
+            "input_cut",
+        }
+    ),
+}
 
 
 def decode_record(value: Any) -> Any:
@@ -57,11 +115,29 @@ def decode_record(value: Any) -> Any:
         raise ValueError("RECORD_TYPE: unsupported record")
     cls = classes[value["$type"]]
     fields = value["fields"]
-    if set(fields) != {f.name for f in dataclasses.fields(cls)}:
+    expected = {f.name for f in dataclasses.fields(cls)}
+    historical = _M1_DECLARATION_FIELDS.get(value["$type"])
+    if set(fields) != expected and (historical is None or set(fields) != historical):
         raise ValueError("RECORD_FIELDS: unexpected record fields")
     # Payloads are portable trees, not nested record encodings.
-    payload_fields = {"payload", "value", "result"}
-    kwargs = {
-        k: v if k in payload_fields else decode_record(v) for k, v in fields.items()
+    payload_fields = {
+        "payload",
+        "value",
+        "result",
+        "parameters",
+        "configuration",
+        "metadata",
     }
+    kwargs = {
+        k: (
+            v
+            if k in payload_fields
+            else {role: decode_record(entry) for role, entry in v.items()}
+            if k in {"bindings", "sources", "clocks"}
+            else decode_record(v)
+        )
+        for k, v in fields.items()
+    }
+    if cls.__name__ == "ActionState":
+        kwargs["history"] = tuple(fields["history"])
     return cls(**kwargs)

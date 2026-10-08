@@ -20,7 +20,17 @@ from .messages import (
     Feedback,
     Receipt,
 )
-from .operations import Create, FactWrite, Remove, RetractFact, ScheduleTimer
+from .operations import (
+    AssertEdge,
+    CancelEdge,
+    CloseEdge,
+    Create,
+    FactWrite,
+    Remove,
+    RetractFact,
+    ScheduleTimer,
+)
+from .relations import Edge
 from .rng import RNGStreams
 from .state import ABSENT, Absent, Fact, StateView
 from .time import Cut, Instant, Interval, Stamp
@@ -68,10 +78,8 @@ class SimpleEngine:
     def horizon(self, partition: str, cut: Cut) -> Horizon:
         """Promise certified holds between fixed grid points or DES events."""
         timing = self.partition.timing
-        if timing.mode == "fixed_step":
-            if timing.step_ns is None:
-                raise ValueError("fixed_step requires a step")
-            next_ns: int | None = self.native_ns + timing.step_ns
+        if timing.mode in {"fixed_step", "lockstep"} and timing.step_ns is not None:
+            next_ns: int | None = timing.boundary(self.native_ns + 1)
         else:
             next_ns = self.wakeup_ns
         return Horizon(self.logical, self.native_ns, next_ns, next_ns, None, cut)
@@ -79,8 +87,10 @@ class SimpleEngine:
     def advance(self, partition: str, to: Instant, view: StateView) -> Batch:
         """Integrate on the grid; an intermediate hold never manufactures output."""
         timing = self.partition.timing
-        if timing.mode == "fixed_step":
-            run = timing.boundary(to.ns) == to.ns
+        if timing.mode in {"fixed_step", "lockstep"}:
+            run = (
+                timing.exact_stop or not timing.latch or timing.boundary(to.ns) == to.ns
+            )
         else:
             run = self.wakeup_ns is not None and self.wakeup_ns == to.ns
         ops = self.integrate(view) if run else ()
@@ -211,6 +221,65 @@ class EngineContext:
     ) -> LocalCause:
         """Publish an explicit absence version over the supplied interval."""
         return self._append(RetractFact((ref, field), valid, reason, self._causes()))
+
+    def relate(
+        self,
+        edge_id: str,
+        relation_id: str,
+        source: EntityRef,
+        target: EntityRef,
+        *,
+        valid: Interval,
+        acquired: Stamp,
+    ) -> LocalCause:
+        """Assert a new edge with explicit actual acquisition and validity."""
+        return self._append(
+            AssertEdge(
+                edge_id, relation_id, source, target, valid, acquired, self._causes()
+            )
+        )
+
+    def unrelate(self, edge_id: str, *, cancel: bool = False) -> LocalCause:
+        """Close a started edge, or explicitly cancel one not yet started."""
+        if type(cancel) is not bool:
+            raise KernelError(
+                "SDK_RELATION_POLICY", "explicit bool cancellation required"
+            )
+        op = (
+            CancelEdge(edge_id, self._causes())
+            if cancel
+            else CloseEdge(edge_id, self._causes())
+        )
+        return self._append(op)
+
+    def relations(
+        self, relation_id: str, *, valid_at: Instant | None = None
+    ) -> tuple[Edge, ...]:
+        """Read declared effective edges and retain their actual version causes."""
+        edges = self.view.relations(
+            relation_id, self.now if valid_at is None else valid_at
+        )
+        self.inputs.extend(e.version for e in edges)
+        return edges
+
+    def replace_relation(
+        self,
+        old_edge_id: str,
+        edge_id: str,
+        relation_id: str,
+        source: EntityRef,
+        target: EntityRef,
+        *,
+        valid: Interval,
+        acquired: Stamp,
+        cancel: bool = False,
+    ) -> tuple[LocalCause, LocalCause]:
+        """Replace by authorized closure/cancellation and a never-reused new ID."""
+        ended = self.unrelate(old_edge_id, cancel=cancel)
+        created = self.relate(
+            edge_id, relation_id, source, target, valid=valid, acquired=acquired
+        )
+        return ended, created
 
     def create(self, ref: EntityRef) -> LocalCause:
         """Propose creation under this partition's declared lifecycle domain."""

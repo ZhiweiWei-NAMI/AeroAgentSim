@@ -52,6 +52,8 @@ def from_header(header: dict[str, Any]) -> Kernel:
         "resolved_bindings",
         "engine_versions",
     }
+    if header.get("minor") == 2:
+        required.update({"ingress_policy", "engine_profiles"})
     if (
         set(header) != required
         or header["type"] != "header"
@@ -62,11 +64,56 @@ def from_header(header: dict[str, Any]) -> Kernel:
         or header["time_origin_ns"] != 0
         or type(header["time_origin_ns"]) is not int
         or header["major"] != 1
-        or header["minor"] != 1
+        or header["minor"] not in {1, 2}
         or header["index"] != 0
         or decode_record(header["instant"]) != Instant(0)
     ):
         raise KernelError("JOURNAL_HEADER", "unsupported or malformed header")
+    if header["minor"] == 2:
+        import hashlib
+
+        from .rpc_transport import MAJOR, MINOR, PROTOCOL, timeout_policy
+
+        manifest_digest = hashlib.sha256(
+            canonical_json(header["manifest"], ResourceBudget(**header["budget"]))[:-1]
+        ).hexdigest()
+        profiles = header["engine_profiles"]
+        if not isinstance(profiles, dict) or set(profiles) - set(
+            header["engine_versions"]
+        ):
+            raise KernelError("JOURNAL_RPC", "unknown engine transport profile")
+        for profile in profiles.values():
+            if (
+                set(profile)
+                != {
+                    "protocol",
+                    "major",
+                    "minor",
+                    "timeouts",
+                    "budget",
+                    "contract",
+                }
+                or type(profile["major"]) is not int
+                or type(profile["minor"]) is not int
+                or (profile["protocol"], profile["major"], profile["minor"])
+                != (
+                    PROTOCOL,
+                    MAJOR,
+                    MINOR,
+                )
+            ):
+                raise KernelError("JOURNAL_RPC", "unsupported pinned RPC profile")
+            if (
+                timeout_policy(profile["timeouts"]) != profile["timeouts"]
+                or decode_record(profile["budget"])
+                != ResourceBudget(**header["budget"])
+                or profile["contract"]
+                != {
+                    "registry_digest": header["registry_digest"],
+                    "manifest_digest": manifest_digest,
+                }
+            ):
+                raise KernelError("JOURNAL_RPC", "RPC binding/policy mismatch")
     registry = MemoryRegistry.from_data(header["registry"])
     if registry.digest != header["registry_digest"]:
         raise KernelError("REGISTRY_DIGEST", "descriptor digest mismatch")
@@ -78,6 +125,9 @@ def from_header(header: dict[str, Any]) -> Kernel:
         max_microsteps=header["max_microsteps"],
         budget=ResourceBudget(**header["budget"]),
         configuration=header["configuration"],
+        ingress_policy=decode_record(header["ingress_policy"])
+        if header["minor"] == 2
+        else None,
     )
     descriptors = decode_record(header["partitions"])
     if not isinstance(descriptors, tuple) or any(
@@ -135,7 +185,12 @@ def from_header(header: dict[str, Any]) -> Kernel:
     kernel._store = Store(
         registry, manifest, partitions, Actions(registry, kernel.budget)
     )
+    from .sampling import compile_samples
+
+    compile_samples(kernel._store, kernel._dependency_graph, kernel.mappings)
     kernel._store.max_microsteps = kernel.max_microsteps
+    if kernel.ingress_policy is not None:
+        kernel._store.watermark_ns = kernel.ingress_policy.initial_watermark_ns
     kernel.header = header
     kernel._bound = kernel._started = kernel._read_only = True
     return kernel
@@ -188,6 +243,42 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
         state, expected, _ = reserve(
             self._store, decode_record(record["request"]), self.budget
         )
+    elif kind in {"live_ingress", "live_ingress_rejection"}:
+        from .ingress import reserve_live
+
+        if (
+            self.ingress_policy is None
+            or decode_record(record["policy"]) != self.ingress_policy
+        ):
+            raise KernelError("JOURNAL_INGRESS", "live policy differs from the header")
+        state, expected, _ = reserve_live(
+            self._store,
+            decode_record(record["original_request"]),
+            decode_record(record["source_stamp"]),
+            self.ingress_policy,
+            self.mappings,
+            self.budget,
+        )
+    elif kind == "watermark":
+        if (
+            self.ingress_policy is None
+            or self._store.watermark_ns is None
+            or type(record["watermark_ns"]) is not int
+            or record["watermark_ns"] <= self._store.watermark_ns
+            or self._store.pending_intents
+        ):
+            raise KernelError("JOURNAL_WATERMARK", "invalid closed-prefix advance")
+        state = self._store.clone()
+        state.watermark_ns = record["watermark_ns"]
+        expected = {
+            "type": "watermark",
+            "index": record["index"],
+            "instant": encode(instant),
+            "items": [],
+            "watermark_ns": state.watermark_ns,
+        }
+        state.records.append(expected)
+        state.cuts.append(Cut(record["index"], instant))
     elif kind == "seal":
         state = self._store.clone()
         if any(w.eligible.ns <= instant.ns for w in state.work) or any(
@@ -205,6 +296,8 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
             raise KernelError(
                 "JOURNAL_SEAL", "partition has not reached common boundary"
             )
+        if state.watermark_ns is not None and state.watermark_ns < instant.ns:
+            raise KernelError("JOURNAL_WATERMARK", "seal exceeds the closed prefix")
         if record["physical_ns"] != instant.ns:
             raise KernelError("JOURNAL_SEAL", "seal time mismatch")
         state.sealed_ns = instant.ns
@@ -274,6 +367,37 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
                 "code": record["code"],
                 "items": record["items"],
             }
+            if "rpc" in record:
+                if not isinstance(record["rpc"], dict) or set(record["rpc"]) - {
+                    "op",
+                    "request_id",
+                    "timeout_s",
+                    "policy",
+                }:
+                    raise KernelError("JOURNAL_RPC", "invalid recorded transport fault")
+                rpc = record["rpc"]
+                if (
+                    set(rpc) != {"op", "request_id", "timeout_s", "policy"}
+                    or rpc["op"]
+                    not in {"hello", "reset", "horizon", "advance", "react", "close"}
+                    or type(rpc["request_id"]) is not int
+                    or rpc["request_id"] < 1
+                ):
+                    raise KernelError(
+                        "JOURNAL_RPC", "missing request/policy coordinates"
+                    )
+                pinned = [
+                    {key: value for key, value in profile.items() if key != "contract"}
+                    for profile in self.header["engine_profiles"].values()
+                ]
+                if (
+                    rpc["policy"] not in pinned
+                    or rpc["timeout_s"] != rpc["policy"]["timeouts"][rpc["op"]]
+                ):
+                    raise KernelError(
+                        "JOURNAL_RPC", "fault policy differs from pinned profile"
+                    )
+                expected["rpc"] = rpc
         else:
             # Run the ordinary cancel policy without engines or journal effects.
             self._read_only = False

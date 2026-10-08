@@ -7,10 +7,13 @@ extrapolation from a failed or partially sealed workload. Linux ru_maxrss is KiB
 """
 
 import argparse
+import hashlib
 import json
 import resource
 import signal
+import tempfile
 import time
+from contextlib import nullcontext
 from pathlib import Path
 
 from aerokernel import (
@@ -138,6 +141,10 @@ def workload(entities, steps, path):
     wall_s = time.perf_counter() - start
     versions = sum(map(len, k._store.facts.values())) if hasattr(k, "_store") else 0
     journal.close()
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
     result = {
         "entities": entities,
         "fields": 3,
@@ -147,6 +154,7 @@ def workload(entities, steps, path):
         "bootstrap_s": bootstrap_s,
         "rss_peak_mib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024,
         "journal_bytes": path.stat().st_size,
+        "journal_sha256": digest.hexdigest(),
         "bytes_per_fact_version": path.stat().st_size / versions if versions else None,
         "journal_lines": len(k._store.records) + 1 if hasattr(k, "_store") else 0,
         "sealed_ns": k._store.sealed_ns if hasattr(k, "_store") else None,
@@ -168,8 +176,6 @@ def main():
     args = parser.parse_args()
     if args.steps < 1 or args.timeout < 1:
         parser.error("steps and timeout must be positive")
-    if not args.bind_only and args.journal is None:
-        parser.error("--journal is required for the workload")
 
     def timeout(*_):
         raise TimeoutError("benchmark wall-time budget exhausted")
@@ -182,7 +188,15 @@ def main():
         if args.check_targets and binding["bind_wall_s"] >= 0.5:
             raise SystemExit(1)
         return
-    result = workload(args.entities, args.steps, args.journal)
+    # Default scratch lives beside this script, never outside the workspace.
+    scratch_context = (
+        tempfile.TemporaryDirectory(prefix=".kernel-bench-", dir=Path(__file__).parent)
+        if args.journal is None
+        else nullcontext()
+    )
+    with scratch_context as scratch:
+        path = args.journal if args.journal is not None else Path(scratch) / "run.jsonl"
+        result = workload(args.entities, args.steps, path)
     signal.alarm(0)
     result["dense_binding"] = binding
     print(json.dumps(result), flush=True)

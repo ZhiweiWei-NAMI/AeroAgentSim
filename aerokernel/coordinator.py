@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import platform
+import threading
 from collections.abc import Mapping
 from dataclasses import asdict
 from types import MappingProxyType
@@ -14,19 +15,21 @@ from .control import boundary_control, publish_ingress, reserve
 from .engine import Batch, Engine, Partition, RunContext
 from .errors import KernelError, MicrostepLimitExceeded, SynchronizationDeadlock
 from .ids import ItemRef, message_id, validate_text
+from .ingress import IngressPolicy
 from .journal import Journal
 from .messages import Actions, ActionState, CancelRequestResult, CommandRequest
 from .registry import MemoryRegistry, Registry
 from .rng import RNGStreams
+from .sampling import compile_samples, ordinary_earliest, sample_ready
 from .scheduling import build_wave, ready_partitions, wave_intents
 from .state import StateView, Store
-from .time import ClockMapping, Cut, Instant
+from .time import ClockMapping, Cut, Instant, Stamp
 from .transactions import Candidate
-from .values import FrozenValue, ResourceBudget, freeze, thaw
+from .values import FrozenValue, ResourceBudget, canonical_json, freeze, thaw
 
 
 class Kernel:
-    """General-purpose M1 kernel. Publication is accessible only through execution."""
+    """Conservative kernel with publication accessible only through execution."""
 
     def __init__(
         self,
@@ -37,11 +40,17 @@ class Kernel:
         max_microsteps: int = 1024,
         budget: ResourceBudget | None = None,
         configuration: object = None,
+        ingress_policy: IngressPolicy | None = None,
     ) -> None:
         if type(root_seed) is not int:
             raise KernelError("SEED", "root seed must be an integer")
         if type(max_microsteps) is not int or max_microsteps < 1:
             raise KernelError("MICROSTEP_BUDGET", "positive global bound required")
+        if ingress_policy is not None and not isinstance(ingress_policy, IngressPolicy):
+            raise KernelError("INGRESS_POLICY", "typed ingress policy required")
+        self.ingress_policy = ingress_policy
+        self._ingress_condition = threading.Condition(threading.RLock())
+        self._pace_origin: float | None = None
         self.root_seed = root_seed
         self.budget = ResourceBudget() if budget is None else budget
         self.configuration: FrozenValue = freeze(configuration, self.budget)
@@ -104,7 +113,10 @@ class Kernel:
         self._store = Store(
             registry, manifest, partitions, Actions(registry, self.budget)
         )
+        compile_samples(self._store, self._dependency_graph, self.mappings)
         self._store.max_microsteps = self.max_microsteps
+        if self.ingress_policy is not None:
+            self._store.watermark_ns = self.ingress_policy.initial_watermark_ns
         streams = {
             p.id: RNGStreams(
                 self.root_seed, p.engine_id, p.id, p.rng_streams, self.budget
@@ -118,11 +130,20 @@ class Kernel:
             MappingProxyType(streams),
             self.configuration,
         )
+        import hashlib
+
+        manifest_digest = hashlib.sha256(
+            canonical_json(manifest.to_data(), self.budget)[:-1]
+        ).hexdigest()
+        for engine in self._engines.values():
+            bind_contract = getattr(engine, "_bind_contract", None)
+            if bind_contract is not None:
+                bind_contract(registry.digest, manifest_digest, self.budget)
         header = {
             "type": "header",
             "format": "aerokernel.journal",
             "major": 1,
-            "minor": 1,
+            "minor": 2,
             "index": 0,
             "instant": encode(Instant(0)),
             "time_origin_ns": 0,
@@ -138,6 +159,12 @@ class Kernel:
             "durability": self.journal.durability,
             "root_seed": self.root_seed,
             "configuration": thaw(self.configuration),
+            "ingress_policy": encode(self.ingress_policy),
+            "engine_profiles": {
+                eid: engine.rpc_profile
+                for eid, engine in sorted(self._engines.items())
+                if hasattr(engine, "rpc_profile")
+            },
             "serializer": {
                 "implementation": platform.python_implementation(),
                 "python": platform.python_version(),
@@ -167,26 +194,50 @@ class Kernel:
 
     def _validate_partition(self, p: Partition, registry: MemoryRegistry) -> None:
         for feature in p.features:
-            raise NotImplementedError(f"M2_{feature.upper()}: active capability")
-        if p.timing.mode in {"lockstep", "real_time"}:
-            raise NotImplementedError(f"M2_{p.timing.mode.upper()}: timing mode")
-        if p.timing.mode not in {"des", "fixed_step"}:
+            if feature not in {"sampled", "relations", "rpc"}:
+                raise KernelError("PARTITION_FEATURE", "unknown active capability")
+        if p.timing.mode == "real_time" and self.ingress_policy is None:
+            raise KernelError(
+                "INGRESS_POLICY", "real_time requires a declared watermark policy"
+            )
+        if p.timing.mode not in {"des", "fixed_step", "lockstep", "real_time"}:
             raise KernelError("TIMING_MODE", "unknown timing mode")
+        if p.timing.mode == "lockstep":
+            if any(
+                type(flag) is not bool
+                for flag in (p.timing.exact_stop, p.timing.certified_hold)
+            ):
+                raise KernelError(
+                    "LOCKSTEP_CONTRACT", "explicit bool capabilities required"
+                )
+            if p.timing.step_ns is not None and (
+                type(p.timing.step_ns) is not int or p.timing.step_ns <= 0
+            ):
+                raise KernelError("TIMING_STEP", "positive communication step required")
+            if not p.timing.exact_stop and (
+                p.timing.step_ns is None or not p.timing.certified_hold
+            ):
+                raise KernelError(
+                    "LOCKSTEP_CONTRACT",
+                    "declare exact stops or a native grid with certified holds",
+                )
+            if not p.timing.latch and not p.timing.exact_stop:
+                raise KernelError(
+                    "LOCKSTEP_CONTRACT", "off-grid inputs require exact splitting"
+                )
         if type(p.timing.latch) is not bool:
             raise KernelError("TIMING_LATCH", "latch policy must be explicit bool")
         if p.timing.mode == "des" and p.timing.step_ns is not None:
             raise KernelError("TIMING_STEP", "DES does not declare a native grid step")
-        if type(p.timing.origin_ns) is not int or p.timing.origin_ns != 0:
-            raise KernelError(
-                "TIMING_ORIGIN", "M1 native grid origin must equal run origin"
-            )
+        if (
+            type(p.timing.origin_ns) is not int
+            or p.timing.origin_ns < 0
+            or (p.timing.mode == "des" and p.timing.origin_ns != 0)
+        ):
+            raise KernelError("TIMING_ORIGIN", "invalid native grid origin")
         if p.timing.mode == "fixed_step":
             if type(p.timing.step_ns) is not int or p.timing.step_ns <= 0:
                 raise KernelError("TIMING_STEP", "positive integer fixed step required")
-            if not p.timing.latch:
-                raise NotImplementedError(
-                    "M2_EXACT_SPLIT: fixed-step nonlatching profile"
-                )
         if type(p.message_lag_ns) is not int or p.message_lag_ns < 0:
             raise KernelError(
                 "ROUTE_LAG", "nonnegative integer recipient route lag required"
@@ -203,6 +254,21 @@ class Kernel:
             registry.field(d.field)
             if d.type_id is not None:
                 registry.is_a(d.type_id, d.type_id)
+        for relation_id in (*p.relation_produces, *p.obligation_produces):
+            registry.relation(relation_id)
+        for dependency in p.relation_consumes:
+            registry.relation(dependency.relation_id)
+            if (
+                type(dependency.lag_ns) is not int
+                or dependency.lag_ns < 0
+                or type(dependency.value_only) is not bool
+            ):
+                raise KernelError(
+                    "RELATION_DEPENDENCY", "invalid relation lag/value-only declaration"
+                )
+            validate_text(dependency.id_pattern)
+            if dependency.source_type is not None:
+                registry.is_a(dependency.source_type, dependency.source_type)
         for field in p.produces:
             registry.field(field)
         for schema in (*p.commands, *p.emits):
@@ -241,6 +307,24 @@ class Kernel:
                         edges[source].add(destination)
                 else:
                     edges[source].update(subscribers.get(destination, ()))
+        relation_readers: dict[str, set[str]] = {}
+        for target, p in partitions.items():
+            for dependency in p.relation_consumes:
+                if dependency.lag_ns == 0:
+                    relation_readers.setdefault(dependency.relation_id, set()).add(
+                        target
+                    )
+        for source, p in partitions.items():
+            for relation_id in (*p.relation_produces, *p.obligation_produces):
+                edges[source].update(relation_readers.get(relation_id, ()))
+        context_partitions = {s.context_id: s.partition for s in manifest.samples}
+        for spec in manifest.samples:
+            if spec.partition not in partitions:
+                raise KernelError("SAMPLE_DECLARATION", "unknown evaluator partition")
+            for context in spec.frame_inputs:
+                if context not in context_partitions:
+                    raise KernelError("SAMPLE_INPUT", "unknown frame dependency")
+                edges[context_partitions[context]].add(spec.partition)
         # Kosaraju visits each node/edge once, rather than enumerating DAG paths.
         graph = {p: tuple(sorted(targets)) for p, targets in edges.items()}
         reverse: dict[str, list[str]] = {p: [] for p in partitions}
@@ -347,6 +431,17 @@ class Kernel:
             "code": code,
             "items": items,
         }
+        if isinstance(exc, KernelError) and {
+            "op",
+            "request_id",
+            "timeout_s",
+            "policy",
+        }.issubset(exc.context):
+            record["rpc"] = {
+                key: encode(exc.context[key])
+                for key in ("op", "request_id", "timeout_s", "policy")
+                if key in exc.context
+            }
         state.records.append(record)
         state.cuts.append(Cut(record["index"], state.cut.instant))
         self._publish(state, record)
@@ -507,6 +602,13 @@ class Kernel:
             if not self._store.faulted:
                 self._fault(exc)
             raise
+        if (
+            self.ingress_policy is not None
+            and self.ingress_policy.speed_ratio is not None
+        ):
+            import time
+
+            self._pace_origin = time.monotonic()
         return self.view()
 
     def submit(self, command: CommandRequest) -> str:
@@ -516,6 +618,90 @@ class Kernel:
         if record:
             self._publish(state, record)
         return mid
+
+    def advance_watermark(self, ns: int) -> None:
+        """Record closure of the declared ingress prefix and wake bounded waits."""
+        with self._ingress_condition:
+            self._guard()
+            if (
+                self.ingress_policy is None
+                or type(ns) is not int
+                or self._store.watermark_ns is None
+                or ns < self._store.watermark_ns
+                or self._store.pending_intents
+            ):
+                raise KernelError(
+                    "INGRESS_WATERMARK", "invalid or undeclared prefix closure"
+                )
+            if ns != self._store.watermark_ns:
+                self._record_control("watermark", {"watermark_ns": ns})
+            self._ingress_condition.notify_all()
+
+    def submit_live(self, command: CommandRequest, stamp: Stamp) -> str:
+        """Reserve actual stamped ingress under the pinned reject/delay policy."""
+        from .ingress import reserve_live
+
+        with self._ingress_condition:
+            self._guard()
+            if self.ingress_policy is None:
+                raise KernelError(
+                    "INGRESS_POLICY", "live ingress needs a pinned policy"
+                )
+            state, record, mid = reserve_live(
+                self._store,
+                command,
+                stamp,
+                self.ingress_policy,
+                self.mappings,
+                self.budget,
+            )
+            if record:
+                self._publish(state, record)
+                self._ingress_condition.notify_all()
+            if mid is None:
+                raise KernelError(
+                    "LATE_INGRESS", "input falls in a closed ingress prefix"
+                )
+            return mid
+
+    def _wait_watermark(self, ns: int) -> None:
+        if self.ingress_policy is None:
+            return
+        import time
+
+        if self._store.watermark_ns is None:
+            raise KernelError("INGRESS_WATERMARK", "declared stream lost its watermark")
+        deadline = time.monotonic() + self.ingress_policy.timeout_s
+        while self._store.watermark_ns < ns:
+            self._guard()
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise KernelError(
+                    "WATERMARK_TIMEOUT",
+                    "declared closed-prefix wait timed out",
+                    target_ns=ns,
+                    watermark_ns=self._store.watermark_ns,
+                    timeout_s=self.ingress_policy.timeout_s,
+                )
+            self._ingress_condition.wait(remaining)
+
+    def _pace_to(self, ns: int) -> None:
+        policy = self.ingress_policy
+        if policy is None or policy.speed_ratio is None:
+            return
+        import time
+
+        if self._pace_origin is None:
+            raise KernelError(
+                "PACING_ORIGIN", "pacing requires a started wall-clock origin"
+            )
+        deadline = self._pace_origin + ns / (1_000_000_000 * policy.speed_ratio)
+        while True:
+            self._guard()
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return
+            self._ingress_condition.wait(min(remaining, 0.05))
 
     def cancel(self, command_id: str) -> CancelRequestResult:
         """Reserve cancellation or record an explicit rejection."""
@@ -582,7 +768,14 @@ class Kernel:
     def _horizons(self) -> dict[str, Any]:
         result = {}
         for pid in sorted(self._store.partitions):
-            h = self._by_partition[pid].horizon(pid, self._store.cut)
+            engine = self._by_partition[pid]
+            query = getattr(engine, "_kernel_query", None)
+            if query is not None:
+                logical, native = self._store.frontiers[pid]
+                query(
+                    pid, self._store.cut, logical, native, self._store.native_cuts[pid]
+                )
+            h = engine.horizon(pid, self._store.cut)
             logical, native = self._store.frontiers[pid]
             if (
                 h.reached != logical
@@ -603,7 +796,11 @@ class Kernel:
     def _settle(self, ns: int) -> None:
         while True:
             now = self._store.cut.instant
-            earliest = self._store.work.earliest()
+            earliest = (
+                ordinary_earliest(self._store)
+                if self._store.sample_specs
+                else self._store.work.earliest()
+            )
             due = earliest if earliest is not None and earliest.ns <= ns else None
             first_timer = self._store.timer_queue.earliest()
             timers = (
@@ -612,7 +809,25 @@ class Kernel:
                 else []
             )
             if not due and not timers:
-                break
+                sampled = (
+                    sample_ready(self._store, ns) if self._store.sample_specs else ()
+                )
+                if not sampled:
+                    break
+                instant = Instant(
+                    ns,
+                    max(
+                        now.microstep + 1,
+                        max(
+                            w.eligible.microstep
+                            for w in self._store.work
+                            if w.recipient in sampled and w.eligible.ns <= ns
+                        ),
+                    ),
+                )
+                self._check_microstep(instant)
+                self._wave(sampled, instant, "sample")
+                continue
             next_steps = [] if due is None else [due.microstep]
             next_steps.extend(t.microstep for t in timers)
             instant = Instant(ns, max(now.microstep + 1, min(next_steps)))
@@ -665,7 +880,11 @@ class Kernel:
             )
 
     def run_until(self, ns: int) -> StateView:
-        """Settle an exact limit; equal limits preserve the existing cut."""
+        """Settle an exact limit, waiting only under a declared live policy."""
+        with self._ingress_condition:
+            return self._run_until(ns)
+
+    def _run_until(self, ns: int) -> StateView:
         self._guard()
         if (
             type(ns) is not int
@@ -701,6 +920,11 @@ class Kernel:
                 to = min(boundaries)
                 if to <= current:
                     raise SynchronizationDeadlock("no safe physical progress")
+                pre_wait_cut = self._store.cut
+                self._wait_watermark(to)
+                self._pace_to(to)
+                if pre_wait_cut != self._store.cut:
+                    continue
                 self._wave(
                     tuple(self._store.partitions), Instant(to), "advance", horizons
                 )
@@ -730,6 +954,8 @@ class Kernel:
         state.cuts.append(Cut(record["index"], state.cut.instant))
         if kind == "run_limit":
             state.run_target = fields["limit_ns"]
+        elif kind == "watermark":
+            state.watermark_ns = fields["watermark_ns"]
         self._publish(state, record)
 
     def view(self, cut: Cut | None = None) -> StateView:
@@ -753,7 +979,9 @@ class Kernel:
         """Close engines idempotently and report cleanup errors."""
         if self._closed:
             return
-        self._closed = True
+        with self._ingress_condition:
+            self._closed = True
+            self._ingress_condition.notify_all()
         errors = []
         for eid in sorted(self._engines):
             try:

@@ -123,7 +123,9 @@ def publish_ingress(
         candidate.instant,
         freeze(request.payload, candidate.budget),
         (),
-        None,
+        None
+        if data is None or "source_stamp" not in data
+        else decode_record(data["source_stamp"]),
         origin,
         candidate.budget,
     )
@@ -203,6 +205,14 @@ def boundary_control(candidate: Candidate) -> dict[str, Any]:
                 )
             field_key = decode_record(timer["key"])
             candidate.notify_field(field_key, cause, True)
+        elif timer.get("kind") == "relation":
+            from .relations import notify_relation
+
+            if len(key) != 3 or "relation_id" not in timer:
+                raise KernelError(
+                    "TIMER_RECORD", "malformed relation deadline", timer_key=key
+                )
+            notify_relation(candidate, timer["relation_id"], cause, boundary=True)
         else:
             if (
                 timer.get("kind") != "partition"

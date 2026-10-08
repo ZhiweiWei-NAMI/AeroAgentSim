@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import heapq
 from bisect import bisect_left, bisect_right
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, overload
 
 from .engine import Batch, Partition
@@ -21,6 +22,8 @@ if TYPE_CHECKING:
     from .binding import BindingManifest
     from .messages import Actions, ActionState, Dirty
     from .registry import MemoryRegistry
+    from .relations import Edge, Obligation
+    from .sampling import RecordedFrame, SampleSpec
 
 
 @dataclass(frozen=True, slots=True)
@@ -264,6 +267,16 @@ class Store:
         self.writers: Overlay[FieldKey, str] = Overlay()
         self.controllers: Overlay[EntityRef, str] = Overlay()
         self.facts: Overlay[FieldKey, FactVersions] = Overlay()
+        self.frames: Overlay[str, tuple[RecordedFrame, ...]] = Overlay()
+        self.edges: Overlay[str, tuple[Edge, ...]] = Overlay()
+        self.obligations: Overlay[str, tuple[Obligation, ...]] = Overlay()
+        self.relation_edges: Overlay[str, frozenset[str]] = Overlay()
+        self.relation_obligations: Overlay[str, frozenset[str]] = Overlay()
+        self.incident_edges: Overlay[EntityRef, frozenset[str]] = Overlay()
+        self.incident_obligations: Overlay[EntityRef, frozenset[str]] = Overlay()
+        self.sample_specs: Mapping[str, SampleSpec] = MappingProxyType({})
+        self.sample_partitions: Mapping[str, str] = MappingProxyType({})
+        self.sample_levels: Mapping[str, int] = MappingProxyType({})
         self.ready: Overlay[tuple[EntityRef, str], ItemRef] = Overlay()
         self.messages: Overlay[str, Any] = Overlay()
         self.work = WorkQueue()
@@ -277,6 +290,7 @@ class Store:
         self.timers: Overlay[tuple[str, ...], dict[str, Any]] = Overlay()
         self.timer_queue = TimerQueue()
         self.sealed_ns: int | None = None
+        self.watermark_ns: int | None = None
         self.run_target: int | None = None
         self.faulted = False
         self.max_microsteps = 1024
@@ -298,6 +312,13 @@ class Store:
             "writers",
             "controllers",
             "facts",
+            "frames",
+            "edges",
+            "obligations",
+            "relation_edges",
+            "relation_obligations",
+            "incident_edges",
+            "incident_obligations",
             "ready",
             "messages",
             "pending_ingress",
@@ -425,7 +446,15 @@ class StateView:
         instant: Instant | None = None,
         native_input_cut: Cut | None = None,
         native_reached_ns: int = 0,
+        invocation_ref: ItemRef | None = None,
+        phase: str | None = None,
+        logical_before: Instant | None = None,
+        native_before: int | None = None,
     ) -> None:
+        self.invocation_ref = invocation_ref
+        self.phase = phase
+        self.logical_before = logical_before
+        self.native_before = native_before
         self._store = store
         self.cut = store.cut if cut is None else cut
         store.check_cut(self.cut)
@@ -539,11 +568,203 @@ class StateView:
                 raise KernelError("READ_UNDECLARED", "unrelated action read")
         return state
 
+    def sample_frames(
+        self, context_id: str, known_at: Cut | None = None
+    ) -> tuple[RecordedFrame, ...]:
+        """Read recorded context frames only, capped at the issued knowledge cut."""
+        cut = self._cut(known_at)
+        if context_id not in self._store.sample_specs:
+            raise KernelError("SAMPLE_CONTEXT", "unknown sampled context")
+        if self.partition is not None:
+            own = self._store.sample_partitions.get(self.partition)
+            spec = self._store.sample_specs.get(own) if own is not None else None
+            if own != context_id and (
+                spec is None or context_id not in spec.frame_inputs
+            ):
+                raise KernelError("READ_UNDECLARED", "undeclared sampled frame read")
+        return tuple(
+            row
+            for row in self._store.frames.get(context_id, ())
+            if row.version.record_index <= cut.index and row.available <= cut.instant
+        )
+
     def relations(
-        self, relation_id: str, valid_at: Instant, known_at: Cut
-    ) -> tuple[()]:
-        """Temporal relation store extension (milestone 2)."""
-        raise NotImplementedError("M2_RELATIONS: temporal relation queries")
+        self, relation_id: str, valid_at: Instant, known_at: Cut | None = None
+    ) -> tuple[Edge, ...]:
+        """Read effective directed edges at bounded validity/knowledge coordinates."""
+        from .relations import latest_edge
+
+        issued = self._cut(known_at)
+        self._store.registry.relation(relation_id)
+        dependencies = (
+            ()
+            if self.partition is None
+            else tuple(
+                d
+                for d in self._store.partitions[self.partition].relation_consumes
+                if d.relation_id == relation_id
+            )
+        )
+        owned = (
+            self.partition is not None
+            and relation_id in self._store.partitions[self.partition].relation_produces
+        )
+        if self.partition is not None and not dependencies and not owned:
+            raise KernelError("READ_UNDECLARED", "undeclared relation read")
+        # Whole-relation queries must respect every declared slice's validity
+        # lag; knowledge is then capped separately for each immutable source.
+        validity_lag = max((d.lag_ns for d in dependencies), default=0)
+        if self.partition is not None and self.instant.ns < validity_lag:
+            return ()
+        if self.partition is not None and (
+            valid_at.ns > self.instant.ns - validity_lag
+            or (validity_lag == 0 and valid_at > self.instant)
+        ):
+            raise KernelError("READ_VALIDITY_FUTURE", "relation exceeds declared lag")
+        result = []
+        for edge_id in sorted(self._store.relation_edges.get(relation_id, ())):
+            versions = self._store.edges[edge_id]
+            source = versions[0].source
+            scoped = tuple(
+                d
+                for d in dependencies
+                if fnmatchcase(source.id, d.id_pattern)
+                and (
+                    d.source_type is None
+                    or self._store.registry.is_a(source.type_id, d.source_type)
+                )
+            )
+            own_scope = (
+                owned
+                and self._store.manifest.edge_writer(
+                    relation_id, source, self._store.registry, self._store.partitions
+                )
+                == self.partition
+            )
+            if self.partition is not None and not scoped and not own_scope:
+                continue
+            lag = min((d.lag_ns for d in scoped), default=0)
+            if self.partition is not None and self.instant.ns < lag:
+                continue
+            cut = (
+                issued
+                if self.partition is None
+                else self._store.cut_at(self.instant.ns - lag, issued)
+            )
+            if versions[0].version.record_index > cut.index:
+                continue
+            edge = latest_edge(self._store, edge_id, cut.index)
+            if (
+                edge.valid is not None
+                and edge.valid.contains(valid_at)
+                and self._store.alive(edge.source, cut, valid_at)
+                and self._store.alive(edge.target, cut, valid_at)
+            ):
+                result.append(edge)
+        return tuple(result)
+
+    def relation_history(
+        self, edge_id: str, known_at: Cut | None = None
+    ) -> tuple[Edge, ...]:
+        """Read assertion/closure/cancellation versions without pruning history."""
+        from .relations import latest_edge
+
+        cut = self._cut(known_at)
+        edge = latest_edge(self._store, edge_id, cut.index)
+        if self.partition is not None:
+            p = self._store.partitions[self.partition]
+            if (
+                not any(
+                    d.relation_id == edge.relation_id
+                    and fnmatchcase(edge.source.id, d.id_pattern)
+                    and (
+                        d.source_type is None
+                        or self._store.registry.is_a(edge.source.type_id, d.source_type)
+                    )
+                    for d in p.relation_consumes
+                )
+                and self._store.manifest.edge_writer(
+                    edge.relation_id,
+                    edge.source,
+                    self._store.registry,
+                    self._store.partitions,
+                )
+                != self.partition
+            ):
+                raise KernelError("READ_UNDECLARED", "undeclared edge history")
+            lags = [
+                d.lag_ns
+                for d in p.relation_consumes
+                if d.relation_id == edge.relation_id
+                and fnmatchcase(edge.source.id, d.id_pattern)
+                and (
+                    d.source_type is None
+                    or self._store.registry.is_a(edge.source.type_id, d.source_type)
+                )
+            ]
+            lag = min(lags) if lags else 0
+            if self.instant.ns - lag < 0:
+                return ()
+            cut = self._store.cut_at(self.instant.ns - lag, cut)
+        return tuple(
+            v for v in self._store.edges[edge_id] if v.version.record_index <= cut.index
+        )
+
+    def obligation_history(
+        self, obligation_id: str, known_at: Cut | None = None
+    ) -> tuple[Obligation, ...]:
+        """Read explicit minimum activation/termination versions by prefix."""
+        from .relations import latest_obligation
+
+        cut = self._cut(known_at)
+        obligation = latest_obligation(self._store, obligation_id, cut.index)
+        if self.partition is not None:
+            p = self._store.partitions[self.partition]
+            own = (
+                self._store.manifest.obligation_controller(
+                    obligation.relation_id,
+                    obligation.direction,
+                    obligation.endpoint_ref,
+                    self._store.registry,
+                    self._store.partitions,
+                )
+                == self.partition
+            )
+            if not own and not any(
+                d.relation_id == obligation.relation_id for d in p.relation_consumes
+            ):
+                raise KernelError("READ_UNDECLARED", "undeclared obligation history")
+            if not own:
+                dependencies = tuple(
+                    d
+                    for d in p.relation_consumes
+                    if d.relation_id == obligation.relation_id
+                    and (
+                        obligation.direction == "sources_per_target"
+                        or (
+                            fnmatchcase(obligation.endpoint_ref.id, d.id_pattern)
+                            and (
+                                d.source_type is None
+                                or self._store.registry.is_a(
+                                    obligation.endpoint_ref.type_id, d.source_type
+                                )
+                            )
+                        )
+                    )
+                )
+                if not dependencies:
+                    raise KernelError(
+                        "READ_UNDECLARED", "obligation outside source scope"
+                    )
+                lag = min(d.lag_ns for d in dependencies)
+                if self.instant.ns < lag:
+                    return ()
+                cut = self._store.cut_at(self.instant.ns - lag, cut)
+        return tuple(
+            v
+            for v in self._store.obligations[obligation_id]
+            if v.version.record_index <= cut.index
+        )
 
     def batch(
         self, operations: tuple[object, ...] = (), native_reached_ns: int | None = None

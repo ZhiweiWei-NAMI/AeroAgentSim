@@ -15,3 +15,6 @@ coverage.json
 .kernel-agents/
 benchmarks/_glm/
 tests/.ruff_cache/
+
+.m2-work/
+benchmarks/run-m2-*.jsonl

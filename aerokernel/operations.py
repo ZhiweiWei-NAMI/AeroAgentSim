@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 
 from .ids import EntityRef, FieldKey, ItemRef, LocalCause
-from .time import Instant, Interval, Stamp
+from .time import Cut, Instant, Interval, Stamp
 
 
 @dataclass(frozen=True)
@@ -79,14 +81,81 @@ class Activate:
 
 @dataclass(frozen=True)
 class UnsupportedOperation:
-    """Explicit extension boundary for milestone 2 contracts."""
+    """Legacy explicit unsupported-extension sentinel."""
 
     feature: str
 
 
-class AssertEdge(UnsupportedOperation):
-    """Temporal relation assertions are implemented in milestone 2."""
+@dataclass(frozen=True)
+class AssertEdge:
+    """Assert a never-reused transport ID with immutable endpoints."""
+
+    edge_id: str
+    relation_id: str
+    source: EntityRef
+    target: EntityRef
+    valid: Interval
+    acquired: Stamp
+    causes: tuple[ItemRef | LocalCause, ...] = ()
 
 
-class SampleFrame(UnsupportedOperation):
-    """Sample-frame publication is implemented in milestone 2."""
+@dataclass(frozen=True)
+class CloseEdge:
+    """End an already started edge exactly at publication."""
+
+    edge_id: str
+    causes: tuple[ItemRef | LocalCause, ...] = ()
+
+
+@dataclass(frozen=True)
+class CancelEdge:
+    """Cancel an edge not yet started, including equality at publication."""
+
+    edge_id: str
+    causes: tuple[ItemRef | LocalCause, ...] = ()
+
+
+@dataclass(frozen=True)
+class ActivateObligation:
+    """Activate a declared minimum only over this explicit interval."""
+
+    obligation_id: str
+    relation_id: str
+    direction: str
+    endpoint_ref: EntityRef
+    valid: Interval
+    causes: tuple[ItemRef | LocalCause, ...] = ()
+
+
+@dataclass(frozen=True)
+class EndObligation:
+    """End a started obligation at publication, never backdating."""
+
+    obligation_id: str
+    causes: tuple[ItemRef | LocalCause, ...] = ()
+
+
+@dataclass(frozen=True)
+class CancelObligation:
+    """Cancel an obligation whose interval has not started."""
+
+    obligation_id: str
+    causes: tuple[ItemRef | LocalCause, ...] = ()
+
+
+@dataclass(frozen=True)
+class SampleFrame:
+    """One settled context observation, without a kernel predicate language."""
+
+    context_id: str
+    physical_ns: int
+    cut: Cut
+    bindings: Mapping[str, EntityRef]
+    clocks: Mapping[str, tuple[str, str]]
+    result: object
+    sources: Mapping[str, str]
+    causes: tuple[ItemRef | LocalCause, ...] = ()
+
+    def __post_init__(self) -> None:
+        for name in ("bindings", "clocks", "sources"):
+            object.__setattr__(self, name, MappingProxyType(dict(getattr(self, name))))

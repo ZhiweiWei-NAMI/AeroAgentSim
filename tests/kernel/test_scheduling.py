@@ -190,14 +190,10 @@ def test_route_lag_is_applied_once_before_recipient_grid_latch_and_empty_fanout(
     [
         Partition("p", "e", timing=Timing("lockstep")),
         Partition("p", "e", timing=Timing("real_time")),
-        Partition("p", "e", features=("relations",)),
-        Partition("p", "e", features=("sampled",)),
-        Partition("p", "e", features=("rpc",)),
-        Partition("p", "e", timing=Timing("fixed_step", 2, latch=False)),
     ],
 )
-def test_m2_active_profiles_fail_with_explicit_codes(partition):
-    with pytest.raises(NotImplementedError, match="M2_"):
+def test_external_profiles_require_declared_contracts(partition):
+    with pytest.raises(KernelError):
         Kernel().bind(
             MemoryRegistry(()), BindingManifest("r", "e"), (SimpleEngine(partition),)
         )

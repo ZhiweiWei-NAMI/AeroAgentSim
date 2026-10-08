@@ -1,8 +1,8 @@
 """Authored §12 M1 trace: native mover, DES orders, reactive zone producer.
 
 Run from the repository: ``.venv/bin/python -m examples.two_engine_toy``.
-Relation cardinality and sampled entered frames are M2; this example uses a
-separate ``zone.transition`` schema and never claims a sampled-frame profile.
+This compatibility example uses an ordinary ``zone.transition`` schema.
+See ``sampled_relations.py`` for temporal relations and the optional entered profile.
 """
 
 from __future__ import annotations

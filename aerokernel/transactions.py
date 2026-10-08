@@ -22,15 +22,23 @@ from .messages import (
 )
 from .operations import (
     Activate,
+    ActivateObligation,
+    AssertEdge,
+    CancelEdge,
+    CancelObligation,
     CancelTimer,
+    CloseEdge,
     Create,
+    EndObligation,
     FactWrite,
     LifecycleReady,
     Remove,
     RetractFact,
+    SampleFrame,
     ScheduleTimer,
     UnsupportedOperation,
 )
+from .relations import Edge
 from .state import ABSENT, Fact, FactVersions, Life, Retraction, Store, Work
 from .time import ClockMapping, Cut, Instant
 from .values import ResourceBudget, freeze, freeze_normalized, normalize, typed_equal
@@ -60,7 +68,7 @@ def eligibility(
         max(requested.microstep, available.microstep + 1) if ns == available.ns else 0
     )
     timing = store.partitions[recipient].timing
-    if timing.mode == "fixed_step" and timing.latch:
+    if timing.mode in {"fixed_step", "lockstep"} and timing.latch:
         latched = timing.boundary(ns)
         if latched != ns:
             microstep = 0
@@ -109,6 +117,10 @@ class Candidate:
         self.mutated: set[tuple[EntityRef, str]] = set()
         self.creating: set[str] = set()
         self.removing: set[EntityRef] = set()
+        self.relation_mutated: set[tuple[str, str]] = set()
+        self.relation_affected: set[str] = set()
+        self.relation_causes: dict[str, ItemRef] = {}
+        self.relation_changes: list[tuple[Edge, Edge]] = []
 
     def add(self, item: dict[str, Any]) -> ItemRef:
         ref = ItemRef(self.index, len(self.items))
@@ -215,6 +227,71 @@ class Candidate:
                             StateView(self.before, read, partition=partition).action(
                                 proposal.command_id
                             )
+                        elif isinstance(proposal, (AssertEdge, CloseEdge, CancelEdge)):
+                            edge = decode_record(existing["edge"])
+                            p = self.before.partitions[partition]
+                            dependencies = [
+                                d
+                                for d in p.relation_consumes
+                                if d.relation_id == edge.relation_id
+                                and fnmatchcase(edge.source.id, d.id_pattern)
+                                and (
+                                    d.source_type is None
+                                    or self.before.registry.is_a(
+                                        edge.source.type_id, d.source_type
+                                    )
+                                )
+                            ]
+                            owner = self.before.manifest.edge_writer(
+                                edge.relation_id,
+                                edge.source,
+                                self.before.registry,
+                                self.before.partitions,
+                            )
+                            if not dependencies and owner != partition:
+                                raise KernelError(
+                                    "CAUSE_STATE_SCOPE", "undeclared relation cause"
+                                )
+                            lag = (
+                                min(d.lag_ns for d in dependencies)
+                                if dependencies
+                                else 0
+                            )
+                            if (
+                                self.before.cuts[cause.record_index].instant.ns
+                                > self.instant.ns - lag
+                            ):
+                                raise KernelError(
+                                    "CAUSE_STATE_LAG",
+                                    "relation cause exceeds declared lag",
+                                )
+                        elif isinstance(
+                            proposal,
+                            (ActivateObligation, EndObligation, CancelObligation),
+                        ):
+                            from .state import StateView
+
+                            obligation = decode_record(existing["obligation"])
+                            rows = StateView(
+                                self.before,
+                                read,
+                                partition=partition,
+                                instant=self.instant,
+                            ).obligation_history(obligation.obligation_id)
+                            if not any(row.version == cause for row in rows):
+                                raise KernelError(
+                                    "CAUSE_STATE_LAG",
+                                    "obligation cause exceeds declared read scope",
+                                )
+                        elif isinstance(proposal, SampleFrame):
+                            from .state import StateView
+
+                            StateView(
+                                self.before,
+                                read,
+                                partition=partition,
+                                instant=self.instant,
+                            ).sample_frames(proposal.context_id)
                         elif existing["partition"] != partition:
                             raise KernelError(
                                 "CAUSE_STATE_SCOPE",
@@ -588,6 +665,24 @@ class Candidate:
                             "data": self.state.timers[key],
                         }
                     )
+        elif isinstance(
+            op,
+            (
+                AssertEdge,
+                CloseEdge,
+                CancelEdge,
+                ActivateObligation,
+                EndObligation,
+                CancelObligation,
+            ),
+        ):
+            from .relations import apply_relation
+
+            apply_relation(self, partition, op, intent, out, bootstrap)
+        elif isinstance(op, SampleFrame):
+            from .sampling import publish_frame
+
+            publish_frame(self, partition, op, out, phase)
         elif isinstance(op, Emit):
             p = self.state.partitions[partition]
             if op.target_or_topic not in p.message_targets:

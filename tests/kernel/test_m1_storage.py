@@ -319,3 +319,39 @@ def test_malformed_timer_state_raises_contextual_kernel_error(malformation):
         boundary_control(candidate)
     assert caught.value.context["timer_key"] == key
     assert k._store.timers[key]["state"] == "pending"
+
+
+def test_compact_reference_fast_path_preserves_budget_and_other_payload_normalization():
+    from aerokernel import Journal, ResourceBudget, ResourceLimit, canonical_json
+
+    record = {
+        "fact_tables": {"entities": [], "fields": [], "stamps": [], "intervals": []},
+        "items": [],
+        "batches": [
+            {
+                "batch": {
+                    "fields": {
+                        "operations": [
+                            {"$item": 9},
+                            {"payload": {"signed_zero": -0.0, "array": [None, True]}},
+                        ]
+                    }
+                }
+            }
+        ],
+    }
+    expected = canonical_json(record)
+    assert Journal().append(record, trusted_fact_rows=True) == expected
+    assert b"-0.0" not in expected
+    for budget in (ResourceBudget(integer_digits=1), ResourceBudget(nesting_depth=6)):
+        # The digit limit accepts reference 9, rejects 10; depth 6 rejects even 9.
+        if budget.integer_digits == 1:
+            assert (
+                Journal(budget=budget).append(record, trusted_fact_rows=True)
+                == expected
+            )
+            record["batches"][0]["batch"]["fields"]["operations"][0]["$item"] = 10
+        with pytest.raises(ResourceLimit):
+            Journal(budget=budget).append(record, trusted_fact_rows=True)
+        with pytest.raises(ResourceLimit):
+            canonical_json(record, budget)

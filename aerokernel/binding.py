@@ -15,6 +15,8 @@ from .registry import MemoryRegistry
 
 if TYPE_CHECKING:
     from .messages import CommandRequest
+    from .relations import ObligationRule, RelationRule
+    from .sampling import SampleSpec
 
 
 @dataclass(frozen=True)
@@ -66,6 +68,9 @@ class BindingManifest:
     control_source: str = "host"
     cancel_sources: tuple[str, ...] = ()
     lifecycle_participants: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+    samples: tuple[SampleSpec, ...] = ()
+    relation_rules: tuple[RelationRule, ...] = ()
+    obligation_rules: tuple[ObligationRule, ...] = ()
 
     def __post_init__(self) -> None:
         for name in (
@@ -75,6 +80,9 @@ class BindingManifest:
             "lifecycle",
             "bootstrap_commands",
             "cancel_sources",
+            "samples",
+            "relation_rules",
+            "obligation_rules",
         ):
             object.__setattr__(self, name, tuple(getattr(self, name)))
         validate_text(self.run_id)
@@ -183,6 +191,81 @@ class BindingManifest:
             )
         return owner
 
+    def edge_writer(
+        self,
+        relation_id: str,
+        source: EntityRef,
+        registry: MemoryRegistry,
+        partitions: Mapping[str, Partition],
+    ) -> str:
+        """Resolve exactly one declared relation writer in the source scope."""
+        self._namespace(source)
+        registry.relation(relation_id)
+        choices = [
+            r
+            for r in self.relation_rules
+            if r.relation_id == relation_id
+            and registry.is_a(source.type_id, r.source_type)
+            and fnmatchcase(source.id, r.id_pattern)
+        ]
+        if not choices:
+            raise KernelError("RELATION_UNCOVERED", "no source-scope edge writer")
+        priority = max(r.priority for r in choices)
+        winners = [r for r in choices if r.priority == priority]
+        if len(winners) != 1:
+            raise KernelError("RELATION_AMBIGUOUS", "highest-priority relation tie")
+        owner = winners[0].partition
+        if (
+            owner not in partitions
+            or relation_id not in partitions[owner].relation_produces
+        ):
+            raise KernelError(
+                "RELATION_PRODUCES", "edge writer must declare relation production"
+            )
+        return owner
+
+    def obligation_controller(
+        self,
+        relation_id: str,
+        direction: str,
+        endpoint: EntityRef,
+        registry: MemoryRegistry,
+        partitions: Mapping[str, Partition],
+    ) -> str:
+        """Resolve the independently declared directional minimum controller."""
+        from .relations import DIRECTIONS
+
+        self._namespace(endpoint)
+        if direction not in DIRECTIONS:
+            raise KernelError(
+                "OBLIGATION_DIRECTION", "explicit cardinality direction required"
+            )
+        choices = [
+            r
+            for r in self.obligation_rules
+            if r.relation_id == relation_id
+            and r.direction == direction
+            and registry.is_a(endpoint.type_id, r.endpoint_type)
+            and fnmatchcase(endpoint.id, r.id_pattern)
+        ]
+        if not choices:
+            raise KernelError(
+                "OBLIGATION_UNCOVERED", "no directional obligation controller"
+            )
+        priority = max(r.priority for r in choices)
+        winners = [r for r in choices if r.priority == priority]
+        if len(winners) != 1:
+            raise KernelError("OBLIGATION_AMBIGUOUS", "highest-priority obligation tie")
+        owner = winners[0].partition
+        if (
+            owner not in partitions
+            or relation_id not in partitions[owner].obligation_produces
+        ):
+            raise KernelError(
+                "OBLIGATION_PRODUCES", "controller must declare obligation production"
+            )
+        return owner
+
     def participants(self, ref: EntityRef, registry: MemoryRegistry) -> tuple[str, ...]:
         """Select cleanup participants from all matching explicit type scopes."""
         return tuple(
@@ -252,6 +335,51 @@ class BindingManifest:
                 raise KernelError(
                     "CLEANUP_PARTICIPANTS", "invalid native cleanup selection"
                 )
+        from .relations import DIRECTIONS
+
+        for rr in self.relation_rules:
+            for text in (rr.partition, rr.relation_id, rr.source_type, rr.id_pattern):
+                validate_text(text)
+            registry.relation(rr.relation_id)
+            registry.is_a(rr.source_type, rr.source_type)
+            if (
+                type(rr.priority) is not int
+                or rr.partition not in partitions
+                or rr.relation_id not in partitions[rr.partition].relation_produces
+            ):
+                raise KernelError("RELATION_RULE", "invalid declared edge writer rule")
+            for ref in self.entities:
+                if registry.is_a(ref.type_id, rr.source_type) and fnmatchcase(
+                    ref.id, rr.id_pattern
+                ):
+                    self.edge_writer(rr.relation_id, ref, registry, partitions)
+        for rule_o in self.obligation_rules:
+            for text in (
+                rule_o.partition,
+                rule_o.relation_id,
+                rule_o.endpoint_type,
+                rule_o.id_pattern,
+            ):
+                validate_text(text)
+            registry.relation(rule_o.relation_id)
+            registry.is_a(rule_o.endpoint_type, rule_o.endpoint_type)
+            if (
+                rule_o.direction not in DIRECTIONS
+                or type(rule_o.priority) is not int
+                or rule_o.partition not in partitions
+                or rule_o.relation_id
+                not in partitions[rule_o.partition].obligation_produces
+            ):
+                raise KernelError(
+                    "OBLIGATION_RULE", "invalid obligation controller rule"
+                )
+            for ref in self.entities:
+                if registry.is_a(ref.type_id, rule_o.endpoint_type) and fnmatchcase(
+                    ref.id, rule_o.id_pattern
+                ):
+                    self.obligation_controller(
+                        rule_o.relation_id, rule_o.direction, ref, registry, partitions
+                    )
         for source in self.cancel_sources:
             validate_text(source)
         for command in self.bootstrap_commands:
@@ -275,7 +403,7 @@ class BindingManifest:
         """Encode pinned binding policies with canonical enumeration."""
         from .codec import encode
 
-        return {
+        result = {
             "run_id": self.run_id,
             "epoch": self.epoch,
             "entities": [
@@ -330,6 +458,13 @@ class BindingManifest:
             },
         }
 
+        if self.samples:
+            result["samples"] = encode(self.samples)
+        if self.relation_rules or self.obligation_rules:
+            result["relation_rules"] = encode(self.relation_rules)
+            result["obligation_rules"] = encode(self.obligation_rules)
+        return result
+
     @classmethod
     def from_data(cls, data: dict[str, Any]) -> BindingManifest:
         """Decode pinned bindings without compiler or scenario code."""
@@ -349,7 +484,12 @@ class BindingManifest:
             "cancel_sources",
             "lifecycle_participants",
         }
-        if set(data) != expected:
+        extensions = set(data) - expected
+        if expected - set(data) or extensions - {
+            "samples",
+            "relation_rules",
+            "obligation_rules",
+        }:
             raise KernelError("MANIFEST_DATA", "unexpected manifest fields")
         return cls(
             data["run_id"],
@@ -376,4 +516,11 @@ class BindingManifest:
             data["control_source"],
             tuple(data["cancel_sources"]),
             {k: tuple(v) for k, v in data["lifecycle_participants"].items()},
+            samples=decode_record(data["samples"]) if "samples" in data else (),
+            relation_rules=decode_record(data["relation_rules"])
+            if "relation_rules" in data
+            else (),
+            obligation_rules=decode_record(data["obligation_rules"])
+            if "obligation_rules" in data
+            else (),
         )

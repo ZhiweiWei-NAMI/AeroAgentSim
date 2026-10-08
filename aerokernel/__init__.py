@@ -10,6 +10,7 @@ from .errors import (
     SynchronizationDeadlock,
 )
 from .ids import EntityRef, FieldKey, ItemRef, LocalCause
+from .ingress import IngressPolicy
 from .journal import Journal, replay
 from .messages import (
     ActionState,
@@ -26,12 +27,19 @@ from .messages import (
 )
 from .operations import (
     Activate,
+    ActivateObligation,
+    AssertEdge,
+    CancelEdge,
+    CancelObligation,
     CancelTimer,
+    CloseEdge,
     Create,
+    EndObligation,
     FactWrite,
     LifecycleReady,
     Remove,
     RetractFact,
+    SampleFrame,
     ScheduleTimer,
 )
 from .registry import (
@@ -41,6 +49,16 @@ from .registry import (
     Registry,
     TypeDescriptor,
 )
+from .relations import (
+    Cardinality,
+    Edge,
+    Obligation,
+    ObligationRule,
+    RelationDependency,
+    RelationDescriptor,
+    RelationRule,
+)
+from .sampling import RecordedFrame, SampleSpec
 from .state import ABSENT, Absent, Fact, Retraction, StateView
 from .time import ClockMapping, Cut, Instant, Interval, Stamp
 from .values import (
@@ -60,6 +78,19 @@ __all__ = [
     "Absent",
     "ActionState",
     "Activate",
+    "AssertEdge",
+    "CloseEdge",
+    "CancelEdge",
+    "ActivateObligation",
+    "EndObligation",
+    "CancelObligation",
+    "Cardinality",
+    "RelationDescriptor",
+    "RelationRule",
+    "ObligationRule",
+    "RelationDependency",
+    "Edge",
+    "Obligation",
     "Batch",
     "BindingManifest",
     "BindingRule",
@@ -84,6 +115,7 @@ __all__ = [
     "FieldKey",
     "Horizon",
     "Instant",
+    "IngressPolicy",
     "Interval",
     "ItemRef",
     "Journal",
@@ -107,6 +139,9 @@ __all__ = [
     "Retraction",
     "RunContext",
     "ScheduleTimer",
+    "SampleFrame",
+    "SampleSpec",
+    "RecordedFrame",
     "Stamp",
     "StateView",
     "SynchronizationDeadlock",

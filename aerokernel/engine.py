@@ -13,6 +13,7 @@ from .values import FrozenValue
 
 if TYPE_CHECKING:
     from .messages import Delivery, Dirty
+    from .relations import RelationDependency
     from .rng import RNGStreams
     from .state import StateView
 
@@ -25,10 +26,14 @@ class Timing:
     step_ns: int | None = None
     origin_ns: int = 0
     latch: bool = True
+    exact_stop: bool = False
+    certified_hold: bool = False
 
     def boundary(self, ns: int) -> int:
         """Round a recipient's eligibility up to its native grid."""
-        if self.mode != "fixed_step":
+        if self.mode not in {"fixed_step", "lockstep"}:
+            return ns
+        if self.mode == "lockstep" and self.step_ns is None:
             return ns
         if self.step_ns is None or self.step_ns <= 0:
             raise ValueError("fixed_step requires a positive step")
@@ -70,6 +75,9 @@ class Partition:
     features: tuple[str, ...] = ()
     message_targets: tuple[str, ...] = ()
     message_lag_ns: int = 0
+    relation_produces: tuple[str, ...] = ()
+    relation_consumes: tuple[RelationDependency, ...] = ()
+    obligation_produces: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         validate_text(self.id)
@@ -83,6 +91,8 @@ class Partition:
             "lifecycle_reads",
             "features",
             "message_targets",
+            "relation_produces",
+            "obligation_produces",
         ):
             values = tuple(getattr(self, name))
             if len(set(values)) != len(values):
@@ -91,6 +101,7 @@ class Partition:
                 validate_text(value)
             object.__setattr__(self, name, tuple(sorted(values)))
         object.__setattr__(self, "consumes", tuple(self.consumes))
+        object.__setattr__(self, "relation_consumes", tuple(self.relation_consumes))
         if any(type(v) is not bool for v in (self.reactive, self.lifecycle)):
             raise KernelError("PARTITION_CAPABILITY", "capability flags must be bool")
 

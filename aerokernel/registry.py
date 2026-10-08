@@ -10,6 +10,7 @@ from typing import Any, Protocol
 
 from .errors import KernelError
 from .ids import EntityRef, validate_text
+from .relations import RelationDescriptor
 from .values import ResourceBudget, canonical_json, freeze, normalize, thaw, typed_equal
 
 
@@ -124,11 +125,15 @@ class MemoryRegistry:
         messages: tuple[MessageDescriptor, ...] = (),
         schemas: dict[str, dict[str, Any]] | None = None,
         revision: str = "1",
+        *,
+        relations: tuple[RelationDescriptor, ...] = (),
     ) -> None:
         self.revision = validate_text(revision)
         self.types = tuple(sorted(types, key=lambda d: d.id))
         self.fields = tuple(sorted(fields, key=lambda d: d.id))
         self.messages = tuple(sorted(messages, key=lambda d: d.id))
+        self.relations = tuple(sorted(relations, key=lambda d: d.id))
+        self._relations = self._index(self.relations)
         self._types = self._index(self.types)
         self._fields = self._index(self.fields)
         self._messages = self._index(self.messages)
@@ -154,6 +159,9 @@ class MemoryRegistry:
 
         for type_descriptor in self.types:
             ancestry(type_descriptor.id, ())
+        for relation in self.relations:
+            self.is_a(relation.source_type, relation.source_type)
+            self.is_a(relation.target_type, relation.target_type)
         for field_descriptor in self.fields:
             self.is_a(field_descriptor.declaring_type, field_descriptor.declaring_type)
             self._compile(field_descriptor.schema, ())
@@ -200,6 +208,13 @@ class MemoryRegistry:
         if id not in self._messages:
             raise KernelError("MESSAGE_UNKNOWN", "unknown message descriptor")
         descriptor: MessageDescriptor = self._messages[id]
+        return descriptor
+
+    def relation(self, id: str) -> RelationDescriptor:
+        """Resolve an explicitly normalized directional relation descriptor."""
+        if id not in self._relations:
+            raise KernelError("RELATION_UNKNOWN", "unknown relation descriptor")
+        descriptor: RelationDescriptor = self._relations[id]
         return descriptor
 
     def _resolve(self, schema: Mapping[str, Any] | str) -> Mapping[str, Any]:
@@ -421,7 +436,7 @@ class MemoryRegistry:
 
     def to_data(self) -> dict[str, Any]:
         """Complete normalized selected descriptors for portable replay."""
-        return {
+        result = {
             "revision": self.revision,
             "types": [
                 {"id": d.id, "parents": list(d.parents), "abstract": d.abstract}
@@ -454,10 +469,15 @@ class MemoryRegistry:
             "schemas": {k: thaw(v) for k, v in self.schemas.items()},
         }
 
+        if self.relations:
+            result["relations"] = [r.to_data() for r in self.relations]
+        return result
+
     @classmethod
     def from_data(cls, data: dict[str, Any]) -> MemoryRegistry:
         """Recompile the portable descriptor subset for replay."""
-        if set(data) != {"revision", "types", "fields", "messages", "schemas"}:
+        base = {"revision", "types", "fields", "messages", "schemas"}
+        if set(data) not in (base, base | {"relations"}):
             raise KernelError(
                 "REGISTRY_DATA", "unexpected normalized descriptor fields"
             )
@@ -470,4 +490,7 @@ class MemoryRegistry:
             tuple(MessageDescriptor(**d) for d in data["messages"]),
             data["schemas"],
             data["revision"],
+            relations=tuple(RelationDescriptor.from_data(d) for d in data["relations"])
+            if "relations" in data
+            else (),
         )

@@ -17,7 +17,7 @@ from .transactions import Candidate
 
 def ready_partitions(store: Store, instant: Instant) -> tuple[str, ...]:
     """The unique lifecycle-prioritized, cohort-expanded reactive ready set."""
-    ready = store.work.ready(instant)
+    ready = store.work.ready(instant) - set(store.sample_partitions)
     controllers = {p for p in ready if store.partitions[p].lifecycle}
     for cohort in store.manifest.cohorts:
         if ready & set(cohort) and any(store.partitions[p].lifecycle for p in cohort):
@@ -37,7 +37,7 @@ def wave_intents(
         raise MicrostepLimitExceeded(
             "grant exceeds pinned microstep bound", instant=instant
         )
-    if phase not in {"reset", "advance", "react"}:
+    if phase not in {"reset", "advance", "react", "sample"}:
         raise KernelError("INVOCATION_PHASE", "unknown M1 call phase")
     canonical = tuple(
         sorted(store.partitions, key=lambda p: (store.partitions[p].engine_id, p))
@@ -69,11 +69,26 @@ def wave_intents(
             )
         for pid, p in store.partitions.items():
             if (
-                p.timing.mode == "fixed_step"
+                p.timing.mode in {"fixed_step", "lockstep"}
+                and not p.timing.exact_stop
                 and p.timing.step_ns is not None
-                and instant.ns > store.frontiers[pid][1] + p.timing.step_ns
+                and instant.ns > p.timing.boundary(store.frontiers[pid][1] + 1)
             ):
                 raise KernelError("ADVANCE_GRID", "grant skips a native boundary")
+    elif phase == "sample":
+        from .sampling import ordinary_earliest, sample_ready
+
+        ordinary = ordinary_earliest(store)
+        if (
+            instant.ns != store.cut.instant.ns
+            or instant <= store.cut.instant
+            or selected != sample_ready(store, instant.ns)
+            or (ordinary is not None and ordinary.ns <= instant.ns)
+        ):
+            raise KernelError(
+                "SAMPLE_READY",
+                "sample grant requires the settled whole cone and next level",
+            )
     else:
         if (
             instant.ns != store.cut.instant.ns
@@ -96,7 +111,11 @@ def wave_intents(
         logical, native = store.frontiers[partition]
         if phase == "advance":
             read = native_cut
-        ready = [] if phase != "react" else state.work.take(partition, instant)
+        ready = (
+            []
+            if phase not in {"react", "sample"}
+            else state.work.take(partition, instant)
+        )
         if ready and instant <= logical:
             raise KernelError(
                 "DISPATCH_FRONTIER", "delivery must follow recipient frontier"
@@ -138,7 +157,12 @@ def wave_intents(
         intent_ref = ItemRef(index, len(items))
         expected_native = native
         if phase == "advance":
-            if p.timing.mode == "des" or p.timing.boundary(instant.ns) == instant.ns:
+            if (
+                p.timing.mode == "des"
+                or p.timing.exact_stop
+                or not p.timing.latch
+                or p.timing.boundary(instant.ns) == instant.ns
+            ):
                 expected_native = instant.ns
         intent = {
             "kind": "intent",
@@ -160,7 +184,17 @@ def wave_intents(
         state.intents[intent_ref] = intent.copy()
         state.pending_intents[partition] = intent_ref
         views[partition] = StateView(
-            store, read, base, partition, instant, native_cut, expected_native
+            store,
+            read,
+            base,
+            partition,
+            instant,
+            native_cut,
+            expected_native,
+            intent_ref,
+            phase,
+            logical,
+            native,
         )
     record = {
         "type": "invocations",
@@ -297,6 +331,11 @@ def build_wave(
             "status": "returned",
         }
         candidate.state.pending_intents.pop(partition)
+    from .relations import validate_relations
+    from .sampling import validate_sample_work
+
+    validate_relations(candidate)
+    validate_sample_work(candidate.state, instant.ns)
     record = {
         "type": "transaction",
         "index": candidate.index,

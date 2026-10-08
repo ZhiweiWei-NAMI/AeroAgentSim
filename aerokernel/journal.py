@@ -62,6 +62,53 @@ class Journal:
                 None if "$fact" in item or "$retract" in item else item
                 for item in record["items"]
             ]
+            # Fact references are generated item coordinates, not new payloads.
+            # Avoid recursively copying the same one-key wrapper for every fact;
+            # check the complete reference shape and its largest integer once.
+            batch_shells = []
+            reference_batches: list[tuple[int, Any, list[int]]] = []
+            largest_reference: int | None = None
+            for batch_index, entry in enumerate(record["batches"]):
+                batch = entry["batch"]
+                operations = batch["fields"]["operations"]
+                references: list[Any] = []
+                positions: list[int] = []
+                for position, operation in enumerate(operations):
+                    if (
+                        isinstance(operation, dict)
+                        and set(operation) == {"$item"}
+                        and type(operation["$item"]) is int
+                        and operation["$item"] >= 0
+                    ):
+                        largest_reference = (
+                            operation["$item"]
+                            if largest_reference is None
+                            else max(largest_reference, operation["$item"])
+                        )
+                        references.append(None)
+                        positions.append(position)
+                    else:
+                        references.append(operation)
+                if positions:
+                    batch_shells.append(
+                        {
+                            **entry,
+                            "batch": {
+                                **batch,
+                                "fields": {**batch["fields"], "operations": references},
+                            },
+                        }
+                    )
+                    reference_batches.append((batch_index, operations, positions))
+                else:
+                    batch_shells.append(entry)
+            if largest_reference is not None:
+                if self.budget.nesting_depth < 7:
+                    from .errors import ResourceLimit
+
+                    raise ResourceLimit("nesting depth exceeded")
+                normalize(largest_reference, self.budget, _check_bytes=False)
+            shell["batches"] = batch_shells
             # Entity identities and field names were already budget-validated in
             # their committed creation/header. Referencing them adds no new value;
             # validate dynamic stamps/intervals here and the complete frame below.
@@ -74,6 +121,12 @@ class Journal:
                 from .errors import ResourceLimit
 
                 raise ResourceLimit("nesting depth exceeded")
+            for batch_index, operations, positions in reference_batches:
+                normalized_operations = tree["batches"][batch_index]["batch"]["fields"][
+                    "operations"
+                ]
+                for position in positions:
+                    normalized_operations[position] = operations[position]
             tree["fact_tables"]["entities"] = tables["entities"]
             tree["fact_tables"]["fields"] = tables["fields"]
             for index, item in enumerate(record["items"]):
