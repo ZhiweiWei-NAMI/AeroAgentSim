@@ -54,15 +54,30 @@ class Selection:
 
 @dataclass(frozen=True)
 class Policy:
-    """Research admission never changes source review or grants authority."""
+    """Compile admission policy; it never changes source review state.
+
+    ``admit_proposed`` admits ``proposal:`` namespace candidates. It is
+    distinct from the default review admission of definitions whose
+    ``reviewStatus`` is ``reviewed`` or ``proposed`` (or undeclared).
+    ``strict_reviewed`` narrows admission to ``reviewed`` definitions only.
+    The two admission switches are mutually exclusive.
+    """
 
     admit_proposed: bool = False
+    strict_reviewed: bool = False
     admitted_ids: tuple[str, ...] = ()
     excluded_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if type(self.admit_proposed) is not bool:
             raise ValueError("admit_proposed must be bool")
+        if type(self.strict_reviewed) is not bool:
+            raise ValueError("strict_reviewed must be bool")
+        if self.admit_proposed and self.strict_reviewed:
+            raise ValueError(
+                "admit_proposed and strict_reviewed are mutually exclusive "
+                "admission switches"
+            )
         for name in ("admitted_ids", "excluded_ids"):
             value = getattr(self, name)
             if isinstance(value, str):
@@ -78,6 +93,7 @@ class Policy:
     def to_data(self) -> dict[str, Any]:
         return {
             "admit_proposed": self.admit_proposed,
+            "strict_reviewed": self.strict_reviewed,
             "admitted_ids": list(self.admitted_ids),
             "excluded_ids": list(self.excluded_ids),
         }

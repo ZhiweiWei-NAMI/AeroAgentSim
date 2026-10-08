@@ -13,7 +13,53 @@ from aerokernel.values import canonical_json
 
 from .model import COMPILER_VERSION, CompiledRegistry, CompileError, Policy, Selection
 from .normalize import Normalizer, cardinality
-from .source import Record, Sources, gated
+from .source import (
+    PROPOSAL_PREFIX,
+    Record,
+    Sources,
+    proposal_candidate,
+    review_gated,
+    review_status,
+)
+
+
+def review_admission(
+    id: str, data: dict[str, Any], policy: Policy, kind: str
+) -> tuple[bool, str, bool]:
+    """Decide compile admission from explicit source review state.
+
+    ``reviewed`` and ``proposed`` definitions are admitted by default.
+    ``reviewStatus: conflict`` is excluded with reason ``review conflict``
+    until individually admitted, and unknown statuses always fail. IDs in
+    the ``proposal:`` namespace stay excluded unless ``--admit-proposed`` or
+    an individual ``--admit`` admits them. ``--strict-reviewed`` admits only
+    definitions declaring ``reviewed``; types that declare no review state
+    remain structural ancestry, while fields and relations must declare
+    ``reviewed``. The returned gate flag reports source review markers that
+    admission must preserve; it never grants authority.
+    """
+    status = review_status(data)
+    candidate = proposal_candidate(data)
+    if candidate or status not in (None, "reviewed", "proposed"):
+        gate = review_gated(data)
+        if id in policy.admitted_ids:
+            return True, "", gate
+        if candidate and policy.admit_proposed:
+            return True, "", gate
+        if candidate:
+            return False, "proposal namespace candidate", gate
+        if status == "conflict":
+            return False, "review conflict", gate
+        return False, "unsupported review status " + str(status), gate
+    if policy.strict_reviewed:
+        blocked = status == "proposed" or (
+            status is None and kind in ("field", "relation")
+        )
+        if blocked:
+            if id in policy.admitted_ids:
+                return True, "", False
+            return False, "review status " + (status or "undeclared"), False
+    return True, "", review_gated(data)
 
 
 def compile_registry(
@@ -47,6 +93,7 @@ def compile_registry(
     effective: dict[str, list[str]] = {}
     relations: list[dict[str, Any]] = []
     diagnostics: list[str] = []
+    review_counts: dict[str, int] = {"reviewed": 0, "proposed": 0, "undeclared": 0}
 
     def excluded(id: str, kind: str, reason: str, row: Record | None = None) -> None:
         exclusions[kind, id] = {
@@ -60,27 +107,46 @@ def compile_registry(
         if id in policy.excluded_ids:
             excluded(id, kind, "explicit policy exclusion", row)
             return False
-        if row is not None and gated(row.data):
-            if policy.admit_proposed or id in policy.admitted_ids:
-                admission = {
-                    "id": id,
-                    "kind": kind,
-                    "source": row.location(),
-                    "research_admitted": True,
-                    "reviewStatus": row.data.get("reviewStatus"),
-                    "integrationDisposition": row.data.get("integrationDisposition"),
-                }
-                if admission not in admissions:
-                    admissions.append(admission)
-            else:
-                excluded(
-                    id,
-                    kind,
-                    "quarantined source; explicit research admission required",
-                    row,
-                )
-                return False
+        if row is None:
+            return True
+        admitted, reason, gate = review_admission(id, row.data, policy, kind)
+        if not admitted:
+            excluded(id, kind, reason + "; explicit research admission required", row)
+            return False
+        if gate:
+            admission = {
+                "id": id,
+                "kind": kind,
+                "source": row.location(),
+                "research_admitted": True,
+                "reviewStatus": row.data.get("reviewStatus"),
+                "integrationDisposition": row.data.get("integrationDisposition"),
+            }
+            if admission not in admissions:
+                admissions.append(admission)
         return True
+
+    def auxiliary_type_allowed(tid: str) -> bool:
+        """May a compiled definition depend on auxiliary type ``tid``?
+
+        A ``proposal:`` candidate target of an admitted active definition is
+        recorded as an exclusion instead of failing the slice; the consuming
+        field/relation must then exclude itself. Any other unresolved or
+        excluded dependency still fails through ``add_type``.
+        """
+        if not tid.startswith(PROPOSAL_PREFIX):
+            return True
+        if tid in types:
+            return True
+        if tid in policy.admitted_ids or policy.admit_proposed:
+            return True
+        if ("type", tid) not in exclusions:
+            try:
+                row = Sources.get(sources.types, tid, "type")
+            except CompileError:
+                return False
+            excluded(tid, "type", "proposal namespace candidate", row)
+        return False
 
     def log_for(row: Record) -> Any:
         def log(rule: str, pointer: str, before: Any, after: Any) -> None:
@@ -209,7 +275,32 @@ def compile_registry(
             normalizer = Normalizer(row, sources.definitions, log_for(row))
             schema = normalizer.schema(row.data.get("valueSchema"))
             metadata = normalizer.metadata(schema)
-            metadata["research_admitted"] = gated(row.data)
+            metadata["research_admitted"] = review_gated(row.data)
+            metadata["reviewStatus"] = review_status(row.data)
+            # A proposal candidate target stays out of the registry unless
+            # admitted; the kernel rejects dangling ref targets, so the
+            # consuming field excludes itself with an explicit reason.
+            blocked = next(
+                (
+                    t
+                    for t in sorted(normalizer.references)
+                    if not auxiliary_type_allowed(t)
+                ),
+                None,
+            )
+            if blocked is not None:
+                excluded(
+                    fid,
+                    "field",
+                    f"requires unadmitted proposal candidate type {blocked!r}",
+                    row,
+                )
+                admissions[:] = [
+                    a
+                    for a in admissions
+                    if not (a["id"] == fid and a["kind"] == "field")
+                ]
+                continue
             for reference_type in sorted(normalizer.references):
                 add_type(reference_type)
             fields[fid] = FieldDescriptor(fid, declaring, schema, metadata)
@@ -235,6 +326,10 @@ def compile_registry(
                 "source": row.location(),
                 "descriptions": hint,
             }
+            fid_status = review_status(row.data)
+            review_counts[
+                fid_status if fid_status in ("reviewed", "proposed") else "undeclared"
+            ] += 1
         except (CompileError, KernelError) as exc:
             diagnostics.extend(
                 exc.diagnostics
@@ -323,6 +418,22 @@ def compile_registry(
             if not row.data.get("validTime"):
                 raise row.error("Relation requires a validity-time declaration")
             bounds = cardinality(row, log_for(row))
+            blocked = next(
+                (t for t in (source, target) if not auxiliary_type_allowed(t)), None
+            )
+            if blocked is not None:
+                excluded(
+                    rid,
+                    "relation",
+                    f"requires unadmitted proposal candidate type {blocked!r}",
+                    row,
+                )
+                admissions[:] = [
+                    a
+                    for a in admissions
+                    if not (a["id"] == rid and a["kind"] == "relation")
+                ]
+                continue
             add_type(source)
             add_type(target)
             relations.append(
@@ -332,10 +443,14 @@ def compile_registry(
                     "target_type": target,
                     "cardinality": bounds,
                     "raw": row.data,
-                    "research_admitted": gated(row.data),
+                    "research_admitted": review_gated(row.data),
                 }
             )
             provenance["relations"][rid] = row.location()
+            rid_status = review_status(row.data)
+            review_counts[
+                rid_status if rid_status in ("reviewed", "proposed") else "undeclared"
+            ] += 1
         except (CompileError, KernelError) as exc:
             diagnostics.extend(
                 exc.diagnostics
@@ -378,6 +493,13 @@ def compile_registry(
             ).hexdigest(),
             "exclusions": exclusion_list,
             "admissions": admissions,
+            "review": {
+                "admitted_by_status": dict(sorted(review_counts.items())),
+                "admitted_unreviewed": (
+                    review_counts.get("proposed", 0)
+                    + review_counts.get("undeclared", 0)
+                ),
+            },
             "provenance": {
                 "descriptors": provenance,
                 "input_sha256": dict(sorted(sources.hashes.items())),
@@ -392,6 +514,11 @@ def compile_registry(
                 "normalizations": len(normalizations),
                 "exclusions": len(exclusion_list),
                 "research_admissions": len(admissions),
+                "admitted_reviewed_definitions": review_counts["reviewed"],
+                "admitted_proposed_definitions": review_counts["proposed"],
+                "admitted_unreviewed_definitions": (
+                    review_counts["proposed"] + review_counts["undeclared"]
+                ),
                 "compile_blockers": 0,
             },
         },

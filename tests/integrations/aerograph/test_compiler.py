@@ -166,17 +166,15 @@ def test_invalid_override_fails(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "review",
+    "review,expected_reason",
     [
-        {"id": "proposal:x"},
-        {"reviewStatus": "proposed"},
-        {"reviewStatus": "conflict"},
-        {"integrationDisposition": "quarantined"},
-        {"acceptedAsCompleteContract": False},
+        ({"id": "proposal:x"}, "proposal namespace candidate"),
+        ({"reviewStatus": "conflict"}, "review conflict"),
+        ({"reviewStatus": "future-status"}, "unsupported review status future-status"),
     ],
 )
 def test_quarantine_and_explicit_admission(
-    tmp_path: Path, review: dict[str, Any]
+    tmp_path: Path, review: dict[str, Any], expected_reason: str
 ) -> None:
     data = {**field("f:x"), **review}
     fid = data["id"]
@@ -184,19 +182,50 @@ def test_quarantine_and_explicit_admission(
     c = compile_registry(root, ["t:Base"])
     assert not c.registry.fields
     assert c.exclusions[0]["id"] == fid
+    assert expected_reason in c.exclusions[0]["reason"]
     admitted = compile_registry(root, ["t:Base"], Policy(admitted_ids=(fid,)))
     assert admitted.registry.field(fid).metadata["research_admitted"] is True
     assert admitted.details["admissions"][0]["research_admitted"] is True
     assert thaw(admitted.registry.field(fid).metadata["raw"]) == data
 
 
+@pytest.mark.parametrize(
+    "review",
+    [{"reviewStatus": "proposed"}, {"integrationDisposition": "quarantined"}],
+)
+def test_proposed_and_marker_definitions_admit_by_default(
+    tmp_path: Path, review: dict[str, Any]
+) -> None:
+    data = {**field("f:x"), **review}
+    root = ontology(tmp_path, [entity("t:Base", fields=("f:x",))], [data])
+    c = compile_registry(root, ["t:Base"])
+    assert [f.id for f in c.registry.fields] == ["f:x"]
+    assert c.registry.field("f:x").metadata["reviewStatus"] == data.get("reviewStatus")
+    expected_status = data.get("reviewStatus")
+    assert (
+        c.details["review"]["admitted_by_status"][expected_status or "undeclared"] == 1
+    )
+    if expected_status == "proposed":
+        assert c.statistics["admitted_proposed_definitions"] == 1
+        assert c.statistics["admitted_unreviewed_definitions"] == 1
+        assert c.statistics["admitted_reviewed_definitions"] == 0
+        assert c.details["admissions"]
+    # A 'reviewed' source state is admitted without a research-admission flag.
+    data["reviewStatus"] = "reviewed"
+    ontology(root, [entity("t:Base", fields=("f:x",))], [data])
+    reviewed = compile_registry(root, ["t:Base"])
+    assert [f.id for f in reviewed.registry.fields] == ["f:x"]
+    assert reviewed.statistics["admitted_reviewed_definitions"] == 1
+    assert reviewed.statistics["admitted_unreviewed_definitions"] == 0
+    assert not reviewed.details["admissions"]
+
+
 def test_quarantine_relations_and_support_types(tmp_path: Path) -> None:
     root = ontology(tmp_path, relations=[relation("r:x", reviewStatus="proposed")])
-    assert not compile_registry(root, ["t:Child"]).relations
-    assert (
-        len(compile_registry(root, ["t:Child"], Policy(admit_proposed=True)).relations)
-        == 1
-    )
+    assert len(compile_registry(root, ["t:Child"]).relations) == 1
+    assert not compile_registry(
+        root, ["t:Child"], Policy(strict_reviewed=True)
+    ).relations
     ontology(
         root,
         [
@@ -206,11 +235,91 @@ def test_quarantine_relations_and_support_types(tmp_path: Path) -> None:
         ],
         [field("f:x", schema={"type": "ref", "target": "proposal:T"})],
     )
-    with pytest.raises(CompileError, match="required by an active definition"):
-        compile_registry(root, ["t:Child"])
-    assert compile_registry(
-        root, ["t:Child"], Policy(admit_proposed=True)
-    ).registry.is_a("proposal:T", "proposal:T")
+    # An unadmitted proposal candidate target excludes the consuming field.
+    without = compile_registry(root, ["t:Child"])
+    assert not without.registry.fields
+    assert without.exclusions[0]["id"] == "f:x"
+    assert "proposal" in without.exclusions[0]["reason"]
+    admitted = compile_registry(root, ["t:Child"], Policy(admit_proposed=True))
+    assert admitted.registry.is_a("proposal:T", "proposal:T")
+
+
+def test_strict_reviewed_policy(tmp_path: Path) -> None:
+    types = [
+        entity("t:Base", fields=("f:reviewed", "f:proposed", "f:undeclared")),
+        entity("t:Child", "t:Base"),
+    ]
+    root = ontology(
+        tmp_path,
+        types,
+        [
+            field("f:reviewed", reviewStatus="reviewed"),
+            field("f:proposed", reviewStatus="proposed"),
+            field("f:undeclared"),
+        ],
+        [relation("r:reviewed", "t:Child", "t:Base", reviewStatus="reviewed")],
+    )
+    strict = compile_registry(root, ["t:Child"], Policy(strict_reviewed=True))
+    assert [f.id for f in strict.registry.fields] == ["f:reviewed"]
+    assert [r["id"] for r in strict.relations] == ["r:reviewed"]
+    reasons = {x["id"]: x["reason"] for x in strict.exclusions}
+    assert reasons["f:proposed"] == (
+        "review status proposed; explicit research admission required"
+    )
+    assert reasons["f:undeclared"] == (
+        "review status undeclared; explicit research admission required"
+    )
+    assert strict.statistics["admitted_reviewed_definitions"] == 2
+    # Undeclared structural types remain usable ancestry under strict review.
+    default = compile_registry(root, ["t:Child"])
+    assert len(default.registry.fields) == 3
+    individual = compile_registry(
+        root, ["t:Child"], Policy(strict_reviewed=True, admitted_ids=("f:undeclared",))
+    )
+    assert {f.id for f in individual.registry.fields} == {"f:reviewed", "f:undeclared"}
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        Policy(admit_proposed=True, strict_reviewed=True)
+
+
+def test_proposal_flag_and_individual_admission_for_candidates(
+    tmp_path: Path,
+) -> None:
+    root = ontology(
+        tmp_path,
+        types=[
+            entity("t:Base", fields=("f:x",)),
+            entity("t:Other"),
+            entity("proposal:T"),
+        ],
+        relations=[relation("proposal:r:x", "t:Base", "t:Other")],
+    )
+    flag = compile_registry(root, ["t:Base"], Policy(admit_proposed=True))
+    assert flag.registry.is_a("t:Base", "t:Base")
+    # proposal:T is not in this slice's ancestry; the relation endpoint is.
+    assert [r["id"] for r in flag.relations] == ["proposal:r:x"]
+    assert "proposal:T" in {t.id for t in flag.registry.types} or not any(
+        x["id"] == "proposal:T" for x in flag.exclusions
+    )
+    assert any(a["id"] == "proposal:r:x" for a in flag.details["admissions"])
+    individual = compile_registry(
+        root, ["t:Base"], Policy(admitted_ids=("proposal:r:x",))
+    )
+    assert [r["id"] for r in individual.relations] == ["proposal:r:x"]
+    assert not any(a["id"] == "proposal:T" for a in individual.details["admissions"])
+    assert not any(x["id"] == "proposal:r:x" for x in individual.exclusions)
+
+
+def test_conflict_relation_excluded_by_default_and_individually_admitted(
+    tmp_path: Path,
+) -> None:
+    root = ontology(tmp_path, relations=[relation("r:x", reviewStatus="conflict")])
+    blocked = compile_registry(root, ["t:Child"])
+    assert not blocked.relations
+    assert blocked.exclusions[0]["reason"].startswith("review conflict")
+    admitted = compile_registry(root, ["t:Child"], Policy(admitted_ids=("r:x",)))
+    assert [r["id"] for r in admitted.relations] == ["r:x"]
+    assert admitted.relations[0]["research_admitted"] is True
+    assert any(a["id"] == "r:x" for a in admitted.details["admissions"])
 
 
 def test_relation_endpoint_filtering_and_no_support_field_expansion(

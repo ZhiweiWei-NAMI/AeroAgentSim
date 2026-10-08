@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from aerokernel.errors import KernelError
 from aerokernel.values import thaw
@@ -39,6 +40,27 @@ def report(compiled: CompiledRegistry) -> str:
         "| --- | ---: |",
     ]
     lines.extend(f"| {k} | {v} |" for k, v in compiled.statistics.items())
+    review = compiled.details.get("review")
+    if isinstance(review, Mapping) and "admitted_by_status" in review:
+        lines.extend(
+            [
+                "",
+                "## Admitted definition review status",
+                "",
+                "Admitted types, fields and relations counted by declared source",
+                "review status. Unreviewed means the definition is **not** source",
+                "reviewed (`proposed` or no declared review status); admission",
+                "preserves that state and grants no authority.",
+                "",
+            ]
+        )
+        counts = cast("dict[str, int]", review["admitted_by_status"])
+        for status in ("reviewed", "proposed", "undeclared"):
+            lines.append(f"- `{status}`: {counts.get(status, 0)}")
+        lines.append(
+            f"- admitted definitions without source review: "
+            f"{review['admitted_unreviewed']}"
+        )
     lines.extend(
         [
             "",
@@ -102,7 +124,18 @@ def main(argv: list[str] | None = None) -> int:
     compile_cmd.add_argument(
         "--admit-proposed",
         action="store_true",
-        help="explicit research admission; retains review status",
+        help=(
+            "admit 'proposal:' namespace candidates (new design proposals); "
+            "default policy already admits reviewed and proposed definitions"
+        ),
+    )
+    compile_cmd.add_argument(
+        "--strict-reviewed",
+        action="store_true",
+        help=(
+            "admit only definitions whose reviewStatus is 'reviewed'; "
+            "implies excluding proposed and undeclared definitions"
+        ),
     )
     compile_cmd.add_argument(
         "--admit", help="comma-separated individually admitted IDs"
@@ -127,7 +160,10 @@ def main(argv: list[str] | None = None) -> int:
                     csv(args.select) or (), csv(args.fields), csv(args.relations)
                 ),
                 Policy(
-                    args.admit_proposed, csv(args.admit) or (), csv(args.exclude) or ()
+                    args.admit_proposed,
+                    args.strict_reviewed,
+                    csv(args.admit) or (),
+                    csv(args.exclude) or (),
                 ),
             )
             compiled.write_snapshot(args.out)

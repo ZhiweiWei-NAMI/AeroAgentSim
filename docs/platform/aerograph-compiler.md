@@ -21,15 +21,32 @@ PYTHONPATH=src .venv/bin/python -m aeroagentsim.integrations.aerograph inspect \
   registry.snapshot.json --type oo:UAV
 ```
 
-Default policy excludes `proposal:` IDs, proposed/conflict reviews,
-quarantined/candidate-not-accepted dispositions, and definitions explicitly marked
-`acceptedAsCompleteContract: false`. Selection does not approve these definitions.
-The current AeroGraph fields in this three-type slice and its incident relations
-are proposed, so the default command produces an identity/ancestry registry with
-exclusion records. To inspect the complete slice for an explicitly chosen research
-scenario, add `--admit-proposed`. This admits gated definitions, including their
-required reference/endpoint types, while preserving review status and marking
-admission; it never makes them production-approved or assigns write authority.
+Default policy admits definitions whose `reviewStatus` is `reviewed` or
+`proposed`, plus definitions that declare no review status. It excludes the
+explicit `proposal:` ID namespace of new design candidates, definitions with
+`reviewStatus: conflict` (reason `review conflict`), and unknown review
+statuses; each exclusion names its reason and points at the source definition,
+and every such ID can be admitted individually with `--admit`. In the current
+AeroGraph tree `proposed` is the default review state (including
+`he.aircraft.mass_kg` with `decision: exact_reuse`), so the plain default
+command already compiles nonzero fields and relations for this three-type
+slice. Admission never changes source review state: admitted unreviewed
+definitions keep their `reviewStatus` in field metadata, admission records and
+statistics, and the report states how many admitted definitions are unreviewed
+(`proposed` or undeclared). No definition becomes production-approved and no
+writer authority is granted.
+
+`--admit-proposed` admits `proposal:` namespace candidates (new design
+proposals), including candidate relation endpoints and candidate reference
+targets of admitted active definitions, as auxiliary identity descriptors; it
+is not required for ordinary `proposed` definitions.
+`--strict-reviewed` narrows admission to definitions declaring
+`reviewStatus: reviewed`: fields and relations without a declared status are
+excluded, while types that declare no review state remain structural ancestry.
+The two flags are mutually exclusive policy switches. Definition-level
+research markers (`integrationDisposition`, `acceptedAsCompleteContract`) are
+provenance only: they never exclude a definition and are preserved in
+admission records and raw definitions.
 
 Use `--admit ID1,ID2` for individual admissions, `--exclude ID1,ID2` for intentional
 exclusions, and `--fields ID1,ID2` / `--relations ID1,ID2` for allow-lists. An empty
@@ -52,7 +69,6 @@ from aeroagentsim.integrations.aerograph import (
 compiled = compile_registry(
     "/mnt/data2/weizhiwei/AeroGraph",
     Selection(("oo:UAV", "oo:Order", "oo:ObservationRecord")),
-    Policy(admit_proposed=True),  # explicit scenario research disposition
 )
 write_snapshot(compiled, "registry.snapshot.json")
 pinned = read_snapshot("registry.snapshot.json")
@@ -81,7 +97,8 @@ parents, navigation directories/cross-indexes, `originalParent`, and unattached
 profiles never create an `is_a` edge. A detached selected profile remains detached.
 The catalog's nested `sourceReviewStatus` on retained baseline identities is
 preserved as history; it is not an instruction to discard the catalog's adopted
-identity hierarchy. Top-level review/disposition and proposal IDs are gated.
+identity hierarchy. `proposal:` IDs and non-default review statuses are gated;
+definition-level dispositions are recorded as provenance without gating.
 
 Effective fields follow adopted `ownFieldIds` along actual ancestry. An ancestry
 node must supply this inventory explicitly; a missing inventory does not become
@@ -103,7 +120,11 @@ The registry includes ancestry, field reference targets and relation endpoints,
 plus their actual parents, as auxiliary **type descriptors**. Their own fields and
 incident relations are not automatically activated. `statistics.selected_types`,
 `ancestry_types` and `types` distinguish these counts. Auxiliary types require
-valid identities/ancestry and the same explicit research disposition.
+valid identities/ancestry and pass the same review policy. An unadmitted
+`proposal:` candidate cannot become an auxiliary descriptor: a relation with a
+candidate endpoint is excluded whole (endpoints are identity-bearing), and a
+field whose reference target is a candidate is excluded with an explicit reason,
+because the kernel rejects dangling reference targets.
 
 ## Normalization policy
 
@@ -181,22 +202,28 @@ default); cross-Python/runtime numerical byte identity is not promised.
 
 ## Verified three-type slice
 
-With explicit `Policy(admit_proposed=True)` against the persisted source at
+With the default policy against the persisted source at
 HEAD `20da07f1599940eb2ea3d6997f61eb132ac6879c`:
 
 | Explicit type | Effective fields | Inherited incident relations |
 | --- | ---: | ---: |
-| oo:UAV | 20 | 122 |
-| oo:Order | 7 | 91 |
-| oo:ObservationRecord | 11 | 92 |
+| oo:UAV | 20 | 97 |
+| oo:Order | 7 | 71 |
+| oo:ObservationRecord | 10 | 72 |
 
-The union has 3 selected types, 9 ancestry types, 104 total type descriptors,
-28 distinct fields and 133 distinct relations, with 209 logged normalizations and
-172 research admissions; there are no compile blockers or policy exclusions in
-the admitted slice. Auxiliary proposed identities retain
-research admission. Counts reflect this source tree and policy, not simulation
-readiness. The CLI reports current normalization/admission/exclusion totals and
-digests; integration tests assert nonzero content, no blockers, and matching
+The union has 3 selected types, 9 ancestry types, 86 total type descriptors,
+27 distinct fields and 106 distinct relations, with 182 logged normalizations,
+133 research admissions and 29 policy exclusions (the `proposal:` candidate
+namespace, including one field whose reference target is an unadmitted
+candidate); all 133 admitted definitions are unreviewed (`proposed`), which the
+report and `statistics.admitted_unreviewed_definitions` state explicitly. There
+are no compile blockers. With `Policy(admit_proposed=True)` the slice compiles
+28 fields, 133 relations, 104 type descriptors, 209 normalizations, 172
+research admissions and no exclusions. Counts reflect this source tree and
+policy, not simulation readiness. The CLI reports current
+normalization/admission/exclusion totals, the admitted-definition review
+status breakdown and digests; integration tests assert nonzero content, no
+blockers, candidate-namespace exclusion under the default policy, and matching
 digests across two compiles and snapshot reload.
 
 ## Known gaps
@@ -259,7 +286,9 @@ MYPYPATH=src:/mnt/data2/weizhiwei/aeroagentsim/aerokernel \
 
 MYPYPATH supplies the editable kernel source to mypy, without editing its package
 or hiding missing-import diagnostics. Synthetic tests cover inheritance/overrides,
-source dialects, quarantine, selection boundaries, diagnostics, immutability,
+source dialects, review-status admission for all four policy behaviors (default,
+conflict exclusion, proposal namespace, strict-reviewed), selection boundaries,
+diagnostics, immutability,
 provenance, CLI and snapshot integrity. Hypothesis checks selection-order digest
 invariance and directional cardinality round-trips; filesystem tests have no
 wall-clock deadline. Real-source tests skip only when the checkout is absent.

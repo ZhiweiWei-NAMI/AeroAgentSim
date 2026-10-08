@@ -34,13 +34,30 @@ class Record:
         )
 
 
-def gated(data: dict[str, Any]) -> bool:
-    return (
-        str(data.get("id", "")).startswith("proposal:")
-        or data.get("reviewStatus") in ("proposed", "conflict")
-        or data.get("integrationDisposition")
-        in ("quarantined", "candidate_not_accepted")
-        or data.get("acceptedAsCompleteContract") is False
+PROPOSAL_PREFIX = "proposal:"
+
+
+def proposal_candidate(data: dict[str, Any]) -> bool:
+    """True for the explicit ``proposal:`` namespace of new design candidates."""
+    return str(data.get("id", "")).startswith(PROPOSAL_PREFIX)
+
+
+def review_status(data: dict[str, Any]) -> str | None:
+    """Declared review status, or None when the definition declares none."""
+    status = data.get("reviewStatus")
+    return status if isinstance(status, str) else None
+
+
+def review_gated(data: dict[str, Any]) -> bool:
+    """True when the source carries a research gate marker.
+
+    ``proposal:`` candidates and definitions declaring a review status other
+    than ``reviewed`` are gate definitions. Admission never changes the source
+    review state; it only records research use of such definitions.
+    """
+    return proposal_candidate(data) or review_status(data) not in (
+        None,
+        "reviewed",
     )
 
 
