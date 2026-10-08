@@ -36,7 +36,7 @@ from aerokernel import (
 )
 from aerokernel.codec import encode
 from aerokernel.journal import prefixes
-from aerokernel.testing import SimpleEngine
+from aerokernel.sdk import SimpleEngine
 
 ROOT = EntityRef("r", "e", "object", 0, "Thing")
 
@@ -290,6 +290,14 @@ def test_registration_order_byte_determinism_and_prefixes(values, reverse):
             lifecycle=(LifecycleRule("owner", "Thing"),),
         )
         k = Kernel(root_seed=123)
+        k.queue_snapshots = {0: []}
+        publish = k._publish
+
+        def capture(state, record):
+            publish(state, record)
+            k.queue_snapshots[state.cut.index] = encode(state.work)
+
+        k._publish = capture
         k.bind(registry, manifest, tuple(reversed(engines)) if reverse else engines)
         k.start()
         k.run_until(2)
@@ -300,8 +308,4 @@ def test_registration_order_byte_determinism_and_prefixes(values, reverse):
     assert a.journal.bytes == b.journal.bytes
     for prefix in prefixes(a.journal.bytes):
         r = replay(prefix)
-        assert (
-            encode(r._store.work) == encode(a._store.work)
-            if r.view().cut == a.view().cut
-            else True
-        )
+        assert encode(r._store.work) == a.queue_snapshots[r.view().cut.index]

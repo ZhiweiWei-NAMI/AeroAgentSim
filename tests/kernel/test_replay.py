@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import random
+import time
 
 import pytest
 
@@ -19,13 +20,14 @@ from aerokernel import (
     ResourceBudget,
     replay,
 )
-from aerokernel.testing import SimpleEngine
+from aerokernel.compact import expand_record
+from aerokernel.sdk import SimpleEngine
 from aerokernel.values import canonical_json, parse_json
 from examples.two_engine_toy import MS, make_toy
 
 
 def records(data):
-    return [parse_json(line) for line in data.splitlines(keepends=True)]
+    return [expand_record(parse_json(line)) for line in data.splitlines(keepends=True)]
 
 
 def wire(records):
@@ -43,6 +45,8 @@ def test_replay_does_not_call_engines_evaluators_rng_or_live_clock(monkeypatch):
     for method in ("reset", "advance", "react", "horizon"):
         monkeypatch.setattr(SimpleEngine, method, forbidden)
     monkeypatch.setattr(random, "Random", forbidden)
+    for name in ("time", "monotonic", "perf_counter", "time_ns", "monotonic_ns"):
+        monkeypatch.setattr(time, name, forbidden)
     result = replay(k.journal.bytes)
     assert result._store.actions.to_data() == k._store.actions.to_data()
     assert result._store.messages == k._store.messages

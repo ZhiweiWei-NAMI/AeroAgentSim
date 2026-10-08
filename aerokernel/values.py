@@ -7,6 +7,7 @@ import math
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import lru_cache
 from types import MappingProxyType
 from typing import Any, TypeAlias, cast
 
@@ -52,11 +53,23 @@ def text(value: str) -> str:
     return value
 
 
-def normalize(value: object, budget: ResourceBudget | None = None) -> Value:
+@lru_cache(maxsize=64)
+def _digit_bound(digits: int) -> int:
+    return cast(int, 10**digits)
+
+
+@lru_cache(maxsize=4096)
+def _string_bytes(value: str) -> int:
+    return len(json.dumps(text(value), ensure_ascii=False).encode("utf-8"))
+
+
+def normalize(
+    value: object, budget: ResourceBudget | None = None, *, _check_bytes: bool = True
+) -> Value:
     """Deep-copy only the strict wire tree; bool/int/float retain distinct types."""
     budget = ResourceBudget() if budget is None else budget
     active: set[int] = set()
-    digit_bound = 10**budget.integer_digits
+    digit_bound = _digit_bound(budget.integer_digits)
     wire_bytes = 1  # terminal LF
 
     def account(count: int) -> None:
@@ -69,33 +82,39 @@ def normalize(value: object, budget: ResourceBudget | None = None) -> Value:
         if depth > budget.nesting_depth:
             raise ResourceLimit("nesting depth exceeded")
         if v is None or type(v) is bool:
-            account(4 if v is None or v is True else 5)
+            if _check_bytes:
+                account(4 if v is None or v is True else 5)
             return cast(Value, v)
         if type(v) is int:
             number = v
             # Compare with the exact decimal bound without converting oversized ints.
             if abs(number) >= digit_bound:
                 raise ResourceLimit("integer decimal digits exceeded")
-            account(len(str(number)))
+            if _check_bytes:
+                account(len(str(number)))
             return number
         if type(v) is float:
             f = v
             if not math.isfinite(f):
                 raise KernelError("VALUE_FINITE", "nonfinite binary64 value")
             f = 0.0 if f == 0 else f
-            account(len(json.dumps(f)))
+            if _check_bytes:
+                account(len(json.dumps(f)))
             return f
         if type(v) is str:
-            checked = text(v)
-            account(len(json.dumps(checked, ensure_ascii=False).encode("utf-8")))
-            return checked
+            if _check_bytes:
+                account(_string_bytes(v))
+            else:
+                text(v)
+            return v
         if type(v) not in (list, dict):
             raise KernelError("VALUE_TYPE", "value is not a portable wire tree")
         identity = id(v)
         if identity in active:
             raise KernelError("VALUE_CYCLE", "cyclic value tree")
         active.add(identity)
-        account(2 + max(0, len(cast(Any, v)) - 1))
+        if _check_bytes:
+            account(2 + max(0, len(cast(Any, v)) - 1))
         try:
             if type(v) is list:
                 return [walk(item, depth + 1) for item in cast(list[object], v)]
@@ -103,9 +122,10 @@ def normalize(value: object, budget: ResourceBudget | None = None) -> Value:
             for k, item in cast(dict[object, object], v).items():
                 if type(k) is not str:
                     raise KernelError("VALUE_KEY", "record keys must be strings")
-                account(
-                    1 + len(json.dumps(text(k), ensure_ascii=False).encode("utf-8"))
-                )
+                if _check_bytes:
+                    account(1 + _string_bytes(k))
+                else:
+                    text(k)
                 result[k] = walk(item, depth + 1)
             return result
         finally:
@@ -117,14 +137,18 @@ def normalize(value: object, budget: ResourceBudget | None = None) -> Value:
 def freeze(value: object, budget: ResourceBudget | None = None) -> FrozenValue:
     """Freeze a copied wire tree; no caller-owned containers remain reachable."""
 
-    def immutable(v: Value) -> FrozenValue:
-        if isinstance(v, list):
-            return tuple(immutable(item) for item in v)
-        if isinstance(v, dict):
-            return MappingProxyType({k: immutable(item) for k, item in v.items()})
-        return v
+    return freeze_normalized(normalize(value, budget))
 
-    return immutable(normalize(value, budget))
+
+def freeze_normalized(value: Value) -> FrozenValue:
+    """Internal conversion after schema/resource validation of a detached tree."""
+    if isinstance(value, list):
+        return tuple(freeze_normalized(item) for item in value)
+    if isinstance(value, dict):
+        return MappingProxyType(
+            {k: freeze_normalized(item) for k, item in value.items()}
+        )
+    return value
 
 
 def thaw(value: FrozenValue) -> Value:
@@ -150,7 +174,7 @@ def typed_equal(a: object, b: object) -> bool:
 def canonical_json(value: object, budget: ResourceBudget | None = None) -> bytes:
     """Canonical sorted UTF-8 JSON plus LF; integers never pass through binary64."""
     budget = ResourceBudget() if budget is None else budget
-    tree = normalize(value, budget)
+    tree = normalize(value, budget, _check_bytes=False)
     data = (
         json.dumps(
             tree,

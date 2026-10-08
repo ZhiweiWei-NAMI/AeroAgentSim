@@ -13,56 +13,52 @@ from aerokernel import (
     BindingManifest,
     BindingRule,
     CommandRequest,
-    Create,
     Dependency,
-    Emit,
     EntityRef,
-    Fact,
-    FactWrite,
-    Feedback,
     FieldDescriptor,
     Instant,
     Interval,
-    ItemRef,
     Kernel,
     LifecycleRule,
-    LocalCause,
     MemoryRegistry,
     MessageDescriptor,
     Partition,
-    Receipt,
     Stamp,
     Timing,
     TypeDescriptor,
 )
-from aerokernel.messages import Delivery, Dirty
-from aerokernel.state import StateView
-from aerokernel.testing import SimpleEngine
+from aerokernel.sdk import (
+    Command,
+    ContextEngine,
+    EngineContext,
+    FactPolicy,
+    dispatch_commands,
+    handles,
+)
 
 MS = 1_000_000
 ITEM = EntityRef("toy", "0", "item", 0, "Item")
 ORDER = EntityRef("toy", "0", "order", 0, "Order")
 
 
-def write(view: StateView, ref: EntityRef, field: str, value: object) -> FactWrite:
-    """Toy acquisition is the actual canonical boundary, with open validity."""
-    return FactWrite(
-        (ref, field),
-        value,
-        Stamp("canonical", view.instant.ns, 1, "canonical"),
-        Interval(view.instant, None),
+POLICIES = {
+    field: FactPolicy(
+        acquired=lambda now: Stamp("canonical", now.ns, 1, "canonical"),
+        valid=lambda now: Interval(now, None),
     )
+    for field in ("position_truth", "order_status", "in_zone")
+}
 
 
-class ItemController(SimpleEngine):
-    """Independent Item lifecycle authority; creation grants no field ownership."""
+class ItemController(ContextEngine):
+    """Independent Item lifecycle authority; no borrowed field ownership."""
 
-    def initialize(self, view: StateView) -> tuple[object, ...]:
-        return (Create(ITEM),)
+    def bootstrap(self, ctx: EngineContext) -> None:
+        ctx.create(ITEM)
 
 
-class Mover(SimpleEngine):
-    """Actual toy native integration at 0,5,10,… ms, without interpolation."""
+class Mover(ContextEngine):
+    """Authored integration at 0,5,10,… ms with no interpolation."""
 
     def __init__(self) -> None:
         super().__init__(
@@ -72,49 +68,36 @@ class Mover(SimpleEngine):
                 produces=("position_truth",),
                 commands=("move",),
                 timing=Timing("fixed_step", 5 * MS),
-            )
+            ),
+            policies=POLICIES,
         )
         self.x = 0
-        self.command: str | None = None
-        self.dispatch: ItemRef | None = None
+        self.active: Command[object] | None = None
 
-    def initialize(self, view: StateView) -> tuple[object, ...]:
-        return (write(view, ITEM, "position_truth", self.x),)
+    def bootstrap(self, ctx: EngineContext) -> None:
+        ctx.set(ITEM, "position_truth", self.x)
 
-    def integrate(self, view: StateView) -> tuple[object, ...]:
-        if self.command is not None:
-            self.x += (view.instant.ns - self.native_ns) // MS
-            return (write(view, ITEM, "position_truth", self.x), Activate("mover"))
-        return ()
+    @handles("move")
+    def move(self, ctx: EngineContext, command: Command[object]) -> None:
+        self.active = command
+        ctx.accept(command)
+        ctx.execute(command)
 
-    def on_react(
-        self, view: StateView, inbox: tuple[Delivery, ...], dirty: tuple[Dirty, ...]
-    ) -> tuple[object, ...]:
-        if inbox:
-            delivery = inbox[0]
-            self.command, self.dispatch = delivery.message.id, delivery.dispatch_ref
-            return (
-                Receipt(
-                    self.command,
-                    "accepted",
-                    causes=(self.dispatch, view.action(self.command).head),
-                ),
-                Receipt(
-                    self.command, "executing", causes=(self.dispatch, LocalCause(0))
-                ),
-            )
-        if self.command is not None and self.x >= 10:
-            head = view.action(self.command).head
-            result = Receipt(
-                self.command, "succeeded", {"x": self.x}, (self.dispatch, head)
-            )
-            self.command = None
-            return (result,)
-        return ()
+    def step(self, ctx: EngineContext) -> None:
+        if self.active is not None:
+            self.x += (ctx.now.ns - self.native_ns) // MS
+            ctx.set(ITEM, "position_truth", self.x)
+            ctx.ops.append(Activate("mover"))
+
+    def on_inputs(self, ctx: EngineContext) -> None:
+        super().on_inputs(ctx)
+        if not ctx.inbox and self.active is not None and self.x >= 10:
+            ctx.succeed(self.active, {"x": self.x})
+            self.active = None
 
 
-class Orders(SimpleEngine):
-    """Arrival and independently authored business acceptance remain distinct."""
+class Orders(ContextEngine):
+    """Business acceptance is independently authored after arrival."""
 
     def __init__(self) -> None:
         super().__init__(
@@ -127,62 +110,48 @@ class Orders(SimpleEngine):
                 message_targets=("mover",),
                 subscribes=("zone",),
                 lifecycle=True,
-            )
+            ),
+            policies=POLICIES,
         )
-        self.command: str | None = None
-        self.dispatch: ItemRef | None = None
+        self.active: Command[object] | None = None
         self.arrived = False
 
-    def initialize(self, view: StateView) -> tuple[object, ...]:
-        return (Create(ORDER), write(view, ORDER, "order_status", "new"))
+    def bootstrap(self, ctx: EngineContext) -> None:
+        ctx.create(ORDER)
+        ctx.set(ORDER, "order_status", "new")
 
-    def on_react(
-        self, view: StateView, inbox: tuple[Delivery, ...], dirty: tuple[Dirty, ...]
-    ) -> tuple[object, ...]:
-        for delivery in inbox:
-            if delivery.message.schema_id == "fulfill":
-                self.command, self.dispatch = delivery.message.id, delivery.dispatch_ref
-                self.wakeup_ns = 2 * MS
-                return (
-                    Receipt(
-                        self.command,
-                        "accepted",
-                        causes=(self.dispatch, view.action(self.command).head),
-                    ),
-                    Receipt(
-                        self.command, "executing", causes=(self.dispatch, LocalCause(0))
-                    ),
-                    write(view, ORDER, "order_status", "executing"),
-                    Emit(
-                        "command",
-                        "move",
-                        "mover",
-                        view.instant,
-                        {"goal": 10},
-                        (self.dispatch,),
-                    ),
-                )
+    @handles("fulfill")
+    def fulfill(self, ctx: EngineContext, command: Command[object]) -> None:
+        self.active = command
+        self.wakeup_ns = 2 * MS  # Explicit internal DES event, advertised by horizon.
+        ctx.accept(command)
+        ctx.execute(command)
+        ctx.set(ORDER, "order_status", "executing")
+        ctx.submit(CommandRequest("move", "mover", ctx.now, {"goal": 10}))
+
+    def on_inputs(self, ctx: EngineContext) -> None:
+        dispatch_commands(
+            self, ctx, tuple(d for d in ctx.inbox if d.message.kind == "command")
+        )
+        for delivery in ctx.inbox:
             if delivery.message.schema_id == "zone.transition":
                 self.arrived = True
                 self.wakeup_ns = 13 * MS
-                return (write(view, ORDER, "order_status", "awaiting_acknowledgment"),)
-        return ()
+                ctx.set(ORDER, "order_status", "awaiting_acknowledgment")
 
-    def integrate(self, view: StateView) -> tuple[object, ...]:
+    def step(self, ctx: EngineContext) -> None:
         self.wakeup_ns = None
-        if self.command is None:
+        if self.active is None:
             raise RuntimeError("business timer without command")
-        causes = (self.dispatch, view.action(self.command).head)
         if self.arrived:
-            return (
-                write(view, ORDER, "order_status", "accepted_output"),
-                Receipt(self.command, "succeeded", {"accepted": True}, causes),
-            )
-        return (Feedback(self.command, {"progress": "moving"}, causes),)
+            ctx.set(ORDER, "order_status", "accepted_output")
+            ctx.succeed(self.active, {"accepted": True})
+        else:
+            ctx.feedback(self.active, {"progress": "moving"})
 
 
-class Zone(SimpleEngine):
-    """Ordinary discrete reactive transition, distinct from M2 sampled entered."""
+class Zone(ContextEngine):
+    """Ordinary reactive transition, distinct from sampled entered."""
 
     def __init__(self) -> None:
         super().__init__(
@@ -193,35 +162,27 @@ class Zone(SimpleEngine):
                 consumes=(Dependency("position_truth"),),
                 emits=("zone.transition",),
                 message_targets=("zone",),
-            )
+            ),
+            policies=POLICIES,
         )
-        self.previous = False
-        self.previous_ns = 0
+        self.previous, self.previous_ns = False, 0
 
-    def on_react(
-        self, view: StateView, inbox: tuple[Delivery, ...], dirty: tuple[Dirty, ...]
-    ) -> tuple[object, ...]:
-        if not any(d.key == (ITEM, "position_truth") for d in dirty):
-            return ()
-        position = view.field((ITEM, "position_truth"), view.instant)
+    def on_inputs(self, ctx: EngineContext) -> None:
+        if not any(d.key == (ITEM, "position_truth") for d in ctx.dirty):
+            return
+        position = ctx.get(ITEM, "position_truth")
         if position is ABSENT:
             raise RuntimeError("toy position is absent")
-        assert isinstance(position, Fact) and isinstance(position.value, int)
-        inside = position.value >= 10
-        ops: tuple[object, ...] = (write(view, ITEM, "in_zone", inside),)
+        assert isinstance(position, int)
+        inside = position >= 10
+        ctx.set(ITEM, "in_zone", inside)
         if inside and not self.previous:
-            ops += (
-                Emit(
-                    "event",
-                    "zone.transition",
-                    "zone",
-                    view.instant,
-                    {"start_ns": self.previous_ns, "end_ns": view.instant.ns},
-                    (position.version,),
-                ),
+            ctx.emit(
+                "zone.transition",
+                {"start_ns": self.previous_ns, "end_ns": ctx.now.ns},
+                topic="zone",
             )
-        self.previous, self.previous_ns = inside, view.instant.ns
-        return ops
+        self.previous, self.previous_ns = inside, ctx.now.ns
 
 
 def make_toy(seed: int = 42) -> Kernel:

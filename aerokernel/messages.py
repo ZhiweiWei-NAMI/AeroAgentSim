@@ -9,6 +9,7 @@ from typing import Any, cast
 from .errors import KernelError
 from .ids import FieldKey, ItemRef, LocalCause, validate_text
 from .registry import MemoryRegistry
+from .storage import Overlay
 from .time import Instant, Stamp
 from .values import FrozenValue, ResourceBudget, freeze, normalize, thaw
 
@@ -187,6 +188,12 @@ class Dirty:
     cause: ItemRef
     value_changed: bool = True
     payload: FrozenValue = None
+    resource_budget: ResourceBudget | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "payload", freeze(thaw(self.payload), self.resource_budget)
+        )
 
 
 @dataclass(frozen=True)
@@ -240,19 +247,19 @@ class Actions:
     ) -> None:
         self.registry = registry
         self.budget = budget
-        self.states: dict[str, ActionState] = {}
-        self.schemas: dict[str, str] = {}
-        self.dispatches: dict[str, Delivery] = {}
-        self.cancel_heads: dict[str, ItemRef] = {}
+        self.states: Overlay[str, ActionState] = Overlay()
+        self.schemas: Overlay[str, str] = Overlay()
+        self.dispatches: Overlay[str, Delivery] = Overlay()
+        self.cancel_heads: Overlay[str, ItemRef] = Overlay()
         self.decisions: set[str] = set()
 
     def clone(self) -> Actions:
         """Detach mutable candidate indexes, retaining immutable record values."""
         other = Actions(self.registry, self.budget)
-        other.states = self.states.copy()
-        other.schemas = self.schemas.copy()
-        other.dispatches = self.dispatches.copy()
-        other.cancel_heads = self.cancel_heads.copy()
+        other.states = self.states.fork()
+        other.schemas = self.schemas.fork()
+        other.dispatches = self.dispatches.fork()
+        other.cancel_heads = self.cancel_heads.fork()
         other.decisions = self.decisions.copy()
         return other
 
@@ -502,7 +509,7 @@ class Actions:
 
         return {
             "states": {k: encode(v) for k, v in self.states.items()},
-            "schemas": self.schemas.copy(),
+            "schemas": dict(self.schemas),
             "dispatches": {k: encode(v) for k, v in self.dispatches.items()},
             "cancel_heads": {k: encode(v) for k, v in self.cancel_heads.items()},
             "decisions": sorted(self.decisions),
@@ -514,11 +521,15 @@ class Actions:
         from .codec import decode_record
 
         result = cls(registry)
-        result.states = {k: decode_record(v) for k, v in data["states"].items()}
-        result.schemas = data["schemas"].copy()
-        result.dispatches = {k: decode_record(v) for k, v in data["dispatches"].items()}
-        result.cancel_heads = {
-            k: decode_record(v) for k, v in data["cancel_heads"].items()
-        }
+        result.states = Overlay(
+            {k: decode_record(v) for k, v in data["states"].items()}
+        )
+        result.schemas = Overlay(data["schemas"].copy())
+        result.dispatches = Overlay(
+            {k: decode_record(v) for k, v in data["dispatches"].items()}
+        )
+        result.cancel_heads = Overlay(
+            {k: decode_record(v) for k, v in data["cancel_heads"].items()}
+        )
         result.decisions = set(data["decisions"])
         return result

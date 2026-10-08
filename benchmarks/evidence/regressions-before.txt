@@ -1,0 +1,134 @@
+FFFFFFFFFFFFF                                                            [100%]
+=================================== FAILURES ===================================
+______________ test_rejects_illegal_live_waves[replace_same_wave] ______________
+
+probe = <function replace_same_wave at 0x7f5e368396c0>
+
+    @pytest.mark.parametrize("probe", [replace_same_wave, unpublished_dispatch_cause])
+    def test_rejects_illegal_live_waves(probe):
+>       with pytest.raises(KernelError):
+E       Failed: DID NOT RAISE KernelError
+
+tests/kernel/test_m1_baseline.py:293: Failed
+_________ test_rejects_illegal_live_waves[unpublished_dispatch_cause] __________
+
+probe = <function unpublished_dispatch_cause at 0x7f5e3676c0e0>
+
+    @pytest.mark.parametrize("probe", [replace_same_wave, unpublished_dispatch_cause])
+    def test_rejects_illegal_live_waves(probe):
+>       with pytest.raises(KernelError):
+E       Failed: DID NOT RAISE KernelError
+
+tests/kernel/test_m1_baseline.py:293: Failed
+_____________________ test_live_headers_replay[big_header] _____________________
+
+probe = <function big_header at 0x7f5e3675bd80>
+
+    @pytest.mark.parametrize("probe", [big_header, deep_header, integer_header])
+    def test_live_headers_replay(probe):
+>       assert probe() == "unexpected replay success"
+E       AssertionError: assert {'live_started': True, 'header_bytes': 9438633, 'replay_code': 'RESOURCE_LIMIT', 'detail': 'RESOURCE_LIMIT: frame bytes exceeded'} == 'unexpected replay success'
+E        +  where {'live_started': True, 'header_bytes': 9438633, 'replay_code': 'RESOURCE_LIMIT', 'detail': 'RESOURCE_LIMIT: frame bytes exceeded'} = <function big_header at 0x7f5e3675bd80>()
+
+tests/kernel/test_m1_baseline.py:298: AssertionError
+____________________ test_live_headers_replay[deep_header] _____________________
+
+probe = <function deep_header at 0x7f5e3675be20>
+
+    @pytest.mark.parametrize("probe", [big_header, deep_header, integer_header])
+    def test_live_headers_replay(probe):
+>       assert probe() == "unexpected replay success"
+E       AssertionError: assert {'live_started': True, 'replay_code': 'RESOURCE_LIMIT', 'detail': 'RESOURCE_LIMIT: nesting depth exceeded'} == 'unexpected replay success'
+E        +  where {'live_started': True, 'replay_code': 'RESOURCE_LIMIT', 'detail': 'RESOURCE_LIMIT: nesting depth exceeded'} = <function deep_header at 0x7f5e3675be20>()
+
+tests/kernel/test_m1_baseline.py:298: AssertionError
+___________________ test_live_headers_replay[integer_header] ___________________
+
+probe = <function integer_header at 0x7f5e3675bec0>
+
+    @pytest.mark.parametrize("probe", [big_header, deep_header, integer_header])
+    def test_live_headers_replay(probe):
+>       assert probe() == "unexpected replay success"
+E       AssertionError: assert {'live_started': True, 'replay_code': 'RESOURCE_LIMIT', 'detail': 'RESOURCE_LIMIT: integer token digits exceeded'} == 'unexpected replay success'
+E        +  where {'live_started': True, 'replay_code': 'RESOURCE_LIMIT', 'detail': 'RESOURCE_LIMIT: integer token digits exceeded'} = <function integer_header at 0x7f5e3675bec0>()
+
+tests/kernel/test_m1_baseline.py:298: AssertionError
+______ test_replay_rejects_consistent_corruption[replay_microstep_bound] _______
+
+probe = <function replay_microstep_bound at 0x7f5e3676c180>
+
+    @pytest.mark.parametrize("probe", [replay_microstep_bound, replay_duplicate_partition])
+    def test_replay_rejects_consistent_corruption(probe):
+>       with pytest.raises(KernelError):
+E       Failed: DID NOT RAISE KernelError
+
+tests/kernel/test_m1_baseline.py:302: Failed
+____ test_replay_rejects_consistent_corruption[replay_duplicate_partition] _____
+
+probe = <function replay_duplicate_partition at 0x7f5e3676c220>
+
+    @pytest.mark.parametrize("probe", [replay_microstep_bound, replay_duplicate_partition])
+    def test_replay_rejects_consistent_corruption(probe):
+>       with pytest.raises(KernelError):
+E       Failed: DID NOT RAISE KernelError
+
+tests/kernel/test_m1_baseline.py:302: Failed
+_____________________ test_host_cancel_respects_route_lag ______________________
+
+    def test_host_cancel_respects_route_lag():
+>       assert cancel_lag()["deliveries"][-1][2] == 22
+E       assert 12 == 22
+
+tests/kernel/test_m1_baseline.py:306: AssertionError
+______________________ test_legal_kernel_partition_timer _______________________
+
+    def test_legal_kernel_partition_timer():
+>       assert timer_namespace() == "unexpected success"
+E       assert {'exception': 'KeyError', 'detail': "'key'", 'last_record': {'type': 'fault', 'index': 7, 'instant': {'$type': 'Instant', 'fields': {'ns': 1, 'microstep': 0}}, 'code': 'ENGINE_EXCEPTION', ...}} == 'unexpected success'
+E        +  where {'exception': 'KeyError', 'detail': "'key'", 'last_record': {'type': 'fault', 'index': 7, 'instant': {'$type': 'Instant', 'fields': {'ns': 1, 'microstep': 0}}, 'code': 'ENGINE_EXCEPTION', ...}} = timer_namespace()
+
+tests/kernel/test_m1_baseline.py:309: AssertionError
+___________________________ test_dynamic_lag_absence ___________________________
+
+    def test_dynamic_lag_absence():
+>       assert "code" not in lag_dynamic_creation()
+E       AssertionError: assert 'code' not in {'code': 'ENTITY_UNKNOWN', 'detail': 'ENTITY_UNKNOWN: generation was not created at cut', 'host_absent_at5': True, 'expected': 'ABSENT at lag-cut preceding creation'}
+E        +  where {'code': 'ENTITY_UNKNOWN', 'detail': 'ENTITY_UNKNOWN: generation was not created at cut', 'host_absent_at5': True, 'expected': 'ABSENT at lag-cut preceding creation'} = lag_dynamic_creation()
+
+tests/kernel/test_m1_baseline.py:312: AssertionError
+________________________ test_rng_foreign_stream_denied ________________________
+
+    def test_rng_foreign_stream_denied():
+>       with pytest.raises((KeyError, KernelError)):
+E       Failed: DID NOT RAISE any of (KeyError, KernelError)
+
+tests/kernel/test_m1_baseline.py:315: Failed
+__________________ test_dirty_cannot_mutate_published_intent ___________________
+
+    def test_dirty_cannot_mutate_published_intent():
+>       with pytest.raises(TypeError):
+E       Failed: DID NOT RAISE TypeError
+
+tests/kernel/test_m1_baseline.py:319: Failed
+__________________ test_expiry_after_reactive_write_notifies ___________________
+
+    def test_expiry_after_reactive_write_notifies():
+>       assert expiry_after_microstep_write()["expiry_notifications_at_1"]
+E       assert []
+
+tests/kernel/test_m1_baseline.py:323: AssertionError
+=========================== short test summary info ============================
+FAILED tests/kernel/test_m1_baseline.py::test_rejects_illegal_live_waves[replace_same_wave]
+FAILED tests/kernel/test_m1_baseline.py::test_rejects_illegal_live_waves[unpublished_dispatch_cause]
+FAILED tests/kernel/test_m1_baseline.py::test_live_headers_replay[big_header]
+FAILED tests/kernel/test_m1_baseline.py::test_live_headers_replay[deep_header]
+FAILED tests/kernel/test_m1_baseline.py::test_live_headers_replay[integer_header]
+FAILED tests/kernel/test_m1_baseline.py::test_replay_rejects_consistent_corruption[replay_microstep_bound]
+FAILED tests/kernel/test_m1_baseline.py::test_replay_rejects_consistent_corruption[replay_duplicate_partition]
+FAILED tests/kernel/test_m1_baseline.py::test_host_cancel_respects_route_lag
+FAILED tests/kernel/test_m1_baseline.py::test_legal_kernel_partition_timer - ...
+FAILED tests/kernel/test_m1_baseline.py::test_dynamic_lag_absence - Assertion...
+FAILED tests/kernel/test_m1_baseline.py::test_rng_foreign_stream_denied - Fai...
+FAILED tests/kernel/test_m1_baseline.py::test_dirty_cannot_mutate_published_intent
+FAILED tests/kernel/test_m1_baseline.py::test_expiry_after_reactive_write_notifies
+13 failed in 0.63s

@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Mapping
-from typing import Any
+from collections.abc import Mapping, Sequence
+from functools import lru_cache
+from typing import Any, cast
 
 
 def encode(value: object) -> Any:
     """Encode an internal record while keeping portable payload trees distinct."""
+    if value is None or type(value) in (bool, int, float, str):
+        return value
+    if type(value) in (list, tuple):
+        return [encode(v) for v in cast(list[object] | tuple[object, ...], value)]
     if dataclasses.is_dataclass(value) and not isinstance(value, type):
         return {
             "$type": type(value).__name__,
@@ -19,21 +24,26 @@ def encode(value: object) -> Any:
         }
     if isinstance(value, Mapping):
         return {str(k): encode(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
         return [encode(v) for v in value]
     return value
 
 
-def decode_record(value: Any) -> Any:
-    """Decode only known kernel records, with explicit sequence fields."""
+@lru_cache(maxsize=1)
+def _record_classes() -> dict[str, type[Any]]:
     from . import engine, ids, messages, operations, time, values
 
-    classes = {
+    return {
         name: cls
         for module in (engine, ids, messages, operations, time, values)
         for name, cls in vars(module).items()
         if isinstance(cls, type) and dataclasses.is_dataclass(cls)
     }
+
+
+def decode_record(value: Any) -> Any:
+    """Decode only known kernel records, with explicit sequence fields."""
+    classes = _record_classes()
     if isinstance(value, list):
         return tuple(decode_record(v) for v in value)
     if not isinstance(value, dict):

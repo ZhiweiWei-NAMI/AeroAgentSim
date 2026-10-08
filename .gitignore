@@ -13,3 +13,5 @@ docs/audit/*.json
 .kernel-agents/
 coverage.json
 .kernel-agents/
+benchmarks/_glm/
+tests/.ruff_cache/

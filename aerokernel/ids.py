@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TypeAlias
+from typing import Any, ClassVar, TypeAlias
 
 from .errors import KernelError
 from .values import canonical_json, text
@@ -30,11 +30,20 @@ class EntityRef:
     id: str
     generation: int
     type_id: str
+    _identity_hash: ClassVar[int]
+
+    def __hash__(self) -> int:
+        return self._identity_hash
 
     def __post_init__(self) -> None:
         for value in (self.run_id, self.epoch, self.id, self.type_id):
             validate_text(value)
         _nonnegative(self.generation)
+        object.__setattr__(
+            self,
+            "_identity_hash",
+            hash((self.run_id, self.epoch, self.id, self.generation, self.type_id)),
+        )
 
     def to_data(self) -> dict[str, Any]:
         """Untagged identity fields; field schemas wrap them in $ref."""

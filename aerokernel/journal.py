@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import builtins
 import io
+import json
 import os
+import sys
 from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, BinaryIO, cast
 
 from .errors import KernelError
-from .values import ResourceBudget, canonical_json, parse_json
+from .values import ResourceBudget, canonical_json, normalize, parse_json
 
 if TYPE_CHECKING:
     from .coordinator import Kernel
@@ -37,14 +40,71 @@ class Journal:
             if sink is None
             else sink
         )
-        self._lines: list[bytes] = []
+        self._path = sink if isinstance(sink, Path) else None
+        self._retained: list[bytes] | None = (
+            [] if self._path is None and not self.sink.readable() else None
+        )
+        self.acknowledged_bytes = 0
         self.failed = False
 
-    def append(self, record: dict[str, Any]) -> None:
+    def append(
+        self, record: dict[str, Any], *, trusted_fact_rows: bool = False
+    ) -> bytes:
         """A failed append taints the writer and leaves the live prefix unchanged."""
         if self.failed:
             raise KernelError("JOURNAL_TAINTED", "journal has already failed")
-        line = canonical_json(record, self.budget)
+        if trusted_fact_rows:
+            # Only the coordinator supplies this flag, after fact/schema/value
+            # validation. Validate the outer codec/tables once; rows reference
+            # those validated identities/stamps and normalized detached values.
+            shell = dict(record)
+            shell["items"] = [
+                None if "$fact" in item or "$retract" in item else item
+                for item in record["items"]
+            ]
+            # Entity identities and field names were already budget-validated in
+            # their committed creation/header. Referencing them adds no new value;
+            # validate dynamic stamps/intervals here and the complete frame below.
+            tables = dict(record["fact_tables"])
+            shell["fact_tables"] = {**tables, "entities": [], "fields": []}
+            tree = cast(
+                dict[str, Any], normalize(shell, self.budget, _check_bytes=False)
+            )
+            if tables["entities"] and self.budget.nesting_depth < 4:
+                from .errors import ResourceLimit
+
+                raise ResourceLimit("nesting depth exceeded")
+            tree["fact_tables"]["entities"] = tables["entities"]
+            tree["fact_tables"]["fields"] = tables["fields"]
+            for index, item in enumerate(record["items"]):
+                if "$fact" in item or "$retract" in item:
+                    row = item.get("$fact", item.get("$retract"))
+                    if self.budget.nesting_depth < 4:
+                        from .errors import ResourceLimit
+
+                        raise ResourceLimit("nesting depth exceeded")
+                    if isinstance(row[3], (list, dict)):
+                        self._row_depth(row[3], 4)
+                    for causes in row[6:8] if "$fact" in item else row[5:7]:
+                        if causes:
+                            self._row_depth(causes, 4)
+                    tree["items"][index] = item
+            line = (
+                json.dumps(
+                    tree,
+                    sort_keys=True,
+                    ensure_ascii=False,
+                    allow_nan=False,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            ).encode("utf-8")
+            if len(line) > self.budget.frame_bytes:
+                from .errors import ResourceLimit
+
+                raise ResourceLimit("encoded frame bytes exceeded")
+        else:
+            line = canonical_json(record, self.budget)
         try:
             written = self.sink.write(line)
             if written != len(line):
@@ -55,12 +115,43 @@ class Journal:
         except (OSError, ValueError) as exc:
             self.failed = True
             raise KernelError("JOURNAL_IO", "WAL append/flush failed") from exc
-        self._lines.append(line)
+        self.acknowledged_bytes += len(line)
+        if self._retained is not None:
+            self._retained.append(line)
+        return line
+
+    def _row_depth(self, value: Any, depth: int) -> None:
+        # Scalars in a row were normalized already; only wrapper depth is new.
+        if depth > self.budget.nesting_depth:
+            from .errors import ResourceLimit
+
+            raise ResourceLimit("nesting depth exceeded")
+        if isinstance(value, dict):
+            for child in value.values():
+                self._row_depth(child, depth + 1)
+        elif isinstance(value, list):
+            for child in value:
+                self._row_depth(child, depth + 1)
 
     @property
     def bytes(self) -> bytes:
         """Acknowledged canonical journal bytes, useful for deterministic tests."""
-        return b"".join(self._lines)
+        if self._retained is not None:
+            return b"".join(self._retained)
+        if self._path is not None:
+            with self._path.open("rb") as source:
+                return source.read(self.acknowledged_bytes)
+        position = self.sink.tell()
+        try:
+            self.sink.seek(0)
+            return self.sink.read(self.acknowledged_bytes)
+        finally:
+            self.sink.seek(position)
+
+    @property
+    def _lines(self) -> list[builtins.bytes]:
+        """Diagnostic compatibility accessor; encoded lines are not retained twice."""
+        return self.bytes.splitlines(keepends=True)
 
     def close(self) -> None:
         """Close only resources opened by this journal."""
@@ -82,11 +173,32 @@ def read_records(
     lines = data.splitlines(keepends=True)
     if incomplete:
         lines.pop()
-    records = []
+    records: list[dict[str, Any]] = []
     active_budget = initial_budget
     for line in lines:
         if not line.endswith(b"\n"):
             raise KernelError("JOURNAL_FRAME", "record must be LF-terminated")
+        if not records and budget is None:
+            # Discover only the bootstrap policy; then validate the entire header
+            # again under that policy. CPython's active decimal/recursion limits
+            # remain untouched, matching supported in-process configurations.
+            digit_limit = getattr(sys, "get_int_max_str_digits", lambda: 0)()
+            bootstrap = ResourceBudget(
+                digit_limit or max(4096, len(line)), len(line), sys.getrecursionlimit()
+            )
+            header_tree = parse_json(line, bootstrap)
+            if not isinstance(header_tree, dict) or not isinstance(
+                header_tree.get("budget"), dict
+            ):
+                raise KernelError("JOURNAL_HEADER", "header lacks resource budgets")
+            try:
+                active_budget = ResourceBudget(
+                    **cast(dict[str, Any], header_tree["budget"])
+                )
+            except (TypeError, KeyError) as exc:
+                raise KernelError(
+                    "JOURNAL_HEADER", "malformed resource budgets"
+                ) from exc
         record = parse_json(line, active_budget)
         if not isinstance(record, dict):
             raise KernelError("JOURNAL_RECORD", "record must be an object")

@@ -138,7 +138,7 @@ def publish_ingress(
 def boundary_control(candidate: Candidate) -> dict[str, Any]:
     """Consume due timers/reservations and generate only actual notifications."""
     state = candidate.state
-    for mid, data in sorted(state.pending_ingress.copy().items()):
+    for mid, data in sorted(dict(state.pending_ingress).items()):
         if data["boundary"] <= candidate.instant.ns:
             if data.get("cancel"):
                 origin = decode_record(data["origin"])
@@ -161,7 +161,11 @@ def boundary_control(candidate: Candidate) -> dict[str, Any]:
                 )
                 state.messages[mid] = msg
                 at = eligibility(
-                    state, action.target, candidate.instant, candidate.instant
+                    state,
+                    action.target,
+                    candidate.instant,
+                    candidate.instant,
+                    state.partitions[action.target].message_lag_ns,
                 )
                 enqueue = candidate.add(
                     {
@@ -177,20 +181,48 @@ def boundary_control(candidate: Candidate) -> dict[str, Any]:
                 state.pending_ingress.pop(mid)
             else:
                 publish_ingress(candidate, decode_record(data["request"]), mid, data)
-    for key, timer in sorted(state.timers.items()):
-        due: Instant = decode_record(timer["due"])
-        if timer["state"] != "pending" or due > candidate.instant:
-            continue
-        timer["state"] = "fired"
+    for key in sorted(state.timer_queue.take(candidate.instant)):
+        try:
+            timer = state.timers[key]
+            due = decode_record(timer["due"])
+            if not isinstance(due, Instant) or timer["state"] != "pending":
+                raise ValueError("invalid active deadline")
+        except (KeyError, TypeError, ValueError) as exc:
+            raise KernelError(
+                "TIMER_RECORD", "malformed active timer", timer_key=key
+            ) from exc
+        timer = {**timer, "state": "fired"}
+        state.timers[key] = timer
         cause = candidate.add(
             {"kind": "timer_fire", "id": list(key), "timer": timer.copy()}
         )
-        if key[0] == "kernel":
+        if timer.get("kind") == "validity":
+            if len(key) != 3 or "key" not in timer:
+                raise KernelError(
+                    "TIMER_RECORD", "malformed validity timer", timer_key=key
+                )
             field_key = decode_record(timer["key"])
             candidate.notify_field(field_key, cause, True)
         else:
+            if (
+                timer.get("kind") != "partition"
+                or len(key) != 2
+                or key[0] not in state.partitions
+                or "payload" not in timer
+            ):
+                raise KernelError(
+                    "TIMER_RECORD", "malformed partition timer", timer_key=key
+                )
             at = eligibility(state, key[0], due, candidate.instant)
-            dirty = Dirty(None, "timer", at, cause, True, freeze(timer["payload"]))
+            dirty = Dirty(
+                None,
+                "timer",
+                at,
+                cause,
+                True,
+                freeze(timer["payload"], candidate.budget),
+                candidate.budget,
+            )
             state.work.append(Work(key[0], at, cause, dirty=dirty, timer_key=key))
             candidate.add(
                 {

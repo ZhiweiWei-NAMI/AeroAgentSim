@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import heapq
+from bisect import bisect_left, bisect_right
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, overload
 
 from .engine import Batch, Partition
 from .errors import KernelError
 from .ids import EntityRef, FieldKey, ItemRef
+from .queues import TimerQueue, WorkQueue
+from .storage import AppendList, Overlay, RecordLog
 from .time import Cut, Instant, Interval, Stamp
 from .values import FrozenValue
 
@@ -18,7 +23,7 @@ if TYPE_CHECKING:
     from .registry import MemoryRegistry
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Absent:
     """Tagged absence, distinct from JSON null and every concrete value."""
 
@@ -26,7 +31,7 @@ class Absent:
 ABSENT = Absent()
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Fact:
     """A kernel-stamped immutable field version."""
 
@@ -40,7 +45,7 @@ class Fact:
     version: ItemRef
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Retraction:
     """An explicit absence version that shadows older facts."""
 
@@ -52,7 +57,7 @@ class Retraction:
     version: ItemRef
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Life:
     """Creation/death history is resolved at the reader's prefix."""
 
@@ -61,7 +66,7 @@ class Life:
     removed: Cut | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Work:
     """Queued recipient-specific delivery or dirty notification."""
 
@@ -70,7 +75,166 @@ class Work:
     cause: ItemRef
     message_id: str | None = None
     dirty: Dirty | None = None
-    timer_key: tuple[str, str] | None = None
+    timer_key: tuple[str, ...] | None = None
+
+
+class FactVersions(Sequence[Fact | Retraction]):
+    """Per-key immutable prefixes of compact append-only version rows.
+
+    Keys and item coordinates are reconstructed on reads. Each write retains
+    its real value, source stamp, mapped/acquired/available/valid times and owner;
+    no version is pruned or inferred from another sample.
+    """
+
+    __slots__ = ("key", "columns", "indices", "length", "starts", "monotone", "cache")
+
+    def __init__(
+        self,
+        key: FieldKey,
+        columns: tuple[list[Any], ...] | None = None,
+        indices: list[int] | None = None,
+        length: int = 0,
+        starts: list[Instant] | None = None,
+        monotone: bool = True,
+        cache: dict[int, tuple[list[Instant], list[int]]] | None = None,
+    ) -> None:
+        self.key = key
+        self.columns = tuple([] for _ in range(7)) if columns is None else columns
+        self.indices = [] if indices is None else indices
+        self.length = length
+        self.starts = [] if starts is None else starts
+        self.monotone = monotone
+        self.cache = {} if cache is None else cache
+
+    def with_version(self, fact: Fact | Retraction, index: int) -> FactVersions:
+        """Append to shared columns; old readers retain their exact prefix length."""
+        columns, indices, starts, cache = (
+            self.columns,
+            self.indices,
+            self.starts,
+            self.cache,
+        )
+        if len(indices) != self.length:
+            columns = tuple(column[: self.length] for column in columns)
+            indices = indices[: self.length]
+            starts = starts[: self.length]
+            cache = {}
+        values = (
+            (
+                fact.value,
+                fact.acquired,
+                fact.mapped_ns,
+                fact.available,
+                fact.valid,
+                fact.producer,
+                fact.version.item_index,
+            )
+            if isinstance(fact, Fact)
+            else (
+                fact.reason,
+                None,
+                None,
+                fact.available,
+                fact.valid,
+                fact.producer,
+                fact.version.item_index,
+            )
+        )
+        for column, value in zip(columns, values, strict=True):
+            column.append(value)
+        indices.append(index)
+        monotone = (
+            self.monotone
+            and fact.valid.end is None
+            and (not starts or fact.valid.start >= starts[-1])
+        )
+        starts.append(fact.valid.start)
+        return FactVersions(
+            self.key, columns, indices, self.length + 1, starts, monotone, cache
+        )
+
+    def known_count(self, record_index: int) -> int:
+        """Locate the exact knowledge prefix by binary search."""
+        return bisect_right(self.indices, record_index, hi=self.length)
+
+    def select(self, at: Instant, record_index: int, *, left: bool = False) -> int:
+        """Indexed greatest-known interval lookup, with an optional open-left limit.
+
+        Monotone open intervals need two binary searches. General overlapping
+        intervals compile a sweep index once per requested knowledge prefix;
+        subsequent queries are logarithmic. Four indexes are shared as a bounded
+        cache; the complete underlying history is never evicted.
+        """
+        count = self.known_count(record_index)
+        search = bisect_left if left else bisect_right
+        if self.monotone:
+            return search(self.starts, at, hi=count) - 1
+        compiled = self.cache.get(count)
+        if compiled is None:
+            events: dict[Instant, list[tuple[int, bool]]] = {}
+            for i in range(count):
+                valid = self.columns[4][i]
+                events.setdefault(valid.start, []).append((i, True))
+                if valid.end is not None:
+                    events.setdefault(valid.end, []).append((i, False))
+            active: set[int] = set()
+            heap: list[int] = []
+            coordinates: list[Instant] = []
+            winners: list[int] = []
+            for point, changes in sorted(events.items()):
+                for index, added in changes:
+                    if added:
+                        active.add(index)
+                        heapq.heappush(heap, -index)
+                    else:
+                        active.remove(index)
+                while heap and -heap[0] not in active:
+                    heapq.heappop(heap)
+                winner = -heap[0] if heap else -1
+                if not winners or winners[-1] != winner:
+                    coordinates.append(point)
+                    winners.append(winner)
+            compiled = (coordinates, winners)
+            if len(self.cache) == 4:
+                self.cache.pop(next(iter(self.cache)))
+            self.cache[count] = compiled
+        coordinates, winners = compiled
+        position = search(coordinates, at) - 1
+        return winners[position] if position >= 0 else -1
+
+    def at(self, index: int) -> Fact | Retraction:
+        """Materialize one immutable public version from its retained columns."""
+        value, acquired, mapped, available, valid, producer, item = (
+            c[index] for c in self.columns
+        )
+        ref = ItemRef(self.indices[index], item)
+        if acquired is None:
+            return Retraction(self.key, valid, value, available, producer, ref)
+        return Fact(self.key, value, acquired, mapped, available, valid, producer, ref)
+
+    @overload
+    def __getitem__(self, index: int) -> Fact | Retraction: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> list[Fact | Retraction]: ...
+
+    def __getitem__(
+        self, index: int | slice
+    ) -> Fact | Retraction | list[Fact | Retraction]:
+        if isinstance(index, slice):
+            return [self.at(i) for i in range(*index.indices(self.length))]
+        if index < 0:
+            index += self.length
+        if not 0 <= index < self.length:
+            raise IndexError(index)
+        return self.at(index)
+
+    def __len__(self) -> int:
+        return self.length
+
+    def __iter__(self) -> Iterator[Fact | Retraction]:
+        for i in range(self.length):
+            yield self.at(i)
 
 
 class Store:
@@ -86,28 +250,36 @@ class Store:
         self.registry = registry
         self.manifest = manifest
         self.partitions = partitions
+        self.dependency_fields = frozenset(
+            d.field for p in partitions.values() for d in p.consumes
+        )
         self.actions = actions
-        self.action_snapshots = {0: actions.clone()}
-        self.cuts: list[Cut] = [Cut(0, Instant(0))]
-        self.records: list[dict[str, Any]] = []
-        self.lives: dict[EntityRef, Life] = {}
-        self.generations: dict[str, int] = {}
-        self.writers: dict[FieldKey, str] = {}
-        self.controllers: dict[EntityRef, str] = {}
-        self.facts: dict[FieldKey, tuple[Fact | Retraction, ...]] = {}
-        self.ready: dict[tuple[EntityRef, str], ItemRef] = {}
-        self.messages: dict[str, Any] = {}
-        self.work: list[Work] = []
-        self.pending_ingress: dict[str, dict[str, Any]] = {}
-        self.idempotency: dict[str, tuple[bytes, str]] = {}
-        self.sequences: dict[tuple[str, str], int] = {}
-        self.intents: dict[ItemRef, dict[str, Any]] = {}
+        self.action_snapshots: Overlay[int, Actions] = Overlay({0: actions.clone()})
+        self.action_snapshot_indices: AppendList[int] = AppendList([0])
+        self.cuts: AppendList[Cut] = AppendList([Cut(0, Instant(0))])
+        self.records = RecordLog(budget=actions.budget)
+        self.lives: Overlay[EntityRef, Life] = Overlay()
+        self.live_ids: Overlay[str, EntityRef] = Overlay()
+        self.generations: Overlay[str, int] = Overlay()
+        self.writers: Overlay[FieldKey, str] = Overlay()
+        self.controllers: Overlay[EntityRef, str] = Overlay()
+        self.facts: Overlay[FieldKey, FactVersions] = Overlay()
+        self.ready: Overlay[tuple[EntityRef, str], ItemRef] = Overlay()
+        self.messages: Overlay[str, Any] = Overlay()
+        self.work = WorkQueue()
+        self.pending_ingress: Overlay[str, dict[str, Any]] = Overlay()
+        self.idempotency: Overlay[str, tuple[bytes, str]] = Overlay()
+        self.sequences: Overlay[tuple[str, str], int] = Overlay()
+        self.intents: Overlay[ItemRef, dict[str, Any]] = Overlay()
+        self.pending_intents: dict[str, ItemRef] = {}
         self.frontiers = {p: (Instant(0), 0) for p in partitions}
         self.native_cuts = {p: self.cuts[0] for p in partitions}
-        self.timers: dict[tuple[str, str], dict[str, Any]] = {}
+        self.timers: Overlay[tuple[str, ...], dict[str, Any]] = Overlay()
+        self.timer_queue = TimerQueue()
         self.sealed_ns: int | None = None
         self.run_target: int | None = None
         self.faulted = False
+        self.max_microsteps = 1024
 
     @property
     def cut(self) -> Cut:
@@ -121,6 +293,7 @@ class Store:
         other = copy.copy(self)
         for name in (
             "lives",
+            "live_ids",
             "generations",
             "writers",
             "controllers",
@@ -131,16 +304,24 @@ class Store:
             "idempotency",
             "sequences",
             "frontiers",
+            "pending_intents",
             "native_cuts",
             "action_snapshots",
         ):
-            setattr(other, name, getattr(self, name).copy())
+            value = getattr(self, name)
+            setattr(
+                other,
+                name,
+                value.fork() if isinstance(value, Overlay) else value.copy(),
+            )
         other.actions = self.actions.clone()
-        other.intents = {k: v.copy() for k, v in self.intents.items()}
-        other.timers = {k: v.copy() for k, v in self.timers.items()}
-        other.work = self.work.copy()
-        other.cuts = self.cuts.copy()
-        other.records = self.records.copy()
+        other.intents = self.intents.fork()
+        other.timers = self.timers.fork()
+        other.timer_queue = self.timer_queue.fork()
+        other.work = self.work.fork()
+        other.cuts = self.cuts.fork()
+        other.records = self.records.fork()
+        other.action_snapshot_indices = self.action_snapshot_indices.fork()
         return other
 
     def check_cut(self, cut: Cut) -> None:
@@ -174,8 +355,29 @@ class Store:
             raise KernelError("FIELD_INACTIVE", "field is not selected for generation")
         if not self.alive(key[0], cut, at):
             return ABSENT
-        for version in reversed(self.facts.get(key, ())):
-            if version.version.record_index <= cut.index and version.valid.contains(at):
+        versions = self.facts.get(key)
+        if versions is None:
+            return ABSENT
+        index = versions.select(at, cut.index)
+        if index < 0:
+            return ABSENT
+        version = versions[index]
+        return ABSENT if isinstance(version, Retraction) else version
+
+    def field_before(self, key: FieldKey, boundary: Instant, cut: Cut) -> Fact | Absent:
+        """Effective value on the open left side, without inventing a predecessor."""
+        life = self.known(key[0], cut)
+        if life.created.instant >= boundary or (
+            life.removed is not None
+            and life.removed.index <= cut.index
+            and life.removed.instant < boundary
+        ):
+            return ABSENT
+        versions = self.facts.get(key)
+        if versions is not None:
+            index = versions.select(boundary, cut.index, left=True)
+            if index >= 0:
+                version = versions[index]
                 return ABSENT if isinstance(version, Retraction) else version
         return ABSENT
 
@@ -201,9 +403,14 @@ class Store:
 
     def cut_at(self, ns: int, cap: Cut) -> Cut:
         """Newest prefix no later than physical time and the explicit cap."""
-        return next(
-            c for c in reversed(self.cuts[: cap.index + 1]) if c.instant.ns <= ns
-        )
+        low, high = 0, cap.index + 1
+        while low < high:
+            middle = (low + high) // 2
+            if self.cuts[middle].instant.ns <= ns:
+                low = middle + 1
+            else:
+                high = middle
+        return self.cuts[low - 1]
 
 
 class StateView:
@@ -276,7 +483,7 @@ class StateView:
                 "FIELD_INACTIVE", "field not selected for this generation"
             )
         cut = self._scope(key, valid_at, issued)
-        if cut is None:
+        if cut is None or self._store.lives[key[0]].created.index > cut.index:
             return ABSENT
         return self._store.field(key, valid_at, cut)
 
@@ -284,12 +491,22 @@ class StateView:
         self, key: FieldKey, start: Instant, end: Instant, known_at: Cut | None = None
     ) -> tuple[Fact | Retraction, ...]:
         """Read complete version history, without implicit resampling."""
-        cut = self._scope(key, start, self._cut(known_at))
+        issued = self._cut(known_at)
+        self._store.known(key[0], issued)
+        if key not in self._store.writers:
+            raise KernelError(
+                "FIELD_INACTIVE", "field not selected for this generation"
+            )
+        cut = self._scope(key, start, issued)
         if self.partition is not None:
-            self._scope(key, end, self._cut(known_at))
+            self._scope(key, end, issued)
         if self.partition is not None and end > self.instant:
             raise KernelError("READ_VALIDITY_FUTURE", "history exceeds evolution view")
-        return () if cut is None else self._store.history(key, start, end, cut)
+        return (
+            ()
+            if cut is None or self._store.lives[key[0]].created.index > cut.index
+            else self._store.history(key, start, end, cut)
+        )
 
     def lifecycle(self, ref: EntityRef, known_at: Cut | None = None) -> Life:
         """Inspect declared lifecycle, resolving death at this knowledge cut."""
@@ -310,9 +527,8 @@ class StateView:
     def action(self, command_id: str) -> ActionState:
         """Inspect canonical pending/receipt-derived action state."""
         # Views retain their candidate store, so later live commits cannot alter it.
-        snapshot_index = max(
-            i for i in self._store.action_snapshots if i <= self.cut.index
-        )
+        indices = self._store.action_snapshot_indices
+        snapshot_index = indices[bisect_right(indices, self.cut.index) - 1]
         state = self._store.action_snapshots[snapshot_index].action(command_id)
         if self.partition is not None:
             related = state.target == self.partition or (

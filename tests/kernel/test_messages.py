@@ -28,7 +28,7 @@ from aerokernel import (
     replay,
 )
 from aerokernel.messages import Actions
-from aerokernel.testing import SimpleEngine
+from aerokernel.sdk import SimpleEngine
 
 
 def registry():

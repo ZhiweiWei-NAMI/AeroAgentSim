@@ -27,7 +27,7 @@ from aerokernel import (
     TypeDescriptor,
     replay,
 )
-from aerokernel.testing import SimpleEngine
+from aerokernel.sdk import SimpleEngine
 
 
 def test_remove_then_cross_type_reuse_resolves_new_field_owner():

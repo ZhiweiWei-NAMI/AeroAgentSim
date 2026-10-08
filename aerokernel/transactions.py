@@ -8,6 +8,7 @@ from fnmatch import fnmatchcase
 from typing import Any
 
 from .codec import decode_record, encode
+from .compact import FactRows
 from .errors import KernelError
 from .ids import EntityRef, ItemRef, LocalCause, message_id, validate_text
 from .messages import (
@@ -30,9 +31,9 @@ from .operations import (
     ScheduleTimer,
     UnsupportedOperation,
 )
-from .state import ABSENT, Fact, Life, Retraction, Store, Work
+from .state import ABSENT, Fact, FactVersions, Life, Retraction, Store, Work
 from .time import ClockMapping, Cut, Instant
-from .values import ResourceBudget, freeze, normalize, typed_equal
+from .values import ResourceBudget, freeze, freeze_normalized, normalize, typed_equal
 
 
 def coordinates(ref: ItemRef) -> dict[str, int]:
@@ -98,6 +99,13 @@ class Candidate:
         self.mappings = mappings
         self.budget = budget
         self.items: list[dict[str, Any]] = []
+        self.fact_rows = FactRows()
+        self.stamps: dict[Any, Any] = {}
+        self.mapped_stamps: dict[Any, int] = {}
+        self.live_cache: set[EntityRef] = set()
+        self.ready_keys = set(store.ready)
+        self.scalar_values: dict[tuple[str, type, Any], Any] = {}
+        self.intervals: dict[Any, Any] = {}
         self.mutated: set[tuple[EntityRef, str]] = set()
         self.creating: set[str] = set()
         self.removing: set[EntityRef] = set()
@@ -113,6 +121,8 @@ class Candidate:
         local: list[ItemRef],
         intent: dict[str, Any],
     ) -> tuple[ItemRef, ...]:
+        if not raw:
+            return ()
         result = []
         read: Cut = decode_record(intent["read_cut"])
         authorized = [decode_record(v) for v in intent["authorized"]]
@@ -133,6 +143,9 @@ class Candidate:
                         "enqueue",
                         "intent",
                         "reservation",
+                        "ingress_publish",
+                        "offline_request",
+                        "cancel_reservation",
                         "dirty_dispatch",
                         "timer_fire",
                     }:
@@ -154,7 +167,10 @@ class Candidate:
                     if (
                         kind == "operation"
                         and "message" in existing
-                        and existing["partition"] != partition
+                        and (
+                            existing["partition"] != partition
+                            or decode_record(existing["message"]).kind == "command"
+                        )
                     ):
                         raise KernelError(
                             "CAUSE_UNDISPATCHED",
@@ -179,6 +195,55 @@ class Candidate:
                             raise KernelError(
                                 "CAUSE_STATE_LAG", "state cause exceeds declared lag"
                             )
+                    if (
+                        kind in {"bootstrap_create", "operation"}
+                        and "version" not in existing
+                        and "message" not in existing
+                    ):
+                        proposal = decode_record(existing["proposal"])
+                        if isinstance(proposal, (Create, Remove, LifecycleReady)):
+                            p = self.before.partitions[partition]
+                            if existing["partition"] != partition and not (
+                                p.lifecycle or proposal.ref.type_id in p.lifecycle_reads
+                            ):
+                                raise KernelError(
+                                    "CAUSE_STATE_SCOPE", "undeclared lifecycle cause"
+                                )
+                        elif isinstance(proposal, (Receipt, Feedback, CancelDecision)):
+                            from .state import StateView
+
+                            StateView(self.before, read, partition=partition).action(
+                                proposal.command_id
+                            )
+                        elif existing["partition"] != partition:
+                            raise KernelError(
+                                "CAUSE_STATE_SCOPE",
+                                "another partition's private operation",
+                            )
+                    elif kind == "receipt":
+                        from .state import StateView
+
+                        action = StateView(
+                            self.before, read, partition=partition
+                        ).action(existing["command_id"])
+                        if (
+                            existing["status"] == "submitted"
+                            and not (
+                                action.source_kind == "partition"
+                                and action.source == partition
+                            )
+                            and existing["command_id"]
+                            not in self.before.actions.dispatches
+                        ):
+                            raise KernelError(
+                                "CAUSE_UNDISPATCHED",
+                                "submitted status is not target dispatch",
+                            )
+                    elif kind not in {"operation", "bootstrap_create", "dispatch"}:
+                        raise KernelError(
+                            "CAUSE_UNDISPATCHED",
+                            "control/publication is not a visible state cause",
+                        )
                 else:
                     raise KernelError(
                         "CAUSE_FUTURE", "cause exceeds read cut/authorized inbox"
@@ -193,6 +258,8 @@ class Candidate:
         source.known(ref, source.cut if not bootstrap else self.before.cut)
 
     def live(self, ref: EntityRef) -> None:
+        if ref in self.live_cache:
+            return
         life = self.state.lives.get(ref)
         if life is None or life.removed is not None:
             raise KernelError("ENTITY_STALE", "not a live created generation")
@@ -201,13 +268,11 @@ class Candidate:
             self.state.manifest.epoch,
         ):
             raise KernelError("NAMESPACE", "foreign entity reference")
+        self.live_cache.add(ref)
 
     def create(self, producer: str, op: Create, out: ItemRef, bootstrap: bool) -> None:
         ref = op.ref
-        if ref.id in self.creating or any(
-            r.id == ref.id and life.removed is None
-            for r, life in self.state.lives.items()
-        ):
+        if ref.id in self.creating or ref.id in self.state.live_ids:
             raise KernelError("CREATE_DUPLICATE", "duplicate live/create ID")
         if (ref.run_id, ref.epoch) != (
             self.state.manifest.run_id,
@@ -231,6 +296,7 @@ class Candidate:
             ref, self.state.registry, self.state.partitions
         )
         self.creating.add(ref.id)
+        self.state.live_ids[ref.id] = ref
         self.state.generations[ref.id] = ref.generation
         self.state.lives[ref] = Life(ref, Cut(self.index, self.instant))
         self.state.controllers[ref] = controller
@@ -249,7 +315,13 @@ class Candidate:
                 continue
             at = eligibility(self.state, recipient, self.instant, self.instant)
             dirty = Dirty(
-                None, "lifecycle", at, cause, True, freeze({"$ref": ref.to_data()})
+                None,
+                "lifecycle",
+                at,
+                cause,
+                True,
+                freeze({"$ref": ref.to_data()}, self.budget),
+                self.budget,
             )
             self.state.work.append(Work(recipient, at, cause, dirty=dirty))
             self.add(
@@ -327,7 +399,9 @@ class Candidate:
             self.instant,
             self.state.partitions[recipient].message_lag_ns,
         )
-        dirty = Dirty(None, "receipt", at, cause, True, freeze(payload))
+        dirty = Dirty(
+            None, "receipt", at, cause, True, freeze(payload, self.budget), self.budget
+        )
         self.state.work.append(Work(recipient, at, cause, dirty=dirty))
         self.add(
             {
@@ -340,6 +414,8 @@ class Candidate:
         )
 
     def stamp(self, stamp: Any) -> int:
+        if stamp in self.mapped_stamps:
+            return self.mapped_stamps[stamp]
         mapping = self.mappings.get(stamp.mapping_id)
         if mapping is None:
             raise KernelError("CLOCK_MAPPING", "unknown pinned mapping")
@@ -348,6 +424,7 @@ class Candidate:
             raise KernelError(
                 "ACQUISITION_FUTURE", "acquisition cannot follow publication"
             )
+        self.mapped_stamps[stamp] = ns
         return ns
 
     def operation(
@@ -361,11 +438,13 @@ class Candidate:
         raw = getattr(op, "causes", ())
         causes = self.cause_refs(raw, local, intent)
         out = self.add(
-            {
+            {}
+            if isinstance(op, (FactWrite, RetractFact))
+            else {
                 "kind": "operation",
                 "partition": partition,
                 "proposal": encode(op),
-                "causes": encode(causes),
+                "causes": encode(causes) if causes else [],
             }
         )
         phase = intent["phase"]
@@ -399,6 +478,8 @@ class Candidate:
                         "CLEANUP_REQUIRED",
                         "actual visible cleanup acknowledgment required",
                     )
+            self.state.live_ids.pop(op.ref.id)
+            self.live_cache.discard(op.ref)
             self.state.lives[op.ref] = replace(
                 self.state.lives[op.ref], removed=Cut(self.index, self.instant)
             )
@@ -418,15 +499,16 @@ class Candidate:
                     "PROVISIONAL_CREATE", "cleanup follows committed creation"
                 )
             participants = self.state.manifest.participants(op.ref, self.state.registry)
-            if partition not in participants or (op.ref, partition) in self.state.ready:
+            if partition not in participants or (op.ref, partition) in self.ready_keys:
                 raise KernelError(
                     "CLEANUP_OWNER", "unexpected or duplicate cleanup acknowledgment"
                 )
             self.items[out.item_index]["native_reached_ns"] = intent["expected_native"]
             self.state.ready[(op.ref, partition)] = out
+            self.ready_keys.add((op.ref, partition))
         elif isinstance(op, (FactWrite, RetractFact)):
             self.live(op.key[0])
-            if op.key[0] in self.removing or (op.key[0], partition) in self.state.ready:
+            if op.key[0] in self.removing or (op.key[0], partition) in self.ready_keys:
                 raise KernelError(
                     "WRITE_FROZEN", "removed or cleanup-frozen generation"
                 )
@@ -436,7 +518,7 @@ class Candidate:
                 )
             if op.key in self.mutated:
                 raise KernelError("FACT_DUPLICATE", "duplicate key mutation in wave")
-            if not bootstrap and self.before.lives.get(op.key[0]) is None:
+            if not bootstrap and op.key[0].id in self.creating:
                 raise KernelError(
                     "PROVISIONAL_CREATE", "dynamic writes follow committed creation"
                 )
@@ -449,16 +531,25 @@ class Candidate:
                         return
                     self.before.known(ref, decode_record(intent["read_cut"]))
 
-                self.state.registry.validate(
-                    descriptor.schema, op.value, validate_ref, budget=self.budget
-                )
+                scalar = type(op.value) in (type(None), bool, int, float, str)
+                cache_key = (op.key[1], type(op.value), op.value) if scalar else None
+                if cache_key is not None and cache_key in self.scalar_values:
+                    frozen_value = self.scalar_values[cache_key]
+                else:
+                    portable = normalize(op.value, self.budget)
+                    self.state.registry._validate(
+                        descriptor.schema, portable, validate_ref
+                    )
+                    frozen_value = freeze_normalized(portable)
+                    if cache_key is not None:
+                        self.scalar_values[cache_key] = frozen_value
                 fact: Fact | Retraction = Fact(
                     op.key,
-                    freeze(op.value, self.budget),
-                    op.acquired,
+                    frozen_value,
+                    self.stamps.setdefault(op.acquired, op.acquired),
                     self.stamp(op.acquired),
                     self.instant,
-                    op.valid,
+                    self.intervals.setdefault(op.valid, op.valid),
                     partition,
                     out,
                 )
@@ -467,21 +558,29 @@ class Candidate:
                 fact = Retraction(
                     op.key, op.valid, op.reason, self.instant, partition, out
                 )
-            self.state.facts[op.key] = self.state.facts.get(op.key, ()) + (fact,)
-            self.items[out.item_index]["version"] = encode(fact)
+            versions = self.state.facts.get(op.key)
+            if versions is None:
+                versions = FactVersions(op.key)
+            self.state.facts[op.key] = versions.with_version(fact, self.index)
+            self.items[out.item_index] = self.fact_rows.row(
+                partition, op, fact, encode(causes) if causes else []
+            )
             self.notify_field(op.key, out)
             for boundary in (op.valid.start, op.valid.end):
                 if boundary is not None and boundary > self.instant:
-                    key = (
+                    key: tuple[str, ...] = (
+                        "validity",
                         "kernel",
                         f"valid:{self.index}:{out.item_index}:{boundary.ns}:{boundary.microstep}",
                     )
                     self.state.timers[key] = {
+                        "kind": "validity",
                         "due": encode(boundary),
                         "state": "pending",
                         "key": encode(op.key),
                         "cause": encode(out),
                     }
+                    self.state.timer_queue.add(key, boundary)
                     self.add(
                         {
                             "kind": "validity_timer",
@@ -561,7 +660,15 @@ class Candidate:
                         self.instant,
                         self.state.partitions[recipient].message_lag_ns,
                     )
-                    dirty = Dirty(None, "cancel_decision", at, out, True, freeze(item))
+                    dirty = Dirty(
+                        None,
+                        "cancel_decision",
+                        at,
+                        out,
+                        True,
+                        freeze(item, self.budget),
+                        self.budget,
+                    )
                     self.state.work.append(Work(recipient, at, out, dirty=dirty))
                     self.add(
                         {
@@ -579,17 +686,20 @@ class Candidate:
                 )
             normalize(op.payload, self.budget)
             self.state.timers[key] = {
+                "kind": "partition",
                 "due": encode(op.due),
                 "state": "pending",
                 "payload": normalize(op.payload, self.budget),
                 "cause": encode(out),
             }
+            self.state.timer_queue.add(key, op.due)
         elif isinstance(op, CancelTimer):
             validate_text(op.timer_id)
             timer = self.state.timers.get((partition, op.timer_id))
             if timer is None or timer["state"] != "pending":
                 raise KernelError("TIMER_CANCEL", "timer not pending")
-            timer["state"] = "canceled"
+            self.state.timers[(partition, op.timer_id)] = {**timer, "state": "canceled"}
+            self.state.timer_queue.cancel((partition, op.timer_id))
         elif isinstance(op, Activate):
             if op.partition != partition:
                 raise KernelError(
@@ -610,22 +720,19 @@ class Candidate:
         cause: ItemRef,
         validity_boundary: bool = False,
     ) -> None:
+        if key[1] not in self.state.dependency_fields:
+            return
         # Candidate reads use the new publication cut, without issuing it live.
         temp_cut = Cut(self.index, self.instant)
         if not self.state.cuts or self.state.cuts[-1] != temp_cut:
             self.state.cuts.append(temp_cut)
-        old_at = self.instant
-        if validity_boundary:
-            old_at = (
-                Instant(self.instant.ns, self.instant.microstep - 1)
-                if self.instant.microstep
-                else (Instant(max(0, self.instant.ns - 1), 0))
+        old: Fact | Any = ABSENT
+        if key[0] in self.before.lives:
+            old = (
+                self.before.field_before(key, self.instant, self.before.cut)
+                if validity_boundary
+                else self.before.field(key, self.instant, self.before.cut)
             )
-        old = (
-            ABSENT
-            if key[0] not in self.before.lives
-            else self.before.field(key, old_at, self.before.cut)
-        )
         new = self.state.field(key, self.instant, temp_cut)
         changed = (old is ABSENT) != (new is ABSENT) or (
             isinstance(old, Fact)

@@ -13,6 +13,7 @@ class Create:
     """Create a generation under its separately bound lifecycle controller."""
 
     ref: EntityRef
+    causes: tuple[ItemRef | LocalCause, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,7 @@ class Remove:
 
     ref: EntityRef
     cleanup_refs: tuple[ItemRef | LocalCause, ...] = ()
+    causes: tuple[ItemRef | LocalCause, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -58,6 +60,7 @@ class ScheduleTimer:
     timer_id: str
     due: Instant
     payload: object
+    causes: tuple[ItemRef | LocalCause, ...] = ()
 
 
 @dataclass(frozen=True)

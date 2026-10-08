@@ -38,7 +38,7 @@ from aerokernel import (
 )
 from aerokernel.codec import encode
 from aerokernel.journal import prefixes
-from aerokernel.testing import SimpleEngine
+from aerokernel.sdk import SimpleEngine
 from aerokernel.values import canonical_json, parse_json
 
 REF = EntityRef("test", "epoch", "entity", 0, "Thing")

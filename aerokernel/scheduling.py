@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from .codec import decode_record, encode
+from .codec import encode
 from .engine import Batch
-from .errors import KernelError
+from .errors import KernelError, MicrostepLimitExceeded
 from .ids import ItemRef
 from .messages import Delivery
 from .operations import Create, Remove
@@ -17,7 +17,7 @@ from .transactions import Candidate
 
 def ready_partitions(store: Store, instant: Instant) -> tuple[str, ...]:
     """The unique lifecycle-prioritized, cohort-expanded reactive ready set."""
-    ready = {w.recipient for w in store.work if w.eligible <= instant}
+    ready = store.work.ready(instant)
     controllers = {p for p in ready if store.partitions[p].lifecycle}
     for cohort in store.manifest.cohorts:
         if ready & set(cohort) and any(store.partitions[p].lifecycle for p in cohort):
@@ -33,6 +33,10 @@ def wave_intents(
     store: Store, selected: tuple[str, ...], instant: Instant, phase: str
 ) -> tuple[Store, dict[str, Any], dict[str, StateView]]:
     """Authorize all calls before execution, atomically dispatching ready inboxes."""
+    if instant.microstep > store.max_microsteps:
+        raise MicrostepLimitExceeded(
+            "grant exceeds pinned microstep bound", instant=instant
+        )
     if phase not in {"reset", "advance", "react"}:
         raise KernelError("INVOCATION_PHASE", "unknown M1 call phase")
     canonical = tuple(
@@ -46,7 +50,7 @@ def wave_intents(
         sorted(selected, key=lambda p: (store.partitions[p].engine_id, p))
     ):
         raise KernelError("INVOCATION_ORDER", "noncanonical partition call order")
-    if any(i["status"] == "pending" for i in store.intents.values()):
+    if store.pending_intents:
         raise KernelError("INVOCATION_OVERLAP", "prior wave has unresolved calls")
     if phase == "reset":
         if instant != Instant(0) or store.records or selected != canonical:
@@ -92,15 +96,7 @@ def wave_intents(
         logical, native = store.frontiers[partition]
         if phase == "advance":
             read = native_cut
-        ready = (
-            []
-            if phase != "react"
-            else [
-                w
-                for w in state.work
-                if w.recipient == partition and w.eligible <= instant
-            ]
-        )
+        ready = [] if phase != "react" else state.work.take(partition, instant)
         if ready and instant <= logical:
             raise KernelError(
                 "DISPATCH_FRONTIER", "delivery must follow recipient frontier"
@@ -127,6 +123,7 @@ def wave_intents(
                     ref,
                     work.dirty.value_changed,
                     work.dirty.payload,
+                    work.dirty.resource_budget,
                 )
                 items.append(
                     {
@@ -138,7 +135,6 @@ def wave_intents(
                 )
                 dirty.append(notification)
             authorized.append(ref)
-            state.work.remove(work)
         intent_ref = ItemRef(index, len(items))
         expected_native = native
         if phase == "advance":
@@ -162,6 +158,7 @@ def wave_intents(
         }
         items.append(intent)
         state.intents[intent_ref] = intent.copy()
+        state.pending_intents[partition] = intent_ref
         views[partition] = StateView(
             store, read, base, partition, instant, native_cut, expected_native
         )
@@ -209,9 +206,7 @@ def build_wave(
 ) -> dict[str, Any]:
     """Validate one merged candidate with private intent and exact frontier checks."""
     intent_for = {
-        i["partition"]: (ref, i)
-        for ref, i in store.intents.items()
-        if i["status"] == "pending" and decode_record(i["instant"]) == instant
+        p: (ref, store.intents[ref]) for p, ref in store.pending_intents.items()
     }
     if set(intent_for) != {p for p, _ in batches} or len(batches) != len(intent_for):
         raise KernelError("INVOCATION_RETURNS", "every intent needs exactly one return")
@@ -219,6 +214,15 @@ def build_wave(
     candidate.removing = {
         op.ref for _, b in ordered for op in b.operations if isinstance(op, Remove)
     }
+    creating_ids = {
+        op.ref.id
+        for _, batch in ordered
+        for op in batch.operations
+        if isinstance(op, Create)
+    }
+    removing_ids = {ref.id for ref in candidate.removing}
+    if creating_ids & removing_ids:
+        raise KernelError("CREATE_REMOVE", "create/remove ID in one transaction")
     bootstrap = phase == "reset"
     if bootstrap:
         candidate.state.cuts.append(Cut(candidate.index, instant))
@@ -237,6 +241,7 @@ def build_wave(
             raise KernelError(
                 "BOOTSTRAP_CREATE", "all predeclared refs must be created"
             )
+    encoded_batches = []
     for partition, batch in ordered:
         ref, intent = intent_for[partition]
         if intent["phase"] != phase:
@@ -256,6 +261,24 @@ def build_wave(
         local: list[ItemRef] = []
         for op in batch.operations:
             candidate.operation(partition, op, intent, local, bootstrap)
+        from dataclasses import fields
+
+        encoded_batch: dict[str, Any] = {
+            "$type": "Batch",
+            "fields": {
+                f.name: encode(getattr(batch, f.name))
+                for f in fields(batch)
+                if f.name != "operations"
+            },
+        }
+        encoded_batch["fields"]["operations"] = [
+            {"$item": ref.item_index}
+            if "$fact" in candidate.items[ref.item_index]
+            or "$retract" in candidate.items[ref.item_index]
+            else candidate.items[ref.item_index]["proposal"]
+            for ref in local
+        ]
+        encoded_batches.append({"partition": partition, "batch": encoded_batch})
         candidate.add(
             {
                 "kind": "return",
@@ -269,15 +292,21 @@ def build_wave(
             }
         )
         candidate.state.frontiers[partition] = (instant, batch.native_reached_ns)
-        candidate.state.intents[ref]["status"] = "returned"
+        candidate.state.intents[ref] = {
+            **candidate.state.intents[ref],
+            "status": "returned",
+        }
+        candidate.state.pending_intents.pop(partition)
     record = {
         "type": "transaction",
         "index": candidate.index,
         "instant": encode(instant),
         "phase": phase,
-        "batches": [{"partition": p, "batch": encode(b)} for p, b in ordered],
+        "batches": encoded_batches,
         "items": candidate.items,
     }
+    if candidate.fact_rows.tables["entities"]:
+        record["fact_tables"] = candidate.fact_rows.tables
     candidate.state.records.append(record)
     cut = Cut(candidate.index, instant)
     if candidate.state.cut != cut:

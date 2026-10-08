@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
@@ -154,7 +155,7 @@ class RunContext:
     root_seed: int
     run_id: str
     epoch: str
-    rng: dict[str, RNGStreams]
+    rng: Mapping[str, RNGStreams]
     configuration: FrozenValue = None
 
 

@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from .codec import decode_record, encode
+from .compact import expand_record
 from .control import boundary_control, publish_ingress, reserve
-from .engine import Batch
-from .errors import KernelError
+from .engine import Batch, Partition
+from .errors import KernelError, MicrostepLimitExceeded
 from .journal import Journal
 from .messages import Actions
 from .scheduling import build_wave, wave_intents
@@ -61,7 +62,7 @@ def from_header(header: dict[str, Any]) -> Kernel:
         or header["time_origin_ns"] != 0
         or type(header["time_origin_ns"]) is not int
         or header["major"] != 1
-        or header["minor"] != 0
+        or header["minor"] != 1
         or header["index"] != 0
         or decode_record(header["instant"]) != Instant(0)
     ):
@@ -78,10 +79,18 @@ def from_header(header: dict[str, Any]) -> Kernel:
         budget=ResourceBudget(**header["budget"]),
         configuration=header["configuration"],
     )
-    partitions = {p.id: p for p in decode_record(header["partitions"])}
+    descriptors = decode_record(header["partitions"])
+    if not isinstance(descriptors, tuple) or any(
+        not isinstance(p, Partition) for p in descriptors
+    ):
+        raise KernelError("JOURNAL_PARTITIONS", "expected partition descriptors")
+    partitions = {p.id: p for p in descriptors}
+    if len(partitions) != len(descriptors):
+        raise KernelError("PARTITION_ID", "duplicate header partition ID")
     for p in partitions.values():
         kernel._validate_partition(p, registry)
     manifest.validate(registry, partitions)
+    kernel._check_cycles(partitions, registry, manifest)
     if (manifest.run_id, manifest.epoch) != (header["run_id"], header["epoch"]):
         raise KernelError("JOURNAL_NAMESPACE", "header/manifest namespace mismatch")
     from .ids import validate_text
@@ -126,6 +135,7 @@ def from_header(header: dict[str, Any]) -> Kernel:
     kernel._store = Store(
         registry, manifest, partitions, Actions(registry, kernel.budget)
     )
+    kernel._store.max_microsteps = kernel.max_microsteps
     kernel.header = header
     kernel._bound = kernel._started = kernel._read_only = True
     return kernel
@@ -147,6 +157,10 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
         or instant < self._store.cut.instant
     ):
         raise KernelError("JOURNAL_INDEX", "noncontiguous index/retrograde time")
+    if instant.microstep > self.max_microsteps:
+        raise MicrostepLimitExceeded(
+            "record exceeds pinned microstep bound", instant=instant
+        )
     kind = record.get("type")
     expected: dict[str, Any]
     if kind == "invocations":
@@ -156,7 +170,7 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
     elif kind == "transaction":
         candidate = self._candidate(instant)
         batches = []
-        for entry in record["batches"]:
+        for entry in expand_record(record)["batches"]:
             batch = decode_record(entry["batch"])
             if not isinstance(batch, Batch):
                 raise KernelError("JOURNAL_BATCH", "expected typed Batch")
@@ -246,7 +260,8 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
                 ):
                     raise KernelError("JOURNAL_FAULT", "invalid invocation resolution")
                 resolved.add(ref)
-                state.intents[ref]["status"] = item["status"]
+                state.intents[ref] = {**state.intents[ref], "status": item["status"]}
+            state.pending_intents.clear()
             if pending != resolved:
                 raise KernelError(
                     "JOURNAL_FAULT", "fault must resolve every pending invocation"
@@ -282,9 +297,14 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
         state.cuts.append(Cut(record["index"], instant))
     else:
         raise KernelError("JOURNAL_RECORD", "unknown record type")
-    if canonical_json(expected, self.budget) != canonical_json(record, self.budget):
+    if canonical_json(
+        expected if "fact_tables" in record else expand_record(expected), self.budget
+    ) != canonical_json(record, self.budget):
         raise KernelError(
             "JOURNAL_SEMANTICS", "record differs from normalized legal effects"
         )
-    state.action_snapshots[state.cut.index] = state.actions.clone()
+    state.records.freeze_tail(canonical_json(expected, self.budget))
+    if state.actions.states.writes:
+        state.action_snapshots[state.cut.index] = state.actions
+        state.action_snapshot_indices.append(state.cut.index)
     self._store = state

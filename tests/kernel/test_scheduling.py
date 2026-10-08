@@ -33,7 +33,7 @@ from aerokernel import (
     TypeDescriptor,
     replay,
 )
-from aerokernel.testing import SimpleEngine
+from aerokernel.sdk import SimpleEngine
 
 
 class TimerEngine(SimpleEngine):

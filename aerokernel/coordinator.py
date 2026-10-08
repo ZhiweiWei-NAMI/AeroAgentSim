@@ -104,6 +104,7 @@ class Kernel:
         self._store = Store(
             registry, manifest, partitions, Actions(registry, self.budget)
         )
+        self._store.max_microsteps = self.max_microsteps
         streams = {
             p.id: RNGStreams(
                 self.root_seed, p.engine_id, p.id, p.rng_streams, self.budget
@@ -111,13 +112,17 @@ class Kernel:
             for p in partitions.values()
         }
         self.context = RunContext(
-            self.root_seed, manifest.run_id, manifest.epoch, streams, self.configuration
+            self.root_seed,
+            manifest.run_id,
+            manifest.epoch,
+            MappingProxyType(streams),
+            self.configuration,
         )
         header = {
             "type": "header",
             "format": "aerokernel.journal",
             "major": 1,
-            "minor": 0,
+            "minor": 1,
             "index": 0,
             "instant": encode(Instant(0)),
             "time_origin_ns": 0,
@@ -218,31 +223,70 @@ class Kernel:
             selected[rule.partition].update(rule.fields)
         for exact in manifest.exact:
             selected[exact.partition].add(exact.field)
+        consumers: dict[str, set[str]] = {}
+        subscribers: dict[str, set[str]] = {}
+        for target, p in partitions.items():
+            for dep in p.consumes:
+                if dep.lag_ns == 0:
+                    consumers.setdefault(dep.field, set()).add(target)
+            if p.message_lag_ns == 0:
+                for topic in p.subscribes:
+                    subscribers.setdefault(topic, set()).add(target)
         for source, p in partitions.items():
-            for target, q in partitions.items():
-                if any(
-                    d.field in selected[source] and d.lag_ns == 0 for d in q.consumes
-                ):
-                    edges[source].add(target)
-                routed = target in p.message_targets or bool(
-                    set(p.message_targets) & set(q.subscribes)
+            for field in selected[source]:
+                edges[source].update(consumers.get(field, ()))
+            for destination in p.message_targets:
+                if destination in partitions:
+                    if partitions[destination].message_lag_ns == 0:
+                        edges[source].add(destination)
+                else:
+                    edges[source].update(subscribers.get(destination, ()))
+        # Kosaraju visits each node/edge once, rather than enumerating DAG paths.
+        graph = {p: tuple(sorted(targets)) for p, targets in edges.items()}
+        reverse: dict[str, list[str]] = {p: [] for p in partitions}
+        for source, targets in graph.items():
+            for target in targets:
+                reverse[target].append(source)
+        seen: set[str] = set()
+        finished: list[str] = []
+        for root in sorted(partitions):
+            if root in seen:
+                continue
+            seen.add(root)
+            stack = [(root, iter(graph[root]))]
+            while stack:
+                node, children = stack[-1]
+                child = next(children, None)
+                if child is None:
+                    finished.append(node)
+                    stack.pop()
+                elif child not in seen:
+                    seen.add(child)
+                    stack.append((child, iter(graph[child])))
+        seen.clear()
+        components = []
+        for root in reversed(finished):
+            if root in seen:
+                continue
+            component = []
+            pending = [root]
+            seen.add(root)
+            while pending:
+                node = pending.pop()
+                component.append(node)
+                for target in reverse[node]:
+                    if target not in seen:
+                        seen.add(target)
+                        pending.append(target)
+            members = tuple(sorted(component))
+            cyclic = len(members) > 1 or root in edges[root]
+            if cyclic and any(not partitions[p].reactive for p in members):
+                raise KernelError(
+                    "CYCLE_REENTRY", "unsupported reaction cycle", path=members
                 )
-                if routed and q.message_lag_ns == 0:
-                    edges[source].add(target)
-
-        def visit(node: str, path: tuple[str, ...]) -> None:
-            if node in path:
-                cycle = path[path.index(node) :] + (node,)
-                if any(not partitions[p].reactive for p in cycle):
-                    raise KernelError(
-                        "CYCLE_REENTRY", "unsupported reaction cycle", path=cycle
-                    )
-                return
-            for target in sorted(edges[node]):
-                visit(target, path + (node,))
-
-        for node in sorted(partitions):
-            visit(node, ())
+            components.append(members)
+        self._dependency_graph = graph
+        self._sccs = tuple(components)
 
     def _guard(self, started: bool = True) -> None:
         if not self._bound or (started and not self._started):
@@ -253,8 +297,11 @@ class Kernel:
             raise KernelError("RUN_FAULTED", "run is closed or faulted")
 
     def _publish(self, state: Store, record: dict[str, Any]) -> None:
-        self.journal.append(record)
-        state.action_snapshots[state.cut.index] = state.actions.clone()
+        line = self.journal.append(record, trusted_fact_rows="fact_tables" in record)
+        state.records.freeze_tail(line)
+        if state.actions.states.writes:
+            state.action_snapshots[state.cut.index] = state.actions
+            state.action_snapshot_indices.append(state.cut.index)
         self._store = state
 
     def _candidate(self, instant: Instant) -> Candidate:
@@ -284,7 +331,7 @@ class Kernel:
                     if intent["partition"] in returned
                     else "not_returned"
                 )
-                intent["status"] = status
+                state.intents[ref] = {**intent, "status": status}
                 items.append(
                     {
                         "kind": "invocation_fault",
@@ -292,6 +339,7 @@ class Kernel:
                         "status": status,
                     }
                 )
+        state.pending_intents.clear()
         record = {
             "type": "fault",
             "index": state.cut.index + 1,
@@ -325,7 +373,14 @@ class Kernel:
                     engine = self._engines[eid]
                     pids = tuple(p.id for p in engine.partitions)
                     view = views[pids[0]]
-                    results = engine.reset(self.context, view)
+                    context = RunContext(
+                        self.root_seed,
+                        self.context.run_id,
+                        self.context.epoch,
+                        MappingProxyType({p: self.context.rng[p] for p in pids}),
+                        self.configuration,
+                    )
+                    results = engine.reset(context, view)
                     returned.extend(pids)
                     if len(results) != len(pids):
                         raise KernelError(
@@ -548,15 +603,17 @@ class Kernel:
     def _settle(self, ns: int) -> None:
         while True:
             now = self._store.cut.instant
-            due = [w for w in self._store.work if w.eligible.ns <= ns]
-            timers = [
-                decode_record(t["due"])
-                for t in self._store.timers.values()
-                if t["state"] == "pending" and decode_record(t["due"]).ns <= ns
-            ]
+            earliest = self._store.work.earliest()
+            due = earliest if earliest is not None and earliest.ns <= ns else None
+            first_timer = self._store.timer_queue.earliest()
+            timers = (
+                [first_timer]
+                if first_timer is not None and first_timer.ns <= ns
+                else []
+            )
             if not due and not timers:
                 break
-            next_steps = [w.eligible.microstep for w in due]
+            next_steps = [] if due is None else [due.microstep]
             next_steps.extend(t.microstep for t in timers)
             instant = Instant(ns, max(now.microstep + 1, min(next_steps)))
             self._check_microstep(instant)
@@ -565,7 +622,7 @@ class Kernel:
                 record = boundary_control(candidate)
                 self._publish(candidate.state, record)
                 continue
-            ready = {w.recipient for w in due if w.eligible <= instant}
+            ready = self._store.work.ready(instant)
             if not ready:
                 raise SynchronizationDeadlock("no eligible same-time work")
             chosen = ready_partitions(self._store, instant)
@@ -632,15 +689,15 @@ class Kernel:
                         for v in (h.next_wakeup_ns, h.output_lb_ns, h.grant_limit_ns)
                         if v is not None
                     )
-                boundaries.extend(w.eligible.ns for w in self._store.work)
+                queued = self._store.work.earliest()
+                if queued is not None:
+                    boundaries.append(queued.ns)
                 boundaries.extend(
                     data["boundary"] for data in self._store.pending_ingress.values()
                 )
-                boundaries.extend(
-                    decode_record(t["due"]).ns
-                    for t in self._store.timers.values()
-                    if t["state"] == "pending"
-                )
+                timer_due = self._store.timer_queue.earliest()
+                if timer_due is not None:
+                    boundaries.append(timer_due.ns)
                 to = min(boundaries)
                 if to <= current:
                     raise SynchronizationDeadlock("no safe physical progress")
@@ -649,10 +706,7 @@ class Kernel:
                 )
                 if any(
                     d["boundary"] <= to for d in self._store.pending_ingress.values()
-                ) or any(
-                    t["state"] == "pending" and decode_record(t["due"]) <= Instant(to)
-                    for t in self._store.timers.values()
-                ):
+                ) or (timer_due is not None and timer_due <= Instant(to)):
                     candidate = self._candidate(Instant(to))
                     record = boundary_control(candidate)
                     self._publish(candidate.state, record)
@@ -693,7 +747,7 @@ class Kernel:
         """Detached diagnostic record trees; mutating them cannot alter kernel state."""
         import copy
 
-        return tuple(copy.deepcopy(self._store.records))
+        return tuple(copy.deepcopy(record) for record in self._store.records)
 
     def close(self) -> None:
         """Close engines idempotently and report cleanup errors."""
