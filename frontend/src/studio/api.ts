@@ -1,0 +1,34 @@
+export class StudioApi {
+  constructor(readonly base: string) {}
+  async request<T>(path: string, body?: unknown): Promise<T> {
+    const response = await fetch(`${this.base.replace(/\/$/, '')}${path}`, body === undefined ? undefined : {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const raw = await response.text();
+      let detail = raw;
+      try { const value = JSON.parse(raw).detail ?? JSON.parse(raw); detail = typeof value === 'string' ? value : JSON.stringify(value); } catch { /* Preserve non-JSON server error. */ }
+      throw Error(`HTTP ${response.status}: ${detail}`);
+    }
+    return response.json() as Promise<T>;
+  }
+  async export(id: string): Promise<string> {
+    const response = await fetch(`${this.base}/v1/studio/workspaces/${id}/export`);
+    if (!response.ok) throw Error(`HTTP ${response.status}: ${await response.text()}`);
+    return response.text();
+  }
+}
+export type Scenario = Record<string, any>;
+export interface CityScene {
+  origin: { lat: number; lon: number; alt: number }; bounds: number[];
+  geojson: { type: string; features: any[] };
+  roads: Array<{ id: string; points: number[][]; tags: Record<string, string> }>;
+  ground: { width_m: number; depth_m: number }; diagnostics: string[]; attribution: string;
+}
+export interface Workspace {
+  id: string; name: string; scenario: Scenario; scene?: CityScene;
+  region?: { extract: string; bounds: number[]; alt: number; level_height_m: number };
+  validation?: { valid: boolean; errors: string[]; digest?: string };
+}
+export interface TypeRow { id: string; name?: string; parents: string[]; abstract: boolean; directory?: string }
+export interface TypeDetail { id: string; parents: string[]; abstract: boolean; fields: Array<{id: string; declaring_type: string; schema: any; metadata: any}> }

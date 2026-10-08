@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import multiprocessing
+import os
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -30,6 +31,7 @@ def create_app(
     *,
     scenario_root: Path | None = None,
     frontend: Path | None = None,
+    studio_root: Path | None = None,
 ) -> FastAPI:
     """Scenario paths are scoped to scenario_root; no arbitrary host-file API."""
     root = root.resolve()
@@ -102,8 +104,18 @@ def create_app(
                     )
                 scenario = await asyncio.to_thread(load_scenario, path)
             else:
+                document = body.get("scenario", body)
+                document_base = scenario_root
+                if hasattr(app.state, "studio") and "studio_workspace" in body and isinstance(document, dict):
+                    from aeroagentsim.authoring.wire import normalize_wire
+
+                    app.state.studio.get(body["studio_workspace"])
+                    document_base = app.state.studio._base(document, body["studio_workspace"])
+                    document = await asyncio.to_thread(
+                        normalize_wire, document, app.state.studio.catalog
+                    )
                 scenario = await asyncio.to_thread(
-                    load_scenario, body.get("scenario", body), base=scenario_root
+                    load_scenario, document, base=document_base
                 )
             # Validate engine declarations/bindings before returning a created run.
             validation = Simulation(scenario)
@@ -116,6 +128,10 @@ def create_app(
             raise HTTPException(422, "run storage path escapes configured output root")
         storage = RunStorage(path)
         storage.prepare(scenario)
+        if hasattr(app.state, "studio") and "studio_workspace" in body:
+            from aeroagentsim.authoring.replay import snapshot_scene
+
+            snapshot_scene(app.state.studio, scenario, path, body.get("studio_workspace"))
         paused, stopped = context.Event(), context.Event()
         process = context.Process(
             target=execute, args=(scenario, path, paused, stopped), name=run_id
@@ -133,8 +149,14 @@ def create_app(
         ]
 
     @app.get("/v1/runs/{run_id}/header")
-    def run_header(run_id: str) -> dict[str, Any]:
-        return header(directory(run_id))
+    def run_header(run_id: str, request: Request) -> dict[str, Any]:
+        path = directory(run_id)
+        result = header(path)
+        if hasattr(app.state, "studio"):
+            from aeroagentsim.authoring.replay import scene_header
+
+            result.update(scene_header(path, str(request.base_url)))
+        return result
 
     @app.get("/v1/runs/{run_id}/commits")
     def commits(
@@ -216,6 +238,18 @@ def create_app(
             "status": storage.metadata()["status"],
         }
 
+    # Optional authoring hook: execution continues to use the existing run API.
+    if studio_root is not None or os.environ.get("AEROAGENTSIM_STUDIO_ROOT"):
+        from aeroagentsim.authoring.api import mount_studio
+
+        mount_studio(
+            app,
+            studio_root
+            if studio_root is not None
+            else Path(os.environ["AEROAGENTSIM_STUDIO_ROOT"]),
+            run_root=root,
+        )
+
     if frontend is not None:
         from fastapi.responses import FileResponse
         from fastapi.staticfiles import StaticFiles
@@ -227,6 +261,7 @@ def create_app(
         @app.get("/runs/{path:path}")
         @app.get("/agents/{path:path}")
         @app.get("/runs")
+        @app.get("/studio")
         @app.get("/")
         def page(path: str = "") -> FileResponse:
             return FileResponse(frontend / "index.html")

@@ -6,12 +6,13 @@ const RunsPage = lazy(() => import('./pages/RunsPage'));
 const AgentConsole = lazy(() => import('./pages/AgentConsole'));
 const ViewerDemoPage = lazy(() => import('./viewport/ViewerDemoPage'));
 const WorkbenchShell = lazy(() => import('./shell/WorkbenchShell'));
+const CityStudioPage = lazy(() => import('./studio/StudioPage'));
 
 function RoutedContent() {
   const { pathname } = useLocation();
   const { t } = useI18n();
   return <Suspense fallback={<div style={{ padding: 32 }}>{t('viewerLoading')}</div>}>
-    {pathname.startsWith('/agents/') ? <AgentConsole /> : pathname === '/runs' || pathname.startsWith('/runs/') ? <RunsPage /> : pathname === '/viewer-demo' ? <ViewerDemoPage /> : <WorkbenchShell />}
+    {pathname.startsWith('/agents/') ? <AgentConsole /> : pathname === '/runs' || pathname.startsWith('/runs/') ? <RunsPage /> : pathname === '/viewer-demo' ? <ViewerDemoPage /> : pathname === '/studio' ? <CityStudioPage /> : <WorkbenchShell />}
   </Suspense>;
 }
 

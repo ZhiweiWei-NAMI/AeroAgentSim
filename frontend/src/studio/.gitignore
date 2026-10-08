@@ -1,0 +1,4 @@
+.build/
+.vite/
+.tmp/
+.e2e-results/

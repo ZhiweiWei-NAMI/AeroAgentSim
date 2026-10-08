@@ -1,0 +1,11 @@
+{
+  "osm_source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/sumo_wujiaochang/osm_bbox.osm.xml",
+  "selected_way_ids": [
+    "441927388",
+    "52519929",
+    "52519858",
+    "10487419"
+  ],
+  "network_source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/sumo_wujiaochang/osm.net.xml",
+  "network": "unmodified precompiled network; no synthetic geometry"
+}
