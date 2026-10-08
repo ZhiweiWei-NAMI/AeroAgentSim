@@ -1,15 +1,19 @@
-const mockGet = jest.fn();
-const mockPost = jest.fn();
-const mockPut = jest.fn();
-const mockDelete = jest.fn();
+import { vi } from 'vitest';
 
-jest.mock('axios', () => ({
-  create: jest.fn(() => ({
-    get: mockGet,
-    post: mockPost,
-    put: mockPut,
-    delete: mockDelete,
-  })),
+const mockGet = vi.fn();
+const mockPost = vi.fn();
+const mockPut = vi.fn();
+const mockDelete = vi.fn();
+
+vi.mock('axios', () => ({
+  default: {
+    create: vi.fn(() => ({
+      get: mockGet,
+      post: mockPost,
+      put: mockPut,
+      delete: mockDelete,
+    })),
+  },
 }));
 
 function networkError(message = 'Network down') {
@@ -18,9 +22,9 @@ function networkError(message = 'Network down') {
   return error;
 }
 
-describe('workbenchApi fallback behavior', () => {
+describe('workbenchApi real-source behavior', () => {
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     mockGet.mockReset();
     mockPost.mockReset();
     mockPut.mockReset();
@@ -29,32 +33,27 @@ describe('workbenchApi fallback behavior', () => {
     delete global.WebSocket;
   });
 
-  test('display GETs fallback to local config and supported workflow catalog entries only', async () => {
+  test('display GETs retain network failures rather than returning invented config/catalog data', async () => {
     mockGet.mockRejectedValue(networkError());
 
-    const { catalogApi, configApi } = require('./workbenchApi');
-    const [config, agents, workflows] = await Promise.all([
+    const { catalogApi, configApi } = await import('./workbenchApi');
+    const results = await Promise.allSettled([
       configApi.getConfig('default'),
       catalogApi.getAgents(),
       catalogApi.getWorkflows(),
     ]);
 
-    expect(config.config_id).toBe('default');
-    expect(config.workflows).toHaveLength(1);
-    expect(config.workflows[0].type).toBe('logistics_workflow');
-    expect(agents.map((agent) => agent.id)).toContain('delivery_station');
-    expect(workflows.map((workflow) => workflow.id)).toEqual([
-      'inspection_workflow',
-      'charging_workflow',
-      'logistics_workflow',
-      'image_processing_workflow',
-    ]);
+    for (const result of results) {
+      expect(result.status).toBe('rejected');
+      expect(result.reason).toMatchObject({ message: 'Network down', isConnectivityError: true });
+    }
+    expect(window.localStorage.length).toBe(0);
   });
 
   test('generic client exceptions do not trigger fallback', async () => {
     mockGet.mockRejectedValue(new Error('boom'));
 
-    const { configApi } = require('./workbenchApi');
+    const { configApi } = await import('./workbenchApi');
 
     await expect(configApi.getConfig('default')).rejects.toMatchObject({
       message: 'boom',
@@ -62,10 +61,37 @@ describe('workbenchApi fallback behavior', () => {
     });
   });
 
+  test('loads arbitrary real catalog types without a closed workflow filter', async () => {
+    mockGet.mockResolvedValue({ data: [{ id: 'registry:UnusualProcess', name: 'Unusual process', source: 'registry', version: '7' }] });
+    const { catalogApi } = await import('./workbenchApi');
+    const workflows = await catalogApi.getWorkflows();
+    expect(workflows[0]).toMatchObject({ id: 'registry:UnusualProcess', version: '7', source: 'registry' });
+    expect(mockGet).toHaveBeenCalledWith('/catalog/workflows', { params: { scope: 'all' } });
+  });
+
+  test('preserves absent runtime values while reading the real endpoints', async () => {
+    mockGet.mockImplementation(async url => ({ data: url === '/health' ? {} : url.endsWith('/spatial') ? { agents: [{ agent_id: 'record' }] }
+      : url.endsWith('/logs') ? [{ message: 'Recorded message' }]
+      : url.endsWith('/status') ? { run_id: 'run-real' }
+      : { config_id: 'real', agents: [{ id: 'record', type: 'registry:Record' }], workflows: [{ id: 'process' }] } }));
+    const { configApi, runApi, systemApi } = await import('./workbenchApi');
+    const config = await configApi.getConfig('real');
+    expect(config.agents[0].type).toBe('registry:Record');
+    expect(config.agents[0].initial_position).toBeUndefined();
+    expect(config.agents[0].initial_battery).toBeUndefined();
+    expect(config.workflows[0].enabled).toBeUndefined();
+    expect((await systemApi.getHealth()).backend_available).toBeUndefined();
+    expect((await runApi.getStatus('run-real')).simulation_time).toBeUndefined();
+    const spatial = await runApi.getSpatial('run-real');
+    expect(spatial.agents[0].position.x).toBeUndefined();
+    const [log] = await runApi.getLogs('run-real');
+    expect(log.sim_time).toBeUndefined(); expect(log.timestamp).toBeUndefined();
+  });
+
   test('run control does not fallback on network errors', async () => {
     mockPost.mockRejectedValue(networkError());
 
-    const { runApi } = require('./workbenchApi');
+    const { runApi } = await import('./workbenchApi');
 
     await expect(runApi.startRun('default')).rejects.toMatchObject({
       message: 'Network down',
@@ -78,7 +104,7 @@ describe('workbenchApi fallback behavior', () => {
     mockPost.mockRejectedValue(networkError());
     mockDelete.mockRejectedValue(networkError());
 
-    const { configApi, registryApi } = require('./workbenchApi');
+    const { configApi, registryApi } = await import('./workbenchApi');
 
     await expect(
       configApi.saveConfig('default', {
@@ -154,7 +180,7 @@ describe('workbenchApi fallback behavior', () => {
       ],
     });
 
-    const { runApi } = require('./workbenchApi');
+    const { runApi } = await import('./workbenchApi');
     const logs = await runApi.getLogs('run_1');
 
     expect(logs).toHaveLength(1);
@@ -195,7 +221,7 @@ describe('workbenchApi fallback behavior', () => {
       },
     });
 
-    const { runApi } = require('./workbenchApi');
+    const { runApi } = await import('./workbenchApi');
     const spatial = await runApi.getSpatial('run_1');
 
     expect(spatial.agents).toHaveLength(1);
@@ -224,7 +250,7 @@ describe('workbenchApi fallback behavior', () => {
       },
     });
 
-    const { runApi } = require('./workbenchApi');
+    const { runApi } = await import('./workbenchApi');
 
     await expect(runApi.startRun('default')).rejects.toMatchObject({
       status: 500,
@@ -233,7 +259,7 @@ describe('workbenchApi fallback behavior', () => {
     });
   });
 
-  test('websocket dispatch preserves structured log payloads', () => {
+  test('websocket dispatch preserves structured log payloads', async () => {
     class MockSocket {
       constructor() {
         this.listeners = {};
@@ -250,16 +276,16 @@ describe('workbenchApi fallback behavior', () => {
       close() {}
     }
 
-    global.WebSocket = jest.fn(() => new MockSocket());
+    global.WebSocket = vi.fn(() => new MockSocket());
 
     const handlers = {
-      onStatus: jest.fn(),
-      onLog: jest.fn(),
-      onSpatial: jest.fn(),
-      onWorkflowState: jest.fn(),
-      onMessage: jest.fn(),
+      onStatus: vi.fn(),
+      onLog: vi.fn(),
+      onSpatial: vi.fn(),
+      onWorkflowState: vi.fn(),
+      onMessage: vi.fn(),
     };
-    const { createWorkbenchSocket } = require('./workbenchApi');
+    const { createWorkbenchSocket } = await import('./workbenchApi');
     const socket = createWorkbenchSocket(handlers);
 
     socket.emit('message', {

@@ -382,7 +382,7 @@ function TrajectoriesLogsPage() {
                   </Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label={t('simulationTime')}>
-                  {selectedRun.simulation_time ?? 0}
+                  {selectedRun.simulation_time ?? '—'}
                 </Descriptions.Item>
                 <Descriptions.Item label={t('updated')}>
                   {formatTimestamp(selectedRun.updated_at)}
@@ -404,9 +404,9 @@ function TrajectoriesLogsPage() {
                   </Descriptions.Item>
                 </Descriptions>
                 <div className="map-meta">
-                  <Tag>{`x/lng: ${selectedMarker.position?.x ?? selectedMarker.position?.lng ?? 0}`}</Tag>
-                  <Tag>{`y/lat: ${selectedMarker.position?.y ?? selectedMarker.position?.lat ?? 0}`}</Tag>
-                  <Tag>{`z: ${selectedMarker.position?.z ?? 0}`}</Tag>
+                  <Tag>{`x/lng: ${selectedMarker.position?.x ?? selectedMarker.position?.lng ?? '—'}`}</Tag>
+                  <Tag>{`y/lat: ${selectedMarker.position?.y ?? selectedMarker.position?.lat ?? '—'}`}</Tag>
+                  <Tag>{`z: ${selectedMarker.position?.z ?? '—'}`}</Tag>
                 </div>
               </>
             ) : (

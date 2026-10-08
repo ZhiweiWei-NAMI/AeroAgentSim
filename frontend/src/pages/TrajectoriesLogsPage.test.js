@@ -1,13 +1,14 @@
 import '@testing-library/jest-dom';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import { vi } from 'vitest';
 
 import { useWorkbench } from '../context/WorkbenchContext';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { runApi } from '../services/workbenchApi';
 
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
+vi.mock('antd', async (importOriginal) => {
+  const actual = await importOriginal();
   const Descriptions = ({ children }) => <div>{children}</div>;
   Descriptions.Item = ({ label, children }) => (
     <div>
@@ -34,44 +35,46 @@ jest.mock('antd', () => {
   };
 });
 
-jest.mock('../context/WorkbenchContext', () => ({
-  useWorkbench: jest.fn(),
+vi.mock('../context/WorkbenchContext', () => ({
+  useWorkbench: vi.fn(),
 }));
 
-jest.mock('../components/workbench/Map2D', () => function MockMap2D(props) {
-  return (
-    <div data-testid={props.testId || 'map2d'}>
-      {`markers:${props.markers?.length || 0};trajectories:${props.trajectories?.length || 0}`}
-    </div>
-  );
-});
-
-jest.mock('../services/workbenchApi', () => ({
-  runApi: {
-    listRuns: jest.fn(),
-    getStatus: jest.fn(),
-    getTrajectories: jest.fn(),
-    getLogs: jest.fn(),
-    deleteRun: jest.fn(),
+vi.mock('../components/workbench/Map2D', () => ({
+  default: function MockMap2D(props) {
+    return (
+      <div data-testid={props.testId || 'map2d'}>
+        {`markers:${props.markers?.length || 0};trajectories:${props.trajectories?.length || 0}`}
+      </div>
+    );
   },
 }));
 
-const matchMediaMock = jest.fn().mockImplementation((query) => ({
+vi.mock('../services/workbenchApi', () => ({
+  runApi: {
+    listRuns: vi.fn(),
+    getStatus: vi.fn(),
+    getTrajectories: vi.fn(),
+    getLogs: vi.fn(),
+    deleteRun: vi.fn(),
+  },
+}));
+
+const matchMediaMock = vi.fn().mockImplementation((query) => ({
   matches: false,
   media: query,
   onchange: null,
-  addListener: jest.fn(),
-  removeListener: jest.fn(),
-  addEventListener: jest.fn(),
-  removeEventListener: jest.fn(),
-  dispatchEvent: jest.fn(),
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
 }));
 
 window.matchMedia = matchMediaMock;
 global.matchMedia = matchMediaMock;
 globalThis.matchMedia = matchMediaMock;
 
-const TrajectoriesLogsPage = require('./TrajectoriesLogsPage').default;
+const { default: TrajectoriesLogsPage } = await import('./TrajectoriesLogsPage');
 
 function renderPage() {
   return render(
@@ -82,7 +85,7 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   useWorkbench.mockReturnValue({
     authoritativeActionsEnabled: false,
     displayOnlyFallbackMode: true,

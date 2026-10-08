@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
 import React, { act } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 
 import { I18nProvider } from '../../i18n/I18nProvider';
 import RelationGraph from './RelationGraph';
@@ -86,7 +87,7 @@ describe('RelationGraph', () => {
   });
 
   test('pans from empty canvas without breaking node selection', () => {
-    const onNodeSelect = jest.fn();
+    const onNodeSelect = vi.fn();
     const { container } = renderGraph({ onNodeSelect });
     const canvas = container.querySelector('.relation-graph-canvas');
     const svg = screen.getByRole('img', { name: 'Workflow-Agent-State relation graph' });
@@ -99,8 +100,8 @@ describe('RelationGraph', () => {
       right: 600,
       bottom: 400,
     });
-    canvas.setPointerCapture = jest.fn();
-    canvas.releasePointerCapture = jest.fn();
+    canvas.setPointerCapture = vi.fn();
+    canvas.releasePointerCapture = vi.fn();
 
     const initialViewBox = parseViewBox(svg);
 

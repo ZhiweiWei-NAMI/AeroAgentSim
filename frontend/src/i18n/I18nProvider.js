@@ -5,7 +5,7 @@ import messages from './messages';
 const I18nContext = createContext({
   locale: 'en-US',
   setLocale: () => {},
-  t: (key) => key,
+  t: (key, vars = {}) => key,
 });
 
 const STORAGE_KEY = 'aeroagentsim.locale';

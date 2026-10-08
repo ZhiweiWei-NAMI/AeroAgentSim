@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
 import React, { act } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import { vi } from 'vitest';
 
 import { useWorkbench } from '../context/WorkbenchContext';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -11,8 +12,8 @@ import {
   systemApi,
 } from '../services/workbenchApi';
 
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
+vi.mock('antd', async (importOriginal) => {
+  const actual = await importOriginal();
   const Descriptions = ({ children }) => <div>{children}</div>;
   Descriptions.Item = ({ label, children }) => (
     <div>
@@ -39,56 +40,58 @@ jest.mock('antd', () => {
   };
 });
 
-jest.mock('../context/WorkbenchContext', () => ({
-  useWorkbench: jest.fn(),
+vi.mock('../context/WorkbenchContext', () => ({
+  useWorkbench: vi.fn(),
 }));
 
-jest.mock('../components/workbench/Map2D', () => function MockMap2D(props) {
-  return (
-    <div data-testid={props.testId || 'map2d'}>
-      {`markers:${props.markers?.length || 0};trajectories:${props.trajectories?.length || 0}`}
-    </div>
-  );
-});
-
-jest.mock('../services/workbenchApi', () => ({
-  configApi: {
-    getGraph: jest.fn(),
+vi.mock('../components/workbench/Map2D', () => ({
+  default: function MockMap2D(props) {
+    return (
+      <div data-testid={props.testId || 'map2d'}>
+        {`markers:${props.markers?.length || 0};trajectories:${props.trajectories?.length || 0}`}
+      </div>
+    );
   },
-  createWorkbenchSocket: jest.fn(),
+}));
+
+vi.mock('../services/workbenchApi', () => ({
+  configApi: {
+    getGraph: vi.fn(),
+  },
+  createWorkbenchSocket: vi.fn(),
   runApi: {
-    listRuns: jest.fn(),
-    getStatus: jest.fn(),
-    getLogs: jest.fn(),
-    getSpatial: jest.fn(),
-    startRun: jest.fn(),
-    pauseRun: jest.fn(),
-    resumeRun: jest.fn(),
-    resetRun: jest.fn(),
-    deleteRun: jest.fn(),
+    listRuns: vi.fn(),
+    getStatus: vi.fn(),
+    getLogs: vi.fn(),
+    getSpatial: vi.fn(),
+    startRun: vi.fn(),
+    pauseRun: vi.fn(),
+    resumeRun: vi.fn(),
+    resetRun: vi.fn(),
+    deleteRun: vi.fn(),
   },
   systemApi: {
-    getHealth: jest.fn(),
-    resetRuntime: jest.fn(),
+    getHealth: vi.fn(),
+    resetRuntime: vi.fn(),
   },
 }));
 
-const matchMediaMock = jest.fn().mockImplementation((query) => ({
+const matchMediaMock = vi.fn().mockImplementation((query) => ({
   matches: false,
   media: query,
   onchange: null,
-  addListener: jest.fn(),
-  removeListener: jest.fn(),
-  addEventListener: jest.fn(),
-  removeEventListener: jest.fn(),
-  dispatchEvent: jest.fn(),
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
 }));
 
 window.matchMedia = matchMediaMock;
 global.matchMedia = matchMediaMock;
 globalThis.matchMedia = matchMediaMock;
 
-const RunConsolePage = require('./RunConsolePage').default;
+const { default: RunConsolePage } = await import('./RunConsolePage');
 
 function renderPage() {
   return render(
@@ -99,11 +102,11 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   useWorkbench.mockReturnValue({
     authoritativeActionsEnabled: true,
     draftConfig: { config_id: 'default' },
-    saveDraft: jest.fn().mockResolvedValue({ config_id: 'default' }),
+    saveDraft: vi.fn().mockResolvedValue({ config_id: 'default' }),
   });
   systemApi.getHealth.mockResolvedValue({
     backend_available: true,
@@ -149,7 +152,7 @@ test('reflects structured task success logs and live spatial updates for the sel
   createWorkbenchSocket.mockImplementation((handlers) => {
     socketHandlers = handlers;
     handlers.onOpen?.();
-    return { close: jest.fn() };
+    return { close: vi.fn() };
   });
 
   renderPage();

@@ -1,13 +1,16 @@
-jest.mock('axios', () => ({
-  create: jest.fn(() => ({
-    get: jest.fn(),
-    post: jest.fn(),
-    put: jest.fn(),
-    delete: jest.fn(),
-  })),
+vi.mock('axios', () => ({
+  default: {
+    create: vi.fn(() => ({
+      get: vi.fn(),
+      post: vi.fn(),
+      put: vi.fn(),
+      delete: vi.fn(),
+    })),
+  },
 }));
 
-const { buildWorkflowInstance } = require('./WorkflowStudioPage');
+// buildWorkflowInstance lives in the shared studio model module.
+const { buildWorkflowInstance } = await import('./studio-parts/studioModel');
 
 describe('WorkflowStudioPage workflow starters', () => {
   test('buildWorkflowInstance seeds runnable logistics defaults from available agents', () => {
