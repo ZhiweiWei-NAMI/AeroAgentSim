@@ -9,3 +9,7 @@ __pycache__/
 .audit-agents/
 .test-temp/
 docs/audit/*.json
+
+.kernel-agents/
+coverage.json
+.kernel-agents/

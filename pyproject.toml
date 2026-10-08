@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aerokernel"
+version = "0.1.0.dev0"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest", "hypothesis", "pytest-cov"]
+
+[tool.setuptools.packages.find]
+include = ["aerokernel*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+include = ["aerokernel/**/*.py", "tests/kernel/**/*.py", "examples/**/*.py", "pyproject.toml"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+packages = ["aerokernel"]
+
+[tool.setuptools.package-data]
+aerokernel = ["py.typed"]
