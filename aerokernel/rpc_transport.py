@@ -7,6 +7,7 @@ import queue
 import threading
 import time
 from collections.abc import Callable, Mapping
+from dataclasses import asdict, dataclass
 from functools import partial
 from typing import Any, TypeVar
 
@@ -61,6 +62,44 @@ def timeout_policy(values: Mapping[str, float] | None) -> dict[str, float]:
     return policy
 
 
+@dataclass(frozen=True)
+class PausePolicy:
+    """Separate finite request-arrival and explicit wall-clock lease budgets."""
+
+    idle_timeout_s: float = 3600.0
+    max_hold_s: float = 3600.0
+    frame_timeout_s: float = 5.0
+
+    def __post_init__(self) -> None:
+        for value in (self.idle_timeout_s, self.max_hold_s, self.frame_timeout_s):
+            if (
+                type(value) not in (int, float)
+                or not math.isfinite(value)
+                or value <= 0
+            ):
+                raise KernelError("RPC_POLICY", "finite positive pause budget required")
+
+    def check_hold(self, duration_s: float) -> None:
+        """Validate an explicit lease without weakening operation deadlines."""
+        if (
+            type(duration_s) not in (int, float)
+            or not math.isfinite(duration_s)
+            or not 0 < duration_s <= self.max_hold_s
+        ):
+            raise KernelError("RPC_HOLD", "lease must fit declared maximum")
+
+
+def pause_policy_from_data(data: object) -> PausePolicy:
+    """Reconstruct a complete pinned declaration without missing-value defaults."""
+    if not isinstance(data, dict) or set(data) != {
+        "idle_timeout_s",
+        "max_hold_s",
+        "frame_timeout_s",
+    }:
+        raise KernelError("RPC_POLICY", "complete pause declaration required")
+    return PausePolicy(**data)
+
+
 class Framer:
     """Binary stream framing; LF counts toward the pinned byte budget."""
 
@@ -93,17 +132,26 @@ class Framer:
                 return value
             if len(self.buffer) >= self.budget.frame_bytes:
                 raise KernelError("RPC_OVERSIZE", "unterminated frame exceeds budget")
-            if hasattr(self.stream, "recv"):
-                data = self.stream.recv(min(65536, self.budget.frame_bytes))
-            elif hasattr(self.stream, "read1"):
-                data = self.stream.read1(min(65536, self.budget.frame_bytes))
-            else:
-                data = self.stream.read(1)
-            if not isinstance(data, bytes):
-                raise KernelError("RPC_FRAMING", "binary stream required")
-            if not data:
-                raise KernelError("RPC_EOF", "EOF before complete response")
-            self.buffer.extend(data)
+            self._fill()
+
+    def _fill(self) -> None:
+        if hasattr(self.stream, "recv"):
+            data = self.stream.recv(min(65536, self.budget.frame_bytes))
+        elif hasattr(self.stream, "read1"):
+            data = self.stream.read1(min(65536, self.budget.frame_bytes))
+        else:
+            data = self.stream.read(1)
+        if not isinstance(data, bytes):
+            raise KernelError("RPC_FRAMING", "binary stream required")
+        if not data:
+            raise KernelError("RPC_EOF", "EOF before complete response")
+        self.buffer.extend(data)
+
+    def read_request(self, arrival_s: float, frame_s: float) -> dict[str, Any]:
+        """Wait for arrival separately from draining/parsing a started frame."""
+        if not self.buffer:
+            bounded(self._fill, arrival_s, op="read", timeout_s=arrival_s)
+        return bounded(self.read, frame_s, op="drain", timeout_s=frame_s)
 
     def write(self, value: object) -> None:
         """Write a complete canonical frame; short writes are completed, not retried."""
@@ -157,9 +205,14 @@ class RPCConnection:
         *,
         budget: ResourceBudget | None = None,
         timeouts: Mapping[str, float] | None = None,
+        pause_policy: PausePolicy | None = None,
     ) -> None:
         self.framer = Framer(stream, output, budget)
         self.timeouts = timeout_policy(timeouts)
+        if pause_policy is not None and not isinstance(pause_policy, PausePolicy):
+            raise KernelError("RPC_POLICY", "typed pause declaration required")
+        self.pause_policy = pause_policy
+        self._state_lock = threading.Lock()
         self.state = "new"
         self.request_id = 0
         self._lock = threading.Lock()
@@ -175,11 +228,15 @@ class RPCConnection:
             "minor": MINOR,
             "timeouts": self.timeouts.copy(),
             "budget": encode(self.framer.budget),
+            **(
+                {"pause_policy": asdict(self.pause_policy)} if self.pause_policy else {}
+            ),
         }
 
     def taint(self) -> None:
         """Prevent any later engine call or retry after an uncertain result."""
-        self.state = "tainted"
+        with self._state_lock:
+            self.state = "tainted"
 
     def call(self, op: str, payload: object) -> Any:
         """One request, one matching response, one total write/read deadline."""
@@ -192,7 +249,10 @@ class RPCConnection:
                 or (self.state == "hello" and op in {"reset", "close"})
                 or (
                     self.state == "ready"
-                    and op in {"horizon", "advance", "react", "close"}
+                    and (
+                        op in {"horizon", "advance", "react", "close"}
+                        or (op == "hold" and self.pause_policy is not None)
+                    )
                 )
             )
             if not legal:
@@ -200,7 +260,7 @@ class RPCConnection:
                 raise KernelError("RPC_STATE", "operation violates handshake/lifecycle")
             self.request_id += 1
             request_id = self.request_id
-            timeout = self.timeouts[op]
+            timeout = self.timeouts["horizon" if op == "hold" else op]
 
             def exchange() -> Any:
                 self.framer.write(envelope(request_id, op, payload))
@@ -241,9 +301,16 @@ class RPCConnection:
                     timeout_s=timeout,
                     policy=self.profile,
                 ) from error
-            self.state = {"hello": "hello", "reset": "ready", "close": "closed"}.get(
-                op, self.state
-            )
+            with self._state_lock:
+                if self.state == "tainted":
+                    raise KernelError(
+                        "RPC_STATE", "in-flight result discarded after taint"
+                    )
+                self.state = {
+                    "hello": "hello",
+                    "reset": "ready",
+                    "close": "closed",
+                }.get(op, self.state)
             return result
         finally:
             self._lock.release()
@@ -256,38 +323,57 @@ def serve_requests(
     *,
     budget: ResourceBudget | None = None,
     timeouts: Mapping[str, float] | None = None,
+    pause_policy: PausePolicy | None = None,
 ) -> None:
     """Serve a strict serial lifecycle; identifiable faults are returned once."""
     framer = Framer(stream, output, budget)
     policy = timeout_policy(timeouts)
+    if pause_policy is not None and not isinstance(pause_policy, PausePolicy):
+        raise KernelError("RPC_POLICY", "typed pause declaration required")
+    pauses = PausePolicy() if pause_policy is None else pause_policy
     state = "new"
-    request_id = 1
+    request_id = 0
+    arrival_budget = pauses.idle_timeout_s
     while state != "closed":
-        request = bounded(
-            framer.read, max(policy.values()), op="read", request_id=request_id
-        )
+        request = framer.read_request(arrival_budget, pauses.frame_timeout_s)
         op = request.get("op")
-        if not isinstance(op, str) or op not in OPERATIONS:
+        if not isinstance(op, str) or op not in OPERATIONS | {"hold"}:
             raise KernelError("RPC_OPERATION", "unknown operation")
-        check_identity(request, request_id, op)
+        incoming_id = request.get("id")
+        if type(incoming_id) is not int or incoming_id <= request_id:
+            raise KernelError("RPC_IDENTITY", "positive increasing request ID required")
+        check_identity(request, incoming_id, op)
+        request_id = incoming_id
         if set(request) != {"protocol", "major", "minor", "id", "op", "payload"}:
             raise KernelError("RPC_REQUEST", "unexpected request fields")
         response = {
             key: request[key] for key in ("protocol", "major", "minor", "id", "op")
         }
+        operation_budget = policy["horizon" if op == "hold" else op]
         try:
             if not (
                 (state == "new" and op == "hello")
                 or (state == "hello" and op in {"reset", "close"})
-                or (state == "ready" and op in {"horizon", "advance", "react", "close"})
+                or (
+                    state == "ready"
+                    and (
+                        op in {"horizon", "advance", "react", "close"}
+                        or (op == "hold" and pause_policy is not None)
+                    )
+                )
             ):
                 raise KernelError("RPC_STATE", "operation violates handshake/lifecycle")
+            if op == "hold":
+                payload = request["payload"]
+                if not isinstance(payload, dict) or "duration_s" not in payload:
+                    raise KernelError("RPC_HOLD", "explicit duration required")
+                pauses.check_hold(payload["duration_s"])
             response["result"] = bounded(
                 partial(handler, op, request["payload"]),
-                policy[op],
+                operation_budget,
                 op=op,
                 request_id=request_id,
-                timeout_s=policy[op],
+                timeout_s=operation_budget,
             )
         except Exception as error:
             response["error"] = {
@@ -296,13 +382,17 @@ def serve_requests(
                 else "ENGINE_EXCEPTION",
                 "message": str(error),
             }
-            bounded(partial(framer.write, response), policy[op], op="fault_write")
+            bounded(partial(framer.write, response), operation_budget, op="fault_write")
             raise
         bounded(
             partial(framer.write, response),
-            policy[op],
+            operation_budget,
             op="write",
             request_id=request_id,
         )
         state = {"hello": "hello", "reset": "ready", "close": "closed"}.get(op, state)
-        request_id += 1
+        arrival_budget = pauses.idle_timeout_s
+        if op == "hold":
+            duration = request["payload"]["duration_s"]
+            pauses.check_hold(duration)
+            arrival_budget = duration

@@ -226,7 +226,7 @@ def test_pre_handshake_state_fault_short_write_and_invalid_server_envelope():
     with pytest.raises(KernelError, match="RPC_WRITE"):
         Framer(io.BytesIO(), Broken()).write({})
     for request in (
-        envelope(2, "hello", {}),
+        envelope(0, "hello", {}),
         envelope(1, "unknown", {}),
         {**envelope(1, "hello", {}), "extra": 1},
         envelope(1, "advance", {}),

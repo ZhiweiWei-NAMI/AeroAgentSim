@@ -286,6 +286,7 @@ def replay(data: bytes | Path, *, recover_truncated: bool = False) -> Kernel:
         or result._store.sealed_ns is None
         or any(i["status"] == "pending" for i in result._store.intents.values())
         or bool(result._store.pending_ingress)
+        or result._store.pending_wall_clock_hold is not None
     )
     return result
 

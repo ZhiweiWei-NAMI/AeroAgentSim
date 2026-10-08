@@ -159,3 +159,11 @@ class SampleFrame:
     def __post_init__(self) -> None:
         for name in ("bindings", "clocks", "sources"):
             object.__setattr__(self, name, MappingProxyType(dict(getattr(self, name))))
+
+
+_NON_OUTPUT_OPERATIONS = (Activate, ScheduleTimer, CancelTimer, UnsupportedOperation)
+
+
+def is_observable_output(operation: object) -> bool:
+    """Guard every publication; only declared scheduling controls are non-output."""
+    return not isinstance(operation, _NON_OUTPUT_OPERATIONS)

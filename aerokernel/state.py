@@ -292,6 +292,7 @@ class Store:
         self.sealed_ns: int | None = None
         self.watermark_ns: int | None = None
         self.run_target: int | None = None
+        self.pending_wall_clock_hold: int | None = None
         self.faulted = False
         self.max_microsteps = 1024
 

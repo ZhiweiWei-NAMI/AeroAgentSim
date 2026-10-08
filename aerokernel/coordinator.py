@@ -18,6 +18,7 @@ from .ids import ItemRef, message_id, validate_text
 from .ingress import IngressPolicy
 from .journal import Journal
 from .messages import Actions, ActionState, CancelRequestResult, CommandRequest
+from .operations import is_observable_output
 from .registry import MemoryRegistry, Registry
 from .rng import RNGStreams
 from .sampling import compile_samples, ordinary_earliest, sample_ready
@@ -509,11 +510,7 @@ class Kernel:
                     batches.append((partition, batch))
             if horizons is not None:
                 for partition, batch in batches:
-                    if any(
-                        type(op).__name__
-                        in {"FactWrite", "RetractFact", "Emit", "Receipt", "Feedback"}
-                        for op in batch.operations
-                    ):
+                    if any(is_observable_output(op) for op in batch.operations):
                         h = horizons[partition]
                         if h.output_lb_ns is None or instant.ns < h.output_lb_ns:
                             raise KernelError(
@@ -667,14 +664,14 @@ class Kernel:
                 )
             return mid
 
-    def _wait_watermark(self, ns: int) -> None:
+    def _wait_watermark(self, ns: int, deadline: float) -> None:
         if self.ingress_policy is None:
             return
         import time
 
         if self._store.watermark_ns is None:
             raise KernelError("INGRESS_WATERMARK", "declared stream lost its watermark")
-        deadline = time.monotonic() + self.ingress_policy.timeout_s
+        selected_cut = self._store.cut
         while self._store.watermark_ns < ns:
             self._guard()
             remaining = deadline - time.monotonic()
@@ -687,6 +684,8 @@ class Kernel:
                     timeout_s=self.ingress_policy.timeout_s,
                 )
             self._ingress_condition.wait(remaining)
+            if self._store.cut != selected_cut:
+                return
 
     def _pace_to(self, ns: int) -> None:
         policy = self.ingress_policy
@@ -699,12 +698,15 @@ class Kernel:
                 "PACING_ORIGIN", "pacing requires a started wall-clock origin"
             )
         deadline = self._pace_origin + ns / (1_000_000_000 * policy.speed_ratio)
+        selected_cut = self._store.cut
         while True:
             self._guard()
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 return
             self._ingress_condition.wait(min(remaining, 0.05))
+            if self._store.cut != selected_cut:
+                return
 
     def cancel(self, command_id: str) -> CancelRequestResult:
         """Reserve cancellation or record an explicit rejection."""
@@ -900,6 +902,9 @@ class Kernel:
         if ns == self._store.sealed_ns:
             return self.view()
         self._record_control("run_limit", {"limit_ns": ns})
+        import time
+
+        wait_deadline: float | None = None
         try:
             while self._store.sealed_ns < ns:
                 horizons = self._horizons()
@@ -924,7 +929,12 @@ class Kernel:
                 if to <= current:
                     raise SynchronizationDeadlock("no safe physical progress")
                 pre_wait_cut = self._store.cut
-                self._wait_watermark(to)
+                if self.ingress_policy is not None:
+                    if wait_deadline is None:
+                        wait_deadline = time.monotonic() + self.ingress_policy.timeout_s
+                    self._wait_watermark(to, wait_deadline)
+                if pre_wait_cut != self._store.cut:
+                    continue
                 self._pace_to(to)
                 if pre_wait_cut != self._store.cut:
                     continue
@@ -938,6 +948,7 @@ class Kernel:
                     record = boundary_control(candidate)
                     self._publish(candidate.state, record)
                 self._settle(to)
+                wait_deadline = None
         except Exception as exc:
             if not self._store.faulted:
                 self._fault(exc)
@@ -959,7 +970,17 @@ class Kernel:
             state.run_target = fields["limit_ns"]
         elif kind == "watermark":
             state.watermark_ns = fields["watermark_ns"]
+        elif kind == "wall_clock_hold":
+            state.pending_wall_clock_hold = (
+                record["index"] if fields["status"] == "requested" else None
+            )
         self._publish(state, record)
+
+    def hold_wall_clock(self, duration_s: float, reason: str) -> None:
+        """Grant a journaled bounded decision pause to all negotiated remote peers."""
+        from .pause import hold_wall_clock
+
+        hold_wall_clock(self, duration_s, reason)
 
     def view(self, cut: Cut | None = None) -> StateView:
         """Read the current or an issued historical prefix, including faulted runs."""

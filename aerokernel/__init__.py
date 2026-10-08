@@ -58,6 +58,7 @@ from .relations import (
     RelationDescriptor,
     RelationRule,
 )
+from .rpc_transport import PausePolicy
 from .sampling import RecordedFrame, SampleSpec
 from .state import ABSENT, Absent, Fact, Retraction, StateView
 from .time import ClockMapping, Cut, Instant, Interval, Stamp
@@ -129,6 +130,7 @@ __all__ = [
     "MessageDescriptor",
     "MicrostepLimitExceeded",
     "Partition",
+    "PausePolicy",
     "Receipt",
     "Registry",
     "Remove",

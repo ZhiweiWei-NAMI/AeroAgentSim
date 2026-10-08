@@ -218,17 +218,22 @@ class MemoryRegistry:
         return descriptor
 
     def _resolve(self, schema: Mapping[str, Any] | str) -> Mapping[str, Any]:
-        if isinstance(schema, str):
-            if schema not in self.schemas:
+        seen: set[str] = set()
+        while isinstance(schema, str) or "schema_ref" in schema:
+            if not isinstance(schema, str):
+                if set(schema) != {"schema_ref"}:
+                    raise KernelError(
+                        "SCHEMA_CONSTRAINT", "schema_ref cannot hide extra constraints"
+                    )
+                name = schema["schema_ref"]
+            else:
+                name = schema
+            if name in seen:
+                raise KernelError("SCHEMA_CYCLE", "recursive named schema")
+            if name not in self.schemas:
                 raise KernelError("SCHEMA_UNKNOWN", "unknown referenced schema")
-            result: Mapping[str, Any] = self.schemas[schema]
-            return result
-        if "schema_ref" in schema:
-            if set(schema) != {"schema_ref"}:
-                raise KernelError(
-                    "SCHEMA_CONSTRAINT", "schema_ref cannot hide extra constraints"
-                )
-            return self._resolve(schema["schema_ref"])
+            seen.add(name)
+            schema = self.schemas[name]
         return schema
 
     def _compile(self, schema: Mapping[str, Any], path: tuple[str, ...]) -> None:

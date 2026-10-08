@@ -5,8 +5,8 @@ from __future__ import annotations
 import hashlib
 import threading
 from bisect import bisect_right
-from collections.abc import Mapping
-from dataclasses import replace
+from collections.abc import Callable, Mapping
+from dataclasses import asdict, replace
 from fnmatch import fnmatchcase
 from types import MappingProxyType
 from typing import Any, cast
@@ -22,6 +22,7 @@ from .rpc_transport import (
     MAJOR,
     MINOR,
     PROTOCOL,
+    PausePolicy,
     RPCConnection,
     bounded,
     serve_requests,
@@ -30,7 +31,7 @@ from .sampling import RecordedFrame
 from .state import Fact, FactVersions, Retraction, StateView, Store
 from .storage import AppendList
 from .time import Cut, Instant
-from .values import ResourceBudget, canonical_json, freeze, thaw
+from .values import ResourceBudget, canonical_json, freeze, thaw, typed_equal
 
 
 def _projection(view: StateView, owners: tuple[Partition, ...]) -> dict[str, Any]:
@@ -217,6 +218,33 @@ def _projection(view: StateView, owners: tuple[Partition, ...]) -> dict[str, Any
             for rule in store.manifest.rules
         )
     )
+    # Traverse schema positions in the normalized grammar, never enum values
+    # or field payloads (whose $ref tags represent entities, not named schemas).
+    schemas: dict[str, Any] = {}
+
+    def schema_refs(node: Mapping[str, Any]) -> None:
+        if "schema_ref" in node:
+            name = node["schema_ref"]
+            if name not in schemas:
+                schemas[name] = thaw(store.registry.schemas[name])
+                schema_refs(schemas[name])
+            return
+        kind = node["type"]
+        if kind == "ref" and "target_type" in node:
+            types.add(node["target_type"])
+        if kind in {"array", "vector", "matrix"}:
+            schema_refs(node["items"])
+        elif kind in {"record", "union"}:
+            for child in node["members" if kind == "record" else "cases"].values():
+                schema_refs(child)
+
+    msg_descriptors = tuple(m for m in store.registry.messages if m.id in messages)
+    for f in descriptors:
+        schema_refs(f.schema)
+    for m in msg_descriptors:
+        for node in (m.schema, m.result_schema, m.feedback_schema):
+            if node is not None:
+                schema_refs(node)
     pending = list(types)
     type_index = {t.id: t for t in store.registry.types}
     while pending:
@@ -224,28 +252,6 @@ def _projection(view: StateView, owners: tuple[Partition, ...]) -> dict[str, Any
             if parent not in types:
                 types.add(parent)
                 pending.append(parent)
-    # Resolve only schema references actually reachable from selected descriptors.
-    schemas: dict[str, Any] = {}
-
-    def schema_refs(node: object) -> None:
-        if isinstance(node, Mapping):
-            if "$ref" in node:
-                name = str(node["$ref"])
-                if name not in schemas:
-                    schemas[name] = thaw(store.registry.schemas[name])
-                    schema_refs(schemas[name])
-            for value in node.values():
-                schema_refs(value)
-        elif isinstance(node, (tuple, list)):
-            for value in node:
-                schema_refs(value)
-
-    msg_descriptors = tuple(m for m in store.registry.messages if m.id in messages)
-    for f in descriptors:
-        schema_refs(f.schema)
-    for m in msg_descriptors:
-        for node in (m.schema, m.result_schema, m.feedback_schema):
-            schema_refs(node)
     registry = MemoryRegistry(
         tuple(type_index[t] for t in sorted(types)),
         tuple(descriptors),
@@ -343,9 +349,10 @@ class RemoteEngine:
         *,
         budget: ResourceBudget | None = None,
         timeouts: Mapping[str, float] | None = None,
+        pause_policy: PausePolicy | None = None,
     ) -> None:
         self.connection = RPCConnection(
-            stream, output, budget=budget, timeouts=timeouts
+            stream, output, budget=budget, timeouts=timeouts, pause_policy=pause_policy
         )
         self.budget = self.connection.framer.budget
         self._contract: dict[str, str] | None = None
@@ -356,16 +363,25 @@ class RemoteEngine:
                 "protocol": PROTOCOL,
                 "major": MAJOR,
                 "minors": [MINOR],
-                "required_features": [],
+                "required_features": []
+                if pause_policy is None
+                else ["wall_clock_hold/v1"],
+                **({"pause_policy": asdict(pause_policy)} if pause_policy else {}),
             },
         )
         try:
             if (
                 set(hello)
                 != {"minor", "partitions", "engine_version", "features", "budget"}
+                | ({"pause_policy"} if pause_policy else set())
                 or type(hello["minor"]) is not int
                 or hello["minor"] != MINOR
-                or hello["features"] != []
+                or hello["features"]
+                != ([] if pause_policy is None else ["wall_clock_hold/v1"])
+                or (
+                    pause_policy is not None
+                    and hello.get("pause_policy") != asdict(pause_policy)
+                )
                 or decode_record(hello["budget"]) != self.budget
             ):
                 raise KernelError("RPC_HELLO", "incompatible hello response")
@@ -410,7 +426,7 @@ class RemoteEngine:
             message,
             op=op,
             request_id=self.connection.request_id,
-            timeout_s=self.connection.timeouts[op],
+            timeout_s=self.connection.timeouts["horizon" if op == "hold" else op],
             policy=self.connection.profile,
         )
 
@@ -571,6 +587,18 @@ class RemoteEngine:
         """Deliver the declared inbox separately from interval integration."""
         return self._batch("react", partition, to, view, inbox, dirty)
 
+    def hold_wall_clock(self, duration_s: float, reason: str) -> None:
+        """Acknowledge a negotiated arrival lease; never invoke native state work."""
+        policy = self.connection.pause_policy
+        if policy is None:
+            raise KernelError("RPC_HOLD", "wall_clock_hold/v1 must be negotiated")
+        policy.check_hold(duration_s)
+        if not isinstance(reason, str) or not reason:
+            raise KernelError("RPC_HOLD", "hold reason required")
+        value = self._call("hold", {"duration_s": duration_s, "reason": reason})
+        if not typed_equal(value, {"duration_s": duration_s, "reason": reason}):
+            raise self._fault("RPC_HOLD", "lease acknowledgment mismatch", "hold")
+
     def close(self) -> None:
         """Idempotent acknowledged shutdown; faults are never retried."""
         if self.connection.state == "closed":
@@ -599,19 +627,37 @@ def serve_engine(
     *,
     budget: ResourceBudget | None = None,
     timeouts: Mapping[str, float] | None = None,
+    pause_policy: PausePolicy | None = None,
+    abort: Callable[[], None] | None = None,
+    abort_timeout_s: float = 5.0,
 ) -> None:
     """Run any SDK engine over binary streams or a connected socket."""
+    from .rpc_transport import timeout_policy
+
+    timeout_policy({"close": abort_timeout_s})
     limits = ResourceBudget() if budget is None else budget
 
     contract: object = None
     engine_lock = threading.RLock()
+    negotiated_hold = False
+    pauses = PausePolicy() if pause_policy is None else pause_policy
 
     def handle(op: str, data: Any) -> Any:
-        nonlocal contract
+        nonlocal contract, negotiated_hold
         if op == "hello":
             if (
                 not isinstance(data, dict)
-                or set(data) != {"protocol", "major", "minors", "required_features"}
+                or set(data)
+                not in (
+                    {"protocol", "major", "minors", "required_features"},
+                    {
+                        "protocol",
+                        "major",
+                        "minors",
+                        "required_features",
+                        "pause_policy",
+                    },
+                )
                 or (
                     data["protocol"] != PROTOCOL
                     or type(data["major"]) is not int
@@ -619,15 +665,26 @@ def serve_engine(
                     or not isinstance(data["minors"], list)
                     or any(type(minor) is not int for minor in data["minors"])
                     or MINOR not in data["minors"]
-                    or data["required_features"] != []
+                    or data["required_features"] not in ([], ["wall_clock_hold/v1"])
                 )
             ):
                 raise KernelError("RPC_HELLO", "unsupported protocol/features")
+            negotiated_hold = data["required_features"] == ["wall_clock_hold/v1"]
+            if negotiated_hold:
+                if data.get("pause_policy") != asdict(pauses):
+                    raise KernelError(
+                        "RPC_POLICY", "client/server pause declarations differ"
+                    )
+            elif "pause_policy" in data:
+                raise KernelError(
+                    "RPC_POLICY", "pause declaration needs negotiated feature"
+                )
             return {
                 "minor": MINOR,
                 "partitions": encode(engine.partitions),
                 "engine_version": engine.version,
-                "features": [],
+                "features": ["wall_clock_hold/v1"] if negotiated_hold else [],
+                **({"pause_policy": asdict(pauses)} if negotiated_hold else {}),
                 "budget": encode(limits),
             }
         if not isinstance(data, dict) or "token" not in data:
@@ -668,6 +725,18 @@ def serve_engine(
                     decode_record(data["inbox"]),
                     decode_record(data["dirty"]),
                 )
+        elif op == "hold":
+            if not negotiated_hold or set(data) != {
+                "token",
+                "contract",
+                "duration_s",
+                "reason",
+            }:
+                raise KernelError("RPC_HOLD", "negotiated explicit lease required")
+            pauses.check_hold(data["duration_s"])
+            if not isinstance(data["reason"], str) or not data["reason"]:
+                raise KernelError("RPC_HOLD", "hold reason required")
+            value = {"duration_s": data["duration_s"], "reason": data["reason"]}
         elif op == "close":
             engine.close()
             value = None
@@ -684,8 +753,17 @@ def serve_engine(
             engine.close()
 
     try:
-        serve_requests(serial_handle, stream, output, budget=limits, timeouts=timeouts)
+        serve_requests(
+            serial_handle,
+            stream,
+            output,
+            budget=limits,
+            timeouts=timeouts,
+            pause_policy=pauses,
+        )
+    except Exception:
+        if abort is not None:
+            bounded(abort, abort_timeout_s, op="abort")
+        raise
     finally:
-        from .rpc_transport import timeout_policy
-
         bounded(cleanup, timeout_policy(timeouts)["close"], op="cleanup")

@@ -1,7 +1,7 @@
-# aerokernel v0.1 implementation (K2-M2)
+# aerokernel v0.1 implementation (K2-M2F)
 
 K2-M2 completes the remaining v0.1 contracts in [DESIGN.md](DESIGN.md), on top
-of K2-M1F. DESIGN remains normative and was not edited. Runtime dependencies
+of K2-M1F. DESIGN remains normative; M2F adds the explicit paused-arrival/lease and abort contract in §6. Runtime dependencies
 are exclusively Python's standard library; the package targets Python >=3.10.
 The kernel contains no ontology taxonomy, vehicle assumptions, upstream imports,
 simulated success, missing-value defaults, interpolation or measurement fallback.
@@ -630,3 +630,142 @@ All 24 modules parse with Python 3.10 grammar. Evidence is retained under
 
 External simulator determinism, full AeroGraph semantics and Python 3.10 runtime
 execution are not claimed; the available execution interpreter is Python 3.11.12.
+
+
+## K2-M2F review fixes and regression map
+
+The complete [M2 review](reviews/M2-review.md) was read, including the probes,
+independent relation oracle, surviving mutations and native-adapter assessment.
+Every F finding has a regression that failed before its production repair;
+G1's silent-pause regression was also executed against the immutable reviewed package and fails there (`gates/pause-before.txt`).
+The new suite adds a direct silent-pause regression plus negotiated lease,
+expiry, frame-drain, fault-prefix and abort checks. Evidence is retained under
+`.kernel-agents/m2f/`; no upstream repository was edited or built and no Git
+commit/branch/reset was run.
+
+| Finding | Production change | Regression evidence |
+| --- | --- | --- |
+| F1 incremental watermark | Wake selection on a changed recorded cut. Retain one finite no-progress deadline across notifications/recomputation; reset only after physical settlement. | `test_m2f_coord::test_new_safe_ingress_dispatches_before_final_watermark` delivers at 3 before the producer closes 20; `test_no_progress_notifications_preserve_watermark_budget` uses a controlled clock; `test_incremental_watermark_reselects_before_pacing_old_target` checks paced response-before-closure. |
+| F2 hold output bound | Central `is_observable_output` classifies every proposal except explicit scheduling controls as an output. All edge/obligation/lifecycle/sample/action publications obey finite and infinite bounds. | `test_all_relation_outputs_fault_during_actual_native_hold`: 12 cases covering assertion, close/cancel, obligation activation/end/cancel, with native frontier retained at zero. Scheduling/activation control stays legal. |
+| F3 RPC registry projection | Walk normalized schema positions and transitive `schema_ref` dependencies, include reference target types and ancestors, then reconstruct the scoped registry. Schema values/enum `$ref` tags are not mistaken for named schemas. Resolve named alias chains completely with cycle rejection. | `test_m2f_projection`: real local/remote runs for simple/chained named schemas, absent refs, nested arrays/unions, and distinct payload/result/feedback target types. Unreachable descriptors stay excluded. |
+| F4 terminal taint | Serialize taint and success transitions under a state lock; discard the original in-flight result if another caller tainted the connection. | `test_m2f_transport::test_concurrent_rejection_is_terminal_even_after_original_response`: synchronized hello/reset cases and rejected subsequent use. |
+| F5 increasing IDs | Require positive lossless integers greater than the previous accepted ID; echo the received ID. | Positive initial IDs, skips and a 200-bit jump; duplicate/decreasing/zero/negative/bool/float rejection. The former initial-ID-2 rejection fixture now rejects zero. |
+| G1 paused connection | Independent arrival/lease/drain policy, negotiated finite holds, journaled intent/acknowledgment, strict prefix replay, optional bounded native abort before serial cleanup. | `test_m2f_pause`: silent pause longer than every operation deadline, no native calls/frontier change, lease expiry/renewal, over-maximum/malformed declarations, partial-frame drain, changed contract, corrupt/incomplete replay, abort success/failure. |
+
+Before-fix captures: `coord/before.txt` has 13 failing F1/F2 cases;
+`projection/before.txt` has seven failing schema cases. F4/F5's initial run
+had four failures, followed by nine passes after the transport fix. Final gates are listed below.
+
+| Named surviving mutant | Independent test that now kills it |
+| --- | --- |
+| `no_pacing` | Controlled monotonic clock and condition require the full 50 ms wait. |
+| `prior_inapplicable_false` | An inapplicable false baseline remains unresolved; an applicable false→true control resolves true. |
+| `no_relation_acquisition_check` | Source-mapped bootstrap acquisition at +1 faults without edges; -1 and 0 remain valid. |
+| `no_server_contract_check` | A changed contract on an actual advance faults before any native call. |
+| `cleanup_overlaps_call` | A reset blocked beyond timeout keeps close blocked until reset releases, with explicit cleanup synchronization. |
+
+All five mutations were applied to separate copies of the **current** package,
+with import paths checked in each log; each dedicated test failed for its intended
+behavior. `.kernel-agents/m2f/gates/mutants.json` and `mutant-check/*/pytest.txt`
+retain actual results. Mutation witnesses are not additional production defects.
+
+### Additive API and compatibility
+
+All existing exports, positional arguments and normal Engine methods remain.
+No public API was removed or renamed; no deprecation shim is necessary.
+Historical 1.1/1.2 journals and legacy RPC profiles without pause fields still
+replay. Legacy hello payload/response shapes remain unchanged unless the caller
+explicitly requests the optional feature. Existing timeout dictionaries retain
+exactly the original six operations; a hold exchange uses the pinned horizon
+operation deadline, while the arrival lease uses its separate duration.
+
+* `PausePolicy(idle_timeout_s=3600,max_hold_s=3600,frame_timeout_s=5)` is exported.
+  All three values are finite positive seconds. Replay requires the complete
+  pinned declaration, with no missing-value defaults.
+* `RemoteEngine`, `RPCConnection`, `serve_engine` and `serve_requests` append the
+  optional keyword `pause_policy`. `RemoteEngine(..., pause_policy=policy)`
+  negotiates `wall_clock_hold/v1` and requires the server's identical declaration.
+  The negotiated policy is included in the journal's engine profile.
+* `Kernel.hold_wall_clock(duration_s,reason)` validates **all** remote peers and
+  the settled boundary before recording a request. It writes `wall_clock_hold`
+  intent and acknowledgment records at the same simulated Instant. Local peers
+  receive no calls. A lease is per connection, starts after its response write,
+  and expires at a finite wall-clock deadline; renewal is explicit and journaled.
+  The call returns immediately, so the host performs its decision work itself.
+  Direct `RemoteEngine.hold_wall_clock` is the transport hook; platform run control
+  should use the Kernel method to retain the journal contract.
+* `serve_engine(..., abort=callable,abort_timeout_s=5)` optionally signals actual
+  host-owned native cancellation/termination after a server fault. The hook has
+  an independent bound and must be safe alongside an executing callback. Close
+  still takes the execution lock; failures propagate. No callback is silently
+  killed or assumed successful.
+
+The server's default silent request-arrival budget is now 3600 seconds,
+independent of the 5-second operation defaults. Frame completion/parsing has its
+own 5-second default budget once bytes arrive. An explicit lease replaces only
+that next arrival budget. Hosts needing a journaled declared hold must negotiate
+it; old peers cannot implicitly claim support. [remote_decision_pause.py](../examples/remote_decision_pause.py)
+is a stdlib socket example with a native-grid peer and an exact-stop peer, an
+off-grid 3 boundary and a recorded host decision lease. It is authored test data.
+
+### Native host contract boundaries
+
+The PX4, SUMO and ns-3 backend protocols remain separate from `aerokernel.rpc`.
+Their current backend documents were read without running native containers.
+Kernel-side gaps are closed by the fixes above and existing M2 timing/lifecycle,
+acquisition, typed receipt and delayed-availability contracts. Native conformance
+still belongs to each host wrapper and its separately owned integration tests.
+
+| Backend | Host declarations and translation that must remain explicit |
+| --- | --- |
+| `aeroagentsim.px4/v1` | Declare the actual grid/communication cadence and certified holds; pin warmup/source-clock mapping and validate paused statistics/pose source time before acknowledging. Preserve telemetry ages and missing native stamps; contacts returned late do not prove earlier absence. Map actual native updates to receipts, not ACK-to-success. |
+| `aeroagentsim.sumo/v1` | Pin step/origin, SUMO frame/georeferencing and positive-boundary command application. Stage native inventory events for controller Create/Remove waves; retain per-tick occurrence and batch availability. Require actual removal/readback for `LifecycleReady`, and bind restriction IDs/application boundaries. |
+| `aeroagentsim.ns3/v1` | Declare 1 ns exact stops and implement same-target logical holds without unsupported backend advance calls. Pin mobility lag/horizon, node inventory and payload-reference limits. Preserve send/delivery/expiry occurrence separately from availability, including stop-tied callbacks returned later; optional RSSI/SNR remains absent when unmeasured. |
+
+For every wrapper, pin backend/wrapper versions, configuration/image/seed and
+capability provenance in the engine version/run configuration; bind a checked
+mapping of command IDs and entity generations to narrower backend IDs. Outer
+operation budgets must cover the complete declared inner exchanges plus framing
+and overhead (backend reset budgets are 180 s; a default 5 s outer reset is
+inadequate). Configure arrival/lease, drain, abort and close independently. Abort
+must use the host's actual process/socket ownership. Advertise cancellation only
+when cleanup is implemented, and bind lifecycle participants/cohorts/relation
+writers before removal. Missing observations and optional outcomes never become
+zero, false, successful receipts or invented coordinates/timestamps. Replay
+certifies committed history, not native bitwise reexecution.
+
+### GLM provenance
+
+Three concurrent DSH sessions used the workspace-local `glm_batch` profile,
+`workbuddy/glm-5.3-flash`, `maxTokens=131072`, and no effort parameter. Their
+contexts contained the project, scope, review/design references and separate
+file ownership. Actual sessions were checked:
+`61d4d4bb-4868-44aa-91e0-953c9cc825cf` (coord),
+`998a8cd9-929d-4ea4-8494-3aa46508d6e5` (projection), and
+`e5e7c3f7-045b-49cf-9081-ff8cd292677d` (mutants).
+All exited 124 at 420 seconds with analysis logs but no final code artifacts.
+The primary agent reviewed the returned reasoning/witness results and completed
+all fixes/tests; no GLM implementation completion is claimed.
+
+### M2F final gates
+
+Final command output lives in `.kernel-agents/m2f/gates/`. Performance gates use
+complete measured workloads and workspace-local temporary files. All final commands completed successfully.
+
+| Gate | Final result |
+| --- | --- |
+| Complete standard suite | 589 passed, 2 opt-in perf skips; `pytest.txt` (127.61 s). |
+| Explicit opt-in performance tests | 2 passed; `perf-tests.txt`. All 591 collected cases were executed across these two runs. |
+| Coverage >=90% | 94.52%; `coverage.json`, measured over the final standard suite. |
+| Ruff / format | Passed; 77 files already formatted. |
+| `mypy --strict aerokernel` | Passed; 33 source modules. All also parse under Python 3.10 grammar; execution used the required Python 3.11 environment. |
+| Examples | All four passed, including `remote_decision_pause.py`. |
+| `kernel_bench --entities 100 --check-targets` | 600 steps / 60 simulated seconds; 6.749 s, 65.27 MiB, 180,300 fact versions, full seal. |
+| `kernel_bench --entities 1000 --check-targets` | 600 steps / 60 simulated seconds; 85.200 s, 386.26 MiB, 1,803,000 fact versions, full seal. |
+| `command_burst --check-targets` | 1000 entities / 60 simulated seconds; bootstrap 4.093 s (<5), total 158.256 s; 12,000 accepted/executing/succeeded commands, 804 MiB. |
+| Named mutants | 5/5 killed in isolated current-package copies; `mutants.json`. |
+
+`summary.json` stores the exact measured numbers. Performance logs contain actual
+completion and journal byte counts, never extrapolated throughput. The 100/1000
+benchmarks and command burst retain their pre-fix journal hashes: the repairs
+preserve these conforming offline workloads' recorded behavior.

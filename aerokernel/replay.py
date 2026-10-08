@@ -72,7 +72,13 @@ def from_header(header: dict[str, Any]) -> Kernel:
     if header["minor"] == 2:
         import hashlib
 
-        from .rpc_transport import MAJOR, MINOR, PROTOCOL, timeout_policy
+        from .rpc_transport import (
+            MAJOR,
+            MINOR,
+            PROTOCOL,
+            pause_policy_from_data,
+            timeout_policy,
+        )
 
         manifest_digest = hashlib.sha256(
             canonical_json(header["manifest"], ResourceBudget(**header["budget"]))[:-1]
@@ -83,6 +89,8 @@ def from_header(header: dict[str, Any]) -> Kernel:
         ):
             raise KernelError("JOURNAL_RPC", "unknown engine transport profile")
         for profile in profiles.values():
+            if "pause_policy" in profile:
+                pause_policy_from_data(profile["pause_policy"])
             if (
                 set(profile)
                 != {
@@ -93,6 +101,7 @@ def from_header(header: dict[str, Any]) -> Kernel:
                     "budget",
                     "contract",
                 }
+                | ({"pause_policy"} if "pause_policy" in profile else set())
                 or type(profile["major"]) is not int
                 or type(profile["minor"]) is not int
                 or (profile["protocol"], profile["major"], profile["minor"])
@@ -217,6 +226,11 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
             "record exceeds pinned microstep bound", instant=instant
         )
     kind = record.get("type")
+    if self._store.pending_wall_clock_hold is not None and kind not in {
+        "wall_clock_hold",
+        "fault",
+    }:
+        raise KernelError("JOURNAL_HOLD", "lease intent needs acknowledgment or fault")
     expected: dict[str, Any]
     if kind == "invocations":
         state, expected, _ = wave_intents(
@@ -259,6 +273,57 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
             self.mappings,
             self.budget,
         )
+    elif kind == "wall_clock_hold":
+        from .pause import validate_hold
+
+        if instant != self._store.cut.instant:
+            raise KernelError(
+                "JOURNAL_HOLD", "wall-clock lease cannot advance simulated time"
+            )
+        peers = validate_hold(self, record["duration_s"], record["reason"])
+        fields = {
+            "duration_s": record["duration_s"],
+            "reason": record["reason"],
+            "engines": peers,
+        }
+        status = record["status"]
+        if status == "acknowledged":
+            if (
+                type(record["intent_index"]) is not int
+                or record["intent_index"] != self._store.pending_wall_clock_hold
+            ):
+                raise KernelError(
+                    "JOURNAL_HOLD", "matching lease intent index required"
+                )
+            prior = self._store.records[-1]
+            if prior != {
+                "type": kind,
+                "index": record["intent_index"],
+                "instant": encode(instant),
+                "items": [],
+                **fields,
+                "status": "requested",
+            }:
+                raise KernelError(
+                    "JOURNAL_HOLD", "acknowledgment needs matching lease intent"
+                )
+            fields["intent_index"] = record["intent_index"]
+        elif status != "requested" or self._store.pending_wall_clock_hold is not None:
+            raise KernelError("JOURNAL_HOLD", "invalid lease state")
+        expected = {
+            "type": kind,
+            "index": record["index"],
+            "instant": encode(instant),
+            "items": [],
+            **fields,
+            "status": status,
+        }
+        state = self._store.clone()
+        state.pending_wall_clock_hold = (
+            record["index"] if status == "requested" else None
+        )
+        state.records.append(expected)
+        state.cuts.append(Cut(record["index"], instant))
     elif kind == "watermark":
         if (
             self.ingress_policy is None
@@ -379,7 +444,15 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
                 if (
                     set(rpc) != {"op", "request_id", "timeout_s", "policy"}
                     or rpc["op"]
-                    not in {"hello", "reset", "horizon", "advance", "react", "close"}
+                    not in {
+                        "hello",
+                        "reset",
+                        "horizon",
+                        "advance",
+                        "react",
+                        "close",
+                        "hold",
+                    }
                     or type(rpc["request_id"]) is not int
                     or rpc["request_id"] < 1
                 ):
@@ -392,7 +465,10 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
                 ]
                 if (
                     rpc["policy"] not in pinned
-                    or rpc["timeout_s"] != rpc["policy"]["timeouts"][rpc["op"]]
+                    or rpc["timeout_s"]
+                    != rpc["policy"]["timeouts"][
+                        "horizon" if rpc["op"] == "hold" else rpc["op"]
+                    ]
                 ):
                     raise KernelError(
                         "JOURNAL_RPC", "fault policy differs from pinned profile"
