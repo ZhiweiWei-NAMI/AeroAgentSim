@@ -28,8 +28,7 @@ def document() -> dict[str, Any]:
 
 def records(simulation: Simulation) -> list[dict[str, Any]]:
     result = []
-    for line in simulation.kernel.journal.bytes.splitlines():
-        record = json.loads(line)
+    for record in simulation.kernel.iter_records():
         if record.get("type") == "header":
             continue
         for message in project(record)["messages"]:

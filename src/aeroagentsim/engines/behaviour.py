@@ -23,10 +23,11 @@ from aerokernel.operations import CancelTimer, SampleFrame, ScheduleTimer
 from aerokernel.relations import RelationDependency
 from aerokernel.sdk import Cause, ContextEngine, EngineContext
 from aerokernel.state import Absent, Fact
-from aerokernel.values import FrozenValue, thaw, typed_equal
+from aerokernel.values import FrozenValue, canonical_json, thaw, typed_equal
 
 from aeroagentsim.behaviours.bindings import live_refs, stable_id, tuples
 from aeroagentsim.behaviours.compiler import compile_package
+from aeroagentsim.behaviours.dispatch import InstanceIndex, SelectorIndex
 from aeroagentsim.behaviours.evaluation import Evaluator, Truth
 from aeroagentsim.behaviours.records import EVENTS, INJECT, PREFIX, TYPE, instant
 from aeroagentsim.platform.plugins import EngineBuild
@@ -85,6 +86,8 @@ class Instance:
     events: set[str] = field(default_factory=set)
     predicate_contexts: dict[str, str] = field(default_factory=dict)
     required_inputs: list[dict[str, Any]] = field(default_factory=list)
+    predicate_roles: dict[str, dict[str, EntityRef]] = field(default_factory=dict)
+    dispatch_state: tuple[str, str] | None = None
 
     @property
     def chain(self) -> dict[str, Any]:
@@ -117,6 +120,15 @@ class Behaviour(ContextEngine):
         self.boot_edges: list[dict[str, Any]] = []
         self.sampled: dict[str, dict[str, Any]] = {}
         self.sampled_causes: dict[str, ItemRef] = {}
+        self.discovery = SelectorIndex(build.registry)
+        self.conflict_discovery = SelectorIndex(build.registry)
+        self.dispatch = InstanceIndex()
+        self.awake: set[str] = set()
+        self.binding_members: dict[tuple[str, str], set[str]] = {}
+        self.instance_order: dict[str, int] = {}
+        self.conflict_tuples: dict[
+            tuple[str, str], list[tuple[dict[str, EntityRef], str]]
+        ] = {}
         produces = set(cfg.get("produces", ())) | {
             PREFIX + name
             for name in (
@@ -155,6 +167,31 @@ class Behaviour(ContextEngine):
             for deps in ir.dependencies.values():
                 consumes.update(f for _, f in deps)
             for binding in p.get("bindings", []):
+                chain_roles = p["chains"][binding["chain"]]["roles"]
+                reads = [
+                    read
+                    for value in binding.get("variables", {}).values()
+                    for read in expression_reads(value)
+                ]
+                if "episode_field" in binding:
+                    reads.append(
+                        (binding.get("episode_role", "task"), binding["episode_field"])
+                    )
+                if "selection" in binding:
+                    reads.append(
+                        (binding["selection"]["role"], binding["selection"]["field"])
+                    )
+                self.discovery.register(
+                    (ir.digest, binding["id"]),
+                    chain_roles,
+                    binding["match"],
+                    reads,
+                    {
+                        value["relation_assertion_id"]
+                        for value in binding.get("variables", {}).values()
+                        if isinstance(value, dict) and "relation_assertion_id" in value
+                    },
+                )
                 for selector in binding["match"].values():
                     if "field" in selector:
                         consumes.add(selector["field"])
@@ -214,6 +251,13 @@ class Behaviour(ContextEngine):
                 emits.add(point["emits"])
                 targets.add(point.get("topic", point["emits"]))
             for rule in p.get("conflicts", []):
+                self.conflict_discovery.register(
+                    (ir.digest, rule["id"]),
+                    rule["roles"],
+                    rule.get("match", {}),
+                    [],
+                    set(),
+                )
                 for selector in rule.get("match", {}).values():
                     if "field" in selector:
                         consumes.add(selector["field"])
@@ -412,8 +456,7 @@ class Behaviour(ContextEngine):
         self, ctx: EngineContext, m: Instance, predicate: str, fresh: set[str]
     ) -> Truth:
         definition = m.package["predicates"][predicate]
-        aliases = m.chain.get("predicate_roles", {}).get(predicate, {})
-        roles = {name: m.roles[aliases.get(name, name)] for name in definition["roles"]}
+        roles = m.predicate_roles[predicate]
         context = m.predicate_contexts.get(predicate)
         if context is None:
             context = stable_id(
@@ -551,6 +594,13 @@ class Behaviour(ContextEngine):
             return truth
         relevant = old is None or context in self.affected_contexts
         if relevant:
+            if context in self.evaluated_inputs:
+                # Reuse the same read-cut result, retaining the read evidence that
+                # a second evaluation would append to this action's causes.
+                ctx.inputs.extend(self.evaluated_inputs[context])
+                assert old is not None
+                return old
+            before = len(ctx.inputs)
             truth = self.evaluator.run(
                 ctx,
                 context,
@@ -559,6 +609,7 @@ class Behaviour(ContextEngine):
                 roles,
                 dialect=dialect,
             )
+            self.evaluated_inputs[context] = tuple(ctx.inputs[before:])
             if truth is not old:
                 fresh.add(context)
             return truth
@@ -576,25 +627,93 @@ class Behaviour(ContextEngine):
                 return False
         return True
 
+    def _index_instance(self, m: Instance) -> None:
+        specs = [m.chain["trigger"], *[t["on"] for t in m.chain["transitions"]]]
+        predicates = set(m.chain.get("preconditions", []))
+        predicates.update(t["guard"] for t in m.chain["transitions"] if "guard" in t)
+        predicates.update(spec["predicate"] for spec in specs if "predicate" in spec)
+        for predicate in predicates:
+            definition = m.package["predicates"][predicate]
+            aliases = m.chain.get("predicate_roles", {}).get(predicate, {})
+            m.predicate_roles[predicate] = {
+                name: m.roles[aliases.get(name, name)] for name in definition["roles"]
+            }
+        self._refresh_instance(m)
+
+    def _refresh_instance(self, m: Instance) -> None:
+        state = (m.status, m.state)
+        if m.dispatch_state == state:
+            return
+        m.dispatch_state = state
+        keys: dict[str, list[Any]] = {
+            "fields": [],
+            "entities": [],
+            "relations": [],
+            "events": [],
+            "event_subjects": [],
+            "samples": [],
+        }
+        if m.status in {"completed", "failed", "canceled"}:
+            self.dispatch.replace(m.ref.id, keys)
+            return
+        keys["entities"].extend(m.roles.values())
+        specs = [t["on"] for t in m.chain["transitions"] if t["from"] == m.state]
+        predicates: set[str] = set()
+        if m.status == "dormant":
+            specs.append(m.chain["trigger"])
+            predicates.update(m.chain.get("preconditions", []))
+        for spec in specs:
+            if "event" in spec:
+                subjects = [
+                    (name, value["$role"])
+                    for name, value in sorted(spec.get("correlation", {}).items())
+                    if isinstance(value, dict) and set(value) == {"$role"}
+                ]
+                if subjects:
+                    name, role = subjects[0]
+                    keys["event_subjects"].append(
+                        (
+                            spec["event"],
+                            name,
+                            canonical_json({"$ref": m.roles[role].to_data()}),
+                        )
+                    )
+                else:
+                    keys["events"].append(spec["event"])
+            if "predicate" in spec:
+                predicates.add(spec["predicate"])
+        for predicate in predicates:
+            definition = m.package["predicates"][predicate]
+            roles = m.predicate_roles[predicate]
+            if definition["profile"] == "aerograph_sampled/v1":
+                adapter = definition["adapter"]
+                keys["samples"].extend(
+                    adapter.get("contexts", [adapter.get("context")])
+                )
+            else:
+                for node in nodes(definition["expression"]):
+                    if "field" in node:
+                        keys["fields"].append((roles[node["role"]], node["field"]))
+                    elif "relation" in node:
+                        keys["relations"].append(node["relation"])
+        self.dispatch.replace(m.ref.id, keys)
+
     def _bind(self, ctx: EngineContext) -> None:
-        affected = not self.bound_once or any(
-            d.kind == "relation"
-            or d.key is not None
-            and d.key[1] in self.selector_fields
-            or d.kind == "lifecycle"
-            and EntityRef.from_data(
-                cast(dict[str, Any], thaw(d.payload))["$ref"]
-            ).type_id
-            != TYPE
-            for d in ctx.dirty
-        )
+        affected = self.changed_bindings
         if not affected:
             return
         self.bound_once = True
         current: set[str] = set()
+        previous: set[str] = set()
         for ir in self.packages:
             p = ir.document
             for binding in sorted(p["bindings"], key=lambda b: b["id"]):
+                key = (ir.digest, binding["id"])
+                if key not in affected:
+                    continue
+                previous.update(self.binding_members.get(key, ()))
+                members: set[str] = set()
+                self.binding_members[key] = members
                 chain = p["chains"][binding["chain"]]
                 for roles, edges in tuples(
                     ctx,
@@ -629,10 +748,12 @@ class Behaviour(ContextEngine):
                         ]
                     )
                     current.add(identity)
+                    members.add(identity)
                     if identity in self.bind_keys:
                         existing = self.instances[identity]
                         if existing.status == "waiting_inputs":
                             self._binding_values(ctx, existing)
+                            self.awake.add(identity)
                         continue
                     if (
                         len(
@@ -668,9 +789,13 @@ class Behaviour(ContextEngine):
                     m.continued = "activated"
                     ctx.create(ref)
                     self.instances[identity] = m
+                    self.instance_order[identity] = len(self.instance_order)
+                    self._index_instance(m)
+                    self.awake.add(identity)
                     self.bind_keys.add(identity)
                     ctx.ops.append(Activate(self.partition.id))
-        for identity, m in self.instances.items():
+        for identity in sorted(previous - current, key=self.instance_order.__getitem__):
+            m = self.instances[identity]
             if (
                 identity not in current
                 and m.binding["on_unbind"] == "close_after_cleanup"
@@ -678,6 +803,7 @@ class Behaviour(ContextEngine):
             ):
                 if any(c.status not in TERMINAL for c in m.children.values()):
                     m.status = "cleanup"
+                    self.awake.add(identity)
                 elif m.published:
                     m.status = "canceled"
                     m.revision += 1
@@ -1121,7 +1247,15 @@ class Behaviour(ContextEngine):
     def on_inputs(self, ctx: EngineContext) -> None:
         # These indexes belong to this immutable invocation cut. Creating an
         # entity in the proposal cannot make it visible to another binding here.
-        self.live_entities = live_refs(ctx)
+        self.changed_bindings = (
+            self.discovery.affected(ctx) if self.bound_once else self.discovery.keys
+        )
+        self.changed_conflicts = self.conflict_discovery.affected(ctx) | (
+            self.conflict_discovery.keys - self.conflict_tuples.keys()
+        )
+        self.live_entities = (
+            live_refs(ctx) if self.changed_bindings or self.changed_conflicts else ()
+        )
         self.eligible_entities: dict[
             tuple[str, str | None, str | None], tuple[EntityRef, ...]
         ] = {}
@@ -1142,6 +1276,8 @@ class Behaviour(ContextEngine):
         self.publish_causes: dict[EntityRef, list[Cause]] = {}
         self.delivery_causes: dict[int, Cause] = {}
         self.timer_causes: dict[int, Cause] = {}
+        self.evaluated_inputs: dict[str, tuple[Cause, ...]] = {}
+        dispatched = self.dispatch.affected(ctx)
         for truth in self.evaluator.truths.values():
             if isinstance(truth.cause, LocalCause):
                 truth.cause = None
@@ -1172,6 +1308,14 @@ class Behaviour(ContextEngine):
             if delivery.message.kind == "command":
                 self._inject(ctx, delivery)
             elif delivery.message.kind == "event":
+                if (
+                    delivery.message.schema_id in EVENTS
+                    and delivery.message.schema_id != PREFIX + "predicate_evaluated"
+                    and delivery.message.schema_id not in self.authored_events
+                ):
+                    # The evidence route is still acknowledged and journaled.
+                    # Unauthored lifecycle records need no mutable payload copy.
+                    continue
                 payload = cast(dict[str, Any], thaw(delivery.message.payload))
                 self.delivery_causes[id(payload)] = delivery.dispatch_ref
                 if (
@@ -1185,6 +1329,9 @@ class Behaviour(ContextEngine):
                         }
                         self.sampled_causes[payload["contextId"]] = (
                             delivery.dispatch_ref
+                        )
+                        dispatched.update(
+                            self.dispatch.samples.get(payload["contextId"], ())
                         )
                 elif delivery.message.schema_id == PREFIX + "predicate_evaluated":
                     recorded_truth = self.evaluator.truths.get(payload["contextId"])
@@ -1201,9 +1348,16 @@ class Behaviour(ContextEngine):
                     pass  # journal notifications are evidence, not authored triggers
                 else:
                     events.append((delivery.message.schema_id, payload))
+                    dispatched.update(
+                        self.dispatch.event_instances(
+                            delivery.message.schema_id, payload
+                        )
+                    )
         timers: list[dict[str, Any]] = []
         receipts: list[tuple[str, str, str, Any]] = []
         for dirty in ctx.dirty:
+            if dirty.kind not in {"receipt", "timer"}:
+                continue
             payload = cast(dict[str, Any], thaw(dirty.payload))
             if dirty.kind == "receipt":
                 ctx.inputs = [dirty.cause]
@@ -1215,6 +1369,7 @@ class Behaviour(ContextEngine):
                 elif command not in self.commands_to_children:
                     continue  # own injection command receipts are not children
                 m, child = self.commands_to_children[command]
+                dispatched.add(m.ref.id)
                 child.status, child.result = status, payload.get("result")
                 child.receipt = {
                     "record_index": dirty.cause.record_index,
@@ -1229,6 +1384,8 @@ class Behaviour(ContextEngine):
                     child.deadline = None
             elif dirty.kind == "timer":
                 timers.append(payload)
+                if "instance" in payload:
+                    dispatched.add(payload["instance"])
                 self.timer_causes[id(payload)] = dirty.cause
                 if "deadline" in payload and payload["instance"] in self.instances:
                     instance = self.instances[payload["instance"]]
@@ -1252,28 +1409,47 @@ class Behaviour(ContextEngine):
             )
             if truth is not indexed_previous:
                 fresh.add(context)
+            self.evaluated_inputs[context] = tuple(ctx.inputs)
         fired_conflicts: set[tuple[str, str, str, str]] = set()
         # Conflict rules use the identical Q6 evidence/edge contract.
         for ir in self.packages:
             for rule in ir.document.get("conflicts", []):
-                for roles, _ in tuples(
-                    ctx,
-                    self.build.registry,
-                    rule["roles"],
-                    rule.get("match", {}),
-                    live=self.live_entities,
-                    eligible=self.eligible_entities,
-                ):
-                    ctx.inputs = self._role_causes(ctx, roles)
+                conflict_key = (ir.digest, rule["id"])
+                if conflict_key in self.changed_conflicts:
+                    self.conflict_tuples[conflict_key] = [
+                        (
+                            roles,
+                            stable_id(
+                                [
+                                    ir.digest,
+                                    rule["id"],
+                                    {
+                                        name: r.to_data()
+                                        for name, r in sorted(roles.items())
+                                    },
+                                ],
+                                "conflict",
+                            ),
+                        )
+                        for roles, _ in tuples(
+                            ctx,
+                            self.build.registry,
+                            rule["roles"],
+                            rule.get("match", {}),
+                            live=self.live_entities,
+                            eligible=self.eligible_entities,
+                        )
+                    ]
+                for roles, context in self.conflict_tuples[conflict_key]:
                     predicate = rule["predicate"]
-                    context = stable_id(
-                        [
-                            ir.digest,
-                            rule["id"],
-                            {name: r.to_data() for name, r in sorted(roles.items())},
-                        ],
-                        "conflict",
-                    )
+                    if (
+                        ir.document["predicates"][predicate]["profile"]
+                        == "committed_reactive/v1"
+                        and context in self.evaluator.truths
+                        and context not in self.affected_contexts
+                    ):
+                        continue
+                    ctx.inputs = self._role_causes(ctx, roles)
                     truth = self._evaluate_truth(
                         ctx,
                         context,
@@ -1359,13 +1535,21 @@ class Behaviour(ContextEngine):
                 list[Cause],
             ]
         ] = []
+        dispatched.update(self.awake)
+        self.awake = set()
         for m in sorted(
-            self.instances.values(), key=lambda m: (m.binding["id"], m.ref.id)
+            (
+                self.instances[identity]
+                for identity in dispatched
+                if identity in self.instances
+            ),
+            key=lambda m: (m.binding["id"], m.ref.id),
         ):
             ctx.inputs = self._role_causes(ctx, m.roles)
             if not m.published:
                 life = ctx.view._store.lives.get(m.ref)
                 if life is None or life.created.index > ctx.view.cut.index:
+                    self.awake.add(m.ref.id)
                     continue
                 m.published = True
                 self._record(ctx, m, "created")
@@ -1525,11 +1709,15 @@ class Behaviour(ContextEngine):
         ]
         processed: set[str] = set()
         writes: set[tuple[EntityRef, str]] = set()
-        relation_edges = {
-            edge.edge_id: (relation, edge.source, edge.target)
-            for relation in self.partition.relation_produces
-            for edge in ctx.relations(relation)
-        }
+        relation_edges = (
+            {
+                edge.edge_id: (relation, edge.source, edge.target)
+                for relation in self.partition.relation_produces
+                for edge in ctx.relations(relation)
+            }
+            if candidates
+            else {}
+        )
         edge_slots: set[str] = set()
         for _, _, identity, _, m, transition, trigger, causes in sorted(
             candidates, key=lambda c: c[:4]
@@ -1653,7 +1841,12 @@ class Behaviour(ContextEngine):
                 self._record(ctx, m, m.status, transition["id"])
             else:
                 m.continued = "continued"
+                self.awake.add(m.ref.id)
                 ctx.ops.append(Activate(self.partition.id))
+
+        for identity in dispatched:
+            if identity in self.instances:
+                self._refresh_instance(self.instances[identity])
 
         for ref, fields in self.publish.items():
             ctx.inputs = self.publish_causes[ref]

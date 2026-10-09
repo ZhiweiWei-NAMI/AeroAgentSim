@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 from aerokernel.compact import expand_record
 from aerokernel.errors import KernelError
-from aerokernel.journal import read_records, replay
+from aerokernel.journal import iter_records, read_records, replay
 from fastapi.testclient import TestClient
 
 from aeroagentsim.platform import RunSession
@@ -76,10 +76,13 @@ def test_two_source_cli_and_offline_replay(
         main()
     directory = Path(json.loads(capsys.readouterr().out)["run"])
     records = [
-        json.loads(line)
-        for line in (directory / "journal.jsonl").read_text().splitlines()
+        expand_record(record) for record in iter_records(directory / "journal.jsonl")
     ]
-    assert records[0]["minor"] == 3
+    assert (
+        records[0]["major"],
+        records[0]["minor"],
+        records[0]["semantic_version"],
+    ) == (2, 0, 3)
     assert records[0]["ingress_policy"] is None
     assert not any(record["type"] == "live_ingress" for record in records)
     with (

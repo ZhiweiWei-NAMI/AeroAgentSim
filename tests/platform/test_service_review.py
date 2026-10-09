@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from aerokernel import Instant, MemoryRegistry
-from aerokernel.codec import encode
+from aerokernel import BindingManifest, Kernel, MemoryRegistry
 from fastapi.testclient import TestClient
 
 from aeroagentsim.services import worker
@@ -24,11 +23,15 @@ def artifacts(path: Path) -> RunStorage:
         json.dumps(MemoryRegistry(()).to_data())
     )
     (path / "scenario.json").write_text(json.dumps({"registry": {"messages": []}}))
-    rows = [
-        {"index": index, "instant": encode(Instant(index)), "items": []}
-        for index in range(4)
-    ]
-    raw = b"".join(json.dumps(row).encode() + b"\n" for row in rows)
+    # Use an actual committed WAL prefix, including its codec/resource header.
+    # The tests exercise index/feed races, not acceptance of fabricated journals.
+    kernel = Kernel()
+    kernel.bind(MemoryRegistry(()), BindingManifest("service-review", "0"), ())
+    kernel.start()
+    for ns in (1, 2, 3):
+        kernel.run_until(ns)
+    kernel.close()
+    raw = b"".join(kernel.journal.bytes.splitlines(keepends=True)[:4])
     (path / "journal.jsonl").write_bytes(raw)
     (path / "index.json").write_text("[]")
     (path / "manifest.json").write_text(

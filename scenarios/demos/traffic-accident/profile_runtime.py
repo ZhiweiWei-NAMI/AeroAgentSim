@@ -1,4 +1,4 @@
-"""Profile the full actor set without changing engine outputs or journal encoding."""
+"""Profile the full actor set with an explicitly selected journal codec."""
 
 from __future__ import annotations
 
@@ -38,9 +38,9 @@ def histogram(path: Path) -> dict[str, Any]:
                 largest = (len(line), record["index"])
             for key, value in record.items():
                 keys[kind + "." + key] += len(
-                    json.dumps(
-                        value, separators=(",", ":"), ensure_ascii=False
-                    ).encode("utf-8")
+                    json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode(
+                        "utf-8"
+                    )
                 )
     return {
         "bytes": path.stat().st_size,
@@ -69,7 +69,9 @@ def timed(
     return invoke
 
 
-def run(hz: int, seconds: int, directory: Path) -> dict[str, Any]:
+def run(
+    hz: int, seconds: int, directory: Path, *, codec: str = "positional-deflate"
+) -> dict[str, Any]:
     """Time a single complete grant, including loading/binding/bootstrap/close."""
     started = time.perf_counter()
     scenario = load_scenario(SCENARIO / "scenario.yaml")
@@ -80,7 +82,7 @@ def run(hz: int, seconds: int, directory: Path) -> dict[str, Any]:
     simulation = Simulation(
         scenario,
         run_directory=directory,
-        journal=Journal(directory / "journal.jsonl"),
+        journal=Journal(directory / "journal.jsonl", codec=codec),
     )
     times: dict[str, list[float]] = {}
     for name, engine in simulation.kernel._engines.items():
@@ -99,6 +101,7 @@ def run(hz: int, seconds: int, directory: Path) -> dict[str, Any]:
     elapsed = time.perf_counter() - started
     return {
         "physics_hz": hz,
+        "journal_codec": codec,
         "simulated_s": seconds,
         "elapsed_wall_s": elapsed,
         "bootstrap_wall_s": bootstrap_wall,
@@ -119,6 +122,9 @@ def main() -> None:
     parser.add_argument("--hz", type=int, choices=(1, 5, 15), default=15)
     parser.add_argument("--seconds", type=int, default=90)
     parser.add_argument("--profile", action="store_true")
+    parser.add_argument(
+        "--codec", choices=("json", "positional-deflate"), default="positional-deflate"
+    )
     args = parser.parse_args()
     if args.seconds <= 0:
         parser.error("--seconds must be positive")
@@ -140,7 +146,7 @@ def main() -> None:
         if args.profile:
             profile.enable()
         try:
-            result = run(args.hz, args.seconds, args.out)
+            result = run(args.hz, args.seconds, args.out, codec=args.codec)
         finally:
             if args.profile:
                 profile.disable()
