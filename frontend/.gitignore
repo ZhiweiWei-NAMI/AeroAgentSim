@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+# worktrees may symlink node_modules
+node_modules
 
 # Build output
 dist/

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.request
 import uuid
@@ -23,7 +24,9 @@ from aeroagentsim.services.storage import RunStorage
 
 
 @pytest.mark.llm
-def test_live_dispatch_sixty_seconds(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_live_dispatch_sixty_seconds(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     with urllib.request.urlopen(
         "http://127.0.0.1:8788/v1/models", timeout=10
     ) as response:
@@ -134,15 +137,17 @@ def test_live_dispatch_sixty_seconds(monkeypatch: pytest.MonkeyPatch) -> None:
         "same_cut": recovered.view().cut == live.kernel.view().cut,
         "incomplete": recovered.incomplete,
     }
-    directory = Path("tests/agents/runs") / f"glm-60s-{uuid.uuid4().hex[:8]}"
-    directory.parent.mkdir(exist_ok=True)
+    # Live-model artifacts go outside the source tree unless explicitly requested.
+    output = Path(os.environ.get("AEROAGENTSIM_LLM_ARTIFACTS", tmp_path))
+    directory = output / f"glm-60s-{uuid.uuid4().hex[:8]}"
+    directory.parent.mkdir(parents=True, exist_ok=True)
     storage = RunStorage(directory)
     storage.prepare(live.scenario)
     (directory / "journal.jsonl").write_bytes(live.kernel.journal.bytes)
     storage.index()
     storage.status("completed")
     results["artifact"] = str(directory)
-    Path("tests/agents/llm-metrics.json").write_text(
+    (directory.parent / "llm-metrics.json").write_text(
         json.dumps(results, indent=2) + "\n"
     )
     # Preserve actual prompts/responses and typed outcomes for review and CLI replay.
