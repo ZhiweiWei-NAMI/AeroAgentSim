@@ -3,7 +3,7 @@ import { Assets, disposeObject } from '../viewport/assets';
 import { buildLiteCity, isLiteCityScene } from '../viewport/procedural-traffic';
 
 /**
- * Traffic demo city layer: the console serves the original aero-bench scene at
+ * Traffic demo city layer: the console serves the original traffic-demo city scene at
  * /v1/studio/demo-assets/scene.json (see authoring/demo.py). Buildings carry real
  * GLB meshes plus run-space x/y/z; roads carry exact ground polygons, markings and
  * arrows. Everything renders flat in render XZ at the demo renderer's own layer

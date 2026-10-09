@@ -10,7 +10,11 @@ from pathlib import Path
 from typing import Any
 
 from aeroagentsim.observations.capture import Capture
-from aeroagentsim.observations.renderer import BrowserRenderer, Renderer
+from aeroagentsim.observations.renderer import (
+    BrowserRenderer,
+    Renderer,
+    browser_executable_path,
+)
 from aeroagentsim.platform.plugins import EngineBuild
 
 
@@ -23,23 +27,24 @@ class TrafficCameraCapture(Capture):
     def _renderer(self, config: Any) -> Renderer:
         if config["mode"] != "traffic_browser":
             return super()._renderer(config)
-        if set(config) != {
+        required = {
             "mode",
             "node_modules",
             "timeout_s",
             "asset_digest",
-            "browser_executable",
-        }:
+        }
+        if not required <= set(config) or set(config) - required - {"browser_executable"}:
             raise ValueError(
                 "traffic camera: explicit browser assets/deadline required"
             )
-        executable = (
-            Path(config["browser_executable"]) if config["browser_executable"] else None
+        if "browser_executable" in config and (
+            not isinstance(config["browser_executable"], str)
+            or not config["browser_executable"]
+        ):
+            raise ValueError("traffic camera: browser_executable must be a nonempty path")
+        executable = browser_executable_path(
+            Path(config["browser_executable"]) if "browser_executable" in config else None
         )
-        if executable is not None and not executable.is_file():
-            raise FileNotFoundError(
-                f"traffic camera: configured browser does not exist: {executable}"
-            )
         modules = Path(config["node_modules"])
         html = Path(__file__).with_name("camera.html").read_bytes()
         three = (modules / "three/build/three.module.js").read_bytes()

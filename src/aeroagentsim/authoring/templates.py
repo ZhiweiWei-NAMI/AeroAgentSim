@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.resources
 from pathlib import Path
 from typing import Any
 
@@ -209,10 +210,14 @@ def motion_messages() -> list[dict[str, Any]]:
 
 
 def demo_source(name: str) -> Path:
-    """Only repository-shipped demo inputs are importable as templates."""
+    """Locate shipped demo inputs: installed package data first, then the repo."""
     if name != "traffic-accident":
         raise ValueError("template: unknown demo")
+    resources = importlib.resources.files("aeroagentsim") / "demo_data" / name
+    if (resources / "scenario.yaml").is_file():
+        return Path(str(resources))
+    # Editable/source checkout: the repository tree is the real resource root.
     source = Path(__file__).resolve().parents[3] / "scenarios" / "demos" / name
-    if not (source / "scenario.yaml").is_file():
-        raise FileNotFoundError("traffic-accident template inputs are not installed")
-    return source
+    if (source / "scenario.yaml").is_file():
+        return source
+    raise FileNotFoundError("traffic-accident template inputs are not installed")

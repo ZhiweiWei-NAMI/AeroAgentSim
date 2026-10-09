@@ -1,4 +1,4 @@
-# A2 integration contract
+# Traffic accident integration contract
 
 The package now compiles on the shared behaviour executor. Physical road/air state stays with its selected owner. Reports, bid records, assignments and capture task state follow typed proposals, actual owner receipts and recorded predicates. The finite sampled pool has Alpha/Bravo arrival and dwell contexts for the predeclared incident task; additional capture tasks need additional authored pool slots.
 
@@ -6,6 +6,6 @@ The default profile is explicitly kinematic, scripted decisions and 1 Hz physics
 
 `traffic_decisions` reads the authored fixture and checks actual task interruptibility/altitude before emitting proposals. The edge chooses minimum eligible ETA as a rule; the archived optional edge fixture does not authorize an assignment. `traffic_camera_capture` uses the generic observation owner and actual headless Chromium/Three.js PNG bytes, with a primitive-geometry viewer and committed pose snapshot. `traffic_capture_bridge` validates request/actor/cut/artifact correlation, links the stored record to actor/incident, and waits for the capture owner's upload receipt before business acceptance.
 
-The explicit Chromium executable and existing read-only frontend Node dependencies must be available. There is no browser download, LLM fallback or native SUMO/PX4 claim. The capture output directory is supplied by `RunSession`; HTTP preflight receives the service-assigned directory. Frontend rendering/console behaviour was not modified in A2.
+The explicit Chromium executable (Playwright Chromium or `AEROAGENTSIM_CHROMIUM`) must be available. There is no browser download, LLM fallback or native SUMO/PX4 claim. The capture output directory is supplied by `RunSession`; HTTP preflight receives the service-assigned directory. Frontend rendering/console behaviour was not modified by this integration.
 
 For an operator run, set the named operator stream's initial watermark to zero. Submit a typed `aas.runtime.inject_event` at an unclosed future boundary using injection point `accident` and `{incident: {$ref: ...}, reason: ...}`. Then explicitly close the queued prefix through the named watermark endpoint. The offline CLI scene closes the full prefix at startup and uses its authored 8 s timer. Injection activates the same finite incident slot; it does not create an arbitrary new sampled task.

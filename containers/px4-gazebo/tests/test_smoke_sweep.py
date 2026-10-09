@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
 """P2b sweep-client tests against the ACTUAL workspace smoke.py (absolute importlib).
 
 No real sockets: Client/ready_client are replaced by a scripted FakeClient and
 sys.argv is mocked; smoke.main() only writes a JSON file to a temp dir.
 
-Run: PYTHONDONTWRITEBYTECODE=1 /mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python test_smoke_sweep.py
+Run: PYTHONDONTWRITEBYTECODE=1 python test_smoke_sweep.py
 """
 
 import contextlib
@@ -172,7 +171,7 @@ class SweepGroupingTests(unittest.TestCase):
 
 class CompareTests(unittest.TestCase):
     def test_compare_only_pairs_runs_and_reports_zero_for_identical(self):
-        trajectory = lambda x: [  # noqa: E731
+        trajectory = lambda x: [
             {
                 "sim_ns": 1_000_000,
                 "telemetry": [{"vehicle": "v0", "position_enu": [x, 0, 10]}],

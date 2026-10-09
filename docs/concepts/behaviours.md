@@ -40,6 +40,12 @@ and ordered actions:
 - **Completion policy** checks real child receipt statuses at terminal entry;
   transport acknowledgement is never success.
 
+A dormant chain with a `while` predicate trigger retries when a precondition
+receives a new truth revision and all preconditions and the trigger are known
+true. This includes a trigger already sampled by another chain. Unrelated
+commits do not retry it. `entered` and `exited` activation triggers and active
+transition triggers still require their own fresh matching predicate revision.
+
 ## Automatic bindings and instances
 
 Bindings select role tuples from live entities at the invocation's committed

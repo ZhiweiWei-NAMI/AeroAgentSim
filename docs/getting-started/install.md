@@ -18,7 +18,12 @@ In a current development checkout, replace `./aerokernel` with `../aerokernel`. 
 
 ## Camera dependencies
 
-The traffic demo captures a real PNG through headless Chromium. It needs frontend dependencies even with `--headless`. The demo reuses installed Playwright Chromium or installs it on first use. On fresh Linux systems, install Chromium and its system libraries explicitly:
+The traffic demo captures a real PNG through headless Chromium. Building the
+console requires Node.js and npm on the host; `frontend/node_modules` is not
+vendored in the repository. The capture renderer reuses the Playwright Chromium
+installed via `npx playwright install chromium`; on first use a minimal set of
+npm Playwright and Three.js packages is fetched into the user cache. On fresh
+Linux systems, install Chromium and its system libraries explicitly:
 
 ```bash
 cd frontend
@@ -41,7 +46,7 @@ For live agents, install `python -m pip install -e '.[server,agents]'` and follo
 
 ## Included data
 
-The committed registry snapshot provides the demo's types, ancestry, fields and relations. No AeroGraph checkout is needed. With access to a full checkout, set `AEROAGENTSIM_AEROGRAPH_ROOT` to enable its broader catalog; see [AeroGraph](../concepts/aerograph.md).
+The committed registry snapshot provides the demo's types, ancestry, fields and relations. No AeroGraph checkout is needed. With access to a full checkout, set `AEROAGENTSIM_AEROGRAPH_ROOT=/path/to/AeroGraph` to enable its broader catalog; see [AeroGraph](../concepts/aerograph.md).
 
 The demo includes OSM-derived roads and building footprints rendered as procedural geometry, with [attribution](../../scenarios/demos/traffic-accident/inputs/lite-city/ATTRIBUTION.txt). `AEROAGENTSIM_TRAFFIC_ASSET_ROOT` optionally selects a separately supplied high-detail pack. It is not distributed here. See [Asset notes](../../ASSETS.md).
 

@@ -938,7 +938,18 @@ class Behaviour(ContextEngine):
             matched = (
                 truth.value is True if native_edge else truth.matches(spec["edge"])
             )
-            if context in fresh and matched:
+            if matched and (
+                context in fresh
+                or (
+                    m.status == "dormant"
+                    and spec["edge"] == "while"
+                    and not native_edge
+                    and any(
+                        m.predicate_contexts.get(predicate) in fresh
+                        for predicate in m.chain.get("preconditions", [])
+                    )
+                )
+            ):
                 if truth.cause is not None:
                     ctx.inputs.append(truth.cause)
                 return {
@@ -1625,12 +1636,21 @@ class Behaviour(ContextEngine):
             }:
                 continue
             if m.status == "dormant":
+                preconditions = m.chain.get("preconditions", [])
+                guard_ok = self._guard(ctx, m, preconditions, fresh)
+                # A newly satisfied precondition can retry a still-true level
+                # trigger. Edge triggers and active transitions keep their
+                # revision-based semantics; unrelated dispatches cannot retry.
                 trigger = self._trigger(
-                    ctx, m, m.chain["trigger"], fresh, events, timers, receipts
+                    ctx,
+                    m,
+                    m.chain["trigger"],
+                    fresh,
+                    events,
+                    timers,
+                    receipts,
                 )
-                if trigger is None or not self._guard(
-                    ctx, m, m.chain.get("preconditions", []), fresh
-                ):
+                if trigger is None or not guard_ok:
                     continue
                 m.status, m.continued, m.trigger = "active", "activated", trigger
                 if "deadline_ns" in m.chain:

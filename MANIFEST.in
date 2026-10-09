@@ -1,0 +1,3 @@
+include setup.py
+recursive-include scenarios/demos/traffic-accident *
+global-exclude *.py[cod]
