@@ -41,6 +41,9 @@ class Simulation:
         self, scenario: Scenario, *, journal: Journal | None, run_directory: Path | None
     ) -> None:
         self.scenario = scenario
+        # Explicitly supplied journals keep their codec, including historical 1.x.
+        if journal is None:
+            journal = Journal(codec="positional-deflate")
         catalog = EngineCatalog()
         partitions: dict[str, Partition] = {}
         engines: list[Engine] = []
@@ -206,6 +209,7 @@ class RunSession:
         directory: Path,
         *,
         prepared: bool = False,
+        journal_codec: str = "positional-deflate",
     ) -> None:
         self.scenario = (
             scenario if isinstance(scenario, Scenario) else load_scenario(scenario)
@@ -219,11 +223,23 @@ class RunSession:
             journal=Journal(
                 directory / "journal.jsonl",
                 durability=self.scenario.document["outputs"]["durability"],
+                codec=journal_codec,
             ),
         )
         self.storage._atomic(
             "manifest.json",
-            {**self.storage.metadata(), "epoch": self.scenario.manifest.epoch},
+            {
+                **self.storage.metadata(),
+                "epoch": self.scenario.manifest.epoch,
+                "journal_codec": self.simulation.kernel.journal.codec,
+                "journal_major": self.simulation.kernel.header["major"],
+                "journal_minor": self.simulation.kernel.header["minor"],
+                **(
+                    {"journal_codec_id": self.simulation.kernel.header["codec"]}
+                    if "codec" in self.simulation.kernel.header
+                    else {}
+                ),
+            },
         )
         packages = [
             p
