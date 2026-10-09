@@ -14,15 +14,27 @@ requires-python = ">=3.10"
 dependencies = ["aerokernel>=0.1.0.dev0,<0.2", "pyyaml>=6"]
 
 [project.optional-dependencies]
-server = ["fastapi>=0.115", "uvicorn>=0.30"]
+# CI-validated compatible range: Starlette >=1.8 removes the TestClient httpx
+# fallback (httpx2 becomes mandatory), so cap Starlette below 1.8 explicitly --
+# FastAPI's own metadata has no Starlette upper bound.
+server = [
+    "fastapi>=0.115,<0.144",
+    "starlette>=0.46,<1.8",
+    "uvicorn>=0.30",
+]
 legacy = [
     "simpy>=4", "numpy", "pint", "python-dotenv", "requests", "pandas",
     "matplotlib",
-    "openai", "tqdm", "fastapi>=0.115", "tabulate", "pydantic>=2",
+    "openai", "tqdm", "fastapi>=0.115,<0.144", "tabulate", "pydantic>=2",
     "uvicorn>=0.30",
 ]
 dev = [
-    "pytest", "hypothesis", "pytest-cov", "pytest-asyncio", "httpx",
+    "pytest", "hypothesis", "pytest-cov", "pytest-asyncio",
+    # fastapi/starlette TestClient stack. Starlette >=1.7 prefers the httpx2
+    # package (httpx-only is deprecated there and unsupported after 1.7), and
+    # Starlette's own "full" extra pairs httpx2>=2 with httpx>=0.27,<0.29.
+    "httpx2>=2,<3",
+    "httpx>=0.27,<0.29",
     "ruff", "mypy", "types-PyYAML",
 ]
 docs = [

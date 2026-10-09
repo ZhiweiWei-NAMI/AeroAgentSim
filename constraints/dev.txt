@@ -1,0 +1,15 @@
+# Known-good, CI-validated lock for the `server` + `dev` extras (Q2 gate).
+# Recorded from the current development virtualenv (Python 3.11).
+#   pip install -e ../aerokernel -e '.[server,dev]' -c constraints/dev.txt
+# Re-pin deliberately after revalidating the test suite.
+# Note: httpx2 (required by the dev extra, Starlette >=1.7 TestClient) is
+# constrained by metadata (httpx2>=2,<3) rather than pinned here; the
+# reference venv used the deprecated httpx fallback with no httpx2 installed.
+fastapi==0.143.0
+starlette==1.7.0
+httpx==0.28.1
+uvicorn==0.54.0
+pydantic==2.14.0
+anyio==4.15.1
+pytest==9.1.1
+hypothesis==6.168.5
