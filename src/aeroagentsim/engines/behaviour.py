@@ -119,7 +119,8 @@ class Behaviour(ContextEngine):
         self.fired: set[tuple[str, str, object]] = set()
         self.boot_edges: list[dict[str, Any]] = []
         self.sampled: dict[str, dict[str, Any]] = {}
-        self.sampled_causes: dict[str, ItemRef] = {}
+        self.sampled_causes: dict[str, ItemRef | LocalCause] = {}
+        self.sampled_emissions: dict[str, tuple[ItemRef, LocalCause]] = {}
         self.discovery = SelectorIndex(build.registry)
         self.conflict_discovery = SelectorIndex(build.registry)
         self.dispatch = InstanceIndex()
@@ -554,6 +555,7 @@ class Behaviour(ContextEngine):
                 return truth
             signature = sampled["sampleVersion"]
             if old is not None and old.signature == signature:
+                old.cause = self.sampled_causes[cast(str, sample_id)]
                 return old
             if (
                 old is not None
@@ -1245,6 +1247,12 @@ class Behaviour(ContextEngine):
         ctx.succeed(cmd, {"injection_point": point["id"]})
 
     def on_inputs(self, ctx: EngineContext) -> None:
+        # Publication precedes the next invocation even when its echo is delayed.
+        for sample_id, (invocation, local) in self.sampled_emissions.items():
+            self.sampled_causes[sample_id] = ctx.view.committed_operation(
+                invocation, local
+            )
+        self.sampled_emissions.clear()
         # These indexes belong to this immutable invocation cut. Creating an
         # entity in the proposal cannot make it visible to another binding here.
         self.changed_bindings = (
@@ -1327,8 +1335,19 @@ class Behaviour(ContextEngine):
                             **payload,
                             "sampleVersion": delivery.message.id,
                         }
-                        self.sampled_causes[payload["contextId"]] = (
-                            delivery.dispatch_ref
+                        # Event dispatch authority ends with this invocation.
+                        # Keep an owned evidence emission, preserving the exact
+                        # delivered result and its dispatched causal ancestry.
+                        local = ctx.emit(
+                            PREFIX + "sampled_evidence",
+                            payload,
+                            target=self.partition.id,
+                        )
+                        assert ctx.view.invocation_ref is not None
+                        self.sampled_causes[payload["contextId"]] = local
+                        self.sampled_emissions[payload["contextId"]] = (
+                            ctx.view.invocation_ref,
+                            local,
                         )
                         dispatched.update(
                             self.dispatch.samples.get(payload["contextId"], ())

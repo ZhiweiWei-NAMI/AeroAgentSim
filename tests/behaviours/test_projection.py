@@ -177,6 +177,31 @@ def test_q6_sampled_adapter_uses_committed_frames() -> None:
     sim.close()
 
 
+def test_sampled_guard_on_later_timer_retains_committed_evidence() -> None:
+    doc = sampled_document()
+    # The evidence notification remains pending when the timer reads the guard.
+    doc["engines"]["behaviour"]["config"]["message_lag_ns"] = 1_000_000_000
+    chain = doc["behaviours"][0]["chains"]["observe"]
+    chain["trigger"] = {"timer": "release", "after_ns": 5_500_000_000}
+    chain["transitions"][0]["guard"] = "stationary"
+    sim = Simulation(load_scenario(doc, base=Path("scenarios")))
+    try:
+        sim.start()
+        # The guard uses the 4-second sample in a separate timer invocation.
+        sim.run_until(5_600_000_000)
+        completed = [
+            entry
+            for record in sim.kernel.records
+            for entry in project(record).get("chainInstances", [])
+            if entry["lifecycle"] == "completed" and entry["op"] == "assert"
+        ]
+        assert len(completed) == 1
+        assert completed[0]["state"] == "done"
+        assert completed[0]["available"]["ns"] == "5500000000"
+    finally:
+        sim.close()
+
+
 def test_sampled_feedback_requires_declared_positive_return_lag() -> None:
     doc = sampled_document()
     doc["engines"].pop("observations")
