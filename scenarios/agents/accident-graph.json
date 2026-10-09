@@ -1,0 +1,542 @@
+{
+  "format": "aeroagentsim.scenario/v1",
+  "id": "accident-graph-fixture",
+  "registry": {
+    "snapshot": "../realtime-registry.snapshot.json",
+    "digest": "c9cc44b4399863cecbfa65f786d95defcf340c427d54b1e9d98580b5cda31be6",
+    "types": [
+      {
+        "id": "example:Source",
+        "parents": [],
+        "abstract": false
+      }
+    ],
+    "fields": [
+      {
+        "id": "example.source_state",
+        "type": "example:Source",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "ready",
+            "done"
+          ]
+        },
+        "metadata": {
+          "role": "state",
+          "clock": "canonical"
+        }
+      }
+    ],
+    "messages": [
+      {
+        "id": "aas.langgraph.record",
+        "kind": "event",
+        "schema": {
+          "type": "record",
+          "members": {
+            "decision_id": {
+              "type": "string"
+            },
+            "phase": {
+              "type": "string"
+            },
+            "code": {
+              "type": "string",
+              "nullable": true
+            },
+            "data_json": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "decision_id",
+            "phase",
+            "code",
+            "data_json"
+          ],
+          "extra": false
+        }
+      },
+      {
+        "id": "example.trigger",
+        "kind": "event",
+        "schema": {
+          "type": "record",
+          "members": {
+            "time_s": {
+              "type": "number"
+            },
+            "ego": {
+              "type": "record",
+              "members": {
+                "id": {
+                  "type": "string"
+                },
+                "position": {
+                  "type": "record",
+                  "members": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "z": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y",
+                    "z"
+                  ],
+                  "extra": false
+                }
+              },
+              "required": [
+                "id",
+                "position"
+              ],
+              "extra": false
+            },
+            "incident": {
+              "type": "record",
+              "members": {
+                "id": {
+                  "type": "string"
+                },
+                "position": {
+                  "type": "record",
+                  "members": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "z": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y",
+                    "z"
+                  ],
+                  "extra": false
+                }
+              },
+              "required": [
+                "id",
+                "position"
+              ],
+              "extra": false
+            },
+            "reroute_candidates": {
+              "type": "array",
+              "items": {
+                "type": "record",
+                "members": {
+                  "route_id": {
+                    "type": "string"
+                  },
+                  "available": {
+                    "type": "boolean"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "route_id",
+                  "available",
+                  "description"
+                ],
+                "extra": false
+              }
+            },
+            "region_radius_m": {
+              "type": "number"
+            },
+            "uav_speed_mps": {
+              "type": "number"
+            },
+            "uavs": {
+              "type": "array",
+              "items": {
+                "type": "record",
+                "members": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "record",
+                    "members": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "z": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y",
+                      "z"
+                    ],
+                    "extra": false
+                  },
+                  "battery_pct": {
+                    "type": "number"
+                  },
+                  "current_task": {
+                    "type": "record",
+                    "members": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "interruptible": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "label",
+                      "type",
+                      "interruptible"
+                    ],
+                    "extra": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "position",
+                  "battery_pct",
+                  "current_task"
+                ],
+                "extra": false
+              }
+            }
+          },
+          "required": [
+            "time_s",
+            "ego",
+            "incident",
+            "reroute_candidates",
+            "region_radius_m",
+            "uav_speed_mps",
+            "uavs"
+          ],
+          "extra": false
+        }
+      },
+      {
+        "id": "example.award",
+        "kind": "event",
+        "schema": {
+          "type": "record",
+          "members": {
+            "winner_id": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "action": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "winner_id",
+            "reason",
+            "action"
+          ],
+          "extra": false
+        }
+      }
+    ]
+  },
+  "entities": [
+    {
+      "id": "fixture-source",
+      "type": "example:Source",
+      "facts": {
+        "example.source_state": "ready"
+      }
+    }
+  ],
+  "bindings": {
+    "lifecycle": [
+      {
+        "controller": "source",
+        "type": "example:Source"
+      }
+    ],
+    "rules": [
+      {
+        "writer": "source",
+        "type": "example:Source",
+        "fields": [
+          "example.source_state"
+        ]
+      }
+    ]
+  },
+  "engines": {
+    "source": {
+      "plugin": "workflow",
+      "config": {
+        "produces": [
+          "example.source_state"
+        ],
+        "consumes": [],
+        "emits": [
+          "example.trigger"
+        ],
+        "subscribes": [],
+        "targets": [
+          "incident"
+        ],
+        "lifecycle": true,
+        "machines": [
+          {
+            "entity": "fixture-source",
+            "field": "example.source_state",
+            "initial": "ready",
+            "states": {
+              "ready": {
+                "transitions": [
+                  {
+                    "timer_ns": 1,
+                    "to": "done"
+                  }
+                ]
+              },
+              "done": {
+                "on_enter": [
+                  {
+                    "kind": "emit",
+                    "schema": "example.trigger",
+                    "topic": "incident",
+                    "payload": {
+                      "time_s": 0.0,
+                      "ego": {
+                        "id": "vehicle.reporter",
+                        "position": {
+                          "x": 0.0,
+                          "y": 0.0,
+                          "z": 0.0
+                        }
+                      },
+                      "incident": {
+                        "id": "incident-1",
+                        "position": {
+                          "x": 100.0,
+                          "y": 0.0,
+                          "z": 0.0
+                        }
+                      },
+                      "reroute_candidates": [
+                        {
+                          "route_id": "adjacent_lane_bypass",
+                          "available": true,
+                          "description": "Authored fixture: borrow adjacent lane then return when clear"
+                        }
+                      ],
+                      "region_radius_m": 500.0,
+                      "uav_speed_mps": 10.0,
+                      "uavs": [
+                        {
+                          "id": "uav.alpha",
+                          "position": {
+                            "x": 50.0,
+                            "y": 30.0,
+                            "z": 0.0
+                          },
+                          "battery_pct": 90.0,
+                          "current_task": {
+                            "id": "medical-1",
+                            "label": "医疗配送",
+                            "type": "delivery",
+                            "interruptible": false
+                          }
+                        },
+                        {
+                          "id": "uav.bravo",
+                          "position": {
+                            "x": 0.0,
+                            "y": 30.0,
+                            "z": 0.0
+                          },
+                          "battery_pct": 80.0,
+                          "current_task": {
+                            "id": "patrol-1",
+                            "label": "可中断巡检",
+                            "type": "patrol",
+                            "interruptible": true
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "graph": {
+      "plugin": "langgraph",
+      "config": {
+        "factory": "scenarios.agents.accident_graph:build_graph",
+        "options": {
+          "award_schema": "example.award",
+          "award_topic": "award"
+        },
+        "triggers": [
+          {
+            "schema": "example.trigger",
+            "topic": "incident"
+          }
+        ],
+        "grants": {
+          "fields": [],
+          "relations": [],
+          "commands": [],
+          "events": [
+            {
+              "schema": "example.award",
+              "topic": "award"
+            }
+          ],
+          "facts": []
+        },
+        "budget": {
+          "wall_timeout_s": 120,
+          "sim_deadline_ns": 1000000000,
+          "max_calls": 10,
+          "max_tokens": 8000,
+          "max_retries": 1,
+          "max_prompt_bytes": 100000,
+          "recursion_limit": 20
+        },
+        "provider": {
+          "mode": "stub",
+          "model": "scripted",
+          "responses": {
+            "vehicle_report": [
+              {
+                "message": {
+                  "role": "assistant",
+                  "content": "{\"decision\": \"report\", \"reason\": \"观测发现事故\", \"action\": \"上报事故\", \"departure\": \"reroute_when_clear\", \"route_id\": \"adjacent_lane_bypass\", \"route_reason\": \"确认空隙后临时借道并返回原车道\"}"
+                },
+                "raw": {
+                  "choices": [
+                    {
+                      "message": {
+                        "role": "assistant",
+                        "content": "{\"decision\": \"report\", \"reason\": \"观测发现事故\", \"action\": \"上报事故\", \"departure\": \"reroute_when_clear\", \"route_id\": \"adjacent_lane_bypass\", \"route_reason\": \"确认空隙后临时借道并返回原车道\"}"
+                      }
+                    }
+                  ]
+                },
+                "usage": {
+                  "completion_tokens": 10
+                }
+              }
+            ],
+            "uav_alpha": [
+              {
+                "message": {
+                  "role": "assistant",
+                  "content": "{\"accept\": false, \"reason\": \"医疗配送不可中断\", \"action\": \"继续配送\", \"alt_target_m\": 70}"
+                },
+                "raw": {
+                  "choices": [
+                    {
+                      "message": {
+                        "role": "assistant",
+                        "content": "{\"accept\": false, \"reason\": \"医疗配送不可中断\", \"action\": \"继续配送\", \"alt_target_m\": 70}"
+                      }
+                    }
+                  ]
+                },
+                "usage": {
+                  "completion_tokens": 10
+                }
+              }
+            ],
+            "uav_bravo": [
+              {
+                "message": {
+                  "role": "assistant",
+                  "content": "{\"accept\": true, \"reason\": \"巡检可中断且航程可行\", \"action\": \"准备航拍\", \"alt_target_m\": 70}"
+                },
+                "raw": {
+                  "choices": [
+                    {
+                      "message": {
+                        "role": "assistant",
+                        "content": "{\"accept\": true, \"reason\": \"巡检可中断且航程可行\", \"action\": \"准备航拍\", \"alt_target_m\": 70}"
+                      }
+                    }
+                  ]
+                },
+                "usage": {
+                  "completion_tokens": 10
+                }
+              }
+            ],
+            "edge_award": [
+              {
+                "message": {
+                  "role": "assistant",
+                  "content": "{\"winner_id\": \"uav.bravo\", \"reason\": \"唯一接受且可中断的候选机\", \"action\": \"派遣航拍\"}"
+                },
+                "raw": {
+                  "choices": [
+                    {
+                      "message": {
+                        "role": "assistant",
+                        "content": "{\"winner_id\": \"uav.bravo\", \"reason\": \"唯一接受且可中断的候选机\", \"action\": \"派遣航拍\"}"
+                      }
+                    }
+                  ]
+                },
+                "usage": {
+                  "completion_tokens": 10
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "clock_mappings": [
+    {
+      "mapping_id": "canonical",
+      "clock_id": "canonical"
+    }
+  ],
+  "run": {
+    "pacing": "fast",
+    "seed": 7,
+    "until_ns": 2,
+    "advance_ns": 1
+  },
+  "outputs": {
+    "durability": "flush"
+  }
+}

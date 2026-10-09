@@ -14,6 +14,7 @@ requires-python = ">=3.10"
 dependencies = ["aerokernel>=0.2.0.dev0,<0.3", "pyyaml>=6"]
 
 [project.optional-dependencies]
+langgraph = ["langgraph>=1.2.14,<2"]
 # CI-validated compatible range: Starlette >=1.8 removes the TestClient httpx
 # fallback (httpx2 becomes mandatory), so cap Starlette below 1.8 explicitly --
 # FastAPI's own metadata has no Starlette upper bound.
@@ -66,6 +67,7 @@ px4_gazebo = "aeroagentsim.adapters.px4_gazebo:build"
 sumo = "aeroagentsim.adapters.sumo:build"
 ns3 = "aeroagentsim.adapters.ns3:build"
 environment = "aeroagentsim.engines.environment:build"
+langgraph = "aeroagentsim.agents.langgraph:build"
 
 [project.entry-points."aeroagentsim.models"]
 linear = "aeroagentsim.models:LinearConsumption"
