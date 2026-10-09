@@ -21,7 +21,7 @@ from aerokernel.ids import ItemRef, LocalCause
 from aerokernel.messages import RequestCancel
 from aerokernel.operations import CancelTimer, SampleFrame, ScheduleTimer
 from aerokernel.relations import RelationDependency
-from aerokernel.sdk import ContextEngine, EngineContext
+from aerokernel.sdk import Cause, ContextEngine, EngineContext
 from aerokernel.state import Absent, Fact
 from aerokernel.values import FrozenValue, thaw, typed_equal
 
@@ -129,6 +129,15 @@ class Behaviour(ContextEngine):
                 "children",
             )
         }
+        produces.update(
+            slot
+            for rule in build.manifest.rules
+            if rule.partition == build.id
+            for slot in rule.fields
+        )
+        produces.update(
+            exact.field for exact in build.manifest.exact if exact.partition == build.id
+        )
         consumes = set(cfg.get("consumes", ()))
         relations = set(cfg.get("relation_consumes", ()))
         relation_produces = set(cfg.get("relation_produces", ()))
@@ -159,6 +168,11 @@ class Behaviour(ContextEngine):
                     for _, source_field in expression_reads(value):
                         consumes.add(source_field)
                         self.selector_fields.add(source_field)
+                    if isinstance(value, dict) and "relation_assertion_id" in value:
+                        relations.add(value["relation_assertion_id"])
+                if "selection" in binding:
+                    consumes.add(binding["selection"]["field"])
+                    self.selector_fields.add(binding["selection"]["field"])
             for definition in p.get("predicates", {}).values():
                 relations.update(
                     n["relation"]
@@ -169,10 +183,11 @@ class Behaviour(ContextEngine):
                     # A sampled predicate is supplied by the existing Q6 partition,
                     # never recalculated in this reactive executor.
                     adapter = definition.get("adapter")
-                    if not isinstance(adapter, dict) or set(adapter) != {
-                        "event",
-                        "context",
-                    }:
+                    if (
+                        not isinstance(adapter, dict)
+                        or "event" not in adapter
+                        or not ({"context", "contexts"} & adapter.keys())
+                    ):
                         raise ValueError(
                             f"{ir.source}: $.predicates: sampled predicate requires adapter {{event, context}} and a pinned Q6 engine/bindings.samples"
                         )
@@ -214,6 +229,22 @@ class Behaviour(ContextEngine):
         # Lifecycle subscriptions must include concrete descendants: kernel routes
         # typed lifecycle notifications by exact published type, not directory.
         lifecycle_types = tuple(t.id for t in build.registry.types if t.id != TYPE)
+        feedback_lags = {
+            ir.document["feedback"]["return_lag_ns"]
+            for ir in self.packages
+            if "feedback" in ir.document
+        }
+        if len(feedback_lags) > 1:
+            raise ValueError(
+                "behaviour.feedback: packages disagree on the shared return lag"
+            )
+        message_lag = (
+            next(iter(feedback_lags)) if feedback_lags else cfg.get("message_lag_ns", 0)
+        )
+        if "message_lag_ns" in cfg and cfg["message_lag_ns"] != message_lag:
+            raise ValueError(
+                "behaviour.feedback: configured message lag differs from the pinned package"
+            )
         super().__init__(
             Partition(
                 build.id,
@@ -231,7 +262,7 @@ class Behaviour(ContextEngine):
                     RelationDependency(r) for r in sorted(relations | relation_produces)
                 ),
                 relation_produces=tuple(sorted(relation_produces)),
-                message_lag_ns=cfg.get("message_lag_ns", 0),
+                message_lag_ns=message_lag,
             ),
             policies=policies(produces),
         )
@@ -260,6 +291,10 @@ class Behaviour(ContextEngine):
             return [self._expr(ctx, v, instance, trigger) for v in value]
         if not isinstance(value, dict):
             return value
+        if "$now_ns" in value:
+            return ctx.now.ns
+        if "$microstep" in value:
+            return ctx.now.microstep
         if "$role" in value:
             return {"$ref": instance.roles[value["$role"]].to_data()}
         if "$variable" in value:
@@ -269,6 +304,18 @@ class Behaviour(ContextEngine):
             for part in value["$trigger"].split("."):
                 selected = selected[part]
             return selected
+        if "relation_assertion_id" in value:
+            edges = [
+                edge
+                for edge in ctx.relations(value["relation_assertion_id"])
+                if edge.source == instance.roles[value["source_role"]]
+                and edge.target == instance.roles[value["target_role"]]
+            ]
+            if len(edges) != 1:
+                raise ValueError(
+                    "relation_assertion_id: exactly one committed endpoint assertion required"
+                )
+            return edges[0].edge_id
         if "field" in value and "role" in value:
             result: Any = ctx.get(instance.roles[value["role"]], value["field"])
             if isinstance(result, Absent):
@@ -311,6 +358,7 @@ class Behaviour(ContextEngine):
         lifecycle: str,
         transition: str | None = None,
     ) -> None:
+        ctx.inputs.extend(self._role_causes(ctx, {"instance": m.ref}))
         ctx.get(m.ref, PREFIX + "revision")
         if m.prior_record is not None:
             ctx.emit(
@@ -358,6 +406,7 @@ class Behaviour(ContextEngine):
             "children": children,
         }
         self.publish[m.ref] = fields
+        self.publish_causes[m.ref] = [cause]
 
     def _truth(
         self, ctx: EngineContext, m: Instance, predicate: str, fresh: set[str]
@@ -398,11 +447,24 @@ class Behaviour(ContextEngine):
     ) -> Truth:
         old = self.evaluator.truths.get(context)
         if definition["profile"] == "aerograph_sampled/v1":
-            sampled = self.sampled.get(definition["adapter"]["context"])
-            if sampled is None or any(
-                sampled["roles"].get(name) != {"$ref": ref.to_data()}
-                for name, ref in roles.items()
-            ):
+            adapter = definition["adapter"]
+            context_ids = adapter.get("contexts", [adapter.get("context")])
+            matching = [
+                key
+                for key in context_ids
+                if key in self.sampled
+                and all(
+                    self.sampled[key]["roles"].get(name) == {"$ref": ref.to_data()}
+                    for name, ref in roles.items()
+                )
+            ]
+            if len(matching) > 1:
+                raise RuntimeError(
+                    f"sampled pool has duplicate role tuples: {matching}"
+                )
+            sample_id = matching[0] if matching else None
+            sampled = self.sampled.get(sample_id) if sample_id is not None else None
+            if sampled is None:
                 signature = ("missing_sample", tuple(sorted(roles.items())))
                 if old is not None and old.signature == signature:
                     return old
@@ -425,7 +487,7 @@ class Behaviour(ContextEngine):
                     "diagnostics": [
                         {
                             "reason": "no recorded sampled frame for this bound tuple",
-                            "requiredContext": definition["adapter"]["context"],
+                            "requiredContexts": context_ids,
                         }
                     ],
                     "evaluatedAt": at,
@@ -470,7 +532,7 @@ class Behaviour(ContextEngine):
                 record["status"],
                 signature,
                 record,
-                self.sampled_causes[definition["adapter"]["context"]],
+                self.sampled_causes[cast(str, sample_id)],
                 previous=None
                 if old is None
                 or old.status != "known"
@@ -537,6 +599,10 @@ class Behaviour(ContextEngine):
                 for roles, edges in tuples(
                     ctx, self.build.registry, chain["roles"], binding["match"]
                 ):
+                    ctx.inputs = self._role_causes(ctx, roles) + [
+                        ItemRef(cast(int, edge[1]), cast(int, edge[2]))
+                        for edge in cast(tuple[tuple[object, ...], ...], edges)
+                    ]
                     episode: Any = None
                     if binding["multiplicity"] == "once_per_relation":
                         episode = [list(cast(tuple[Any, ...], edge)) for edge in edges]
@@ -634,6 +700,20 @@ class Behaviour(ContextEngine):
                             "reason": "awaiting actual committed producer fact",
                         }
                     )
+        if "selection" in m.binding:
+            selection = m.binding["selection"]
+            ref = m.roles[selection["role"]]
+            field_id = selection["field"]
+            if isinstance(ctx.get(ref, field_id), Absent):
+                missing.append(
+                    {
+                        "selection": True,
+                        "entity": {"$ref": ref.to_data()},
+                        "field": field_id,
+                        "producer": ctx.view._store.writers.get((ref, field_id)),
+                        "reason": "awaiting actual committed ranking fact",
+                    }
+                )
         old_status, old_missing = m.status, m.required_inputs
         m.required_inputs = missing
         if missing:
@@ -643,10 +723,31 @@ class Behaviour(ContextEngine):
                 name: self._expr(ctx, expression, m, {})
                 for name, expression in m.binding.get("variables", {}).items()
             }
-            m.status = "dormant"
+            m.status = (
+                "active"
+                if old_status == "waiting_inputs"
+                and m.trigger
+                and "selection" in m.binding
+                else "dormant"
+            )
         if m.published and (old_status != m.status or old_missing != missing):
             m.revision += 1
             self._record(ctx, m, "transitioned")
+
+    def _role_causes(
+        self, ctx: EngineContext, roles: dict[str, EntityRef]
+    ) -> list[Cause]:
+        refs = set(roles.values())
+        return [
+            dirty.cause
+            for dirty in ctx.dirty
+            if dirty.key is not None
+            and dirty.key[0] in refs
+            or dirty.kind == "relation"
+            or dirty.kind == "lifecycle"
+            and EntityRef.from_data(cast(dict[str, Any], thaw(dirty.payload))["$ref"])
+            in refs
+        ]
 
     def _trigger(
         self,
@@ -659,7 +760,7 @@ class Behaviour(ContextEngine):
         receipts: list[tuple[str, str, str, Any]],
     ) -> dict[str, Any] | None:
         if "instance" in spec and m.continued == spec["instance"]:
-            return {"instance": spec["instance"]}
+            return {**m.trigger, "instance": spec["instance"]}
         if "lifecycle" in spec:
             for dirty in ctx.dirty:
                 if dirty.kind != "lifecycle":
@@ -670,6 +771,7 @@ class Behaviour(ContextEngine):
                 if ref in m.roles.values():
                     alive = ctx.view._store.alive(ref, ctx.view.cut, ctx.now)
                     if spec["lifecycle"] == ("created" if alive else "removed"):
+                        ctx.inputs.append(dirty.cause)
                         return {
                             "lifecycle": spec["lifecycle"],
                             "entity": {"$ref": ref.to_data()},
@@ -688,6 +790,7 @@ class Behaviour(ContextEngine):
                     )
                     for key, value in correlation.items()
                 ):
+                    ctx.inputs.append(self.delivery_causes[id(payload)])
                     return {"event": schema, "payload": payload}
         if "predicate" in spec:
             truth = self._truth(ctx, m, spec["predicate"], fresh)
@@ -722,6 +825,7 @@ class Behaviour(ContextEngine):
                             or payload["revision"] == m.entry_revision
                         )
                     ):
+                        ctx.inputs.append(self.timer_causes[id(payload)])
                         return payload
         if "receipt" in spec:
             actions = (
@@ -770,6 +874,14 @@ class Behaviour(ContextEngine):
                     if matched and name in fresh_children
                 )
                 child = m.children[selected]
+                ctx.inputs.extend(
+                    ItemRef(
+                        cast(dict[str, Any], c.receipt)["record_index"],
+                        cast(dict[str, Any], c.receipt)["item_index"],
+                    )
+                    for name, c in m.children.items()
+                    if name in actions and c.receipt is not None
+                )
                 return {
                     "receipt": selected,
                     "status": child.status,
@@ -1004,16 +1116,24 @@ class Behaviour(ContextEngine):
 
     def on_inputs(self, ctx: EngineContext) -> None:
         self.publish: dict[EntityRef, dict[str, Any]] = {}
+        self.publish_causes: dict[EntityRef, list[Cause]] = {}
+        self.delivery_causes: dict[int, Cause] = {}
+        self.timer_causes: dict[int, Cause] = {}
         for truth in self.evaluator.truths.values():
             if isinstance(truth.cause, LocalCause):
                 truth.cause = None
         if self.boot_edges:
             for edge in self.boot_edges:
+                source = EntityRef.from_data(edge["source"]["$ref"])
+                target = EntityRef.from_data(edge["target"]["$ref"])
+                ctx.inputs = self._role_causes(
+                    ctx, {"source": source, "target": target}
+                )
                 ctx.relate(
                     edge["id"],
                     edge["relation"],
-                    EntityRef.from_data(edge["source"]["$ref"]),
-                    EntityRef.from_data(edge["target"]["$ref"]),
+                    source,
+                    target,
                     valid=Interval(ctx.now, None),
                     acquired=Stamp("canonical", ctx.now.ns, 1, "canonical"),
                 )
@@ -1025,10 +1145,12 @@ class Behaviour(ContextEngine):
                 ctx.set(ref, slot, value)
         events: list[tuple[str, dict[str, Any]]] = []
         for delivery in ctx.inbox:
+            ctx.inputs = [delivery.dispatch_ref]
             if delivery.message.kind == "command":
                 self._inject(ctx, delivery)
             elif delivery.message.kind == "event":
                 payload = cast(dict[str, Any], thaw(delivery.message.payload))
+                self.delivery_causes[id(payload)] = delivery.dispatch_ref
                 if (
                     delivery.message.schema_id == PREFIX + "predicate_evaluated"
                     and payload.get("profile") == "aerograph_sampled/v1"
@@ -1061,6 +1183,7 @@ class Behaviour(ContextEngine):
         for dirty in ctx.dirty:
             payload = cast(dict[str, Any], thaw(dirty.payload))
             if dirty.kind == "receipt":
+                ctx.inputs = [dirty.cause]
                 command, status = payload["command_id"], payload["status"]
                 if status == "submitted":
                     m, child = self.pending.popleft()
@@ -1083,6 +1206,7 @@ class Behaviour(ContextEngine):
                     child.deadline = None
             elif dirty.kind == "timer":
                 timers.append(payload)
+                self.timer_causes[id(payload)] = dirty.cause
                 if "deadline" in payload and payload["instance"] in self.instances:
                     instance = self.instances[payload["instance"]]
                     if payload["deadline"] == "instance":
@@ -1097,6 +1221,7 @@ class Behaviour(ContextEngine):
         self.affected_contexts = self.evaluator.affected(ctx)
         fresh: set[str] = set()
         for context in sorted(self.affected_contexts):
+            ctx.inputs = []
             predicate_id, definition, roles, dialect = self.evaluator.contexts[context]
             indexed_previous = self.evaluator.truths[context]
             truth = self.evaluator.run(
@@ -1111,6 +1236,7 @@ class Behaviour(ContextEngine):
                 for roles, _ in tuples(
                     ctx, self.build.registry, rule["roles"], rule.get("match", {})
                 ):
+                    ctx.inputs = self._role_causes(ctx, roles)
                     predicate = rule["predicate"]
                     context = stable_id(
                         [
@@ -1194,11 +1320,21 @@ class Behaviour(ContextEngine):
                             topic=rule.get("topic", rule["emits"]),
                         )
         candidates: list[
-            tuple[int, str, str, int, Instance, dict[str, Any], dict[str, Any]]
+            tuple[
+                int,
+                str,
+                str,
+                int,
+                Instance,
+                dict[str, Any],
+                dict[str, Any],
+                list[Cause],
+            ]
         ] = []
         for m in sorted(
             self.instances.values(), key=lambda m: (m.binding["id"], m.ref.id)
         ):
+            ctx.inputs = self._role_causes(ctx, m.roles)
             if not m.published:
                 life = ctx.view._store.lives.get(m.ref)
                 if life is None or life.created.index > ctx.view.cut.index:
@@ -1296,9 +1432,69 @@ class Behaviour(ContextEngine):
                             m,
                             transition,
                             trigger,
+                            list(ctx._causes()),
                         )
                     )
             m.continued = None
+        selected: dict[tuple[object, ...], tuple[Any, str]] = {}
+        candidate_groups: dict[str, tuple[object, ...]] = {}
+        for candidate in candidates:
+            m, transition = candidate[4], candidate[5]
+            selection = m.binding.get("selection")
+            if selection is None or transition["from"] != m.chain["initial"]:
+                continue
+            group = (
+                m.digest,
+                m.binding["id"],
+                *(m.roles[role] for role in selection["group_roles"]),
+            )
+            rank_ref = m.roles[selection["role"]]
+            rank = ctx.get(rank_ref, selection["field"])
+            if isinstance(rank, Absent):
+                # Missing ranks never win by becoming zero. The guard/join may
+                # become eligible later when the declared producer commits it.
+                ctx.inputs = candidate[7]
+                m.status, m.continued = "waiting_inputs", "activated"
+                m.required_inputs = [
+                    {
+                        "selection": True,
+                        "entity": {"$ref": rank_ref.to_data()},
+                        "field": selection["field"],
+                        "producer": ctx.view._store.writers.get(
+                            (rank_ref, selection["field"])
+                        ),
+                        "reason": "awaiting actual committed ranking fact",
+                    }
+                ]
+                m.revision += 1
+                self._record(ctx, m, "transitioned")
+                candidate_groups[m.ref.id] = group
+                continue
+            rank_fact = ctx.view.field((rank_ref, selection["field"]), ctx.now)
+            assert isinstance(rank_fact, Fact)
+            candidate[7].append(rank_fact.version)
+            number = thaw(rank)
+            if type(number) not in {float, int}:
+                raise ValueError(
+                    "binding.selection: committed ranking field is not numeric"
+                )
+            key = (
+                number,
+                tuple(
+                    (role, ref.run_id, ref.epoch, ref.id, ref.generation, ref.type_id)
+                    for role, ref in sorted(m.roles.items())
+                ),
+            )
+            candidate_groups[m.ref.id] = group
+            if group not in selected or key < selected[group][0]:
+                selected[group] = (key, m.ref.id)
+        candidates = [
+            candidate
+            for candidate in candidates
+            if candidate[4].ref.id not in candidate_groups
+            or selected.get(candidate_groups[candidate[4].ref.id], (None, None))[1]
+            == candidate[4].ref.id
+        ]
         processed: set[str] = set()
         writes: set[tuple[EntityRef, str]] = set()
         relation_edges = {
@@ -1307,9 +1503,10 @@ class Behaviour(ContextEngine):
             for edge in ctx.relations(relation)
         }
         edge_slots: set[str] = set()
-        for _, _, identity, _, m, transition, trigger in sorted(
+        for _, _, identity, _, m, transition, trigger, causes in sorted(
             candidates, key=lambda c: c[:4]
         ):
+            ctx.inputs = list(causes)
             if identity in processed:
                 continue
             processed.add(identity)
@@ -1401,7 +1598,9 @@ class Behaviour(ContextEngine):
                 "canceled",
             }:
                 policy = m.chain.get("completion_policy")
-                if policy:
+                if policy and m.state in policy.get(
+                    "terminal_states", m.chain["terminal"]
+                ):
                     requirements = policy.get("children", [])
                     receipt_matches = [
                         name in m.children
@@ -1429,6 +1628,7 @@ class Behaviour(ContextEngine):
                 ctx.ops.append(Activate(self.partition.id))
 
         for ref, fields in self.publish.items():
+            ctx.inputs = self.publish_causes[ref]
             for name, value in fields.items():
                 ctx.set(ref, PREFIX + name, value)
 

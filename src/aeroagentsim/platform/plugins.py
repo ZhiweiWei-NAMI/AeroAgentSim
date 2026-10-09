@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
 from importlib import import_module
 from importlib.metadata import entry_points
+from pathlib import Path
 from typing import Any, cast
 
 from aerokernel import BindingManifest, EntityRef, MemoryRegistry
@@ -26,6 +27,7 @@ class EngineBuild:
     initial: dict[str, dict[str, Any]]
     partitions: dict[str, Partition] = field(default_factory=dict)
     models: dict[str, MotionModel] = field(default_factory=dict)
+    run_directory: Path | None = None
 
     def writers(self, ref: EntityRef) -> dict[str, str]:
         """Resolve authored instance selectors before factories declare partitions.
@@ -68,6 +70,9 @@ class EngineBuild:
 
 Factory = Callable[[EngineBuild], Engine]
 BUILTINS = {
+    "traffic_decisions": "aeroagentsim.packs.traffic_accident.decisions",
+    "traffic_capture_bridge": "aeroagentsim.packs.traffic_accident.capture",
+    "traffic_camera_capture": "aeroagentsim.packs.traffic_accident.camera",
     "behaviour": "aeroagentsim.engines.behaviour",
     "ingress-consumer": "aeroagentsim.engines.ingress_consumer",
     "langgraph": "aeroagentsim.agents.langgraph",

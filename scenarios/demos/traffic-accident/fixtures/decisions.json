@@ -17,7 +17,7 @@
         "accept": false,
         "reason": "医疗任务不可中断",
         "action": "继续原医疗路线",
-        "alt_target_m": 70
+        "alt_target_m": 70.0
       }
     ],
     "uav_bravo": [
@@ -25,7 +25,7 @@
         "accept": true,
         "reason": "巡航任务可中断，等待实时资格核验",
         "action": "准备投标",
-        "alt_target_m": 70
+        "alt_target_m": 70.0
       }
     ],
     "edge_award": [

@@ -4,12 +4,17 @@ evaluator:
   dialect: original
   source_sha256: fd3c2ebf35824431a02f5086092543d68e45405ebfd12acc6e7bb5fbe703232d
   native_references_ref: registry.snapshot.json#/details/provenance
+  native_references:
+  - path: ${AEROAGENTSIM_AEROGRAPH_ROOT}/semantic-directory/src/original_runtime.js
+    sha256: 6e1f60e885208b333fb20d69d24b7c49e9a14aec7c8578917b0b1d30dc2a10e6
 predicates:
   traffic.p.detected:
     profile: committed_reactive/v1
     roles:
       incident: aas:TrafficIncident
       reporter: aas:TrafficRoadVehicle
+      participant_a: aas:TrafficRoadVehicle
+      participant_b: aas:TrafficRoadVehicle
     expression:
       op: and
       args:
@@ -19,14 +24,37 @@ predicates:
           role: incident
           path: []
         - literal: true
-      - op: gte
+      - op: eq
         args:
-        - field: traffic.road.progress_m
+        - field: traffic.road.speed_mps
+          role: participant_a
+          path: []
+        - literal: 0.0
+      - op: eq
+        args:
+        - field: traffic.road.speed_mps
+          role: participant_b
+          path: []
+        - literal: 0.0
+      - op: eq
+        args:
+        - field: traffic.road.speed_mps
           role: reporter
           path: []
-        - parameter: detect_progress_m
+        - literal: 0.0
+      - op: lte
+        args:
+        - op: distance
+          args:
+          - field: traffic.road.position_enu_m
+            role: reporter
+            path: []
+          - field: traffic.road.position_enu_m
+            role: participant_a
+            path: []
+        - parameter: detect_radius_m
     parameters:
-      detect_progress_m: 83.95
+      detect_radius_m: 20.0
   traffic.p.gap_clear:
     profile: committed_reactive/v1
     roles:
@@ -128,11 +156,11 @@ predicates:
     parameters: {}
   traffic.p.arrived:
     profile: aerograph_sampled/v1
-    roles: &id001
+    roles:
       pose: aas:TrafficUAV
       velocity: aas:TrafficUAV
       task: aas:TrafficTask
-    expression: &id002
+    expression:
       op: and
       args:
       - op: lte
@@ -148,27 +176,54 @@ predicates:
         - parameter: arrival_radius_m
       - op: lte
         args:
-        - op: vector_norm
+        - op: norm
           args:
           - field: traffic.uav.velocity_enu_mps
             role: velocity
             path: []
         - parameter: stopped_speed_mps
-    parameters: &id003
+    parameters:
       arrival_radius_m: 1.5
       stopped_speed_mps: 0.5
       dwell_ns: 3000000000
       max_sample_gap_ns: 133333334
   traffic.p.dwell_ready:
     profile: aerograph_sampled/v1
-    roles: *id001
+    roles:
+      pose: aas:TrafficUAV
+      velocity: aas:TrafficUAV
+      task: aas:TrafficTask
     expression:
       op: hold
       args:
-      - *id002
+      - op: and
+        args:
+        - op: lte
+          args:
+          - op: distance
+            args:
+            - field: he.aircraft.position_enu_m
+              role: pose
+              path: []
+            - field: traffic.task.target_enu_m
+              role: task
+              path: []
+          - parameter: arrival_radius_m
+        - op: lte
+          args:
+          - op: norm
+            args:
+            - field: traffic.uav.velocity_enu_mps
+              role: velocity
+              path: []
+          - parameter: stopped_speed_mps
       - parameter: dwell_ns
       - parameter: max_sample_gap_ns
-    parameters: *id003
+    parameters:
+      arrival_radius_m: 1.5
+      stopped_speed_mps: 0.5
+      dwell_ns: 3000000000
+      max_sample_gap_ns: 2000000000
   traffic.p.capture_accepted:
     profile: committed_reactive/v1
     roles:
@@ -250,3 +305,42 @@ predicates:
           role: vehicle
           path: []
       - literal: 0
+  traffic.p.bids_joined:
+    profile: committed_reactive/v1
+    roles:
+      alpha_bid: aas:TrafficBid
+      bravo_bid: aas:TrafficBid
+    expression:
+      op: and
+      args:
+      - op: in
+        args:
+        - field: traffic.bid.decision_status
+          role: alpha_bid
+          path: []
+        - literal:
+          - succeeded
+          - failed
+          - deadline
+      - op: in
+        args:
+        - field: traffic.bid.decision_status
+          role: bravo_bid
+          path: []
+        - literal:
+          - succeeded
+          - failed
+          - deadline
+    parameters: {}
+  traffic.p.selecting:
+    profile: committed_reactive/v1
+    roles:
+      coordinator: aas:TrafficCoordinator
+    expression:
+      op: eq
+      args:
+      - field: traffic.edge.phase
+        role: coordinator
+        path: []
+      - literal: selecting
+    parameters: {}

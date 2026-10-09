@@ -836,7 +836,8 @@ registry:
       writer_contract: behaviour
   - id: traffic.capture.request_id
     type: aas:TrafficCapture
-    schema: *id003
+    schema: &id008
+      type: string
     metadata:
       role: observation
       unit: '1'
@@ -847,9 +848,8 @@ registry:
       writer_contract: capture
   - id: traffic.capture.actor
     type: aas:TrafficCapture
-    schema:
+    schema: &id011
       type: ref
-      target_type: aas:TrafficUAV
     metadata:
       role: observation
       unit: '1'
@@ -873,7 +873,19 @@ registry:
       writer_contract: capture
   - id: traffic.capture.source_cut
     type: aas:TrafficCapture
-    schema: *id006
+    schema: &id012
+      type: record
+      members:
+        index: &id007
+          type: integer
+        instant:
+          type: vector
+          length: 2
+          items: *id007
+      required:
+      - index
+      - instant
+      extra: false
     metadata:
       role: observation
       unit: '1'
@@ -884,14 +896,18 @@ registry:
       writer_contract: capture
   - id: traffic.capture.acquired_at
     type: aas:TrafficCapture
-    schema:
+    schema: &id013
       type: record
       members:
-        ns: *id006
-        microstep: *id006
+        clock_id: *id008
+        numerator: *id007
+        denominator: *id007
+        mapping_id: *id008
       required:
-      - ns
-      - microstep
+      - clock_id
+      - numerator
+      - denominator
+      - mapping_id
       extra: false
     metadata:
       role: observation
@@ -903,7 +919,7 @@ registry:
       writer_contract: capture
   - id: traffic.capture.camera_digest
     type: aas:TrafficCapture
-    schema: *id003
+    schema: *id008
     metadata:
       role: observation
       unit: '1'
@@ -914,7 +930,7 @@ registry:
       writer_contract: capture
   - id: traffic.capture.asset_digest
     type: aas:TrafficCapture
-    schema: *id003
+    schema: *id008
     metadata:
       role: observation
       unit: '1'
@@ -925,7 +941,7 @@ registry:
       writer_contract: capture
   - id: traffic.capture.byte_count
     type: aas:TrafficCapture
-    schema: *id006
+    schema: *id007
     metadata:
       role: observation
       unit: '1'
@@ -936,7 +952,7 @@ registry:
       writer_contract: capture
   - id: traffic.capture.png_sha256
     type: aas:TrafficCapture
-    schema: *id003
+    schema: *id008
     metadata:
       role: observation
       unit: '1'
@@ -947,7 +963,7 @@ registry:
       writer_contract: capture
   - id: traffic.capture.storage_status
     type: aas:TrafficCapture
-    schema: *id003
+    schema: *id008
     metadata:
       role: observation
       unit: '1'
@@ -1110,6 +1126,17 @@ registry:
       provenance: docs/platform/demo-traffic-accident.md §3; Task B
       time_semantics: canonical computation; explicit half-open validity
       writer_contract: capture
+  - id: traffic.capture.renderer_mode
+    type: aas:TrafficCapture
+    schema: *id008
+    metadata:
+      role: observation
+      unit: '1'
+      reviewStatus: proposed
+      integrationDisposition: scenario_local_proposal
+      provenance: docs/platform/demo-traffic-accident.md §3; Task B
+      time_semantics: canonical computation; explicit half-open validity
+      writer_contract: capture
   relations:
   - id: traffic.task-assignee
     source_type: aas:TrafficTask
@@ -1237,6 +1264,20 @@ registry:
       reviewStatus: proposed
       integrationDisposition: scenario_local_proposal
       provenance: demo design §3
+  - id: traffic.bid-actor
+    source_type: aas:TrafficBid
+    target_type: aas:TrafficUAV
+    targets_per_source:
+      minimum: 0
+      maximum: 1
+    sources_per_target:
+      minimum: 0
+      maximum: null
+    identity_policy: edge_id
+    metadata:
+      reviewStatus: proposed
+      integrationDisposition: scenario_local_proposal
+      provenance: demo design §3
   messages:
   - id: traffic.road.follow
     kind: command
@@ -1246,16 +1287,11 @@ registry:
         actor:
           type: ref
           target_type: aas:TrafficRoadVehicle
-        route_id:
-          type: string
-        progress_m:
-          type: number
-        stop_progress_m:
-          type: number
-        speed_mps:
-          type: number
-        loop:
-          type: boolean
+        route_id: *id003
+        progress_m: *id002
+        stop_progress_m: *id002
+        speed_mps: *id002
+        loop: *id005
       required:
       - actor
       - route_id
@@ -1264,20 +1300,14 @@ registry:
       - speed_mps
       - loop
       extra: false
-    result_schema:
+    result_schema: &id009
       type: record
       members:
-        position:
-          type: vector
-          length: 3
-          items:
-            type: number
-        reason:
-          type: string
+        position: *id001
+        reason: *id003
         blocked_by:
           type: array
-          items:
-            type: string
+          items: *id003
       required: []
       extra: false
     cancel_support: false
@@ -1289,16 +1319,11 @@ registry:
         actor:
           type: ref
           target_type: aas:TrafficRoadVehicle
-        route_id:
-          type: string
-        progress_m:
-          type: number
-        stop_progress_m:
-          type: number
-        speed_mps:
-          type: number
-        loop:
-          type: boolean
+        route_id: *id003
+        progress_m: *id002
+        stop_progress_m: *id002
+        speed_mps: *id002
+        loop: *id005
       required:
       - actor
       - route_id
@@ -1307,22 +1332,7 @@ registry:
       - speed_mps
       - loop
       extra: false
-    result_schema:
-      type: record
-      members:
-        position:
-          type: vector
-          length: 3
-          items:
-            type: number
-        reason:
-          type: string
-        blocked_by:
-          type: array
-          items:
-            type: string
-      required: []
-      extra: false
+    result_schema: *id009
     cancel_support: false
   - id: traffic.road.stop
     kind: command
@@ -1335,22 +1345,7 @@ registry:
       required:
       - actor
       extra: false
-    result_schema:
-      type: record
-      members:
-        position:
-          type: vector
-          length: 3
-          items:
-            type: number
-        reason:
-          type: string
-        blocked_by:
-          type: array
-          items:
-            type: string
-      required: []
-      extra: false
+    result_schema: *id009
     cancel_support: false
   - id: traffic.air.move_to
     kind: command
@@ -1360,11 +1355,7 @@ registry:
         entity:
           type: ref
           target_type: aas:TrafficUAV
-        target:
-          type: vector
-          length: 3
-          items:
-            type: number
+        target: *id001
       required:
       - entity
       - target
@@ -1372,15 +1363,9 @@ registry:
     result_schema:
       type: record
       members:
-        entity:
-          type: string
-        position:
-          type: vector
-          length: 3
-          items:
-            type: number
-        reason:
-          type: string
+        entity: *id003
+        position: *id001
+        reason: *id003
       required: []
       extra: false
     feedback_schema:
@@ -1403,15 +1388,9 @@ registry:
     result_schema:
       type: record
       members:
-        entity:
-          type: string
-        position:
-          type: vector
-          length: 3
-          items:
-            type: number
-        reason:
-          type: string
+        entity: *id003
+        position: *id001
+        reason: *id003
       required: []
       extra: false
     feedback_schema:
@@ -1434,15 +1413,9 @@ registry:
     result_schema:
       type: record
       members:
-        entity:
-          type: string
-        position:
-          type: vector
-          length: 3
-          items:
-            type: number
-        reason:
-          type: string
+        entity: *id003
+        position: *id001
+        reason: *id003
       required: []
       extra: false
     feedback_schema:
@@ -1456,13 +1429,8 @@ registry:
     schema:
       type: record
       members:
-        entity:
-          type: string
-        position:
-          type: vector
-          length: 3
-          items:
-            type: number
+        entity: *id003
+        position: *id001
       required:
       - entity
       - position
@@ -1478,13 +1446,9 @@ registry:
         actor:
           type: ref
           target_type: oo:Vehicle
-        request_id:
-          type: string
-        source_cut:
-          type: integer
-          minimum: 0
-        reason:
-          type: string
+        request_id: *id003
+        source_cut: *id006
+        reason: *id003
       required: []
       extra: false
   - id: traffic.incident.detected
@@ -1498,13 +1462,9 @@ registry:
         actor:
           type: ref
           target_type: oo:Vehicle
-        request_id:
-          type: string
-        source_cut:
-          type: integer
-          minimum: 0
-        reason:
-          type: string
+        request_id: *id003
+        source_cut: *id006
+        reason: *id003
       required: []
       extra: false
   - id: traffic.road.blocked
@@ -1518,13 +1478,9 @@ registry:
         actor:
           type: ref
           target_type: oo:Vehicle
-        request_id:
-          type: string
-        source_cut:
-          type: integer
-          minimum: 0
-        reason:
-          type: string
+        request_id: *id003
+        source_cut: *id006
+        reason: *id003
       required: []
       extra: false
   - id: traffic.road.cleared
@@ -1538,13 +1494,9 @@ registry:
         actor:
           type: ref
           target_type: oo:Vehicle
-        request_id:
-          type: string
-        source_cut:
-          type: integer
-          minimum: 0
-        reason:
-          type: string
+        request_id: *id003
+        source_cut: *id006
+        reason: *id003
       required: []
       extra: false
   - id: traffic.report.sent
@@ -1561,7 +1513,7 @@ registry:
         report:
           type: ref
           target_type: aas:TrafficReport
-        reason:
+        reason: &id010
           type: string
           min_length: 1
       required:
@@ -1580,13 +1532,9 @@ registry:
         actor:
           type: ref
           target_type: oo:Vehicle
-        request_id:
-          type: string
-        source_cut:
-          type: integer
-          minimum: 0
-        reason:
-          type: string
+        request_id: *id003
+        source_cut: *id006
+        reason: *id003
       required: []
       extra: false
   - id: traffic.bid.joined
@@ -1600,9 +1548,7 @@ registry:
         bid:
           type: ref
           target_type: aas:TrafficBid
-        reason:
-          type: string
-          min_length: 1
+        reason: *id010
       required:
       - actor
       extra: false
@@ -1614,15 +1560,9 @@ registry:
         actor:
           type: ref
           target_type: aas:TrafficUAV
-        winner_id:
-          type: string
-          min_length: 1
-        reason:
-          type: string
-          min_length: 1
-        action:
-          type: string
-          min_length: 1
+        winner_id: *id010
+        reason: *id010
+        action: *id010
       required: []
       extra: false
   - id: traffic.award.committed
@@ -1636,13 +1576,9 @@ registry:
         actor:
           type: ref
           target_type: oo:Vehicle
-        request_id:
-          type: string
-        source_cut:
-          type: integer
-          minimum: 0
-        reason:
-          type: string
+        request_id: *id003
+        source_cut: *id006
+        reason: *id003
       required: []
       extra: false
   - id: traffic.award.conflict
@@ -1656,13 +1592,9 @@ registry:
         actor:
           type: ref
           target_type: oo:Vehicle
-        request_id:
-          type: string
-        source_cut:
-          type: integer
-          minimum: 0
-        reason:
-          type: string
+        request_id: *id003
+        source_cut: *id006
+        reason: *id003
       required: []
       extra: false
   - id: traffic.decision.failed
@@ -1676,13 +1608,9 @@ registry:
         actor:
           type: ref
           target_type: oo:Vehicle
-        request_id:
-          type: string
-        source_cut:
-          type: integer
-          minimum: 0
-        reason:
-          type: string
+        request_id: *id003
+        source_cut: *id006
+        reason: *id003
       required: []
       extra: false
   - id: traffic.capture.requested
@@ -1696,21 +1624,15 @@ registry:
         incident:
           type: ref
           target_type: aas:TrafficIncident
-        request_id:
-          type: string
-          min_length: 1
+        request_id: *id010
         source_cut:
           type: integer
           minimum: 0
-        reason:
-          type: string
-          min_length: 1
+        reason: *id010
         capture:
           type: ref
           target_type: aas:TrafficCapture
-        png_sha256:
-          type: string
-          min_length: 1
+        png_sha256: *id010
       required:
       - actor
       - request_id
@@ -1726,21 +1648,15 @@ registry:
         incident:
           type: ref
           target_type: aas:TrafficIncident
-        request_id:
-          type: string
-          min_length: 1
+        request_id: *id010
         source_cut:
           type: integer
           minimum: 0
-        reason:
-          type: string
-          min_length: 1
+        reason: *id010
         capture:
           type: ref
           target_type: aas:TrafficCapture
-        png_sha256:
-          type: string
-          min_length: 1
+        png_sha256: *id010
       required:
       - actor
       - request_id
@@ -1756,21 +1672,15 @@ registry:
         incident:
           type: ref
           target_type: aas:TrafficIncident
-        request_id:
-          type: string
-          min_length: 1
+        request_id: *id010
         source_cut:
           type: integer
           minimum: 0
-        reason:
-          type: string
-          min_length: 1
+        reason: *id010
         capture:
           type: ref
           target_type: aas:TrafficCapture
-        png_sha256:
-          type: string
-          min_length: 1
+        png_sha256: *id010
       required:
       - actor
       - request_id
@@ -1786,21 +1696,15 @@ registry:
         incident:
           type: ref
           target_type: aas:TrafficIncident
-        request_id:
-          type: string
-          min_length: 1
+        request_id: *id010
         source_cut:
           type: integer
           minimum: 0
-        reason:
-          type: string
-          min_length: 1
+        reason: *id010
         capture:
           type: ref
           target_type: aas:TrafficCapture
-        png_sha256:
-          type: string
-          min_length: 1
+        png_sha256: *id010
       required:
       - actor
       - request_id
@@ -1816,13 +1720,9 @@ registry:
         actor:
           type: ref
           target_type: oo:Vehicle
-        request_id:
-          type: string
-        source_cut:
-          type: integer
-          minimum: 0
-        reason:
-          type: string
+        request_id: *id003
+        source_cut: *id006
+        reason: *id003
       required: []
       extra: false
   - id: traffic.inject.wind
@@ -1836,13 +1736,9 @@ registry:
         actor:
           type: ref
           target_type: oo:Vehicle
-        request_id:
-          type: string
-        source_cut:
-          type: integer
-          minimum: 0
-        reason:
-          type: string
+        request_id: *id003
+        source_cut: *id006
+        reason: *id003
       required: []
       extra: false
   - id: traffic.inject.pause-test
@@ -1856,13 +1752,9 @@ registry:
         actor:
           type: ref
           target_type: oo:Vehicle
-        request_id:
-          type: string
-        source_cut:
-          type: integer
-          minimum: 0
-        reason:
-          type: string
+        request_id: *id003
+        source_cut: *id006
+        reason: *id003
       required: []
       extra: false
   - id: traffic.command.inject.accident
@@ -1878,8 +1770,7 @@ registry:
     result_schema:
       type: record
       members:
-        reason:
-          type: string
+        reason: *id003
       required: []
       extra: false
     cancel_support: false
@@ -1896,8 +1787,7 @@ registry:
     result_schema:
       type: record
       members:
-        reason:
-          type: string
+        reason: *id003
       required: []
       extra: false
     cancel_support: false
@@ -1914,8 +1804,7 @@ registry:
     result_schema:
       type: record
       members:
-        reason:
-          type: string
+        reason: *id003
       required: []
       extra: false
     cancel_support: false
@@ -1927,9 +1816,7 @@ registry:
         route:
           type: ref
           target_type: aas:TrafficRoute
-        index:
-          type: integer
-          minimum: 0
+        index: *id006
       required:
       - route
       - index
@@ -1937,16 +1824,9 @@ registry:
     result_schema:
       type: record
       members:
-        target:
-          type: vector
-          length: 3
-          items:
-            type: number
-        next_index:
-          type: integer
-          minimum: 0
-        reason:
-          type: string
+        target: *id001
+        next_index: *id006
+        reason: *id003
       required: []
       extra: false
     cancel_support: false
@@ -1965,12 +1845,8 @@ registry:
           type: string
           enum:
           - report
-        reason:
-          type: string
-          min_length: 1
-        action:
-          type: string
-          min_length: 1
+        reason: *id010
+        action: *id010
         departure:
           type: string
           enum:
@@ -1979,9 +1855,7 @@ registry:
           type: string
           enum:
           - adjacent_lane_bypass
-        route_reason:
-          type: string
-          min_length: 1
+        route_reason: *id010
       required:
       - actor
       - incident
@@ -2005,12 +1879,8 @@ registry:
           target_type: aas:TrafficTask
         accept:
           type: boolean
-        reason:
-          type: string
-          min_length: 1
-        action:
-          type: string
-          min_length: 1
+        reason: *id010
+        action: *id010
         alt_target_m:
           type: number
           enum: [70.0]
@@ -2041,12 +1911,8 @@ registry:
         actor:
           type: ref
           target_type: aas:TrafficUAV
-        reason:
-          type: string
-          min_length: 1
-        action:
-          type: string
-          min_length: 1
+        reason: *id010
+        action: *id010
         input_cut:
           type: integer
           minimum: 0
@@ -2082,15 +1948,118 @@ registry:
       required: []
       extra: false
     cancel_support: false
-  field_metadata:
-    he.aircraft.position_enu_m:
-      frame: enu
-      transform_revision: traffic.local/v1
+  - id: traffic.road.occupancy_evaluated
+    kind: event
+    schema:
+      type: record
+      members:
+        at_ns:
+          type: integer
+        source_cut:
+          type: integer
+        actors:
+          type: array
+          items:
+            type: ref
+            target_type: aas:TrafficRoadVehicle
+      required:
+      - at_ns
+      - source_cut
+      - actors
+      extra: false
+  - id: traffic.capture.render
+    kind: command
+    schema:
+      type: record
+      members:
+        request_id: *id008
+        run_id: *id008
+        actor: *id011
+        source_cut: *id012
+        camera:
+          type: record
+          members: {}
+          required: []
+          extra: true
+        asset_digest: *id008
+        acquired: *id013
+        width: *id007
+        height: *id007
+        timeout_s:
+          type: number
+      required:
+      - request_id
+      - run_id
+      - actor
+      - source_cut
+      - camera
+      - asset_digest
+      - acquired
+      - width
+      - height
+      - timeout_s
+      extra: false
+    result_schema:
+      type: record
+      members:
+        contract: *id008
+        status: *id008
+        request_id: *id008
+        reason: *id008
+        record:
+          type: record
+          members: {}
+          required: []
+          extra: true
+      required:
+      - contract
+      - status
+      - request_id
+      extra: false
+  - id: traffic.capture.upload
+    kind: command
+    schema:
+      type: record
+      members:
+        request_id: *id008
+        digest: *id008
+      required:
+      - request_id
+      - digest
+      extra: false
+    result_schema:
+      type: record
+      members:
+        status: *id008
+        digest: *id008
+        reason: *id008
+      required:
+      - status
+      extra: false
+  - id: traffic.capture.upload_verified
+    kind: event
+    schema:
+      type: record
+      members:
+        request_id: *id008
+        actor: *id011
+        source_cut: *id012
+        digest: *id008
+        byte_count: *id007
+        record: *id011
+      required:
+      - request_id
+      - actor
+      - source_cut
+      - digest
+      - byte_count
+      - record
+      extra: false
 entities:
 - id: route.vehicle.001
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id007 [[-452.2472, -370.3729, 0.0], [-452.9945, -370.6168, 0.0], [-464.7315, -374.5526, 0.0], [-485.4986, -381.7473,
+    traffic.route.points_enu_m: &source_id007 [[-452.2472, -370.3729, 0.0], [-452.9945, -370.6168, 0.0], [-464.7315, -374.5526, 0.0], [-485.4986, -381.7473,
         0.0], [-486.3669, -382.893, 0.0], [-486.483, -383.7798, 0.0], [-485.8432, -384.4048, 0.0], [-484.4475, -384.768, 0.0], [-463.6878, -377.5793,
         0.0], [-451.9983, -373.6559, 0.0], [-451.2546, -373.415, 0.0], [-442.1942, -370.3511, 0.0], [-420.3539, -362.6834, 0.0], [-413.2177, -360.3988,
         0.0], [-406.5648, -358.4616, 0.0], [-405.1019, -357.4568, 0.0], [-404.4699, -355.5428, 0.0], [-404.6653, -352.7168, 0.0], [-405.6884,
@@ -2123,13 +2092,13 @@ entities:
         0.0], [-419.3184, -357.4393, 0.0], [-420.0317, -358.8052, 0.0], [-421.4108, -359.6613, 0.0], [-443.2579, -367.3347, 0.0], [-452.2437,
         -370.37, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id027 []
+    traffic.route.native_edges: &source_id027 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.002
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id008 [[-420.5194, -320.6128, 0.0], [-442.4002, -258.4322, 0.0], [-454.1698, -227.2957, 0.0], [-459.2607, -213.8202,
+    traffic.route.points_enu_m: &source_id008 [[-420.5194, -320.6128, 0.0], [-442.4002, -258.4322, 0.0], [-454.1698, -227.2957, 0.0], [-459.2607, -213.8202,
         0.0], [-486.9861, -140.5234, 0.0], [-488.4258, -137.4138, 0.0], [-489.9747, -135.4424, 0.0], [-491.6292, -134.6082, 0.0], [-493.3891,
         -134.9112, 0.0], [-495.5547, -135.9516, 0.0], [-496.6472, -136.9023, 0.0], [-497.1342, -138.4106, 0.0], [-497.012, -140.4754, 0.0], [
         -496.2804, -143.0966, 0.0], [-486.2434, -171.1926, 0.0], [-486.1384, -171.4736, 0.0], [-468.8259, -219.7022, 0.0], [-463.9485, -233.2752,
@@ -2174,13 +2143,13 @@ entities:
         0.0], [-405.1019, -357.4568, 0.0], [-404.4699, -355.5428, 0.0], [-404.6653, -352.7168, 0.0], [-405.6884, -348.9789, 0.0], [-413.3684,
         -326.5737, 0.0], [-414.9017, -324.3995, 0.0], [-416.927, -323.586, 0.0], [-418.9591, -322.7748, 0.0], [-420.5161, -320.6103, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id028 []
+    traffic.route.native_edges: &source_id028 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.003
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id009 [[-358.9815, 84.3037, 0.0], [-312.9093, 112.8461, 0.0], [-304.4827, 118.0326, 0.0], [-243.7353, 155.1204,
+    traffic.route.points_enu_m: &source_id009 [[-358.9815, 84.3037, 0.0], [-312.9093, 112.8461, 0.0], [-304.4827, 118.0326, 0.0], [-243.7353, 155.1204,
         0.0], [-242.201, 155.6441, 0.0], [-240.6922, 155.3334, 0.0], [-239.2071, 154.1869, 0.0], [-237.7457, 152.2048, 0.0], [-206.4425, 100.3765,
         0.0], [-195.4767, 81.8492, 0.0], [-167.541, 30.5292, 0.0], [-166.97, 27.5821, 0.0], [-167.6686, 23.1646, 0.0], [-169.6355, 17.2763, 0.0],
       [-172.8707, 9.9175, 0.0], [-197.3135, -41.2112, 0.0], [-198.5629, -43.8552, 0.0], [-199.4324, -45.6595, 0.0], [-200.3731, -47.4259, 0.0],
@@ -2252,13 +2221,13 @@ entities:
         157.8505, 0.0], [-306.1526, 120.7649, 0.0], [-314.5921, 115.5655, 0.0], [-360.6668, 87.0239, 0.0], [-361.2627, 85.7112, 0.0], [-361.1815,
         84.8205, 0.0], [-360.4201, 84.3511, 0.0], [-358.9787, 84.303, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id029 []
+    traffic.route.native_edges: &source_id029 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.004
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id010 [[-400.62, 133.1405, 0.0], [-400.7356, 133.3038, 0.0], [-403.1619, 136.7954, 0.0], [-410.5568, 147.5419,
+    traffic.route.points_enu_m: &source_id010 [[-400.62, 133.1405, 0.0], [-400.7356, 133.3038, 0.0], [-403.1619, 136.7954, 0.0], [-410.5568, 147.5419,
         0.0], [-413.4112, 151.6635, 0.0], [-420.9883, 162.5166, 0.0], [-423.27, 165.8021, 0.0], [-430.4693, 176.1953, 0.0], [-431.6102, 178.488,
         0.0], [-431.7084, 180.5544, 0.0], [-431.5505, 180.8606, 0.0], [-430.7603, 182.3931, 0.0], [-428.766, 184.0041, 0.0], [-380.4753, 212.7267,
         0.0], [-372.5565, 217.3227, 0.0], [-307.4212, 253.8342, 0.0], [-305.1943, 254.6986, 0.0], [-303.1996, 254.6752, 0.0], [-301.4348, 253.7622,
@@ -2332,13 +2301,13 @@ entities:
         85.8228, 0.0], [-367.3098, 86.6888, 0.0], [-369.0835, 88.5321, 0.0], [-379.5387, 103.1877, 0.0], [-382.4197, 107.2622, 0.0], [-389.7591,
         117.7047, 0.0], [-392.6327, 121.7978, 0.0], [-395.6182, 126.0433, 0.0], [-400.6169, 133.1395, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id030 []
+    traffic.route.native_edges: &source_id030 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.005
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id011 [[-218.2176, -405.1579, 0.0], [-209.5859, -434.3233, 0.0], [-208.4767, -435.2435, 0.0], [-207.596, -435.4001,
+    traffic.route.points_enu_m: &source_id011 [[-218.2176, -405.1579, 0.0], [-209.5859, -434.3233, 0.0], [-208.4767, -435.2435, 0.0], [-207.596, -435.4001,
         0.0], [-206.9425, -434.7895, 0.0], [-206.5159, -433.4118, 0.0], [-215.1492, -404.2498, 0.0], [-215.1874, -404.1009, 0.0], [-223.5984,
         -370.7354, 0.0], [-224.898, -365.7945, 0.0], [-230.3805, -345.9195, 0.0], [-233.199, -336.3166, 0.0], [-233.5703, -335.048, 0.0], [-233.8093,
         -334.1763, 0.0], [-234.0011, -333.2936, 0.0], [-234.2323, -331.9948, 0.0], [-238.1047, -309.2941, 0.0], [-239.9732, -295.305, 0.0], [
@@ -2477,13 +2446,13 @@ entities:
         -334.8976, 0.0], [-236.6717, -335.8428, 0.0], [-236.2677, -337.2152, 0.0], [-233.4584, -346.7955, 0.0], [-227.9847, -366.648, 0.0], [
         -226.6996, -371.5144, 0.0], [-218.2921, -404.8861, 0.0], [-218.2159, -405.1547, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id031 []
+    traffic.route.native_edges: &source_id031 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.006
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id026 [[-214.6442, -71.6448, 0.0], [-221.0962, -82.5843, 0.0], [-228.9484, -95.8889, 0.0], [-250.3389, -141.7224,
+    traffic.route.points_enu_m: &source_id026 [[-214.6442, -71.6448, 0.0], [-221.0962, -82.5843, 0.0], [-228.9484, -95.8889, 0.0], [-250.3389, -141.7224,
         0.0], [-256.1247, -175.4833, 0.0], [-255.6037, -183.2948, 0.0], [-254.7983, -194.0759, 0.0], [-245.4262, -272.8963, 0.0], [-244.4882,
         -273.9913, 0.0], [-243.6466, -274.294, 0.0], [-242.8995, -273.8023, 0.0], [-242.2468, -272.5163, 0.0], [-251.6227, -193.6995, 0.0], [
         -252.4088, -183.0805, 0.0], [-252.9065, -175.6494, 0.0], [-247.2574, -142.6864, 0.0], [-226.1141, -97.3823, 0.0], [-218.3403, -84.2106,
@@ -2555,13 +2524,13 @@ entities:
         0.0], [-172.8707, 9.9175, 0.0], [-197.3135, -41.2112, 0.0], [-198.5629, -43.8552, 0.0], [-199.4324, -45.6595, 0.0], [-200.3731, -47.4259,
         0.0], [-201.8377, -49.9563, 0.0], [-212.0955, -67.3261, 0.0], [-214.6425, -71.6442, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id032 []
+    traffic.route.native_edges: &source_id032 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.007
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id012 [[-201.8393, -49.9567, 0.0], [-212.0955, -67.3261, 0.0], [-212.0151, -68.7657, 0.0], [-211.5296, -69.5169,
+    traffic.route.points_enu_m: &source_id012 [[-201.8393, -49.9567, 0.0], [-212.0955, -67.3261, 0.0], [-212.0151, -68.7657, 0.0], [-211.5296, -69.5169,
         0.0], [-210.6373, -69.5792, 0.0], [-209.3383, -68.9527, 0.0], [-199.0839, -51.5837, 0.0], [-197.5853, -48.9963, 0.0], [-196.6089, -47.1643,
         0.0], [-195.7049, -45.2937, 0.0], [-194.4249, -42.591, 0.0], [-169.9849, 8.5374, 0.0], [-167.1913, 13.653, 0.0], [-162.8514, 20.7352,
         0.0], [-158.1681, 27.5369, 0.0], [-154.345, 31.8109, 0.0], [-148.0683, 36.5563, 0.0], [-121.8133, 63.9358, 0.0], [-121.7139, 64.0362,
@@ -2612,13 +2581,13 @@ entities:
         9.9175, 0.0], [-197.3135, -41.2112, 0.0], [-198.5629, -43.8552, 0.0], [-199.4324, -45.6595, 0.0], [-200.3731, -47.4259, 0.0], [-201.8377,
         -49.9563, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id033 []
+    traffic.route.native_edges: &source_id033 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.008
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id013 [[-269.1684, 203.2298, 0.0], [-245.2608, 164.5089, 0.0], [-237.7457, 152.2048, 0.0], [-206.4425, 100.3765,
+    traffic.route.points_enu_m: &source_id013 [[-269.1684, 203.2298, 0.0], [-245.2608, 164.5089, 0.0], [-237.7457, 152.2048, 0.0], [-206.4425, 100.3765,
         0.0], [-195.4767, 81.8492, 0.0], [-167.541, 30.5292, 0.0], [-165.4581, 28.3, 0.0], [-162.5651, 27.7706, 0.0], [-159.3305, 28.7925, 0.0],
       [-158.8607, 28.9409, 0.0], [-154.345, 31.8109, 0.0], [-148.0683, 36.5563, 0.0], [-121.8133, 63.9358, 0.0], [-121.7139, 64.0362, 0.0], [
         -121.6414, 64.1005, 0.0], [-121.5609, 64.1545, 0.0], [-121.4385, 64.2243, 0.0], [-103.8092, 74.0836, 0.0], [-102.6374, 74.7505, 0.0],
@@ -2682,13 +2651,13 @@ entities:
         253.8342, 0.0], [-305.1943, 254.6986, 0.0], [-303.1996, 254.6752, 0.0], [-301.4348, 253.7622, 0.0], [-299.8997, 251.9594, 0.0], [-274.1693,
         211.2357, 0.0], [-269.1663, 203.2282, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id034 []
+    traffic.route.native_edges: &source_id034 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.009
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id014 [[-14.3593, -487.6532, 0.0], [-13.9713, -488.8962, 0.0], [-10.1571, -499.6354, 0.0], [-9.7644, -500.6049,
+    traffic.route.points_enu_m: &source_id014 [[-14.3593, -487.6532, 0.0], [-13.9713, -488.8962, 0.0], [-10.1571, -499.6354, 0.0], [-9.7644, -500.6049,
         0.0], [-8.5724, -501.413, 0.0], [-7.6808, -501.4835, 0.0], [-7.0895, -500.8125, 0.0], [-6.7984, -499.4001, 0.0], [-7.165, -498.4988, 0.0],
       [-10.9351, -487.8836, 0.0], [-11.3047, -486.6997, 0.0], [-12.4552, -481.6468, 0.0], [-12.5299, -477.317, 0.0], [-11.5286, -473.7066, 0.0],
       [-9.4514, -470.8155, 0.0], [12.9347, -449.1501, 0.0], [40.4362, -431.6461, 0.0], [56.7332, -423.1855, 0.0], [65.5316, -418.6143, 0.0], [
@@ -2842,13 +2811,13 @@ entities:
         0.0], [-11.6771, -468.5199, 0.0], [-14.3371, -472.1246, 0.0], [-15.6708, -476.5162, 0.0], [-15.6781, -481.6912, 0.0], [-14.3592, -487.6494,
         0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id035 []
+    traffic.route.native_edges: &source_id035 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.010
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id015 [[1.2659, -186.6571, 0.0], [66.6955, -166.6438, 0.0], [79.7479, -162.6524, 0.0], [100.5144, -156.3174,
+    traffic.route.points_enu_m: &source_id015 [[1.2659, -186.6571, 0.0], [66.6955, -166.6438, 0.0], [79.7479, -162.6524, 0.0], [100.5144, -156.3174,
         0.0], [112.2945, -153.0818, 0.0], [112.4901, -153.0373, 0.0], [114.2269, -153.0137, 0.0], [115.7079, -153.8222, 0.0], [116.0649, -154.3004,
         0.0], [116.9322, -155.4618, 0.0], [117.8998, -157.9325, 0.0], [139.6877, -232.8564, 0.0], [162.4241, -283.5212, 0.0], [164.7283, -287.1545,
         0.0], [167.5663, -288.9728, 0.0], [170.9368, -288.9739, 0.0], [174.8398, -287.1578, 0.0], [196.2012, -273.2008, 0.0], [224.3206, -264.4096,
@@ -2980,13 +2949,13 @@ entities:
         0.0], [15.1752, -260.2166, 0.0], [-2.4602, -193.9131, 0.0], [-2.7915, -191.3371, 0.0], [-2.2809, -189.2695, 0.0], [-2.1601, -189.1302,
         0.0], [-0.9284, -187.7091, 0.0], [1.2659, -186.6556, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id036 []
+    traffic.route.native_edges: &source_id036 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.011
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id016 [[106.3921, -145.5539, 0.0], [103.1965, -134.229, 0.0], [99.5296, -119.9502, 0.0], [96.83, -104.4527, 0.0],
+    traffic.route.points_enu_m: &source_id016 [[106.3921, -145.5539, 0.0], [103.1965, -134.229, 0.0], [99.5296, -119.9502, 0.0], [96.83, -104.4527, 0.0],
       [95.4564, -94.3752, 0.0], [93.5349, -84.1234, 0.0], [88.069, -62.0833, 0.0], [86.0756, -50.3965, 0.0], [82.9117, -33.7403, 0.0], [78.3495,
         -7.5728, 0.0], [77.358, -1.9704, 0.0], [75.7631, 6.9627, 0.0], [75.5086, 7.8845, 0.0], [74.4176, 8.8282, 0.0], [73.54, 9.0009, 0.0], [
         72.8753, 8.4024, 0.0], [72.4236, 7.0329, 0.0], [72.6391, 6.2541, 0.0], [74.2074, -2.5305, 0.0], [75.1978, -8.1265, 0.0], [79.7634, -34.3137,
@@ -3033,13 +3002,13 @@ entities:
       [-0.9284, -187.7091, 0.0], [1.2659, -186.6556, 0.0], [66.6955, -166.6438, 0.0], [79.7479, -162.6524, 0.0], [100.5144, -156.3174, 0.0], [
         103.9591, -154.7045, 0.0], [106.0872, -152.3733, 0.0], [106.8979, -149.3228, 0.0], [106.3913, -145.5528, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id037 []
+    traffic.route.native_edges: &source_id037 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.012
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id017 [[54.8946, 88.4943, 0.0], [52.0902, 135.979, 0.0], [54.3897, 163.4903, 0.0], [54.9602, 166.875, 0.0], [
+    traffic.route.points_enu_m: &source_id017 [[54.8946, 88.4943, 0.0], [52.0902, 135.979, 0.0], [54.3897, 163.4903, 0.0], [54.9602, 166.875, 0.0], [
         56.0512, 169.5952, 0.0], [57.6623, 171.6496, 0.0], [59.7935, 173.0382, 0.0], [75.7719, 180.0934, 0.0], [140.1867, 207.7017, 0.0], [150.7716,
         211.9595, 0.0], [151.8469, 212.3927, 0.0], [165.6693, 217.9594, 0.0], [165.8562, 218.0358, 0.0], [167.7647, 219.1818, 0.0], [168.9809,
         220.8083, 0.0], [169.5034, 222.9135, 0.0], [169.3321, 225.4976, 0.0], [167.0872, 237.7402, 0.0], [166.3094, 240.1095, 0.0], [165.0081,
@@ -3097,13 +3066,13 @@ entities:
       [48.0659, 167.5701, 0.0], [49.9666, 167.3565, 0.0], [51.0114, 166.085, 0.0], [51.2004, 163.7556, 0.0], [48.8823, 136.0181, 0.0], [51.7002,
         88.3057, 0.0], [52.5691, 87.1542, 0.0], [53.3913, 86.8021, 0.0], [54.1663, 87.2485, 0.0], [54.8942, 88.4936, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id038 []
+    traffic.route.native_edges: &source_id038 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.013
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id018 [[47.1409, 329.8294, 0.0], [21.8126, 316.4346, 0.0], [8.8896, 309.4012, 0.0], [-34.1692, 285.3697, 0.0],
+    traffic.route.points_enu_m: &source_id018 [[47.1409, 329.8294, 0.0], [21.8126, 316.4346, 0.0], [8.8896, 309.4012, 0.0], [-34.1692, 285.3697, 0.0],
       [-42.6854, 280.5359, 0.0], [-69.9252, 264.6933, 0.0], [-95.7041, 249.2385, 0.0], [-104.5439, 243.8861, 0.0], [-239.2489, 161.6096, 0.0],
       [-239.8541, 160.3, 0.0], [-239.7784, 159.4088, 0.0], [-239.02, 158.9346, 0.0], [-237.5789, 158.8774, 0.0], [-102.8767, 241.1572, 0.0], [
         -94.0581, 246.492, 0.0], [-68.298, 261.9379, 0.0], [-41.0767, 277.7721, 0.0], [-32.6093, 282.5733, 0.0], [10.4493, 306.6094, 0.0], [23.3084,
@@ -3119,13 +3088,13 @@ entities:
         0.0], [10.4493, 306.6094, 0.0], [23.3084, 313.6034, 0.0], [48.6369, 327.0006, 0.0], [49.3233, 328.2662, 0.0], [49.3029, 329.1604, 0.0],
       [48.5753, 329.6806, 0.0], [47.1405, 329.8268, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id039 []
+    traffic.route.native_edges: &source_id039 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.014
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id019 [[325.6971, -367.5701, 0.0], [217.1548, -392.1857, 0.0], [214.8892, -392.3791, 0.0], [212.9946, -391.858,
+    traffic.route.points_enu_m: &source_id019 [[325.6971, -367.5701, 0.0], [217.1548, -392.1857, 0.0], [214.8892, -392.3791, 0.0], [212.9946, -391.858,
         0.0], [211.4692, -390.6193, 0.0], [210.313, -388.6631, 0.0], [202.0198, -368.9006, 0.0], [195.8359, -354.1658, 0.0], [190.2334, -340.8057,
         0.0], [183.144, -323.9191, 0.0], [177.8644, -311.3439, 0.0], [172.2255, -298.0237, 0.0], [165.3424, -282.2088, 0.0], [142.6982, -231.7492,
         0.0], [120.9734, -157.0402, 0.0], [120.6159, -154.5104, 0.0], [121.1734, -152.5213, 0.0], [122.6452, -151.0719, 0.0], [125.0312, -150.162,
@@ -3232,13 +3201,13 @@ entities:
         0.0], [290.3859, -283.0902, 0.0], [307.763, -324.2474, 0.0], [327.3268, -361.1001, 0.0], [328.3063, -363.5435, 0.0], [328.362, -365.4372,
         0.0], [327.4914, -366.7784, 0.0], [325.6945, -367.5672, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id040 []
+    traffic.route.native_edges: &source_id040 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.015
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id020 [[253.4903, -166.2915, 0.0], [244.1687, -144.8041, 0.0], [242.2593, -140.9335, 0.0], [240.4268, -138.2916,
+    traffic.route.points_enu_m: &source_id020 [[253.4903, -166.2915, 0.0], [244.1687, -144.8041, 0.0], [242.2593, -140.9335, 0.0], [240.4268, -138.2916,
         0.0], [238.6691, -136.8774, 0.0], [236.9864, -136.6909, 0.0], [235.1771, -137.1623, 0.0], [233.6712, -138.1008, 0.0], [233.0606, -139.9061,
         0.0], [233.3435, -142.5771, 0.0], [234.52, -146.1139, 0.0], [234.8994, -147.0385, 0.0], [235.2771, -147.962, 0.0], [235.6547, -148.8855,
         0.0], [236.0323, -149.8089, 0.0], [236.41, -150.7324, 0.0], [236.7876, -151.6559, 0.0], [237.1652, -152.5794, 0.0], [237.5429, -153.5029,
@@ -3359,13 +3328,13 @@ entities:
       [298.959, -272.833, 0.0], [298.7527, -269.9648, 0.0], [297.3462, -266.0867, 0.0], [271.1117, -208.7815, 0.0], [267.3156, -199.772, 0.0],
       [259.645, -179.5252, 0.0], [259.5972, -179.4153, 0.0], [253.6163, -166.5717, 0.0], [253.4883, -166.2902, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id041 []
+    traffic.route.native_edges: &source_id041 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.016
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id021 [[178.9218, 92.9032, 0.0], [184.7718, 54.8845, 0.0], [198.6224, -20.6394, 0.0], [199.9113, -27.323, 0.0],
+    traffic.route.points_enu_m: &source_id021 [[178.9218, 92.9032, 0.0], [184.7718, 54.8845, 0.0], [198.6224, -20.6394, 0.0], [199.9113, -27.323, 0.0],
       [199.9583, -27.5848, 0.0], [205.54, -58.9551, 0.0], [222.4616, -121.7367, 0.0], [222.8736, -124.2101, 0.0], [222.6166, -126.0748, 0.0],
       [221.6889, -127.33, 0.0], [220.0905, -127.9755, 0.0], [169.1267, -136.9558, 0.0], [124.3294, -147.0414, 0.0], [111.7572, -149.921, 0.0],
       [111.5634, -149.9679, 0.0], [99.5799, -153.2555, 0.0], [78.8137, -159.5919, 0.0], [65.7596, -163.5837, 0.0], [0.3299, -183.5969, 0.0], [
@@ -3395,13 +3364,13 @@ entities:
         76.1619, 0.0], [57.657, 78.1541, 0.0], [57.966, 78.4294, 0.0], [59.2134, 79.5409, 0.0], [61.7125, 80.3223, 0.0], [121.7788, 90.0018, 0.0],
       [174.5462, 97.8869, 0.0], [176.1411, 97.7723, 0.0], [177.4025, 96.9038, 0.0], [178.3289, 95.2805, 0.0], [178.9204, 92.9025, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id042 []
+    traffic.route.native_edges: &source_id042 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.017
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id022 [[169.3334, 225.4994, 0.0], [167.0872, 237.7402, 0.0], [166.3094, 240.1095, 0.0], [165.0081, 241.6204,
+    traffic.route.points_enu_m: &source_id022 [[169.3334, 225.4994, 0.0], [167.0872, 237.7402, 0.0], [166.3094, 240.1095, 0.0], [165.0081, 241.6204,
         0.0], [163.1821, 242.2708, 0.0], [160.8312, 242.0608, 0.0], [160.6382, 242.0151, 0.0], [147.3248, 238.613, 0.0], [139.4104, 236.515, 0.0],
       [136.6344, 235.8287, 0.0], [134.7241, 235.3817, 0.0], [132.8565, 234.8108, 0.0], [130.2099, 233.7544, 0.0], [97.8943, 219.8974, 0.0], [
         74.8952, 207.823, 0.0], [55.726, 198.6647, 0.0], [19.0333, 183.3434, 0.0], [16.8761, 182.6681, 0.0], [15.1086, 182.6104, 0.0], [13.731,
@@ -3448,13 +3417,13 @@ entities:
       [160.155, 219.2764, 0.0], [161.4811, 217.8455, 0.0], [163.3192, 217.4065, 0.0], [165.6693, 217.9594, 0.0], [165.8562, 218.0358, 0.0], [
         167.7647, 219.1818, 0.0], [168.9809, 220.8083, 0.0], [169.5034, 222.9135, 0.0], [169.3321, 225.4976, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id043 []
+    traffic.route.native_edges: &source_id043 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.018
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id023 [[184.0293, 382.0239, 0.0], [151.692, 369.1754, 0.0], [138.2293, 364.022, 0.0], [138.0429, 363.9553, 0.0],
+    traffic.route.points_enu_m: &source_id023 [[184.0293, 382.0239, 0.0], [151.692, 369.1754, 0.0], [138.2293, 364.022, 0.0], [138.0429, 363.9553, 0.0],
       [125.773, 359.6766, 0.0], [104.6248, 352.6387, 0.0], [95.8424, 349.6017, 0.0], [77.5218, 343.1315, 0.0], [60.083, 335.8925, 0.0], [56.7337,
         334.4625, 0.0], [53.5373, 333.0161, 0.0], [50.378, 331.4907, 0.0], [47.1405, 329.8268, 0.0], [21.8126, 316.4346, 0.0], [8.8896, 309.4012,
         0.0], [-34.1692, 285.3697, 0.0], [-36.5562, 284.452, 0.0], [-38.6205, 284.5508, 0.0], [-40.3619, 285.6638, 0.0], [-41.7803, 287.7911,
@@ -3488,13 +3457,13 @@ entities:
         0.0], [126.7847, 356.6433, 0.0], [139.1564, 360.9521, 0.0], [139.3449, 361.0245, 0.0], [152.8723, 366.1987, 0.0], [185.211, 379.0501,
         0.0], [186.0293, 380.2336, 0.0], [186.1056, 381.1248, 0.0], [185.4385, 381.7205, 0.0], [184.0279, 382.0209, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id044 []
+    traffic.route.native_edges: &source_id044 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.019
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id024 [[439.2269, -331.1765, 0.0], [500.5873, -307.1632, 0.0], [501.4093, -305.9785, 0.0], [501.4903, -305.0878,
+    traffic.route.points_enu_m: &source_id024 [[439.2269, -331.1765, 0.0], [500.5873, -307.1632, 0.0], [501.4093, -305.9785, 0.0], [501.4903, -305.0878,
         0.0], [500.8263, -304.4886, 0.0], [499.4173, -304.1809, 0.0], [438.0607, -328.1966, 0.0], [433.462, -329.9648, 0.0], [349.4466, -361.7656,
         0.0], [347.6111, -362.0145, 0.0], [345.9051, -361.3341, 0.0], [344.3258, -359.7218, 0.0], [342.8734, -357.1774, 0.0], [306.9089, -279.2305,
         0.0], [300.2557, -264.7547, 0.0], [274.0212, -207.4494, 0.0], [270.3079, -198.6381, 0.0], [262.6374, -178.3913, 0.0], [262.4979, -178.0642,
@@ -3538,13 +3507,13 @@ entities:
         0.0], [339.0538, -367.9987, 0.0], [342.5421, -367.2975, 0.0], [344.9166, -366.7348, 0.0], [347.2397, -365.9925, 0.0], [350.5766, -364.7556,
         0.0], [434.598, -332.9602, 0.0], [439.2235, -331.1739, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id045 []
+    traffic.route.native_edges: &source_id045 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.020
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id025 [[499.4812, -190.3674, 0.0], [487.0843, -194.6474, 0.0], [418.9664, -221.8395, 0.0], [409.2638, -225.788,
+    traffic.route.points_enu_m: &source_id025 [[499.4812, -190.3674, 0.0], [487.0843, -194.6474, 0.0], [418.9664, -221.8395, 0.0], [409.2638, -225.788,
         0.0], [349.3881, -250.9172, 0.0], [321.1596, -264.4411, 0.0], [307.037, -269.6728, 0.0], [303.6822, -270.865, 0.0], [301.33, -271.5216,
         0.0], [298.9164, -271.926, 0.0], [295.3799, -272.3637, 0.0], [295.1837, -272.3903, 0.0], [290.2073, -272.8006, 0.0], [286.7707, -272.5217,
         0.0], [283.3924, -271.5861, 0.0], [278.5932, -270.0287, 0.0], [257.9602, -263.6477, 0.0], [223.9462, -261.174, 0.0], [194.8224, -270.279,
@@ -3657,355 +3626,355 @@ entities:
         0.0], [420.1495, -224.8097, 0.0], [488.2003, -197.6475, 0.0], [500.5255, -193.3922, 0.0], [501.3948, -192.2429, 0.0], [501.5119, -191.3562,
         0.0], [500.8727, -190.7305, 0.0], [499.4773, -190.3659, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id046 []
+    traffic.route.native_edges: &source_id046 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.021
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id007
+    traffic.route.points_enu_m: *source_id007
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id047 []
+    traffic.route.native_edges: &source_id047 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.022
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id008
+    traffic.route.points_enu_m: *source_id008
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id048 []
+    traffic.route.native_edges: &source_id048 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.023
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id009
+    traffic.route.points_enu_m: *source_id009
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id049 []
+    traffic.route.native_edges: &source_id049 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.024
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id010
+    traffic.route.points_enu_m: *source_id010
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id050 []
+    traffic.route.native_edges: &source_id050 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.025
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id011
+    traffic.route.points_enu_m: *source_id011
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id051 []
+    traffic.route.native_edges: &source_id051 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.027
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id012
+    traffic.route.points_enu_m: *source_id012
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id052 []
+    traffic.route.native_edges: &source_id052 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.028
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id013
+    traffic.route.points_enu_m: *source_id013
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id053 []
+    traffic.route.native_edges: &source_id053 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.029
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id014
+    traffic.route.points_enu_m: *source_id014
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id054 []
+    traffic.route.native_edges: &source_id054 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.030
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id015
+    traffic.route.points_enu_m: *source_id015
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id055 []
+    traffic.route.native_edges: &source_id055 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.031
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id016
+    traffic.route.points_enu_m: *source_id016
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id056 []
+    traffic.route.native_edges: &source_id056 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.032
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id017
+    traffic.route.points_enu_m: *source_id017
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id057 []
+    traffic.route.native_edges: &source_id057 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.033
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id018
+    traffic.route.points_enu_m: *source_id018
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id058 []
+    traffic.route.native_edges: &source_id058 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.034
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id019
+    traffic.route.points_enu_m: *source_id019
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id059 []
+    traffic.route.native_edges: &source_id059 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.035
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id020
+    traffic.route.points_enu_m: *source_id020
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id060 []
+    traffic.route.native_edges: &source_id060 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.036
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id021
+    traffic.route.points_enu_m: *source_id021
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id061 []
+    traffic.route.native_edges: &source_id061 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.037
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id022
+    traffic.route.points_enu_m: *source_id022
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id062 []
+    traffic.route.native_edges: &source_id062 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.038
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id023
+    traffic.route.points_enu_m: *source_id023
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id063 []
+    traffic.route.native_edges: &source_id063 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.039
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id024
+    traffic.route.points_enu_m: *source_id024
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id064 []
+    traffic.route.native_edges: &source_id064 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.040
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id025
+    traffic.route.points_enu_m: *source_id025
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id065 []
+    traffic.route.native_edges: &source_id065 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.026
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id026
+    traffic.route.points_enu_m: *source_id026
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id066 []
+    traffic.route.native_edges: &source_id066 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.041
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id007
+    traffic.route.points_enu_m: *source_id007
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id067 []
+    traffic.route.native_edges: &source_id067 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.042
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id008
+    traffic.route.points_enu_m: *source_id008
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id068 []
+    traffic.route.native_edges: &source_id068 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.043
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id009
+    traffic.route.points_enu_m: *source_id009
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id069 []
+    traffic.route.native_edges: &source_id069 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.044
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id010
+    traffic.route.points_enu_m: *source_id010
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id070 []
+    traffic.route.native_edges: &source_id070 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.045
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id011
+    traffic.route.points_enu_m: *source_id011
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id071 []
+    traffic.route.native_edges: &source_id071 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.046
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id026
+    traffic.route.points_enu_m: *source_id026
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id072 []
+    traffic.route.native_edges: &source_id072 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.047
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id012
+    traffic.route.points_enu_m: *source_id012
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id073 []
+    traffic.route.native_edges: &source_id073 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.048
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id013
+    traffic.route.points_enu_m: *source_id013
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id074 []
+    traffic.route.native_edges: &source_id074 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.049
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id014
+    traffic.route.points_enu_m: *source_id014
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id075 []
+    traffic.route.native_edges: &source_id075 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.050
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id015
+    traffic.route.points_enu_m: *source_id015
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id076 []
+    traffic.route.native_edges: &source_id076 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.051
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id016
+    traffic.route.points_enu_m: *source_id016
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id077 []
+    traffic.route.native_edges: &source_id077 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.052
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id017
+    traffic.route.points_enu_m: *source_id017
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id078 []
+    traffic.route.native_edges: &source_id078 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.053
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id018
+    traffic.route.points_enu_m: *source_id018
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id079 []
+    traffic.route.native_edges: &source_id079 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.054
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id019
+    traffic.route.points_enu_m: *source_id019
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id080 []
+    traffic.route.native_edges: &source_id080 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.055
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id020
+    traffic.route.points_enu_m: *source_id020
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id081 []
+    traffic.route.native_edges: &source_id081 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.056
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id021
+    traffic.route.points_enu_m: *source_id021
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id082 []
+    traffic.route.native_edges: &source_id082 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.057
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id022
+    traffic.route.points_enu_m: *source_id022
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id083 []
+    traffic.route.native_edges: &source_id083 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.058
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id023
+    traffic.route.points_enu_m: *source_id023
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id084 []
+    traffic.route.native_edges: &source_id084 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.059
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id024
+    traffic.route.points_enu_m: *source_id024
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id085 []
+    traffic.route.native_edges: &source_id085 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: route.vehicle.060
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: *id025
+    traffic.route.points_enu_m: *source_id025
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id086 []
+    traffic.route.native_edges: &source_id086 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
 - id: lane.incident
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id088 [[72.4242, 7.033, 0.0], [72.6391, 6.2541, 0.0], [74.2074, -2.5305, 0.0], [75.1978, -8.1265, 0.0], [79.7634,
+    traffic.route.points_enu_m: &source_id088 [[72.4242, 7.033, 0.0], [72.6391, 6.2541, 0.0], [74.2074, -2.5305, 0.0], [75.1978, -8.1265, 0.0], [79.7634,
         -34.3137, 0.0], [82.9261, -50.9641, 0.0], [84.9346, -62.7383, 0.0], [90.4068, -84.8039, 0.0], [92.2965, -94.8863, 0.0], [93.6672, -104.9435,
         0.0], [96.3988, -120.6238, 0.0], [100.1065, -135.0616, 0.0], [103.3124, -146.423, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id087 []
+    traffic.route.native_edges: &source_id087 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
     traffic.route.native_lane_id: --2682428834550472112#0_1
 - id: lane.adjacent
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id090 [[75.5086, 7.8845, 0.0], [75.7631, 6.9627, 0.0], [77.358, -1.9704, 0.0], [78.3495, -7.5728, 0.0], [82.9117,
+    traffic.route.points_enu_m: &source_id090 [[75.5086, 7.8845, 0.0], [75.7631, 6.9627, 0.0], [77.358, -1.9704, 0.0], [78.3495, -7.5728, 0.0], [82.9117,
         -33.7403, 0.0], [86.0756, -50.3965, 0.0], [88.069, -62.0833, 0.0], [93.5349, -84.1234, 0.0], [95.4564, -94.3752, 0.0], [96.83, -104.4527,
         0.0], [99.5296, -119.9502, 0.0], [103.1965, -134.229, 0.0], [106.3921, -145.5539, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id089 []
+    traffic.route.native_edges: &source_id089 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
     traffic.route.native_lane_id: -2682428834550472112#0_1
 - id: adjacent_lane_bypass
   type: aas:TrafficRoute
   facts:
-    traffic.route.points_enu_m: &id092 [[88.09047047977334, -75.46374418305007, 0.0], [88.38310053330932, -76.41983392214615, 0.0], [88.76835133765891,
+    traffic.route.points_enu_m: &source_id092 [[88.09047047977334, -75.46374418305007, 0.0], [88.38310053330932, -76.41983392214615, 0.0], [88.76835133765891,
         -77.35003644198893, 0.0], [89.22938031050717, -78.25904826190221, 0.0], [89.74934545813724, -79.15156836741093, 0.0], [90.31140537543037,
         -80.03229821024124, 0.0], [90.89871924586583, -80.90594170832041, 0.0], [91.49444684152103, -81.77720524577693, 0.0], [92.08174852307135,
         -82.65079767294037, 0.0], [92.64378523979038, -83.5314303063415, 0.0], [93.15158914611524, -84.42645534917118, 0.0], [93.55686025935896,
@@ -4024,16 +3993,16 @@ entities:
         -121.52912640601245, 0.0], [97.17782061668031, -122.53609564517818, 0.0], [97.31427635645, -123.53623791975295, 0.0], [97.47851345195112,
         -124.52857371921026, 0.0], [97.6740035723857, -125.51212302398477, 0.0], [97.90421826601694, -126.48590530547226, 0.0]]
     traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
-    traffic.route.native_edges: &id091 []
+    traffic.route.native_edges: &source_id091 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
     traffic.route.native_lane_id: ''
 - id: vehicle.reporter
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id094 [74.25419341897226, -2.7948941564708685, 0.0]
+    traffic.road.position_enu_m: &source_id094 [74.25419341897226, -2.7948941564708685, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id093 [0.0, 0.0, -0.642543703375287, 0.7662490386635218]
+    traffic.road.attitude_xyzw: &source_id093 [0.0, 0.0, -0.642543703375287, 0.7662490386635218]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: lane.incident
     traffic.road.lane_id: lane.incident
@@ -4064,9 +4033,9 @@ entities:
 - id: vehicle.incident.a
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id096 [81.57414423061469, -43.84657246258789, 0.0]
+    traffic.road.position_enu_m: &source_id096 [81.57414423061469, -43.84657246258789, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id095 [0.0, 0.0, -0.6377261327155563, 0.7702631885606768]
+    traffic.road.attitude_xyzw: &source_id095 [0.0, 0.0, -0.6377261327155563, 0.7702631885606768]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: lane.incident
     traffic.road.lane_id: lane.incident
@@ -4097,9 +4066,9 @@ entities:
 - id: vehicle.incident.b
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id098 [102.12862306821755, -142.2278088734043, 0.0]
+    traffic.road.position_enu_m: &source_id098 [102.12862306821755, -142.2278088734043, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id097 [0.0, 0.0, 0.7973613417216245, 0.6035021878401857]
+    traffic.road.attitude_xyzw: &source_id097 [0.0, 0.0, 0.7973613417216245, 0.6035021878401857]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: lane.incident
     traffic.road.lane_id: lane.incident
@@ -4130,9 +4099,9 @@ entities:
 - id: vehicle.001
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id100 [-452.2472, -370.3729, 0.0]
+    traffic.road.position_enu_m: &source_id100 [-452.2472, -370.3729, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id099 [0.0, 0.0, -0.9875852144476608, 0.15708419463576778]
+    traffic.road.attitude_xyzw: &source_id099 [0.0, 0.0, -0.9875852144476608, 0.15708419463576778]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.001
     traffic.road.lane_id: route.vehicle.001
@@ -4163,9 +4132,9 @@ entities:
 - id: vehicle.002
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id102 [-424.5026699117191, -309.2931904303022, 0.0]
+    traffic.road.position_enu_m: &source_id102 [-424.5026699117191, -309.2931904303022, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id101 [0.0, 0.0, 0.8160695924092282, 0.5779536489590115]
+    traffic.road.attitude_xyzw: &source_id101 [0.0, 0.0, 0.8160695924092282, 0.5779536489590115]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.002
     traffic.road.lane_id: route.vehicle.002
@@ -4196,9 +4165,9 @@ entities:
 - id: vehicle.003
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id104 [-338.57940143017964, 96.94309768926252, 0.0]
+    traffic.road.position_enu_m: &source_id104 [-338.57940143017964, 96.94309768926252, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id103 [0.0, 0.0, 0.273781445308862, 0.96179193186707]
+    traffic.road.attitude_xyzw: &source_id103 [0.0, 0.0, 0.273781445308862, 0.96179193186707]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.003
     traffic.road.lane_id: route.vehicle.003
@@ -4229,9 +4198,9 @@ entities:
 - id: vehicle.004
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id106 [-421.13272159786885, 162.72455773318063, 0.0]
+    traffic.road.position_enu_m: &source_id106 [-421.13272159786885, 162.72455773318063, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id105 [0.0, 0.0, 0.886118824912754, 0.4634581190736009]
+    traffic.road.attitude_xyzw: &source_id105 [0.0, 0.0, 0.886118824912754, 0.4634581190736009]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.004
     traffic.road.lane_id: route.vehicle.004
@@ -4262,9 +4231,9 @@ entities:
 - id: vehicle.005
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id108 [-210.18113741980378, -421.031174557085, 0.0]
+    traffic.road.position_enu_m: &source_id108 [-210.18113741980378, -421.031174557085, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id107 [0.0, 0.0, 0.8012078037659698, 0.5983862090527414]
+    traffic.road.attitude_xyzw: &source_id107 [0.0, 0.0, 0.8012078037659698, 0.5983862090527414]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.005
     traffic.road.lane_id: route.vehicle.005
@@ -4295,9 +4264,9 @@ entities:
 - id: vehicle.006
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id110 [-242.418365070368, -124.75104179438122, 0.0]
+    traffic.road.position_enu_m: &source_id110 [-242.418365070368, -124.75104179438122, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id109 [0.0, 0.0, -0.8434780255709973, 0.5371636811800031]
+    traffic.road.attitude_xyzw: &source_id109 [0.0, 0.0, -0.8434780255709973, 0.5371636811800031]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.006
     traffic.road.lane_id: route.vehicle.006
@@ -4328,9 +4297,9 @@ entities:
 - id: vehicle.007
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id112 [-187.15733487801023, -27.387277553881248, 0.0]
+    traffic.road.position_enu_m: &source_id112 [-187.15733487801023, -27.387277553881248, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id111 [0.0, 0.0, 0.5332574833841414, 0.8459529871185586]
+    traffic.road.attitude_xyzw: &source_id111 [0.0, 0.0, 0.5332574833841414, 0.8459529871185586]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.007
     traffic.road.lane_id: route.vehicle.007
@@ -4361,9 +4330,9 @@ entities:
 - id: vehicle.008
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id114 [-225.29874446952027, 131.59653805488375, 0.0]
+    traffic.road.position_enu_m: &source_id114 [-225.29874446952027, 131.59653805488375, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id113 [0.0, 0.0, -0.49142756674752647, 0.870918450051786]
+    traffic.road.attitude_xyzw: &source_id113 [0.0, 0.0, -0.49142756674752647, 0.870918450051786]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.008
     traffic.road.lane_id: route.vehicle.008
@@ -4394,9 +4363,9 @@ entities:
 - id: vehicle.009
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id116 [-14.3593, -487.6532, 0.0]
+    traffic.road.position_enu_m: &source_id116 [-14.3593, -487.6532, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id115 [0.0, 0.0, -0.5924656586831499, 0.8055957070895682]
+    traffic.road.attitude_xyzw: &source_id115 [0.0, 0.0, -0.5924656586831499, 0.8055957070895682]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.009
     traffic.road.lane_id: route.vehicle.009
@@ -4427,9 +4396,9 @@ entities:
 - id: vehicle.010
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id118 [12.74109290154463, -183.14712167067378, 0.0]
+    traffic.road.position_enu_m: &source_id118 [12.74109290154463, -183.14712167067378, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id117 [0.0, 0.0, 0.14787482015421158, 0.9890060857064327]
+    traffic.road.attitude_xyzw: &source_id117 [0.0, 0.0, 0.14787482015421158, 0.9890060857064327]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.010
     traffic.road.lane_id: route.vehicle.010
@@ -4460,9 +4429,9 @@ entities:
 - id: vehicle.011
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id120 [100.15374141221581, -122.3805881744108, 0.0]
+    traffic.road.position_enu_m: &source_id120 [100.15374141221581, -122.3805881744108, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id119 [0.0, 0.0, 0.7901696556202019, 0.6128881752302384]
+    traffic.road.attitude_xyzw: &source_id119 [0.0, 0.0, 0.7901696556202019, 0.6128881752302384]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.011
     traffic.road.lane_id: route.vehicle.011
@@ -4493,9 +4462,9 @@ entities:
 - id: vehicle.012
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id122 [52.77217342019136, 124.43168033598612, 0.0]
+    traffic.road.position_enu_m: &source_id122 [52.77217342019136, 124.43168033598612, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id121 [0.0, 0.0, 0.7276524905075132, 0.6859459549105988]
+    traffic.road.attitude_xyzw: &source_id121 [0.0, 0.0, 0.7276524905075132, 0.6859459549105988]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.012
     traffic.road.lane_id: route.vehicle.012
@@ -4526,9 +4495,9 @@ entities:
 - id: vehicle.013
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id124 [4.842380753351944, 307.1424108715101, 0.0]
+    traffic.road.position_enu_m: &source_id124 [4.842380753351944, 307.1424108715101, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id123 [0.0, 0.0, -0.9677833129601455, 0.2517845490809254]
+    traffic.road.attitude_xyzw: &source_id123 [0.0, 0.0, -0.9677833129601455, 0.2517845490809254]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.013
     traffic.road.lane_id: route.vehicle.013
@@ -4559,9 +4528,9 @@ entities:
 - id: vehicle.014
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id126 [267.18294815091406, -380.8401427046079, 0.0]
+    traffic.road.position_enu_m: &source_id126 [267.18294815091406, -380.8401427046079, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id125 [0.0, 0.0, -0.9937896820131088, 0.11127474072890084]
+    traffic.road.attitude_xyzw: &source_id125 [0.0, 0.0, -0.9937896820131088, 0.11127474072890084]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.014
     traffic.road.lane_id: route.vehicle.014
@@ -4592,9 +4561,9 @@ entities:
 - id: vehicle.015
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id128 [244.03445602042189, -169.3779511405979, 0.0]
+    traffic.road.position_enu_m: &source_id128 [244.03445602042189, -169.3779511405979, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id127 [0.0, 0.0, -0.5575579972503866, 0.8301379883502128]
+    traffic.road.attitude_xyzw: &source_id127 [0.0, 0.0, -0.5575579972503866, 0.8301379883502128]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.015
     traffic.road.lane_id: route.vehicle.015
@@ -4625,9 +4594,9 @@ entities:
 - id: vehicle.016
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id130 [192.98543507198144, 10.097577136527079, 0.0]
+    traffic.road.position_enu_m: &source_id130 [192.98543507198144, 10.097577136527079, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id129 [0.0, 0.0, -0.6401620028711937, 0.7682399430385938]
+    traffic.road.attitude_xyzw: &source_id129 [0.0, 0.0, -0.6401620028711937, 0.7682399430385938]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.016
     traffic.road.lane_id: route.vehicle.016
@@ -4658,9 +4627,9 @@ entities:
 - id: vehicle.017
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id132 [169.3334, 225.4994, 0.0]
+    traffic.road.position_enu_m: &source_id132 [169.3334, 225.4994, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id131 [0.0, 0.0, 0.7682732233721812, 0.6401220619923349]
+    traffic.road.attitude_xyzw: &source_id131 [0.0, 0.0, 0.7682732233721812, 0.6401220619923349]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.017
     traffic.road.lane_id: route.vehicle.017
@@ -4691,9 +4660,9 @@ entities:
 - id: vehicle.018
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id134 [172.8773323877728, 377.59291609393176, 0.0]
+    traffic.road.position_enu_m: &source_id134 [172.8773323877728, 377.59291609393176, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id133 [0.0, 0.0, -0.9821737713745632, 0.1879752186429564]
+    traffic.road.attitude_xyzw: &source_id133 [0.0, 0.0, -0.9821737713745632, 0.1879752186429564]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.018
     traffic.road.lane_id: route.vehicle.018
@@ -4724,9 +4693,9 @@ entities:
 - id: vehicle.019
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id136 [461.57639190061326, -322.4300600508309, 0.0]
+    traffic.road.position_enu_m: &source_id136 [461.57639190061326, -322.4300600508309, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id135 [0.0, 0.0, 0.18543350669145509, 0.9826568142521122]
+    traffic.road.attitude_xyzw: &source_id135 [0.0, 0.0, 0.18543350669145509, 0.9826568142521122]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.019
     traffic.road.lane_id: route.vehicle.019
@@ -4757,9 +4726,9 @@ entities:
 - id: vehicle.020
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id138 [465.83013199569035, -203.1318873636737, 0.0]
+    traffic.road.position_enu_m: &source_id138 [465.83013199569035, -203.1318873636737, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id137 [0.0, 0.0, -0.9820222318561487, 0.1887652937917045]
+    traffic.road.attitude_xyzw: &source_id137 [0.0, 0.0, -0.9820222318561487, 0.1887652937917045]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.020
     traffic.road.lane_id: route.vehicle.020
@@ -4790,9 +4759,9 @@ entities:
 - id: vehicle.021
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id140 [-476.710280137087, -382.0887439207444, 0.0]
+    traffic.road.position_enu_m: &source_id140 [-476.710280137087, -382.0887439207444, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id139 [0.0, 0.0, 0.16590843758169982, 0.9861411614668557]
+    traffic.road.attitude_xyzw: &source_id139 [0.0, 0.0, 0.16590843758169982, 0.9861411614668557]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.021
     traffic.road.lane_id: route.vehicle.021
@@ -4823,9 +4792,9 @@ entities:
 - id: vehicle.022
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id142 [-440.43574955859566, -264.0147521515112, 0.0]
+    traffic.road.position_enu_m: &source_id142 [-440.43574955859566, -264.0147521515112, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id141 [0.0, 0.0, 0.8160695924092282, 0.5779536489590115]
+    traffic.road.attitude_xyzw: &source_id141 [0.0, 0.0, 0.8160695924092282, 0.5779536489590115]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.022
     traffic.road.lane_id: route.vehicle.022
@@ -4856,9 +4825,9 @@ entities:
 - id: vehicle.023
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id144 [-297.7330407704801, 122.15343499166367, 0.0]
+    traffic.road.position_enu_m: &source_id144 [-297.7330407704801, 122.15343499166367, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id143 [0.0, 0.0, 0.27064332779664624, 0.9626796918597365]
+    traffic.road.attitude_xyzw: &source_id143 [0.0, 0.0, 0.27064332779664624, 0.9626796918597365]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.023
     traffic.road.lane_id: route.vehicle.023
@@ -4889,9 +4858,9 @@ entities:
 - id: vehicle.024
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id146 [-409.55876899540596, 195.4282792571355, 0.0]
+    traffic.road.position_enu_m: &source_id146 [-409.55876899540596, 195.4282792571355, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id145 [0.0, 0.0, 0.26508124558611745, 0.9642260799410647]
+    traffic.road.attitude_xyzw: &source_id145 [0.0, 0.0, 0.26508124558611745, 0.9642260799410647]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.024
     traffic.road.lane_id: route.vehicle.024
@@ -4922,9 +4891,9 @@ entities:
 - id: vehicle.025
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id148 [-218.2176, -405.1579, 0.0]
+    traffic.road.position_enu_m: &source_id148 [-218.2176, -405.1579, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id147 [0.0, 0.0, -0.5984191269341583, 0.8011832178218411]
+    traffic.road.attitude_xyzw: &source_id147 [0.0, 0.0, -0.5984191269341583, 0.8011832178218411]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.025
     traffic.road.lane_id: route.vehicle.025
@@ -4955,9 +4924,9 @@ entities:
 - id: vehicle.027
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id150 [-207.9407283629921, -60.28978143446453, 0.0]
+    traffic.road.position_enu_m: &source_id150 [-207.9407283629921, -60.28978143446453, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id149 [0.0, 0.0, -0.8684619633532245, 0.49575580501761407]
+    traffic.road.attitude_xyzw: &source_id149 [0.0, 0.0, -0.8684619633532245, 0.49575580501761407]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.027
     traffic.road.lane_id: route.vehicle.027
@@ -4988,9 +4957,9 @@ entities:
 - id: vehicle.028
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id152 [-256.5597205045602, 182.8087030318821, 0.0]
+    traffic.road.position_enu_m: &source_id152 [-256.5597205045602, 182.8087030318821, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id151 [0.0, 0.0, -0.48715416161451053, 0.8733159925374454]
+    traffic.road.attitude_xyzw: &source_id151 [0.0, 0.0, -0.48715416161451053, 0.8733159925374454]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.028
     traffic.road.lane_id: route.vehicle.028
@@ -5021,9 +4990,9 @@ entities:
 - id: vehicle.029
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id154 [-12.216359467148232, -482.69576769095755, 0.0]
+    traffic.road.position_enu_m: &source_id154 [-12.216359467148232, -482.69576769095755, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id153 [0.0, 0.0, 0.7816677415243535, 0.62369507121687]
+    traffic.road.attitude_xyzw: &source_id153 [0.0, 0.0, 0.7816677415243535, 0.62369507121687]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.029
     traffic.road.lane_id: route.vehicle.029
@@ -5054,9 +5023,9 @@ entities:
 - id: vehicle.030
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id156 [47.16667160617852, -172.6171866826951, 0.0]
+    traffic.road.position_enu_m: &source_id156 [47.16667160617852, -172.6171866826951, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id155 [0.0, 0.0, 0.14787482015421158, 0.9890060857064327]
+    traffic.road.attitude_xyzw: &source_id155 [0.0, 0.0, 0.14787482015421158, 0.9890060857064327]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.030
     traffic.road.lane_id: route.vehicle.030
@@ -5087,9 +5056,9 @@ entities:
 - id: vehicle.031
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id158 [94.05829930944547, -86.91589806951501, 0.0]
+    traffic.road.position_enu_m: &source_id158 [94.05829930944547, -86.91589806951501, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id157 [0.0, 0.0, 0.7694876685645314, 0.6386616693736378]
+    traffic.road.attitude_xyzw: &source_id157 [0.0, 0.0, 0.7694876685645314, 0.6386616693736378]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.031
     traffic.road.lane_id: route.vehicle.031
@@ -5120,9 +5089,9 @@ entities:
 - id: vehicle.032
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id160 [54.12527066819276, 160.32665804472782, 0.0]
+    traffic.road.position_enu_m: &source_id160 [54.12527066819276, 160.32665804472782, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id159 [0.0, 0.0, 0.677017950897579, 0.7359665034242002]
+    traffic.road.attitude_xyzw: &source_id159 [0.0, 0.0, 0.677017950897579, 0.7359665034242002]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.032
     traffic.road.lane_id: route.vehicle.032
@@ -5153,9 +5122,9 @@ entities:
 - id: vehicle.033
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id162 [-26.593146187424338, 289.59796314706665, 0.0]
+    traffic.road.position_enu_m: &source_id162 [-26.593146187424338, 289.59796314706665, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id161 [0.0, 0.0, -0.9677833129601455, 0.2517845490809254]
+    traffic.road.attitude_xyzw: &source_id161 [0.0, 0.0, -0.9677833129601455, 0.2517845490809254]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.033
     traffic.road.lane_id: route.vehicle.033
@@ -5186,9 +5155,9 @@ entities:
 - id: vehicle.034
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id164 [325.6971, -367.5701, 0.0]
+    traffic.road.position_enu_m: &source_id164 [325.6971, -367.5701, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id163 [0.0, 0.0, -0.9937896820131088, 0.11127474072890084]
+    traffic.road.attitude_xyzw: &source_id163 [0.0, 0.0, -0.9937896820131088, 0.11127474072890084]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.034
     traffic.road.lane_id: route.vehicle.034
@@ -5219,9 +5188,9 @@ entities:
 - id: vehicle.035
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id166 [248.71452810222445, -155.28277606030485, 0.0]
+    traffic.road.position_enu_m: &source_id166 [248.71452810222445, -155.28277606030485, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id165 [0.0, 0.0, 0.8360565146810638, 0.5486433306432807]
+    traffic.road.attitude_xyzw: &source_id165 [0.0, 0.0, 0.8360565146810638, 0.5486433306432807]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.035
     traffic.road.lane_id: route.vehicle.035
@@ -5252,9 +5221,9 @@ entities:
 - id: vehicle.036
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id168 [182.5717631664465, 69.1823701476617, 0.0]
+    traffic.road.position_enu_m: &source_id168 [182.5717631664465, 69.1823701476617, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id167 [0.0, 0.0, -0.6511214177855242, 0.7589735827424884]
+    traffic.road.attitude_xyzw: &source_id167 [0.0, 0.0, -0.6511214177855242, 0.7589735827424884]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.036
     traffic.road.lane_id: route.vehicle.036
@@ -5285,9 +5254,9 @@ entities:
 - id: vehicle.037
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id170 [146.52358531766822, 238.40060886440764, 0.0]
+    traffic.road.position_enu_m: &source_id170 [146.52358531766822, 238.40060886440764, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id169 [0.0, 0.0, -0.9916184179803068, 0.12920105697026477]
+    traffic.road.attitude_xyzw: &source_id169 [0.0, 0.0, -0.9916184179803068, 0.12920105697026477]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.037
     traffic.road.lane_id: route.vehicle.037
@@ -5318,9 +5287,9 @@ entities:
 - id: vehicle.038
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id172 [139.3608951223564, 364.45516439522174, 0.0]
+    traffic.road.position_enu_m: &source_id172 [139.3608951223564, 364.45516439522174, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id171 [0.0, 0.0, -0.9833400487505577, 0.18177554434865756]
+    traffic.road.attitude_xyzw: &source_id171 [0.0, 0.0, -0.9833400487505577, 0.18177554434865756]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.038
     traffic.road.lane_id: route.vehicle.038
@@ -5351,9 +5320,9 @@ entities:
 - id: vehicle.039
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id174 [495.10062975153323, -309.31040012707723, 0.0]
+    traffic.road.position_enu_m: &source_id174 [495.10062975153323, -309.31040012707723, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id173 [0.0, 0.0, 0.18543350669145509, 0.9826568142521122]
+    traffic.road.attitude_xyzw: &source_id173 [0.0, 0.0, 0.18543350669145509, 0.9826568142521122]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.039
     traffic.road.lane_id: route.vehicle.039
@@ -5384,9 +5353,9 @@ entities:
 - id: vehicle.040
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id176 [432.39566019778965, -216.47865085132813, 0.0]
+    traffic.road.position_enu_m: &source_id176 [432.39566019778965, -216.47865085132813, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id175 [0.0, 0.0, -0.9820222318561487, 0.1887652937917045]
+    traffic.road.attitude_xyzw: &source_id175 [0.0, 0.0, -0.9820222318561487, 0.1887652937917045]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.040
     traffic.road.lane_id: route.vehicle.040
@@ -5417,9 +5386,9 @@ entities:
 - id: vehicle.026
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id178 [-251.22930293219204, -146.91801760749468, 0.0]
+    traffic.road.position_enu_m: &source_id178 [-251.22930293219204, -146.91801760749468, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id177 [0.0, 0.0, -0.7644976295922224, 0.6446265386624049]
+    traffic.road.attitude_xyzw: &source_id177 [0.0, 0.0, -0.7644976295922224, 0.6446265386624049]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.026
     traffic.road.lane_id: route.vehicle.026
@@ -5450,9 +5419,9 @@ entities:
 - id: vehicle.041
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id180 [-458.8859850822283, -372.59240764987936, 0.0]
+    traffic.road.position_enu_m: &source_id180 [-458.8859850822283, -372.59240764987936, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id179 [0.0, 0.0, -0.9869430261822588, 0.16106974598044538]
+    traffic.road.attitude_xyzw: &source_id179 [0.0, 0.0, -0.9869430261822588, 0.16106974598044538]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.041
     traffic.road.lane_id: route.vehicle.041
@@ -5483,9 +5452,9 @@ entities:
 - id: vehicle.042
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id182 [-426.8262440268886, -302.69008484797854, 0.0]
+    traffic.road.position_enu_m: &source_id182 [-426.8262440268886, -302.69008484797854, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id181 [0.0, 0.0, 0.8160695924092282, 0.5779536489590115]
+    traffic.road.attitude_xyzw: &source_id181 [0.0, 0.0, 0.8160695924092282, 0.5779536489590115]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.042
     traffic.road.lane_id: route.vehicle.042
@@ -5516,9 +5485,9 @@ entities:
 - id: vehicle.043
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id184 [-332.6287893473154, 100.62958868196408, 0.0]
+    traffic.road.position_enu_m: &source_id184 [-332.6287893473154, 100.62958868196408, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id183 [0.0, 0.0, 0.273781445308862, 0.96179193186707]
+    traffic.road.attitude_xyzw: &source_id183 [0.0, 0.0, 0.273781445308862, 0.96179193186707]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.043
     traffic.road.lane_id: route.vehicle.043
@@ -5549,9 +5518,9 @@ entities:
 - id: vehicle.044
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id186 [-425.12239660330636, 168.47629448800353, 0.0]
+    traffic.road.position_enu_m: &source_id186 [-425.12239660330636, 168.47629448800353, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id185 [0.0, 0.0, 0.885839782923544, 0.46399124882907916]
+    traffic.road.attitude_xyzw: &source_id185 [0.0, 0.0, 0.885839782923544, 0.46399124882907916]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.044
     traffic.road.lane_id: route.vehicle.044
@@ -5582,9 +5551,9 @@ entities:
 - id: vehicle.045
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id188 [-212.16821264722063, -414.31913075205915, 0.0]
+    traffic.road.position_enu_m: &source_id188 [-212.16821264722063, -414.31913075205915, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id187 [0.0, 0.0, 0.8012078037659698, 0.5983862090527414]
+    traffic.road.attitude_xyzw: &source_id187 [0.0, 0.0, 0.8012078037659698, 0.5983862090527414]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.045
     traffic.road.lane_id: route.vehicle.045
@@ -5615,9 +5584,9 @@ entities:
 - id: vehicle.046
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id190 [-245.37873758506407, -131.09424245132342, 0.0]
+    traffic.road.position_enu_m: &source_id190 [-245.37873758506407, -131.09424245132342, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id189 [0.0, 0.0, -0.8434780255709973, 0.5371636811800031]
+    traffic.road.attitude_xyzw: &source_id189 [0.0, 0.0, -0.8434780255709973, 0.5371636811800031]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.046
     traffic.road.lane_id: route.vehicle.046
@@ -5648,9 +5617,9 @@ entities:
 - id: vehicle.047
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id192 [-184.13842448820284, -21.071726900271294, 0.0]
+    traffic.road.position_enu_m: &source_id192 [-184.13842448820284, -21.071726900271294, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id191 [0.0, 0.0, 0.5332574833841414, 0.8459529871185586]
+    traffic.road.attitude_xyzw: &source_id191 [0.0, 0.0, 0.5332574833841414, 0.8459529871185586]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.047
     traffic.road.lane_id: route.vehicle.047
@@ -5681,9 +5650,9 @@ entities:
 - id: vehicle.048
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id194 [-221.6797592165518, 125.60463136846109, 0.0]
+    traffic.road.position_enu_m: &source_id194 [-221.6797592165518, 125.60463136846109, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id193 [0.0, 0.0, -0.49142756674752647, 0.870918450051786]
+    traffic.road.attitude_xyzw: &source_id193 [0.0, 0.0, -0.49142756674752647, 0.870918450051786]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.048
     traffic.road.lane_id: route.vehicle.048
@@ -5714,9 +5683,9 @@ entities:
 - id: vehicle.049
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id196 [-12.064321375018919, -494.26545825845443, 0.0]
+    traffic.road.position_enu_m: &source_id196 [-12.064321375018919, -494.26545825845443, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id195 [0.0, 0.0, -0.5767651786789253, 0.8169099881036266]
+    traffic.road.attitude_xyzw: &source_id195 [0.0, 0.0, -0.5767651786789253, 0.8169099881036266]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.049
     traffic.road.lane_id: route.vehicle.049
@@ -5747,9 +5716,9 @@ entities:
 - id: vehicle.050
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id198 [19.434955427445665, -181.09963431190016, 0.0]
+    traffic.road.position_enu_m: &source_id198 [19.434955427445665, -181.09963431190016, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id197 [0.0, 0.0, 0.14787482015421158, 0.9890060857064327]
+    traffic.road.attitude_xyzw: &source_id197 [0.0, 0.0, 0.14787482015421158, 0.9890060857064327]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.050
     traffic.road.lane_id: route.vehicle.050
@@ -5780,9 +5749,9 @@ entities:
 - id: vehicle.051
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id200 [98.75893538288818, -115.52607238713497, 0.0]
+    traffic.road.position_enu_m: &source_id200 [98.75893538288818, -115.52607238713497, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id199 [0.0, 0.0, 0.7653795099334859, 0.643579214839927]
+    traffic.road.attitude_xyzw: &source_id199 [0.0, 0.0, 0.7653795099334859, 0.643579214839927]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.051
     traffic.road.lane_id: route.vehicle.051
@@ -5813,9 +5782,9 @@ entities:
 - id: vehicle.052
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id202 [52.35947936300634, 131.41950429020562, 0.0]
+    traffic.road.position_enu_m: &source_id202 [52.35947936300634, 131.41950429020562, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id201 [0.0, 0.0, 0.7276524905075132, 0.6859459549105988]
+    traffic.road.attitude_xyzw: &source_id201 [0.0, 0.0, 0.7276524905075132, 0.6859459549105988]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.052
     traffic.road.lane_id: route.vehicle.052
@@ -5846,9 +5815,9 @@ entities:
 - id: vehicle.053
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id204 [-1.2700828184656672, 303.7309904806461, 0.0]
+    traffic.road.position_enu_m: &source_id204 [-1.2700828184656672, 303.7309904806461, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id203 [0.0, 0.0, -0.9677833129601455, 0.2517845490809254]
+    traffic.road.attitude_xyzw: &source_id203 [0.0, 0.0, -0.9677833129601455, 0.2517845490809254]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.053
     traffic.road.lane_id: route.vehicle.053
@@ -5879,9 +5848,9 @@ entities:
 - id: vehicle.054
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id206 [260.35629710185407, -382.3883143534788, 0.0]
+    traffic.road.position_enu_m: &source_id206 [260.35629710185407, -382.3883143534788, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id205 [0.0, 0.0, -0.9937896820131088, 0.11127474072890084]
+    traffic.road.attitude_xyzw: &source_id205 [0.0, 0.0, -0.9937896820131088, 0.11127474072890084]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.054
     traffic.road.lane_id: route.vehicle.054
@@ -5912,9 +5881,9 @@ entities:
 - id: vehicle.055
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id208 [246.62172592085022, -175.88212369754712, 0.0]
+    traffic.road.position_enu_m: &source_id208 [246.62172592085022, -175.88212369754712, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id207 [0.0, 0.0, -0.5659170262595103, 0.8244622000974894]
+    traffic.road.attitude_xyzw: &source_id207 [0.0, 0.0, -0.5659170262595103, 0.8244622000974894]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.055
     traffic.road.lane_id: route.vehicle.055
@@ -5945,9 +5914,9 @@ entities:
 - id: vehicle.056
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id210 [194.2481316131006, 3.2124048478297524, 0.0]
+    traffic.road.position_enu_m: &source_id210 [194.2481316131006, 3.2124048478297524, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id209 [0.0, 0.0, -0.6401620028711937, 0.7682399430385938]
+    traffic.road.attitude_xyzw: &source_id209 [0.0, 0.0, -0.6401620028711937, 0.7682399430385938]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.056
     traffic.road.lane_id: route.vehicle.056
@@ -5978,9 +5947,9 @@ entities:
 - id: vehicle.057
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id212 [168.06998755949047, 232.384440958859, 0.0]
+    traffic.road.position_enu_m: &source_id212 [168.06998755949047, 232.384440958859, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id211 [0.0, 0.0, 0.7682732233721812, 0.6401220619923349]
+    traffic.road.attitude_xyzw: &source_id211 [0.0, 0.0, 0.7682732233721812, 0.6401220619923349]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.057
     traffic.road.lane_id: route.vehicle.057
@@ -6011,9 +5980,9 @@ entities:
 - id: vehicle.058
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id214 [166.37201794730697, 375.0081754820586, 0.0]
+    traffic.road.position_enu_m: &source_id214 [166.37201794730697, 375.0081754820586, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id213 [0.0, 0.0, -0.9821737713745632, 0.1879752186429564]
+    traffic.road.attitude_xyzw: &source_id213 [0.0, 0.0, -0.9821737713745632, 0.1879752186429564]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.058
     traffic.road.lane_id: route.vehicle.058
@@ -6044,9 +6013,9 @@ entities:
 - id: vehicle.059
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id216 [468.0949937049588, -319.8790150656566, 0.0]
+    traffic.road.position_enu_m: &source_id216 [468.0949937049588, -319.8790150656566, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id215 [0.0, 0.0, 0.18543350669145509, 0.9826568142521122]
+    traffic.road.attitude_xyzw: &source_id215 [0.0, 0.0, 0.18543350669145509, 0.9826568142521122]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.059
     traffic.road.lane_id: route.vehicle.059
@@ -6077,9 +6046,9 @@ entities:
 - id: vehicle.060
   type: aas:TrafficRoadVehicle
   facts:
-    traffic.road.position_enu_m: &id218 [459.32898470165406, -205.72709137516205, 0.0]
+    traffic.road.position_enu_m: &source_id218 [459.32898470165406, -205.72709137516205, 0.0]
     traffic.road.velocity_enu_mps: [0.0, 0.0, 0.0]
-    traffic.road.attitude_xyzw: &id217 [0.0, 0.0, -0.9820222318561487, 0.1887652937917045]
+    traffic.road.attitude_xyzw: &source_id217 [0.0, 0.0, -0.9820222318561487, 0.1887652937917045]
     traffic.road.speed_mps: 0.0
     traffic.road.route_id: route.vehicle.060
     traffic.road.lane_id: route.vehicle.060
@@ -6593,7 +6562,7 @@ entities:
   facts:
     traffic.incident.active: false
     traffic.incident.phase: inactive
-    traffic.incident.position_enu_m: &id220 [91.9499764938994, -93.03744113461998, 0.0]
+    traffic.incident.position_enu_m: &source_id220 [91.9499764938994, -93.03744113461998, 0.0]
     traffic.incident.source_kind: authored_staged
 - id: edge.coordinator
   type: aas:TrafficCoordinator
@@ -6629,6 +6598,15 @@ entities:
 - id: assessment.01.bravo
   type: aas:TrafficAssessment
   facts: {}
+- id: report.01
+  type: aas:TrafficReport
+  facts: {}
+- id: bid.01.alpha
+  type: aas:TrafficBid
+  facts: {}
+- id: bid.01.bravo
+  type: aas:TrafficBid
+  facts: {}
 bindings:
   rules:
   - writer: road_motion
@@ -6653,7 +6631,7 @@ bindings:
     ids: '*'
   - writer: route_inputs
     type: aas:TrafficRoute
-    fields: &id219
+    fields:
     - traffic.route.points_enu_m
     - traffic.route.native_lane_id
     - traffic.route.native_edges
@@ -6734,6 +6712,25 @@ bindings:
     - traffic.actor.route_choice
     - traffic.actor.public_summary
     ids: '*'
+  - writer: capture_bridge
+    type: aas:TrafficCapture
+    ids: capture.*
+    fields:
+    - traffic.capture.incident
+  - writer: capture
+    type: aas:TrafficCapture
+    ids: capture.*
+    fields:
+    - traffic.capture.request_id
+    - traffic.capture.actor
+    - traffic.capture.source_cut
+    - traffic.capture.acquired_at
+    - traffic.capture.camera_digest
+    - traffic.capture.asset_digest
+    - traffic.capture.byte_count
+    - traffic.capture.png_sha256
+    - traffic.capture.storage_status
+    - traffic.capture.renderer_mode
   lifecycle:
   - controller: road_motion
     type: aas:TrafficRoadVehicle
@@ -6765,6 +6762,9 @@ bindings:
   - controller: behaviour
     type: aas:TrafficBid
     ids: '*'
+  - controller: capture
+    type: aas:TrafficCapture
+    ids: capture.*
   relations:
   - writer: behaviour
     relation: traffic.task-assignee
@@ -6784,15 +6784,18 @@ bindings:
   - writer: traffic_assessment
     relation: traffic.assessment-bid
     type: aas:TrafficAssessment
-  - writer: capture
+  - writer: capture_bridge
     relation: traffic.capture-incident
     type: aas:TrafficCapture
-  - writer: capture
+  - writer: capture_bridge
     relation: traffic.capture-actor
     type: aas:TrafficCapture
   - writer: behaviour
     relation: traffic.coordinator-candidate
     type: aas:TrafficCoordinator
+  - writer: behaviour
+    relation: traffic.bid-actor
+    type: aas:TrafficBid
   commands: []
 engines:
   road_motion:
@@ -6801,1134 +6804,1134 @@ engines:
       routes:
       - id: route.vehicle.001
         loop_policy: declared_discontinuity
-        native_edges: *id027
+        native_edges: *source_id027
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
-        points_enu_m: *id007
+        points_enu_m: *source_id007
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 6.5
       - id: route.vehicle.002
         loop_policy: declared_discontinuity
-        native_edges: *id028
+        native_edges: *source_id028
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
-        points_enu_m: *id008
+        points_enu_m: *source_id008
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.1
       - id: route.vehicle.003
         loop_policy: declared_discontinuity
-        native_edges: *id029
+        native_edges: *source_id029
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
-        points_enu_m: *id009
+        points_enu_m: *source_id009
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.7
       - id: route.vehicle.004
         loop_policy: declared_discontinuity
-        native_edges: *id030
+        native_edges: *source_id030
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
-        points_enu_m: *id010
+        points_enu_m: *source_id010
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.3
       - id: route.vehicle.005
         loop_policy: declared_discontinuity
-        native_edges: *id031
+        native_edges: *source_id031
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
-        points_enu_m: *id011
+        points_enu_m: *source_id011
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.9
       - id: route.vehicle.006
         loop_policy: declared_discontinuity
-        native_edges: *id032
+        native_edges: *source_id032
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
-        points_enu_m: *id026
+        points_enu_m: *source_id026
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 6.5
       - id: route.vehicle.007
         loop_policy: declared_discontinuity
-        native_edges: *id033
+        native_edges: *source_id033
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
-        points_enu_m: *id012
+        points_enu_m: *source_id012
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.1
       - id: route.vehicle.008
         loop_policy: declared_discontinuity
-        native_edges: *id034
+        native_edges: *source_id034
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
-        points_enu_m: *id013
+        points_enu_m: *source_id013
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.7
       - id: route.vehicle.009
         loop_policy: declared_discontinuity
-        native_edges: *id035
+        native_edges: *source_id035
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
-        points_enu_m: *id014
+        points_enu_m: *source_id014
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.3
       - id: route.vehicle.010
         loop_policy: declared_discontinuity
-        native_edges: *id036
+        native_edges: *source_id036
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
-        points_enu_m: *id015
+        points_enu_m: *source_id015
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.9
       - id: route.vehicle.011
         loop_policy: declared_discontinuity
-        native_edges: *id037
+        native_edges: *source_id037
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
-        points_enu_m: *id016
+        points_enu_m: *source_id016
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 6.5
       - id: route.vehicle.012
         loop_policy: declared_discontinuity
-        native_edges: *id038
+        native_edges: *source_id038
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
-        points_enu_m: *id017
+        points_enu_m: *source_id017
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.1
       - id: route.vehicle.013
         loop_policy: declared_discontinuity
-        native_edges: *id039
+        native_edges: *source_id039
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
-        points_enu_m: *id018
+        points_enu_m: *source_id018
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.7
       - id: route.vehicle.014
         loop_policy: declared_discontinuity
-        native_edges: *id040
+        native_edges: *source_id040
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
-        points_enu_m: *id019
+        points_enu_m: *source_id019
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.3
       - id: route.vehicle.015
         loop_policy: declared_discontinuity
-        native_edges: *id041
+        native_edges: *source_id041
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
-        points_enu_m: *id020
+        points_enu_m: *source_id020
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.9
       - id: route.vehicle.016
         loop_policy: declared_discontinuity
-        native_edges: *id042
+        native_edges: *source_id042
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
-        points_enu_m: *id021
+        points_enu_m: *source_id021
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 6.5
       - id: route.vehicle.017
         loop_policy: declared_discontinuity
-        native_edges: *id043
+        native_edges: *source_id043
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
-        points_enu_m: *id022
+        points_enu_m: *source_id022
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.1
       - id: route.vehicle.018
         loop_policy: declared_discontinuity
-        native_edges: *id044
+        native_edges: *source_id044
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
-        points_enu_m: *id023
+        points_enu_m: *source_id023
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.7
       - id: route.vehicle.019
         loop_policy: declared_discontinuity
-        native_edges: *id045
+        native_edges: *source_id045
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
-        points_enu_m: *id024
+        points_enu_m: *source_id024
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.3
       - id: route.vehicle.020
         loop_policy: declared_discontinuity
-        native_edges: *id046
+        native_edges: *source_id046
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
-        points_enu_m: *id025
+        points_enu_m: *source_id025
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.9
       - id: route.vehicle.021
         loop_policy: declared_discontinuity
-        native_edges: *id047
+        native_edges: *source_id047
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
-        points_enu_m: *id007
+        points_enu_m: *source_id007
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 6.5
       - id: route.vehicle.022
         loop_policy: declared_discontinuity
-        native_edges: *id048
+        native_edges: *source_id048
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
-        points_enu_m: *id008
+        points_enu_m: *source_id008
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.1
       - id: route.vehicle.023
         loop_policy: declared_discontinuity
-        native_edges: *id049
+        native_edges: *source_id049
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
-        points_enu_m: *id009
+        points_enu_m: *source_id009
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.7
       - id: route.vehicle.024
         loop_policy: declared_discontinuity
-        native_edges: *id050
+        native_edges: *source_id050
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
-        points_enu_m: *id010
+        points_enu_m: *source_id010
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.3
       - id: route.vehicle.025
         loop_policy: declared_discontinuity
-        native_edges: *id051
+        native_edges: *source_id051
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
-        points_enu_m: *id011
+        points_enu_m: *source_id011
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.9
       - id: route.vehicle.027
         loop_policy: declared_discontinuity
-        native_edges: *id052
+        native_edges: *source_id052
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
-        points_enu_m: *id012
+        points_enu_m: *source_id012
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 6.5
       - id: route.vehicle.028
         loop_policy: declared_discontinuity
-        native_edges: *id053
+        native_edges: *source_id053
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
-        points_enu_m: *id013
+        points_enu_m: *source_id013
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.1
       - id: route.vehicle.029
         loop_policy: declared_discontinuity
-        native_edges: *id054
+        native_edges: *source_id054
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
-        points_enu_m: *id014
+        points_enu_m: *source_id014
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.7
       - id: route.vehicle.030
         loop_policy: declared_discontinuity
-        native_edges: *id055
+        native_edges: *source_id055
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
-        points_enu_m: *id015
+        points_enu_m: *source_id015
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.3
       - id: route.vehicle.031
         loop_policy: declared_discontinuity
-        native_edges: *id056
+        native_edges: *source_id056
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
-        points_enu_m: *id016
+        points_enu_m: *source_id016
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.9
       - id: route.vehicle.032
         loop_policy: declared_discontinuity
-        native_edges: *id057
+        native_edges: *source_id057
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
-        points_enu_m: *id017
+        points_enu_m: *source_id017
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 6.5
       - id: route.vehicle.033
         loop_policy: declared_discontinuity
-        native_edges: *id058
+        native_edges: *source_id058
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
-        points_enu_m: *id018
+        points_enu_m: *source_id018
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.1
       - id: route.vehicle.034
         loop_policy: declared_discontinuity
-        native_edges: *id059
+        native_edges: *source_id059
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
-        points_enu_m: *id019
+        points_enu_m: *source_id019
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.7
       - id: route.vehicle.035
         loop_policy: declared_discontinuity
-        native_edges: *id060
+        native_edges: *source_id060
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
-        points_enu_m: *id020
+        points_enu_m: *source_id020
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.3
       - id: route.vehicle.036
         loop_policy: declared_discontinuity
-        native_edges: *id061
+        native_edges: *source_id061
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
-        points_enu_m: *id021
+        points_enu_m: *source_id021
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.9
       - id: route.vehicle.037
         loop_policy: declared_discontinuity
-        native_edges: *id062
+        native_edges: *source_id062
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
-        points_enu_m: *id022
+        points_enu_m: *source_id022
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 6.5
       - id: route.vehicle.038
         loop_policy: declared_discontinuity
-        native_edges: *id063
+        native_edges: *source_id063
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
-        points_enu_m: *id023
+        points_enu_m: *source_id023
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.1
       - id: route.vehicle.039
         loop_policy: declared_discontinuity
-        native_edges: *id064
+        native_edges: *source_id064
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
-        points_enu_m: *id024
+        points_enu_m: *source_id024
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.7
       - id: route.vehicle.040
         loop_policy: declared_discontinuity
-        native_edges: *id065
+        native_edges: *source_id065
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
-        points_enu_m: *id025
+        points_enu_m: *source_id025
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.3
       - id: route.vehicle.026
         loop_policy: declared_discontinuity
-        native_edges: *id066
+        native_edges: *source_id066
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
-        points_enu_m: *id026
+        points_enu_m: *source_id026
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.9
       - id: route.vehicle.041
         loop_policy: declared_discontinuity
-        native_edges: *id067
+        native_edges: *source_id067
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
-        points_enu_m: *id007
+        points_enu_m: *source_id007
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 6.5
       - id: route.vehicle.042
         loop_policy: declared_discontinuity
-        native_edges: *id068
+        native_edges: *source_id068
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
-        points_enu_m: *id008
+        points_enu_m: *source_id008
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.1
       - id: route.vehicle.043
         loop_policy: declared_discontinuity
-        native_edges: *id069
+        native_edges: *source_id069
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
-        points_enu_m: *id009
+        points_enu_m: *source_id009
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.7
       - id: route.vehicle.044
         loop_policy: declared_discontinuity
-        native_edges: *id070
+        native_edges: *source_id070
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
-        points_enu_m: *id010
+        points_enu_m: *source_id010
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.3
       - id: route.vehicle.045
         loop_policy: declared_discontinuity
-        native_edges: *id071
+        native_edges: *source_id071
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
-        points_enu_m: *id011
+        points_enu_m: *source_id011
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.9
       - id: route.vehicle.046
         loop_policy: declared_discontinuity
-        native_edges: *id072
+        native_edges: *source_id072
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
-        points_enu_m: *id026
+        points_enu_m: *source_id026
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 6.5
       - id: route.vehicle.047
         loop_policy: declared_discontinuity
-        native_edges: *id073
+        native_edges: *source_id073
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
-        points_enu_m: *id012
+        points_enu_m: *source_id012
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.1
       - id: route.vehicle.048
         loop_policy: declared_discontinuity
-        native_edges: *id074
+        native_edges: *source_id074
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
-        points_enu_m: *id013
+        points_enu_m: *source_id013
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.7
       - id: route.vehicle.049
         loop_policy: declared_discontinuity
-        native_edges: *id075
+        native_edges: *source_id075
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
-        points_enu_m: *id014
+        points_enu_m: *source_id014
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.3
       - id: route.vehicle.050
         loop_policy: declared_discontinuity
-        native_edges: *id076
+        native_edges: *source_id076
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
-        points_enu_m: *id015
+        points_enu_m: *source_id015
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.9
       - id: route.vehicle.051
         loop_policy: declared_discontinuity
-        native_edges: *id077
+        native_edges: *source_id077
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
-        points_enu_m: *id016
+        points_enu_m: *source_id016
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 6.5
       - id: route.vehicle.052
         loop_policy: declared_discontinuity
-        native_edges: *id078
+        native_edges: *source_id078
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
-        points_enu_m: *id017
+        points_enu_m: *source_id017
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.1
       - id: route.vehicle.053
         loop_policy: declared_discontinuity
-        native_edges: *id079
+        native_edges: *source_id079
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
-        points_enu_m: *id018
+        points_enu_m: *source_id018
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.7
       - id: route.vehicle.054
         loop_policy: declared_discontinuity
-        native_edges: *id080
+        native_edges: *source_id080
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
-        points_enu_m: *id019
+        points_enu_m: *source_id019
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.3
       - id: route.vehicle.055
         loop_policy: declared_discontinuity
-        native_edges: *id081
+        native_edges: *source_id081
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
-        points_enu_m: *id020
+        points_enu_m: *source_id020
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.9
       - id: route.vehicle.056
         loop_policy: declared_discontinuity
-        native_edges: *id082
+        native_edges: *source_id082
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
-        points_enu_m: *id021
+        points_enu_m: *source_id021
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 6.5
       - id: route.vehicle.057
         loop_policy: declared_discontinuity
-        native_edges: *id083
+        native_edges: *source_id083
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
-        points_enu_m: *id022
+        points_enu_m: *source_id022
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.1
       - id: route.vehicle.058
         loop_policy: declared_discontinuity
-        native_edges: *id084
+        native_edges: *source_id084
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
-        points_enu_m: *id023
+        points_enu_m: *source_id023
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 7.7
       - id: route.vehicle.059
         loop_policy: declared_discontinuity
-        native_edges: *id085
+        native_edges: *source_id085
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
-        points_enu_m: *id024
+        points_enu_m: *source_id024
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.3
       - id: route.vehicle.060
         loop_policy: declared_discontinuity
-        native_edges: *id086
+        native_edges: *source_id086
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
-        points_enu_m: *id025
+        points_enu_m: *source_id025
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
         speed_mps: 8.9
       - id: lane.incident
         loop_policy: stop
-        native_edges: *id087
+        native_edges: *source_id087
         native_lane_id: --2682428834550472112#0_1
-        points_enu_m: *id088
+        points_enu_m: *source_id088
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
       - id: lane.adjacent
         loop_policy: stop
-        native_edges: *id089
+        native_edges: *source_id089
         native_lane_id: -2682428834550472112#0_1
-        points_enu_m: *id090
+        points_enu_m: *source_id090
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
       - id: adjacent_lane_bypass
         loop_policy: stop
-        native_edges: *id091
+        native_edges: *source_id091
         native_lane_id: ''
-        points_enu_m: *id092
+        points_enu_m: *source_id092
         source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
       actors:
-      - attitude_xyzw: *id093
+      - attitude_xyzw: *source_id093
         direction: 1
         id: vehicle.reporter
         loop: false
-        position_enu_m: *id094
+        position_enu_m: *source_id094
         progress_m: 10
         role: reporter
         route_id: lane.incident
         speed_mps: 6
         stop_progress_m: 84.0
-      - attitude_xyzw: *id095
+      - attitude_xyzw: *source_id095
         direction: 1
         id: vehicle.incident.a
         loop: false
-        position_enu_m: *id096
+        position_enu_m: *source_id096
         progress_m: 51.7
         role: incident
         route_id: lane.incident
         speed_mps: 6.0
         stop_progress_m: 99.7
-      - attitude_xyzw: *id097
+      - attitude_xyzw: *source_id097
         direction: -1
         id: vehicle.incident.b
         loop: false
-        position_enu_m: *id098
+        position_enu_m: *source_id098
         progress_m: 152.3
         role: incident
         route_id: lane.incident
         speed_mps: 6.0
         stop_progress_m: 104.3
-      - attitude_xyzw: *id099
+      - attitude_xyzw: *source_id099
         direction: 1
         id: vehicle.001
         loop: true
-        position_enu_m: *id100
+        position_enu_m: *source_id100
         progress_m: 0.0
         role: background
         route_id: route.vehicle.001
         speed_mps: 6.5
         stop_progress_m: 1924.130207182269
-      - attitude_xyzw: *id101
+      - attitude_xyzw: *source_id101
         direction: 1
         id: vehicle.002
         loop: true
-        position_enu_m: *id102
+        position_enu_m: *source_id102
         progress_m: 12.0
         role: background
         route_id: route.vehicle.002
         speed_mps: 7.1
         stop_progress_m: 2861.2788564260577
-      - attitude_xyzw: *id103
+      - attitude_xyzw: *source_id103
         direction: 1
         id: vehicle.003
         loop: true
-        position_enu_m: *id104
+        position_enu_m: *source_id104
         progress_m: 24.0
         role: background
         route_id: route.vehicle.003
         speed_mps: 7.7
         stop_progress_m: 5992.723006436821
-      - attitude_xyzw: *id105
+      - attitude_xyzw: *source_id105
         direction: 1
         id: vehicle.004
         loop: true
-        position_enu_m: *id106
+        position_enu_m: *source_id106
         progress_m: 36.0
         role: background
         route_id: route.vehicle.004
         speed_mps: 8.3
         stop_progress_m: 5177.835358782187
-      - attitude_xyzw: *id107
+      - attitude_xyzw: *source_id107
         direction: 1
         id: vehicle.005
         loop: true
-        position_enu_m: *id108
+        position_enu_m: *source_id108
         progress_m: 48.0
         role: background
         route_id: route.vehicle.005
         speed_mps: 8.9
         stop_progress_m: 10102.856321308596
-      - attitude_xyzw: *id109
+      - attitude_xyzw: *source_id109
         direction: 1
         id: vehicle.006
         loop: true
-        position_enu_m: *id110
+        position_enu_m: *source_id110
         progress_m: 60.0
         role: background
         route_id: route.vehicle.006
         speed_mps: 6.5
         stop_progress_m: 5992.719614394289
-      - attitude_xyzw: *id111
+      - attitude_xyzw: *source_id111
         direction: 1
         id: vehicle.007
         loop: true
-        position_enu_m: *id112
+        position_enu_m: *source_id112
         progress_m: 72.0
         role: background
         route_id: route.vehicle.007
         speed_mps: 7.1
         stop_progress_m: 3096.1426162118964
-      - attitude_xyzw: *id113
+      - attitude_xyzw: *source_id113
         direction: 1
         id: vehicle.008
         loop: true
-        position_enu_m: *id114
+        position_enu_m: *source_id114
         progress_m: 84.0
         role: background
         route_id: route.vehicle.008
         speed_mps: 7.7
         stop_progress_m: 4798.2950811289
-      - attitude_xyzw: *id115
+      - attitude_xyzw: *source_id115
         direction: 1
         id: vehicle.009
         loop: true
-        position_enu_m: *id116
+        position_enu_m: *source_id116
         progress_m: 0.0
         role: background
         route_id: route.vehicle.009
         speed_mps: 8.3
         stop_progress_m: 10236.941925095705
-      - attitude_xyzw: *id117
+      - attitude_xyzw: *source_id117
         direction: 1
         id: vehicle.010
         loop: true
-        position_enu_m: *id118
+        position_enu_m: *source_id118
         progress_m: 12.0
         role: background
         route_id: route.vehicle.010
         speed_mps: 8.9
         stop_progress_m: 3705.3213472454427
-      - attitude_xyzw: *id119
+      - attitude_xyzw: *source_id119
         direction: 1
         id: vehicle.011
         loop: true
-        position_enu_m: *id120
+        position_enu_m: *source_id120
         progress_m: 24.0
         role: background
         route_id: route.vehicle.011
         speed_mps: 6.5
         stop_progress_m: 3086.984943176898
-      - attitude_xyzw: *id121
+      - attitude_xyzw: *source_id121
         direction: 1
         id: vehicle.012
         loop: true
-        position_enu_m: *id122
+        position_enu_m: *source_id122
         progress_m: 36.0
         role: background
         route_id: route.vehicle.012
         speed_mps: 7.1
         stop_progress_m: 4680.337239928966
-      - attitude_xyzw: *id123
+      - attitude_xyzw: *source_id123
         direction: 1
         id: vehicle.013
         loop: true
-        position_enu_m: *id124
+        position_enu_m: *source_id124
         progress_m: 48.0
         role: background
         route_id: route.vehicle.013
         speed_mps: 7.7
         stop_progress_m: 2020.7258743925552
-      - attitude_xyzw: *id125
+      - attitude_xyzw: *source_id125
         direction: 1
         id: vehicle.014
         loop: true
-        position_enu_m: *id126
+        position_enu_m: *source_id126
         progress_m: 60.0
         role: background
         route_id: route.vehicle.014
         speed_mps: 8.3
         stop_progress_m: 2270.6115976289548
-      - attitude_xyzw: *id127
+      - attitude_xyzw: *source_id127
         direction: 1
         id: vehicle.015
         loop: true
-        position_enu_m: *id128
+        position_enu_m: *source_id128
         progress_m: 72.0
         role: background
         route_id: route.vehicle.015
         speed_mps: 8.9
         stop_progress_m: 2686.136887525413
-      - attitude_xyzw: *id129
+      - attitude_xyzw: *source_id129
         direction: 1
         id: vehicle.016
         loop: true
-        position_enu_m: *id130
+        position_enu_m: *source_id130
         progress_m: 84.0
         role: background
         route_id: route.vehicle.016
         speed_mps: 6.5
         stop_progress_m: 2851.676404482773
-      - attitude_xyzw: *id131
+      - attitude_xyzw: *source_id131
         direction: 1
         id: vehicle.017
         loop: true
-        position_enu_m: *id132
+        position_enu_m: *source_id132
         progress_m: 0.0
         role: background
         route_id: route.vehicle.017
         speed_mps: 7.1
         stop_progress_m: 2310.1228374481293
-      - attitude_xyzw: *id133
+      - attitude_xyzw: *source_id133
         direction: 1
         id: vehicle.018
         loop: true
-        position_enu_m: *id134
+        position_enu_m: *source_id134
         progress_m: 12.0
         role: background
         route_id: route.vehicle.018
         speed_mps: 7.7
         stop_progress_m: 2086.526285985506
-      - attitude_xyzw: *id135
+      - attitude_xyzw: *source_id135
         direction: 1
         id: vehicle.019
         loop: true
-        position_enu_m: *id136
+        position_enu_m: *source_id136
         progress_m: 24.0
         role: background
         route_id: route.vehicle.019
         speed_mps: 8.3
         stop_progress_m: 2555.8309575105295
-      - attitude_xyzw: *id137
+      - attitude_xyzw: *source_id137
         direction: 1
         id: vehicle.020
         loop: true
-        position_enu_m: *id138
+        position_enu_m: *source_id138
         progress_m: 36.0
         role: background
         route_id: route.vehicle.020
         speed_mps: 8.9
         stop_progress_m: 2971.846467495306
-      - attitude_xyzw: *id139
+      - attitude_xyzw: *source_id139
         direction: 1
         id: vehicle.021
         loop: true
-        position_enu_m: *id140
+        position_enu_m: *source_id140
         progress_m: 48.0
         role: background
         route_id: route.vehicle.021
         speed_mps: 6.5
         stop_progress_m: 1924.130207182269
-      - attitude_xyzw: *id141
+      - attitude_xyzw: *source_id141
         direction: 1
         id: vehicle.022
         loop: true
-        position_enu_m: *id142
+        position_enu_m: *source_id142
         progress_m: 60.0
         role: background
         route_id: route.vehicle.022
         speed_mps: 7.1
         stop_progress_m: 2861.2788564260577
-      - attitude_xyzw: *id143
+      - attitude_xyzw: *source_id143
         direction: 1
         id: vehicle.023
         loop: true
-        position_enu_m: *id144
+        position_enu_m: *source_id144
         progress_m: 72.0
         role: background
         route_id: route.vehicle.023
         speed_mps: 7.7
         stop_progress_m: 5992.723006436821
-      - attitude_xyzw: *id145
+      - attitude_xyzw: *source_id145
         direction: 1
         id: vehicle.024
         loop: true
-        position_enu_m: *id146
+        position_enu_m: *source_id146
         progress_m: 84.0
         role: background
         route_id: route.vehicle.024
         speed_mps: 8.3
         stop_progress_m: 5177.835358782187
-      - attitude_xyzw: *id147
+      - attitude_xyzw: *source_id147
         direction: 1
         id: vehicle.025
         loop: true
-        position_enu_m: *id148
+        position_enu_m: *source_id148
         progress_m: 0.0
         role: background
         route_id: route.vehicle.025
         speed_mps: 8.9
         stop_progress_m: 10102.856321308596
-      - attitude_xyzw: *id149
+      - attitude_xyzw: *source_id149
         direction: 1
         id: vehicle.027
         loop: true
-        position_enu_m: *id150
+        position_enu_m: *source_id150
         progress_m: 12.0
         role: background
         route_id: route.vehicle.027
         speed_mps: 6.5
         stop_progress_m: 3096.1426162118964
-      - attitude_xyzw: *id151
+      - attitude_xyzw: *source_id151
         direction: 1
         id: vehicle.028
         loop: true
-        position_enu_m: *id152
+        position_enu_m: *source_id152
         progress_m: 24.0
         role: background
         route_id: route.vehicle.028
         speed_mps: 7.1
         stop_progress_m: 4798.2950811289
-      - attitude_xyzw: *id153
+      - attitude_xyzw: *source_id153
         direction: 1
         id: vehicle.029
         loop: true
-        position_enu_m: *id154
+        position_enu_m: *source_id154
         progress_m: 36.0
         role: background
         route_id: route.vehicle.029
         speed_mps: 7.7
         stop_progress_m: 10236.941925095705
-      - attitude_xyzw: *id155
+      - attitude_xyzw: *source_id155
         direction: 1
         id: vehicle.030
         loop: true
-        position_enu_m: *id156
+        position_enu_m: *source_id156
         progress_m: 48.0
         role: background
         route_id: route.vehicle.030
         speed_mps: 8.3
         stop_progress_m: 3705.3213472454427
-      - attitude_xyzw: *id157
+      - attitude_xyzw: *source_id157
         direction: 1
         id: vehicle.031
         loop: true
-        position_enu_m: *id158
+        position_enu_m: *source_id158
         progress_m: 60.0
         role: background
         route_id: route.vehicle.031
         speed_mps: 8.9
         stop_progress_m: 3086.984943176898
-      - attitude_xyzw: *id159
+      - attitude_xyzw: *source_id159
         direction: 1
         id: vehicle.032
         loop: true
-        position_enu_m: *id160
+        position_enu_m: *source_id160
         progress_m: 72.0
         role: background
         route_id: route.vehicle.032
         speed_mps: 6.5
         stop_progress_m: 4680.337239928966
-      - attitude_xyzw: *id161
+      - attitude_xyzw: *source_id161
         direction: 1
         id: vehicle.033
         loop: true
-        position_enu_m: *id162
+        position_enu_m: *source_id162
         progress_m: 84.0
         role: background
         route_id: route.vehicle.033
         speed_mps: 7.1
         stop_progress_m: 2020.7258743925552
-      - attitude_xyzw: *id163
+      - attitude_xyzw: *source_id163
         direction: 1
         id: vehicle.034
         loop: true
-        position_enu_m: *id164
+        position_enu_m: *source_id164
         progress_m: 0.0
         role: background
         route_id: route.vehicle.034
         speed_mps: 7.7
         stop_progress_m: 2270.6115976289548
-      - attitude_xyzw: *id165
+      - attitude_xyzw: *source_id165
         direction: 1
         id: vehicle.035
         loop: true
-        position_enu_m: *id166
+        position_enu_m: *source_id166
         progress_m: 12.0
         role: background
         route_id: route.vehicle.035
         speed_mps: 8.3
         stop_progress_m: 2686.136887525413
-      - attitude_xyzw: *id167
+      - attitude_xyzw: *source_id167
         direction: 1
         id: vehicle.036
         loop: true
-        position_enu_m: *id168
+        position_enu_m: *source_id168
         progress_m: 24.0
         role: background
         route_id: route.vehicle.036
         speed_mps: 8.9
         stop_progress_m: 2851.676404482773
-      - attitude_xyzw: *id169
+      - attitude_xyzw: *source_id169
         direction: 1
         id: vehicle.037
         loop: true
-        position_enu_m: *id170
+        position_enu_m: *source_id170
         progress_m: 36.0
         role: background
         route_id: route.vehicle.037
         speed_mps: 6.5
         stop_progress_m: 2310.1228374481293
-      - attitude_xyzw: *id171
+      - attitude_xyzw: *source_id171
         direction: 1
         id: vehicle.038
         loop: true
-        position_enu_m: *id172
+        position_enu_m: *source_id172
         progress_m: 48.0
         role: background
         route_id: route.vehicle.038
         speed_mps: 7.1
         stop_progress_m: 2086.526285985506
-      - attitude_xyzw: *id173
+      - attitude_xyzw: *source_id173
         direction: 1
         id: vehicle.039
         loop: true
-        position_enu_m: *id174
+        position_enu_m: *source_id174
         progress_m: 60.0
         role: background
         route_id: route.vehicle.039
         speed_mps: 7.7
         stop_progress_m: 2555.8309575105295
-      - attitude_xyzw: *id175
+      - attitude_xyzw: *source_id175
         direction: 1
         id: vehicle.040
         loop: true
-        position_enu_m: *id176
+        position_enu_m: *source_id176
         progress_m: 72.0
         role: background
         route_id: route.vehicle.040
         speed_mps: 8.3
         stop_progress_m: 2971.846467495306
-      - attitude_xyzw: *id177
+      - attitude_xyzw: *source_id177
         direction: 1
         id: vehicle.026
         loop: true
-        position_enu_m: *id178
+        position_enu_m: *source_id178
         progress_m: 84.0
         role: background
         route_id: route.vehicle.026
         speed_mps: 8.9
         stop_progress_m: 5992.719614394289
-      - attitude_xyzw: *id179
+      - attitude_xyzw: *source_id179
         direction: 1
         id: vehicle.041
         loop: true
-        position_enu_m: *id180
+        position_enu_m: *source_id180
         progress_m: 7.0
         role: background
         route_id: route.vehicle.041
         speed_mps: 6.5
         stop_progress_m: 1924.130207182269
-      - attitude_xyzw: *id181
+      - attitude_xyzw: *source_id181
         direction: 1
         id: vehicle.042
         loop: true
-        position_enu_m: *id182
+        position_enu_m: *source_id182
         progress_m: 19.0
         role: background
         route_id: route.vehicle.042
         speed_mps: 7.1
         stop_progress_m: 2861.2788564260577
-      - attitude_xyzw: *id183
+      - attitude_xyzw: *source_id183
         direction: 1
         id: vehicle.043
         loop: true
-        position_enu_m: *id184
+        position_enu_m: *source_id184
         progress_m: 31.0
         role: background
         route_id: route.vehicle.043
         speed_mps: 7.7
         stop_progress_m: 5992.723006436821
-      - attitude_xyzw: *id185
+      - attitude_xyzw: *source_id185
         direction: 1
         id: vehicle.044
         loop: true
-        position_enu_m: *id186
+        position_enu_m: *source_id186
         progress_m: 43.0
         role: background
         route_id: route.vehicle.044
         speed_mps: 8.3
         stop_progress_m: 5177.835358782187
-      - attitude_xyzw: *id187
+      - attitude_xyzw: *source_id187
         direction: 1
         id: vehicle.045
         loop: true
-        position_enu_m: *id188
+        position_enu_m: *source_id188
         progress_m: 55.0
         role: background
         route_id: route.vehicle.045
         speed_mps: 8.9
         stop_progress_m: 10102.856321308596
-      - attitude_xyzw: *id189
+      - attitude_xyzw: *source_id189
         direction: 1
         id: vehicle.046
         loop: true
-        position_enu_m: *id190
+        position_enu_m: *source_id190
         progress_m: 67.0
         role: background
         route_id: route.vehicle.046
         speed_mps: 6.5
         stop_progress_m: 5992.719614394289
-      - attitude_xyzw: *id191
+      - attitude_xyzw: *source_id191
         direction: 1
         id: vehicle.047
         loop: true
-        position_enu_m: *id192
+        position_enu_m: *source_id192
         progress_m: 79.0
         role: background
         route_id: route.vehicle.047
         speed_mps: 7.1
         stop_progress_m: 3096.1426162118964
-      - attitude_xyzw: *id193
+      - attitude_xyzw: *source_id193
         direction: 1
         id: vehicle.048
         loop: true
-        position_enu_m: *id194
+        position_enu_m: *source_id194
         progress_m: 91.0
         role: background
         route_id: route.vehicle.048
         speed_mps: 7.7
         stop_progress_m: 4798.2950811289
-      - attitude_xyzw: *id195
+      - attitude_xyzw: *source_id195
         direction: 1
         id: vehicle.049
         loop: true
-        position_enu_m: *id196
+        position_enu_m: *source_id196
         progress_m: 7.0
         role: background
         route_id: route.vehicle.049
         speed_mps: 8.3
         stop_progress_m: 10236.941925095705
-      - attitude_xyzw: *id197
+      - attitude_xyzw: *source_id197
         direction: 1
         id: vehicle.050
         loop: true
-        position_enu_m: *id198
+        position_enu_m: *source_id198
         progress_m: 19.0
         role: background
         route_id: route.vehicle.050
         speed_mps: 8.9
         stop_progress_m: 3705.3213472454427
-      - attitude_xyzw: *id199
+      - attitude_xyzw: *source_id199
         direction: 1
         id: vehicle.051
         loop: true
-        position_enu_m: *id200
+        position_enu_m: *source_id200
         progress_m: 31.0
         role: background
         route_id: route.vehicle.051
         speed_mps: 6.5
         stop_progress_m: 3086.984943176898
-      - attitude_xyzw: *id201
+      - attitude_xyzw: *source_id201
         direction: 1
         id: vehicle.052
         loop: true
-        position_enu_m: *id202
+        position_enu_m: *source_id202
         progress_m: 43.0
         role: background
         route_id: route.vehicle.052
         speed_mps: 7.1
         stop_progress_m: 4680.337239928966
-      - attitude_xyzw: *id203
+      - attitude_xyzw: *source_id203
         direction: 1
         id: vehicle.053
         loop: true
-        position_enu_m: *id204
+        position_enu_m: *source_id204
         progress_m: 55.0
         role: background
         route_id: route.vehicle.053
         speed_mps: 7.7
         stop_progress_m: 2020.7258743925552
-      - attitude_xyzw: *id205
+      - attitude_xyzw: *source_id205
         direction: 1
         id: vehicle.054
         loop: true
-        position_enu_m: *id206
+        position_enu_m: *source_id206
         progress_m: 67.0
         role: background
         route_id: route.vehicle.054
         speed_mps: 8.3
         stop_progress_m: 2270.6115976289548
-      - attitude_xyzw: *id207
+      - attitude_xyzw: *source_id207
         direction: 1
         id: vehicle.055
         loop: true
-        position_enu_m: *id208
+        position_enu_m: *source_id208
         progress_m: 79.0
         role: background
         route_id: route.vehicle.055
         speed_mps: 8.9
         stop_progress_m: 2686.136887525413
-      - attitude_xyzw: *id209
+      - attitude_xyzw: *source_id209
         direction: 1
         id: vehicle.056
         loop: true
-        position_enu_m: *id210
+        position_enu_m: *source_id210
         progress_m: 91.0
         role: background
         route_id: route.vehicle.056
         speed_mps: 6.5
         stop_progress_m: 2851.676404482773
-      - attitude_xyzw: *id211
+      - attitude_xyzw: *source_id211
         direction: 1
         id: vehicle.057
         loop: true
-        position_enu_m: *id212
+        position_enu_m: *source_id212
         progress_m: 7.0
         role: background
         route_id: route.vehicle.057
         speed_mps: 7.1
         stop_progress_m: 2310.1228374481293
-      - attitude_xyzw: *id213
+      - attitude_xyzw: *source_id213
         direction: 1
         id: vehicle.058
         loop: true
-        position_enu_m: *id214
+        position_enu_m: *source_id214
         progress_m: 19.0
         role: background
         route_id: route.vehicle.058
         speed_mps: 7.7
         stop_progress_m: 2086.526285985506
-      - attitude_xyzw: *id215
+      - attitude_xyzw: *source_id215
         direction: 1
         id: vehicle.059
         loop: true
-        position_enu_m: *id216
+        position_enu_m: *source_id216
         progress_m: 31.0
         role: background
         route_id: route.vehicle.059
         speed_mps: 8.3
         stop_progress_m: 2555.8309575105295
-      - attitude_xyzw: *id217
+      - attitude_xyzw: *source_id217
         direction: 1
         id: vehicle.060
         loop: true
-        position_enu_m: *id218
+        position_enu_m: *source_id218
         progress_m: 43.0
         role: background
         route_id: route.vehicle.060
         speed_mps: 8.9
         stop_progress_m: 2971.846467495306
-      step_ns: 66666667
+      step_ns: 1000000000
       clearance_m: 0.55
       bypass_clearance_m: 0.8
       bypass_routes:
@@ -7940,7 +7943,7 @@ engines:
   route_inputs:
     plugin: traffic_route_inputs
     config:
-      fields: *id219
+      fields: ["traffic.route.points_enu_m", "traffic.route.native_lane_id", "traffic.route.native_edges", "traffic.route.source_digest", "traffic.route.mode", "traffic.route.parameters"]
       next_command: traffic.route.next
   air_motion:
     plugin: kinematic
@@ -7979,7 +7982,7 @@ engines:
         reason: reason
       command_entity_key: entity
       command_target_key: target
-      step_ns: 66666667
+      step_ns: 1000000000
       lifecycle: true
       frame:
         convention: enu
@@ -8012,7 +8015,7 @@ engines:
       position_field: he.aircraft.position_enu_m
       energy_field: traffic.uav.energy_j
       target_field: traffic.task.target_enu_m
-      anchor: *id220
+      anchor: *source_id220
       radius_m: 400.0
       reserve_j: 10000.0
   behaviour:
@@ -8020,7 +8023,88 @@ engines:
     config:
       packages:
       - path: behaviours.yaml
-        sha256: 7c65b7eb41ab52bfbe682d31e58b573d1697f1fd089139e72be3089d26a4ea26
+        sha256: 1766b379cb3c7572b5f88b22d82e2fd3144a14e145182b71b3feb40c583e414b
+      capabilities:
+        traffic.road.follow:
+          schema: traffic.road.follow
+          target: road_motion
+        traffic.route.next:
+          schema: traffic.route.next
+          target: route_inputs
+        traffic.air.move_to:
+          schema: traffic.air.move_to
+          target: air_motion
+        traffic.air.stop:
+          schema: traffic.air.stop
+          target: air_motion
+        traffic.road.stop:
+          schema: traffic.road.stop
+          target: road_motion
+        traffic.road.bypass:
+          schema: traffic.road.bypass
+          target: road_motion
+        traffic.air.hold:
+          schema: traffic.air.hold
+          target: air_motion
+  decisions:
+    plugin: traffic_decisions
+    config:
+      mode: stub
+      fixture_path: scenarios/demos/traffic-accident/fixtures/decisions.json
+      fixture_sha256: b73df34b58bf0a16f326ce869d092b5c46caa3e26710fcb5a8747a4616170b6a
+      task_id: incident-capture-01
+      candidates:
+        uav.alpha: uav_alpha
+        uav.bravo: uav_bravo
+      latency_ns:
+        vehicle_report: 200000000
+        uav_alpha: 100000000
+        uav_bravo: 300000000
+  capture:
+    plugin: traffic_camera_capture
+    config:
+      request_schema: traffic.capture.render
+      storage_result_schema: traffic.capture.upload
+      accepted_schema: traffic.capture.upload_verified
+      accepted_topic: traffic.capture.upload_verified
+      record_type: aas:TrafficCapture
+      record_id_prefix: capture.
+      fields:
+        request_id: traffic.capture.request_id
+        actor: traffic.capture.actor
+        source_cut: traffic.capture.source_cut
+        acquired: traffic.capture.acquired_at
+        camera_digest: traffic.capture.camera_digest
+        asset_digest: traffic.capture.asset_digest
+        byte_count: traffic.capture.byte_count
+        digest: traffic.capture.png_sha256
+        storage_status: traffic.capture.storage_status
+        renderer_mode: traffic.capture.renderer_mode
+      run_directory: '@run'
+      renderer:
+        mode: traffic_browser
+        browser_executable: /home/weizhiwei/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome
+        node_modules: frontend/node_modules
+        timeout_s: 20.0
+        asset_digest: 37911d569ebb721da8e243a55e98dca93f1528a65c21cc855d49ba121bc1b428
+  capture_bridge:
+    plugin: traffic_capture_bridge
+    config:
+      capture_target: capture
+      request_schema: traffic.capture.render
+      upload_schema: traffic.capture.upload
+      upload_lag_ns: 200000000
+      camera:
+        revision: traffic-nadir/v1
+        fov: 55.0
+        provenance: simulation camera; primitive geometry; committed poses
+      asset_digest: 37911d569ebb721da8e243a55e98dca93f1528a65c21cc855d49ba121bc1b428
+      width: 256
+      height: 192
+      timeout_s: 20.0
+      pose_fields:
+        aas:TrafficRoadVehicle: traffic.road.position_enu_m
+        aas:TrafficUAV: he.aircraft.position_enu_m
 presentation:
 - typeId: aas:TrafficRoadVehicle
   positionField: traffic.road.position_enu_m
@@ -8046,4 +8130,12 @@ outputs:
   durability: flush
 behaviours:
 - path: behaviours.yaml
-  sha256: 7c65b7eb41ab52bfbe682d31e58b573d1697f1fd089139e72be3089d26a4ea26
+  sha256: 1766b379cb3c7572b5f88b22d82e2fd3144a14e145182b71b3feb40c583e414b
+ingress_streams:
+- id: operator
+  engine_ids:
+  - behaviour
+  mapping_id: canonical
+  initial_watermark_ns: 90000000000
+  lateness: reject
+  timeout_s: 10.0

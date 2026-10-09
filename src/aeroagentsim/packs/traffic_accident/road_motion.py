@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from aerokernel import EntityRef, Partition, Timing
+from aerokernel.ids import ItemRef
 from aerokernel.sdk import Command, ContextEngine, EngineContext
 from aerokernel.values import Value
 
@@ -30,6 +31,7 @@ FIELDS = tuple(
         "safe_gap",
     )
 )
+EVIDENCE = "traffic.road.occupancy_evaluated"
 
 
 def payload(value: Value) -> dict[str, Any]:
@@ -66,6 +68,8 @@ class RoadMotion(ContextEngine):
 
     def __init__(self, build: EngineBuild) -> None:
         self.build = build
+        self.published_values: dict[tuple[EntityRef, str], Any] = {}
+        self.new_command_causes: list[ItemRef] = []
         cfg = build.config
         if set(cfg) != {
             "routes",
@@ -137,6 +141,8 @@ class RoadMotion(ContextEngine):
                 build.id,
                 produces=FIELDS,
                 commands=tuple(self.schemas.values()),
+                emits=(EVIDENCE,),
+                message_targets=("traffic.road.evidence",),
                 lifecycle=True,
                 timing=Timing("fixed_step", self.period),
             ),
@@ -179,6 +185,7 @@ class RoadMotion(ContextEngine):
 
     def on_inputs(self, ctx: EngineContext) -> None:
         for delivery in ctx.inbox:
+            ctx.inputs = [delivery.dispatch_ref]
             command = ctx.remember(delivery, payload)
             subject = EntityRef.from_data(command.payload["actor"]["$ref"])
             v = self.fleet.get(subject.id)
@@ -194,6 +201,7 @@ class RoadMotion(ContextEngine):
                 v.command, v.speed, v.cruise = None, 0.0, 0.0
                 ctx.accept(command)
                 ctx.execute(command)
+                self.new_command_causes.append(command.delivery.dispatch_ref)
                 self.publish(ctx, v)
                 ctx.succeed(command, {"position": list(v.pose.position)})
                 continue
@@ -232,6 +240,7 @@ class RoadMotion(ContextEngine):
             if type(command.payload["loop"]) is not bool:
                 raise TypeError("command loop must be Boolean")
             v.loop, v.command = command.payload["loop"], command
+            self.new_command_causes.append(command.delivery.dispatch_ref)
             ctx.accept(command)
             ctx.execute(command)
 
@@ -256,7 +265,10 @@ class RoadMotion(ContextEngine):
             v.safe_gap,
         )
         for field, value in zip(FIELDS, values):
-            ctx.set(v.ref, field, value)
+            key = (v.ref, field)
+            if key not in self.published_values or self.published_values[key] != value:
+                ctx.set(v.ref, field, value)
+                self.published_values[key] = value
 
     def step(self, ctx: EngineContext) -> None:
         dt = (ctx.now.ns - self.integrated_ns) / 1e9
@@ -266,6 +278,23 @@ class RoadMotion(ContextEngine):
         for v in self.fleet.values():
             ctx.get(v.ref, FIELDS[0])
             ctx.get(v.ref, FIELDS[2])
+        ctx.inputs.extend(self.new_command_causes)
+        self.new_command_causes.clear()
+        # Every actor participates in the complete collision query. Record that
+        # common evidence once, then let each physical output cite this record
+        # instead of duplicating the entire fleet's versions hundreds of times.
+        evidence = ctx.emit(
+            EVIDENCE,
+            {
+                "at_ns": ctx.now.ns,
+                "source_cut": ctx.view.cut.index,
+                "actors": [
+                    {"$ref": v.ref.to_data()} for _, v in sorted(self.fleet.items())
+                ],
+            },
+            topic="traffic.road.evidence",
+        )
+        ctx.inputs = [evidence]
         for identity in sorted(self.fleet):
             v = self.fleet[identity]
             v.speed, v.blocked = 0.0, ()

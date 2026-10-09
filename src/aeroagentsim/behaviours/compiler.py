@@ -109,7 +109,8 @@ class Compiler:
         def contains_expression(child: Any) -> bool:
             if isinstance(child, dict):
                 return bool(
-                    {"$role", "$variable", "$trigger", "field"} & child.keys()
+                    {"$role", "$variable", "$trigger", "$now_ns", "$microstep", "field"}
+                    & child.keys()
                 ) or any(contains_expression(item) for item in child.values())
             return isinstance(child, list) and any(
                 contains_expression(item) for item in child
@@ -124,6 +125,15 @@ class Compiler:
                     child, f"{path}[{i}]", schema.get("items") if schema else None
                 )
         elif isinstance(value, dict):
+            if "$now_ns" in value or "$microstep" in value:
+                key = "$now_ns" if "$now_ns" in value else "$microstep"
+                self.shape(value, path, {key})
+                if value[key] is not True or schema and schema["type"] != "integer":
+                    self.fail(
+                        path,
+                        "canonical instant component requires true and an integer destination",
+                    )
+                return
             if "$role" in value:
                 self.shape(value, path, {"$role"})
                 if value["$role"] not in self.roles:
@@ -215,6 +225,29 @@ class Compiler:
                             path, "field value schema is incompatible with destination"
                         )
                 return
+            if "relation_assertion_id" in value:
+                self.shape(
+                    value, path, {"relation_assertion_id", "source_role", "target_role"}
+                )
+                if (
+                    value["source_role"] not in self.roles
+                    or value["target_role"] not in self.roles
+                ):
+                    self.fail(
+                        path,
+                        "relation assertion expression requires bound endpoint roles",
+                    )
+                if schema and schema["type"] != "string":
+                    self.fail(
+                        path, "relation assertion ID requires a string destination"
+                    )
+                if self.build:
+                    self.checked(
+                        path,
+                        self.build.registry.relation,
+                        value["relation_assertion_id"],
+                    )
+                return
             if any(
                 key in value
                 for key in (
@@ -300,10 +333,21 @@ class Compiler:
                     )
         if p["profile"] == "aerograph_sampled/v1":
             adapter = self.shape(
-                p.get("adapter"), path + ".adapter", {"event", "context"}
+                p.get("adapter"), path + ".adapter", {"event"}, {"context", "contexts"}
             )
-            for key, child in adapter.items():
-                self.text(child, path + ".adapter." + key)
+            self.text(adapter["event"], path + ".adapter.event")
+            if ("context" in adapter) == ("contexts" in adapter):
+                self.fail(
+                    path + ".adapter", "declare one context or a finite contexts pool"
+                )
+            contexts = adapter.get("contexts", [adapter.get("context")])
+            for child in self.sequence(contexts, path + ".adapter.contexts"):
+                self.text(child, path + ".adapter.contexts")
+            if not contexts or len(set(contexts)) != len(contexts):
+                self.fail(
+                    path + ".adapter.contexts",
+                    "nonempty unique finite contexts required",
+                )
 
     def trigger(self, value: Any, path: str, *, initial: bool = False) -> None:
         categories = {
@@ -603,6 +647,9 @@ def compile_package(
             "injection_points",
             "bootstrap_relations",
             "imports",
+            "feedback",
+            "sampled_contexts",
+            "requires_compiler_features",
         },
     )
     if p["format"] != FORMAT:
@@ -628,10 +675,122 @@ def compile_package(
         p.get("evaluator", {}),
         "$.evaluator",
         set(),
-        {"version", "dialect", "native_references_ref"},
+        {
+            "version",
+            "dialect",
+            "native_references_ref",
+            "source_sha256",
+            "native_references",
+        },
     )
     if evaluator.get("dialect", "original") not in {"original", "expanded"}:
         c.fail("$.evaluator.dialect", "supported Q6 dialects are original and expanded")
+    if "source_sha256" in evaluator:
+        from aeroagentsim.engines import predicate_ast
+
+        assert predicate_ast.__file__ is not None
+        if (
+            hashlib.sha256(Path(predicate_ast.__file__).read_bytes()).hexdigest()
+            != evaluator["source_sha256"]
+        ):
+            c.fail("$.evaluator.source_sha256", "pinned Q6 library digest mismatch")
+    supported_features = {
+        "relation tuple selectors",
+        "predicate role aliases",
+        "bootstrap relation wave",
+        "receipt/event correlation and retained children",
+        "positive-lag sampled-feedback partition",
+        "finite sampled context pool",
+    }
+    for feature in c.sequence(
+        p.get("requires_compiler_features", []), "$.requires_compiler_features"
+    ):
+        if feature not in supported_features:
+            c.fail(
+                "$.requires_compiler_features",
+                f"unsupported required feature {feature!r}",
+            )
+    if "feedback" in p:
+        feedback = c.shape(
+            p["feedback"],
+            "$.feedback",
+            {"profile", "return_lag_ns", "partition"},
+            {"reason"},
+        )
+        if feedback["profile"] != "aerograph_sampled/v1":
+            c.fail("$.feedback.profile", "sampled feedback profile required")
+        c.integer(feedback["return_lag_ns"], "$.feedback.return_lag_ns")
+        c.text(feedback["partition"], "$.feedback.partition")
+        if build is not None and feedback["partition"] != build.id:
+            c.fail(
+                "$.feedback.partition",
+                "this profile delays the actual shared behaviour partition; name its engine ID",
+            )
+    pool_ids: set[str] = set()
+    for i, context in enumerate(
+        c.sequence(p.get("sampled_contexts", []), "$.sampled_contexts")
+    ):
+        path = f"$.sampled_contexts[{i}]"
+        c.shape(
+            context,
+            path,
+            {"id", "roles", "sources", "clocks", "predicates"},
+            {"same_identity_roles"},
+        )
+        context_id = c.text(context["id"], path + ".id")
+        if context_id in pool_ids:
+            c.fail(path + ".id", "duplicate finite pool context")
+        pool_ids.add(context_id)
+        if set(context["roles"]) != set(context["sources"]) or set(
+            context["roles"]
+        ) != set(context["clocks"]):
+            c.fail(path, "roles, sources and clocks must name the same finite tuple")
+        for role, identity in context["roles"].items():
+            c.text(identity, path + ".roles." + role)
+            c.text(context["sources"][role], path + ".sources." + role)
+            clock = c.sequence(context["clocks"][role], path + ".clocks." + role)
+            if len(clock) != 2:
+                c.fail(path + ".clocks." + role, "explicit clock/mapping pair required")
+            for value in clock:
+                c.text(value, path + ".clocks." + role)
+        for group in context.get("same_identity_roles", []):
+            if (
+                any(role not in context["roles"] for role in group)
+                or len({context["roles"][role] for role in group}) != 1
+            ):
+                c.fail(
+                    path + ".same_identity_roles",
+                    "aliases must bind the same declared identity",
+                )
+        for predicate_id in c.sequence(context["predicates"], path + ".predicates"):
+            definition = p["predicates"].get(predicate_id)
+            if (
+                definition is None
+                or definition["profile"] != "aerograph_sampled/v1"
+                or set(definition["roles"]) != set(context["roles"])
+            ):
+                c.fail(
+                    path + ".predicates",
+                    "sampled predicate and matching role tuple required",
+                )
+            if build:
+                refs = {ref.id: ref for ref in build.entities}
+                for role, identity in context["roles"].items():
+                    if identity not in refs or not build.registry.is_a(
+                        refs[identity].type_id, definition["roles"][role]
+                    ):
+                        c.fail(
+                            path + ".roles." + role,
+                            "pool slot must bind a compatible predeclared entity generation",
+                        )
+            adapter = definition.setdefault(
+                "adapter", {"event": "aas.behaviour.sample_signal", "contexts": []}
+            )
+            if "contexts" not in adapter:
+                c.fail(path, "finite pool predicates use adapter.contexts")
+            sample_id = context_id + "/" + predicate_id
+            if sample_id not in adapter["contexts"]:
+                adapter["contexts"].append(sample_id)
     if "bootstrap_relations" in p:
         bootstrap = c.shape(
             p["bootstrap_relations"],
@@ -810,11 +969,15 @@ def compile_package(
             if "guard" in transition:
                 c.pred(transition["guard"], tpath + ".guard")
             c.trigger_schema, c.trigger_root = None, None
-            if build and "event" in transition["on"]:
+            event_trigger = transition["on"]
+            if (
+                event_trigger.get("instance") == "activated"
+                and "event" in chain["trigger"]
+            ):
+                event_trigger = chain["trigger"]
+            if build and "event" in event_trigger:
                 c.trigger_root = "payload"
-                c.trigger_schema = build.registry.message(
-                    transition["on"]["event"]
-                ).schema
+                c.trigger_schema = build.registry.message(event_trigger["event"]).schema
             if build and "receipt" in transition["on"]:
                 selected = transition["on"]["receipt"]
                 children = selected if isinstance(selected, list) else [selected]
@@ -859,6 +1022,7 @@ def compile_package(
                 chain["completion_policy"],
                 path + ".completion_policy",
                 {"children", "statuses", "policy"},
+                {"terminal_states"},
             )
             if (
                 policy["policy"] not in {"all", "any"}
@@ -868,13 +1032,21 @@ def compile_package(
                 c.fail(
                     path + ".completion_policy", "declare all/any with actual child IDs"
                 )
+            if "terminal_states" in policy and (
+                not policy["terminal_states"]
+                or set(policy["terminal_states"]) - set(chain["terminal"])
+            ):
+                c.fail(
+                    path + ".completion_policy.terminal_states",
+                    "select declared terminal states",
+                )
     for i, binding in enumerate(bindings):
         path = f"$.bindings[{i}]"
         c.shape(
             binding,
             path,
             {"id", "chain", "match", "multiplicity", "on_unbind"},
-            {"variables", "episode_field", "episode_role"},
+            {"variables", "episode_field", "episode_role", "selection"},
         )
         if binding["chain"] not in p["chains"]:
             c.fail(path + ".chain", "unknown chain")
@@ -914,7 +1086,9 @@ def compile_package(
                     selector["is_a"],
                     c.roles[role],
                 )
-                if not compatible:
+                if not compatible and not build.registry.is_a(
+                    c.roles[role], selector["is_a"]
+                ):
                     c.fail(
                         path + ".match." + role + ".is_a",
                         "selector type is incompatible with the chain role",
@@ -976,6 +1150,43 @@ def compile_package(
             )
         if binding["on_unbind"] not in {"close_after_cleanup", "retain_until_terminal"}:
             c.fail(path + ".on_unbind", "explicit cleanup/retention policy required")
+        if "selection" in binding:
+            selection = c.shape(
+                binding["selection"],
+                path + ".selection",
+                {"policy", "field", "role", "group_roles", "tie_break", "limit"},
+            )
+            c.integer(selection["limit"], path + ".selection.limit")
+            c.sequence(selection["group_roles"], path + ".selection.group_roles")
+            if (
+                selection["policy"] != "minimum"
+                or selection["tie_break"] != "EntityRef"
+                or selection["limit"] != 1
+            ):
+                c.fail(
+                    path + ".selection",
+                    "supported selection is minimum with EntityRef ties and limit 1",
+                )
+            if (
+                selection["role"] not in c.roles
+                or not selection["group_roles"]
+                or set(selection["group_roles"]) - c.roles.keys()
+            ):
+                c.fail(path + ".selection", "declare bound ranking and grouping roles")
+            if build:
+                field = c.checked(
+                    path + ".selection.field", build.registry.field, selection["field"]
+                )
+                if field.schema["type"] not in {
+                    "number",
+                    "integer",
+                } or not build.registry.is_a(
+                    c.roles[selection["role"]], field.declaring_type
+                ):
+                    c.fail(
+                        path + ".selection.field",
+                        "ranking must read an applicable numeric field",
+                    )
         for key, val in binding.get("variables", {}).items():
 
             def references_trigger_or_variable(value: Any) -> bool:

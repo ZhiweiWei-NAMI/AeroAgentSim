@@ -1,6 +1,6 @@
 format: traffic-accident-replacement-profile/v1
 id: kinematic
-readiness: domain_tested_pending_behaviour_integration
+readiness: explicit_stub_verification_profile
 owners:
   road_motion:
     plugin: traffic_road_motion
@@ -36,9 +36,11 @@ physical_model:
   air: rest-to-rest ENU; bounded acceleration 4 m/s²; 64-leg polygonal orbits
   energy: explicit 100000 J capacity; 40 W + 6 J/m + authored wind exposure; independent
     of legacy battery percentages
-publication_ns: 66666667
+publication_ns: 1000000000
 sampled_return_lag_ns: 66666667
 decision_mode: fixture_explicit
-latency_mode: offline_blocking
+latency_mode: authored_positive_stub_timers
 weather_effect: energy_only
 switch_policy: new_run_and_epoch
+original_domain_reference_publication_ns: 66666667
+maximum_sample_gap_ns: 2000000000

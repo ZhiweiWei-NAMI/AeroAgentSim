@@ -1,6 +1,6 @@
 format: aeroagentsim.behaviour-package/v1
 id: traffic.accident
-revision: 1
+revision: 2
 registry:
   snapshot: registry.snapshot.json
   digest_ref: scenario.registry_digest
@@ -9,6 +9,9 @@ evaluator:
   dialect: original
   source_sha256: fd3c2ebf35824431a02f5086092543d68e45405ebfd12acc6e7bb5fbe703232d
   native_references_ref: registry.snapshot.json#/details/provenance
+  native_references:
+  - path: ${AEROAGENTSIM_AEROGRAPH_ROOT}/semantic-directory/src/original_runtime.js
+    sha256: 6e1f60e885208b333fb20d69d24b7c49e9a14aec7c8578917b0b1d30dc2a10e6
 budgets:
   max_transitions_per_instance_per_ns: 64
   max_instances: 10000
@@ -20,6 +23,8 @@ predicates:
     roles:
       incident: aas:TrafficIncident
       reporter: aas:TrafficRoadVehicle
+      participant_a: aas:TrafficRoadVehicle
+      participant_b: aas:TrafficRoadVehicle
     expression:
       op: and
       args:
@@ -29,14 +34,37 @@ predicates:
           role: incident
           path: []
         - literal: true
-      - op: gte
+      - op: eq
         args:
-        - field: traffic.road.progress_m
+        - field: traffic.road.speed_mps
+          role: participant_a
+          path: []
+        - literal: 0.0
+      - op: eq
+        args:
+        - field: traffic.road.speed_mps
+          role: participant_b
+          path: []
+        - literal: 0.0
+      - op: eq
+        args:
+        - field: traffic.road.speed_mps
           role: reporter
           path: []
-        - parameter: detect_progress_m
+        - literal: 0.0
+      - op: lte
+        args:
+        - op: distance
+          args:
+          - field: traffic.road.position_enu_m
+            role: reporter
+            path: []
+          - field: traffic.road.position_enu_m
+            role: participant_a
+            path: []
+        - parameter: detect_radius_m
     parameters:
-      detect_progress_m: 83.95
+      detect_radius_m: 20.0
   traffic.p.gap_clear:
     profile: committed_reactive/v1
     roles:
@@ -138,11 +166,11 @@ predicates:
     parameters: {}
   traffic.p.arrived:
     profile: aerograph_sampled/v1
-    roles: &id001
+    roles:
       pose: aas:TrafficUAV
       velocity: aas:TrafficUAV
       task: aas:TrafficTask
-    expression: &id002
+    expression:
       op: and
       args:
       - op: lte
@@ -158,27 +186,54 @@ predicates:
         - parameter: arrival_radius_m
       - op: lte
         args:
-        - op: vector_norm
+        - op: norm
           args:
           - field: traffic.uav.velocity_enu_mps
             role: velocity
             path: []
         - parameter: stopped_speed_mps
-    parameters: &id003
+    parameters:
       arrival_radius_m: 1.5
       stopped_speed_mps: 0.5
       dwell_ns: 3000000000
       max_sample_gap_ns: 133333334
   traffic.p.dwell_ready:
     profile: aerograph_sampled/v1
-    roles: *id001
+    roles:
+      pose: aas:TrafficUAV
+      velocity: aas:TrafficUAV
+      task: aas:TrafficTask
     expression:
       op: hold
       args:
-      - *id002
+      - op: and
+        args:
+        - op: lte
+          args:
+          - op: distance
+            args:
+            - field: he.aircraft.position_enu_m
+              role: pose
+              path: []
+            - field: traffic.task.target_enu_m
+              role: task
+              path: []
+          - parameter: arrival_radius_m
+        - op: lte
+          args:
+          - op: norm
+            args:
+            - field: traffic.uav.velocity_enu_mps
+              role: velocity
+              path: []
+          - parameter: stopped_speed_mps
       - parameter: dwell_ns
       - parameter: max_sample_gap_ns
-    parameters: *id003
+    parameters:
+      arrival_radius_m: 1.5
+      stopped_speed_mps: 0.5
+      dwell_ns: 3000000000
+      max_sample_gap_ns: 2000000000
   traffic.p.capture_accepted:
     profile: committed_reactive/v1
     roles:
@@ -260,6 +315,45 @@ predicates:
           role: vehicle
           path: []
       - literal: 0
+  traffic.p.bids_joined:
+    profile: committed_reactive/v1
+    roles:
+      alpha_bid: aas:TrafficBid
+      bravo_bid: aas:TrafficBid
+    expression:
+      op: and
+      args:
+      - op: in
+        args:
+        - field: traffic.bid.decision_status
+          role: alpha_bid
+          path: []
+        - literal:
+          - succeeded
+          - failed
+          - deadline
+      - op: in
+        args:
+        - field: traffic.bid.decision_status
+          role: bravo_bid
+          path: []
+        - literal:
+          - succeeded
+          - failed
+          - deadline
+    parameters: {}
+  traffic.p.selecting:
+    profile: committed_reactive/v1
+    roles:
+      coordinator: aas:TrafficCoordinator
+    expression:
+      op: eq
+      args:
+      - field: traffic.edge.phase
+        role: coordinator
+        path: []
+      - literal: selecting
+    parameters: {}
 chains:
   traffic.road_follow:
     roles:
@@ -267,8 +361,8 @@ chains:
       task: aas:TrafficTask
       route: aas:TrafficRoute
     trigger:
-      lifecycle: created
-    preconditions: &id005 []
+      instance: activated
+    preconditions: []
     states:
     - initializing
     - following
@@ -318,6 +412,9 @@ chains:
       from: following
       'on':
         event: traffic.road.blocked
+        correlation:
+          actor:
+            $role: vehicle
       to: block_pending
       priority: 0
       actions:
@@ -328,6 +425,9 @@ chains:
       from: waiting
       'on':
         event: traffic.road.cleared
+        correlation:
+          actor:
+            $role: vehicle
       to: clear_pending
       priority: 0
       actions:
@@ -358,14 +458,14 @@ chains:
         - canceled
       to: failed
       priority: 0
-      actions: &id004 []
+      actions: []
     - id: deadline-following
       from: following
       'on':
         deadline: follow
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: stable-block
       from: block_pending
       'on':
@@ -384,6 +484,9 @@ chains:
       from: block_pending
       'on':
         event: traffic.road.cleared
+        correlation:
+          actor:
+            $role: vehicle
       to: following
       priority: 0
       actions: []
@@ -391,6 +494,9 @@ chains:
       from: clear_pending
       'on':
         event: traffic.road.blocked
+        correlation:
+          actor:
+            $role: vehicle
       to: waiting
       priority: 0
       actions: []
@@ -492,8 +598,8 @@ chains:
       task: aas:TrafficTask
       route: aas:TrafficRoute
     trigger:
-      lifecycle: created
-    preconditions: *id005
+      instance: activated
+    preconditions: []
     states:
     - ready
     - planning
@@ -522,7 +628,8 @@ chains:
           route:
             $role: route
           index:
-            $variable: route_index
+            field: traffic.task.route_index
+            role: task
         deadline_ns: 90000000000
     - id: leg
       from: planning
@@ -564,14 +671,14 @@ chains:
         - canceled
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: deadline-planning
       from: planning
       'on':
         deadline: next
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: repeat
       from: executing
       'on':
@@ -587,7 +694,8 @@ chains:
           route:
             $role: route
           index:
-            $variable: route_index
+            field: traffic.task.route_index
+            role: task
         deadline_ns: 90000000000
     - id: fail-executing
       from: executing
@@ -599,14 +707,14 @@ chains:
         - canceled
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: deadline-executing
       from: executing
       'on':
         deadline: leg
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: refuse-medical
       from: executing
       'on':
@@ -627,7 +735,7 @@ chains:
       from: executing
       'on':
         event: traffic.award.proposed
-        subjects:
+        correlation:
           actor:
             $role: uav
       to: suspending
@@ -651,14 +759,14 @@ chains:
         - canceled
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: deadline-suspending
       from: suspending
       'on':
         deadline: stop
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: suspended
       from: suspending
       'on':
@@ -684,9 +792,12 @@ chains:
     roles:
       incident: aas:TrafficIncident
       reporter: aas:TrafficRoadVehicle
+      participant_a: aas:TrafficRoadVehicle
+      participant_b: aas:TrafficRoadVehicle
+      capture_task: aas:TrafficTask
     trigger:
-      lifecycle: created
-    preconditions: *id005
+      instance: activated
+    preconditions: []
     states:
     - inactive
     - staged
@@ -716,7 +827,33 @@ chains:
         timer: accident-time
       to: staged
       priority: 0
-      actions: &id006
+      actions:
+      - id: localise
+        kind: set
+        entity:
+          $role: incident
+        field: traffic.incident.position_enu_m
+        value:
+          field: traffic.road.position_enu_m
+          role: participant_a
+          path: []
+      - id: capture-target
+        kind: set
+        entity:
+          $role: capture_task
+        field: traffic.task.target_enu_m
+        value:
+        - field: traffic.road.position_enu_m
+          role: participant_a
+          path:
+          - 0
+        - field: traffic.road.position_enu_m
+          role: participant_a
+          path:
+          - 1
+        - field: traffic.task.capture_altitude_m
+          role: capture_task
+          path: []
       - id: active
         kind: set
         entity:
@@ -729,6 +866,22 @@ chains:
           $role: incident
         field: traffic.incident.phase
         value: active
+      - id: origin
+        kind: set
+        entity:
+          $role: incident
+        field: traffic.incident.source_kind
+        value: authored_staged
+      - id: occurred
+        kind: set
+        entity:
+          $role: incident
+        field: traffic.incident.occurred_at
+        value:
+          ns:
+            $now_ns: true
+          microstep:
+            $microstep: true
       - id: activated
         kind: emit
         schema: traffic.incident.activated
@@ -736,13 +889,105 @@ chains:
         payload:
           incident:
             $role: incident
+      - id: stop-participant_a
+        kind: command
+        capability: traffic.road.stop
+        payload:
+          actor:
+            $role: participant_a
+        deadline_ns: 1000000000
+      - id: stop-participant_b
+        kind: command
+        capability: traffic.road.stop
+        payload:
+          actor:
+            $role: participant_b
+        deadline_ns: 1000000000
     - id: inject
       from: inactive
       'on':
         event: traffic.inject.accident
+        correlation:
+          incident:
+            $role: incident
       to: staged
       priority: 0
-      actions: *id006
+      actions:
+      - id: localise
+        kind: set
+        entity:
+          $role: incident
+        field: traffic.incident.position_enu_m
+        value:
+          field: traffic.road.position_enu_m
+          role: participant_a
+          path: []
+      - id: capture-target
+        kind: set
+        entity:
+          $role: capture_task
+        field: traffic.task.target_enu_m
+        value:
+        - field: traffic.road.position_enu_m
+          role: participant_a
+          path:
+          - 0
+        - field: traffic.road.position_enu_m
+          role: participant_a
+          path:
+          - 1
+        - field: traffic.task.capture_altitude_m
+          role: capture_task
+          path: []
+      - id: active
+        kind: set
+        entity:
+          $role: incident
+        field: traffic.incident.active
+        value: true
+      - id: phase
+        kind: set
+        entity:
+          $role: incident
+        field: traffic.incident.phase
+        value: active
+      - id: origin
+        kind: set
+        entity:
+          $role: incident
+        field: traffic.incident.source_kind
+        value: operator
+      - id: occurred
+        kind: set
+        entity:
+          $role: incident
+        field: traffic.incident.occurred_at
+        value:
+          ns:
+            $now_ns: true
+          microstep:
+            $microstep: true
+      - id: activated
+        kind: emit
+        schema: traffic.incident.activated
+        topic: traffic.incident.activated
+        payload:
+          incident:
+            $role: incident
+      - id: stop-participant_a
+        kind: command
+        capability: traffic.road.stop
+        payload:
+          actor:
+            $role: participant_a
+        deadline_ns: 1000000000
+      - id: stop-participant_b
+        kind: command
+        capability: traffic.road.stop
+        payload:
+          actor:
+            $role: participant_b
+        deadline_ns: 1000000000
     - id: detect
       from: staged
       'on':
@@ -780,7 +1025,7 @@ chains:
       route: aas:TrafficRoute
     trigger:
       event: traffic.report.sent
-    preconditions: *id005
+    preconditions: []
     states:
     - waiting_gap
     - retry_wait
@@ -847,14 +1092,14 @@ chains:
         - canceled
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: deadline-bypassing
       from: bypassing
       'on':
         deadline: bypass
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: network-failed
       from: network_continuing
       'on':
@@ -872,152 +1117,14 @@ chains:
       to: failed
       actions: []
       priority: 0
-    - id: occupied-corridor
-      from: bypassing
-      'on':
-        receipt: bypass
-        status: rejected
-        result_matches:
-          reason: borrow corridor occupied
-      to: retry_wait
-      priority: 10
-      actions:
-      - id: retry-gap
-        kind: delay
-        duration_ns: 300000000
-    - id: retry-gap
-      from: retry_wait
-      'on':
-        timer: retry-gap
-      to: waiting_gap
-      priority: 0
-      actions: []
-    - id: other-rejection
+    - id: rejected-bypass
       from: bypassing
       'on':
         receipt: bypass
         status: rejected
       to: failed
-      priority: 0
       actions: []
-    retry_policy:
-      action: bypass
-      maximum_attempts: 10
-      idempotency: new physical command after real rejection; no retry after failure
-      exhaustion: failed with original rejection evidence
-  traffic.solicit_award:
-    roles:
-      coordinator: aas:TrafficCoordinator
-      task: aas:TrafficTask
-      candidate: aas:TrafficUAV
-      bid: aas:TrafficBid
-      assessment: aas:TrafficAssessment
-      current_task: aas:TrafficTask
-    trigger:
-      event: traffic.report.sent
-    preconditions: *id005
-    states:
-    - broadcast
-    - collecting
-    - selecting
-    - suspending
-    - assigned
-    - no_candidate
-    - failed
-    initial: broadcast
-    terminal:
-    - assigned
-    - no_candidate
-    - failed
-    variables: {}
-    transition_policy: first_enabled
-    transitions:
-    - id: broadcast
-      from: broadcast
-      'on':
-        instance: activated
-      to: collecting
       priority: 0
-      actions:
-      - id: broadcast
-        kind: emit
-        schema: traffic.broadcast
-        topic: traffic.broadcast
-        payload:
-          incident:
-            $variable: incident
-      - id: bid-deadline
-        kind: delay
-        duration_ns: 20000000000
-    - id: join
-      from: collecting
-      'on':
-        event: traffic.bid.joined
-      to: selecting
-      priority: 0
-      actions: []
-    - id: award
-      from: selecting
-      'on':
-        instance: continued
-      to: suspending
-      priority: 0
-      actions:
-      - id: select
-        kind: emit
-        schema: traffic.award.proposed
-        topic: traffic.award.proposed
-        payload:
-          actor:
-            $role: candidate
-      guard: traffic.p.bid_eligible
-    - id: no-candidate
-      from: collecting
-      'on':
-        timer: bid-deadline
-      to: no_candidate
-      priority: 0
-      actions: *id004
-    - id: assigned
-      from: suspending
-      'on':
-        event: traffic.award.committed
-      to: assigned
-      priority: 0
-      actions:
-      - id: close-patrol
-        kind: close_relation
-        edge_id:
-          $variable: old_assignment
-      - id: capture-assignee
-        kind: assert_relation
-        edge_id:
-          $variable: new_assignment
-        relation: traffic.task-assignee
-        source:
-          $role: task
-        target:
-          $role: candidate
-      - id: assigned
-        kind: set
-        entity:
-          $role: task
-        field: traffic.task.phase
-        value: assigned
-      guard: traffic.p.bid_eligible
-    - id: decision-failure
-      from: collecting
-      'on':
-        event: traffic.decision.failed
-      to: failed
-      priority: 0
-      actions: *id004
-    predicate_roles:
-      traffic.p.bid_eligible:
-        task: current_task
-        capture_task: task
-        bid: bid
-        assessment: assessment
   traffic.capture_execute:
     roles:
       uav: aas:TrafficUAV
@@ -1071,14 +1178,14 @@ chains:
         - canceled
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: deadline-enroute
       from: enroute
       'on':
         deadline: goto
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: hold
       from: enroute
       'on':
@@ -1104,14 +1211,14 @@ chains:
         - canceled
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: deadline-holding
       from: holding
       'on':
         deadline: hold
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: dwell
       from: holding
       'on':
@@ -1154,7 +1261,10 @@ chains:
             $role: uav
       to: edge_acceptance
       priority: 0
-      actions: []
+      actions:
+      - id: upload-deadline
+        kind: delay
+        duration_ns: 10000000000
     - id: accepted
       from: edge_acceptance
       'on':
@@ -1164,7 +1274,6 @@ chains:
             $variable: request_id
           actor:
             $role: uav
-          requires_event: traffic.capture.stored
       to: completed
       priority: 0
       actions:
@@ -1200,7 +1309,7 @@ chains:
             $role: uav
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: timeout-storing
       from: storing
       'on':
@@ -1225,7 +1334,7 @@ chains:
             $role: uav
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     - id: timeout-edge_acceptance
       from: edge_acceptance
       'on':
@@ -1250,83 +1359,79 @@ chains:
             $role: uav
       to: failed
       priority: 0
-      actions: *id004
+      actions: []
     completion_policy:
-      requires:
-      - goto:succeeded
-      - hold:succeeded
-      - capture.stored:matching_request_actor_cut
-      - capture.accepted:matching_edge_receipt
-      deadline_action: upload-deadline
-      failure_terminal: failed
+      children:
+      - goto
+      - hold
+      statuses:
+      - succeeded
+      policy: all
+      terminal_states:
+      - completed
+    predicate_roles:
+      traffic.p.arrived:
+        pose: uav
+        velocity: uav
+        task: task
+      traffic.p.dwell_ready:
+        pose: uav
+        velocity: uav
+        task: task
+    deadline_ns: 70000000000
   traffic.record_report:
     roles:
       actor: aas:TrafficRoadVehicle
       incident: aas:TrafficIncident
-    trigger:
-      event: traffic.proposal.report
-    preconditions: []
+      record: aas:TrafficReport
     states:
-    - creating
-    - populating
+    - waiting
     - recorded
-    - failed
-    initial: creating
+    initial: waiting
     terminal:
     - recorded
-    - failed
-    variables: {}
+    trigger:
+      instance: activated
+    preconditions: []
     transitions:
-    - id: identity
-      from: creating
-      'on':
-        instance: activated
-      to: populating
-      priority: 0
-      actions:
-      - id: create
-        kind: create_entity
-        entity:
-          $variable: record
-      - id: publish-wave
-        kind: delay
-        duration_ns: 0
-        continuation: next_reactive_microstep
     - id: publish
-      from: populating
+      from: waiting
       'on':
-        timer: publish-wave
+        event: traffic.proposal.report
+        correlation:
+          actor:
+            $role: actor
+          incident:
+            $role: incident
       to: recorded
-      priority: 0
       actions:
       - id: actor
         kind: set
         entity:
-          $variable: record
+          $role: record
         field: traffic.report.actor
         value:
           $role: actor
       - id: incident
         kind: set
         entity:
-          $variable: record
+          $role: record
         field: traffic.report.incident
         value:
           $role: incident
       - id: body
         kind: set
         entity:
-          $variable: record
+          $role: record
         field: traffic.report.body
         value:
-          $variable: reason
+          $trigger: payload.reason
       - id: subject
         kind: assert_relation
-        edge_id:
-          $variable: subject_edge
+        edge_id: report.01/incident
         relation: traffic.report-incident
         source:
-          $variable: record
+          $role: record
         target:
           $role: incident
       - id: published
@@ -1339,115 +1444,202 @@ chains:
           incident:
             $role: incident
           report:
-            $variable: record
+            $role: record
+          reason:
+            $trigger: payload.reason
+      priority: 0
   traffic.record_bid:
     roles:
       actor: aas:TrafficUAV
       task: aas:TrafficTask
-    trigger:
-      event: traffic.proposal.bid
-    preconditions: []
+      record: aas:TrafficBid
     states:
-    - creating
-    - populating
+    - waiting
     - assessing
+    - linking
     - recorded
     - failed
-    initial: creating
+    initial: waiting
     terminal:
     - recorded
     - failed
-    variables: {}
+    trigger:
+      instance: activated
+    preconditions: []
     transitions:
-    - id: identity
-      from: creating
+    - id: accept
+      from: waiting
       'on':
-        instance: activated
-      to: populating
-      priority: 0
-      actions:
-      - id: create
-        kind: create_entity
-        entity:
-          $variable: record
-      - id: publish-wave
-        kind: delay
-        duration_ns: 0
-        continuation: next_reactive_microstep
-    - id: publish
-      from: populating
-      'on':
-        timer: publish-wave
+        event: traffic.proposal.bid
+        correlation:
+          actor:
+            $role: actor
+          task:
+            $role: task
+          accept: true
       to: assessing
-      priority: 0
       actions:
       - id: actor
         kind: set
         entity:
-          $variable: record
+          $role: record
         field: traffic.bid.actor
         value:
           $role: actor
       - id: task
         kind: set
         entity:
-          $variable: record
+          $role: record
         field: traffic.bid.task
         value:
           $role: task
       - id: recommendation
         kind: set
         entity:
-          $variable: record
+          $role: record
         field: traffic.bid.recommendation
-        value:
-          $variable: recommendation
+        value: accept
       - id: reason
         kind: set
         entity:
-          $variable: record
+          $role: record
         field: traffic.bid.reason
         value:
-          $variable: reason
+          $trigger: payload.reason
       - id: cut
         kind: set
         entity:
-          $variable: record
+          $role: record
         field: traffic.bid.input_cut
         value:
-          $variable: input_cut
+          $trigger: payload.input_cut
       - id: status
         kind: set
         entity:
-          $variable: record
+          $role: record
         field: traffic.bid.decision_status
         value:
-          $variable: decision_status
+          $trigger: payload.decision_status
       - id: subject
         kind: assert_relation
         edge_id:
-          $variable: subject_edge
+          $variable: task_edge
         relation: traffic.bid-task
         source:
-          $variable: record
+          $role: record
         target:
           $role: task
+      - id: actor-edge
+        kind: assert_relation
+        edge_id:
+          $variable: actor_edge
+        relation: traffic.bid-actor
+        source:
+          $role: record
+        target:
+          $role: actor
+      - id: link-wave
+        kind: delay
+        duration_ns: 0
+      priority: 0
+    - id: refuse
+      from: waiting
+      'on':
+        event: traffic.proposal.bid
+        correlation:
+          actor:
+            $role: actor
+          task:
+            $role: task
+          accept: false
+      to: assessing
+      actions:
+      - id: actor
+        kind: set
+        entity:
+          $role: record
+        field: traffic.bid.actor
+        value:
+          $role: actor
+      - id: task
+        kind: set
+        entity:
+          $role: record
+        field: traffic.bid.task
+        value:
+          $role: task
+      - id: recommendation
+        kind: set
+        entity:
+          $role: record
+        field: traffic.bid.recommendation
+        value: refuse
+      - id: reason
+        kind: set
+        entity:
+          $role: record
+        field: traffic.bid.reason
+        value:
+          $trigger: payload.reason
+      - id: cut
+        kind: set
+        entity:
+          $role: record
+        field: traffic.bid.input_cut
+        value:
+          $trigger: payload.input_cut
+      - id: status
+        kind: set
+        entity:
+          $role: record
+        field: traffic.bid.decision_status
+        value:
+          $trigger: payload.decision_status
+      - id: subject
+        kind: assert_relation
+        edge_id:
+          $variable: task_edge
+        relation: traffic.bid-task
+        source:
+          $role: record
+        target:
+          $role: task
+      - id: actor-edge
+        kind: assert_relation
+        edge_id:
+          $variable: actor_edge
+        relation: traffic.bid-actor
+        source:
+          $role: record
+        target:
+          $role: actor
+      - id: link-wave
+        kind: delay
+        duration_ns: 0
+      priority: 0
+    - id: link
+      from: assessing
+      'on':
+        timer: link-wave
+      to: linking
+      actions:
       - id: assessment-link
         kind: command
-        capability: traffic.assessment.link_bid
+        schema: traffic.assessment.link_bid
+        target: traffic_assessment
         payload:
           actor:
             $role: actor
           bid:
-            $variable: record
+            $role: record
         deadline_ns: 1000000000
-    - id: assessment-ready
-      from: assessing
+      priority: 0
+    - id: joined
+      from: linking
       'on':
         receipt: assessment-link
         status: succeeded
       to: recorded
-      priority: 0
       actions:
       - id: published
         kind: emit
@@ -1457,24 +1649,199 @@ chains:
           actor:
             $role: actor
           bid:
-            $variable: record
-    - id: assessment-failure
-      from: assessing
+            $role: record
+      priority: 0
+    - id: failure
+      from: linking
       'on':
         receipt: assessment-link
         status:
         - failed
         - rejected
       to: failed
-      priority: 0
       actions: []
-    - id: assessment-timeout
-      from: assessing
+      priority: 0
+    - id: timeout
+      from: linking
       'on':
         deadline: assessment-link
       to: failed
-      priority: 0
       actions: []
+      priority: 0
+  traffic.solicit_award:
+    roles:
+      coordinator: aas:TrafficCoordinator
+      task: aas:TrafficTask
+      incident: aas:TrafficIncident
+      alpha_bid: aas:TrafficBid
+      bravo_bid: aas:TrafficBid
+    states:
+    - broadcast
+    - collecting
+    - selecting
+    - assigned
+    - no_candidate
+    initial: broadcast
+    terminal:
+    - assigned
+    - no_candidate
+    trigger:
+      event: traffic.report.sent
+    preconditions: []
+    transitions:
+    - id: broadcast
+      from: broadcast
+      'on':
+        instance: activated
+      to: collecting
+      actions:
+      - id: phase
+        kind: set
+        entity:
+          $role: coordinator
+        field: traffic.edge.phase
+        value: collecting
+      - id: broadcast
+        kind: emit
+        schema: traffic.broadcast
+        topic: traffic.broadcast
+        payload:
+          incident:
+            $role: incident
+      - id: bid-deadline
+        kind: delay
+        duration_ns: 20000000000
+      priority: 0
+    - id: join
+      from: collecting
+      'on':
+        predicate: traffic.p.bids_joined
+        edge: while
+      to: selecting
+      actions:
+      - id: phase
+        kind: set
+        entity:
+          $role: coordinator
+        field: traffic.edge.phase
+        value: selecting
+      priority: 0
+    - id: deadline
+      from: collecting
+      'on':
+        timer: bid-deadline
+      to: no_candidate
+      actions:
+      - id: phase
+        kind: set
+        entity:
+          $role: coordinator
+        field: traffic.edge.phase
+        value: no_candidate
+      priority: 0
+    - id: assigned
+      from: selecting
+      'on':
+        event: traffic.award.committed
+      to: assigned
+      actions:
+      - id: phase
+        kind: set
+        entity:
+          $role: coordinator
+        field: traffic.edge.phase
+        value: assigned
+      priority: 0
+  traffic.reserve_award:
+    roles:
+      coordinator: aas:TrafficCoordinator
+      task: aas:TrafficTask
+      candidate: aas:TrafficUAV
+      bid: aas:TrafficBid
+      assessment: aas:TrafficAssessment
+      current_task: aas:TrafficTask
+      alpha_bid: aas:TrafficBid
+      bravo_bid: aas:TrafficBid
+    states:
+    - selecting
+    - suspending
+    - assigned
+    - failed
+    initial: selecting
+    terminal:
+    - assigned
+    - failed
+    trigger:
+      predicate: traffic.p.bid_eligible
+      edge: while
+    preconditions:
+    - traffic.p.bids_joined
+    - traffic.p.selecting
+    transitions:
+    - id: select
+      from: selecting
+      'on':
+        instance: activated
+      to: suspending
+      actions:
+      - id: select
+        kind: emit
+        schema: traffic.award.proposed
+        topic: traffic.award.proposed
+        payload:
+          actor:
+            $role: candidate
+      priority: 0
+      guard: traffic.p.bid_eligible
+    - id: assign
+      from: suspending
+      'on':
+        event: traffic.award.committed
+        correlation:
+          actor:
+            $role: candidate
+      to: assigned
+      actions:
+      - id: close-patrol
+        kind: close_relation
+        edge_id:
+          $variable: old_assignment
+      - id: capture-assignee
+        kind: assert_relation
+        edge_id: assignment.incident-capture-01
+        relation: traffic.task-assignee
+        source:
+          $role: task
+        target:
+          $role: candidate
+      - id: assigned
+        kind: set
+        entity:
+          $role: task
+        field: traffic.task.phase
+        value: assigned
+      - id: current
+        kind: set
+        entity:
+          $role: candidate
+        field: traffic.actor.current_task
+        value:
+          $role: task
+      - id: winner
+        kind: set
+        entity:
+          $role: coordinator
+        field: traffic.edge.winner
+        value:
+          $role: candidate
+      priority: 0
+      guard: traffic.p.bid_eligible
+    predicate_roles:
+      traffic.p.bid_eligible:
+        task: current_task
+        capture_task: task
+        bid: bid
+        assessment: assessment
 bindings:
 - id: road-follow
   chain: traffic.road_follow
@@ -1549,6 +1916,12 @@ bindings:
       is_a: aas:TrafficRoadVehicle
       field: traffic.actor.role
       equals: reporter
+    participant_a:
+      entity: vehicle.incident.a
+    participant_b:
+      entity: vehicle.incident.b
+    capture_task:
+      entity: incident-capture-01
   variables: {}
   multiplicity: once_per_entity
   on_unbind: retain_until_terminal
@@ -1560,64 +1933,13 @@ bindings:
       field: traffic.actor.role
       equals: reporter
     route:
-      id: adjacent_lane_bypass
+      entity: adjacent_lane_bypass
   variables:
     bypass_length: 52.885589383282316
     network_route: route.vehicle.005
     network_progress: 1078.0311203661308
     network_length: 10102.856321308596
-  multiplicity: once_per_relation
-  on_unbind: retain_until_terminal
-- id: award
-  chain: traffic.solicit_award
-  match:
-    coordinator:
-      is_a: aas:TrafficCoordinator
-    candidate:
-      relation: traffic.coordinator-candidate
-      source_role: coordinator
-      target_role: candidate
-    task:
-      is_a: aas:TrafficTask
-      field: traffic.task.kind
-      equals: capture
-    bid:
-      relation: traffic.bid-task
-      source_role: bid
-      target_role: task
-    assessment:
-      relation: traffic.assessment-bid
-      source_role: assessment
-      target_role: bid
-    current_task:
-      relation: traffic.task-assignee
-      source_role: current_task
-      target_role: candidate
-  selection:
-    policy: minimum_known_feasible_eta
-    field: traffic.assessment.eta_s
-    role: assessment
-    tie_break: EntityRef
-    limit: 1
-    revalidate: traffic.p.bid_eligible
-    join: all_candidates_or_deadline
-  variables:
-    incident:
-      field: traffic.edge.incident_ref
-      role: coordinator
-    old_assignment:
-      relation_assertion_id: traffic.task-assignee
-      source_role: current_task
-      target_role: candidate
-    new_assignment:
-      stable_id:
-        binding: award
-        roles:
-        - task
-        - candidate
-        episode_field: traffic.task.episode
-  multiplicity: once_per_task_episode
-  episode_field: traffic.task.episode
+  multiplicity: once_per_entity
   on_unbind: retain_until_terminal
 - id: capture
   chain: traffic.capture_execute
@@ -1636,13 +1958,7 @@ bindings:
     target:
       field: traffic.task.target_enu_m
       role: task
-    request_id:
-      stable_id:
-        binding: capture
-        roles:
-        - task
-        - uav
-        episode_field: traffic.task.episode
+    request_id: incident-capture-01/episode-0
   multiplicity: once_per_task_episode
   episode_field: traffic.task.episode
   on_unbind: retain_until_terminal
@@ -1650,68 +1966,110 @@ bindings:
   chain: traffic.record_report
   match:
     actor:
-      event_subject: actor
+      entity: vehicle.reporter
     incident:
-      event_subject: incident
-  variables:
+      entity: incident.01
     record:
-      stable_entity_ref:
-        type_id: aas:TrafficReport
-        binding: record-report
-        roles:
-        - actor
-        - incident
-        invocation_event_version: true
-    reason:
-      $trigger: payload.reason
-    subject_edge:
-      stable_id:
-        binding: record-report
-        roles:
-        - actor
-        - incident
-        invocation_event_version: true
+      entity: report.01
+  variables: {}
   multiplicity: once_per_entity
-  episode_field: traffic.incident.occurred_at
   on_unbind: retain_until_terminal
-- id: record-bid
+- id: record-bid-alpha
   chain: traffic.record_bid
   match:
     actor:
-      event_subject: actor
+      entity: uav.alpha
     task:
-      event_subject: task
-  variables:
+      entity: incident-capture-01
     record:
-      stable_entity_ref:
-        type_id: aas:TrafficBid
-        binding: record-bid
-        roles:
-        - actor
-        - task
-        invocation_event_version: true
-    reason:
-      $trigger: payload.reason
-    recommendation:
-      typed_choice:
-        condition:
-          $trigger: payload.accept
-        'true': accept
-        'false': refuse
-    input_cut:
-      $trigger: payload.input_cut
-    decision_status:
-      $trigger: payload.decision_status
-    subject_edge:
-      stable_id:
-        binding: record-bid
-        roles:
-        - actor
-        - task
-        invocation_event_version: true
+      entity: bid.01.alpha
+  variables:
+    task_edge: bid.01.alpha/task
+    actor_edge: bid.01.alpha/actor
   multiplicity: once_per_task_episode
-  episode_field: traffic.task.episode
   on_unbind: retain_until_terminal
+  episode_field: traffic.task.episode
+- id: record-bid-bravo
+  chain: traffic.record_bid
+  match:
+    actor:
+      entity: uav.bravo
+    task:
+      entity: incident-capture-01
+    record:
+      entity: bid.01.bravo
+  variables:
+    task_edge: bid.01.bravo/task
+    actor_edge: bid.01.bravo/actor
+  multiplicity: once_per_task_episode
+  on_unbind: retain_until_terminal
+  episode_field: traffic.task.episode
+- id: solicit
+  chain: traffic.solicit_award
+  match:
+    coordinator:
+      entity: edge.coordinator
+    task:
+      entity: incident-capture-01
+    incident:
+      entity: incident.01
+    alpha_bid:
+      entity: bid.01.alpha
+    bravo_bid:
+      entity: bid.01.bravo
+  variables: {}
+  multiplicity: once_per_entity
+  on_unbind: retain_until_terminal
+- id: award
+  chain: traffic.reserve_award
+  match:
+    coordinator:
+      entity: edge.coordinator
+    candidate:
+      relation: traffic.coordinator-candidate
+      source_role: coordinator
+      target_role: candidate
+    task:
+      entity: incident-capture-01
+      relation: traffic.bid-task
+      source_role: bid
+      target_role: task
+    bid:
+      relation: traffic.bid-actor
+      source_role: bid
+      target_role: candidate
+    assessment:
+      relation: traffic.assessment-bid
+      source_role: assessment
+      target_role: bid
+    current_task:
+      relation: traffic.task-assignee
+      source_role: current_task
+      target_role: candidate
+      field: traffic.task.kind
+      in:
+      - medical_delivery
+      - patrol
+    alpha_bid:
+      entity: bid.01.alpha
+    bravo_bid:
+      entity: bid.01.bravo
+  variables:
+    old_assignment:
+      relation_assertion_id: traffic.task-assignee
+      source_role: current_task
+      target_role: candidate
+  multiplicity: once_per_task_episode
+  on_unbind: retain_until_terminal
+  episode_field: traffic.task.episode
+  selection:
+    policy: minimum
+    field: traffic.assessment.eta_s
+    role: assessment
+    group_roles:
+    - task
+    tie_break: EntityRef
+    limit: 1
 conflicts:
 - id: occupancy-blocked
   roles:
@@ -1725,36 +2083,18 @@ conflicts:
   predicate: traffic.p.road_conflict
   edge: exited
   emits: traffic.road.cleared
-- id: capture-reservation-conflict
-  roles:
-    task: aas:TrafficTask
-  predicate: traffic.p.award_busy
-  edge: while
-  emits: traffic.award.conflict
-  arbitration: one task-assignee edge; stable executor order; losing reservation receives
-    conflict receipt
 injection_points:
 - id: accident
   stream_id: operator
-  command: traffic.command.inject.accident
+  command: aas.runtime.inject_event
   target: behaviour
   emits: traffic.inject.accident
-- id: wind
-  stream_id: operator
-  command: traffic.command.inject.wind
-  target: behaviour
-  emits: traffic.inject.wind
-- id: pause-test
-  stream_id: operator
-  command: traffic.command.inject.pause-test
-  target: behaviour
-  emits: traffic.inject.pause-test
 feedback:
   profile: aerograph_sampled/v1
   return_lag_ns: 66666667
-  partition: behaviour_sampled_feedback
-  reason: one explicit motion publication interval; A must compile this into Dependency/message
-    graph
+  partition: behaviour
+  reason: All incoming behaviour messages have declared 66666667 ns availability lag;
+    physical integration/publication is explicitly 1 Hz in this verification profile.
 sampled_contexts:
 - id: capture.alpha
   roles:
@@ -4147,15 +4487,10 @@ bootstrap_relations:
         id: uav.bravo
         generation: 0
         type_id: aas:TrafficUAV
-  phase: after_endpoint_identity_commit
 requires_compiler_features:
 - relation tuple selectors
 - predicate role aliases
 - bootstrap relation wave
-- stable authored ID expressions
-- minimum-known-feasible-ETA selector after candidate join
 - receipt/event correlation and retained children
 - positive-lag sampled-feedback partition
-- typed stable entity references from event identity
-- event subject role bindings
-- typed choice expressions for validated acceptance enum
+- finite sampled context pool

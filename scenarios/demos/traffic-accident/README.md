@@ -1,11 +1,18 @@
 # Traffic accident: authored domain scenario
 
-This migration supplies frozen inputs, physical/assessment plugins, typed local
-vocabulary and the proposed D1 behaviour package. **Full console execution awaits
-A/C/D/E/F integration** described in [INTEGRATION.md](INTEGRATION.md). It does not
-run the AeroBench runtime/server or start a second motion thread.
+The integrated scene uses the shared behaviour runtime, real physical owners and explicit authored stub decisions. The default verification profile declares 1 Hz physics/publication and a 66,666,667 ns shared message lag. The original 15 Hz domain comparison remains a separate test profile. Actual headless Chromium renders committed poses with primitive geometry; this is simulation-camera output, not the licensed city viewer or native imagery.
 
-Default: 63 road vehicles, 8 UAVs, one nonspatial coordinator camera (72 views).
+```bash
+PYTHONPATH=src AEROAGENTSIM_AEROGRAPH_ROOT=/mnt/data2/weizhiwei/AeroGraph \
+  /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python \
+  -m aeroagentsim.services.cli run scenarios/demos/traffic-accident/scenario.yaml \
+  --out /tmp/aas-q/a/runs
+```
+
+The scenario explicitly selects the installed Chromium executable under `capture.config.renderer.browser_executable`; adjust it to an actual installed browser before running elsewhere. No Node dependency installation is required in this worktree.
+
+Default: 63 road vehicles, 8 UAVs and one nonspatial coordinator. The end-to-end
+gate produces Bravo's incident PNG; it does not record the historical 72 views.
 Medical Alpha's task is noninterruptible. Rules recheck current region/energy/task
 eligibility and reserve one capture assignment; recorded model proposals alone
 cannot stop Alpha, authorize an occupied bypass or complete a photograph.
@@ -42,7 +49,7 @@ automatic live-model fallback. `fixtures/legacy-trace.json` contains 18 small re
 historical snapshots and the full source trajectory hash; it cannot reconstruct
 old command receipts, missing clocks or capture causes.
 
-## Console workflow after integration
+## Console/API workflow
 
 1. Start the existing service, for example `aeroagentsim serve --out /tmp/aas-q/b/runs
    --scenario-root . --frontend frontend/dist`. In Studio import `scenario.yaml`
@@ -67,7 +74,7 @@ old command receipts, missing clocks or capture causes.
    links and replay with services disabled; replay reads WAL and performs no model,
    physics or camera calls. Native owner replacement always starts a new run/epoch.
 
-These steps are integration acceptance instructions, not a claim they passed here.
+The HTTP and CLI end-to-end gates are in `tests/demos/traffic_accident/test_end_to_end.py`. Frontend operation and native replacement profiles are separate gates; see [INTEGRATION.md](INTEGRATION.md).
 
 ## Domain verification
 
@@ -79,7 +86,7 @@ PYTHONPATH=src AEROAGENTSIM_Q6_AST=/absolute/pinned/predicate_ast.py \
 
 The environment path is only needed before Q6 is integrated; tests verify its exact
 source hash. Without Q6, its tests explicitly skip rather than use a copied evaluator.
-Domain tests select the real physical plugins and an explicitly test-authored target
+Domain tests select the real physical plugins at the original 15 Hz and an explicitly test-authored target
 producer, remove all behaviour fields/relations and feed actual typed commands. They
 compare two road/air journals byte-for-byte, test swept blockage, compute shared-model
 feasibility and evaluate policy/dwell counterexamples. This is distinct from a full

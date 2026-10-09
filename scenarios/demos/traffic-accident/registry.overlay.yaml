@@ -1,7 +1,7 @@
 format: traffic-accident-overlay/v1
 provenance:
   status: proposed scenario-local overlays
-  source: "demo-traffic-accident.md \xA73"
+  source: demo-traffic-accident.md §3
   admission: explicit research scenario only
 types:
 - id: aas:TrafficRoadVehicle
@@ -61,7 +61,7 @@ fields:
     unit: m
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     frame: enu
     transform_revision: traffic.local/v1
@@ -74,7 +74,7 @@ fields:
     unit: m/s
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     frame: enu
     transform_revision: traffic.local/v1
@@ -90,7 +90,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     frame: enu
     transform_revision: traffic.local/v1
@@ -103,7 +103,7 @@ fields:
     unit: m/s
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: road_motion
 - id: traffic.road.route_id
@@ -115,7 +115,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: road_motion
 - id: traffic.road.lane_id
@@ -126,7 +126,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: road_motion
 - id: traffic.road.progress_m
@@ -137,7 +137,7 @@ fields:
     unit: m
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: road_motion
 - id: traffic.road.blocked_by
@@ -152,7 +152,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: road_motion
 - id: traffic.road.safe_gap
@@ -164,7 +164,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: road_motion
 - id: traffic.uav.velocity_enu_mps
@@ -175,7 +175,7 @@ fields:
     unit: m/s
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     frame: enu
     transform_revision: traffic.local/v1
@@ -188,7 +188,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     frame: enu
     transform_revision: traffic.local/v1
@@ -201,7 +201,7 @@ fields:
     unit: m
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: air_motion
 - id: traffic.uav.energy_j
@@ -212,7 +212,7 @@ fields:
     unit: J
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: air_motion
 - id: traffic.uav.legacy_battery_pct
@@ -223,7 +223,7 @@ fields:
     unit: '%'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: air_motion
 - id: traffic.uav.battery_native
@@ -242,7 +242,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: air_motion
 - id: traffic.actor.role
@@ -259,7 +259,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.actor.current_task
@@ -272,7 +272,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.actor.phase
@@ -283,7 +283,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.actor.route_choice
@@ -294,7 +294,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.actor.public_summary
@@ -305,7 +305,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.edge.phase
@@ -316,7 +316,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.edge.radius_m
@@ -327,7 +327,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.edge.incident_ref
@@ -340,7 +340,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.edge.winner
@@ -354,7 +354,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.incident.active
@@ -365,7 +365,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.incident.phase
@@ -376,7 +376,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.incident.source_kind
@@ -392,7 +392,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.incident.position_enu_m
@@ -403,7 +403,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.incident.occurred_at
@@ -424,7 +424,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.task.kind
@@ -442,7 +442,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.task.phase
@@ -453,7 +453,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.task.interruptible
@@ -464,7 +464,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.task.episode
@@ -475,7 +475,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.task.target_enu_m
@@ -486,7 +486,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.task.route_ref
@@ -499,7 +499,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.task.capture_altitude_m
@@ -510,7 +510,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.task.dwell_s
@@ -521,7 +521,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.task.deadline_ns
@@ -532,7 +532,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.task.route_index
@@ -543,7 +543,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.task.motion
@@ -566,7 +566,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.route.points_enu_m
@@ -579,7 +579,7 @@ fields:
     unit: m
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: route_inputs
 - id: traffic.route.native_lane_id
@@ -590,7 +590,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: route_inputs
 - id: traffic.route.native_edges
@@ -603,7 +603,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: route_inputs
 - id: traffic.route.source_digest
@@ -614,7 +614,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: route_inputs
 - id: traffic.route.mode
@@ -625,7 +625,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: route_inputs
 - id: traffic.route.parameters
@@ -645,7 +645,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: route_inputs
 - id: traffic.assessment.distance_m
@@ -656,7 +656,7 @@ fields:
     unit: m
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: traffic_assessment
 - id: traffic.assessment.eta_s
@@ -667,7 +667,7 @@ fields:
     unit: s
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: traffic_assessment
 - id: traffic.assessment.budget_j
@@ -678,7 +678,7 @@ fields:
     unit: J
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: traffic_assessment
 - id: traffic.assessment.in_region
@@ -689,7 +689,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: traffic_assessment
 - id: traffic.assessment.feasible
@@ -700,7 +700,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: traffic_assessment
 - id: traffic.assessment.evidence
@@ -715,7 +715,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: traffic_assessment
 - id: traffic.report.incident
@@ -728,7 +728,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.report.actor
@@ -741,7 +741,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.report.body
@@ -752,7 +752,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.bid.actor
@@ -765,7 +765,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.bid.task
@@ -778,7 +778,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.bid.recommendation
@@ -793,7 +793,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.bid.reason
@@ -804,7 +804,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.bid.input_cut
@@ -815,7 +815,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.bid.decision_status
@@ -831,31 +831,31 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: behaviour
 - id: traffic.capture.request_id
   type: aas:TrafficCapture
-  schema: *id003
+  schema: &id008
+    type: string
   metadata:
     role: observation
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.capture.actor
   type: aas:TrafficCapture
-  schema:
+  schema: &id011
     type: ref
-    target_type: aas:TrafficUAV
   metadata:
     role: observation
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.capture.incident
@@ -868,92 +868,108 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.capture.source_cut
   type: aas:TrafficCapture
-  schema: *id006
-  metadata:
-    role: observation
-    unit: '1'
-    reviewStatus: proposed
-    integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
-    time_semantics: canonical computation; explicit half-open validity
-    writer_contract: capture
-- id: traffic.capture.acquired_at
-  type: aas:TrafficCapture
-  schema:
+  schema: &id012
     type: record
     members:
-      ns: *id006
-      microstep: *id006
+      index: &id007
+        type: integer
+      instant:
+        type: vector
+        length: 2
+        items: *id007
     required:
-    - ns
-    - microstep
+    - index
+    - instant
     extra: false
   metadata:
     role: observation
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.capture.acquired_at
+  type: aas:TrafficCapture
+  schema: &id013
+    type: record
+    members:
+      clock_id: *id008
+      numerator: *id007
+      denominator: *id007
+      mapping_id: *id008
+    required:
+    - clock_id
+    - numerator
+    - denominator
+    - mapping_id
+    extra: false
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.capture.camera_digest
   type: aas:TrafficCapture
-  schema: *id003
+  schema: *id008
   metadata:
     role: observation
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.capture.asset_digest
   type: aas:TrafficCapture
-  schema: *id003
+  schema: *id008
   metadata:
     role: observation
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.capture.byte_count
   type: aas:TrafficCapture
-  schema: *id006
+  schema: *id007
   metadata:
     role: observation
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.capture.png_sha256
   type: aas:TrafficCapture
-  schema: *id003
+  schema: *id008
   metadata:
     role: observation
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.capture.storage_status
   type: aas:TrafficCapture
-  schema: *id003
+  schema: *id008
   metadata:
     role: observation
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.view_id
@@ -964,7 +980,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.source_run
@@ -975,7 +991,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.source_epoch
@@ -986,7 +1002,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.generation
@@ -997,7 +1013,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.frame_start
@@ -1008,7 +1024,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.frame_end
@@ -1019,7 +1035,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.camera_preset
@@ -1030,7 +1046,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.fps
@@ -1041,7 +1057,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.speed
@@ -1052,7 +1068,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.codec
@@ -1063,7 +1079,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.width
@@ -1074,7 +1090,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.height
@@ -1085,7 +1101,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.sha256
@@ -1096,7 +1112,7 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 - id: traffic.recording.status
@@ -1107,7 +1123,18 @@ fields:
     unit: '1'
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.capture.renderer_mode
+  type: aas:TrafficCapture
+  schema: *id008
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
 relations:
@@ -1124,7 +1151,7 @@ relations:
   metadata:
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "demo design \xA73"
+    provenance: demo design §3
 - id: traffic.actor-route
   source_type: oo:Vehicle
   target_type: aas:TrafficRoute
@@ -1138,7 +1165,7 @@ relations:
   metadata:
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "demo design \xA73"
+    provenance: demo design §3
 - id: traffic.incident-participant
   source_type: aas:TrafficIncident
   target_type: aas:TrafficRoadVehicle
@@ -1152,7 +1179,7 @@ relations:
   metadata:
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "demo design \xA73"
+    provenance: demo design §3
 - id: traffic.report-incident
   source_type: aas:TrafficReport
   target_type: aas:TrafficIncident
@@ -1166,7 +1193,7 @@ relations:
   metadata:
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "demo design \xA73"
+    provenance: demo design §3
 - id: traffic.bid-task
   source_type: aas:TrafficBid
   target_type: aas:TrafficTask
@@ -1180,7 +1207,7 @@ relations:
   metadata:
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "demo design \xA73"
+    provenance: demo design §3
 - id: traffic.assessment-bid
   source_type: aas:TrafficAssessment
   target_type: aas:TrafficBid
@@ -1194,7 +1221,7 @@ relations:
   metadata:
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "demo design \xA73"
+    provenance: demo design §3
 - id: traffic.capture-incident
   source_type: aas:TrafficCapture
   target_type: aas:TrafficIncident
@@ -1208,7 +1235,7 @@ relations:
   metadata:
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "demo design \xA73"
+    provenance: demo design §3
 - id: traffic.capture-actor
   source_type: aas:TrafficCapture
   target_type: aas:TrafficUAV
@@ -1222,7 +1249,7 @@ relations:
   metadata:
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "demo design \xA73"
+    provenance: demo design §3
 - id: traffic.coordinator-candidate
   source_type: aas:TrafficCoordinator
   target_type: aas:TrafficUAV
@@ -1236,7 +1263,21 @@ relations:
   metadata:
     reviewStatus: proposed
     integrationDisposition: scenario_local_proposal
-    provenance: "demo design \xA73"
+    provenance: demo design §3
+- id: traffic.bid-actor
+  source_type: aas:TrafficBid
+  target_type: aas:TrafficUAV
+  targets_per_source:
+    minimum: 0
+    maximum: 1
+  sources_per_target:
+    minimum: 0
+    maximum: null
+  identity_policy: edge_id
+  metadata:
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: demo design §3
 messages:
 - id: traffic.road.follow
   kind: command
@@ -1259,7 +1300,7 @@ messages:
     - speed_mps
     - loop
     extra: false
-  result_schema: &id007
+  result_schema: &id009
     type: record
     members:
       position: *id001
@@ -1291,7 +1332,7 @@ messages:
     - speed_mps
     - loop
     extra: false
-  result_schema: *id007
+  result_schema: *id009
   cancel_support: false
 - id: traffic.road.stop
   kind: command
@@ -1304,7 +1345,7 @@ messages:
     required:
     - actor
     extra: false
-  result_schema: *id007
+  result_schema: *id009
   cancel_support: false
 - id: traffic.air.move_to
   kind: command
@@ -1472,7 +1513,7 @@ messages:
       report:
         type: ref
         target_type: aas:TrafficReport
-      reason: &id008
+      reason: &id010
         type: string
         min_length: 1
     required:
@@ -1507,7 +1548,7 @@ messages:
       bid:
         type: ref
         target_type: aas:TrafficBid
-      reason: *id008
+      reason: *id010
     required:
     - actor
     extra: false
@@ -1519,9 +1560,9 @@ messages:
       actor:
         type: ref
         target_type: aas:TrafficUAV
-      winner_id: *id008
-      reason: *id008
-      action: *id008
+      winner_id: *id010
+      reason: *id010
+      action: *id010
     required: []
     extra: false
 - id: traffic.award.committed
@@ -1583,15 +1624,15 @@ messages:
       incident:
         type: ref
         target_type: aas:TrafficIncident
-      request_id: *id008
+      request_id: *id010
       source_cut:
         type: integer
         minimum: 0
-      reason: *id008
+      reason: *id010
       capture:
         type: ref
         target_type: aas:TrafficCapture
-      png_sha256: *id008
+      png_sha256: *id010
     required:
     - actor
     - request_id
@@ -1607,15 +1648,15 @@ messages:
       incident:
         type: ref
         target_type: aas:TrafficIncident
-      request_id: *id008
+      request_id: *id010
       source_cut:
         type: integer
         minimum: 0
-      reason: *id008
+      reason: *id010
       capture:
         type: ref
         target_type: aas:TrafficCapture
-      png_sha256: *id008
+      png_sha256: *id010
     required:
     - actor
     - request_id
@@ -1631,15 +1672,15 @@ messages:
       incident:
         type: ref
         target_type: aas:TrafficIncident
-      request_id: *id008
+      request_id: *id010
       source_cut:
         type: integer
         minimum: 0
-      reason: *id008
+      reason: *id010
       capture:
         type: ref
         target_type: aas:TrafficCapture
-      png_sha256: *id008
+      png_sha256: *id010
     required:
     - actor
     - request_id
@@ -1655,15 +1696,15 @@ messages:
       incident:
         type: ref
         target_type: aas:TrafficIncident
-      request_id: *id008
+      request_id: *id010
       source_cut:
         type: integer
         minimum: 0
-      reason: *id008
+      reason: *id010
       capture:
         type: ref
         target_type: aas:TrafficCapture
-      png_sha256: *id008
+      png_sha256: *id010
     required:
     - actor
     - request_id
@@ -1804,8 +1845,8 @@ messages:
         type: string
         enum:
         - report
-      reason: *id008
-      action: *id008
+      reason: *id010
+      action: *id010
       departure:
         type: string
         enum:
@@ -1814,7 +1855,7 @@ messages:
         type: string
         enum:
         - adjacent_lane_bypass
-      route_reason: *id008
+      route_reason: *id010
     required:
     - actor
     - incident
@@ -1838,12 +1879,11 @@ messages:
         target_type: aas:TrafficTask
       accept:
         type: boolean
-      reason: *id008
-      action: *id008
+      reason: *id010
+      action: *id010
       alt_target_m:
         type: number
-        enum:
-        - 70.0
+        enum: [70.0]
       input_cut:
         type: integer
         minimum: 0
@@ -1871,8 +1911,8 @@ messages:
       actor:
         type: ref
         target_type: aas:TrafficUAV
-      reason: *id008
-      action: *id008
+      reason: *id010
+      action: *id010
       input_cut:
         type: integer
         minimum: 0
@@ -1908,3 +1948,110 @@ messages:
     required: []
     extra: false
   cancel_support: false
+- id: traffic.road.occupancy_evaluated
+  kind: event
+  schema:
+    type: record
+    members:
+      at_ns:
+        type: integer
+      source_cut:
+        type: integer
+      actors:
+        type: array
+        items:
+          type: ref
+          target_type: aas:TrafficRoadVehicle
+    required:
+    - at_ns
+    - source_cut
+    - actors
+    extra: false
+- id: traffic.capture.render
+  kind: command
+  schema:
+    type: record
+    members:
+      request_id: *id008
+      run_id: *id008
+      actor: *id011
+      source_cut: *id012
+      camera:
+        type: record
+        members: {}
+        required: []
+        extra: true
+      asset_digest: *id008
+      acquired: *id013
+      width: *id007
+      height: *id007
+      timeout_s:
+        type: number
+    required:
+    - request_id
+    - run_id
+    - actor
+    - source_cut
+    - camera
+    - asset_digest
+    - acquired
+    - width
+    - height
+    - timeout_s
+    extra: false
+  result_schema:
+    type: record
+    members:
+      contract: *id008
+      status: *id008
+      request_id: *id008
+      reason: *id008
+      record:
+        type: record
+        members: {}
+        required: []
+        extra: true
+    required:
+    - contract
+    - status
+    - request_id
+    extra: false
+- id: traffic.capture.upload
+  kind: command
+  schema:
+    type: record
+    members:
+      request_id: *id008
+      digest: *id008
+    required:
+    - request_id
+    - digest
+    extra: false
+  result_schema:
+    type: record
+    members:
+      status: *id008
+      digest: *id008
+      reason: *id008
+    required:
+    - status
+    extra: false
+- id: traffic.capture.upload_verified
+  kind: event
+  schema:
+    type: record
+    members:
+      request_id: *id008
+      actor: *id011
+      source_cut: *id012
+      digest: *id008
+      byte_count: *id007
+      record: *id011
+    required:
+    - request_id
+    - actor
+    - source_cut
+    - digest
+    - byte_count
+    - record
+    extra: false

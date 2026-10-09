@@ -1,4 +1,4 @@
-"""Loader/schema coverage without claiming the not-yet-integrated A executor."""
+"""Compiled finite pools and the authored physical/decision contracts."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import pytest
 import yaml
 
 from aeroagentsim.packs.traffic_accident.profiles import validate_profile
-from aeroagentsim.scenario import ScenarioError, load_scenario
+from aeroagentsim.scenario import load_scenario
 from tests.demos.conftest import ROOT, SCENARIO, document, inputs, q6
 
 
@@ -19,7 +19,7 @@ def test_existing_loader_overlay_entities_and_ownership() -> None:
     d = document()
     d.pop("behaviours")
     scenario = load_scenario(d, base=SCENARIO)
-    assert len(scenario.manifest.entities) == 219
+    assert len(scenario.manifest.entities) == 222
     assert (
         sum(r.type_id == "aas:TrafficRoadVehicle" for r in scenario.manifest.entities)
         == 63
@@ -34,9 +34,13 @@ def test_existing_loader_overlay_entities_and_ownership() -> None:
     assert "traffic.edge.winner" not in edge["facts"]
 
 
-def test_a_hook_is_explicitly_pending() -> None:
-    with pytest.raises(ScenarioError, match="unknown keys.*behaviours"):
-        load_scenario(SCENARIO / "scenario.yaml")
+def test_finite_sample_pool_is_compiled() -> None:
+    scenario = load_scenario(SCENARIO / "scenario.yaml")
+    samples = scenario.document["bindings"]["samples"]
+    assert len(samples) == 4
+    assert len({sample["context"] for sample in samples}) == 4
+    assert {sample["bindings"]["pose"] for sample in samples} == {"uav.alpha", "uav.bravo"}
+    assert all(sample["bindings"]["pose"] == sample["bindings"]["velocity"] for sample in samples)
 
 
 def test_behaviour_package_runtime5_structure_and_q6_ast() -> None:

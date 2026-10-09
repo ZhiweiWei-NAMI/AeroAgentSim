@@ -23,15 +23,23 @@ from .plugins import EngineBuild, EngineCatalog
 class Simulation:
     """Bind arbitrary registered types and plugins; the kernel owns mutable state."""
 
-    def __init__(self, scenario: Scenario, *, journal: Journal | None = None) -> None:
+    def __init__(
+        self,
+        scenario: Scenario,
+        *,
+        journal: Journal | None = None,
+        run_directory: Path | None = None,
+    ) -> None:
         try:
-            self._construct(scenario, journal=journal)
+            self._construct(scenario, journal=journal, run_directory=run_directory)
         except StopIteration as exc:
             raise ScenarioError(
                 "scenario.bind: unexpected exhausted iterator during Simulation construction"
             ) from exc
 
-    def _construct(self, scenario: Scenario, *, journal: Journal | None) -> None:
+    def _construct(
+        self, scenario: Scenario, *, journal: Journal | None, run_directory: Path | None
+    ) -> None:
         self.scenario = scenario
         catalog = EngineCatalog()
         partitions: dict[str, Partition] = {}
@@ -59,6 +67,7 @@ class Simulation:
                 scenario.initial,
                 partitions,
                 models,
+                run_directory,
             )
             engine: Engine
             try:
@@ -206,6 +215,7 @@ class RunSession:
             self.storage.prepare(self.scenario)
         self.simulation = Simulation(
             self.scenario,
+            run_directory=directory,
             journal=Journal(
                 directory / "journal.jsonl",
                 durability=self.scenario.document["outputs"]["durability"],
