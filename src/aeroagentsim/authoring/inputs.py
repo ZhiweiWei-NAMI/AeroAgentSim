@@ -12,7 +12,7 @@ def configured_ontology() -> Path:
     if not value:
         raise ValueError(
             "Studio requires AEROAGENTSIM_AEROGRAPH_ROOT pointing to a real "
-            "AeroGraph source checkout; see docs/platform/assets.md"
+            "AeroGraph source checkout; see docs/getting-started/install.md"
         )
     path = Path(value).resolve()
     if not (path / "semantic-directory/data").is_dir():
