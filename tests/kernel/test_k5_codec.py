@@ -49,7 +49,10 @@ def test_codec_preserves_portable_tag_collisions_types_and_duplicate_causes():
 
 def test_v2_live_execution_replay_and_legacy_fixture(tmp_path):
     bound = make_toy()
-    k = Kernel(journal=Journal(tmp_path / "run.jsonl", codec="positional-deflate"))
+    k = Kernel(
+        provenance="full",
+        journal=Journal(tmp_path / "run.jsonl", codec="positional-deflate"),
+    )
     k.bind(bound._store.registry, bound._store.manifest, bound._engines.values())
     k.start()
     k.run_until(13 * MS)
@@ -81,7 +84,7 @@ def test_v2_live_execution_replay_and_legacy_fixture(tmp_path):
 
 def test_frame_prefix_expands_in_place_preserving_order_and_repetition():
     existing, evaluator, _ = setup()
-    kernel = Kernel(journal=Journal(codec="positional-deflate"))
+    kernel = Kernel(provenance="full", journal=Journal(codec="positional-deflate"))
     kernel.bind(
         existing._store.registry, existing._store.manifest, existing._engines.values()
     )
@@ -196,7 +199,7 @@ def test_forged_frame_prefix_boundary_is_rejected(prefix):
     from aerokernel.codec import encode
 
     existing, _, _ = setup()
-    kernel = Kernel(journal=Journal(codec="positional-deflate"))
+    kernel = Kernel(provenance="full", journal=Journal(codec="positional-deflate"))
     kernel.bind(
         existing._store.registry, existing._store.manifest, existing._engines.values()
     )
@@ -255,7 +258,7 @@ def test_fact_only_returns_can_be_causes_of_the_next_owned_write():
             "p", "p", produces=("x",), lifecycle=True, timing=Timing("fixed_step", 1)
         )
     )
-    kernel = Kernel()
+    kernel = Kernel(provenance="full")
     kernel.bind(
         MemoryRegistry(
             (TypeDescriptor("T"),), (FieldDescriptor("x", "T", {"type": "integer"}),)

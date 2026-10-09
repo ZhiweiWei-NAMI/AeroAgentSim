@@ -86,7 +86,7 @@ def test_normalized_named_and_reference_contracts_local_and_remote(remote, kind)
         engine = RemoteEngine(client)
     else:
         engine = owner
-    k = Kernel()
+    k = Kernel(provenance="full")
     try:
         k.bind(
             reg,
@@ -148,7 +148,7 @@ def test_message_result_feedback_schemas_retain_distinct_target_types():
         ),
         schemas=schemas,
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     try:
         k.bind(registry, BindingManifest("r", "e"), (owner,))
         k.start()

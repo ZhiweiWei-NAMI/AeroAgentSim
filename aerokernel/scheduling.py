@@ -284,7 +284,9 @@ def build_wave(
                         {
                             "kind": "bootstrap_create",
                             "partition": partition,
-                            "proposal": encode(op),
+                            "proposal": encode(
+                                Create(op.ref) if store.provenance == "lean" else op
+                            ),
                         }
                     )
                     candidate.create(partition, op, ref, True)
@@ -343,11 +345,25 @@ def build_wave(
             }
         )
         candidate.state.frontiers[partition] = (instant, batch.native_reached_ns)
-        candidate.state.intents[ref] = {
-            **candidate.state.intents[ref],
-            "status": "returned",
-            "operation_refs": tuple(local),
-        }
+        if store.provenance == "lean":
+            # Keep the next same-phase callback's local-to-publication mapping,
+            # without retaining historical delivered payloads/read metadata.
+            key = (partition, phase)
+            previous = candidate.state.latest_returned.get(key)
+            if previous is not None:
+                candidate.state.intents.pop(previous)
+            candidate.state.latest_returned[key] = ref
+            candidate.state.intents[ref] = {
+                "partition": partition,
+                "status": "returned",
+                "operation_refs": tuple(local),
+            }
+        else:
+            candidate.state.intents[ref] = {
+                **candidate.state.intents[ref],
+                "status": "returned",
+                "operation_refs": tuple(local),
+            }
         candidate.state.pending_intents.pop(partition)
     from .relations import validate_relations
     from .sampling import validate_sample_work

@@ -85,7 +85,7 @@ def bind(owner=None, extra=(), *, manifest=None, registry=None, **kwargs):
         rules=(BindingRule("owner", "Thing", ("x",)),),
         lifecycle=(LifecycleRule("owner", "Thing"),),
     )
-    kernel = Kernel(**kwargs)
+    kernel = Kernel(provenance="full", **kwargs)
     kernel.bind(registry, manifest, (owner or Owner(),) + extra)
     return kernel
 
@@ -289,7 +289,7 @@ def test_registration_order_byte_determinism_and_prefixes(values, reverse):
             rules=(BindingRule("owner", "Thing", ("x",)),),
             lifecycle=(LifecycleRule("owner", "Thing"),),
         )
-        k = Kernel(root_seed=123)
+        k = Kernel(provenance="full", root_seed=123)
         k.queue_snapshots = {0: []}
         publish = k._publish
 

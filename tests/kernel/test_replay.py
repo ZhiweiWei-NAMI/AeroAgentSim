@@ -137,7 +137,7 @@ def test_custom_integer_budget_remains_lossless_in_live_message_and_replay():
     engine = SimpleEngine(
         Partition("p", "e", commands=("do",), rng_streams=("stream",))
     )
-    k = Kernel(budget=budget)
+    k = Kernel(provenance="full", budget=budget)
     k.bind(
         MemoryRegistry(
             (), messages=(MessageDescriptor("do", "command", {"type": "integer"}),)
@@ -157,7 +157,7 @@ def test_malformed_reset_return_is_recorded_as_returned_unpublished():
         def reset(self, context, view):
             return ()
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(()), BindingManifest("r", "e"), (Malformed(Partition("p", "e")),)
     )

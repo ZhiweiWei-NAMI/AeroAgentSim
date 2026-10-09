@@ -80,21 +80,35 @@ class RecordReader(Iterator[dict[str, Any]]):
                 raise KernelError(
                     "JOURNAL_HEADER", "malformed resource budgets"
                 ) from exc
-        record = parse_json(line, self.budget)
+        frame_budget = self.budget
+        if self.header is not None and self.header.get("provenance") == "lean":
+            assert frame_budget is not None
+            frame_budget = ResourceBudget(
+                frame_budget.integer_digits,
+                frame_budget.frame_bytes,
+                frame_budget.nesting_depth * 2 + 2,
+            )
+        record = parse_json(line, frame_budget)
         self.last_line = line
         if not isinstance(record, dict):
             raise KernelError("JOURNAL_RECORD", "record must be an object")
         if self.header is None:
             if record.get("major") == 2:
-                from .journal_codec import CODEC
+                from .journal_codec import CODEC, LEAN_CODEC
 
                 if (
                     type(record["major"]) is not int
                     or type(record.get("minor")) is not int
-                    or record["minor"] != 0
-                    or record.get("codec") != CODEC
+                    or record["minor"] not in {0, 1}
+                    or record.get("codec")
+                    != (CODEC if record["minor"] == 0 else LEAN_CODEC)
                     or type(record.get("semantic_version")) is not int
-                    or record["semantic_version"] not in {2, 3}
+                    or (
+                        record["semantic_version"] not in {2, 3}
+                        if record["minor"] == 0
+                        else record["semantic_version"] != 4
+                        or record.get("provenance") != "lean"
+                    )
                 ):
                     raise KernelError("JOURNAL_HEADER", "unsupported journal 2.0 codec")
             self.header = record
@@ -102,7 +116,9 @@ class RecordReader(Iterator[dict[str, Any]]):
             from .journal_codec import decode_frame
 
             assert self.budget is not None
-            record = decode_frame(record, self.budget)
+            record = decode_frame(
+                record, self.budget, lean=self.header.get("provenance") == "lean"
+            )
         return record
 
     def close(self) -> None:

@@ -45,7 +45,10 @@ def test_public_sdk_facade():
     )
 
 
-def test_committed_operation_resolves_before_echo_with_ownership_and_cut_bounds():
+@pytest.mark.parametrize("provenance", ["lean", "full"])
+def test_committed_operation_resolves_before_echo_with_ownership_and_cut_bounds(
+    provenance,
+):
     from aerokernel.ids import LocalCause
     from aerokernel.rpc import _projection, _view
     from aerokernel.state import StateView
@@ -75,7 +78,7 @@ def test_committed_operation_resolves_before_echo_with_ownership_and_cut_bounds(
     engine = Evidence(
         Partition("p", "e", emits=("event",), message_targets=("p",), message_lag_ns=10)
     )
-    k = bind(engine, fields=False)
+    k = bind(engine, fields=False, provenance=provenance)
     k.start()
     k.run_until(1)
     emissions = [
@@ -87,7 +90,12 @@ def test_committed_operation_resolves_before_echo_with_ownership_and_cut_bounds(
     from aerokernel.codec import decode_record
 
     assert decode_record(emissions[0]["message"]).origin == engine.origin
-    assert decode_record(emissions[1]["causes"]) == (engine.origin,)
+    expected = (
+        engine.origin
+        if provenance == "full"
+        else k._store.latest_returned[("p", "react")]
+    )
+    assert decode_record(emissions[1]["causes"]) == (expected,)
     with pytest.raises(KernelError, match="CAUSE_FUTURE"):
         k.view(engine.before).committed_operation(engine.invocation, engine.local)
     with pytest.raises(KernelError, match="CAUSE_STATE_SCOPE"):
@@ -109,8 +117,8 @@ POLICY = FactPolicy(
 INTEGER = {"type": "integer"}
 
 
-def bind(engine, *, commands=(), fields=True, seed=7):
-    k = Kernel(root_seed=seed)
+def bind(engine, *, commands=(), fields=True, seed=7, provenance="full"):
+    k = Kernel(provenance=provenance, root_seed=seed)
     registry = MemoryRegistry(
         (TypeDescriptor("T"),),
         (FieldDescriptor("x", "T", INTEGER),) if fields else (),
@@ -309,7 +317,7 @@ def test_duplicate_handlers_and_unsupported_inbox_fail_explicitly():
     source = Source(
         Partition("source", "source", emits=("event",), message_targets=("p",))
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry((), messages=(MessageDescriptor("event", schema=INTEGER),)),
         BindingManifest("sdk", "e"),
@@ -367,7 +375,7 @@ def test_child_command_identity_is_learned_from_real_receipt_notifications():
             ctx.execute(command)
             ctx.succeed(command, command.payload)
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (),
@@ -425,7 +433,7 @@ def test_context_preserves_each_explicit_time_axis_and_kernel_writer_authority()
         Partition("p", "e", lifecycle=True, produces=("x",)), policies={"x": POLICY}
     )
     thief = Intruder(Partition("q", "q", produces=("x",)), policies={"x": POLICY})
-    invalid = Kernel()
+    invalid = Kernel(provenance="full")
     invalid.bind(k._store.registry, k._store.manifest, (owner, thief))
     with pytest.raises(KernelError, match="FIELD_OWNER"):
         invalid.start()

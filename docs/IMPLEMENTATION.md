@@ -1,4 +1,41 @@
-# aerokernel v0.2 implementation (K4)
+# aerokernel implementation (K7: default lean provenance)
+
+K7 adds `Kernel(provenance="lean"|"full")`, defaulting to lean, on the smaller
+K5 implementation. [DESIGN §16](DESIGN.md#16-v03-amendment-lean-invocation-provenance-k7)
+defines invocation-level causes, retained operational authority, journal 1.4/2.1
+admission and legacy full replay. SDK/RPC views expose the level. Historical
+invocation inputs remain in the immutable WAL; lean keeps compact mappings for
+the latest returned invocation per partition/phase for `committed_operation`.
+[K7 platform notes](platform-notes/K7.md) contain migration and measured limits.
+
+The integration kernel gate ran once: **675 passed, 2 perf skips**, coverage
+**94.949%**, including lean/full operation-reference retention, SDK/RPC and replay.
+Targeted checks preceded this gate; the full suite was not repeated.
+The earlier ruff import-spacing failure was fixed;
+ruff, format checking and strict mypy pass. Full-mode toy bytes match K5, and
+lean/full tests cover state/receipt/time replay, re-execution, sample frames,
+SDK/RPC projection, invalid audit vectors, dispatch authority and ingress closure.
+The real demo's 3-second prefix matches 13,604 committed state/message/frame/
+receipt effects across 506 records, excluding the intentionally changed audit causes.
+The earlier wt-a platform verification ran once: **612 passed, 17 failed, 2 skipped, 6 deselected**
+in 866.34 s. All failures assert the old audit vectors (14) or codec header (3);
+two representative audit failures pass when explicitly requesting full mode.
+Both shipped 90-second CLI/replay and live HTTP chains passed. Platform ruff
+reports existing errors across the unchanged checkout (the script checks the
+whole tree when its changed-file list is empty); its changed-file mypy step
+was skipped because no platform source files changed. An initial collection-only
+failure from the shared `tools` namespace was fixed before that suite. The wt-k7p integration gate
+ran once: **650 passed, 1 failed, 2 skipped, 7 deselected**. Its sole failure was
+an explorer filesystem-timestamp tie, fixed using recorded workspace update
+order; three targeted tests and a forced-tie regression pass. Platform ruff and
+strict mypy pass, including the new explorer fix. The full suite was not repeated.
+All migrated assertions and the demo chains passed. Current measurement and
+migration details are in K7.md.
+
+At 15 Hz ×30 s, lean reaches RTF 0.244, 23.24 MB journal, 165.13 MiB live RSS,
+and 167.37 s replay. Throughput, journal and replay targets remain unmet. The
+best measured rate reaching real time is 1 Hz (RTF 1.272, replay 25.84 s).
+This is a functioning smaller kernel, not a claim of 15 Hz acceptance.
 
 K4 adds local named ingress streams and allowed lateness as specified in
 [DESIGN §14](DESIGN.md#14-v02-additive-amendment-local-named-live-ingress-k4).

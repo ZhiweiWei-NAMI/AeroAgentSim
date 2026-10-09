@@ -51,7 +51,7 @@ def fact_kernel():
                 for i, ref in enumerate(refs)
             )
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (TypeDescriptor("T"),),

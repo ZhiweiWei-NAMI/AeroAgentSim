@@ -54,7 +54,7 @@ def replace_same_wave():
                 return (Remove(old), Create(new))
             return ()
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry((TypeDescriptor("T"),)),
         BindingManifest("r", "e", (old,), lifecycle=(LifecycleRule("p", "T"),)),
@@ -91,7 +91,7 @@ def cancel_lag():
             return tuple(out)
 
     e = Target()
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (), messages=(MessageDescriptor("do", "command", cancel_support=True),)
@@ -112,7 +112,7 @@ def timer_namespace():
         def initialize(self, view):
             return (ScheduleTimer("my_timer", Instant(1), {"input": 7}),)
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(()), BindingManifest("r", "e"), (E(Partition("kernel", "e")),)
     )
@@ -157,7 +157,7 @@ def lag_dynamic_creation():
             "reader", "b", consumes=(Dependency("x", lag_ns=5),), lifecycle_reads=("T",)
         )
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (TypeDescriptor("T"),), (FieldDescriptor("x", "T", {"type": "integer"}),)
@@ -185,6 +185,7 @@ def lag_dynamic_creation():
 
 def big_header():
     k = Kernel(
+        provenance="full",
         budget=ResourceBudget(frame_bytes=16 * 1024 * 1024),
         configuration="x" * (9 * 1024 * 1024),
     )
@@ -211,7 +212,9 @@ def deep_header():
     value = 1
     for _ in range(140):
         value = [value]
-    k = Kernel(budget=ResourceBudget(nesting_depth=200), configuration=value)
+    k = Kernel(
+        provenance="full", budget=ResourceBudget(nesting_depth=200), configuration=value
+    )
     k.bind(
         MemoryRegistry(()),
         BindingManifest("r", "e"),
@@ -226,7 +229,11 @@ def deep_header():
 
 
 def integer_header():
-    k = Kernel(root_seed=10**4100, budget=ResourceBudget(integer_digits=4200))
+    k = Kernel(
+        provenance="full",
+        root_seed=10**4100,
+        budget=ResourceBudget(integer_digits=4200),
+    )
     k.bind(
         MemoryRegistry(()),
         BindingManifest("r", "e"),
@@ -254,7 +261,7 @@ def rng_scope():
     def run(steal):
         victim = Victim(Partition("victim", "b", rng_streams=("s",)))
         first = (Thief if steal else SimpleEngine)(Partition("thief", "a"))
-        k = Kernel(root_seed=7)
+        k = Kernel(provenance="full", root_seed=7)
         k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (first, victim))
         k.start()
         return victim.value
@@ -273,7 +280,7 @@ def mutable_dirty():
                     d.payload["input"][0] = 99
             return ()
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (E(Partition("p", "e")),))
     k.start()
     k.run_until(1)
@@ -329,7 +336,7 @@ def unpublished_dispatch_cause():
             message_lag_ns=10,
         )
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (),
@@ -368,7 +375,7 @@ def replay_microstep_bound():
         def initialize(self, view):
             return (Activate("p"),)
 
-    k = Kernel(max_microsteps=1)
+    k = Kernel(provenance="full", max_microsteps=1)
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (E(Partition("p", "e")),))
     k.start()
     records = [parse_json(line) for line in k.journal.bytes.splitlines(keepends=True)]
@@ -399,7 +406,7 @@ def replay_microstep_bound():
 def replay_duplicate_partition():
     import copy
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(()),
         BindingManifest("r", "e"),
@@ -453,7 +460,7 @@ def expiry_after_microstep_write():
     observer = Observer(
         Partition("observer", "b", consumes=(Dependency("x", value_only=True),))
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (TypeDescriptor("T"),), (FieldDescriptor("x", "T", {"type": "integer"}),)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -107,7 +108,7 @@ def test_remove_then_cross_type_reuse_resolves_new_field_owner():
             LifecycleRule("controller", "New"),
         ),
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(registry, manifest, (Controller(), Writer()))
     original = k.start().cut
     k.run_until(2)
@@ -119,7 +120,8 @@ def test_remove_then_cross_type_reuse_resolves_new_field_owner():
     assert replay(k.journal.bytes)._store.lives == k._store.lives
 
 
-def test_cleanup_ack_own_earlier_local_cause_then_removal():
+@pytest.mark.parametrize("provenance", ["lean", "full"])
+def test_cleanup_ack_own_earlier_local_cause_then_removal(provenance):
     from aerokernel import LocalCause
 
     ref = EntityRef("r", "e", "same", 0, "T")
@@ -146,7 +148,7 @@ def test_cleanup_ack_own_earlier_local_cause_then_removal():
         lifecycle=(LifecycleRule("controller", "T"),),
         lifecycle_participants={"Root": ("controller",)},
     )
-    k = Kernel()
+    k = Kernel(provenance=provenance)
     k.bind(
         registry,
         manifest,
@@ -202,7 +204,7 @@ def test_required_native_input_coverage_fails_before_external_integration():
         rules=(BindingRule("source", "T", ("x",)),),
         lifecycle=(LifecycleRule("source", "T"),),
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(registry, manifest, (source, sink))
     k.start()
     with pytest.raises(KernelError, match="INPUT_COVERAGE"):
@@ -277,7 +279,7 @@ def test_generation_sequence_and_old_knowledge_are_independent_of_reused_type(ty
         rules=(BindingRule("owner", "Root", ("value",)),),
         lifecycle=(LifecycleRule("owner", "Root"),),
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(registry, manifest, (E(),))
     views = [k.start()]
     for boundary in range(1, 2 * (len(refs) - 1) + 1):
@@ -323,7 +325,7 @@ def test_unauthorized_remove_and_stale_write_fault_without_mutating_prefix():
         def on_react(self, view, inbox, dirty):
             return (Remove(ref),)
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         registry,
         manifest,
@@ -352,7 +354,7 @@ def test_unauthorized_remove_and_stale_write_fault_without_mutating_prefix():
                 ),
             )
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         registry,
         manifest,
@@ -416,7 +418,7 @@ def test_identity_reference_accepts_known_tombstone_not_future_generation():
         rules=(BindingRule("owner", "Source", ("ref",)),),
         lifecycle=(LifecycleRule("owner", "Root"),),
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(registry, manifest, (E(),))
     k.start()
     k.run_until(1)
@@ -437,7 +439,7 @@ def test_identity_reference_accepts_known_tombstone_not_future_generation():
                 Interval(view.instant, None),
             )
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(registry, manifest, (Future(),))
     import pytest
 

@@ -185,7 +185,7 @@ class Zone(ContextEngine):
         self.previous, self.previous_ns = inside, ctx.now.ns
 
 
-def make_toy(seed: int = 42) -> Kernel:
+def make_toy(seed: int = 42, *, provenance: str = "full") -> Kernel:
     """Bind selected toy descriptors, actual producers and offline command."""
     integer = {"type": "integer"}
     record = {
@@ -258,6 +258,7 @@ def make_toy(seed: int = 42) -> Kernel:
         bootstrap_commands=(CommandRequest("fulfill", "orders", Instant(0), {}),),
     )
     kernel = Kernel(
+        provenance=provenance,
         root_seed=seed,
         configuration={
             "scenario": "authored two-engine toy",

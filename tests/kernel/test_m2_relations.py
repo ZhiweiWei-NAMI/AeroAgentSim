@@ -131,7 +131,7 @@ def setup(
         ),
         **manifest_options,
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(registry, manifest, (owner, reader, *extra))
     return k, owner, reader
 
@@ -269,7 +269,7 @@ def test_foreign_writer_and_undeclared_reads_fail_and_sdk_helpers_work():
     k, old, _ = setup()
     sdk = SDKOwner(old.partition)
     sdk.wakeup_ns = 3
-    k2 = Kernel()
+    k2 = Kernel(provenance="full")
     k2.bind(
         k._store.registry,
         k._store.manifest,
@@ -448,7 +448,7 @@ def test_cross_owner_target_exchange_requires_an_explicit_merged_cohort(declared
             RelationRule("second", "R", "T", "s2", 1),
         ),
     )
-    live = Kernel()
+    live = Kernel(provenance="full")
     live.bind(k._store.registry, manifest, (owner, reader, second))
     live.start()
     if declared:

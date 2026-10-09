@@ -11,6 +11,7 @@ from .errors import KernelError, ResourceLimit
 from .values import ResourceBudget, normalize, parse_json
 
 CODEC = "positional-deflate/v1"
+LEAN_CODEC = "canonical-deflate/v1"
 
 
 _SHAPES: dict[str, tuple[str, ...]] = {
@@ -329,12 +330,19 @@ def encode_frame(record: dict[str, Any], budget: ResourceBudget) -> bytes:
     packed = json.dumps(
         _pack(tree), ensure_ascii=False, allow_nan=False, separators=(",", ":")
     ).encode("utf-8")
+    return compress_frame(record, packed, budget)
+
+
+def compress_frame(
+    record: dict[str, Any], packed: bytes, budget: ResourceBudget, *, level: int = 1
+) -> bytes:
+    """Compress already encoded bytes; lean omits the positional tree copy."""
     if len(packed) > budget.frame_bytes:
         raise ResourceLimit("expanded codec frame bytes exceeded")
     wire = {
         "type": record["type"],
         "index": record["index"],
-        "data": base64.b64encode(zlib.compress(packed, level=1)).decode("ascii"),
+        "data": base64.b64encode(zlib.compress(packed, level=level)).decode("ascii"),
     }
     if "phase" in record:
         wire["phase"] = record["phase"]
@@ -344,7 +352,9 @@ def encode_frame(record: dict[str, Any], budget: ResourceBudget) -> bytes:
     return line
 
 
-def decode_frame(wire: dict[str, Any], budget: ResourceBudget) -> dict[str, Any]:
+def decode_frame(
+    wire: dict[str, Any], budget: ResourceBudget, *, lean: bool = False
+) -> dict[str, Any]:
     """Bound decompression before allocating or interpreting the expanded tree."""
     if set(wire) not in ({"type", "index", "data"}, {"type", "index", "data", "phase"}):
         raise KernelError("JOURNAL_CODEC", "unexpected frame fields")
@@ -365,8 +375,11 @@ def decode_frame(wire: dict[str, Any], budget: ResourceBudget) -> dict[str, Any]
     packed_budget = ResourceBudget(
         budget.integer_digits, budget.frame_bytes, budget.nesting_depth * 2 + 2
     )
-    record = _unpack(parse_json(packed, packed_budget))
-    record = normalize(record, budget, _check_bytes=False)
+    if lean:
+        record = parse_json(packed, packed_budget)
+    else:
+        record = _unpack(parse_json(packed, packed_budget))
+        record = normalize(record, budget, _check_bytes=False)
     if (
         not isinstance(record, dict)
         or record.get("type") != wire["type"]

@@ -108,7 +108,7 @@ def test_two_axis_interval_list_oracle_with_lag_native_and_death(seed):
             reads.append((at, view.cut, view.field((ref, "x"), at), view.instant))
             return ()
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (TypeDescriptor("T"),),

@@ -32,7 +32,7 @@ from .scheduling import build_wave, ready_partitions, wave_intents
 from .state import StateView, Store
 from .time import ClockMapping, Cut, Instant, Stamp
 from .transactions import Candidate
-from .values import FrozenValue, ResourceBudget, canonical_json, freeze, thaw
+from .values import FrozenValue, ResourceBudget, canonical_json, freeze, normalize, thaw
 
 
 class Kernel:
@@ -49,7 +49,11 @@ class Kernel:
         configuration: object = None,
         ingress_policy: IngressPolicy | None = None,
         ingress_streams: tuple[IngressStream, ...] = (),
+        provenance: str = "lean",
     ) -> None:
+        if not isinstance(provenance, str) or provenance not in {"lean", "full"}:
+            raise KernelError("PROVENANCE", "expected lean or full provenance")
+        self.provenance = provenance
         if type(root_seed) is not int:
             raise KernelError("SEED", "root seed must be an integer")
         if type(max_microsteps) is not int or max_microsteps < 1:
@@ -131,6 +135,10 @@ class Kernel:
         self._store = Store(
             registry, manifest, partitions, Actions(registry, self.budget)
         )
+        self._store.provenance = self.provenance
+        self._store.actions.provenance = self.provenance
+        self._store.records.provenance = self.provenance
+        self.journal.provenance = self.provenance
         compile_samples(self._store, self._dependency_graph, self.mappings)
         self._store.max_microsteps = self.max_microsteps
         self._initialize_ingress()
@@ -217,6 +225,16 @@ class Kernel:
             header["major"], header["minor"] = 2, 0
             header["codec"] = CODEC
             self._store.allow_frame_prefix = True
+        if self.provenance == "lean":
+            header["policy_version"] = header.get("semantic_version", header["minor"])
+            header["provenance"] = "lean"
+            if header["major"] == 2:
+                from .journal_codec import LEAN_CODEC
+
+                header["minor"], header["semantic_version"] = 1, 4
+                header["codec"] = LEAN_CODEC
+            else:
+                header["minor"] = 4
         self.journal.append(header)
         self.header = header
         self._bound = True
@@ -417,7 +435,25 @@ class Kernel:
         from .compact import compact_operations
 
         record = compact_operations(record)
-        line = self.journal.append(record, trusted_fact_rows="fact_tables" in record)
+        if self.provenance == "lean":
+            normalize(
+                [
+                    record["index"],
+                    max(0, len(record.get("items", ())) - 1),
+                    record["instant"]["fields"]["ns"],
+                    record["instant"]["fields"]["microstep"],
+                    *(v for v in record.values() if type(v) in (str, int, float, bool)),
+                ],
+                self.budget,
+            )
+        if self.provenance == "lean":
+            if "receipt" in record:
+                normalize(record["receipt"], self.budget)
+            line = self.journal.append(record, trusted_record=True)
+        else:
+            line = self.journal.append(
+                record, trusted_fact_rows="fact_tables" in record
+            )
         state.records.freeze_tail(line)
         if self.journal._path is not None:
             state.records.file_tail(

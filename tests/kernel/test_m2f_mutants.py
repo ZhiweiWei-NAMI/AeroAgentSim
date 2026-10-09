@@ -53,7 +53,7 @@ def test_changed_contract_on_actual_advance_prevents_native_call(monkeypatch):
     engine.wakeup_ns = 1
     client, thread, failures = service(engine=engine)
     remote = RemoteEngine(client)
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (remote,))
     try:
         k.start()
@@ -117,7 +117,7 @@ def test_cleanup_waits_behind_timed_out_native_reset(monkeypatch):
         engine=Blocked(Partition("p", "e")), timeouts={"reset": 0.05, "close": 0.5}
     )
     remote = RemoteEngine(client)
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (remote,))
     try:
         with pytest.raises(KernelError, match="RPC_REMOTE"):

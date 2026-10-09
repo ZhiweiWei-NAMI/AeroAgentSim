@@ -160,7 +160,7 @@ def test_compact_trusted_encoding_equals_canonical_encoding_and_replays(value):
         schema = {"type": "number"}
     elif isinstance(value, dict):
         schema = {"type": "record", "members": {}, "required": [], "extra": True}
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry((TypeDescriptor("T"),), (FieldDescriptor("x", "T", schema),)),
         BindingManifest(
@@ -262,7 +262,7 @@ def test_value_only_future_valid_start_and_expiry_after_reactive_publication():
             )
             return ()
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (TypeDescriptor("T"),), (FieldDescriptor("x", "T", {"type": "integer"}),)
@@ -295,7 +295,7 @@ def test_malformed_timer_state_raises_contextual_kernel_error(malformation):
         def initialize(self, view):
             return (ScheduleTimer("t", Instant(1), 7),)
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(()),
         BindingManifest("r", "e"),
