@@ -13,6 +13,7 @@ const AgentConsole = lazy(() => import('./pages/AgentConsole'));
 const AeroGraphPage = lazy(() => import('./pages/AeroGraphPage'));
 const ViewerDemoPage = lazy(() => import('./viewport/ViewerDemoPage'));
 const CityStudioPage = lazy(() => import('./studio/StudioPage'));
+const ConsoleGuide = lazy(() => import('./console/ConsoleGuide'));
 
 function RoutedContent() {
   const location = useLocation();
@@ -29,12 +30,13 @@ function RoutedContent() {
       {/* Keep the operator source and shared temporal store alive across navigation. */}
       {activeRun && <div hidden={!selectedRun}><RunsPage route={activeRun} interactive={selectedRun} /></div>}
       {!selectedRun && (pathname === '/' ? <HomePage />
-        : pathname === '/studio' ? <CityStudioPage />
+        : pathname === '/studio' ? (new URLSearchParams(search).has('guide') ? <ConsoleGuide /> : <CityStudioPage />)
         : pathname === '/runs' ? <RunsPage />
         : pathname === '/inspect' ? <RunsPage inspectList />
         : pathname.startsWith('/agents/') ? <AgentConsole />
         : pathname === '/viewer-demo' ? <ViewerDemoPage />
         : pathname === '/aerograph' ? <AeroGraphPage />
+        : pathname.startsWith('/docs/platform/') ? <ConsoleGuide />
         : <Navigate to={`/${search}`} replace />)}
     </Suspense>
   </ConsoleShell>;

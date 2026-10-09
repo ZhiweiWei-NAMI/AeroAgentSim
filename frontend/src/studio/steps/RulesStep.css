@@ -1,0 +1,4 @@
+.guided-rule-payload { margin:12px 0; }
+.guided-rule-payload fieldset { border:1px solid var(--csl-border); border-radius:8px; padding:10px 14px; max-width:520px; }
+.guided-rule-payload legend { font-size:12px; color:var(--csl-text-muted); font-weight:600; }
+.guided-rule-actions { align-items:flex-end; }

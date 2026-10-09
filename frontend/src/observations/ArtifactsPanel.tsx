@@ -3,6 +3,7 @@ import { RunsApi } from '../feeds/http';
 import type { TemporalFeedStore } from '../feeds/temporal-store';
 import { exactValue } from '../feeds/format';
 import { Details } from '../console/Details';
+import { ConceptHelp } from '../console/ConceptHelp';
 import { mapping, type Draft } from '../behaviours/model';
 interface Props { api:RunsApi;runId:string;store:TemporalFeedStore;commitCut?:number;onSeek:(index:number)=>void }
 /** Disk storage is independent of publication and business acceptance in the journal. */
@@ -21,7 +22,7 @@ export function ArtifactsPanel({api,runId,store,onSeek}:Props) {
     const digest=row.digest;
     setImage({digest,url:URL.createObjectURL(new Blob([bytes],{type:'image/png'}))});setError('');
   }catch(problem){setError(String(problem));}};
-  return <section aria-label="Stored capture artifacts"><h2>Artifacts / photos</h2><button onClick={()=>void refresh()}>Refresh stored artifacts</button>{error&&<p role="alert">{error}</p>}{ownershipError&&<p>Publication ownership unavailable: {ownershipError}</p>}
+  return <section aria-label="Stored capture artifacts"><h2>Captured photos<ConceptHelp topic="Captured photos" description="Photos retain their acquisition moment; seeking a photo moves both views to that moment." guide="observations.md"/></h2><button onClick={()=>void refresh()}>Refresh stored artifacts</button>{error&&<p role="alert">{error}</p>}{ownershipError&&<p>Publication ownership unavailable: {ownershipError}</p>}
     {records?.length===0&&<p>No stored artifacts.</p>}{records===undefined&&!error&&<p>Loading artifact storage…</p>}
     {records?.map((row,index)=>{const request=mapping(row.request)?row.request:undefined,source=request&&mapping(request.source_cut)?request.source_cut:undefined;
       const published=owners?.flatMap(owner=>[...store.entities.values()].filter(entity=>{const digest=typeof owner.fields.digest==='string'?entity.fields.get(owner.fields.digest):undefined;const requestId=typeof owner.fields.request_id==='string'?entity.fields.get(owner.fields.request_id):undefined;return digest?.producer===owner.id&&digest.value===row.digest&&requestId?.value===request?.request_id;}).map(entity=>{const status=typeof owner.fields.storage_status==='string'?entity.fields.get(owner.fields.storage_status):undefined;return status?exactValue(status.value):'status not recorded';}));

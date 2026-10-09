@@ -50,7 +50,7 @@
 .console-shell {
   display: flex;
   min-height: 100vh;
-  background: var(--csl-bg);
+  background: linear-gradient(to right, var(--csl-navy-900) var(--csl-sidebar-w), var(--csl-bg) var(--csl-sidebar-w));
   color: var(--csl-text);
   font-family: var(--csl-font);
   font-size: var(--csl-fs-md);
@@ -70,6 +70,7 @@
   top: 0;
   height: 100vh;
   overflow-y: auto;
+  align-self: flex-start;
 }
 /* At 1280px the sidebar narrows; the main column gains the width back. */
 @media (max-width: 1280px) {
@@ -89,6 +90,8 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .console-brand svg { color: var(--csl-teal-400); flex: none; }
+.console-brand>span {min-width:0;font-size:16px;white-space:nowrap}
+@media (max-width:1280px) {.console-brand {padding:16px 12px;gap:6px}.console-brand>span {font-size:15px}.console-brand svg {width:18px}}
 .console-brand-sub {
   display: block;
   font-size: var(--csl-fs-xs);

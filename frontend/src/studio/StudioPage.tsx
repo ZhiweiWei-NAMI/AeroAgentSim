@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Dropdown, Input, InputNumber, Modal, Select, Space, Tag } from 'antd';
+import { Alert, Button, Card, Checkbox, Dropdown, Input, InputNumber, Modal, Select, Space, Tag, Tooltip } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useConsoleNotice } from '../console/Notifications';
 import { PageHeader, PageState } from '../console/PageState';
 import { Details } from '../console/Details';
+import { ConceptHelp } from '../console/ConceptHelp';
 import { StudioApi, type Workspace, type TypeRow } from './api';
 import { ScenePreview } from './ScenePreview';
 import { RegionMap } from './RegionMap';
@@ -19,6 +20,15 @@ import { issueStep, readableName, studioSteps, validationIssues, type StudioStep
 import './studio.css';
 import './guided.css';
 
+const stepHelp: Record<StudioStep,{description:string;guide:string}> = {
+ scene:{description:'The scene binds geographic geometry and actor placement to the simulation views.',guide:'console.md'},
+ entities:{description:'Entities have AeroGraph types, inherited state fields and typed relationships.',guide:'console.md'},
+ plugins:{description:'Domain plugins are replaceable engines; each state field has exactly one writer.',guide:'RUNTIME.md'},
+ predicates:{description:'Predicates evaluate typed conditions that can trigger behaviour transitions.',guide:'predicates.md'},
+ rules:{description:'Bindings start event chains; guarded transitions advance them and execute actions.',guide:'behaviours.md'},
+ agents:{description:'Decision agents propose actions through the same commands and ownership rules as other plugins.',guide:'langgraph.md'},
+ validate:{description:'Validation checks the complete draft before creating a run with its own recorded timeline.',guide:'console.md'},
+};
 interface Catalog {demo_profiles?:Record<string,Record<string,unknown>>;extracts:Array<{id:string;name:string;bounds:number[]}>;engines:EngineDescriptor[]}
 export default function StudioPage() {
  const location=useLocation(),navigate=useNavigate(),notify=useConsoleNotice();
@@ -63,10 +73,10 @@ export default function StudioPage() {
   <div className="guided-workspace-header">
    <div className="guided-workspace-name"><span className="guided-label">Workspace</span>{workspace?<Input aria-label="Workspace name" value={workspace.name} onChange={event=>{setWorkspace({...workspace,name:event.target.value});setDirty(true);}}/>:<strong>Select or create a workspace</strong>}<span className="guided-muted">{workspace?`${workspaceUpdated(workspace)}${dirty?' · Unsaved changes':''}`:'A saved draft holds the complete scenario.'}</span></div>
    <Space wrap><Dropdown trigger={['click']} menu={{items:recentWorkspaces(workspaces).map(item=>({key:item.id,label:<span className="guided-picker-item"><strong>{item.name}</strong><small>{workspaceUpdated(item)}</small></span>})),onClick:({key})=>void action(async()=>{apply(await api.request<Workspace>(`/v1/studio/workspaces/${key}`));setValidity({});chooseStep('scene');})}}><Button disabled={!workspaces.length||busy} data-testid="workspace-picker">Switch workspace ▾</Button></Dropdown>
-    <Button disabled={busy} onClick={()=>void action(openDemo)}>Traffic accident (demo)</Button>
+    {!workspace&&<Button disabled={busy} onClick={()=>void action(openDemo)}>Open traffic demo</Button>}
     <Button disabled={!workspace||busy||!buffersValid} onClick={()=>void action(async()=>{await save();notify({kind:'success',message:'Workspace saved.'});})}>Save workspace</Button>
     <Button disabled={!workspace||busy||!buffersValid} onClick={()=>void action(validate)}>Validate</Button>
-    <Button type="primary" disabled={busy||!bindingsValid} onClick={()=>void action(run)}>Run now</Button>
+    <Tooltip title={!bindingsValid ? 'Validate first' : undefined}><span><Button type="primary" disabled={busy||!bindingsValid} onClick={()=>void action(run)}>Run now</Button></span></Tooltip>
    </Space>
   </div>
   {!workspace&&catalog&&<PageState kind="empty" title="Start with a scenario" description="Open the traffic accident demo, choose a saved workspace or create an empty draft." action={<Button onClick={()=>void action(async()=>{apply(await api.request<Workspace>('/v1/studio/workspaces',{name:'New research scenario'}));chooseStep('scene');})}>Create workspace</Button>}/>}
@@ -75,7 +85,7 @@ export default function StudioPage() {
    <div className="guided-studio-layout" key={workspace.id}>
     <nav className="guided-step-rail" aria-label="Configuration steps">{studioSteps.map((item,index)=>{const hasIssues=issues.some(issue=>issueStep(issue)===item.id);const status=hasIssues?'issues':bindingsValid?'valid':visited.has(item.id)?'opened':'pending';return <button key={item.id} data-testid={`studio-step-${item.id}`} aria-current={step===item.id?'step':undefined} onClick={()=>chooseStep(item.id)}><span className={`guided-status-dot guided-status-${status}`} aria-label={status}/><span><small>0{index+1}</small>{item.label}</span>{hasIssues&&<Tag color="error">{issues.filter(issue=>issueStep(issue)===item.id).length}</Tag>}</button>;})}<div className="guided-rail-footer"><button className="guided-validation-badge" data-testid="validation-status" onClick={()=>setIssuesOpen(true)}><Tag color={bindingsValid?'success':issues.length?'error':'default'}>{bindingsValid?'Validated':issues.length?`${issues.length} authoring issue${issues.length===1?'':'s'}`:'Not validated'}</Tag><span>Review scenario checks →</span></button><Details title="Scenario source" buttonLabel="YAML & details"><Space wrap><Button onClick={()=>void action(async()=>{const saved=await save();setYaml(await api.export(saved.id));})}>Export YAML</Button><Button disabled={!yaml||busy} onClick={()=>void action(async()=>{apply(await api.request<Workspace>(`/v1/studio/workspaces/${workspace.id}/import`,{yaml}));})}>Import YAML</Button></Space><Input.TextArea aria-label="Scenario YAML" rows={18} value={yaml} onChange={event=>setYaml(event.target.value)}/><h3>Scenario JSON</h3><Input.TextArea aria-label="Scenario editor" rows={16} value={raw} onChange={event=>{setRaw(event.target.value);setDirty(true);setWorkspace({...workspace,validation:undefined});try{const value=parseAuthoringJson(event.target.value);if(!value||Array.isArray(value)||typeof value!=='object')throw Error('Scenario must be an object');setWorkspace({...workspace,scenario:value as Record<string,any>,validation:undefined});setRawError('');}catch(problem){setRawError(String(problem));}}}/>{rawError&&<Alert type="error" message={rawError}/>}<pre>{JSON.stringify({workspace:workspace.id,validation:workspace.validation},null,2)}</pre></Details></div></nav>
     <main className="guided-step-content" aria-busy={busy}>
-     <header className="guided-step-heading"><div><span className="guided-label">Step {studioSteps.findIndex(item=>item.id===step)+1} of 7</span><h2>{currentStep.label}</h2><p>{currentStep.description}</p></div><Tag>{scenario.entities?.length ?? 'No'} entities</Tag></header>
+     <header className="guided-step-heading"><div><span className="guided-label">Step {studioSteps.findIndex(item=>item.id===step)+1} of 7</span><h2>{currentStep.label}<ConceptHelp topic={currentStep.label} description={stepHelp[step].description} guide={stepHelp[step].guide}/></h2><p>{currentStep.description}</p></div><Tag>{scenario.entities?.length ?? 'No'} entities</Tag></header>
      {focusIssue&&<Alert type="error" message={focusIssue.message} description={<Details title="Authored diagnostic"><pre>{focusIssue.path}</pre></Details>}/>}
      {visited.has('scene')&&<section hidden={step!=='scene'} data-testid="studio-panel-scene">
       <div className="guided-scene-layout"><Card title="Scene preview">{step==='scene'&&<ScenePreview workspace={workspace} api={base} layers={layers}/>}<Checkbox.Group aria-label="Visible scene layers" value={layers} options={['ground','buildings','roads','entities','airspace'].map(value=>({value,label:readableName(value)}))} onChange={values=>setLayers(values as string[])}/><p className="guided-muted">{workspace.scene?'Selected geographic region':workspace.demo_console?.city_available?'Traffic demo · original city geometry':'Draft scene · local east / north / up coordinates'}</p></Card>

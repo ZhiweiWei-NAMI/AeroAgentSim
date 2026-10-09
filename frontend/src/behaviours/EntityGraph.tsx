@@ -3,7 +3,7 @@ import type { EntityKey } from '../contracts/viewer-feed';
 import type { EntityState, FeedStore } from '../viewport/feed-store';
 import { entityId } from '../viewport/bindings';
 import './run-graph.css';
-import { readableLabel } from '../pages/inspection-format';
+import { readableLabel, displayLabel } from '../pages/inspection-format';
 
 interface EntityGraphProps { store: FeedStore; selected?: EntityKey; onSelect: (key: EntityKey) => void }
 interface GraphNode { id: string; entity: EntityState; label: string; color: string; x: number; y: number }
@@ -26,8 +26,7 @@ function humanLabel(entity: EntityState): string {
     if (typeof fact.value !== 'string' || !fact.value.trim()) continue;
     if (NAME_FIELDS.includes(fieldId) || /name|label|title/i.test(fieldId)) return fact.value.trim();
   }
-  const parts = entity.key.id.split(/[-_/.]+/).filter(Boolean);
-  return parts.length ? parts.map(part => part[0].toUpperCase() + part.slice(1)).join(' ') : entity.key.id;
+  return readableLabel(entity.key.id);
 }
 
 /** Stable positions keep labels legible and prevent motion on every timeline cut. */
@@ -103,15 +102,15 @@ export function EntityGraph({ store, selected, onSelect }: EntityGraphProps) {
       <input aria-label="Search graph entities" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search entities" />
       <select aria-label="Graph entity" value={selectedId ?? ''} onChange={event => { const node = layout.byId.get(event.target.value); if (node) onSelect(node.entity.key); }}>
         <option value="">Select entity</option>
-        {selectedNode && !matches.some(node => node.id === selectedId) && <option value={selectedNode.id}>{selectedNode.label} · g{selectedNode.entity.key.generation}</option>}
-        {matches.map(node => <option key={node.id} value={node.id}>{node.label} · g{node.entity.key.generation}</option>)}
+        {selectedNode && !matches.some(node => node.id === selectedId) && <option value={selectedNode.id}>{selectedNode.label}</option>}
+        {matches.map(node => <option key={node.id} value={node.id}>{node.label}</option>)}
       </select>
       {!layout.nodes.length && <span>No active entities at this cut.</span>}
     </div>
     <div className="eg-legend" aria-label="Entity type colors">
       {[...new Map(layout.nodes.map(node => [node.entity.typeId, node.color]))].map(([typeId, color]) => {
         const type = store.header.types.find(row => row.typeId === typeId);
-        return <span key={typeId} className="eg-legend-item"><i style={{ background: color }} />{readableLabel(type?.displayName === typeId ? typeId : type?.displayName ?? typeId)}</span>;
+        return <span key={typeId} className="eg-legend-item"><i style={{ background: color }} />{displayLabel(type?.displayName, typeId)}</span>;
       })}
     </div>
     <div className="eg-canvas">

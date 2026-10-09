@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { StudioApi, type Workspace } from '../studio/api';
-import { seconds } from '../feeds/format';
+import { displayTime } from '../pages/display-time';
 import { RunsApi, type RunInfo } from '../feeds/http';
 import { useLocation } from 'react-router-dom';
 import { PageHeader } from './PageState';
@@ -159,9 +159,9 @@ export default function HomePage() {
             <ul className="console-list">
               {runs.runs.slice(0, 8).map(run => (
                 <li key={run.id}>
-                  <Link to={`/inspect/${encodeURIComponent(run.id)}${suffix}`}>{run.scenario}</Link>
+                  <Link to={`/inspect/${encodeURIComponent(run.id)}${suffix}`}>{readableName(run.scenario)}</Link>
                   <span className="console-badge console-badge-workspace">{run.status}</span>
-                  <span>{seconds(run.until_ns)}</span>
+                  <span>{displayTime(run.until_ns)}</span>
                   <Link to={`/runs/${encodeURIComponent(run.id)}${suffix}`}>viewer</Link>
                 </li>
               ))}

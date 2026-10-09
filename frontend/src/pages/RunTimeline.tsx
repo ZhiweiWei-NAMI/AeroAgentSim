@@ -3,7 +3,8 @@ import { Button, Select, Slider } from 'antd';
 import type { FeedCommit } from '../contracts/viewer-feed';
 import type { TemporalFeedStore } from '../feeds/temporal-store';
 import type { PlaybackClock } from '../viewport/clock';
-import { seconds } from '../feeds/format';
+import { displayTime } from './display-time';
+import { ConceptHelp } from '../console/ConceptHelp';
 
 const markers: Record<string, {label: string; kind: string}> = {
   'traffic.inject.accident': {label:'Accident',kind:'accident'},
@@ -27,10 +28,10 @@ export function RunTimeline({ store, clock, cut, mode, onSeek, onPlay, onLive, o
     <Button type="primary" aria-label={clock.playing ? 'Pause playback' : 'Play'} onClick={onPlay}>{clock.playing ? 'Pause' : 'Play'}</Button>
     {mode === 'live' && <Button onClick={onLive}>Follow live</Button>}
     <Select aria-label="Playback speed" value={clock.speed} options={[0.25,0.5,1,2,4,8].map(value=>({value,label:`${value}×`}))} onChange={value=>{clock.setSpeed(value);onTick();}} />
-    <div className="inspection-timeline-track"><Slider aria-label="Commit timeline" min={0} max={end} value={Math.max(0,offset)} onChange={onSeek} tooltip={{formatter:index=>index === undefined ? '' : seconds(store.commits[index]?.at.ns ?? clock.ns,store.header.start.ns)}} />
-      <div className="inspection-event-markers">{events.map(event=><button key={`${event.cut}/${event.kind}`} className={`inspection-marker marker-${event.kind}`} style={{left:`${end ? event.offset/end*100 : 0}%`}} aria-label={`Seek ${event.label.toLowerCase()} at ${seconds(event.ns,store.header.start.ns)}`} title={`${event.label} · ${seconds(event.ns,store.header.start.ns)}`} onClick={()=>onSeek(event.offset)}><span>{event.label}</span></button>)}</div>
+    <div className="inspection-timeline-track"><Slider aria-label="Commit timeline" min={0} max={end} value={Math.max(0,offset)} onChange={onSeek} tooltip={{formatter:index=>index === undefined ? '' : displayTime(store.commits[index]?.at.ns ?? clock.ns,store.header.start.ns)}} />
+      <div className="inspection-event-markers">{events.map(event=><button key={`${event.cut}/${event.kind}`} className={`inspection-marker marker-${event.kind}`} style={{left:`${end ? event.offset/end*100 : 0}%`}} aria-label={`Seek ${event.label.toLowerCase()} at ${displayTime(event.ns,store.header.start.ns)}`} title={`${event.label} · ${displayTime(event.ns,store.header.start.ns)}`} onClick={()=>onSeek(event.offset)}><span>{event.label}</span></button>)}</div>
     </div>
-    <time>{seconds(clock.ns,store.header.start.ns)}<small> / {seconds(clock.end,store.header.start.ns)}</small></time>
+    <ConceptHelp topic="Timeline" description="Graph, city and entity state share this cursor; event markers seek their recorded moment." guide="console.md"/><time>{displayTime(clock.ns,store.header.start.ns)}<small> / {displayTime(clock.end,store.header.start.ns)}</small></time>
     <div className="inspection-marker-legend"><span className="marker-accident">Accident</span><span className="marker-award">Award</span><span className="marker-capture">Capture</span></div>
   </footer>;
 }

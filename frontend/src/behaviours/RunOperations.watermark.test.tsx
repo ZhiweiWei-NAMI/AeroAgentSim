@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { RunsApi } from '../feeds/http';
 import { TemporalFeedStore } from '../feeds/temporal-store';
@@ -27,6 +27,7 @@ it('advances an idle operator source from acknowledged watermarks, capped at the
     await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
     expect(store.commits.at(-1)?.at.ns).toBe('0');
     expect(watermarks).toEqual([1_000_000_000, 2_000_000_000, 2_500_000_000]);
-    expect(screen.getByText(/closed through 2.5 s/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button',{name:'Source timing'}));
+    expect(screen.getByText(/closed through 00:02.5/)).toBeVisible();
   } finally { cleanup(); request.mockRestore(); vi.useRealTimers(); }
 });

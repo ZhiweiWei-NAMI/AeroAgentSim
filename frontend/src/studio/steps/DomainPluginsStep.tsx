@@ -287,9 +287,9 @@ function parameterSchema(config:Row):unknown {
  const properties:Record<string,unknown>={};
  for(const key of keys) {
   const value=config[key];
-  if(typeof value==='number') properties[key]={type:key==='step_ns'?'integer':'number',title:readableName(key)};
+  if(typeof value==='number') properties[key]={type:key==='step_ns'?'integer':'number'};
   else if(value&&typeof value==='object'&&!Array.isArray(value)) {
-   const children=Object.fromEntries(Object.entries(value).filter(([,child])=>typeof child==='number').map(([name])=>[name,{type:'number',title:readableName(name)}]));
+   const children=Object.fromEntries(Object.entries(value).filter(([,child])=>typeof child==='number').map(([name])=>[name,{type:'number'}]));
    if(Object.keys(children).length)properties[key]={type:'object',properties:children,title:readableName(key)};
   }
  }

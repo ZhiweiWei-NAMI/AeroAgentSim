@@ -49,3 +49,12 @@
 .inspection-marker-legend .marker-accident:before {background:#d7833b}.inspection-marker-legend .marker-award:before {background:#7b68b6}
 @media (max-width:1350px) {.inspection-marker-legend {flex-basis:100%;padding-left:170px}.console-shell .inspection-page .inspection-sidebar {width:225px;flex-basis:225px;padding:12px}.inspection-city-header>span {display:none}}
 @media (max-width:1100px) {.console-shell .inspection-page>.viewer-main {height:900px}.console-shell .inspection-page .dual-run-views {grid-template-columns:1fr;overflow:auto}.console-shell .inspection-page .dual-spatial-pane {min-height:420px}.console-shell .inspection-page .dual-graph-pane {min-height:400px}.inspection-marker-legend {padding-left:0}}
+/* Toolbar controls wrap within the city pane; canvas rendering is unchanged. */
+.console-shell .inspection-page .director-toolbar {left:8px;right:8px;top:8px;max-width:calc(100% - 16px);flex-wrap:wrap;gap:5px;padding:6px;align-items:center}
+.console-shell .inspection-page .director-toolbar select {min-width:0;max-width:150px;flex:1 1 100px}
+.console-shell .inspection-page .director-toolbar button {flex:none;white-space:nowrap}
+.console-shell .inspection-page .presentation-tabs {flex-wrap:wrap;min-width:0}
+.console-shell .inspection-page .presentation-tabs button {white-space:normal;font-size:11px;padding:6px}
+.console-shell .inspection-page .viewer-stage>nav {flex-wrap:wrap}
+.console-shell .inspection-page .scene-status {top:94px;left:8px;max-width:calc(100% - 16px);font-size:10px}
+.console-shell .inspection-page .inspection-fields h3 .console-concept-help {margin-left:auto}
