@@ -162,7 +162,7 @@ export class RunsApi {
     return await this.request('/v1/runs', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{"scenario":'+source+'}' }) as RunInfo;
   }
   async control(id: string, action: 'pause' | 'resume' | 'stop'): Promise<void> {
-    await this.request(`/v1/runs/${encodeURIComponent(id)}/${action}`, { method: 'POST' });
+    await this.request(`/v1/runs/${encodeURIComponent(id)}/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
   }
 }
 

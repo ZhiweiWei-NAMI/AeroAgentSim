@@ -118,9 +118,9 @@ def test_live_accident_graph_and_zero_model_call_replays(
     cfg = example["engines"]["graph"]["config"]
     cfg["provider"] = {
         "mode": "live",
-        "base_url": "http://127.0.0.1:8788/v1",
-        "model": "glm-5.3-flash",
+        "profile": "default",
     }
+    monkeypatch.setenv("AAS_LLM_MODEL", "glm-5.3-flash")
     cfg["budget"]["wall_timeout_s"] = 300
     cfg["budget"]["max_tokens"] = 24000
     calls = 0

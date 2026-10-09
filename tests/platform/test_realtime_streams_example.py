@@ -152,7 +152,9 @@ def test_cli_rejects_unknown_provenance(
 def test_two_source_http_partial_service_lateness_and_replay(
     streams: dict[str, Any], tmp_path: Path
 ) -> None:
-    with TestClient(create_app(tmp_path / "runs")) as client:
+    with TestClient(
+        create_app(tmp_path / "runs"), base_url="http://localhost"
+    ) as client:
         created = client.post("/v1/runs", json=streams)
         assert created.status_code == 201, created.text
         run_id = created.json()["id"]

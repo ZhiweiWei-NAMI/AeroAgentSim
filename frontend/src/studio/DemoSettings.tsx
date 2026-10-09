@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { StudioApi, Workspace } from './api';
 import { Details } from '../console/Details';
 export function DemoSettings({api,workspace,save,onApply,profiles}:{api:StudioApi;workspace:Workspace;save:()=>Promise<Workspace>;onApply:(workspace:Workspace)=>void;profiles:Record<string,Record<string,unknown>>}) {
- const [provider,setProvider]=useState({base_url:'',model:'',api_key_env:''}),[error,setError]=useState('');
+ const [provider,setProvider]=useState({profile:''}),[error,setError]=useState('');
  const apply=async(body:unknown)=>{setError('');try{await save();onApply(await api.request(`/v1/studio/workspaces/${workspace.id}/decision-profile`,body));}catch(problem){setError(String(problem));}};
  const live=workspace.scenario.engines?.decisions?.plugin==='langgraph';
  return <section aria-label="Traffic demo profiles"><h3>Decision mode · {live?'live LangGraph':'scripted'}</h3><p>{live?'Model proposals and provider failures are journaled as LangGraph records.':'Scripted decision fixture; no model service calls.'} Profile edits require validation and a new run.</p>

@@ -26,7 +26,8 @@ from aeroagentsim.agents.langgraph import (
     replay_graph,
 )
 from aeroagentsim.agents.langgraph_client import ScriptedProvider
-from aeroagentsim.agents.provider import OpenAIProvider
+from aeroagentsim.agents.provider import OpenAIProvider, ProviderError
+from aeroagentsim.authoring.demo import live_decisions
 from aeroagentsim.engines.common import policies
 from aeroagentsim.packs.traffic_accident.decision_failures import DecisionFailures
 from aeroagentsim.platform import RunSession
@@ -39,6 +40,50 @@ from tests.demos.traffic_accident.test_end_to_end import trace
 from tests.demos.traffic_accident.test_policy import evaluate
 
 PROFILE = SCENARIO / "profiles/live-llm.yaml"
+
+
+def test_shipped_live_demo_budget_is_per_decision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from aeroagentsim.services.demo import demo_document
+
+    document, base = demo_document()
+    live_decisions(document, {"profile": "default"})
+    budget = document["engines"]["decisions"]["config"]["budget"]
+    assert budget["sim_timeout_ns"] == 1_000_000_000
+    calls = 0
+
+    def fail_provider(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        nonlocal calls
+        calls += 1
+        raise ProviderError("HTTP_STATUS", "HTTP 401: authentication rejected")
+
+    monkeypatch.setattr(OpenAIProvider, "complete", fail_provider)
+    directory = tmp_path / "run"
+    with RunSession(load_scenario(document, base=base), directory) as session:
+        session.start()
+        session.run_until(20_000_000_000)
+    rows = journal_decisions((directory / "journal.jsonl").read_bytes())
+    invocation = next(
+        r["data"] for rs in rows.values() for r in rs if r["phase"] == "observation"
+    )
+    start_ns = int(invocation["initial"]["observation"]["valid_at"]["ns"])
+    assert start_ns > 1_000_000_000
+    assert (
+        invocation["budget"]["sim_deadline_ns"] == start_ns + budget["sim_timeout_ns"]
+    )
+    failures = [
+        r["data"]["code"] for rs in rows.values() for r in rs if r["phase"] == "failure"
+    ]
+    expected_calls = budget["max_retries"] + 1
+    assert calls == expected_calls and failures == ["HTTP_STATUS"]
+    assert (
+        replay_graph((directory / "journal.jsonl").read_bytes(), next(iter(rows)))[
+            "failure"
+        ]["code"]
+        == "HTTP_STATUS"
+    )
+    assert calls == expected_calls
 
 
 @pytest.fixture(scope="module")

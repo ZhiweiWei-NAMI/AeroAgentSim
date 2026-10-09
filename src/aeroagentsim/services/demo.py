@@ -109,14 +109,9 @@ def demo_document(profile: str = "kinematic") -> tuple[dict[str, Any], Path]:
             raise ValueError(
                 "live-llm requires " + ", ".join(missing) + " and the langgraph extra"
             )
-        live_decisions(
-            document,
-            {
-                "base_url": os.environ[names[0]],
-                "model": os.environ[names[1]],
-                "api_key_env": os.environ[names[2]],
-            },
-        )
+        # Scenarios never carry endpoints or credential env selectors; the
+        # provider resolves them from the operator's trusted environment.
+        live_decisions(document, {"profile": "live-llm"})
     return document, source
 
 

@@ -146,10 +146,10 @@ def live_decisions(document: dict[str, Any], provider: dict[str, Any]) -> None:
     """Grant model proposals only, using observations of actual authored actors/tasks."""
     from aeroagentsim.agents.langgraph import record_descriptor
 
-    if set(provider) != {"base_url", "model", "api_key_env"} or any(
+    if set(provider) != {"profile"} or any(
         not isinstance(value, str) or not value for value in provider.values()
     ):
-        raise ValueError("Live provider requires explicit base_url/model/api_key_env")
+        raise ValueError("Live provider requires a named operator profile")
     candidates = [
         row
         for row in document["entities"]
@@ -202,7 +202,7 @@ def live_decisions(document: dict[str, Any], provider: dict[str, Any]) -> None:
             },
             "budget": {
                 "wall_timeout_s": 120,
-                "sim_deadline_ns": 1000000000,
+                "sim_timeout_ns": 1000000000,
                 "max_calls": 4,
                 "max_tokens": 8000,
                 "max_retries": 1,

@@ -9,6 +9,36 @@ optional Studio hook in
 Start it with `aeroagentsim serve` (requires `aeroagentsim[server]`). All run
 execution goes through `/v1/runs`; the Studio endpoints only author drafts.
 
+## Request boundary
+
+The server binds `127.0.0.1` by default. State-changing requests must have a
+Host naming `localhost`, `127.0.0.1`, `::1`, or the host configured by
+`AEROAGENTSIM_CONSOLE_URL`. When an Origin header is present, it must be a
+localhost HTTP(S) origin or match that configured console origin exactly.
+Missing Origin is permitted for CLI clients; an untrusted Host or Origin
+returns 403. These checks apply to Studio and run controls as well as submissions.
+Every POST requires `Content-Type: application/json` (415 otherwise); send
+`{}` for controls without parameters. CORS permits those console origins,
+GET/POST, and Content-Type, Last-Event-ID and Authorization headers.
+
+Set `AEROAGENTSIM_API_TOKEN` for a non-local deployment. When set, every `/v1/`
+API request requires `Authorization: Bearer <token>`; missing or incorrect
+tokens return 401. CORS preflight remains accessible. Local use with the token
+unset works directly from the console. For example:
+
+```sh
+curl -H "Authorization: Bearer $AEROAGENTSIM_API_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"scenario_path":"scenarios/realtime-streams.yaml"}' \
+  http://127.0.0.1:8000/v1/runs
+```
+
+Scenarios select named provider profiles; provider endpoints and credential
+environment-variable names are configured only by the server operator. See
+[provider configuration](../guides/agents.md#the-provider). Provider failures
+retain a status code and short safe message, with no upstream error body or
+request headers in the journal or commits API.
+
 Run status values: `created`, `running`, `paused`, `waiting_for_input`,
 `completed`, `stopped`, `faulted`, `interrupted`, `input_timeout`.
 Terminal statuses are `completed`, `stopped`, `faulted`, `interrupted`,
@@ -90,5 +120,6 @@ state conflicts.
 ## Frontend pages
 
 When `--frontend` points at a built console, the server serves the SPA at `/`,
-`/runs`, `/inspect`, `/aerograph`, `/agents` and `/studio`. CORS is limited to
-local dev origins; only `GET`/`POST` are allowed.
+`/runs`, `/inspect`, `/aerograph`, `/agents` and `/studio`. The console sends
+JSON for submissions and controls; configure its origin using
+`AEROAGENTSIM_CONSOLE_URL` when it is hosted outside localhost.
