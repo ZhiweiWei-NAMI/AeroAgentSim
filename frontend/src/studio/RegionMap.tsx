@@ -23,7 +23,7 @@ export function RegionMap({ source, bounds, onChange, scene }: { source: number[
       return null;
     })}
     <rect x={x} y={y} width={x2 - x} height={y2 - y} fill="#1677ff22" stroke="#1677ff" strokeWidth="2" />
-    <text x="12" y="20" fill="#4a596a">WGS84 · drag to select / 拖动选区</text>
+    <text x="12" y="20" fill="#4a596a">WGS84 · drag to select</text>
     <text x="12" y="207" fill="#4a596a">© OpenStreetMap contributors · ODbL</text>
   </svg>;
 }

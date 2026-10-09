@@ -5,7 +5,8 @@ interface TraceTarget { readonly kind: "building" | "road"; readonly id: string;
 
 export const MESH_PACK_SCHEMA = "aero-bench.osm2world-mesh-pack/v1";
 export const MAX_PACK_CHUNK_BYTES = 64 * 1024 * 1024;
-export interface PackFile { readonly sha256: string; readonly size_bytes: number; }
+/** Opaque file reference: the name is not a content hash and is never checked. */
+export interface PackFile { readonly asset_id: string; readonly size_bytes: number; }
 export interface PackedMaterial {
   readonly color: readonly [number, number, number];
   readonly base_color_texture: string | null;
@@ -33,14 +34,11 @@ export interface PackCoordinateContract {
   readonly earth_circumference_m: 40075016.686;
   readonly native_point_quantization_m: 0.001;
   readonly storage: "source-mesh-float32-converter-coordinates-then-declared-origin-translation";
-  readonly source_json_sha256: string;
-  readonly producer_sha256: string;
-  readonly projection_helper_sha256: string;
 }
 export interface MeshPackManifest {
   readonly schema_version: typeof MESH_PACK_SCHEMA;
   readonly source: PackFile;
-  readonly generator: { readonly runtime_sha256: string; readonly patch_sha256: string; readonly config_sha256: string; readonly revision: string };
+  readonly generator: { readonly revision: string };
   readonly projection: { readonly name: "MetricMapProjection"; readonly axes: "east-up-south"; readonly origin: GeographicOrigin };
   readonly coordinate_contract: PackCoordinateContract;
   readonly extent: { readonly west: number; readonly east: number; readonly south: number; readonly north: number };
@@ -50,10 +48,11 @@ export interface MeshPackManifest {
   readonly textures: Readonly<Record<string, PackFile>>;
 }
 
+/** Extra keys are tolerated: older files may still carry obsolete hash annotations. */
 function object(value: unknown, keys: readonly string[], label: string): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) throw Error(`${label} must be an object`);
   const result = value as Record<string, unknown>;
-  if (Object.keys(result).length !== keys.length || keys.some(key => !(key in result))) throw Error(`${label} fields must match the pack contract`);
+  if (keys.some(key => !(key in result))) throw Error(`${label} fields must match the pack contract`);
   return result;
 }
 function finite(value: unknown, label: string): number {
@@ -65,13 +64,13 @@ function integer(value: unknown, minimum: number, maximum: number, label: string
   if (!Number.isSafeInteger(result) || result < minimum || result > maximum) throw Error(`${label} is outside its integer bound`);
   return result;
 }
-function hash(value: unknown): string {
-  if (typeof value !== "string" || !/^[0-9a-f]{64}$/.test(value) || /^0+$/.test(value)) throw Error("pack digest is invalid");
+function assetId(value: unknown): string {
+  if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/.test(value) || typeof value==="string" && value.split("/").some(part=>part===".." || part==="." || !part)) throw Error("pack asset id is invalid");
   return value;
 }
 function file(value: unknown): PackFile {
-  const ref = object(value, ["sha256", "size_bytes"], "pack file");
-  return { sha256: hash(ref.sha256), size_bytes: integer(ref.size_bytes, 1, MAX_PACK_CHUNK_BYTES, "pack file size") };
+  const ref = object(value, ["size_bytes"], "pack file");
+  return { asset_id: assetId(ref.asset_id ?? ref.sha256), size_bytes: integer(ref.size_bytes, 1, MAX_PACK_CHUNK_BYTES, "pack file size") };
 }
 function texture(value: unknown): string | null {
   if (value === null) return null;
@@ -84,12 +83,11 @@ function target(value: unknown): TraceTarget | null {
   if ((result.kind !== "building" && result.kind !== "road") || typeof result.id !== "string" || !/^[a-zA-Z0-9_.:-]{1,256}$/.test(result.id)) throw Error("pack target identity is invalid");
   return { kind: result.kind, id: result.id };
 }
-
 export function parseMeshPack(value: unknown): MeshPackManifest {
   const root = object(value, ["schema_version", "source", "generator", "projection", "coordinate_contract", "extent", "original_mesh_count", "batches", "objects", "textures"], "mesh pack");
   if (root.schema_version !== MESH_PACK_SCHEMA) throw Error("unsupported mesh pack schema");
-  const generator = object(root.generator, ["runtime_sha256", "patch_sha256", "config_sha256", "revision"], "pack generator");
-  if (typeof generator.revision !== "string" || !/^[0-9a-f]{40}$/.test(generator.revision)) throw Error("pack upstream revision is invalid");
+  const generator = object(root.generator, ["revision"], "pack generator");
+  if (typeof generator.revision !== "string" || !generator.revision.trim()) throw Error("pack upstream revision is invalid");
   const projection = object(root.projection, ["name", "axes", "origin"], "pack projection");
   if (projection.name !== "MetricMapProjection" || projection.axes !== "east-up-south") throw Error("unsupported pack projection");
   const origin = object(projection.origin, ["latitude_deg", "longitude_deg"], "pack origin");
@@ -97,8 +95,7 @@ export function parseMeshPack(value: unknown): MeshPackManifest {
   if (Math.abs(latitude) >= 90 || Math.abs(longitude) > 180) throw Error("pack origin is outside geographic bounds");
   const source = file(root.source);
   const coordinates = object(root.coordinate_contract, ["schema_version", "recipe", "converter_origin",
-    "stored_translation_xz_m", "earth_circumference_m", "native_point_quantization_m", "storage",
-    "source_json_sha256", "producer_sha256", "projection_helper_sha256"], "pack source coordinates");
+    "stored_translation_xz_m", "earth_circumference_m", "native_point_quantization_m", "storage"], "pack source coordinates");
   if (coordinates.schema_version !== "aero-bench.osm2world-source-coordinates/v1"
       || coordinates.recipe !== "source-node-bounds-local-Mercator-then-declared-origin-translation"
       || coordinates.earth_circumference_m !== 40075016.686 || coordinates.native_point_quantization_m !== 0.001
@@ -120,11 +117,7 @@ export function parseMeshPack(value: unknown): MeshPackManifest {
       finite(coordinates.stored_translation_xz_m[1], "pack source translation z")],
     earth_circumference_m: 40075016.686, native_point_quantization_m: 0.001,
     storage: "source-mesh-float32-converter-coordinates-then-declared-origin-translation",
-    source_json_sha256: hash(coordinates.source_json_sha256),
-    producer_sha256: hash(coordinates.producer_sha256),
-    projection_helper_sha256: hash(coordinates.projection_helper_sha256),
   };
-  if (sourceCoordinates.source_json_sha256 !== source.sha256) throw Error("pack source coordinate bytes differ from the source ref");
   const rawExtent = object(root.extent, ["west", "east", "south", "north"], "pack extent");
   const extent = { west: finite(rawExtent.west, "west"), east: finite(rawExtent.east, "east"), south: finite(rawExtent.south, "south"), north: finite(rawExtent.north, "north") };
   if (extent.west >= extent.east || extent.south >= extent.north) throw Error("pack extent is inverted");
@@ -170,7 +163,7 @@ export function parseMeshPack(value: unknown): MeshPackManifest {
   }
   return {
     schema_version: MESH_PACK_SCHEMA, source, coordinate_contract: sourceCoordinates,
-    generator: { runtime_sha256: hash(generator.runtime_sha256), patch_sha256: hash(generator.patch_sha256), config_sha256: hash(generator.config_sha256), revision: generator.revision },
+    generator: { revision: generator.revision },
     projection: { name: "MetricMapProjection", axes: "east-up-south", origin: { latitude_deg: latitude, longitude_deg: longitude } },
     extent, original_mesh_count: integer(root.original_mesh_count, 1, 1_000_000, "original mesh count"), batches, objects, textures,
   };
@@ -178,6 +171,9 @@ export function parseMeshPack(value: unknown): MeshPackManifest {
 
 export function unpackMeshBatch(batch: PackedBatch, bytes: ArrayBuffer) {
   if (bytes.byteLength !== batch.file.size_bytes) throw Error("pack chunk size mismatch");
+  // Each typed view must lie inside the received buffer; construction throws on
+  // out-of-bounds offsets, so sizes are re-derived here for an exact message.
+  if (batch.vertices * 32 + batch.indices * 4 > bytes.byteLength) throw Error("pack chunk is shorter than its declared layout");
   const positions = new Float32Array(bytes, 0, batch.vertices * 3);
   const normals = new Float32Array(bytes, batch.vertices * 12, batch.vertices * 3);
   const uvs = new Float32Array(bytes, batch.vertices * 24, batch.vertices * 2);

@@ -10,5 +10,5 @@ it('retains actual storage failure and only seeks a recorded artifact source cut
  const seek=vi.fn();render(<ArtifactsPanel api={api} runId="run" store={store} onSeek={seek}/>);
  await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('corrupt blob'));expect(screen.queryByText('No stored artifacts.')).toBeNull();
  request.mockResolvedValueOnce([{digest:'a'.repeat(64),byte_count:10,renderer_mode:'browser',request:{request_id:'photo',source_cut:{index:3,instant:[10,2]}}}]);
- fireEvent.click(screen.getByText('Refresh stored artifacts'));await screen.findByText('Seek photo source cut 3');fireEvent.click(screen.getByText('Seek photo source cut 3'));expect(seek).toHaveBeenCalledWith(3);
+ fireEvent.click(screen.getByText('Refresh stored artifacts'));await screen.findByText('Seek photo moment');fireEvent.click(screen.getByText('Seek photo moment'));expect(seek).toHaveBeenCalledWith(3);
 });

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { EntityKey } from '../contracts/viewer-feed';
 import type { TemporalFeedStore } from '../feeds/temporal-store';
-import { exactValue } from '../feeds/format';
+import { exactValue, seconds } from '../feeds/format';
+import { Details } from '../console/Details';
 import { NonspatialViews } from '../viewport/NonspatialViews';
 import { FeedStore } from '../viewport/feed-store';
 import { entityId } from '../viewport/bindings';
@@ -36,6 +37,7 @@ export function BehaviourRunGraph({ store, selected, onSelect, onSeek }: Props) 
   const [directory, setDirectory] = useState(''), [type, setType] = useState(''), [focus, setFocus] = useState(false);
   const types = new Map(store.header.types.map(row => [row.typeId, row]));
   const selectedId = selected && entityId(selected);
+  const startNs = store.header.start.ns;
   const background=useMemo(()=>backgroundContext(store),[store,store.viewCursor?.knownAt,store.viewCursor?.validAt.ns,store.viewCursor?.validAt.microstep]);
   const neighbors = new Set(selectedId ? [selectedId] : []);
   if (selectedId) for (const edge of store.edges.values()) if (entityId(edge.source) === selectedId || entityId(edge.target) === selectedId) {
@@ -54,6 +56,7 @@ export function BehaviourRunGraph({ store, selected, onSelect, onSeek }: Props) 
   const chains = [...store.chainInstances.values()].filter(row => related(row.roles));
   const extensionPresent = store.hasPredicateRecords || store.hasChainRecords;
   const roleLinks = (roles: Record<string, EntityKey>) => Object.entries(roles).map(([role, key]) => <button key={role} onClick={() => onSelect(key)}>{role} → {key.id} · g{key.generation}</button>);
+  const interval = (from: { ns: string; microstep: number }, to?: { ns: string; microstep: number } | null) => `[${seconds(from.ns, startNs)}, ${to ? seconds(to.ns, startNs) : 'open'})`;
   return <section className="behaviour-run-graph" aria-label="Synchronized AeroGraph view" data-cut={store.viewCursor?.knownAt}>
     <h2>AeroGraph · committed run</h2>
     <div className="behaviour-filters">
@@ -62,26 +65,27 @@ export function BehaviourRunGraph({ store, selected, onSelect, onSeek }: Props) 
       <label><input type="checkbox" checked={focus} onChange={event => setFocus(event.target.checked)} />Focus + neighbors</label>
       <label><input aria-label="Hide background actors" type="checkbox" checked={hideBackground} onChange={e=>setHideBackground(e.target.checked)}/>Hide background actors</label><label><input aria-label="Show runtime entities" type="checkbox" checked={showRuntimeEntities} onChange={e=>setShowRuntimeEntities(e.target.checked)}/>Show runtime entities (also available in chain overlays)</label><span>{display.entities.size} / {store.entities.size} entities</span>
     </div>
-    <NonspatialViews store={display} selected={selected} onSelect={onSelect} view="graph" />
+    <NonspatialViews store={display} selected={selected} onSelect={onSelect} view="graph" /><Details title="Relation validity and technical records"><pre>{exactValue([...display.edges.values()])}</pre></Details>
     <div className="behaviour-records" aria-label="Recorded predicate and chain nodes">
       {!extensionPresent && <p>No recorded predicate/chain data in this feed.</p>}
       <div className="behaviour-node-columns">
         <div><h3>Predicate contexts · {predicates.length}</h3>{predicates.map(row => <article className={`behaviour-node truth-${row.value === null ? 'unknown' : String(row.value)}`} key={row.contextId}>
           <strong>{row.predicateId}</strong><span>{row.status === 'known' ? String(row.value) : `unknown · ${row.status}`}</span>
-          <small>{row.contextId} · {row.profile}</small><div className="role-links">{roleLinks(row.roles)}</div>
-          <p>Evaluation interval [{row.validFrom.ns}:{row.validFrom.microstep}, {row.validTo ? `${row.validTo.ns}:${row.validTo.microstep}` : 'open'})</p>
-          <button disabled={!store.commits.some(commit => commit.commitIndex === row.readCut.index)} onClick={() => onSeek(row.readCut.index)}>Seek evidence cut {row.readCut.index}</button>
-          {!!row.diagnostics.length && <pre>{exactValue(row.diagnostics)}</pre>}
-          <details><summary>Intervals, clocks and causes</summary><pre>{exactValue(row)}</pre>
-            <ol>{store.predicateRecords(row.contextId).filter(item=>item.commit.commitIndex<=(store.viewCursor?.knownAt??-1)).map((item,index)=><li key={index}><button onClick={()=>onSeek(item.commit.commitIndex)}>Predicate {item.value.value===null?'unknown':String(item.value.value)} · {item.value.op??'assert'} · [{item.value.validFrom.ns}:{item.value.validFrom.microstep}, {item.value.validTo?`${item.value.validTo.ns}:${item.value.validTo.microstep}`:'open'}) · cut {item.commit.commitIndex}</button></li>)}</ol>
-          </details>
+          <small>{row.profile}</small><div className="role-links">{roleLinks(row.roles)}</div>
+          <p>Interval {interval(row.validFrom, row.validTo)}</p>
+          <button data-testid="predicate-transition" data-transition-cut={row.readCut.index} disabled={!store.commits.some(commit => commit.commitIndex === row.readCut.index)} onClick={() => onSeek(row.readCut.index)}>Seek evaluation {seconds(row.readCut.at.ns, startNs)}</button>
+          {!!row.diagnostics.length && <><ul>{row.diagnostics.map((item,index)=>typeof item==='string'?<li key={index}>{item}</li>:mapping(item)&&typeof item.reason==='string'?<li key={index}>{item.reason}</li>:null)}</ul><Details title="Predicate diagnostics"><pre>{exactValue(row.diagnostics)}</pre></Details></>}
+          <Details title={row.predicateId} buttonLabel="Intervals, clocks and causes">
+            <pre>{exactValue(row)}</pre>
+            <ol>{store.predicateRecords(row.contextId).filter(item=>item.commit.commitIndex<=(store.viewCursor?.knownAt??-1)).map((item,index)=><li key={index}><button data-testid="predicate-transition" data-transition-cut={item.commit.commitIndex} onClick={()=>onSeek(item.commit.commitIndex)}>Predicate {item.value.value===null?'unknown':String(item.value.value)} · {item.value.op??'assert'} · {interval(item.value.validFrom, item.value.validTo)}</button></li>)}</ol>
+          </Details>
         </article>)}</div>
         <div><h3>Chain instances · {chains.length}</h3>{chains.map(row => <article className="behaviour-node chain-node" key={row.instanceId}>
-          <strong>{row.templateId}</strong><span>{row.state} · {row.lifecycle} · revision {exactValue(row.revision)}</span>
-          <small>{row.instanceId} · {row.bindingId}</small><div className="role-links">{roleLinks(row.roles)}</div>
-          <details><summary>Variables / children / causes</summary><pre>{exactValue(row)}</pre></details>
+          <strong>{row.templateId}</strong><span>{row.state} · {row.lifecycle}</span>
+          <small>{row.bindingId}</small><div className="role-links">{roleLinks(row.roles)}</div>
+          <Details title={row.templateId} buttonLabel="Variables / children / causes"><pre>{exactValue(row)}</pre></Details>
           <ol>{store.chainRecords(row.instanceId).filter(item => item.value.op !== 'close' && item.commit.commitIndex <= (store.viewCursor?.knownAt ?? -1)).map(item => <li key={`${item.commit.commitIndex}/${exactValue(item.value.revision)}`}>
-            <button onClick={() => { const key = Object.values(item.value.roles)[0]; if (key) onSelect(key); onSeek(item.commit.commitIndex); }}>Seek {item.value.transitionId ?? item.value.lifecycle} → {item.value.state} · {item.commit.at.ns}:{item.commit.at.microstep} · cut {item.commit.commitIndex}</button>
+            <button data-testid="chain-transition" data-transition-cut={item.commit.commitIndex} onClick={() => { const key = Object.values(item.value.roles)[0]; if (key) onSelect(key); onSeek(item.commit.commitIndex); }}>Seek {item.value.transitionId ?? item.value.lifecycle} → {item.value.state} · {seconds(item.commit.at.ns, startNs)}</button>
           </li>)}</ol>
         </article>)}</div>
       </div>

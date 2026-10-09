@@ -323,6 +323,9 @@ def create_app(
             raise ValueError(f"Frontend build missing: {frontend}; run npm run build")
         app.mount("/assets", StaticFiles(directory=frontend / "assets"), name="assets")
 
+        @app.get("/inspect/{path:path}")
+        @app.get("/inspect")
+        @app.get("/aerograph")
         @app.get("/runs/{path:path}")
         @app.get("/agents/{path:path}")
         @app.get("/runs")

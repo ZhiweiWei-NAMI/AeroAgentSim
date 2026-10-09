@@ -4,7 +4,7 @@ import type { PackedBatch, PackedMaterial, PackFile, PackedObject, PackedRange }
 import { decorateBuildings } from './city-materials';
 
 // Minimal typed fixtures: decorateBuildings only reads batch.ranges and object tags.
-const PACK_FILE: PackFile = { sha256: 'fixture-pack-sha', size_bytes: 128 };
+const PACK_FILE: PackFile = { asset_id: 'fixture-pack-chunk@1', size_bytes: 128 };
 const PACK_MATERIAL: PackedMaterial = {
   color: [1, 1, 1],
   base_color_texture: null,

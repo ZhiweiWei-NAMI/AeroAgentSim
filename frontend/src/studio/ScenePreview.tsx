@@ -2,15 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { loadOsmBuildings } from '../scene/source-geometry';
-import { disposeObject } from '../viewport/assets';
+import { Assets, disposeObject } from '../viewport/assets';
+import { loadTrafficCity } from '../scene/traffic-city';
 import type { Workspace } from './api';
 
 export function ScenePreview({ workspace, api, layers }: { workspace: Workspace; api: string; layers: string[] }) {
   const root = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(''), [loading, setLoading] = useState(false);
   useEffect(() => {
     if (!root.current) return;
     const host = root.current, abort = new AbortController();
+    let assets: Assets | undefined;
     let renderer: THREE.WebGLRenderer | undefined, controls: OrbitControls | undefined, frame = 0;
     const scene = new THREE.Scene(); scene.background = new THREE.Color('#edf2f6'); setError('');
     try {
@@ -21,6 +23,13 @@ export function ScenePreview({ workspace, api, layers }: { workspace: Workspace;
       const camera = new THREE.PerspectiveCamera(45, 1, 0.1, extent * 20);
       camera.position.set(extent * 0.65, extent * 0.8, extent * 0.65);
       controls = new OrbitControls(camera, renderer.domElement); controls.target.set(0, 0, 0); controls.update();
+      const city = workspace.demo_console?.scene;
+      if (city?.camera) { camera.position.set(...city.camera.position); controls.target.set(...city.camera.target); controls.update(); }
+      if (city?.city && layers.includes('buildings')) {
+        if (city.city.kind !== 'traffic-city') throw Error('Studio city preview requires a traffic-city descriptor');
+        assets = new Assets(renderer); setLoading(true);
+        void loadTrafficCity(city.city.url, assets, abort.signal).then(group => { if (abort.signal.aborted) disposeObject(group); else { scene.add(group); setLoading(false); } }).catch(problem => { if (!abort.signal.aborted) { setError(String(problem)); setLoading(false); } });
+      }
       scene.add(new THREE.HemisphereLight(0xffffff, 0x65705b, 2));
       const sun = new THREE.DirectionalLight(0xffffff, 2.5); sun.position.set(100, 200, 80); scene.add(sun);
       if (layers.includes('ground')) {
@@ -55,9 +64,9 @@ export function ScenePreview({ workspace, api, layers }: { workspace: Workspace;
       const resize = () => { const w = host.clientWidth, h = host.clientHeight; renderer!.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
       const observer = new ResizeObserver(resize); observer.observe(host); resize();
       const animate = () => { if (abort.signal.aborted) return; controls!.update(); renderer!.render(scene, camera); frame = requestAnimationFrame(animate); }; animate();
-      return () => { abort.abort(); cancelAnimationFrame(frame); observer.disconnect(); controls?.dispose(); disposeObject(scene); renderer?.dispose(); renderer?.domElement.remove(); };
+      return () => { abort.abort(); cancelAnimationFrame(frame); observer.disconnect(); controls?.dispose(); disposeObject(scene); assets?.dispose(); renderer?.dispose(); renderer?.domElement.remove(); };
     } catch (e) { setError(String(e)); }
-    return () => { abort.abort(); cancelAnimationFrame(frame); controls?.dispose(); disposeObject(scene); renderer?.dispose(); renderer?.domElement.remove(); };
+    return () => { abort.abort(); cancelAnimationFrame(frame); controls?.dispose(); disposeObject(scene); assets?.dispose(); renderer?.dispose(); renderer?.domElement.remove(); };
   }, [workspace, api, layers]);
-  return <div className="studio-preview" ref={root} aria-label="Scene preview">{error && <div className="studio-preview-error" role="alert">{error}</div>}</div>;
+  return <div className="studio-preview" ref={root} aria-label="Scene preview">{loading && <div className="studio-preview-status" role="status">Loading city geometry…</div>}{error && <div className="studio-preview-error" role="alert">{error}</div>}</div>;
 }

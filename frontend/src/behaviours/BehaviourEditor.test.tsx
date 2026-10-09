@@ -9,7 +9,7 @@ it('shares state-machine graph, transition forms and raw model while retaining u
  render(<Harness/>);fireEvent.click(screen.getByRole('button',{name:/^chains$/}));
  expect(screen.getByLabelText('Graph transition launch')).toBeTruthy();fireEvent.change(screen.getByLabelText('Transition 0 id'),{target:{value:'finish'}});
  expect(screen.getByLabelText('Graph transition finish')).toBeTruthy();expect(screen.getByTestId('model')).toHaveTextContent('unknownTransition');
- fireEvent.click(screen.getByRole('button',{name:/^raw$/}));const raw=screen.getByLabelText('Behaviour package JSON') as HTMLTextAreaElement;expect(JSON.parse(raw.value).unknown).toEqual({enabled:false,value:null});
+ fireEvent.click(screen.getByRole('button',{name:/^raw$/}));fireEvent.click(screen.getByTestId('details-trigger'));const raw=screen.getByLabelText('Behaviour package JSON') as HTMLTextAreaElement;expect(JSON.parse(raw.value).unknown).toEqual({enabled:false,value:null});
 });
 it('preserves unsupported AST operators and filters inherited fields by real ancestry',()=>{
  const authored={...draft,predicates:{ready:{profile:'committed_reactive/v1',roles:{},expression:{op:'futureDialect',extra:{keep:true}}}}};render(<BehaviourEditor value={authored} onChange={()=>{}}/>);
@@ -20,7 +20,7 @@ it('preserves unsupported AST operators and filters inherited fields by real anc
 });
 it('blocks compiler validation while a raw JSON buffer is invalid',()=>{
  const states:boolean[]=[];render(<BehaviourEditor value={draft} onChange={()=>{}} onValidityChange={valid=>states.push(valid)}/>);
- fireEvent.click(screen.getByRole('button',{name:/^raw$/}));
+ fireEvent.click(screen.getByRole('button',{name:/^raw$/}));fireEvent.click(screen.getByTestId('details-trigger'));
  fireEvent.change(screen.getByLabelText('Behaviour package JSON'),{target:{value:'{"id":'}});
  expect(screen.getByRole('button',{name:'Validate package on server'})).toBeDisabled();expect(states.at(-1)).toBe(false);
 });

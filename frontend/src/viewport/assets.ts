@@ -67,17 +67,16 @@ export class Assets {
   }
 }
 
-async function verified(url: URL, file: PackFile, signal: AbortSignal) {
+/** Chunks/textures are addressed by opaque asset IDs; their declared size is still checked. */
+async function loadPackFile(url: URL, file: PackFile, signal: AbortSignal) {
   const response = await fetch(url, { signal });
   if (!response.ok) throw Error(`Asset HTTP ${response.status}: ${url}`);
   const bytes = await response.arrayBuffer();
-  if (bytes.byteLength !== file.size_bytes) throw Error('Mesh pack byte count mismatch');
-  const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(x => x.toString(16).padStart(2, '0')).join('');
-  if (digest !== file.sha256) throw Error('Mesh pack SHA-256 mismatch');
+  if (bytes.byteLength !== file.size_bytes) throw Error(`Mesh pack byte count mismatch: ${url}`);
   return bytes;
 }
 
-/** Content-addressed assets/<sha256>, matching aero-bench's pack store. */
+/** Pack chunks and textures resolve as assets/<asset_id> below assetsBase. */
 export async function loadCityPack(manifestUrl: string, assetsBase: string, origin: RunHeader['origin'], signal: AbortSignal) {
   const response = await fetch(manifestUrl, { signal });
   if (!response.ok) throw Error(`City manifest HTTP ${response.status}`);
@@ -87,7 +86,7 @@ export async function loadCityPack(manifestUrl: string, assetsBase: string, orig
   try {
     // Only geometry and original OSM data are read. Historical facade/terrain pixels
     // are deliberately replaced by procedural materials; D-assets remains open.
-    const chunks = await Promise.all(pack.batches.map(batch => verified(new URL(`assets/${batch.file.sha256}`, assetsBase), batch.file, signal)));
+    const chunks = await Promise.all(pack.batches.map(batch => loadPackFile(new URL(`assets/${batch.file.asset_id}`, assetsBase), batch.file, signal)));
     const buildings: Array<{geometry:T.BufferGeometry;batch:typeof pack.batches[number]}> = [];
     for (const [index, batch] of pack.batches.entries()) {
       const arrays = unpackMeshBatch(batch, chunks[index]);
@@ -106,7 +105,7 @@ export async function loadCityPack(manifestUrl: string, assetsBase: string, orig
     if(roofDetails.children.length)group.add(roofDetails);
     group.userData.roofDetails=roofDetails.userData;
     if (pack.objects.length) {
-      const sourceBytes = await verified(new URL(`assets/${pack.source.sha256}`, assetsBase), pack.source, signal);
+      const sourceBytes = await loadPackFile(new URL(`assets/${pack.source.asset_id}`, assetsBase), pack.source, signal);
       const source: unknown = JSON.parse(new TextDecoder().decode(sourceBytes));
       const landscape = createCityVegetation(source, pack);
       group.add(landscape); group.userData.landscape = landscape.userData;

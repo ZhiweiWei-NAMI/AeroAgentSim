@@ -3,6 +3,8 @@ import { Alert, Tag } from 'antd';
 import { Link, useLocation } from 'react-router-dom';
 import { HttpViewerFeed, RunsApi } from '../feeds/http';
 import { exactValue, seconds } from '../feeds/format';
+import { PageHeader } from '../console/PageState';
+import { Details } from '../console/Details';
 
 const SCHEMA_ID = 'aas.agent.record';
 const PHASES = ['observation', 'prompt', 'response', 'validation', 'command', 'failure', 'finished', 'receipt'] as const;
@@ -145,33 +147,34 @@ export default function AgentConsole() {
   const list = [...decisions.values()];
   const entityLink = (entity: string) => <Link to={`/runs/${encodeURIComponent(runId)}${suffix}&entity=${encodeURIComponent(entity)}`}>{entity}</Link>;
   return <div style={{ padding: 24, maxWidth: 980, margin: '0 auto', fontFamily: 'sans-serif' }}>
-    <h2 style={{ marginBottom: 4 }}>Agent console</h2>
-    <p><code>{runId}</code> <Tag>{mode}</Tag>{requestedCut && <Tag>fixed cut {requestedCut}</Tag>} <Tag color={error ? 'red' : 'blue'}>{status}</Tag> <Link to={`/runs/${encodeURIComponent(runId)}${suffix}`}>Run viewer</Link> · <Link to={`/agents/${encodeURIComponent(runId)}?api=${encodeURIComponent(apiBase)}&mode=${mode === 'live' ? 'replay' : 'live'}`}>Switch feed mode</Link></p>
+    <PageHeader eyebrow="Inspect" title="Agent decisions" description="Recorded observations, proposed actions and actual execution receipts." />
+    <p><Tag>{mode}</Tag>{requestedCut && <Tag>Selected timeline moment</Tag>} <Details title="Decision stream details"><pre>{JSON.stringify({runId,requestedCut},null,2)}</pre></Details> <Tag color={error ? 'red' : 'blue'}>{status}</Tag> <Link to={`/runs/${encodeURIComponent(runId)}${suffix}`}>Run viewer</Link> · <Link to={`/agents/${encodeURIComponent(runId)}?api=${encodeURIComponent(apiBase)}&mode=${mode === 'live' ? 'replay' : 'live'}`}>Switch feed mode</Link></p>
     {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 12 }} />}
     {problems.slice(0, 10).map((problem, index) => <Alert key={index} type="error" showIcon message={problem} style={{ marginBottom: 8 }} />)}
     {problems.length > 10 && <p>{problems.length - 10} more record problems hidden.</p>}
     {list.length === 0 && !error && <Alert type="info" message={`No ${SCHEMA_ID} messages recorded for this run yet.`} />}
     {list.map(decision => <section key={decision.decisionId} style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 12, marginBottom: 12 }}>
-      <h3 style={{ margin: '0 0 8px' }}><code>{decision.decisionId}</code> <Tag title={`${decision.simNs} ns`}>{seconds(decision.simNs, startNs.current)}</Tag>
-        {decision.phases.map((item, index) => <Tag key={index} color={item.phase === 'failure' ? 'red' : item.phase === 'finished' ? 'green' : 'blue'} title={`${item.phase} at ${seconds(item.simNs, startNs.current)}`}>{item.phase}</Tag>)}</h3>
+      <h3 style={{ margin: '0 0 8px' }}><code>{decision.decisionId}</code> <Tag>{seconds(decision.simNs, startNs.current)}</Tag>
+        {decision.phases.map((item, index) => <Tag key={index} color={item.phase === 'failure' ? 'red' : item.phase === 'finished' ? 'green' : 'blue'}>{item.phase} · {seconds(item.simNs, startNs.current)}</Tag>)}</h3>
       {decision.failed && <Alert type="error" showIcon message="Agent reported failure for this decision" style={{ marginBottom: 8 }} />}
       <p style={{ margin: '4px 0' }}><b>Observation</b> — {decision.fields.length} field(s)</p>
       <ul style={{ margin: '4px 0 8px', paddingLeft: 20 }}>
-        {decision.fields.map((field, index) => <li key={index}><code>{field.name}</code> = {field.value}{field.entity && <> · entity {entityLink(field.entity)}</>}</li>)}
+        {decision.fields.map((field, index) => <li key={index}><code>{field.name}</code> = <Details title={field.name} buttonLabel="Observed value"><pre>{field.value}</pre></Details>{field.entity && <> · entity {entityLink(field.entity)}</>}</li>)}
       </ul>
       {decision.calls.map(call => <div key={call.callId} style={{ margin: '8px 0', borderTop: '1px dashed #ddd', paddingTop: 8 }}>
         <b>Proposed call</b> <code>{call.callId}</code> {call.schema && <Tag>{call.schema}</Tag>}{call.target && <Tag>target: {call.target}</Tag>}
         {call.summary && <div>{call.summary}</div>}
-        <details><summary>Args payload</summary><Blob value={call.payload} /></details>
-        {call.journalReceipts.map((receipt, index) => <div key={index} style={{ margin: '4px 0' }}>Committed receipt: <Tag>{receipt.status}</Tag><Blob value={receipt.result} /></div>)}
+        <Details title={`Proposed call ${call.callId}`} buttonLabel="Args payload"><Blob value={call.payload} /></Details>
+        {call.journalReceipts.map((receipt, index) => <div key={index} style={{ margin: '4px 0' }}>Committed receipt: <Tag>{receipt.status}</Tag><Details title={`Committed receipt ${receipt.status}`} buttonLabel="result"><Blob value={receipt.result} /></Details></div>)}
       </div>)}
       {decision.receipts.length > 0 && <div><b>Actual receipts</b>
         <ul style={{ margin: '4px 0', paddingLeft: 20 }}>{decision.receipts.map((receipt, index) => <li key={index}><code>{receipt.commandId}</code>{receipt.callId && <> · call <code>{receipt.callId}</code></>} — {receipt.status}
-          <details><summary>result</summary><Blob value={receipt.result} /></details></li>)}</ul></div>}
+          <Details title={`Receipt ${receipt.commandId}`} buttonLabel="result"><Blob value={receipt.result} /></Details></li>)}</ul></div>}
       {(['observation', 'prompt', 'response', 'validation', 'finished', 'failure'] as const).map(phase => {
         const items = decision.phases.filter(item => item.phase === phase);
-        return items.length === 0 ? null : <details key={phase} style={{ margin: '4px 0' }}><summary>{phase} ({items.length})</summary>
-          {items.map((item, index) => <div key={index}><small>{seconds(item.simNs, startNs.current)}</small><Blob value={item.data} /></div>)}</details>;
+        return items.length === 0 ? null : <Details key={phase} title={phase} buttonLabel={`${phase} (${items.length})`}>
+          {items.map((item, index) => <div key={index}><small>{seconds(item.simNs, startNs.current)}</small><Blob value={item.data} /></div>)}
+        </Details>;
       })}
     </section>)}
   </div>;

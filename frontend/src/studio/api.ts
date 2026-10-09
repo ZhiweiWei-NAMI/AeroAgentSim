@@ -27,9 +27,11 @@ export interface CityScene {
   ground: { width_m: number; depth_m: number }; diagnostics: string[]; attribution: string;
 }
 export interface Workspace {
+  created_at?: string; updated_at?: string;
+  demo_console?: {capture_mode:string;city_available:boolean;scene?:import('../scene/presentation').ScenePresentation};
   id: string; name: string; scenario: Scenario; scene?: CityScene; registry_catalog?:{types:TypeRow[];fields:Array<Record<string,any>&{id:string}>;schemas:Record<string,any>};
   region?: { extract: string; bounds: number[]; alt: number; level_height_m: number };
-  validation?: { valid: boolean; errors: string[]; digest?: string; issues?:Array<{source:string;path:string;message:string}> };
+  validation?: { valid: boolean; errors: string[]; issues?:Array<{source:string;path:string;message:string}> };
 }
 export interface TypeRow { id: string; name?: string; parents: string[]; abstract: boolean; directory?: string }
 export interface TypeDetail { id: string; parents: string[]; abstract: boolean; fields: Array<{id: string; declaring_type: string; schema: any; metadata: any}> }

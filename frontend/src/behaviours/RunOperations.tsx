@@ -3,10 +3,14 @@ import type { EntityKey } from '../contracts/viewer-feed';
 import type { TemporalFeedStore } from '../feeds/temporal-store';
 import { RunsApi } from '../feeds/http';
 import { stringifyLossless } from '../feeds/lossless-json';
+import { Details } from '../console/Details';
+import { RunShortcuts } from '../console/shortcuts';
+import { useConsoleNotice } from '../console/Notifications';
+import { seconds } from '../feeds/format';
 import { exactValue } from '../feeds/format';
 import { mapping, type Draft } from './model';
 import { TypedPayloadForm } from './TypedPayloadForm';
-interface Props { api:RunsApi;runId:string;store:TemporalFeedStore;commitCut?:number;onSelect:(key:EntityKey)=>void;onSeek:(index:number)=>void;mode:'live'|'replay' }
+interface Props { api:RunsApi;runId:string;store:TemporalFeedStore;commitCut?:number;onSelect:(key:EntityKey)=>void;onSeek:(index:number)=>void;mode:'live'|'replay';interactive?:boolean }
 export function advertisedMessages(store:TemporalFeedStore):Draft[] {
   const registry=store.header.runtimeRegistry;const rows=store.header.messages??(mapping(registry)?registry.messages:undefined);
   if(rows===undefined)return [];
@@ -53,7 +57,9 @@ export function recordedAccidentPayload(store:TemporalFeedStore):Draft|undefined
   if(!incident)return undefined;
   return {incident:{$ref:{run_id:store.header.kernelRunId,epoch:store.header.epoch,id:incident.key.id,generation:{$integer:String(incident.key.generation)},type_id:incident.typeId}}};
 }
-export function RunOperations({api,runId,store,onSelect,onSeek,mode}:Props) {
+export function RunOperations({api,runId,store,onSelect,onSeek,mode,interactive=true}:Props) {
+  const notify=useConsoleNotice();
+  const injectionRef=useRef<HTMLSelectElement>(null);
   const [fields,setFields]=useState<Record<string,string>>({schema:'',target:'',stream_id:'',at_ns:'',clock_id:'',mapping_id:'',numerator:'',denominator:'',idempotency_key:''}),[payload,setPayload]=useState<unknown>({}),[point,setPoint]=useState(''),[points,setPoints]=useState<Draft[]>([]),[error,setError]=useState(''),[admissions,setAdmissions]=useState<unknown[]>([]),[busy,setBusy]=useState(false),[operation,setOperation]=useState<Draft>(),[effective,setEffective]=useState<string>();
   const [operator,setOperator]=useState(false),[horizon,setHorizon]=useState('0');
   const operatorNs=useRef(0n), operatorStep=useRef(1000000000n), operatorEnd=useRef<bigint>(), operations=useRef<Promise<unknown>>(Promise.resolve());
@@ -89,26 +95,28 @@ export function RunOperations({api,runId,store,onSelect,onSeek,mode}:Props) {
     void poll();return()=>{alive=false;clearTimeout(timer);};
   },[api,runId,operation]);
   const submit=async()=>{if(!payloadValid){setError('Correct invalid typed payload before submitting');return;}setBusy(true);setError('');try{if(!chosen)throw Error('Select a registered command schema');const effective=operator?{...fields,at_ns:(operatorNs.current+1n).toString(),clock_id:'canonical',mapping_id:'canonical',numerator:(operatorNs.current+1n).toString(),denominator:'1'}:fields;
-    const body=ingressBody(effective,injection?{injection_point:injection.id,payload}:payload);const receipt=await api.request(`/v1/runs/${encodeURIComponent(runId)}/ingress`,{method:'POST',headers:{'Content-Type':'application/json'},body:stringifyLossless(body)});setAdmissions(rows=>[...rows,receipt]);}catch(problem){setError(String(problem));}finally{setBusy(false);}};
-  const control=async(action:string)=>{setError('');try{const reply=await api.request(`/v1/runs/${encodeURIComponent(runId)}/${action}`,{method:'POST'});if(!mapping(reply))throw Error('Malformed run control receipt');setOperation(reply);setEffective(typeof reply.status==='string'?reply.status:undefined);}catch(problem){setError(String(problem));}};
-  return <section aria-label="Run operations"><h2>Operate / recorded decisions</h2><p>Occurrence, source acquisition, admission and execution are separate. Replay inspection sends no commands.</p>
+    const body=ingressBody(effective,injection?{injection_point:injection.id,payload}:payload);const receipt=await api.request(`/v1/runs/${encodeURIComponent(runId)}/ingress`,{method:'POST',headers:{'Content-Type':'application/json'},body:stringifyLossless(body)});setAdmissions(rows=>[...rows,receipt]);notify({kind:'info',message:'Admission receipt received. Execution is recorded separately.'});}catch(problem){setError(String(problem));notify({kind:'error',message:String(problem)});}finally{setBusy(false);}};
+  const control=async(action:string)=>{setError('');try{const reply=await api.request(`/v1/runs/${encodeURIComponent(runId)}/${action}`,{method:'POST'});if(!mapping(reply))throw Error('Malformed run control receipt');setOperation(reply);setEffective(typeof reply.status==='string'?reply.status:undefined);notify({kind:'info',message:`Simulation ${action} requested.`});}catch(problem){setError(String(problem));notify({kind:'error',message:String(problem)});}};
+  const toggle=async()=>{try{const run=(await api.runs()).find(row=>row.id===runId);if(!run)throw Error('Run status unavailable');if(run.status==='running')await control('pause');else if(run.status==='paused')await control('resume');else notify({kind:'info',message:`Run is ${run.status}; pause/resume is unavailable.`});}catch(problem){setError(String(problem));notify({kind:'error',message:String(problem)});}};
+  return <section aria-label="Run operations"><RunShortcuts enabled={interactive&&mode==='live'&&!busy&&store.commits.length>0} onToggle={()=>void serialized(toggle)} onInject={()=>{injectionRef.current?.scrollIntoView({block:'center'});injectionRef.current?.focus();}} /><h2>Operate / recorded decisions</h2><p>Occurrence, source acquisition, admission and execution are separate. Replay inspection sends no commands.</p>
     <div>{['pause','resume','stop'].map(action=><button key={action} disabled={mode!=='live'} onClick={()=>void control(action)}>Simulation {action}</button>)}</div>
     {operation&&<p>Requested: {String(operation.requested)} · last observed effective status: {effective??'not received'}{effective!==({pause:'paused',resume:'running',stop:'stopped'} as Record<string,string>)[String(operation.requested)]?' · pending at safe boundary':''}</p>}
-    {operator&&mode==='live'&&<p>Console owns operator source progress · closed through {horizon} ns. Commands occur at the next unclosed canonical instant; admission and execution remain separate.</p>}
-    <details open><summary>Inject event / issue typed command</summary><label>Injection point <select aria-label="Injection point" value={point} onChange={event=>{const id=event.target.value,next=points.find(row=>row.id===id);setPoint(id);setPayload(id==='accident'?(recordedAccidentPayload(store)??{}):{});if(next)setFields({...fields,schema:String(next.command),target:String(next.target),stream_id:String(next.stream_id)});}}><option value="">Direct typed command</option>{points.map(row=><option key={String(row.id)} value={String(row.id)}>{String(row.id)} → {String(row.emits)}</option>)}</select></label>
+    {operator&&mode==='live'&&<p>Console owns operator source progress · closed through {seconds(horizon)}. Commands occur at the next unclosed canonical instant; admission and execution remain separate.</p>}
+    <details open><summary>Inject event / issue typed command</summary><label>Injection point <select ref={injectionRef} aria-label="Injection point" value={point} onChange={event=>{const id=event.target.value,next=points.find(row=>row.id===id);setPoint(id);setPayload(id==='accident'?(recordedAccidentPayload(store)??{}):{});if(next)setFields({...fields,schema:String(next.command),target:String(next.target),stream_id:String(next.stream_id)});}}><option value="">Direct typed command</option>{points.map(row=><option key={String(row.id)} value={String(row.id)}>{String(row.id)} → {String(row.emits)}</option>)}</select></label>
       {!points.length&&<p>No declared injection points available for this run.</p>}
       <label>Command schema <select aria-label="Command schema" value={fields.schema} disabled={!!injection} onChange={event=>{setFields({...fields,schema:event.target.value});setPayload({});}}><option value="">Select registered command</option>{commands.map(row=><option key={String(row.id)} value={String(row.id)}>{String(row.id)}</option>)}</select></label>
-      {Object.keys(fields).filter(key=>key!=='schema').map(key=><label key={key}>{key}<input aria-label={`Ingress ${key}`} value={fields[key]} onChange={event=>setFields({...fields,[key]:event.target.value})}/></label>)}
+      <Details title="Ingress timing and transport">{Object.keys(fields).filter(key=>key!=='schema').map(key=><label key={key}>{key}<input aria-label={`Ingress ${key}`} value={fields[key]} onChange={event=>setFields({...fields,[key]:event.target.value})}/></label>)}</Details>
+      {point==='accident'&&mapping(payload)&&mapping(payload.incident)&&<p>Incident: {store.entities.size ? [...store.entities.values()].find(row=>row.typeId==='aas:TrafficIncident')?.key.id : 'awaiting incident entity'}</p>}
       <TypedPayloadForm schema={injection?event?.schema:chosen?.schema} value={payload} onChange={setPayload} definitions={definitions} onValidityChange={setPayloadValid}/>
       <button disabled={busy||!payloadValid||mode!=='live'||point==='accident'&&(!mapping(payload)||!mapping(payload.incident))} onClick={()=>void serialized(submit)}>Submit typed ingress</button>
       <p>Cancellation support: {chosen?.cancel_support===true?'declared by command schema':'not advertised'}. This service has no general HTTP cancel transport. Use an authored cancellation injection point and inspect its actual child receipts.</p>
     </details>
     {error&&<p role="alert">{error}</p>}
-    <details open={admissions.length>0}><summary>Admission receipts · {admissions.length}</summary>{admissions.map((receipt,index)=><pre key={index}>{exactValue(receipt)}</pre>)}</details>
-    <details><summary>Execution receipts at this cut · {store.receipts.length}</summary>{store.receipts.map((receipt,index)=><pre key={index}>{exactValue(receipt)}</pre>)}</details>
+    <details open={admissions.length>0}><summary>Admission receipts · {admissions.length}</summary>{admissions.map((receipt,index)=><article key={index}>Admission #{index+1}{mapping(receipt)&&typeof receipt.status==='string'&&` · ${receipt.status}`} <Details title="Admission receipt"><pre>{exactValue(receipt)}</pre></Details></article>)}</details>
+    <details><summary>Execution receipts at this cut · {store.receipts.length}</summary>{store.receipts.map((receipt,index)=><article key={index}>Execution #{index+1} <Details title="Execution receipt"><pre>{exactValue(receipt)}</pre></Details></article>)}</details>
     <details><summary>Decision / LangGraph and typed event records at this cut</summary>{store.messages.map(message=>{
-      const commit=store.commits.find(row=>row.messages.some(item=>item.id===message.id));return <article key={message.id}><strong>{message.schemaId}</strong> · {message.at.ns}:{message.at.microstep}
-        {commit&&<button onClick={()=>onSeek(commit.commitIndex)}>Seek record cut {commit.commitIndex}</button>}{message.subjects?.map(key=><button key={`${key.id}/${key.generation}`} onClick={()=>onSelect(key)}>{key.id} · g{key.generation}</button>)}<pre>{exactValue(message.payload)}</pre></article>;
+      const commit=store.commits.find(row=>row.messages.some(item=>item.id===message.id));return <article key={message.id}><strong>{message.schemaId}</strong> · {seconds(message.at.ns)}
+        {commit&&<button onClick={()=>onSeek(commit.commitIndex)}>Seek record moment</button>}{message.subjects?.map(key=><button key={`${key.id}/${key.generation}`} onClick={()=>onSelect(key)}>{key.id} · g{key.generation}</button>)}<Details title="Event record"><pre>{exactValue(message)}</pre></Details></article>;
     })}</details>
   </section>;
 }

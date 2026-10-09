@@ -78,8 +78,9 @@ test('Studio edits one chain model and retains unsupported content through serve
   });
   await page.route('**/v1/studio/workspaces/workspace-fixture/behaviours/0/validate',route=>route.fulfill({json:{valid:false,compiler_available:false,errors:[{path:'$.chains.response.transitions[0].guard',message:'Compiler is not integrated in this fixture'}]}}));
   await page.goto('/studio?api=http%3A%2F%2F127.0.0.1%3A4179');
-  await page.getByRole('combobox',{name:'Workspace',exact:true}).click();
+  await page.getByTestId('workspace-picker').click();
   await page.getByText('Authoring fixture',{exact:true}).last().click();
+  await page.getByTestId('studio-step-rules').click();
   await page.getByRole('button',{name:'chains',exact:true}).click();
   await page.getByLabel('Transition 0 id').fill('finish');
   await expect(page.getByLabel('Graph transition finish')).toBeVisible();
