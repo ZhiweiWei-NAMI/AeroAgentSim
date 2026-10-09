@@ -1,10 +1,12 @@
-# Viewer evaluation — Q7 / D-viewer
+# Viewer evaluation — Q7 + Q7b / D-viewer
 
-The nonspatial presentation is implemented. The retirement decision remains **open**:
-this execution environment did not expose the host's NVIDIA devices, so an RTX 3090
-measurement and a hardware-versus-software comparison cannot be claimed.
-SwiftShader results below are evidence for this software renderer only, not evidence
-of hardware GPU throughput or superiority over AeroBench.
+The nonspatial presentation is implemented. Q7b completes the previously unmeasured
+hardware part with verified RTX 3090 rendering and three repetitions per case for
+both Vulkan and SwiftShader. GL/EGL also identifies the hardware but captures a black
+3D viewport in this viewer; its timings are retained only as fault diagnostics.
+The retirement decision remains **open**: the measured
+limits and remaining visual/authoring/UI scope still require owner disposition.
+The matched hardware result does not establish superiority over AeroBench.
 
 ## Recorded facts and presentation
 
@@ -35,7 +37,40 @@ do not rebuild the store on every frame. No npm dependency was added.
 
 ## Hardware probe
 
-`frontend/e2e/q7-gpu-probe.mjs` ran headless Chromium **151.0.7922.34**, sequentially,
+Q7b runs outside the original sandbox, using headless Chromium **151.0.7922.34**.
+The orchestrator's sequential probe is retained in
+[orchestrator-gpu-probes.json](/tmp/aas-q/q7b/orchestrator-gpu-probes.json).
+Q7b independently records the browser WebGL2 probe and each measured spatial
+renderer in every raw measurement file. Both hardware backends identify RTX 3090:
+
+```text
+GL/EGL: ANGLE (NVIDIA Corporation, NVIDIA GeForce RTX 3090/PCIe/SSE2, OpenGL ES 3.2)
+Vulkan: ANGLE (NVIDIA, Vulkan 1.3.242 (NVIDIA NVIDIA GeForce RTX 3090 (0x00002204)), NVIDIA)
+```
+
+The harness accepts only a recognized NVIDIA hardware string in hardware mode;
+SwiftShader, llvmpipe, softpipe, lavapipe, swrast, software and masked/unrecognized
+strings fail the run. SwiftShader mode also verifies its actual renderer. Invalid
+modes/cases, missing comparison builds/counters and nonfinite samples fail explicitly;
+frame sampling has a 60-second watchdog. No alternate successful result is invented.
+
+One full Vulkan pilot used the same seven measurement windows as GL/EGL. Its scale100
+p50/p95/p99 was **83.3 / 100.0 / 100.0 ms**, matched ours **83.3 / 100.1 / 100.1 ms**,
+and matched AeroBench **49.9 / 66.7 / 66.7 ms**, versus the first GL/EGL repetition's
+**66.7 / 83.4 / 83.4**, **66.7 / 83.4 / 83.4**, and **16.7 / 16.8 / 33.4 ms**.
+Screenshot inspection then found that GL/EGL's 3D viewport was black for our slice,
+scale100, matched and synthetic cases, while DOM labels and renderer counters kept
+updating. AeroBench's GL/EGL capture displayed its city. Vulkan displayed both
+viewers' cities and our synthetic markers. GPU identity and draw counters alone
+therefore do not establish usable presentation. The GL/EGL series is retained as
+three repetitions of fault diagnostics, excluded from the accepted hardware table.
+Vulkan is the hardware series and was completed to three repetitions without
+changing the production build, quality preset, input feeds or camera. The cause of
+the GL/EGL capture failure is not established here; no renderer fix is claimed.
+`Q7_GL=hardware` now defaults to Vulkan; `Q7_ANGLE=gl-egl` explicitly selects the
+diagnostic backend. The harness does not switch backends after an error.
+
+For historical context, Q7's `frontend/e2e/q7-gpu-probe.mjs` ran sequentially,
 with one browser at a time. `/dev/nvidia*` and `/dev/dri` were absent in this sandbox;
 `nvidia-smi` reported it could not communicate with the NVIDIA driver. An NVIDIA
 Vulkan ICD file exists, which alone does not establish device access.
@@ -47,7 +82,7 @@ Vulkan ICD file exists, which alone does not establish device access.
 | EGL (`--use-gl=egl`) | SwiftShader |
 | Explicit ANGLE SwiftShader | SwiftShader |
 
-Actual renderer string for all successful probes:
+Original Q7 successful probes all reported:
 
 ```text
 ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)
@@ -68,9 +103,13 @@ wait and work on the page. CPU submission times are separately exposed; these ar
 not GPU timer-query measurements. Draw calls/triangles include the viewer's active
 render passes, and do not count unique meshes or unique triangles.
 
-Memory means CDP `JSHeapUsedSize`, plus Three.js geometry/texture object counts.
-These counters are not GPU allocation bytes or total process RSS. GPU VRAM bytes
-were not available, and no estimate is substituted.
+Memory includes CDP `JSHeapUsedSize` and Three.js geometry/texture object counts.
+These counters are not GPU allocation bytes or total process RSS. Q7b additionally
+matches CDP's Chromium GPU-process PID to the `nvidia-smi` process table, recording
+driver-reported process MiB after the screenshot. These are whole browser GPU-process
+allocations, including compositor/caches and retained allocations from earlier cases;
+they are not isolated scene allocations or peak VRAM. No per-resource VRAM estimate
+is substituted. SwiftShader has no attributable NVIDIA allocation.
 
 | Input | Provenance / scope |
 |---|---|
@@ -88,14 +127,126 @@ test harness; they are never provided as production run data.
 The initial physical cursor is 0 ns, after the available 0 ns commits. Quality is
 manually fixed to Balanced (`med`) for our spatial cases, preventing automatic
 quality downgrades from changing the measurement mid-window. The graph interaction
-window dispatches a wheel zoom event on every animation frame. Raw samples, diagnostics and screenshots
-remain under `/tmp/aas-q/q7`.
+window dispatches a wheel zoom event on every animation frame. Q7 raw samples remain
+under `/tmp/aas-q/q7`; Q7b raw samples, diagnostics, GPU PID snapshots and screenshots
+are under `/tmp/aas-q/q7b`.
 
-## Results
+## Q7b repeated hardware and software results
 
-All measured WebGL cases below use **verified SwiftShader**, with the renderer string
-shown above. Hardware p50/p95/p99, draw calls, triangles and memory are **unmeasured**
-for all three requested inputs. Canvas/table cases do not create a WebGL context.
+Percentiles pool the actual frame intervals from three independent invocations;
+they do not average per-run percentiles. Each repetition keeps the same case order,
+2-second warmup and nominal 6-second sample window. The last interval can exceed the
+window. Per-run counts and p95 ranges expose the sample size and variation. Canvas
+2D graph and HTML table results have no WebGL calls/triangles and do not measure
+WebGL throughput. All graph/state temporal checks passed in every completed run.
+
+The hardware tables use Vulkan captures with visible city geometry/markers.
+GL/EGL's renderer identity and submission counts are genuine, but the captured
+3D viewport is black; those timings are not an accepted visual-performance result.
+The GL/EGL capture failure remains a presentation limit despite verified GPU identity.
+
+The GPUs were shared throughout, with heavy existing workloads. The recorded
+Chromium GPU PID was attributed to device 0, an RTX 3090, in each hardware run.
+Across Vulkan and GL/EGL post-capture snapshots, device 0 used **17,432–18,335 MiB**
+of 24,576 MiB and reported **84–100%** utilization. These are whole-device totals
+including other workloads and this browser; [snapshot observations](/tmp/aas-q/q7b/shared-load-observations.json)
+retain the mapping to each raw record.
+Driver snapshots are taken after capture, not continuously during the sample, so
+they do not isolate competing work or establish a peak/dedicated-GPU budget. CPU
+scheduling, browser compositor pacing and other workloads can affect variance.
+Near-16.7 ms rAF intervals indicate the observed browser cadence; they do not
+establish a higher hardware throughput ceiling.
+
+JS heap is one instantaneous CDP sample per window, without forced GC. All cases
+reuse a page within each invocation; the matched platform scene follows its
+ordinary scale100 window, while AeroBench is a new navigation. These observations
+are not an isolated memory benchmark. GPU process allocations also retain prior
+case/compositor caches. Geometry/texture counts are Three.js object counts, not
+allocation sizes, and calls/triangles include shadow/postprocessing passes.
+
+SwiftShader's spatial windows still contain few intervals even after three
+repetitions. In particular, each AeroBench window contributes only one long
+interval: its pooled p95/p99 are extrema of three observations, not reliable tail
+estimates. A nominal 6-second window ending on an 11-second frame is an overrun,
+not a throughput claim based on six complete seconds. The frozen 80.75-second
+preview remains a viewer workload, not a new simulation or native flight test.
+
+AeroBench's hardware workload includes shadows (calls p50/max 959/967; about 8.30 million
+triangles), while its software workload disables them (749 calls / about 7.63
+million triangles). Our Balanced workload retains shadows in both modes. The
+matched camera, surface and area do not equate entity types, positions, models,
+visual detail or physics. The measured matched platform viewer remains slower
+than AeroBench on the usable hardware backend despite fewer calls/triangles.
+Its CPU update/submission times also remain substantial; these include scene
+updates and render submission and do not identify a specific bottleneck or measure
+GPU execution time. Hardware measurement is complete, while D-viewer performance
+and replacement acceptance remain open.
+
+**RTX 3090 / Vulkan** — three independent browser invocations.
+
+| Case | Intervals in r1 / r2 / r3 | Pooled frame ms p50 / p95 / p99 | Per-run p95 range, ms | Calls p50 (max) | Triangles p50 (max) |
+|---|---|---|---|---|---|
+| p1-slice city / 5 spatial entities | 361 / 361 / 361 | 16.7 / 16.8 / 16.8 | 16.7–16.8 | 95 (95) | 219,809 (219,809) |
+| p1-scale city / 100 | 74 / 78 / 81 | 83.3 / 83.5 / 100.0 | 83.4–100.0 | 95 (95) | 242,609 (242,609) |
+| Matched surface: ours / 100 | 71 / 66 / 70 | 83.4 / 100.1 / 100.1 | 100.0–100.1 | 95 (95) | 242,609 (242,609) |
+| Synthetic spatial / 1,000 | 318 / 339 / 345 | 16.7 / 33.3 / 33.4 | 16.8–33.3 | 48 (48) | 242,364 (242,364) |
+| Graph / 2,000 nodes, 5,000 edges | 361 / 361 / 361 | 16.7 / 16.7 / 16.8 | 16.7 | N/A | N/A |
+| State table / 2,000 entities | 361 / 361 / 361 | 16.7 / 16.7 / 16.8 | 16.7–16.8 | N/A | N/A |
+| Matched surface: AeroBench / 94 | 136 / 166 / 143 | 33.4 / 66.7 / 66.7 | 50.1–66.7 | 959 (967) | 8,294,763 (8,296,130) |
+
+**Verified SwiftShader** — three independent browser invocations.
+
+| Case | Intervals in r1 / r2 / r3 | Pooled frame ms p50 / p95 / p99 | Per-run p95 range, ms | Calls p50 (max) | Triangles p50 (max) |
+|---|---|---|---|---|---|
+| p1-slice city / 5 spatial entities | 10 / 10 / 9 | 616.7 / 883.2 / 1016.6 | 700.0–1016.6 | 95 (95) | 219,809 (219,809) |
+| p1-scale city / 100 | 9 / 9 / 10 | 650.0 / 833.2 / 883.3 | 700.0–883.3 | 95 (95) | 242,609 (242,609) |
+| Matched surface: ours / 100 | 7 / 7 / 7 | 916.6 / 983.3 / 983.4 | 916.7–983.4 | 95 (95) | 242,609 (242,609) |
+| Synthetic spatial / 1,000 | 13 / 12 / 13 | 499.9 / 550.0 / 616.6 | 533.2–616.6 | 48 (48) | 242,364 (242,364) |
+| Graph / 2,000 nodes, 5,000 edges | 361 / 361 / 360 | 16.7 / 16.8 / 16.8 | 16.7–16.8 | N/A | N/A |
+| State table / 2,000 entities | 361 / 361 / 361 | 16.7 / 16.7 / 16.8 | 16.7 | N/A | N/A |
+| Matched surface: AeroBench / 94 | 1 / 1 / 1 | 11066.3 / 11266.1 / 11266.1 | 10816.3–11266.1 | 749 (749) | 7,627,014 (7,627,014) |
+
+Memory ranges cover the three end-of-window observations; GPU process MiB is sampled after the screenshot. Object counts list the observed range. N/A means no WebGL renderer for the graph/table.
+
+| Case | JS heap MiB, hardware / software | Geometries / textures, hardware | Geometries / textures, software | NVIDIA browser GPU-process MiB |
+|---|---|---|---|---|
+| p1-slice city / 5 spatial entities | 21.2–30.9 / 18.8–20.5 | 25 / 72 | 25 / 72 | 232 |
+| p1-scale city / 100 | 45.5–55.4 / 14.7–24.8 | 25 / 72 | 25 / 72 | 238 |
+| Matched surface: ours / 100 | 32.3–44.7 / 15.9–17.3 | 25 / 72 | 25 / 72 | 314 |
+| Synthetic spatial / 1,000 | 92.8–103.4 / 54.7–64.1 | 8 / 43 | 8 / 43 | 211–212 |
+| Graph / 2,000 nodes, 5,000 edges | 104.8–113.8 / 88.2–96.9 | N/A | N/A | 56–57 |
+| State table / 2,000 entities | 93.8–111.7 / 98.2–101.6 | N/A | N/A | 56–57 |
+| Matched surface: AeroBench / 94 | 86.3–113.9 / 71.8–72.1 | 576–578 / 204–205 | 464 / 192 | 895 |
+
+CPU update/submission (graph: redraw) timings also pool raw samples; these are not GPU execution timings. The state table exposes no submission timer.
+
+| Case | Hardware CPU ms p50 / p95 / p99 | SwiftShader CPU ms p50 / p95 / p99 |
+|---|---|---|
+| p1-slice city / 5 spatial entities | 3.0 / 4.2 / 5.1 | 5.1 / 6.6 / 6.8 |
+| p1-scale city / 100 | 68.6 / 77.5 / 81.4 | 82.5 / 125.1 / 133.3 |
+| Matched surface: ours / 100 | 72.8 / 77.1 / 78.8 | 82.2 / 125.0 / 138.2 |
+| Synthetic spatial / 1,000 | 10.0 / 12.9 / 15.4 | 14.2 / 19.8 / 25.1 |
+| Graph / 2,000 nodes, 5,000 edges | 3.8 / 5.4 / 6.1 | 3.8 / 5.3 / 6.1 |
+| State table / 2,000 entities | N/A | N/A |
+| Matched surface: AeroBench / 94 | 17.8 / 22.0 / 25.5 | 22.9 / 24.3 / 24.3 |
+
+Raw data and pooled calculations: [summary.json](/tmp/aas-q/q7b/summary.json). Each JSON retains every frame interval and diagnostic sample, actual renderer strings, Chromium GPU information, screenshots and per-window memory observations.
+
+| Series | Repetition 1 | Repetition 2 | Repetition 3 |
+|---|---|---|---|
+| hardware-vulkan | [raw r1](/tmp/aas-q/q7b/hardware-vulkan-r1/measurements-hardware-p1-slice-city-p1-scale-city-100-synthetic-1000-topology-2000-5000-bench.json) | [raw r2](/tmp/aas-q/q7b/hardware-vulkan-r2/measurements-hardware-p1-slice-city-p1-scale-city-100-synthetic-1000-topology-2000-5000-bench.json) | [raw r3](/tmp/aas-q/q7b/hardware-vulkan-r3/measurements-hardware-p1-slice-city-p1-scale-city-100-synthetic-1000-topology-2000-5000-bench.json) |
+| swiftshader | [raw r1](/tmp/aas-q/q7b/swiftshader-r1/measurements-swiftshader-p1-slice-city-p1-scale-city-100-synthetic-1000-topology-2000-5000-bench.json) | [raw r2](/tmp/aas-q/q7b/swiftshader-r2/measurements-swiftshader-p1-slice-city-p1-scale-city-100-synthetic-1000-topology-2000-5000-bench.json) | [raw r3](/tmp/aas-q/q7b/swiftshader-r3/measurements-swiftshader-p1-slice-city-p1-scale-city-100-synthetic-1000-topology-2000-5000-bench.json) |
+| hardware-gl-egl | [raw r1](/tmp/aas-q/q7b/hardware-gl-egl-r1/measurements-hardware-p1-slice-city-p1-scale-city-100-synthetic-1000-topology-2000-5000-bench.json) | [raw r2](/tmp/aas-q/q7b/hardware-gl-egl-r2/measurements-hardware-p1-slice-city-p1-scale-city-100-synthetic-1000-topology-2000-5000-bench.json) | [raw r3](/tmp/aas-q/q7b/hardware-gl-egl-r3/measurements-hardware-p1-slice-city-p1-scale-city-100-synthetic-1000-topology-2000-5000-bench.json) |
+
+GL/EGL screenshots: [black matched viewport](/tmp/aas-q/q7b/hardware-gl-egl-r2/matched-aas-100-hardware.png), [black synthetic viewport](/tmp/aas-q/q7b/hardware-gl-egl-r1/synthetic-1000-hardware.png). Usable Vulkan captures: [our matched city](/tmp/aas-q/q7b/hardware-vulkan-r3/matched-aas-100-hardware.png), [AeroBench matched city](/tmp/aas-q/q7b/hardware-vulkan-r3/matched-aerobench-native-hardware.png), [1,000 markers](/tmp/aas-q/q7b/hardware-vulkan-r2/synthetic-1000-hardware.png).
+
+The follow-up [GL/EGL slice diagnostic](/tmp/aas-q/q7b/gl-egl-console-diagnostic/measurements-hardware-p1-slice-city.json) again captured black despite no page exception or captured console warning/error. No completed case had a captured page exception. Console capture was added for Vulkan r2/r3 and this diagnostic: Vulkan records ReadPixels stall warnings; AeroBench additionally records a shadow-map deprecation, Z-UP FBX notices, missing KHR_parallel_shader_compile, and one resource 404. The 404 URL was not captured, so its source is not inferred. Visible scenes and 94-entity diagnostics were verified; this is not an assertion that every network resource or live-control path succeeded.
+
+## Historical Q7 sandbox results
+
+The original Q7 WebGL cases below use **verified SwiftShader**, with the renderer
+string shown above. Q7 had no hardware measurements; Q7b's repeated results above
+complete that part. Canvas/table cases do not create a WebGL context.
 
 | Case | Intervals sampled | Frame ms p50 / p95 / p99 | Draw calls p50 (max) | Triangles p50 (max) | JS heap MiB | Geometries / textures |
 |---|---:|---|---|---|---:|---|
@@ -178,8 +329,10 @@ as allowed by Q7. Positions, entity types and trajectories are consequently diff
 This matches area, camera and render surface, with similar dynamic entity counts.
 AeroBench retains its richer ground/road/fixture/building presentation and its own
 textured X500 model. Our renderer uses instancing, distance/model-budget LOD,
-HDRI and Balanced postprocessing. AeroBench disables shadows on software renderers;
-our Balanced preset retains its own shadow pipeline. These differences must remain
+HDRI and Balanced postprocessing. AeroBench disables shadows on software renderers
+and enables them on hardware; our Balanced preset retains its own shadow pipeline
+in both series. Thus AeroBench's software/hardware comparison also changes shadow
+work. These differences must remain
 visible when interpreting triangle/call/frame-time numbers. No equal-physics or
 equal-visual-fidelity claim follows from this comparison.
 
@@ -220,6 +373,57 @@ tested end to end in Q7.
 Scratch artifacts are intentionally untracked. The orchestrator owns committing this
 worktree; no commit, branch, checkout or reset was performed.
 
+Q7b reuses both retained production builds and their assets; it does not rebuild or
+write the live AeroBench tree. The servers started for Q7b use these commands in
+their respective working directories and are stopped after measurement:
+
+```bash
+# frontend/ in wt-q7b
+npm run preview -- --host 127.0.0.1 --port 18770 --strictPort \
+ --outDir /tmp/aas-q/q7/viewer-dist
+# /tmp/aas-q/q7/aerobench-copy/
+npm run preview -- --host 127.0.0.1 --port 18771 --strictPort
+# wt-q7b root: repeat in separate output directories (r1, r2, r3).
+mkdir -p /tmp/aas-q/q7b/hardware-vulkan-r1
+cp /tmp/aas-q/q7/{slice-feed,scale100-feed}.json /tmp/aas-q/q7b/hardware-vulkan-r1/
+ln -s /tmp/aas-q/q7/aerobench-copy /tmp/aas-q/q7b/hardware-vulkan-r1/aerobench-copy
+Q7_GL=hardware Q7_ANGLE=vulkan Q7_OUT=/tmp/aas-q/q7b/hardware-vulkan-r1 \
+ Q7_CASES=p1-slice-city,p1-scale-city-100,synthetic-1000,topology-2000-5000,bench \
+ node frontend/e2e/q7-measure.mjs
+# Use Q7_GL=swiftshader and swiftshader-r1/r2/r3 for the baseline.
+# Q7_ANGLE=gl-egl reproduces the separate black-viewport diagnostics.
+```
+
+The actual run order is GL/EGL r1, Vulkan r1, SwiftShader r1, GL/EGL r2,
+SwiftShader r2, GL/EGL r3, SwiftShader r3, Vulkan r2 and Vulkan r3, followed by a
+small GL/EGL slice-only console diagnostic. Each invocation launches one browser and
+closes it before the next starts. The remaining-invocations driver is retained as
+[run-remaining.sh](/tmp/aas-q/q7b/run-remaining.sh) and
+[run-vulkan-completion.sh](/tmp/aas-q/q7b/run-vulkan-completion.sh); the nearest-rank pooling and
+GPU-PID attribution script is [summarize.mjs](/tmp/aas-q/q7b/summarize.mjs).
+
+Q7b changes the measurement harness and these two documentation files only.
+`npm run typecheck` passed; `npm test -- --cache=false` passed **20 files / 91 tests**.
+Final-state logs: [typecheck](/tmp/aas-q/q7b/typecheck-final.log),
+[frontend tests](/tmp/aas-q/q7b/frontend-tests-final.log).
+The cache flag prevents writes into shared `node_modules`. No dependency was added.
+`node --check frontend/e2e/q7-measure.mjs` and `git diff --check` passed.
+`node /tmp/aas-q/q7b/check-renderer-guard.mjs` passed **16 checks**, exercising the
+actual guard against software/masked strings and both verified NVIDIA strings
+without starting another browser. [Check log](/tmp/aas-q/q7b/renderer-guard-check.log).
+Python ruff/strict mypy and the non-Docker Python suites are not applicable to
+Q7b's touched files and were not rerun. No Docker/native simulation was run.
+Two concurrent WorkBuddy DSH audit sessions completed with **exit 0**, using
+`workbuddy/glm-5.3-flash`, **131072 maxTokens**, no effort parameter. Their file scope
+was scratch reports only: [protocol audit](/tmp/aas-q/q7b/glm-protocol/audit.txt) and
+[evidence audit](/tmp/aas-q/q7b/glm-evidence/audit.txt); transcripts are retained in
+`/tmp/aas-q/q7b/dsh-home/sessions`. Both agents' tool sandboxes could not read the
+retained Q7 scratch directory. Their claim that the scratch hook was absent is
+incorrect for the parent process: the parent read it and verified its actual
+renderer/camera/count diagnostics during the runs. Timeout, renderer recognition,
+output isolation and memory caveat findings were checked against source/results.
+The original Q7 implementation gates and build preparation follow for provenance.
+
 ```bash
 # Run from the worktree root.
 node frontend/e2e/q7-gpu-probe.mjs /tmp/aas-q/q7
@@ -238,8 +442,8 @@ npm run preview -- --host 127.0.0.1 --port 18771
 Q7_CASES=p1-slice-city,p1-scale-city-100,synthetic-1000 node frontend/e2e/q7-measure.mjs
 Q7_CASES=topology-2000-5000 node frontend/e2e/q7-measure.mjs
 Q7_CASES=bench node frontend/e2e/q7-measure.mjs
-# Same harness once real GPU device access is available:
-Q7_GL=hardware node frontend/e2e/q7-measure.mjs
+# Hardware invocation (Q7b's repetition directories/flags are specified above):
+Q7_GL=hardware Q7_ANGLE=vulkan node frontend/e2e/q7-measure.mjs
 ```
 
 Feed preparation uses scratch runs only. The retained 100-entity scenario is
@@ -333,5 +537,6 @@ and actual session logs remain under `/tmp/aas-q/q7/glm-cases`, `glm-audit`,
 gate verification remained the parent agent's responsibility.
 
 The nonspatial presentation gate has usable implementation and measured evidence.
-D-viewer's hardware comparison and broader visual/authoring replacement gate remain
+Q7b completes the missing hardware measurements and software reruns. D-viewer's
+performance acceptance and broader visual/authoring replacement decision remain
 open; this report does not authorize retiring AeroBench.
