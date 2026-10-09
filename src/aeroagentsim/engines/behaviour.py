@@ -25,7 +25,7 @@ from aerokernel.sdk import Cause, ContextEngine, EngineContext
 from aerokernel.state import Absent, Fact
 from aerokernel.values import FrozenValue, thaw, typed_equal
 
-from aeroagentsim.behaviours.bindings import stable_id, tuples
+from aeroagentsim.behaviours.bindings import live_refs, stable_id, tuples
 from aeroagentsim.behaviours.compiler import compile_package
 from aeroagentsim.behaviours.evaluation import Evaluator, Truth
 from aeroagentsim.behaviours.records import EVENTS, INJECT, PREFIX, TYPE, instant
@@ -597,7 +597,12 @@ class Behaviour(ContextEngine):
             for binding in sorted(p["bindings"], key=lambda b: b["id"]):
                 chain = p["chains"][binding["chain"]]
                 for roles, edges in tuples(
-                    ctx, self.build.registry, chain["roles"], binding["match"]
+                    ctx,
+                    self.build.registry,
+                    chain["roles"],
+                    binding["match"],
+                    live=self.live_entities,
+                    eligible=self.eligible_entities,
                 ):
                     ctx.inputs = self._role_causes(ctx, roles) + [
                         ItemRef(cast(int, edge[1]), cast(int, edge[2]))
@@ -737,17 +742,16 @@ class Behaviour(ContextEngine):
     def _role_causes(
         self, ctx: EngineContext, roles: dict[str, EntityRef]
     ) -> list[Cause]:
-        refs = set(roles.values())
-        return [
-            dirty.cause
-            for dirty in ctx.dirty
-            if dirty.key is not None
-            and dirty.key[0] in refs
-            or dirty.kind == "relation"
-            or dirty.kind == "lifecycle"
-            and EntityRef.from_data(cast(dict[str, Any], thaw(dirty.payload))["$ref"])
-            in refs
-        ]
+        refs = frozenset(roles.values())
+        cached = self.role_causes.get(refs)
+        if cached is None:
+            positions = set(self.relation_dirty)
+            for ref in refs:
+                positions.update(self.entity_dirty.get(ref, ()))
+            # Preserve the original dirty order, including duplicate causes.
+            cached = [ctx.dirty[index].cause for index in sorted(positions)]
+            self.role_causes[refs] = cached
+        return list(cached)
 
     def _trigger(
         self,
@@ -1115,6 +1119,25 @@ class Behaviour(ContextEngine):
         ctx.succeed(cmd, {"injection_point": point["id"]})
 
     def on_inputs(self, ctx: EngineContext) -> None:
+        # These indexes belong to this immutable invocation cut. Creating an
+        # entity in the proposal cannot make it visible to another binding here.
+        self.live_entities = live_refs(ctx)
+        self.eligible_entities: dict[
+            tuple[str, str | None, str | None], tuple[EntityRef, ...]
+        ] = {}
+        self.entity_dirty: dict[EntityRef, list[int]] = {}
+        self.relation_dirty: list[int] = []
+        self.role_causes: dict[frozenset[EntityRef], list[Cause]] = {}
+        for index, dirty in enumerate(ctx.dirty):
+            if dirty.key is not None:
+                self.entity_dirty.setdefault(dirty.key[0], []).append(index)
+            if dirty.kind == "relation":
+                self.relation_dirty.append(index)
+            elif dirty.kind == "lifecycle":
+                ref = EntityRef.from_data(
+                    cast(dict[str, Any], thaw(dirty.payload))["$ref"]
+                )
+                self.entity_dirty.setdefault(ref, []).append(index)
         self.publish: dict[EntityRef, dict[str, Any]] = {}
         self.publish_causes: dict[EntityRef, list[Cause]] = {}
         self.delivery_causes: dict[int, Cause] = {}
@@ -1234,7 +1257,12 @@ class Behaviour(ContextEngine):
         for ir in self.packages:
             for rule in ir.document.get("conflicts", []):
                 for roles, _ in tuples(
-                    ctx, self.build.registry, rule["roles"], rule.get("match", {})
+                    ctx,
+                    self.build.registry,
+                    rule["roles"],
+                    rule.get("match", {}),
+                    live=self.live_entities,
+                    eligible=self.eligible_entities,
                 ):
                     ctx.inputs = self._role_causes(ctx, roles)
                     predicate = rule["predicate"]
