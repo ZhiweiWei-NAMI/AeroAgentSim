@@ -12,10 +12,10 @@ test('Replay cameras, shared event markers, graph selection and the real capture
   }
   await click(page.getByRole('button',{name:'Alpha',exact:true}));
   const bravo=page.locator('.eg-node[aria-label^="UAV Bravo,"]');await click(bravo.locator('.eg-node-dot'));await expect(bravo).toHaveAttribute('aria-pressed','true');await expect(page.locator('.inspection-sidebar')).toContainText('UAV Bravo');await assertSynchronized(page);await hold(page,1300);
- },'Explore recorded events with one synchronized graph + 3D cursor');
+ },'Explore the same event in the graph and city views');
  await page.getByRole('button',{name:'Open photo',exact:true}).first().scrollIntoViewIfNeeded();
- await segment(page,async()=>{await click(page.getByRole('button',{name:'Open photo',exact:true}).first());},'Open the photo captured by the actual city viewer');
+ await segment(page,async()=>{await click(page.getByRole('button',{name:'Open photo',exact:true}).first());},'Open the photo taken by the city camera');
  await expect(page.getByAltText('Stored capture photo')).toBeVisible({timeout:30_000});
  await page.getByAltText('Stored capture photo').scrollIntoViewIfNeeded();
- await segment(page,async()=>{await hold(page,2800);},'Recorded camera pixels at the capture moment');
+ await segment(page,async()=>{await hold(page,2800);},'See the city as the camera saw it');
 });

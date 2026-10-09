@@ -1,10 +1,11 @@
 # Console product recordings
 
-These draft GIFs show the real console and backend at 1280 × 800, exported at
+These GIFs show the real console and backend at 1280 × 800, exported at
 960 px and 12 fps. Backend idle waits are cut from marked video segments.
 The overview explicitly uses a completed replay for its Inspect view; the
-simulation story starts and operates a new run through real accident admission,
-award and browser-rendered capture.
+simulation story starts and operates a new live run through operator injection,
+award and browser-rendered capture. The city and type catalog come from the
+public clone’s lite OSM bundle and packaged registry snapshot.
 
 | Recording | Story |
 | --- | --- |
@@ -19,7 +20,6 @@ award and browser-rendered capture.
 
 Reproduce from the repository root with `scripts/record-docs-media.sh`.
 See [recording setup and options](../../tools/docs/README.md).
-Re-record after the operator-wait and procedural-city changes merge.
 Native plugin settings are authored drafts; the live-agent story configures a
 future provider without making a paid model call. The completed agent replay
 uses the shipped recorded responses through the production LangGraph executor.

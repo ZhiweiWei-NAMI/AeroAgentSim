@@ -22,8 +22,12 @@ export const flowTest=base.extend({
    };document.readyState==='loading'?document.addEventListener('DOMContentLoaded',install):install();
   });
   // A visible prelude establishes the screencast origin before API preparation.
-  await page.goto('data:text/html,<html style="background:black"><body></body></html>',{waitUntil:'domcontentloaded'});
-  clock.start=Date.now();await page.waitForTimeout(650);
+  // Warm the video encoder before a visible white → black timestamp marker.
+  // A black page immediately after creation can be omitted by Chromium.
+  await page.goto('data:text/html,<html style="background:white"><body></body></html>',{waitUntil:'domcontentloaded'});
+  await page.waitForTimeout(1200);
+  await page.evaluate(()=>{document.documentElement.style.background='black';});
+  clock.start=Date.now();await page.waitForTimeout(800);
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   let succeeded=false;
   try{await use(page);expect(errors).toEqual([]);succeeded=true;}finally{
@@ -38,7 +42,7 @@ export const flowTest=base.extend({
     const flow=basename(testInfo.file,'.spec.ts'),path=join(root,flow,'video.webm');mkdirSync(dirname(path),{recursive:true});
     await video.saveAs(path);
     const manifest=join(root,'recordings.json');const data=existsSync(manifest)?JSON.parse(readFileSync(manifest,'utf8')):{};
-    data[flow]={blackPrelude:true,segments:clock.segments.map(row=>({...row,path})),speed:flow==='00-overview'?1.3:flow==='06-simulate'?3.5:flow==='07-visualize'?3:1};
+    data[flow]={blackPrelude:true,segments:clock.segments.map(row=>({...row,path})),speed:flow==='00-overview'?1.3:1};
     writeFileSync(manifest,JSON.stringify(data,null,2)+'\n');
     await testInfo.attach('recording-segments',{body:JSON.stringify(data[flow]),contentType:'application/json'});
    }

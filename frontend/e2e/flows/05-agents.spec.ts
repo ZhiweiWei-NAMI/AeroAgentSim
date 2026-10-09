@@ -14,14 +14,14 @@ test('Recorded LangGraph decisions, live-provider configuration and granted tool
   await fill(page.getByLabel('Live provider model'),process.env.AEROAGENTSIM_DOCS_MODEL??'glm-5.3-flashx');
   await fill(page.getByLabel('Live provider api_key_env'),'MODEL_API_KEY');
   await click(page.getByRole('button',{name:'Use live LangGraph for next run',exact:true}));
- },'Configure a live provider for the next run · no live model call is made');
+ },'Choose a live model for the next run · configuration only');
  await expect(page.getByText('Live LangGraph',{exact:true})).toBeVisible({timeout:90_000});
- await segment(page,async()=>{await page.evaluate(()=>window.scrollTo(0,0));await hold(page,1800);},'Decision points and field/event grants bound the agent');
+ await segment(page,async()=>{await page.evaluate(()=>window.scrollTo(0,0));await hold(page,1800);},'Choose where agents decide and which tools they may use');
  await page.goto('/agents/'+context.runId+'?mode=replay');
  await expect(page.locator('.agent-decision-card').first()).toBeVisible({timeout:90_000});
  await expect(page.getByRole('heading',{name:'Loading decisions',exact:true})).toBeHidden();
  await segment(page,async()=>{
   await page.locator('.agent-decision-card').first().scrollIntoViewIfNeeded();await hold(page,2200);
   await page.locator('.agent-proposed-call').first().scrollIntoViewIfNeeded();await hold(page,2500);
- },'Inspect actual journaled LangGraph observations, model calls and proposals');
+ },'Review recorded agent observations, responses and proposed actions');
 });

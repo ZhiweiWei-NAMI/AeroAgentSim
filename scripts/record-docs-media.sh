@@ -2,14 +2,14 @@
 # Build → isolated real backend → completed replay → eight paced recordings → GIFs.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORK_DIR=/tmp/aas-q/e3e
+WORK_DIR=/tmp/aas-q/e3g
 PYTHON="${AEROAGENTSIM_DOCS_PYTHON:-$ROOT/../AeroAgentSim-platform/.venv/bin/python}"
 FFMPEG="${FFMPEG:-}"
 GATES=0
 SKIP_BUILD=0
 REPLAY_SOURCE=""
 REUSE_CONTEXT=""
-MEDIA_ARGS=()
+MEDIA_ARGS=(--trim 00-overview=0.8:30 --trim 04-aerograph=0.8:30)
 while [ "$#" -gt 0 ]; do
  case "$1" in
   --gates) GATES=1;;
@@ -32,14 +32,13 @@ export NO_PROXY=127.0.0.1,localhost no_proxy=127.0.0.1,localhost
 export AEROAGENTSIM_DOCS_WORKDIR="$WORK_DIR" AEROAGENTSIM_DOCS_ROOT="$WORK_DIR/backend"
 export AEROAGENTSIM_DOCS_VIDEO_DIR="$WORK_DIR/videos" AEROAGENTSIM_DOCS_CONTEXT="$WORK_DIR/context.json"
 export AEROAGENTSIM_CHROMIUM="${AEROAGENTSIM_CHROMIUM:-$HOME/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell}"
-export AEROAGENTSIM_AEROGRAPH_ROOT="${AEROAGENTSIM_AEROGRAPH_ROOT:-$ROOT/../../AeroGraph}"
+# No implicit private source or asset paths: an unset environment records the
+# same packaged snapshot and lite city that a public clone receives.
 if [ -n "${AEROAGENTSIM_TRAFFIC_ASSET_ROOT:-}" ]; then
  [ -d "$AEROAGENTSIM_TRAFFIC_ASSET_ROOT" ] || { echo "City asset directory does not exist" >&2; exit 1; }
-elif [ -d "$ROOT/../AeroAgentSim/aero-bench/demos/traffic_accident/web/assets" ]; then
- export AEROAGENTSIM_TRAFFIC_ASSET_ROOT="$ROOT/../AeroAgentSim/aero-bench/demos/traffic_accident/web/assets"
- echo "Using the original demo city assets: $AEROAGENTSIM_TRAFFIC_ASSET_ROOT"
+ echo "Using explicitly configured city assets: $AEROAGENTSIM_TRAFFIC_ASSET_ROOT"
 else
- echo "City selection is delegated to the backend's packaged demo profile"
+ echo "Recording the public lite city and scenario registry snapshot"
 fi
 [ -x "$AEROAGENTSIM_CHROMIUM" ] || { echo "Set AEROAGENTSIM_CHROMIUM to Chromium" >&2; exit 1; }
 if [ "$GATES" -eq 1 ]; then

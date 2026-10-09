@@ -8,7 +8,9 @@ import { worldPosition } from '../viewport/coordinates';
 import { Assets, disposeObject } from '../viewport/assets';
 import { EntityLayer } from '../viewport/entities';
 import { setupScene } from '../viewport/scene';
+import { pipeline } from '../viewport/pipeline';
 import { loadSceneLayer } from '../scene/city-layer';
+import { isLiteCityScene } from '../viewport/procedural-traffic';
 import '../scene/presentation';
 
 type ObjectData = Record<string, unknown>;
@@ -46,7 +48,7 @@ export async function loadAssets(assetId: string, url: string, header: RunHeader
     const data = await result.arrayBuffer();
     contents.set(address, data); const blob = URL.createObjectURL(new Blob([data])); blobs.push(blob); pinned.set(address, blob);
   }));
-  const required = header.presentation.flatMap(binding => binding.visual.kind === 'model' ? [binding.visual.asset] : []);
+  const required = header.presentation.flatMap(binding => binding.visual.kind === 'model' && !binding.visual.asset?.startsWith('procedural:') ? [binding.visual.asset] : []);
   if (header.scene?.city) required.push(header.scene.city.url);
   if (header.scene?.roads) required.push(header.scene.roads.url);
   if (header.scene?.hdri) required.push(header.scene.hdri);
@@ -55,11 +57,11 @@ export async function loadAssets(assetId: string, url: string, header: RunHeader
     const address=new URL(header.scene.city.url,location.href).href;
     const city=object(parseLosslessJson(new TextDecoder().decode(contents.get(address)!)));
     if(!Array.isArray(city.buildings))throw Error('Traffic city buildings unavailable');
-    city.buildings=city.buildings.map(value=>{const building=object(value);if(typeof building.url!=='string')throw Error('Traffic building has no asset');const original=new URL(building.url.replace('/assets/',''),address).href;const blob=pinned.get(original);if(!blob)throw Error(`Unloaded traffic building ${original}`);return {...building,url:blob};});
+    if (!isLiteCityScene(city)) city.buildings=city.buildings.map(value=>{const building=object(value);if(typeof building.url!=='string')throw Error('Traffic building has no asset');const original=new URL(building.url.replace('/assets/',''),address).href;const blob=pinned.get(original);if(!blob)throw Error(`Unloaded traffic building ${original}`);return {...building,url:blob};});
     const blob=URL.createObjectURL(new Blob([JSON.stringify(city)],{type:'application/json'}));blobs.push(blob);pinned.set(address,blob);
   }
   const pin = (address: string) => pinned.get(new URL(address, location.href).href)!;
-  return { ...header, presentation: header.presentation.map(binding => binding.visual.asset ? { ...binding, visual: { ...binding.visual, asset: pin(binding.visual.asset) } } : binding),
+  return { ...header, presentation: header.presentation.map(binding => binding.visual.asset && !binding.visual.asset.startsWith('procedural:') ? { ...binding, visual: { ...binding.visual, asset: pin(binding.visual.asset) } } : binding),
     scene: header.scene && { ...header.scene, city: header.scene.city && { ...header.scene.city, url: pin(header.scene.city.url), assetsBase: header.scene.city.assetsBase ?? new URL('.', new URL(header.scene.city.url, location.href)).href }, roads: header.scene.roads && { ...header.scene.roads, url: pin(header.scene.roads.url) }, hdri: header.scene.hdri && pin(header.scene.hdri) } }; 
 }
 
@@ -81,7 +83,7 @@ export async function renderCapture(api: RunsApi, assetManifestUrl: string, inpu
   if (!width || !height || width > 8192 || height > 8192 || typeof request.timeout_s !== 'number' || !Number.isFinite(request.timeout_s) || request.timeout_s <= 0 || request.timeout_s > 300) throw Error('Invalid capture dimensions / timeout');
   const abort = new AbortController(), timer = setTimeout(() => abort.abort(), request.timeout_s * 1000);
   const blobs: string[] = [];
-  let hdr: T.WebGLRenderTarget | undefined;
+  let hdr: T.WebGLRenderTarget | undefined, composer: ReturnType<typeof pipeline> | undefined;
   let renderer: T.WebGLRenderer | undefined, assets: Assets | undefined, layer: EntityLayer | undefined, scene: T.Scene | undefined, lighting: ReturnType<typeof setupScene> | undefined;
   try {
     const path = `/v1/runs/${encodeURIComponent(input.service_run_id)}`;
@@ -127,9 +129,9 @@ export async function renderCapture(api: RunsApi, assetManifestUrl: string, inpu
     renderer.setPixelRatio(1); renderer.setSize(width, height); renderer.outputColorSpace = T.SRGBColorSpace; mount.replaceChildren(renderer.domElement);
     scene = new T.Scene(); lighting = setupScene(renderer, scene); assets = new Assets(renderer);
     const failures: string[] = []; const status = (message: string) => { if (message.includes('unavailable')) failures.push(message); };
-    const models = header.presentation.filter(binding => binding.visual.kind === 'model');
+    const models = header.presentation.filter(binding => binding.visual.kind === 'model' && !binding.visual.asset?.startsWith('procedural:')); // EntityLayer constructs local procedural actors.
     await Promise.all(models.map(binding => { if (!binding.visual.asset) throw Error('Capture model has no asset URL'); return assets!.model(binding.visual.asset); }));
-    if (header.scene) await loadSceneLayer(header.scene, header, assets, abort.signal, item => scene!.add(item), status);
+    if (header.scene) await loadSceneLayer(header.scene, header, assets, abort.signal, item => {scene!.add(item); lighting!.grid.visible=false;}, status);
     if (header.scene?.hdri) { hdr = await assets.hdri(header.scene.hdri, renderer); scene.environment = hdr.texture; }
     if (failures.length || abort.signal.aborted) throw Error(failures.join('; ') || 'Capture timed out');
     const near = cameraManifest.near ?? 0.15, far = cameraManifest.far ?? 16000;
@@ -141,11 +143,13 @@ export async function renderCapture(api: RunsApi, assetManifestUrl: string, inpu
     const overlay = document.createElement('div'); layer = new EntityLayer(header, assets, overlay, () => {}, error => failures.push(String(error)), status); scene.add(layer.root);
     layer.update(store, ns, camera, key, false); await Promise.resolve(); await Promise.resolve(); layer.update(store, ns, camera, key, false);
     if (failures.length || abort.signal.aborted) throw Error(failures.join('; ') || 'Capture timed out');
-    renderer.render(scene, camera); renderer.getContext().finish();
+    // Match the console’s low-quality city pipeline, including its tone mapping.
+    composer = pipeline(renderer, scene, camera, 'low'); composer.setSize(width,height);
+    composer.render(0); renderer.getContext().finish();
     const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
     const context = canvas.getContext('2d'); if (!context) throw Error('PNG readback canvas unavailable'); context.drawImage(renderer.domElement, 0, 0);
     if (input.label) { context.fillStyle = '#fff'; context.font = '12px monospace'; context.fillText(input.label, 4, height - 6); }
     const applied = { ...request, actor: { ...actor, id: entity.key.id, generation: actor.generation, type_id: entity.typeId, epoch: identity.epoch }, source_cut: { index: cut.commitIndex, instant: [BigInt(cut.at.ns) > BigInt(Number.MAX_SAFE_INTEGER) ? {$integer:cut.at.ns} : Number(cut.at.ns), cut.at.microstep] }, width: canvas.width, height: canvas.height };
     return { request: applied, png_data_url: canvas.toDataURL('image/png') };
-  } finally { clearTimeout(timer); abort.abort(); layer?.dispose(); if (scene) disposeObject(scene); lighting?.dispose(); hdr?.dispose(); assets?.dispose(); renderer?.dispose(); blobs.forEach(url => URL.revokeObjectURL(url)); }
+  } finally { clearTimeout(timer); abort.abort(); layer?.dispose(); if (scene) disposeObject(scene); lighting?.dispose(); hdr?.dispose(); assets?.dispose(); composer?.dispose(); renderer?.dispose(); blobs.forEach(url => URL.revokeObjectURL(url)); }
 }

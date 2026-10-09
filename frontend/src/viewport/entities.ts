@@ -3,6 +3,7 @@ import type { EntityKey, PresentationBinding, RunHeader } from '../contracts/vie
 import type { FeedStore } from './feed-store';
 import { resolveBinding, entityId } from './bindings';
 import { modelGlyph } from './model-glyph';
+import { proceduralModel } from './procedural-traffic';
 import { Assets } from './assets';
 import type { StaticOcclusion } from './occlusion';
 import { worldOrientation, worldPosition } from './coordinates';
@@ -52,12 +53,36 @@ export class EntityLayer {
       emissive: styled ? binding.visual.color : UNCOLOURED_GLYPH_EMISSIVE,
       emissiveIntensity: styled ? 0.22 : 0.12,
     });
-    const marker = new T.InstancedMesh(geometry, material, capacity);
+    const marker: T.InstancedMesh = new T.InstancedMesh(geometry, material, capacity);
     marker.castShadow = false; marker.frustumCulled = false; marker.count=0; this.root.add(marker);
     const batch: Batch = { meshes: [marker], transforms: [new T.Matrix4()], capacity, keys: [], loaded: binding.visual.kind !== 'model' };
     this.batches.set(binding, batch);
     if (binding.visual.kind === 'model') {
       if (!binding.visual.asset) throw Error(`Model binding ${binding.typeId} has no asset URL`);
+      // Reserved procedural asset URLs build mesh-free stand-ins in-process;
+      // no fetch, no GLB load, and no status text (nothing can be unavailable).
+      const procedural = proceduralModel(binding.visual.asset);
+      if (procedural) {
+        procedural.updateMatrixWorld(true);
+        batch.meshes = [];
+        batch.transforms = [];
+        procedural.traverse(node => {
+          if (!(node instanceof T.Mesh)) return;
+          const mesh = new T.InstancedMesh(node.geometry, node.material, batch.capacity);
+          mesh.count = 0; mesh.castShadow = true; mesh.receiveShadow = true; mesh.frustumCulled = false;
+          this.root.add(mesh);
+          batch.meshes.push(mesh);
+          batch.transforms.push(node.matrixWorld.clone());
+        });
+        if (!batch.meshes.length) throw Error('Procedural model has no renderable geometry');
+        const glyph = modelGlyph(procedural);
+        marker.geometry.dispose();
+        marker.geometry = glyph;
+        batch.far = { mesh: marker, keys: [] };
+        batch.outline = batch.meshes.map(instance => { const mesh = new T.Mesh(instance.geometry, instance.material); mesh.layers.set(10); mesh.matrixAutoUpdate = false; mesh.visible = false; this.root.add(mesh); return mesh; });
+        batch.loaded = true;
+        return batch;
+      }
       this.status(`Loading model: ${binding.visual.asset} · markers active`);
       void this.assets.model(binding.visual.asset).then(model => {
         if (this.disposed) return;

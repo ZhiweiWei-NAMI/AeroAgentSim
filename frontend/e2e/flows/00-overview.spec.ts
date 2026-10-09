@@ -10,7 +10,7 @@ test('Home → guided Studio → real run → synchronized Inspect',async({page}
   await click(page.getByRole('button',{name:'Validate draft',exact:true}));
  },'AeroGraph entities, predicates, behaviours and agents');
  await expect(page.getByRole('button',{name:'Start run',exact:true})).toBeEnabled({timeout:90_000});
- await segment(page,async()=>{await hold(page,1400);await click(page.getByRole('button',{name:'Start run',exact:true}));},'Validate the draft, then start its runtime');
+ await segment(page,async()=>{await hold(page,1400);await click(page.getByRole('button',{name:'Start run',exact:true}));},'Validate your scenario, then start the simulation');
  await page.waitForURL(/\/runs\/run-/,{timeout:90_000});
  const run=page.url().match(/\/runs\/(run-[a-f0-9]+)/)![1];
  await api(page,'/v1/runs/'+run+'/stop',{});
@@ -21,5 +21,5 @@ test('Home → guided Studio → real run → synchronized Inspect',async({page}
   await hold(page,2300);await click(page.getByRole('button',{name:'Bravo',exact:true}));
   await expect(page.locator('.inspection-sidebar')).toContainText('UAV Bravo');
   await expect(page.getByText(/Run identity unavailable/)).toBeHidden();await assertSynchronized(page);await hold(page,3000);
- },'Inspect a completed run · graph and city share entities, state and timeline');
+ },'Replay a completed run · explore the same moment in graph and city');
 });

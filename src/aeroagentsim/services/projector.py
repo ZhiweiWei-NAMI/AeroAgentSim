@@ -435,6 +435,12 @@ def header(directory: Path) -> dict[str, Any]:
     entries = storage.entries
     if entries:
         record = storage.records(entries[-1]["index"], 1)[0]
-        if metadata["status"] in {"completed", "stopped", "faulted", "interrupted"}:
+        if metadata["status"] in {
+            "completed",
+            "stopped",
+            "faulted",
+            "interrupted",
+            "input_timeout",
+        }:
             result["end"] = instant(decode_record(record["instant"]))
     return result

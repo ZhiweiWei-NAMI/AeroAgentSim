@@ -59,7 +59,7 @@ def test_dispatch_is_subject_indexed_and_guards_retain_read_evidence(
 
     monkeypatch.setattr(Behaviour, "_trigger", counted_trigger)
     monkeypatch.setattr(Evaluator, "run", counted_evaluation)
-    simulation = Simulation(load_scenario(doc, base=base))
+    simulation = Simulation(load_scenario(doc, base=base), provenance="full")
     try:
         simulation.start()
         visits.clear()

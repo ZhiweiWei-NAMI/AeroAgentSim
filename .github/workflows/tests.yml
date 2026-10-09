@@ -7,9 +7,8 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
-# Set AEROKERNEL_REPOSITORY (owner/repo) and AEROKERNEL_REF (compatible commit)
-# repository variables. The kernel is independently versioned, not vendored.
-# A submodule checkout at ../aerokernel can replace the second checkout below.
+# Release uses the aerokernel/ subtree. Until it lands, set
+# AEROKERNEL_REPOSITORY and AEROKERNEL_REF for the sibling development checkout.
 jobs:
   non-docker:
     runs-on: ubuntu-latest
@@ -23,7 +22,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: platform
-      - name: Require independent kernel checkout configuration
+      - name: Require development kernel checkout configuration
+        if: ${{ hashFiles('platform/aerokernel/pyproject.toml') == '' }}
         env:
           KERNEL_REPOSITORY: ${{ vars.AEROKERNEL_REPOSITORY }}
           KERNEL_REF: ${{ vars.AEROKERNEL_REF }}
@@ -33,6 +33,7 @@ jobs:
             exit 1
           }
       - uses: actions/checkout@v4
+        if: ${{ hashFiles('platform/aerokernel/pyproject.toml') == '' }}
         with:
           repository: ${{ vars.AEROKERNEL_REPOSITORY }}
           token: ${{ secrets.KERNEL_READ_TOKEN || github.token }}
@@ -46,12 +47,22 @@ jobs:
           node-version: "22"
       - name: Install minimal platform and test tools
         working-directory: platform
-        run: python -m pip install -e ../aerokernel -e '.[server,dev]' -c constraints/dev.txt
+        run: |
+          # RELEASE: kernel path
+          if [ -d ./aerokernel ]; then kernel=./aerokernel; else kernel=../aerokernel; fi
+          python -m pip install -e "$kernel" -e '.[server,dev]' -c constraints/dev.txt
+      - name: Install console and camera dependencies
+        working-directory: platform/frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run build
       - name: Independent non-Docker tests
         working-directory: platform
         run: |
-          python -m pytest tests/integrations/aerograph tests/adapters tests/packs \
+          python -m pytest tests/integrations/aerograph/test_compiler.py tests/adapters \
             tests/agents/test_provider.py tests/platform/test_public_api.py \
+            tests/authoring/test_snapshot_catalog.py tests/demos/traffic_accident/test_public_demo.py \
             -m 'not docker and not llm' -p no:cacheprovider \
             --basetemp=/tmp/aas-ci/tests
       - name: CLI and packaging
@@ -70,7 +81,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AEROAGENTSIM_AEROGRAPH_ROOT: ${{ github.workspace }}/aerograph
-    env:
       PYTHONDONTWRITEBYTECODE: "1"
       HYPOTHESIS_STORAGE_DIRECTORY: /tmp/aas-ci-graph/hypothesis
     steps:

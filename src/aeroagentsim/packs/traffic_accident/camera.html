@@ -5,13 +5,41 @@ const renderer = new THREE.WebGLRenderer({antialias: false, preserveDrawingBuffe
 renderer.setPixelRatio(1);
 renderer.setClearColor(0x273743);
 document.body.appendChild(renderer.domElement);
+const cameraConfig = await (await fetch('/camera-config.json')).json();
+const city = cameraConfig.city ? await (await fetch('/city.json')).json() : null;
+function box(scene, dimensions, position, color) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...dimensions), new THREE.MeshStandardMaterial({color, roughness: .8}));
+  mesh.position.set(...position); mesh.castShadow = true; scene.add(mesh); return mesh;
+}
+function buildCity(scene) {
+  if (!city) return;
+  for (const b of city.buildings) {
+    const shape = new THREE.Shape(b.footprint.map(([e,n]) => new THREE.Vector2(e,n)));
+    const geometry = new THREE.ExtrudeGeometry(shape, {depth:b.height_m, bevelEnabled:false});
+    geometry.rotateX(-Math.PI/2);
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({color:0x8199a8, roughness:.72}));
+    scene.add(mesh);
+  }
+  for (const road of city.roads) {
+    for (let i=1; i<road.points_enu_m.length; i++) {
+      const [x1,n1] = road.points_enu_m[i-1], [x2,n2] = road.points_enu_m[i];
+      const length = Math.hypot(x2-x1,n2-n1);
+      if (!length) continue;
+      const mesh = box(scene, [road.width_m,.05,length], [(x1+x2)/2,.03,-(n1+n2)/2],0x3c4148);
+      mesh.rotation.y = Math.atan2(x2-x1,-(n2-n1));
+    }
+  }
+}
 window.aeroCapture = {async render({request}) {
   const snapshot = request.camera.snapshot;
   if (!snapshot || JSON.stringify(snapshot.cut) !== JSON.stringify(request.source_cut)) throw Error('camera requires its recorded source cut');
   const actor = snapshot.entities.find(e => e.id === request.actor.id && e.generation === request.actor.generation);
   if (!actor) throw Error('camera actor has no measured pose in source snapshot');
   const scene = new THREE.Scene();
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), new THREE.MeshBasicMaterial({color: 0x40564a}));
+  scene.add(new THREE.HemisphereLight(0xffffff,0x40504c,2));
+  const sun = new THREE.DirectionalLight(0xffffff,2); sun.position.set(200,500,300); scene.add(sun);
+  buildCity(scene);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(city ? 2400 : 240, city ? 2400 : 240), new THREE.MeshBasicMaterial({color: 0x40564a}));
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(actor.position[0], -0.1, -actor.position[1]);
   scene.add(ground);
@@ -21,6 +49,10 @@ window.aeroCapture = {async render({request}) {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(air ? 2 : 2.2, air ? 0.5 : 1.4, air ? 2 : 4), new THREE.MeshBasicMaterial({color: air ? 0x50c9ff : 0xe8a444}));
     mesh.position.set(entity.position[0], entity.position[2], -entity.position[1]);
     scene.add(mesh);
+    if (air && city) {
+      box(scene,[4,.16,.2],[entity.position[0],entity.position[2],-entity.position[1]],0x37434a);
+      box(scene,[.2,.16,4],[entity.position[0],entity.position[2],-entity.position[1]],0x37434a);
+    }
   }
   const p = actor.position;
   const camera = new THREE.PerspectiveCamera(request.camera.fov, request.width / request.height, 0.1, 2000);

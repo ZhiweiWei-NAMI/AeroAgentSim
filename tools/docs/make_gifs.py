@@ -27,7 +27,7 @@ DEFAULT_FPS = 12
 DEFAULT_WIDTH = 960
 BUDGET_BYTES = 6_000_000
 HERO_BUDGET_BYTES = 8_000_000
-MAX_COLORS = 64
+MAX_COLORS = 48
 RUN_TIMEOUT_S = 900.0
 Runner = Callable[..., "subprocess.CompletedProcess[str]"]
 

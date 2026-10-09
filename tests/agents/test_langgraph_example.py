@@ -33,7 +33,7 @@ def example() -> dict[str, Any]:
 def test_accident_report_parallel_bid_and_award(
     example: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    simulation = Simulation(load_scenario(example))
+    simulation = Simulation(load_scenario(example), provenance="full")
     simulation.start()
     simulation.run_until(2)
     data = simulation.kernel.journal.bytes

@@ -147,6 +147,8 @@ def prepare(base: str, output: Path, replay_source: Path | None, timeout: float)
             break
     if failures or finished_agents < 2 or not artifacts or any(row["renderer_mode"] != "browser" for row in artifacts):
         raise RuntimeError(f"Replay requires successful LangGraph decisions and real browser photos; finished={finished_agents}, photos={len(artifacts)}, failures={failures[:3]}")
+    if any(row["request"]["camera"].get("preset") != "actor-nadir" or row["request"]["width"] != 1024 for row in artifacts):
+        raise RuntimeError("Recording photo must use the console city camera, not the primitive test renderer")
     if set(marks) != set(EVENTS):
         raise RuntimeError(f"Replay lacks required detection/award/capture records: {marks}")
     output.parent.mkdir(parents=True, exist_ok=True)

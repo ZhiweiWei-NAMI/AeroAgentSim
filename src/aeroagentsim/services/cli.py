@@ -21,6 +21,7 @@ def main() -> None:
     run.add_argument("scenario", type=Path)
     run.add_argument("--out", type=Path, default=Path("runs"))
     run.add_argument("--engine-profile", type=Path)
+    run.add_argument("--provenance", choices=["lean", "full"])
     check = sub.add_parser("replay")
     check.add_argument("run", type=Path)
     metrics_command = sub.add_parser("metrics")
@@ -31,8 +32,32 @@ def main() -> None:
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8002)
     serve.add_argument("--frontend", type=Path)
+    demo = sub.add_parser("demo", help="Run or open a shipped demonstration")
+    demo.add_argument("name", choices=["traffic-accident"])
+    demo.add_argument(
+        "--profile",
+        choices=["kinematic", "sumo", "px4", "live-llm"],
+        default="kinematic",
+    )
+    demo.add_argument("--headless", action="store_true")
+    demo.add_argument("--port", type=int, default=0)
+    demo.add_argument("--out", type=Path, default=Path("runs/demo"))
+    demo.add_argument("--provenance", choices=["lean", "full"])
     args = parser.parse_args()
-    if args.command == "run":
+    if args.command == "demo":
+        from .demo import run_demo
+
+        try:
+            run_demo(
+                profile=args.profile,
+                headless=args.headless,
+                port=args.port,
+                out=args.out,
+                provenance=args.provenance,
+            )
+        except (ValueError, FileNotFoundError, RuntimeError) as exc:
+            parser.error(str(exc))
+    elif args.command == "run":
         start = time.perf_counter()
         directory = args.out / f"{args.scenario.stem}-{uuid.uuid4().hex[:12]}"
         from aeroagentsim.scenario import load_scenario
@@ -41,7 +66,7 @@ def main() -> None:
         scenario = load_scenario(args.scenario)
         if args.engine_profile is not None:
             scenario = apply_engine_profile(scenario, args.engine_profile)
-        with RunSession(scenario, directory) as session:
+        with RunSession(scenario, directory, provenance=args.provenance) as session:
             session.run()
             simulated = session.now_ns / 1e9
         elapsed = time.perf_counter() - start

@@ -171,6 +171,7 @@ class Scenario:
     clock_mappings: tuple[ClockMapping, ...] | None = None
     ingress: dict[str, EngineIngress] = dataclass_field(default_factory=dict)
     ingress_streams: tuple[IngressStream, ...] = ()
+    provenance: str = "lean"
 
 
 def load_scenario(
@@ -228,7 +229,8 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
                 if item["id"] in existing:
                     if existing[item["id"]] != item:
                         raise ScenarioError(
-                            f"registry.{category}.{item['id']}: conflicts with behaviour overlay"
+                            f"registry.{category}.{item['id']}: conflicts "
+                            "with behaviour overlay"
                         )
                 else:
                     authored.append(item)
@@ -267,6 +269,7 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         "clock_mappings",
         "ingress_streams",
         "behaviours",
+        "provenance",
     }
     if extra := set(document) - allowed:
         raise ScenarioError(f"scenario: unknown keys {sorted(extra)}")
@@ -720,7 +723,8 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             for m in clock_mappings
         ):
             raise ScenarioError(
-                "clock_mappings: retain identity canonical mapping for local model policies"
+                "clock_mappings: retain identity canonical mapping for local "
+                "model policies"
             )
     ingress: dict[str, EngineIngress] = {}
     mappings = {
@@ -737,8 +741,12 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         lateness = text(spec["lateness"], path + ".lateness")
         if lateness not in {"reject", "delay"}:
             raise ScenarioError(path + ".lateness: expected reject or delay")
-        timeout = numeric(spec["timeout_s"], path + ".timeout_s")
-        if timeout <= 0:
+        timeout = (
+            numeric(spec["timeout_s"], path + ".timeout_s")
+            if "timeout_s" in spec
+            else None
+        )
+        if timeout is not None and timeout <= 0:
             raise ScenarioError(path + ".timeout_s: positive wait budget required")
         return mapping_id, IngressPolicy(
             integer(spec["initial_watermark_ns"], path + ".initial_watermark_ns"),
@@ -751,13 +759,16 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             else None,
         )
 
-    policy_keys = {"mapping_id", "initial_watermark_ns", "lateness", "timeout_s"}
+    policy_keys = {"mapping_id", "initial_watermark_ns", "lateness"}
     for index, authored in enumerate(
         seq(document.get("ingress_streams", []), "ingress_streams")
     ):
         path = f"ingress_streams[{index}]"
         spec = contract(
-            authored, path, policy_keys | {"id", "engine_ids"}, {"allowed_lateness_ns"}
+            authored,
+            path,
+            policy_keys | {"id", "engine_ids"},
+            {"allowed_lateness_ns", "timeout_s"},
         )
         stream_id = text(spec["id"], path + ".id")
         if stream_id in streams:
@@ -791,7 +802,7 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             item["ingress"],
             path,
             policy_keys,
-            {"stream_id", "allowed_lateness_ns"},
+            {"stream_id", "allowed_lateness_ns", "timeout_s"},
         )
         mapping_id, policy = stream_policy(spec, path)
         stream_id = text(spec.get("stream_id", engine_id), path + ".stream_id")
@@ -852,12 +863,17 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
                         != definition.get("parameters", {})
                     ):
                         raise ScenarioError(
-                            f"{path}: expression, event and parameters must match the Q6 sampled partition"
+                            f"{path}: expression, event and parameters must "
+                            "match the Q6 sampled partition"
                         )
                     if set(sample_spec.bindings) != set(definition["roles"]):
                         raise ScenarioError(
-                            f"{path}: sampled role aliases must match the actual Q6 bindings"
+                            f"{path}: sampled role aliases must match the "
+                            "actual Q6 bindings"
                         )
+    provenance = document.get("provenance", "lean")
+    if type(provenance) is not str or provenance not in {"lean", "full"}:
+        raise ScenarioError("provenance: expected lean or full")
     return Scenario(
         document,
         source,
@@ -875,4 +891,5 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         clock_mappings,
         ingress,
         tuple(streams.values()),
+        provenance,
     )

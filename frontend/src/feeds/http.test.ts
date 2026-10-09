@@ -43,4 +43,30 @@ describe('HTTP viewer transport', () => {
     const value = { contract: 'aeroagentsim.viewer-feed/v1', runId: 'x', registryDigest: 'digest', types: [], fields: [], presentation: [], start: { ns: 42, microstep: 0 } };
     expect(() => validateHeader(value)).toThrow('string');
   });
+  it('carries waiting metadata through commit pages and a status SSE event without commits', async () => {
+    const waiting = { stream_ids: ['operator'], at_ns: '2000000000' };
+    const seen: Array<[string, unknown]> = [];
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ commits: [commit(1)], next: 2, status: 'waiting_for_input', waiting })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ commits: [], next: 2, status: 'waiting_for_input', waiting })))
+      .mockResolvedValueOnce(new Response(`event: status\r\ndata: ${JSON.stringify({ status: 'waiting_for_input', waiting })}\r\n\r\nevent: status\r\ndata: ${JSON.stringify({ status: 'running' })}\r\n\r\n`))
+      .mockResolvedValue(new Response('', { status: 503 }));
+    vi.stubGlobal('fetch', fetcher);
+    const controller = new AbortController();
+    const feed = new HttpViewerFeed(new RunsApi('http://api'), 'live', 'live', (status, context) => seen.push([status, context]));
+    await expect(feed.subscribe(0, () => {}, controller.signal)).rejects.toThrow();
+    expect(seen.map(([status]) => status)).toEqual(['waiting_for_input', 'waiting_for_input', 'waiting_for_input', 'running']);
+    expect(seen[0][1]).toEqual(waiting); expect(seen[1][1]).toEqual(waiting); expect(seen[2][1]).toEqual(waiting); expect(seen[3][1]).toBeUndefined();
+    controller.abort();
+  });
+  it('treats input_timeout as a terminal commit-page status with waiting context', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ commits: [], next: 1, status: 'input_timeout', finalCursor: 1, waiting: { stream_ids: ['operator'], at_ns: '3000000000' } })));
+    vi.stubGlobal('fetch', fetcher);
+    const seen: Array<[string, unknown]> = [];
+    const controller = new AbortController();
+    await new HttpViewerFeed(new RunsApi('http://api'), 'recorded', 'live', (status, context) => seen.push([status, context])).subscribe(0, () => {}, controller.signal);
+    expect(seen.map(([status]) => status)).toEqual(['input_timeout']);
+    expect((seen[0][1] as {stream_ids: string[]}).stream_ids).toEqual(['operator']);
+    expect(fetcher).toHaveBeenCalledTimes(1); // Terminal status ends polling; no SSE reconnect loop.
+  });
 });

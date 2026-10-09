@@ -14,12 +14,12 @@ test('A predicate rule creates type bindings, event-chain states and operator in
   await choose(page.getByRole('combobox',{name:'Rule action kind',exact:true}),'Delay, then complete');
   await fill(page.getByLabel('Rule delay duration',{exact:true}),'1000000000');
   await click(page.getByRole('button',{name:'Add rule to draft',exact:true}));await hold(page,1600);
- },'When energy-ready becomes true for every Traffic UAV → delay, then complete');
+ },'When a UAV has enough energy → wait, then complete the action');
  await segment(page,async()=>{
   const chains=page.locator('.ant-card').filter({has:page.locator('.ant-card-head-title').getByText('Event chains',{exact:true})});
   await chains.scrollIntoViewIfNeeded();await click(chains.locator('.ant-pagination-item').last());await hold(page,2000);
   await page.getByRole('heading',{name:'External events an operator can fire',exact:true}).scrollIntoViewIfNeeded();await hold(page,2200);
- },'Bindings instantiate chains; injection points accept typed operator events');
+ },'Apply the rule to every Traffic UAV · choose events operators can trigger');
  const save=page.getByRole('button',{name:'Save workspace',exact:true});
  const saved=page.waitForResponse(response=>response.url().endsWith('/v1/studio/workspaces/'+draft.id)&&response.request().method()==='POST');await click(save);expect((await saved).ok()).toBe(true);
  const actual=await page.request.get('/v1/studio/workspaces/'+draft.id).then(response=>response.json());

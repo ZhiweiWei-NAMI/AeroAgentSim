@@ -11,11 +11,11 @@ test('Edit an ancestry-aware predicate threshold and compile the real draft',asy
   await fill(field,'traffic.road.blocked_by');
   await expect(page.locator('datalist[id="Predicate expression.args[0].args[0]-fields"] option[value="traffic.road.blocked_by"]')).toHaveCount(1);
   await hold(page,1200);
- },'AeroGraph fields constrain the predicate · count vehicles blocking the road');
+ },'Build a condition using AeroGraph fields and road relationships');
  await segment(page,async()=>{
   await fill(page.getByLabel(/^Predicate expression\.args\[1\] literal(?: exact integer)?$/),'1');await hold(page,1900);
   await click(page.getByRole('button',{name:'Validate',exact:true}));
- },'Set the blocking threshold to 1 · validate with the real compiler');
+ },'Set the threshold to one blocking vehicle, then validate');
  await expect(page.getByTestId('validation-status')).toContainText('Validated',{timeout:120_000});
- await segment(page,async()=>{await page.evaluate(()=>window.scrollTo(0,0));await hold(page,2500);},'The compiler accepts the edited scenario');
+ await segment(page,async()=>{await page.evaluate(()=>window.scrollTo(0,0));await hold(page,2500);},'The edited condition passes validation');
 });

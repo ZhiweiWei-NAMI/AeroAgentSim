@@ -10,14 +10,14 @@ test('Explore AeroGraph types, ancestry, field writers and workspace entities',a
   const parent=page.locator('.aerograph-crumbs').getByRole('button').last();
   await click(parent);await hold(page,1400);
   await click(page.getByTestId('aerograph-tree').getByText('Traffic UAV',{exact:true}).first());
- },'Search Traffic UAV · follow its AeroGraph ancestry and relation graph');
+ },'Find Traffic UAV · explore its parent types and relationships');
  await segment(page,async()=>{
   const fields=page.locator('.aerograph-panel').filter({has:page.getByRole('heading',{name:'Fields',exact:true})});
   await fields.scrollIntoViewIfNeeded();await expect(fields).toContainText('Kinematic');await hold(page,2200);
   const entities=page.locator('.aerograph-panel').filter({has:page.getByRole('heading',{name:'Workspace entities of this type',exact:true})});
   await entities.scrollIntoViewIfNeeded();await hold(page,1400);
   await click(entities.getByRole('link').first());
- },'Inspect declared field writers · jump to a real workspace entity');
+ },'See which plugins update its fields · open an entity in Studio');
  await expect(page.locator('.guided-entity-drawer')).toBeVisible({timeout:90_000});
- await segment(page,async()=>{await hold(page,2900);},'The entity opens in Studio with its initial fields, relations and ancestry');
+ await segment(page,async()=>{await hold(page,2900);},'Edit the entity’s initial state and relationships in Studio');
 });

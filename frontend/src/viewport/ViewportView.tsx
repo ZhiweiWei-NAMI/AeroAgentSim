@@ -3,11 +3,12 @@ import type { EntityKey } from '../contracts/viewer-feed';
 import type { FeedStore } from './feed-store';
 import type { PlaybackClock } from './clock';
 import { Viewport, type CameraMode } from './viewport';
+import { LiveFollowClock } from './live-interpolation';
 import type { Quality } from './pipeline';
 import { MissionTimeline } from './MissionTimeline';
 import '../scene/presentation';
 interface Props {
-  store: FeedStore; clock: PlaybackClock; selected?: EntityKey; mode: CameraMode; quality: Quality; trails: boolean;
+  store: FeedStore & { liveFollow?: boolean }; clock: PlaybackClock; selected?: EntityKey; mode: CameraMode; quality: Quality; trails: boolean;
   commitCut?: number;
   onSelect: (key: EntityKey) => void; onTick: () => void; onError: (error: unknown) => void;
   onQuality: (quality: Quality, fps?: number) => void;
@@ -20,8 +21,12 @@ export function ViewportView(props: Props) {
   });
   const [quality,setQuality]=useState<Quality>(props.quality),[fps,setFps]=useState<number>(),[status,setStatus]=useState(''),[collapsed,setCollapsed]=useState(false);
   const [dusk,setDusk]=useState(new URLSearchParams(location.search).get('lighting')==='dusk');
+  // The lite demo serves a scenario-snapshot catalog; surface the header's own
+  // notice when present. No catalog inference is performed here.
+  const catalogNotice=(props.store.header as typeof props.store.header & {catalogNotice?:string}).catalogNotice;
   useEffect(()=>{
     let frame=0,last=performance.now(),notify=last,lastSeek='',lastNotified='';
+    const liveClock=new LiveFollowClock();
     try{
       viewport.current=new Viewport(root.current!,props.store.header,{
         quality:props.quality,onSelect:key=>current.current.onSelect(key),onError:error=>current.current.onError(error),onStatus:setStatus,
@@ -34,7 +39,13 @@ export function ViewportView(props: Props) {
           p.clock.update(now/1000);const cut=p.clock.playing?undefined:p.commitCut;
           const seekKey=`${p.clock.ns}/${cut}/${p.store.commits.length}`;
           if(seekKey!==lastSeek){p.store.seek(p.clock.ns,cut);lastSeek=seekKey;}
-          viewport.current!.render(p.store,p.clock.ns,delta,p.trails);
+          // Display-only live-follow: render one pose sample behind the head on
+          // the wall clock; the exact store cursor above stays at the live head.
+          const liveActive=p.store.liveFollow===true&&cut===undefined;
+          liveClock.observe(p.store,liveActive);
+          const liveNs=liveActive?liveClock.renderNs(p.clock.ns):undefined;
+          if(root.current) {root.current.dataset.displayNs=liveNs??p.clock.ns;root.current.dataset.committedNs=p.clock.ns;}
+          viewport.current!.render(p.store,liveNs??p.clock.ns,delta,p.trails);
           if(now-notify>100&&seekKey!==lastNotified){p.onTick();notify=now;lastNotified=seekKey;}frame=requestAnimationFrame(animate);
         }catch(error){current.current.onError(error);}
       };frame=requestAnimationFrame(animate);
@@ -59,6 +70,7 @@ export function ViewportView(props: Props) {
       <button aria-label="Toggle inspector" aria-expanded={!collapsed} onClick={()=>{const next=!collapsed;setCollapsed(next);root.current?.closest('.viewer-main')?.setAttribute('data-inspector-collapsed',String(next));}}>Inspector {collapsed?'＋':'−'}</button>
     </div>
     <div className="scene-status" title={status}>{status} · Facades, landscaping, light, haze & screen-sized glyphs are display effects</div>
+    {catalogNotice&&<div className="scene-attribution" style={{bottom:24}} data-testid="catalog-notice">{catalogNotice}</div>}
     <div className="scene-attribution">{root.current?.dataset.attribution}</div>
     <div className="mission-overlay"><MissionTimeline store={props.store} selected={props.selected} />
       <div className="event-strip" aria-label="Recorded event markers">{duration>0n&&events.slice(-200).map(event=>

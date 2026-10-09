@@ -43,3 +43,16 @@ it('loads plain-ID capture assets, ignores old hash annotations and checks reque
  vi.stubGlobal('fetch',async()=>({ok:false,status:404}));
  await expect(loadAssets(ASSET_ID,'https://x/manifest',header(),new AbortController().signal,[])).rejects.toThrow('HTTP 404');
 });
+
+it('loads public OSM footprints and keeps the console procedural actors for city captures',async()=>{
+ const city=header().scene!.city!.url;
+ const bundle={format:'traffic-city-lite/v1',frame:'enu',buildings:[{id:'osm.1',footprint:[[0,0],[8,0],[8,6],[0,6]],height_m:18}],roads:[]};
+ const encode=(value:unknown)=>new TextEncoder().encode(JSON.stringify(value)).slice().buffer as ArrayBuffer;
+ const fetch=vi.fn(async(address:string)=>({ok:true,arrayBuffer:async()=>encode(address===city?bundle:{...manifest([{url:city,asset_id:'traffic-lite-city/v1'}]),asset_id:'traffic-lite-city/v1'})}));
+ vi.stubGlobal('fetch',fetch);
+ const input=header(); input.presentation=[{typeId:'aas:TrafficUAV',positionField:'position',frame:'enu',visual:{kind:'model',asset:'procedural:uav'}}];
+ const result=await loadAssets('traffic-lite-city/v1','https://studio.example/manifest',input,new AbortController().signal,[]);
+ expect(result.scene?.city?.url).toMatch(/^blob:/);
+ expect(result.presentation[0].visual.asset).toBe('procedural:uav');
+ expect(fetch).toHaveBeenCalledTimes(2);
+});

@@ -4,12 +4,13 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '../i18n/I18nProvider';
 import AeroGraphPage from './AeroGraphPage';
+import { clearAeroGraphCacheForTests } from './aerograph-cache';
 
 beforeAll(() => {
   Object.defineProperty(window, 'matchMedia', { writable: true, value: vi.fn().mockImplementation(query => ({ matches: false, media: query, onchange: null, addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn() })) });
 });
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); clearAeroGraphCacheForTests(); vi.unstubAllGlobals(); });
 
 const payload = {
   workspace: { id: 'studio-1', name: 'Traffic accident (demo)' },
@@ -142,4 +143,28 @@ it('uses the English part of a mixed catalog label and includes descendant works
   await screen.findByRole('heading',{name:'Vehicle'});
   expect(screen.queryByText('载具 / Vehicle')).toBeNull();
   expect(screen.getByText('Survey response')).toBeTruthy();
+});
+
+it('marks readiness only after a real payload and reuses the cache across remounts', async () => {
+  const fetchMock = mockFetch(payload);
+  vi.stubGlobal('fetch', fetchMock);
+  const first = render(<MemoryRouter initialEntries={['/aerograph']}><I18nProvider><AeroGraphPage /></I18nProvider></MemoryRouter>);
+  // The route shell paints immediately while the payload is still in flight:
+  // no readiness marker and no synthesized success.
+  expect(first.getByTestId('aerograph-page').getAttribute('data-ready')).toBe('false');
+  expect((first.getByTestId('aerograph-ready') as HTMLElement).hidden).toBe(true);
+  await first.findByRole('heading', { name: 'Vehicle' });
+  // Readiness arrives only after the actual explorer payload is applied.
+  expect((first.getByTestId('aerograph-ready') as HTMLElement).hidden).toBe(false);
+  expect(first.getByTestId('aerograph-page').getAttribute('data-ready')).toBe('true');
+  const callsAfterFirstLoad = fetchMock.mock.calls.length;
+  fetchMock.mockImplementationOnce(() => new Promise<Response>(() => {}));
+  first.unmount();
+
+  // Remounting the route must not re-block on a fresh full-payload fetch.
+  const second = render(<MemoryRouter initialEntries={['/aerograph']}><I18nProvider><AeroGraphPage /></I18nProvider></MemoryRouter>);
+  expect(second.getByRole('heading', { name: 'Vehicle' })).toBeTruthy();
+  expect(second.getByTestId('aerograph-page').getAttribute('data-ready')).toBe('true');
+  expect(fetchMock.mock.calls.length - callsAfterFirstLoad).toBeLessThanOrEqual(1);
+  second.unmount();
 });

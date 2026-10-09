@@ -8,6 +8,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import './aerograph.css';
 import { readableLabel, displayLabel } from './inspection-format';
 import { ConceptHelp } from '../console/ConceptHelp';
+import { aeroGraphCacheKey, readAeroGraphCache, writeAeroGraphCache } from './aerograph-cache';
 
 /** Native catalog definitions joined with the selected workspace. */
 interface ExplorerPayload {
@@ -29,6 +30,7 @@ interface ExplorerPayload {
   chains: Array<{ id: string; name?: unknown; description?: string; definition: Record<string, unknown> }>;
   entities: Array<{ id: string; type: string; label: string }>;
   workspaces: Array<{ id: string; name: string }>;
+  catalog_notice?: string;
 }
 
 type Row = Record<string, unknown>;
@@ -178,20 +180,46 @@ export default function AeroGraphPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  /** Set once a real explorer payload has been applied to this route view. */
+  const [ready, setReady] = useState(false);
+  const requestSequence = useRef(0);
+
+  const applyPayload = useCallback((data: ExplorerPayload) => {
+    writeAeroGraphCache(aeroGraphCacheKey(base, data.workspace?.id ?? undefined), data);
+    setPayload({...data, relations:[...data.relations, ...(data.workspace_relations ?? []).map(row=>({...row,sourceClass:row.sourceClass??row.source_type??row.source,targetClass:row.targetClass??row.target_type??row.target}))]});
+    setWorkspaceId(data.workspace?.id);
+    setSelected(previous => previous && data.types.some(row => row.id === previous) ? previous : requestedType && data.types.some(row=>row.id===requestedType) ? requestedType : data.types.find(row=>row.count!==null&&row.count>0&&!row.abstract)?.id ?? data.types[0]?.id);
+    writeAeroGraphCache(aeroGraphCacheKey(base, data.workspace?.id ?? requestedWorkspace ?? undefined), data);
+    setReady(true);
+  }, [base, requestedType]);
 
   const load = useCallback((target?: string) => {
-    setLoading(true);
-    setError(undefined);
+    const sequence = ++requestSequence.current;
+    const cacheKey = aeroGraphCacheKey(base, target);
+    const cached = readAeroGraphCache(cacheKey) as ExplorerPayload | undefined;
+    if (cached) {
+      // Cache hit: paint the cached payload immediately instead of blocking
+      // the route shell behind a fresh round-trip, then revalidate quietly.
+      applyPayload({ ...cached });
+      setError(undefined);
+      setLoading(true);
+    } else {
+      setReady(false); setPayload(undefined);
+      setLoading(true);
+      setError(undefined);
+    }
     api.request<ExplorerPayload>(`/v1/studio/explorer${target ? `?workspace_id=${encodeURIComponent(target)}` : ''}`)
-      .then(data => {
-        data.relations = [...data.relations, ...(data.workspace_relations ?? []).map(row=>({...row,sourceClass:row.sourceClass??row.source_type??row.source,targetClass:row.targetClass??row.target_type??row.target}))];
-        setPayload(data);
-        setWorkspaceId(data.workspace?.id);
-        setSelected(previous => previous && data.types.some(row => row.id === previous) ? previous : requestedType && data.types.some(row=>row.id===requestedType) ? requestedType : data.types.find(row=>row.count!==null&&row.count>0&&!row.abstract)?.id ?? data.types[0]?.id);
+      .then(data => { if(sequence === requestSequence.current) {writeAeroGraphCache(cacheKey,data);applyPayload(data);} })
+      .catch(cause => {
+        if(sequence !== requestSequence.current) return;
+        // Errors are never cached and never silently swallowed: on a failed
+        // revalidation the previously rendered payload stays visible, but the
+        // backend error is still reported to the operator.
+        setError(cause instanceof Error ? cause.message : String(cause));
+        if (!readAeroGraphCache(cacheKey)) setReady(false);
       })
-      .catch(cause => setError(cause instanceof Error ? cause.message : String(cause)))
-      .finally(() => setLoading(false));
-  }, [api, requestedType]);
+      .finally(() => { if(sequence === requestSequence.current) setLoading(false); });
+  }, [api, applyPayload, base]);
 
   useEffect(() => { load(requestedWorkspace ?? undefined); }, [load,requestedWorkspace]);
 
@@ -316,19 +344,22 @@ export default function AeroGraphPage() {
     },
   ] as const;
 
-  return <div className="console-page aerograph" data-testid="aerograph-page">
+  return <div className="console-page aerograph" data-testid="aerograph-page" data-ready={ready ? 'true' : 'false'}>
+    <span data-testid="aerograph-ready" hidden={!ready} />
     <PageHeader
       eyebrow="Explore"
       title="AeroGraph"
       description="Browse the shared entity types, fields, relations, predicates and behaviour chains behind your workspaces."
     />
-    {error && <PageState kind="error" title="The explorer catalog is unavailable" description={error} action={<button className="console-btn" onClick={() => load(workspaceId)}>Retry</button>} />}
-    {!error && loading && <PageState kind="loading" title="Loading the AeroGraph catalog" />}
-    {!error && !loading && types.length === 0 && (
+    {error && <PageState kind="error" title="The explorer catalog is unavailable" description={error} action={<button className="console-btn" onClick={() => load(workspaceId ?? requestedWorkspace ?? undefined)}>Retry</button>} />}
+    {loading && !error && ready && <p className="aerograph-hint" role="status">Refreshing the AeroGraph catalog…</p>}
+    {!error && !ready && loading && <PageState kind="loading" title="Loading the AeroGraph catalog" />}
+    {!error && !loading && ready && types.length === 0 && (
       <PageState kind="empty" title="No ontology types found" description="The configured AeroGraph source checkout exposes no type rows." />
     )}
+    {payload?.catalog_notice && <p className="aerograph-hint">{payload.catalog_notice}</p>}
     {payload?.package_errors?.map((message,index)=><PageState key={index} kind="error" title="A behaviour package could not be read" description={message}/>)}
-    {!error && !loading && types.length > 0 && <div className="aerograph">
+    {!error && ready && types.length > 0 && <div className="aerograph">
       <div className="aerograph-toolbar">
         <Select
           className="aerograph-workspace"

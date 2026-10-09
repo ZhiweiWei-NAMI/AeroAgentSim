@@ -11,7 +11,7 @@ def test_segment_trims_speed_and_two_pass_palette() -> None:
     flow = make_gifs.Flow("00-overview", [make_gifs.Segment(Path("video.webm"), 4, 12)], 2)
     assert make_gifs.build_inputs(flow) == ["-ss", "4.000", "-t", "12.000", "-threads", "1", "-i", "video.webm"]
     first, second = make_gifs.build_filter_complex(2, 2, 12, 960, (1, 9))
-    assert "palettegen" in first and "paletteuse" in second
+    assert "palettegen=max_colors=48" in first and "paletteuse" in second
     assert "concat=n=2" in first and "scale=960" in second
     assert make_gifs.parse_overrides(["hero=2"], "speed") == {"hero": 2}
     with pytest.raises(SystemExit):

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -43,12 +44,13 @@ def test_city_assets_allow_edits_and_keep_source_validation(
         {"url": "/v1/studio/demo-assets/" + name, "asset_id": "city/" + name}
         for name in sorted(names[:2])
     ]
-    document = {
+    document: dict[str, Any] = {
+        "run": {"pacing": "fast"},
         "engines": {
             "decisions": {"config": {}},
             "capture": {"config": {"renderer": {"browser_executable": "/browser"}}},
             "capture_bridge": {"config": {}},
-        }
+        },
     }
     demo.configure_console(document, source)
     assert (
