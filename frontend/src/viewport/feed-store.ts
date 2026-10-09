@@ -9,6 +9,7 @@ interface Lifetime { created: FeedCommit; removed?: FeedCommit }
 
 /** Retained replay journal with a separate committed cut and display sample index. */
 export class FeedStore {
+  revision = 0;
   readonly commits: FeedCommit[] = [];
   readonly entities = new Map<string, EntityState>();
   readonly edges = new Map<string, FeedCommit['edges'][number]>();
@@ -40,7 +41,7 @@ export class FeedStore {
       if (!active.delete(entityId(key))) throw Error(`Removal refers to absent entity: ${entityId(key)}`);
     }
     this.ingestedEntities = active;
-    this.commits.push(commit);
+    this.commits.push(commit); this.revision++;
     for (const key of commit.created) this.lifetimes.set(entityId(key), { created: commit });
     // Retraction followed by a fact in one transaction denotes a discontinuity.
     for (const item of commit.retracted) this.buffer(item.entity, item.fieldId).retract(commit.at.ns, commit.commitIndex);
@@ -68,6 +69,7 @@ export class FeedStore {
       else high = mid;
     }
     const target = low - 1;
+    if (target !== this.cursor || this.cutNs !== at || this.cutIndex !== commitIndex) this.revision++;
     if (target < this.cursor) {
       this.entities.clear(); this.edges.clear(); this.messages.length = this.receipts.length = 0; this.cursor = -1;
     }

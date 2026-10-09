@@ -4,6 +4,8 @@ import type { EntityKey, RunHeader } from '../contracts/viewer-feed';
 import type { FeedStore } from './feed-store';
 import { entityId } from './bindings';
 import { Assets, disposeObject, type AssetOptions } from './assets';
+import { StaticOcclusion } from './occlusion';
+import { GpuTimer } from './gpu-timer';
 import { EntityLayer } from './entities';
 import { pipeline, PRESETS, type Quality } from './pipeline';
 import { setupScene } from './scene';
@@ -42,11 +44,19 @@ export class Viewport {
   private followOffset = new T.Vector3(22, 14, 24);
   private environment?: T.WebGLRenderTarget;
   private staticRoot = new T.Group();
+  private occlusion = new StaticOcclusion();
   private origin = new T.Vector3();
   private framed = false;
   private director = new CameraDirector();
   private authoredCamera = false;
   private manualQuality = false;
+  private profile = new URLSearchParams(location.search).has('perf');
+  private gpuTimer?: GpuTimer;
+  private revision = 0;
+  private lastFrame = '';
+  private renderedFrames = 0;
+  private shadowKey = '';
+  private shadowRevision = -1;
   private assetIssues = new Set<string>();
   constructor(private container: HTMLElement, header: RunHeader, private options: ViewportOptions = {}) {
     const canvas = document.createElement('canvas');
@@ -54,7 +64,9 @@ export class Viewport {
     if (!context) throw Error('WebGL2 is unavailable in this browser');
     this.renderer = new T.WebGLRenderer({ canvas, context });
     this.renderer.outputColorSpace = T.SRGBColorSpace; this.renderer.toneMapping = T.NoToneMapping;
-    this.renderer.info.autoReset=false; this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = T.PCFSoftShadowMap;
+    this.renderer.info.autoReset=false; this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.autoUpdate = false; this.renderer.shadowMap.type = T.PCFSoftShadowMap;
+    if(this.profile)this.gpuTimer = new GpuTimer(context);
+    this.container.dataset.gpuTimer = this.gpuTimer?.available ? 'available' : 'unavailable';
     this.container.append(canvas); this.container.dataset.backend = 'webgl2';
     const info = context.getExtension('WEBGL_debug_renderer_info');
     this.container.dataset.gpu = info ? context.getParameter(info.UNMASKED_RENDERER_WEBGL) : context.getParameter(context.RENDERER);
@@ -73,29 +85,30 @@ export class Viewport {
     if(presentation?.camera){this.camera.position.fromArray(presentation.camera.position);this.controls.target.fromArray(presentation.camera.target);this.authoredCamera=true;}
     if(presentation){
       if(presentation.attribution)container.dataset.attribution=presentation.attribution;
-      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.staticRoot.add(object);this.lighting.grid.visible=false;if(object.name==='city')container.dataset.city='loaded';},this.status)
+      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);this.occlusion.setObjects(this.staticRoot.children);this.lighting.grid.visible=false;if(object.name==='city')container.dataset.city='loaded';},this.status)
         .catch(error=>{if(!this.disposed)this.status(String(error));});
       if(presentation.hdri)void this.assets.hdri(presentation.hdri,this.renderer).then(environment=>{
-        if(this.disposed){environment.dispose();return;}this.environment=environment;this.scene.environment=environment.texture;container.dataset.ibl='hdri';
+        if(this.disposed){environment.dispose();return;}this.environment=environment;this.scene.environment=environment.texture;this.revision++;container.dataset.ibl='hdri';
       }).catch(error=>{if(!this.disposed){container.dataset.ibl='analytic-sky';this.status(`HDRI unavailable: ${String(error)} · analytic sky IBL active`);}});
     }else this.status('Base scene · no city selected');
   }
   private status = (message: string) => {
     if(this.disposed)return;
+    this.revision++;
     if(message.includes('unavailable'))this.assetIssues.add(message);
     const combined=[...new Set([...this.assetIssues,message])].join(' | ');
     this.container.dataset.assetStatus=combined;
     if(message.startsWith('Models loaded'))this.container.dataset.models='loaded';
     this.options.onStatus?.(combined);
   };
-  setSelection(key?: EntityKey) { this.selected = key; }
+  setSelection(key?: EntityKey) { this.selected = key; this.revision++; }
   setCameraMode(mode: CameraMode) {
-    this.mode = mode; this.controls.enabled = mode === 'orbit'; this.container.dataset.camera=mode;
+    this.revision++; this.mode = mode; this.controls.enabled = mode === 'orbit'; this.container.dataset.camera=mode;
   }
   setQuality(quality: Quality, manual = false) {
     if(manual)this.manualQuality=true;
     if (quality === this.quality) return;
-    this.quality = quality; this.composer.dispose(); this.composer = pipeline(this.renderer, this.scene, this.camera, quality);
+    this.revision++; this.quality = quality; this.composer.dispose(); this.composer = pipeline(this.renderer, this.scene, this.camera, quality);
     this.applyPreset(); this.resize(); this.qualityTime = this.qualityFrames = 0; this.options.onQuality?.(quality);
   }
   private applyPreset() {
@@ -106,8 +119,13 @@ export class Viewport {
   render(store: FeedStore, ns: string, deltaSeconds: number, trails = true) {
     if (this.disposed) return;
     const frameStarted = performance.now();
+    if(this.mode==='orbit')this.controls.update();
+    const frameKey = `${ns}/${store.revision}/${this.revision}/${trails}/${this.camera.position.toArray()}/${this.camera.quaternion.toArray()}/${this.controls.target.toArray()}`;
+    if(this.mode!=='cinematic'&&frameKey===this.lastFrame){this.container.dataset.idle='true';return;}
+    this.lastFrame=frameKey;this.container.dataset.idle='false';
     const chosen = this.mode === 'cinematic' ? this.director.choose(store,ns,deltaSeconds,this.selected) : this.selected;
-    this.staticRoot.updateMatrixWorld(true); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.staticRoot.children);
+    this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion);
+    const entitiesFinished = performance.now();
     if(!this.framed && this.layer.positions.size){
       const bounds=new T.Box3().setFromPoints([...this.layer.positions.values()]),center=bounds.getCenter(new T.Vector3());
       if(!this.authoredCamera){const span=Math.max(100,bounds.getSize(new T.Vector3()).length());this.controls.target.copy(center);this.camera.position.copy(center).add(new T.Vector3(0.7,0.55,0.9).multiplyScalar(span));}
@@ -120,16 +138,40 @@ export class Viewport {
         const orientation=this.layer.orientations.get(entityId(chosen!));offset=new T.Vector3(-4,2.4,5.5);if(orientation)offset.applyQuaternion(orientation);
       }else if(this.mode==='cinematic')offset=this.director.offset();
       this.camera.position.lerp(focus.clone().add(offset),1-Math.exp(-5*deltaSeconds));this.controls.target.copy(focus);this.camera.lookAt(focus);
-    }else this.controls.update();
+    }
     // Rebase all display coordinates together once the camera leaves a 2 km cell.
     if(Math.hypot(this.controls.target.x,this.controls.target.z)>2000){
       const shift=this.controls.target.clone();shift.y=0;this.origin.add(shift);this.camera.position.sub(shift);this.controls.target.sub(shift);
       this.staticRoot.position.copy(this.origin).negate();
-      this.layer.update(store,ns,this.camera,chosen,trails,this.origin,this.staticRoot.children);
+      this.staticRoot.updateMatrixWorld(true);this.occlusion.translate(shift.clone().negate());this.revision++;
+      this.layer.update(store,ns,this.camera,chosen,trails,this.origin,this.occlusion);
     }
     this.lighting.update(this.controls.target);
     this.composer.outline.selection.set(this.layer.selection.length?this.layer.selection:this.layer.ring.visible?[this.layer.ring]:[]);
-    this.renderer.info.reset(); this.composer.render(deltaSeconds); this.container.dataset.rendered='true';
+    const updateFinished = performance.now();
+    const shadowKey = this.lighting.sun.position.toArray().join(',');
+    if(this.layer.transformsChanged||shadowKey!==this.shadowKey||this.shadowRevision!==this.revision){
+      this.renderer.shadowMap.needsUpdate=true;this.shadowKey=shadowKey;this.shadowRevision=this.revision;
+    }
+    this.gpuTimer?.begin();
+    this.renderer.info.reset(); this.composer.render(deltaSeconds);
+    this.gpuTimer?.end();
+    if(this.gpuTimer?.milliseconds!==undefined){
+      this.container.dataset.gpuMs=String(this.gpuTimer.milliseconds);
+      this.container.dataset.gpuSample=String(this.gpuTimer.serial);
+    }else{delete this.container.dataset.gpuMs;delete this.container.dataset.gpuSample;}
+    this.container.dataset.renderCount=String(++this.renderedFrames);
+    const renderFinished = performance.now();
+    this.container.dataset.updateMs=String(updateFinished-frameStarted);
+    this.container.dataset.labelsMs=String(this.layer.labelsMs);
+    this.container.dataset.entitiesMs=String(entitiesFinished-frameStarted);
+    this.container.dataset.submitMs=String(renderFinished-updateFinished);
+    if(this.profile){
+      performance.measure('viewport.update',{start:frameStarted,end:updateFinished});
+      performance.measure('viewport.submit',{start:updateFinished,end:renderFinished});
+      performance.clearMeasures('viewport.update');performance.clearMeasures('viewport.submit');
+    }
+    this.container.dataset.rendered='true';
     this.container.dataset.spatialCount=String(this.layer.positions.size);
     this.container.dataset.drawCalls=String(this.renderer.info.render.calls);
     this.container.dataset.triangles=String(this.renderer.info.render.triangles);
@@ -149,6 +191,7 @@ export class Viewport {
     }
   }
   private resize = () => {
+    this.revision++;
     const width=Math.max(1,this.container.clientWidth),height=Math.max(1,this.container.clientHeight);
     this.camera.aspect=width/height;this.camera.updateProjectionMatrix();this.renderer.setSize(width,height);this.composer.setSize(width,height);
   };
@@ -163,7 +206,7 @@ export class Viewport {
   dispose(){
     this.disposed=true;this.abort.abort();this.observer.disconnect();
     this.renderer.domElement.removeEventListener('pointerdown',this.pointerDown);this.renderer.domElement.removeEventListener('pointerup',this.pointerUp);
-    this.controls.dispose();this.layer.dispose();this.assets.dispose();disposeObject(this.scene);this.lighting.dispose();this.environment?.dispose();
-    this.composer.dispose();this.renderer.dispose();this.renderer.domElement.remove();this.overlay.remove();
+    this.controls.dispose();this.occlusion.dispose();this.layer.dispose();this.assets.dispose();disposeObject(this.scene);this.lighting.dispose();this.environment?.dispose();
+    this.gpuTimer?.dispose();this.composer.dispose();this.renderer.dispose();this.renderer.domElement.remove();this.overlay.remove();
   }
 }

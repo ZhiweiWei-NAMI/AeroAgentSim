@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { EntityKey } from '../contracts/viewer-feed';
 import type { FeedStore } from './feed-store';
 import type { PlaybackClock } from './clock';
@@ -20,7 +20,7 @@ export function ViewportView(props: Props) {
   });
   const [quality,setQuality]=useState<Quality>(props.quality),[fps,setFps]=useState<number>(),[status,setStatus]=useState(''),[collapsed,setCollapsed]=useState(false);
   useEffect(()=>{
-    let frame=0,last=performance.now(),notify=last,lastSeek='';
+    let frame=0,last=performance.now(),notify=last,lastSeek='',lastNotified='';
     try{
       viewport.current=new Viewport(root.current!,props.store.header,{
         quality:props.quality,onSelect:key=>current.current.onSelect(key),onError:error=>current.current.onError(error),onStatus:setStatus,
@@ -34,7 +34,7 @@ export function ViewportView(props: Props) {
           const seekKey=`${p.clock.ns}/${cut}/${p.store.commits.length}`;
           if(seekKey!==lastSeek){p.store.seek(p.clock.ns,cut);lastSeek=seekKey;}
           viewport.current!.render(p.store,p.clock.ns,delta,p.trails);
-          if(now-notify>100){p.onTick();notify=now;}frame=requestAnimationFrame(animate);
+          if(now-notify>100&&seekKey!==lastNotified){p.onTick();notify=now;lastNotified=seekKey;}frame=requestAnimationFrame(animate);
         }catch(error){current.current.onError(error);}
       };frame=requestAnimationFrame(animate);
     }catch(error){props.onError(error);}
@@ -43,7 +43,7 @@ export function ViewportView(props: Props) {
   useEffect(()=>{viewport.current?.setSelection(props.selected);},[props.selected]);
   useEffect(()=>{viewport.current?.setCameraMode(mode ?? props.mode);},[props.mode,mode]);
   useEffect(()=>{viewport.current?.setQuality(props.quality);},[props.quality]);
-  const events=props.store.commits.flatMap(commit=>commit.messages.filter(message=>message.kind==='event'&&(!props.selected||message.subjects?.some(key=>key.id===props.selected!.id&&key.generation===props.selected!.generation))));
+  const events=useMemo(()=>props.store.commits.flatMap(commit=>commit.messages.filter(message=>message.kind==='event'&&(!props.selected||message.subjects?.some(key=>key.id===props.selected!.id&&key.generation===props.selected!.generation)))),[props.store,props.store.commits.length,props.selected]);
   const duration=BigInt(props.clock.end)-BigInt(props.store.header.start.ns);
   return <>
     <div className="viewport-canvas" data-testid="viewport" ref={root} aria-label="Simulation viewport" />
