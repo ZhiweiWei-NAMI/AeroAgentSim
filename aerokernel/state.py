@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, overload
 
 from .engine import Batch, Partition
 from .errors import KernelError
-from .ids import EntityRef, FieldKey, ItemRef
+from .ids import EntityRef, FieldKey, FramePrefix, ItemRef
 from .queues import TimerQueue, WorkQueue
 from .storage import AppendList, Overlay, RecordLog
 from .time import Cut, Instant, Interval, Stamp
@@ -268,7 +268,8 @@ class Store:
         self.writers: Overlay[FieldKey, str] = Overlay()
         self.controllers: Overlay[EntityRef, str] = Overlay()
         self.facts: Overlay[FieldKey, FactVersions] = Overlay()
-        self.frames: Overlay[str, tuple[RecordedFrame, ...]] = Overlay()
+        self.frames: Overlay[str, Sequence[RecordedFrame]] = Overlay()
+        self.frame_indices: Overlay[str, AppendList[int]] = Overlay()
         self.edges: Overlay[str, tuple[Edge, ...]] = Overlay()
         self.obligations: Overlay[str, tuple[Obligation, ...]] = Overlay()
         self.relation_edges: Overlay[str, frozenset[str]] = Overlay()
@@ -303,6 +304,7 @@ class Store:
         self.pending_wall_clock_hold: int | None = None
         self.faulted = False
         self.max_microsteps = 1024
+        self.allow_frame_prefix = False
 
     @property
     def cut(self) -> Cut:
@@ -322,6 +324,7 @@ class Store:
             "controllers",
             "facts",
             "frames",
+            "frame_indices",
             "edges",
             "obligations",
             "relation_edges",
@@ -586,6 +589,15 @@ class StateView:
     ) -> tuple[RecordedFrame, ...]:
         """Read recorded context frames only, capped at the issued knowledge cut."""
         cut = self._cut(known_at)
+        self._sample_access(context_id)
+        return tuple(
+            row
+            for row in self._store.frames.get(context_id, ())
+            if row.version.record_index <= cut.index and row.available <= cut.instant
+        )
+
+    def _sample_access(self, context_id: str) -> None:
+        """Validate declared context authority without walking its history."""
         if context_id not in self._store.sample_specs:
             raise KernelError("SAMPLE_CONTEXT", "unknown sampled context")
         if self.partition is not None:
@@ -595,10 +607,26 @@ class StateView:
                 spec is None or context_id not in spec.frame_inputs
             ):
                 raise KernelError("READ_UNDECLARED", "undeclared sampled frame read")
-        return tuple(
-            row
-            for row in self._store.frames.get(context_id, ())
-            if row.version.record_index <= cut.index and row.available <= cut.instant
+
+    def sample_frame_prefix(
+        self, context_id: str, known_at: Cut | None = None
+    ) -> FramePrefix:
+        """Reference the exact visible frame sequence without materializing it."""
+        cut = self._cut(known_at)
+        self._sample_access(context_id)
+        rows = self._store.frames.get(context_id, ())
+        indices = self._store.frame_indices.get(context_id)
+        if indices is None:
+            # Remote projections contain the exact committed frame prefix and
+            # reconstruct this local index without changing the RPC protocol.
+            count = sum(
+                row.version.record_index <= cut.index and row.available <= cut.instant
+                for row in rows
+            )
+        else:
+            count = bisect_right(indices, cut.index)
+        return FramePrefix(
+            context_id, count, rows[count - 1].version if count else None
         )
 
     def relations(

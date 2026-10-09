@@ -532,3 +532,94 @@ exactly the newly appended field; arbitrary missing fields remain invalid.
 New stream records under an old header and unsupported journal versions fail.
 Historical replay performs no lateness reinterpretation, inferred progress,
 wall-clock waits or engine execution.
+
+## 15. v0.2 additive amendment: compact journals and sampled cause prefixes (K5)
+
+This amendment is normative. Execution, evidence, ordering, atomic publication,
+input authority and clock semantics remain those of sections 1–14. The new codec
+is explicitly selected with `Journal(codec="positional-deflate")`; `"json"`
+remains the default and continues to issue the existing 1.2/1.3 bytes. Existing
+1.1, 1.2 and 1.3 journals remain admissible without rewriting.
+
+### 15.1 Journal 2.0 admission and lossless encoding
+
+The header is ordinary canonical JSON, with `major=2`, `minor=0`,
+`codec="positional-deflate/v1"`, and `semantic_version=2` or `3`. The remaining
+header fields are exactly the corresponding 1.2/1.3 declaration. Unknown codec,
+semantic version, fields or versions MUST fail admission. A file cannot mix
+legacy records and compressed frames. The serializer and resource policies stay
+pinned in the header.
+
+Every subsequent LF-terminated line has exactly `type`, `index`, `data`, and
+optionally `phase`. `data` is standard padded base64 of a zlib stream, compression
+level 1, containing UTF-8 positional JSON. The outer coordinates MUST match the
+expanded record. Each frame is independent: no preceding compressor state,
+engines, evaluators, RNG or clocks are needed to decode it.
+
+The positional grammar is unambiguous for every portable value: scalars remain
+scalars; lists are `[0, ...members]`; dictionaries are
+`[1, [key, value], ...]` in sorted key order. Closed kernel record shapes use
+`[2, type_name, ...fields]` in the fixed field order in `journal_codec._SHAPES`.
+That table is part of this codec version and MUST NOT change when adding future
+Python fields. Other dictionary shapes retain the dictionary grammar, including
+payloads containing literal `$type`, `fields` or tag-like lists. No portable
+payload is interpreted as a causal instruction. Positional records remove
+repeated field names; DEFLATE references repeated byte sequences inside the
+frame, including repeated notifications, messages and cause sequences. Every
+value and every occurrence of a cause remains recoverable. The codec does not
+introduce cross-record message or sampled-input delta references.
+
+The encoded line and decompressed positional bytes MUST each fit `frame_bytes`.
+Decompression MUST stop before exceeding that bound and reject unfinished or
+concatenated streams. Expanded semantic trees MUST satisfy the declared integer,
+Unicode, finite-value and nesting constraints. Positional parsing uses the
+explicit derived depth ceiling `2 * nesting_depth + 2`; semantic expansion then
+rechecks the declared depth. Canonical generation is deterministic for identical
+inputs under the pinned serializer/compressor implementation; cross-runtime zlib
+bitwise equivalence is not promised. Semantic replay checks type-sensitive
+normalized equality and reproduces the same atomic effects as legacy replay.
+
+### 15.2 Exact ordered frame-prefix causes
+
+`FramePrefix(context_id, count, through)` denotes the first `count` committed
+frames of that sampled context in publication order, ending at item coordinate
+`through`. The empty prefix has `count=0, through=None`. Nonempty prefixes require
+a typed boundary. `StateView.sample_frame_prefix(context_id, known_at=None)`
+issues the exact prefix visible at the permitted knowledge cut, under the same
+context read declarations as `sample_frames`.
+
+Prefixes are admitted as proposal causes only under journal 2.0. A prefix MUST
+reference a declared readable context, fit the invocation read cut, and have
+exactly the recorded item at its stated boundary. Authority is checked once per
+partition/prefix in a candidate. Expansion replaces each prefix in place with
+all of its frame version ItemRefs; explicit causes before/after it keep their
+positions. Repeated prefixes repeat their entire sequences. Expansion MUST NOT
+sort, deduplicate, replace the sequence by a transitive graph, or omit unresolved
+frames. Raw proposals retain their prefix; resolved effects retain the complete
+expanded cause sequence. LocalCause rules remain unchanged. This implementation
+therefore reduces authority checks but still materializes resolved causes;
+constant-size resolved provenance requires a further representation amendment.
+
+### 15.3 Indexed authority, streaming and committed file prefixes
+
+Cause authority indexes retain only ownership, kind, declaration keys and
+coordinates. They MUST be derived from validated effects, preserve all scope,
+lag, dispatch and future-reference checks, and remain independent of the bounded
+payload decode cache. Removing payloads from this index does not remove them from
+the WAL or diagnostic/evidence access. Divergent candidate suffixes MUST NOT
+reuse another candidate's authority. Sample histories use immutable issued
+prefixes and monotonically indexed publication coordinates.
+
+`journal.iter_records(bytes_or_path)` decodes one wire record at a time;
+`compact.expand_record` expands its fact rows for projections. This iterator
+checks framing/value/codec validity; `journal.replay` additionally validates all
+transaction semantics. `Kernel.iter_records()` yields detached semantic records
+from the committed prefix captured when iteration starts. Path replay MUST stream
+rather than first loading or decoding the entire journal. Recovery still discards
+only the unterminated final line, never a corrupt complete line.
+
+File-backed RecordLog prefixes reference acknowledged byte ranges and pin their
+hashes; subsequent appends cannot expose an unacknowledged suffix. Uncached reads of changed
+committed ranges MUST fail; decoded cache entries retain acknowledged values. The backing journal must remain available while
+issued views are used. WAL flush/fsync precedes visibility as before, and the
+metadata/file indexes are not independently authoritative journal records.

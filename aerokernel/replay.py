@@ -14,7 +14,7 @@ from .messages import Actions
 from .scheduling import build_wave, wave_intents
 from .state import Store
 from .time import Cut, Instant
-from .values import ResourceBudget, canonical_json
+from .values import ResourceBudget, canonical_json, typed_equal
 
 if TYPE_CHECKING:
     from .coordinator import Kernel
@@ -26,6 +26,26 @@ def from_header(header: dict[str, Any]) -> Kernel:
     cls = Kernel
     from .binding import BindingManifest
     from .registry import MemoryRegistry
+
+    if header.get("major") == 2:
+        from .journal_codec import CODEC
+
+        if (
+            type(header.get("major")) is not int
+            or type(header.get("minor")) is not int
+            or header["minor"] != 0
+            or header.get("codec") != CODEC
+            or type(header.get("semantic_version")) is not int
+            or header["semantic_version"] not in {2, 3}
+        ):
+            raise KernelError("JOURNAL_HEADER", "unsupported journal 2.0 codec")
+        legacy = dict(header)
+        legacy["major"], legacy["minor"] = 1, legacy.pop("semantic_version")
+        del legacy["codec"]
+        kernel = from_header(legacy)
+        kernel.header = header
+        kernel._store.allow_frame_prefix = True
+        return kernel
 
     required = {
         "type",
@@ -267,7 +287,7 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
     elif kind in {"live_ingress", "live_ingress_rejection"}:
         from .ingress import reserve_live
 
-        legacy = self.header["minor"] < 3
+        legacy = self.header.get("semantic_version", self.header["minor"]) < 3
         stream_id = "default" if legacy else record["stream_id"]
         policy = self._policy(stream_id)
         if decode_record(record["policy"]) != policy:
@@ -333,7 +353,10 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
         )
         state.records.append(expected)
         state.cuts.append(Cut(record["index"], instant))
-    elif kind in {"watermark", "source_progress"} and self.header["minor"] == 3:
+    elif (
+        kind in {"watermark", "source_progress"}
+        and self.header.get("semantic_version", self.header["minor"]) == 3
+    ):
         stream_id = record["stream_id"]
         policy = self._policy(stream_id)
         watermark = record["watermark_ns"]
@@ -410,7 +433,10 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
         state.cuts.append(Cut(record["index"], instant))
     elif kind == "seal":
         state = self._store.clone()
-        if self.header["minor"] == 3 and instant != state.cut.instant:
+        if (
+            self.header.get("semantic_version", self.header["minor"]) == 3
+            and instant != state.cut.instant
+        ):
             raise KernelError("JOURNAL_SEAL", "seal must cite the settled instant")
         if any(w.eligible.ns <= instant.ns for w in state.work) or any(
             i["status"] == "pending" for i in state.intents.values()
@@ -567,17 +593,29 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
         state.cuts.append(Cut(record["index"], instant))
     else:
         raise KernelError("JOURNAL_RECORD", "unknown record type")
-    actual_bytes = canonical_json(record, self.budget)
     historical = expected if "fact_tables" in record else expand_record(expected)
-    if canonical_json(historical, self.budget) != actual_bytes:
+
+    def equal(left: dict[str, Any], right: dict[str, Any]) -> bool:
+        if self.header["major"] == 2:
+            return typed_equal(left, right)
+        return canonical_json(left, self.budget) == canonical_json(right, self.budget)
+
+    if not equal(historical, record):
         # Both issued encodings are lossless and fully reproduced from validated
         # proposals: historical inline operations and standalone item references.
         expected = compact_operations(expected)
-        if canonical_json(expected, self.budget) != actual_bytes:
+        if not equal(expected, record):
             raise KernelError(
                 "JOURNAL_SEMANTICS", "record differs from normalized legal effects"
             )
-    state.records.freeze_tail(canonical_json(expected, self.budget))
+    if self.header["major"] == 2:
+        from .journal_codec import encode_frame
+
+        state.records.freeze_tail(
+            encode_frame(compact_operations(expected), self.budget)
+        )
+    else:
+        state.records.freeze_tail(canonical_json(expected, self.budget))
     if state.actions.states.writes:
         state.action_snapshots[state.cut.index] = state.actions
         state.action_snapshot_indices.append(state.cut.index)

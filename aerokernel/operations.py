@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from .ids import EntityRef, FieldKey, ItemRef, LocalCause
+from .ids import EntityRef, FieldKey, FramePrefix, ItemRef, LocalCause
 from .time import Cut, Instant, Interval, Stamp
 
 
@@ -15,7 +15,7 @@ class Create:
     """Create a generation under its separately bound lifecycle controller."""
 
     ref: EntityRef
-    causes: tuple[ItemRef | LocalCause, ...] = ()
+    causes: tuple[ItemRef | LocalCause | FramePrefix, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -23,8 +23,8 @@ class Remove:
     """Remove a generation after all explicit cleanup acknowledgments."""
 
     ref: EntityRef
-    cleanup_refs: tuple[ItemRef | LocalCause, ...] = ()
-    causes: tuple[ItemRef | LocalCause, ...] = ()
+    cleanup_refs: tuple[ItemRef | LocalCause | FramePrefix, ...] = ()
+    causes: tuple[ItemRef | LocalCause | FramePrefix, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -42,7 +42,7 @@ class FactWrite:
     value: object
     acquired: Stamp
     valid: Interval
-    causes: tuple[ItemRef | LocalCause, ...] = ()
+    causes: tuple[ItemRef | LocalCause | FramePrefix, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -52,7 +52,7 @@ class RetractFact:
     key: FieldKey
     valid: Interval
     reason: str
-    causes: tuple[ItemRef | LocalCause, ...] = ()
+    causes: tuple[ItemRef | LocalCause | FramePrefix, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -62,7 +62,7 @@ class ScheduleTimer:
     timer_id: str
     due: Instant
     payload: object
-    causes: tuple[ItemRef | LocalCause, ...] = ()
+    causes: tuple[ItemRef | LocalCause | FramePrefix, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -96,7 +96,7 @@ class AssertEdge:
     target: EntityRef
     valid: Interval
     acquired: Stamp
-    causes: tuple[ItemRef | LocalCause, ...] = ()
+    causes: tuple[ItemRef | LocalCause | FramePrefix, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -104,7 +104,7 @@ class CloseEdge:
     """End an already started edge exactly at publication."""
 
     edge_id: str
-    causes: tuple[ItemRef | LocalCause, ...] = ()
+    causes: tuple[ItemRef | LocalCause | FramePrefix, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -112,7 +112,7 @@ class CancelEdge:
     """Cancel an edge not yet started, including equality at publication."""
 
     edge_id: str
-    causes: tuple[ItemRef | LocalCause, ...] = ()
+    causes: tuple[ItemRef | LocalCause | FramePrefix, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -124,7 +124,7 @@ class ActivateObligation:
     direction: str
     endpoint_ref: EntityRef
     valid: Interval
-    causes: tuple[ItemRef | LocalCause, ...] = ()
+    causes: tuple[ItemRef | LocalCause | FramePrefix, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -132,7 +132,7 @@ class EndObligation:
     """End a started obligation at publication, never backdating."""
 
     obligation_id: str
-    causes: tuple[ItemRef | LocalCause, ...] = ()
+    causes: tuple[ItemRef | LocalCause | FramePrefix, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -140,7 +140,7 @@ class CancelObligation:
     """Cancel an obligation whose interval has not started."""
 
     obligation_id: str
-    causes: tuple[ItemRef | LocalCause, ...] = ()
+    causes: tuple[ItemRef | LocalCause | FramePrefix, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -154,7 +154,7 @@ class SampleFrame:
     clocks: Mapping[str, tuple[str, str]]
     result: object
     sources: Mapping[str, str]
-    causes: tuple[ItemRef | LocalCause, ...] = ()
+    causes: tuple[ItemRef | LocalCause | FramePrefix, ...] = ()
 
     def __post_init__(self) -> None:
         for name in ("bindings", "clocks", "sources"):

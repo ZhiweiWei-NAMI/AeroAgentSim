@@ -94,6 +94,27 @@ class LocalCause:
         _nonnegative(self.index)
 
 
+@dataclass(frozen=True)
+class FramePrefix:
+    """Exact ordered first ``count`` frames of one context, ending at ``through``.
+
+    A prefix expands in place in a cause sequence. Repeating it repeats every
+    member; neither expansion nor validation removes duplicates.
+    """
+
+    context_id: str
+    count: int
+    through: ItemRef | None
+
+    def __post_init__(self) -> None:
+        validate_text(self.context_id)
+        _nonnegative(self.count)
+        if (self.count == 0) != (self.through is None) or (
+            self.through is not None and not isinstance(self.through, ItemRef)
+        ):
+            raise KernelError("CAUSE_PREFIX", "prefix count and boundary disagree")
+
+
 def message_id(
     run_id: str, epoch: str, source_kind: str, source_id: str, sequence: int
 ) -> str:

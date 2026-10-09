@@ -877,3 +877,43 @@ complete measured workloads and workspace-local temporary files. All final comma
 completion and journal byte counts, never extrapolated throughput. The 100/1000
 benchmarks and command burst retain their pre-fix journal hashes: the repairs
 preserve these conforming offline workloads' recorded behavior.
+
+## K5: live workload performance and journal 2.0
+
+K5 adds an opt-in positional/DEFLATE codec, exact ordered `FramePrefix` proposal
+causes, cause-authority metadata independent of the payload LRU, append-prefix
+sample histories, streaming Path replay, `journal.iter_records`,
+`Kernel.iter_records`, and hash-pinned file-backed RecordLog ranges. Legacy
+journal generation remains the default; 1.x replay stays supported. No engine,
+clock, ordering or evidence path is removed. Section 15 of DESIGN is normative.
+
+The platform harness is unchanged. A kernel-workspace wrapper selects only
+`Journal(codec="positional-deflate")`; its measurements are therefore explicitly
+opt-in codec measurements. The read-only platform still enumerates historical
+Q6 causes. Resolved causes are still materialized, so this change does not claim
+bounded provenance cost or achievement of all live-operation targets. Exact
+measurements, gates and the remaining representation change are recorded in
+[platform-notes/K5.md](platform-notes/K5.md). Raw outputs reside in
+`.kernel-agents/k5/`.
+
+Three concurrent WorkBuddy GLM review sessions completed and were inspected:
+`01eb6727-2ccc-4705-945f-f28fa0d0a5f5` (codec),
+`b106f033-c6d2-41df-8231-519857bf1513` (authority index), and
+`7fb10258-43dc-4d26-988f-8258aefd8b4d` (prefix).
+The workspace-local profile pins `workbuddy/glm-5.3-flash`, output budget 131072,
+without effort. Suggestions that replaced an ordered cause sequence with only a
+boundary or assumed fact batches still duplicate full proposals were rejected.
+A streaming writer initially hit its scratch sandbox boundary; its later staged
+implementation/tests were reviewed. The primary agent supplied the streaming
+implementation after finding copying and truncated-tail issues; reviewed staged
+tests were adapted to the public reader interface. No unreviewed GLM source was
+integrated.
+
+Final K5 validation: 654 standard tests passed (2 marked perf skips), coverage
+94.94694%, ruff/format/strict mypy passed; the platform suite ran once with
+622 passed, 2 skipped, 6 deselected. Dense 1000 is +2.26% and command burst 1000
+is −28.87%; dense 100 is +5.04% and narrowly fails the strict regression gate.
+The 30-second live measurement misses all requested performance targets; replay
+was interrupted after at least 1,155 seconds without a completed measurement.
+See K5.md for the measured limits and next representation amendment. No complete
+live-performance acceptance is claimed.

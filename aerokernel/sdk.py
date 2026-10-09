@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from .engine import Batch, Horizon, Partition, RunContext
 from .errors import KernelError
-from .ids import EntityRef, ItemRef, LocalCause
+from .ids import EntityRef, FramePrefix, ItemRef, LocalCause
 from .ingress import IngressReceipt
 from .messages import (
     CancelDecision,
@@ -152,7 +152,7 @@ class SimpleEngine:
 
 
 T = TypeVar("T")
-Cause = ItemRef | LocalCause
+Cause = ItemRef | LocalCause | FramePrefix
 
 
 @dataclass(frozen=True)

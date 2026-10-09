@@ -9,9 +9,9 @@ from .errors import (
     ResourceLimit,
     SynchronizationDeadlock,
 )
-from .ids import EntityRef, FieldKey, ItemRef, LocalCause
+from .ids import EntityRef, FieldKey, FramePrefix, ItemRef, LocalCause
 from .ingress import IngressPolicy, IngressReceipt, IngressStream
-from .journal import Journal, replay
+from .journal import Journal, iter_records, replay
 from .messages import (
     ActionState,
     CancelDecision,
@@ -114,6 +114,7 @@ __all__ = [
     "Feedback",
     "FieldDescriptor",
     "FieldKey",
+    "FramePrefix",
     "Horizon",
     "Instant",
     "IngressPolicy",
@@ -122,6 +123,7 @@ __all__ = [
     "Interval",
     "ItemRef",
     "Journal",
+    "iter_records",
     "Kernel",
     "KernelError",
     "LifecycleReady",

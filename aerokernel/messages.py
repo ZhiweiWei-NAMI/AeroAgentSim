@@ -7,13 +7,13 @@ from dataclasses import dataclass, replace
 from typing import Any, cast
 
 from .errors import KernelError
-from .ids import FieldKey, ItemRef, LocalCause, validate_text
+from .ids import FieldKey, FramePrefix, ItemRef, LocalCause, validate_text
 from .registry import MemoryRegistry
 from .storage import Overlay
 from .time import Instant, Stamp
 from .values import FrozenValue, ResourceBudget, freeze, normalize, thaw
 
-Cause = ItemRef | LocalCause
+Cause = ItemRef | LocalCause | FramePrefix
 
 
 @dataclass(frozen=True)

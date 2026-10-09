@@ -10,7 +10,7 @@ from typing import Any
 from .codec import decode_record, encode
 from .compact import FactRows
 from .errors import KernelError
-from .ids import EntityRef, ItemRef, LocalCause, message_id, validate_text
+from .ids import EntityRef, FramePrefix, ItemRef, LocalCause, message_id, validate_text
 from .messages import (
     CancelDecision,
     Dirty,
@@ -55,6 +55,16 @@ def item_at(store: Store, ref: ItemRef) -> dict[str, Any]:
         raise KernelError("CAUSE_UNKNOWN", "unknown record reference")
     try:
         return store.records.item(ref.record_index - 1, ref.item_index)
+    except IndexError as exc:
+        raise KernelError("CAUSE_UNKNOWN", "unknown item reference") from exc
+
+
+def cause_at(store: Store, ref: ItemRef) -> dict[str, Any]:
+    """Resolve internal authority without expanding a diagnostic payload."""
+    if ref.record_index <= 0 or ref.record_index > len(store.records):
+        raise KernelError("CAUSE_UNKNOWN", "unknown record reference")
+    try:
+        return store.records.cause_item(ref.record_index - 1, ref.item_index)
     except IndexError as exc:
         raise KernelError("CAUSE_UNKNOWN", "unknown item reference") from exc
 
@@ -125,6 +135,7 @@ class Candidate:
             str, tuple[dict[str, Any], Cut, frozenset[ItemRef], set[ItemRef]]
         ] = {}
         self.learned_inboxes: dict[str, dict[str, Any]] = {}
+        self.frame_prefixes: dict[tuple[str, FramePrefix], tuple[ItemRef, ...]] = {}
 
     def add(self, item: dict[str, Any]) -> ItemRef:
         ref = ItemRef(self.index, len(self.items))
@@ -133,13 +144,13 @@ class Candidate:
 
     def cause_refs(
         self,
-        raw: tuple[ItemRef | LocalCause, ...],
+        raw: tuple[ItemRef | LocalCause | FramePrefix, ...],
         local: list[ItemRef],
         intent: dict[str, Any],
     ) -> tuple[ItemRef, ...]:
         if not raw:
             return ()
-        result = []
+        result: list[ItemRef] = []
         partition = intent["partition"]
         context = self.cause_contexts.get(partition)
         if context is None or context[0] is not intent:
@@ -152,7 +163,29 @@ class Candidate:
             self.cause_contexts[partition] = context
         _, read, authorized, validated = context
         for cause in raw:
-            if isinstance(cause, LocalCause):
+            if isinstance(cause, FramePrefix):
+                if not self.before.allow_frame_prefix:
+                    raise KernelError(
+                        "CAUSE_PREFIX", "frame prefixes require journal 2.0"
+                    )
+                cached = self.frame_prefixes.get((partition, cause))
+                if cached is None:
+                    from .state import StateView
+
+                    view = StateView(self.before, read, partition=partition)
+                    visible = view.sample_frame_prefix(cause.context_id)
+                    frame_rows = self.before.frames.get(cause.context_id, ())
+                    if cause.count > visible.count or (
+                        cause.count
+                        and frame_rows[cause.count - 1].version != cause.through
+                    ):
+                        raise KernelError(
+                            "CAUSE_PREFIX", "prefix exceeds visible context history"
+                        )
+                    cached = tuple(frame_rows[i].version for i in range(cause.count))
+                    self.frame_prefixes[partition, cause] = cached
+                result.extend(cached)
+            elif isinstance(cause, LocalCause):
                 if cause.index < 0 or cause.index >= len(local):
                     raise KernelError(
                         "CAUSE_LOCAL", "local cause must precede operation"
@@ -166,9 +199,9 @@ class Candidate:
                     result.append(cause)
                     continue
                 if cause in authorized:
-                    item_at(self.before, cause)
+                    cause_at(self.before, cause)
                 elif cause.record_index <= read.index:
-                    existing = item_at(self.before, cause)
+                    existing = cause_at(self.before, cause)
                     kind = existing.get("kind")
                     if kind in {
                         "enqueue",
@@ -208,7 +241,11 @@ class Candidate:
                             "another producer's emission is not a recipient dispatch",
                         )
                     if kind == "operation" and "version" in existing:
-                        key = decode_record(existing["proposal"]).key
+                        key = (
+                            existing["_key"]
+                            if "_key" in existing
+                            else decode_record(existing["proposal"]).key
+                        )
                         dependencies = dirty_matches(self.before, partition, *key)
                         if (
                             not dependencies
@@ -310,7 +347,7 @@ class Candidate:
                                 read,
                                 partition=partition,
                                 instant=self.instant,
-                            ).sample_frames(proposal.context_id)
+                            )._sample_access(proposal.context_id)
                         elif existing["partition"] != partition:
                             raise KernelError(
                                 "CAUSE_STATE_SCOPE",

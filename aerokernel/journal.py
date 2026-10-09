@@ -12,7 +12,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, BinaryIO, cast
 
 from .errors import KernelError
+from .journal_stream import iter_records
 from .values import ResourceBudget, canonical_json, normalize, parse_json
+
+__all__ = ["Journal", "iter_records", "read_records", "replay", "prefixes"]
 
 if TYPE_CHECKING:
     from .coordinator import Kernel
@@ -27,7 +30,11 @@ class Journal:
         *,
         durability: str = "flush",
         budget: ResourceBudget | None = None,
+        codec: str = "json",
     ) -> None:
+        if codec not in {"json", "positional-deflate"}:
+            raise KernelError("JOURNAL_CODEC", "unsupported journal codec")
+        self.codec = codec
         if durability not in {"flush", "fsync"}:
             raise KernelError("DURABILITY", "unsupported durability policy")
         self.budget = ResourceBudget() if budget is None else budget
@@ -53,7 +60,11 @@ class Journal:
         """A failed append taints the writer and leaves the live prefix unchanged."""
         if self.failed:
             raise KernelError("JOURNAL_TAINTED", "journal has already failed")
-        if trusted_fact_rows:
+        if self.codec == "positional-deflate" and record.get("type") != "header":
+            from .journal_codec import encode_frame
+
+            line = encode_frame(record, self.budget)
+        elif trusted_fact_rows:
             # Only the coordinator supplies this flag, after fact/schema/value
             # validation. Validate the outer codec/tables once; rows reference
             # those validated identities/stamps and normalized detached values.
@@ -255,7 +266,16 @@ def read_records(
         record = parse_json(line, active_budget)
         if not isinstance(record, dict):
             raise KernelError("JOURNAL_RECORD", "record must be an object")
+        if records and records[0].get("major") == 2:
+            from .journal_codec import decode_frame
+
+            record = decode_frame(record, active_budget)
         records.append(record)
+        if len(records) == 1 and record.get("major") == 2:
+            from .journal_codec import CODEC
+
+            if record.get("codec") != CODEC:
+                raise KernelError("JOURNAL_HEADER", "unsupported journal 2.0 codec")
         if len(records) == 1 and budget is None:
             raw_budget = record.get("budget")
             if not isinstance(raw_budget, dict):
@@ -273,12 +293,17 @@ def read_records(
 def replay(data: bytes | Path, *, recover_truncated: bool = False) -> Kernel:
     """Reconstruct a read-only valid prefix without engines, clocks or RNG calls."""
     from .coordinator import Kernel
+    from .journal_stream import RecordReader
 
-    raw = data.read_bytes() if isinstance(data, Path) else data
-    records, incomplete = read_records(raw, recover_truncated=recover_truncated)
-    result = Kernel._from_header(records[0])
-    for record in records[1:]:
-        result._replay_record(record)
+    with RecordReader(data, recover_truncated=recover_truncated) as reader:
+        result = Kernel._from_header(next(reader))
+        for record in reader:
+            result._replay_record(record)
+            if isinstance(data, Path):
+                result._store.records.file_tail(
+                    data, reader.last_offset, reader.last_line
+                )
+        incomplete = reader.incomplete
     result.incomplete = (
         incomplete
         or result._store.faulted

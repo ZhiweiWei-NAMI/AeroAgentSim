@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from .errors import KernelError
 from .ids import EntityRef, ItemRef, validate_text
 from .operations import SampleFrame
+from .storage import AppendList
 from .time import ClockMapping, Instant
 from .values import FrozenValue, freeze
 
@@ -225,7 +226,8 @@ def sample_ready(store: Store, ns: int) -> tuple[str, ...]:
         return ()
     for p in due:
         context = store.sample_partitions[p]
-        if any(row.frame.physical_ns == ns for row in store.frames.get(context, ())):
+        rows = store.frames.get(context, ())
+        if rows and rows[-1].frame.physical_ns == ns:
             raise KernelError(
                 "SAMPLE_CAUSALITY",
                 "input arrived after sampling at this physical time",
@@ -276,17 +278,21 @@ def publish_frame(
         raise KernelError(
             "SAMPLE_PIN", "frame changed pinned identities/sources/clocks"
         )
-    if any(
-        row.frame.physical_ns == op.physical_ns
-        for row in state.frames.get(op.context_id, ())
-    ):
+    prior = state.frames.get(op.context_id, ())
+    if prior and prior[-1].frame.physical_ns == op.physical_ns:
         raise KernelError("SAMPLE_DUPLICATE", "one frame per context and physical time")
     for ref in op.bindings.values():
         state.known(ref, op.cut)
     frozen: FrozenValue = freeze(op.result, candidate.budget)
     frame = replace(op, result=frozen)
     row = RecordedFrame(frame, candidate.instant, partition, out)
-    state.frames[op.context_id] = (*state.frames.get(op.context_id, ()), row)
+    history = prior.fork() if isinstance(prior, AppendList) else AppendList(list(prior))
+    history.append(row)
+    state.frames[op.context_id] = history
+    old_indices = state.frame_indices.get(op.context_id)
+    indices = old_indices.fork() if old_indices is not None else AppendList[int]()
+    indices.append(out.record_index)
+    state.frame_indices[op.context_id] = indices
     candidate.items[out.item_index]["sample_frame"] = encode(row)
     for consumer in state.sample_specs.values():
         if op.context_id not in consumer.frame_inputs:
@@ -318,9 +324,8 @@ def validate_sample_work(store: Store, ns: int) -> None:
     if not store.sample_specs:
         return
     for spec in store.sample_specs.values():
-        if not any(
-            row.frame.physical_ns == ns for row in store.frames.get(spec.context_id, ())
-        ):
+        rows = store.frames.get(spec.context_id, ())
+        if not rows or rows[-1].frame.physical_ns != ns:
             continue
         cone = {*spec.upstream, spec.partition}
         if any(w.eligible.ns == ns and w.recipient in cone for w in store.work):

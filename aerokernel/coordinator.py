@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import platform
 import threading
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from dataclasses import asdict
 from types import MappingProxyType
 from typing import Any
@@ -210,6 +210,13 @@ class Kernel:
         }
         if header["minor"] == 2:
             del header["ingress_streams"]
+        if self.journal.codec == "positional-deflate":
+            from .journal_codec import CODEC
+
+            header["semantic_version"] = header["minor"]
+            header["major"], header["minor"] = 2, 0
+            header["codec"] = CODEC
+            self._store.allow_frame_prefix = True
         self.journal.append(header)
         self.header = header
         self._bound = True
@@ -412,6 +419,10 @@ class Kernel:
         record = compact_operations(record)
         line = self.journal.append(record, trusted_fact_rows="fact_tables" in record)
         state.records.freeze_tail(line)
+        if self.journal._path is not None:
+            state.records.file_tail(
+                self.journal._path, self.journal.acknowledged_bytes - len(line), line
+            )
         if state.actions.states.writes:
             state.action_snapshots[state.cut.index] = state.actions
             state.action_snapshot_indices.append(state.cut.index)
@@ -1248,6 +1259,10 @@ class Kernel:
     def records(self) -> tuple[dict[str, Any], ...]:
         """Detached diagnostic record trees; mutating them cannot alter kernel state."""
         return tuple(self._store.records)
+
+    def iter_records(self) -> Iterator[dict[str, Any]]:
+        """Yield detached records from this committed prefix one at a time."""
+        return iter(self._store.records.fork())
 
     def close(self) -> None:
         """Close engines idempotently and report cleanup errors."""
