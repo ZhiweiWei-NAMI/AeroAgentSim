@@ -12,6 +12,7 @@ EVENTS = tuple(
     for name in (
         *LIFECYCLES,
         "predicate_evaluated",
+        "sampled_evidence",
         "conflict",
         "action_conflict",
         "action_started",
