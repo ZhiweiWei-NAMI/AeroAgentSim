@@ -130,7 +130,7 @@ def test_live_submission_wakes_waiter_and_forces_recomputed_boundary():
         lambda: IngressPolicy(True),
         lambda: IngressPolicy(-1),
         lambda: IngressPolicy(0, lateness="ignore"),
-        lambda: IngressPolicy(0, timeout_s=None),
+        lambda: IngressPolicy(0, timeout_s=0),
         lambda: IngressPolicy(0, timeout_s=True),
         lambda: IngressPolicy(0, speed_ratio=0),
         lambda: IngressPolicy(0, speed_ratio=float("inf")),

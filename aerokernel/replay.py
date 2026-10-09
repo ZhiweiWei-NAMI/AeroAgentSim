@@ -235,6 +235,8 @@ def from_header(header: dict[str, Any]) -> Kernel:
 def replay_record(self: Kernel, record: dict[str, Any]) -> None:
     """Validate and reproduce each atomic record using the same candidate rules."""
 
+    if self._closed:
+        raise KernelError("JOURNAL_AFTER_STOP", "state records follow a stopped prefix")
     if self._store.faulted:
         raise KernelError(
             "JOURNAL_AFTER_FAULT", "state records follow a faulted prefix"
@@ -477,7 +479,7 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
             "physical_ns": instant.ns,
             "items": [],
         }
-    elif kind in {"run_limit", "fault", "cancel"}:
+    elif kind in {"run_limit", "run_stop", "fault", "cancel"}:
         state = self._store.clone()
         if kind == "run_limit":
             if (
@@ -493,6 +495,19 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
                 "instant": encode(instant),
                 "items": [],
                 "limit_ns": record["limit_ns"],
+            }
+        elif kind == "run_stop":
+            if state.pending_intents or state.sealed_ns is None:
+                raise KernelError(
+                    "JOURNAL_RUN_STOP", "stop requires a committed prefix"
+                )
+            state.run_target = None
+            self._closed = True
+            expected = {
+                "type": kind,
+                "index": record["index"],
+                "instant": encode(instant),
+                "items": [],
             }
         elif kind == "fault":
             from .ids import validate_text

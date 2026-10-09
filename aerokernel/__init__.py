@@ -10,7 +10,7 @@ from .errors import (
     SynchronizationDeadlock,
 )
 from .ids import EntityRef, FieldKey, FramePrefix, ItemRef, LocalCause
-from .ingress import IngressPolicy, IngressReceipt, IngressStream
+from .ingress import IngressPolicy, IngressReceipt, IngressStream, IngressWait
 from .journal import Journal, iter_records, replay
 from .messages import (
     ActionState,
@@ -120,6 +120,7 @@ __all__ = [
     "IngressPolicy",
     "IngressReceipt",
     "IngressStream",
+    "IngressWait",
     "Interval",
     "ItemRef",
     "Journal",

@@ -43,9 +43,34 @@ def test_watermark_timeout_happens_before_any_native_or_logical_advance():
         k.run_until(20)
     assert time.monotonic() - before < 1
     assert calls == [] and k._store.sealed_ns == 0
-    assert k.records[-1]["code"] == "WATERMARK_TIMEOUT"
+    assert k.records[-1]["type"] == "run_limit"
+    assert not k._store.faulted
     assert replay(k.journal.bytes).records == k.records
     k.close()
+    assert k.records[-1]["type"] == "run_stop"
+    assert not replay(k.journal.bytes).incomplete
+
+
+def test_unbounded_wait_can_yield_and_resume_without_inventing_a_seal():
+    from aerokernel import IngressWait
+
+    k, calls = make(IngressPolicy(0))
+    observed = []
+
+    def yield_wait(state):
+        observed.append(state)
+        return False
+
+    returned = k.run_until(20, on_wait=yield_wait)
+    assert observed == [IngressWait(20, ("default",))]
+    assert returned.cut == k.view().cut
+    assert k.sealed_ns == 0 and calls == []
+    assert not any(record["type"] == "fault" for record in k.records)
+    k.advance_watermark(20)
+    k.run_until(20)
+    assert k.sealed_ns == 20
+    k.close()
+    assert not replay(k.journal.bytes).incomplete
 
 
 def test_wait_is_not_busy_polled_and_recorded_watermark_releases_it():
