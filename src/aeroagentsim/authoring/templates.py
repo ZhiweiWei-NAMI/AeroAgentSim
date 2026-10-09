@@ -206,3 +206,13 @@ def motion_messages() -> list[dict[str, Any]]:
         }
     )
     return messages
+
+
+def demo_source(name: str) -> Path:
+    """Only repository-shipped demo inputs are importable as templates."""
+    if name != "traffic-accident":
+        raise ValueError("template: unknown demo")
+    source = Path(__file__).resolve().parents[3] / "scenarios" / "demos" / name
+    if not (source / "scenario.yaml").is_file():
+        raise FileNotFoundError("traffic-accident template inputs are not installed")
+    return source

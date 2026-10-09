@@ -95,8 +95,9 @@ export default function AgentConsole() {
   const api = useMemo(() => new RunsApi(apiBase), [apiBase]);
   const id = location.pathname.slice('/agents/'.length);
   const runId = location.pathname.startsWith('/agents/') && id ? decodeURIComponent(id) : undefined;
+  const requestedCut = query.get('cut');
   const mode = query.get('mode') === 'live' ? 'live' : 'replay';
-  const scope = `${apiBase}|${runId ?? ''}|${mode}`;
+  const scope = `${apiBase}|${runId ?? ''}|${mode}|${requestedCut ?? ''}`;
   const decisions = useMemo(() => new Map<string, AgentDecision>(), [scope]);
   const entities = useMemo(() => new Set<string>(), [scope]);
   const problems = useMemo(() => [] as string[], [scope]);
@@ -105,7 +106,7 @@ export default function AgentConsole() {
   const [, redraw] = useState(0);
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState<string>();
-  const suffix = `?api=${encodeURIComponent(apiBase)}&mode=${mode}`;
+  const suffix = `?api=${encodeURIComponent(apiBase)}&mode=${mode}${requestedCut ? `&cut=${encodeURIComponent(requestedCut)}` : ''}${query.get('epoch') ? `&epoch=${encodeURIComponent(query.get('epoch')!)}` : ''}`;
   useEffect(() => {
     if (!runId) return;
     const abort = new AbortController();
@@ -116,6 +117,7 @@ export default function AgentConsole() {
       startNs.current = header.start.ns;
       return feed.subscribe(0, commit => {
         if (abort.signal.aborted) return;
+        if (requestedCut) { const cut = Number(requestedCut); if (!Number.isSafeInteger(cut) || cut < 1) throw Error('Invalid decision inspection cut'); if (commit.commitIndex > cut) return; }
         for (const receipt of commit.receipts) {
           const rows = journalReceipts.get(receipt.commandId) ?? [];
           rows.push({status: receipt.status, result: receipt.result});
@@ -141,10 +143,10 @@ export default function AgentConsole() {
   }, [api, runId, mode, decisions, entities, problems, journalReceipts]);
   if (!runId) return <div style={{ padding: 24 }}><h2>Agent console</h2><Alert type="warning" message="Missing run id: open /agents/<runId>?api=...&mode=live|replay" /></div>;
   const list = [...decisions.values()];
-  const entityLink = (entity: string) => <Link to={`/runs/${encodeURIComponent(runId)}?api=${encodeURIComponent(apiBase)}&entity=${encodeURIComponent(entity)}`}>{entity}</Link>;
+  const entityLink = (entity: string) => <Link to={`/runs/${encodeURIComponent(runId)}${suffix}&entity=${encodeURIComponent(entity)}`}>{entity}</Link>;
   return <div style={{ padding: 24, maxWidth: 980, margin: '0 auto', fontFamily: 'sans-serif' }}>
     <h2 style={{ marginBottom: 4 }}>Agent console</h2>
-    <p><code>{runId}</code> <Tag>{mode}</Tag> <Tag color={error ? 'red' : 'blue'}>{status}</Tag> <Link to={`/runs/${encodeURIComponent(runId)}${suffix}`}>Run viewer</Link> · <Link to={`/agents/${encodeURIComponent(runId)}?api=${encodeURIComponent(apiBase)}&mode=${mode === 'live' ? 'replay' : 'live'}`}>Switch feed mode</Link></p>
+    <p><code>{runId}</code> <Tag>{mode}</Tag>{requestedCut && <Tag>fixed cut {requestedCut}</Tag>} <Tag color={error ? 'red' : 'blue'}>{status}</Tag> <Link to={`/runs/${encodeURIComponent(runId)}${suffix}`}>Run viewer</Link> · <Link to={`/agents/${encodeURIComponent(runId)}?api=${encodeURIComponent(apiBase)}&mode=${mode === 'live' ? 'replay' : 'live'}`}>Switch feed mode</Link></p>
     {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 12 }} />}
     {problems.slice(0, 10).map((problem, index) => <Alert key={index} type="error" showIcon message={problem} style={{ marginBottom: 8 }} />)}
     {problems.length > 10 && <p>{problems.length - 10} more record problems hidden.</p>}
