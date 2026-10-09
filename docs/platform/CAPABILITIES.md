@@ -181,6 +181,7 @@ semantics. P5-F and P7b are concurrent: their unverified additions stay pending.
 
 | Legacy capability | Status / new path or milestone | Verification / limit |
 | --- | --- | --- |
+| Live source ingress for `real_time` engines (review B.9/F P0) | replaced-by S/scenario/loader.py per-engine ingress bindings, S/platform/simulation.py and `/v1/runs/{id}/ingress`, `/watermark` | T/platform/test_realtime.py; [realtime.md](realtime.md). Journal-derived reject/delay receipts, explicit closed-prefix sealing, exact engine-free replay. One shared run watermark; independent per-engine watermarks remain a kernel gap. Wall pacing is separate. |
 | SimulationManager / PausableEnvironment / RealSimulationIntegration | replaced-by S/platform/simulation.py and S/services/worker.py | T/platform/test_service_review.py, U/P1. Integer-time boundary pause/resume/stop/realtime pacing; no legacy generators. |
 | UpdateService / log_event / workflow_state_diff / spatial_snapshot | replaced-by S/services/projector.py and /v1 committed SSE feed | T/platform/test_projection_review.py, U/F1. Structured facts/relations/events/receipts, not mutable queued display snapshots. |
 | RunRepository / manifest/config/log/workflow/spatial/trajectory directories and latest pointers | replaced-by S/services/storage.py WAL/index/pinned snapshots | T/platform/test_service.py, U/P1. Old logs are not kernel replay. Retained legacy RunRepository append/read race fixed in P8; L regressions pass. |

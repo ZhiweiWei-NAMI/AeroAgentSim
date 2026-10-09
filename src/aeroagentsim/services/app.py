@@ -6,6 +6,7 @@ import asyncio
 import json
 import multiprocessing
 import os
+import threading
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -41,6 +42,7 @@ def create_app(
     # pickling MappingProxyType or re-reading a concurrently changing source tree.
     context = multiprocessing.get_context("fork")
     workers: dict[str, tuple[Any, Any, Any]] = {}
+    inputs: dict[str, tuple[Any, threading.Lock]] = {}
     for path in root.iterdir():
         if (path / "manifest.json").exists():
             storage = RunStorage(path)
@@ -68,6 +70,8 @@ def create_app(
                 RunStorage(root / process.name).status(
                     "interrupted", error="worker did not close within shutdown deadline"
                 )
+        for connection, input_lock in inputs.values():
+            connection.close()
 
     app = FastAPI(title="AeroAgentSim", lifespan=lifespan)
     app.add_middleware(
@@ -106,11 +110,17 @@ def create_app(
             else:
                 document = body.get("scenario", body)
                 document_base = scenario_root
-                if hasattr(app.state, "studio") and "studio_workspace" in body and isinstance(document, dict):
+                if (
+                    hasattr(app.state, "studio")
+                    and "studio_workspace" in body
+                    and isinstance(document, dict)
+                ):
                     from aeroagentsim.authoring.wire import normalize_wire
 
                     app.state.studio.get(body["studio_workspace"])
-                    document_base = app.state.studio._base(document, body["studio_workspace"])
+                    document_base = app.state.studio._base(
+                        document, body["studio_workspace"]
+                    )
                     document = await asyncio.to_thread(
                         normalize_wire, document, app.state.studio.catalog
                     )
@@ -131,13 +141,20 @@ def create_app(
         if hasattr(app.state, "studio") and "studio_workspace" in body:
             from aeroagentsim.authoring.replay import snapshot_scene
 
-            snapshot_scene(app.state.studio, scenario, path, body.get("studio_workspace"))
+            snapshot_scene(
+                app.state.studio, scenario, path, body.get("studio_workspace")
+            )
         paused, stopped = context.Event(), context.Event()
+        host_input, worker_input = context.Pipe()
         process = context.Process(
-            target=execute, args=(scenario, path, paused, stopped), name=run_id
+            target=execute,
+            args=(scenario, path, paused, stopped, worker_input),
+            name=run_id,
         )
         process.start()
         workers[run_id] = (process, paused, stopped)
+        inputs[run_id] = (host_input, threading.Lock())
+        worker_input.close()
         return storage.metadata()
 
     @app.get("/v1/runs")
@@ -215,6 +232,39 @@ def create_app(
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache"},
         )
+
+    def worker_input_call(run_id: str, operation: str, body: Any) -> dict[str, Any]:
+        path = directory(run_id)
+        if run_id not in inputs or RunStorage(path).metadata()["status"] in TERMINAL:
+            raise HTTPException(409, "Run has no active worker")
+        connection, lock = inputs[run_id]
+        with lock:
+            if not workers[run_id][0].is_alive():
+                raise HTTPException(409, "Run worker has exited")
+            try:
+                connection.send((operation, body))
+                while not connection.poll(0.05):
+                    if not workers[run_id][0].is_alive():
+                        raise HTTPException(
+                            409,
+                            "Worker exited before acknowledging input; inspect journal",
+                        )
+                reply = connection.recv()
+            except (EOFError, BrokenPipeError, ConnectionResetError) as exc:
+                raise HTTPException(
+                    409, "Worker closed before acknowledging input; inspect journal"
+                ) from exc
+        if "error" in reply:
+            raise HTTPException(422, reply["error"])
+        return dict(reply["result"])
+
+    @app.post("/v1/runs/{run_id}/ingress")
+    async def live_ingress(run_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        return await asyncio.to_thread(worker_input_call, run_id, "ingress", body)
+
+    @app.post("/v1/runs/{run_id}/watermark")
+    async def watermark(run_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        return await asyncio.to_thread(worker_input_call, run_id, "watermark", body)
 
     @app.post("/v1/runs/{run_id}/{operation}")
     def control(run_id: str, operation: str) -> dict[str, Any]:

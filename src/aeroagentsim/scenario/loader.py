@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import math
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from pathlib import Path
 from typing import Any, cast
 
@@ -17,12 +18,14 @@ from aerokernel import (
     EntityRef,
     ExactBinding,
     FieldDescriptor,
+    IngressPolicy,
     Instant,
     LifecycleRule,
     MemoryRegistry,
     MessageDescriptor,
     TypeDescriptor,
 )
+from aerokernel.errors import KernelError
 from aerokernel.relations import (
     Cardinality,
     ObligationRule,
@@ -123,6 +126,12 @@ def _finite(value: Any, path: str) -> None:
 
 
 @dataclass(frozen=True)
+class EngineIngress:
+    mapping_id: str
+    policy: IngressPolicy
+
+
+@dataclass(frozen=True)
 class Scenario:
     document: dict[str, Any]
     source: str
@@ -139,6 +148,7 @@ class Scenario:
     pacing: str
     advance_ns: int
     clock_mappings: tuple[ClockMapping, ...] | None = None
+    ingress: dict[str, EngineIngress] = dataclass_field(default_factory=dict)
 
 
 def load_scenario(
@@ -503,7 +513,7 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
     )
     engines = obj(document["engines"], "engines")
     for engine_id, item in engines.items():
-        item = contract(item, f"engines.{engine_id}", {"plugin", "config"})
+        item = contract(item, f"engines.{engine_id}", {"plugin", "config"}, {"ingress"})
         text(item["plugin"], f"engines.{engine_id}.plugin")
         obj(item["config"], f"engines.{engine_id}.config")
     for item in seq(document.get("presentation", []), "presentation"):
@@ -605,6 +615,38 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             raise ScenarioError(
                 "clock_mappings: retain identity canonical mapping for local model policies"
             )
+    ingress: dict[str, EngineIngress] = {}
+    mappings = {
+        m.mapping_id: m
+        for m in clock_mappings or (ClockMapping("canonical", "canonical"),)
+    }
+    if clock_mappings is not None and len(mappings) != len(clock_mappings):
+        raise ScenarioError("clock_mappings: duplicate mapping_id")
+    for engine_id, item in engines.items():
+        if "ingress" not in item:
+            continue
+        path = f"engines.{engine_id}.ingress"
+        spec = contract(
+            item["ingress"],
+            path,
+            {"mapping_id", "initial_watermark_ns", "lateness", "timeout_s"},
+        )
+        mapping_id = text(spec["mapping_id"], path + ".mapping_id")
+        if mapping_id not in mappings:
+            raise ScenarioError(path + ".mapping_id: unknown clock mapping")
+        try:
+            policy = IngressPolicy(
+                integer(spec["initial_watermark_ns"], path + ".initial_watermark_ns"),
+                text(spec["lateness"], path + ".lateness"),
+                numeric(spec["timeout_s"], path + ".timeout_s"),
+            )
+        except KernelError as exc:
+            raise ScenarioError(f"{path}: {exc}") from exc
+        if ingress and policy != next(iter(ingress.values())).policy:
+            raise ScenarioError(
+                path + ": kernel uses one shared watermark stream; policies must match"
+            )
+        ingress[engine_id] = EngineIngress(mapping_id, policy)
     return Scenario(
         document,
         source,
@@ -621,4 +663,5 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         pacing,
         integer(run["advance_ns"], "run.advance_ns", 1),
         clock_mappings,
+        ingress,
     )
