@@ -127,11 +127,7 @@ def test_real_console_demo_compiles_and_reports_an_authored_error(
     live = copy.deepcopy(scenario)
     live_decisions(
         live,
-        {
-            "base_url": "http://127.0.0.1:9/v1",
-            "model": "explicit-no-calls-test",
-            "api_key_env": "AAS_TEST_NO_KEY",
-        },
+        {"profile": "default"},
     )
     store.save(identifier, {"scenario": live})
     checked = store.validate_behaviour(identifier, 0)
@@ -157,7 +153,7 @@ def test_rest_draft_export_and_read_actual_wal_identity(
     run_root = tmp_path / "runs"
     app.include_router(create_router(store, extracts={}, run_root=run_root))
     identifier = store.create("test")["id"]
-    with TestClient(app) as client:
+    with TestClient(app, base_url="http://localhost") as client:
         base = f"/v1/studio/workspaces/{identifier}"
         assert (
             client.post(base + "/behaviours", json={"package": package()}).status_code

@@ -21,6 +21,7 @@ from aeroagentsim.platform.simulation import Simulation
 from aeroagentsim.scenario import load_scenario
 
 from .projector import header, project
+from .security import LOCAL_ORIGIN, RequestBoundary
 from .storage import RunStorage
 from .subjects import projection_context
 from .worker import execute
@@ -75,16 +76,14 @@ def create_app(
             connection.close()
 
     app = FastAPI(title="AeroAgentSim", lifespan=lifespan)
+    console_origin = os.environ.get("AEROAGENTSIM_CONSOLE_URL")
+    app.add_middleware(RequestBoundary, console_origin=console_origin)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://127.0.0.1:3000",
-            "http://localhost:3000",
-            "http://127.0.0.1:4179",
-            "http://localhost:4179",
-        ],
+        allow_origins=[console_origin.rstrip("/")] if console_origin else [],
+        allow_origin_regex=LOCAL_ORIGIN,
         allow_methods=["GET", "POST"],
-        allow_headers=["Content-Type", "Last-Event-ID"],
+        allow_headers=["Content-Type", "Last-Event-ID", "Authorization"],
     )
 
     def directory(run_id: str) -> Path:
@@ -104,12 +103,12 @@ def create_app(
             if not isinstance(body, dict):
                 raise TypeError("request body must be a scenario or scenario mapping")
             if "scenario_path" in body:
-                path = (scenario_root / body["scenario_path"]).resolve()
-                if not path.is_relative_to(scenario_root):
+                scenario_file = (scenario_root / body["scenario_path"]).resolve()
+                if not scenario_file.is_relative_to(scenario_root):
                     raise ValueError(
                         "scenario_path must be under configured scenario root"
                     )
-                scenario = await asyncio.to_thread(load_scenario, path)
+                scenario = await asyncio.to_thread(load_scenario, scenario_file)
             else:
                 document = body.get("scenario", body)
                 document_base = scenario_root

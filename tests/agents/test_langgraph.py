@@ -125,6 +125,80 @@ def completion(value: Any) -> dict[str, Any]:
     }
 
 
+def empty_graph(
+    client: JournalClient, options: dict[str, Any]
+) -> StateGraph[State, None, State, State]:
+    graph = StateGraph(State)
+    graph.add_node("finish", lambda state: {"outputs": []})
+    graph.add_edge(START, "finish")
+    graph.add_edge("finish", END)
+    return graph
+
+
+@pytest.mark.parametrize("provenance", ["lean", "full"])
+def test_event_triggers_match_complete_schema_topic_pairs(
+    config: dict[str, Any], provenance: str
+) -> None:
+    class Source(ContextEngine):
+        def __init__(self) -> None:
+            super().__init__(
+                Partition(
+                    "source",
+                    "source",
+                    emits=("A", "B"),
+                    message_targets=("topic-A", "topic-B"),
+                )
+            )
+
+        def bootstrap(self, ctx: EngineContext) -> None:
+            for schema, topic in (("A", "topic-A"), ("B", "topic-B"), ("A", "topic-B")):
+                ctx.emit(schema, {"value": 1}, topic=topic)
+
+    descriptor = record_descriptor()
+    registry = MemoryRegistry(
+        (),
+        (),
+        (
+            MessageDescriptor(descriptor["id"], "event", descriptor["schema"]),
+            MessageDescriptor("A", "event", VALUE),
+            MessageDescriptor("B", "event", VALUE),
+        ),
+    )
+    config["factory"] = __name__ + ":empty_graph"
+    config["triggers"] = [
+        {"schema": "A", "topic": "topic-A"},
+        {"schema": "B", "topic": "topic-B"},
+    ]
+    config["grants"] = {
+        "fields": [],
+        "relations": [],
+        "events": [],
+        "commands": [],
+        "facts": [],
+    }
+    manifest = BindingManifest("pairs", "0")
+    engine = LangGraphDecision(EngineBuild("graph", config, registry, manifest, (), {}))
+    kernel = Kernel(provenance=provenance)
+    kernel.bind(registry, manifest, (cast(Engine, Source()), cast(Engine, engine)))
+    try:
+        kernel.start()
+        kernel.run_until(1)
+        rows = journal_decisions(kernel.journal.bytes)
+        triggers = [
+            r["data"]["initial"]["trigger"]
+            for decision in rows.values()
+            for r in decision
+            if r["phase"] == "observation"
+        ]
+        assert [(r["schema"], r["topic"]) for r in triggers] == [
+            ("A", "topic-A"),
+            ("B", "topic-B"),
+        ]
+        assert engine.sequence == 2
+    finally:
+        kernel.close()
+
+
 class Sink(ContextEngine):
     def __init__(self) -> None:
         super().__init__(Partition("sink", "sink", commands=("example.save",)))

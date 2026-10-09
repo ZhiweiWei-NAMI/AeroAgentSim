@@ -10,6 +10,7 @@ import queue
 import socket
 import threading
 import time
+from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 from urllib.parse import urlsplit
 
@@ -68,19 +69,90 @@ class OpenAIProvider:
 
     @classmethod
     def from_config(cls, config: dict[str, Any] | None = None) -> OpenAIProvider:
+        """Resolve a provider from a profile name only; scenario data is untrusted.
+
+        Scenarios may submit ``{"profile": <name>}`` and nothing else. URLs,
+        model names and credential env selectors are operator-side trusted
+        inputs: the ``default`` profile resolves AAS_LLM_BASE_URL,
+        AAS_LLM_MODEL and AAS_LLM_API_KEY; the shipped ``live-llm`` profile
+        resolves AEROAGENTSIM_LLM_BASE_URL, AEROAGENTSIM_LLM_MODEL and
+        AEROAGENTSIM_LLM_API_KEY_ENV. Any other named profile is looked up in
+        the operator JSON map AEROAGENTSIM_PROVIDER_PROFILES, optionally
+        seeded from the AEROAGENTSIM_PROVIDER_CONFIG file (env wins).
+        """
         cfg = {} if config is None else config
-        if set(cfg) - {"base_url", "model", "api_key_env"}:
-            raise ValueError("provider config accepts base_url/model/api_key_env")
-        base_url = cfg.get(
-            "base_url", os.environ.get("AAS_LLM_BASE_URL", cls.DEFAULT_BASE_URL)
-        )
-        model = cfg.get("model", os.environ.get("AAS_LLM_MODEL", cls.DEFAULT_MODEL))
-        key_env = cfg.get("api_key_env", "AAS_LLM_API_KEY")
-        if not all(
-            isinstance(value, str) and value for value in (base_url, model, key_env)
-        ):
-            raise ValueError("explicit provider settings must be nonempty strings")
+        if not isinstance(cfg, dict) or set(cfg) - {"profile"}:
+            raise ValueError("provider config accepts profile only")
+        profile = cfg.get("profile", "default")
+        if not isinstance(profile, str) or not profile.strip():
+            raise ValueError("provider profile must be a nonempty string")
+        if profile == "default":
+            return cls(
+                os.environ.get("AAS_LLM_BASE_URL", cls.DEFAULT_BASE_URL),
+                os.environ.get("AAS_LLM_MODEL", cls.DEFAULT_MODEL),
+                os.environ.get("AAS_LLM_API_KEY"),
+            )
+        if profile == "live-llm":
+            names = ("AEROAGENTSIM_LLM_BASE_URL", "AEROAGENTSIM_LLM_MODEL")
+            values = [os.environ.get(name) for name in names]
+            if not all(values):
+                missing = ", ".join(
+                    name for name, value in zip(names, values) if not value
+                )
+                raise ValueError(f"live-llm provider profile requires: {missing}")
+            key_env = os.environ.get("AEROAGENTSIM_LLM_API_KEY_ENV")
+            return cls(
+                values[0],  # type: ignore[arg-type]
+                values[1],  # type: ignore[arg-type]
+                os.environ.get(key_env) if key_env else None,
+            )
+        base_url, model, key_env = cls._operator_profile(profile)
         return cls(base_url, model, os.environ.get(key_env))
+
+    @classmethod
+    def _operator_profile(cls, profile: str) -> tuple[str, str, str]:
+        sources: list[str] = []
+        path = os.environ.get("AEROAGENTSIM_PROVIDER_CONFIG")
+        if path is not None:
+            try:
+                sources.append(Path(path).read_text())
+            except OSError as exc:
+                raise ValueError("provider profile config file unreadable") from exc
+        raw = os.environ.get("AEROAGENTSIM_PROVIDER_PROFILES")
+        if raw is not None:
+            sources.append(raw)
+        profiles: dict[str, Any] = {}
+        for source in sources:
+            try:
+                parsed = strict_json(source)
+            except ValueError as exc:
+                raise ValueError(
+                    "operator provider profiles must be valid JSON"
+                ) from exc
+            if not isinstance(parsed, dict) or not all(
+                isinstance(name, str) and isinstance(entry, dict)
+                for name, entry in parsed.items()
+            ):
+                raise ValueError(
+                    "operator provider profiles must map profile names to objects"
+                )
+            profiles.update(parsed)
+        entry = profiles.get(profile)
+        if entry is None:
+            raise ValueError(f"unknown provider profile: {profile}")
+        if set(entry) - {"base_url", "model", "api_key_env"} or not all(
+            isinstance(value, str) and value
+            for value in (entry.get("base_url"), entry.get("model"))
+        ):
+            raise ValueError(
+                f"operator profile {profile!r} requires base_url and model strings"
+            )
+        key_env = entry.get("api_key_env", "AAS_LLM_API_KEY")
+        if not isinstance(key_env, str) or not key_env:
+            raise ValueError(
+                f"operator profile {profile!r} api_key_env must be a nonempty string"
+            )
+        return entry["base_url"], entry["model"], key_env
 
     def complete(
         self,
@@ -133,8 +205,10 @@ class OpenAIProvider:
                 if len(body) > self.MAX_RESPONSE_BYTES:
                     raise ProviderError("PROTOCOL", "response exceeds byte budget")
                 if not 200 <= response.status < 300:
+                    # Never surface upstream body text: error bodies can echo
+                    # credentials or other secrets from the gateway.
                     raise ProviderError(
-                        "HTTP_STATUS", f"HTTP {response.status}: {body[:200]!r}"
+                        "HTTP_STATUS", f"upstream returned HTTP {response.status}"
                     )
                 try:
                     raw = strict_json(body.decode())
@@ -150,8 +224,12 @@ class OpenAIProvider:
                     KeyError,
                     IndexError,
                     TypeError,
-                ) as exc:
-                    raise ProviderError("PROTOCOL", str(exc)) from exc
+                ):
+                    # Exception strings can echo untrusted payload content;
+                    # only the typed code is reported.
+                    raise ProviderError(
+                        "PROTOCOL", "response is not a well-formed completion"
+                    ) from None
                 results.put({"message": message, "raw": raw, "usage": raw.get("usage")})
             except ProviderError as exc:
                 results.put(exc)
@@ -159,10 +237,17 @@ class OpenAIProvider:
                 results.put(
                     ProviderError("WALL_TIMEOUT", "model wall deadline expired")
                 )
-            except http.client.HTTPException as exc:
-                results.put(ProviderError("PROTOCOL", str(exc)))
-            except OSError as exc:
-                results.put(ProviderError("TRANSPORT", str(exc)))
+            except http.client.HTTPException:
+                # Protocol exception strings may include request URLs/headers
+                # (credentials); report a fixed typed code.
+                results.put(
+                    ProviderError("PROTOCOL", "connection to model endpoint failed")
+                )
+            except OSError:
+                # Same reason as above: never propagate the raw exception text.
+                results.put(
+                    ProviderError("TRANSPORT", "connection to model endpoint failed")
+                )
             finally:
                 connection.close()
 

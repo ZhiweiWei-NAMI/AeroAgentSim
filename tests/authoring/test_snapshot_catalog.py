@@ -14,7 +14,8 @@ def test_snapshot_only_registry(
     monkeypatch.delenv("AEROAGENTSIM_AEROGRAPH_ROOT", raising=False)
     monkeypatch.delenv("AEROAGENTSIM_TRAFFIC_ASSET_ROOT", raising=False)
     with TestClient(
-        create_app(tmp_path / "runs", studio_root=tmp_path / "studio")
+        create_app(tmp_path / "runs", studio_root=tmp_path / "studio"),
+        base_url="http://localhost",
     ) as client:
         workspace = client.post(
             "/v1/studio/workspaces", json={"name": "Public demo"}

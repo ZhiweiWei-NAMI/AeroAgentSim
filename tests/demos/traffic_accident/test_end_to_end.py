@@ -218,7 +218,10 @@ def test_live_http_accident_runs_full_chain(tmp_path: Path) -> None:
     incident = next(
         ref for ref in scenario.manifest.entities if ref.id == "incident.01"
     )
-    with TestClient(create_app(tmp_path / "runs", scenario_root=SCENARIO)) as client:
+    with TestClient(
+        create_app(tmp_path / "runs", scenario_root=SCENARIO),
+        base_url="http://localhost",
+    ) as client:
         created = client.post("/v1/runs", json=doc)
         assert created.status_code == 201, created.text
         identity = created.json()["id"]

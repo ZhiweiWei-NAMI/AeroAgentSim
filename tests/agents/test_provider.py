@@ -9,6 +9,7 @@ import threading
 import time
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any, ClassVar
 
 import pytest
@@ -117,12 +118,20 @@ def test_success_shape_and_usage(server: Any) -> None:
     assert result["usage"]["completion_tokens"] == 2
 
 
-def test_from_config_defaults_and_env(
-    monkeypatch: pytest.MonkeyPatch, server: Any
+def test_from_config_profile_resolution(
+    monkeypatch: pytest.MonkeyPatch, server: Any, tmp_path: Path
 ) -> None:
-    monkeypatch.delenv("AAS_LLM_BASE_URL", raising=False)
-    monkeypatch.delenv("AAS_LLM_MODEL", raising=False)
-    monkeypatch.delenv("AAS_LLM_API_KEY", raising=False)
+    for name in (
+        "AAS_LLM_BASE_URL",
+        "AAS_LLM_MODEL",
+        "AAS_LLM_API_KEY",
+        "AEROAGENTSIM_LLM_BASE_URL",
+        "AEROAGENTSIM_LLM_MODEL",
+        "AEROAGENTSIM_LLM_API_KEY_ENV",
+        "AEROAGENTSIM_PROVIDER_PROFILES",
+        "AEROAGENTSIM_PROVIDER_CONFIG",
+    ):
+        monkeypatch.delenv(name, raising=False)
     base = OpenAIProvider.from_config({})
     assert (base.base_url, base.model, base.api_key) == (
         "http://127.0.0.1:8788/v1",
@@ -136,19 +145,45 @@ def test_from_config_defaults_and_env(
     monkeypatch.setenv("AAS_LLM_API_KEY", "sk-env")
     env_provider = OpenAIProvider.from_config()
     assert env_provider.model == "env-model" and env_provider.api_key == "sk-env"
+    # Scenarios may only name a profile; submitted endpoints are rejected.
+    for submitted in (
+        {"base_url": "http://example.internal/v1"},
+        {"api_key_env": "TEST_GATEWAY_KEY"},
+        {"profile": "default", "model": "untrusted"},
+    ):
+        with pytest.raises(ValueError, match="profile"):
+            OpenAIProvider.from_config(submitted)
+    with pytest.raises(ValueError, match="unknown provider profile"):
+        OpenAIProvider.from_config({"profile": "nope"})
     monkeypatch.setenv("TEST_GATEWAY_KEY", "k")
-    config_provider = OpenAIProvider.from_config(
-        {
-            "model": "cfg-model",
-            "base_url": "http://example.internal/v1",
-            "api_key_env": "TEST_GATEWAY_KEY",
-        }
+    configured = {
+        "base_url": f"http://127.0.0.1:{server.server_address[1]}",
+        "model": "file-model",
+        "api_key_env": "TEST_GATEWAY_KEY",
+    }
+    config_file = tmp_path / "providers.json"
+    config_file.write_text(json.dumps({"file-only": configured, "gateway": configured}))
+    monkeypatch.setenv("AEROAGENTSIM_PROVIDER_CONFIG", str(config_file))
+    assert OpenAIProvider.from_config({"profile": "gateway"}).model == "file-model"
+    monkeypatch.setenv(
+        "AEROAGENTSIM_PROVIDER_PROFILES",
+        json.dumps(
+            {
+                "gateway": {
+                    "base_url": f"http://127.0.0.1:{server.server_address[1]}",
+                    "model": "cfg-model",
+                    "api_key_env": "TEST_GATEWAY_KEY",
+                }
+            }
+        ),
     )
+    config_provider = OpenAIProvider.from_config({"profile": "gateway"})
     assert (
         config_provider.model == "cfg-model"
-        and config_provider.host == "example.internal"
+        and config_provider.api_key == "k"
+        and config_provider.host == "127.0.0.1"
     )
-    assert config_provider.api_key == "k"
+    assert OpenAIProvider.from_config({"profile": "file-only"}).api_key == "k"
 
 
 def test_malformed_bodies_map_to_protocol(server: Any) -> None:

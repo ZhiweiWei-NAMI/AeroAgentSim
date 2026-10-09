@@ -842,8 +842,7 @@ engines:
         max_retries: 2
         max_prompt_bytes: 262144
       provider:
-        base_url: http://127.0.0.1:8788/v1
-        model: glm-5.3-flashx
+        profile: default
 presentation:
 - typeId: oo:UAV
   positionField: he.aircraft.position_enu_m
