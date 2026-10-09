@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import copy
 import hashlib
+from bisect import bisect_left, bisect_right
 from decimal import Decimal
 from typing import Any, cast
 
 from aerokernel import Activate, Dependency, Partition
+from aerokernel.ids import FramePrefix, ItemRef
 from aerokernel.operations import SampleFrame
 from aerokernel.relations import RelationDependency
 from aerokernel.sdk import ContextEngine, EngineContext
@@ -17,6 +19,7 @@ from aerokernel.values import FrozenValue, canonical_json, thaw
 from aeroagentsim.platform.plugins import EngineBuild
 from aeroagentsim.scenario.paths import source_path
 
+from .predicate_ast import TEMPORAL as AST_TEMPORAL
 from .predicate_ast import evaluate, validate_ast
 
 VERSION = "aerograph-predicate/1"
@@ -347,6 +350,112 @@ def nodes(ast: dict[str, Any]) -> list[dict[str, Any]]:
     return result
 
 
+class SampleHistory:
+    """Retain the exact anchor/predecessor closure a fixed AST can still read.
+
+    Parameters are pinned for a sampled context. Nested windows recurse from
+    the actual outer anchor, not from now minus the sum of their durations: an
+    irregular sampling gap can put that anchor much further into the past.
+    The unmodified native-compatible evaluator runs over this bounded prefix.
+    """
+
+    def __init__(self, ast: dict[str, Any], dialect: str) -> None:
+        self.ast, self.dialect = ast, dialect
+        self.frames: list[dict[str, Any]] = []
+        self.times: list[int] = []
+
+    def _first(self, node: dict[str, Any], lo: int, hi: int) -> int:
+        first = hi
+        op = node.get("op")
+        if op is None:
+            return hi
+        if op in AST_TEMPORAL:
+            if op in {"rise", "fall", "changed", "entered", "exited"}:
+                lo = max(0, lo - 1)
+            else:
+                duration = node["args"][1]
+                value = (
+                    duration["literal"]
+                    if "literal" in duration
+                    else self.frames[-1]["parameters"].get(duration["parameter"])
+                )
+                if value is None:
+                    return hi  # Native null window cannot reach historical input.
+                if type(value) is not int or value < 0:
+                    raise ValueError(
+                        "temporal: exact nonnegative integer ns duration required"
+                    )
+                lo = max(0, bisect_right(self.times, self.times[lo] - value) - 1)
+            first = lo
+            children = [node["args"][0]]
+            if "asScope" in node:
+                children.append(node["asScope"])
+        else:
+            children = [
+                child
+                for key, value in node.items()
+                if key != "literal"
+                for child in (value if isinstance(value, list) else [value])
+                if isinstance(child, dict)
+            ]
+        for child in children:
+            first = min(first, self._first(child, lo, hi))
+        return first
+
+    def append(self, frame: dict[str, Any]) -> None:
+        """Adopt one sampled input, dropping only permanently unreachable data."""
+        time = frame["t"]
+        if type(time) is not int or self.times and time <= self.times[-1]:
+            raise ValueError("history: strictly increasing exact integer ns required")
+        self.frames.append(frame)
+        self.times.append(time)
+        first = self._first(self.ast, len(self.frames) - 1, len(self.frames) - 1)
+        if first:
+            del self.frames[:first]
+            del self.times[:first]
+
+    def value(self) -> Any:
+        return evaluate(self.ast, self.frames, self.dialect)
+
+
+def sdk_frame_causes(ctx: EngineContext, prefix: FramePrefix, position: int) -> None:
+    """Preserve SDK first-occurrence order across a prefix/explicit boundary.
+
+    SampleFrame has already captured its raw (duplicate-preserving) causes.
+    Emit/timers use SDK deduplication. K5's local frame index lets us check the
+    few explicit inputs without expanding the whole prefix. Only an actual
+    overlap requires a shortened prefix and explicit surviving tail.
+    """
+    rows = ctx.view._store.frames[prefix.context_id]
+    indices = ctx.view._store.frame_indices[prefix.context_id]
+
+    def member(cause: object) -> int | None:
+        if not isinstance(cause, ItemRef):
+            return None
+        index = bisect_left(indices, cause.record_index, 0, prefix.count)
+        return index if index < prefix.count and rows[index].version == cause else None
+
+    earlier = {
+        index for cause in ctx.inputs[:position] if (index := member(cause)) is not None
+    }
+    tail = [cause for cause in ctx.inputs[position + 1 :] if member(cause) is None]
+    if earlier:
+        boundary = min(earlier)
+        segments: list[ItemRef | FramePrefix] = []
+        if boundary:
+            segments.append(
+                FramePrefix(prefix.context_id, boundary, rows[boundary - 1].version)
+            )
+        segments.extend(
+            rows[index].version
+            for index in range(boundary, prefix.count)
+            if index not in earlier
+        )
+        ctx.inputs[position:] = [*segments, *tail]
+    else:
+        ctx.inputs[position + 1 :] = tail
+
+
 class Predicate(ContextEngine):
     """One pinned target/context; history and outputs remain journalled kernel data."""
 
@@ -445,6 +554,9 @@ class Predicate(ContextEngine):
             "event_payload",
             {"predicate": "$predicate", "from_ns": "$from_ns", "to_ns": "$to_ns"},
         )
+        self.history = SampleHistory(self.ast, self.dialect)
+        self._expected_count: int | None = None
+        self._last_result: dict[str, Any] | None = None
         message = build.registry.message(self.schema)
         if message.kind != "event":
             raise ValueError(f"predicate {self.target}: typed event message required")
@@ -488,18 +600,38 @@ class Predicate(ContextEngine):
         )
 
     def bootstrap(self, ctx: EngineContext) -> None:
+        self.history = SampleHistory(self.ast, self.dialect)
+        self._expected_count = None
+        self._last_result = None
         ctx.ops.append(Activate(self.partition.id))
 
     def on_inputs(self, ctx: EngineContext) -> None:
-        prior = ctx.view.sample_frames(self.spec.context_id)
-        history: list[dict[str, Any]] = []
-        for recorded in prior:
-            ctx.inputs.append(recorded.version)
-            history.append(
-                cast(dict[str, Any], thaw(cast(FrozenValue, recorded.frame.result)))[
-                    "input"
-                ]
-            )
+        prefix = ctx.view.sample_frame_prefix(self.spec.context_id)
+        # K5 exposes codec admission on the local Store, but not on StateView.
+        # Inspect it once per invocation; never probe by publishing a bad cause.
+        compact_causes = ctx.view._store.allow_frame_prefix
+        prior = (
+            ctx.view.sample_frames(self.spec.context_id)
+            if not compact_causes or prefix.count != self._expected_count
+            else ()
+        )
+        if prefix.count != self._expected_count:
+            # Cold start or a noncommitted invocation: recover from actual frames,
+            # never from a tentative callback result or a synthetic baseline.
+            self.history = SampleHistory(self.ast, self.dialect)
+            self._last_result = None
+            for recorded in prior:
+                self._last_result = cast(
+                    dict[str, Any], thaw(cast(FrozenValue, recorded.frame.result))
+                )
+                self.history.append(self._last_result["input"])
+        before = self._last_result
+        cause_position = len(ctx.inputs)
+        if compact_causes:
+            if prefix.count:
+                ctx.inputs.append(prefix)
+        else:
+            ctx.inputs.extend(recorded.version for recorded in prior)
         current: dict[str, Any] = {
             "t": ctx.now.ns,
             "fields": {},
@@ -577,9 +709,9 @@ class Predicate(ContextEngine):
                 current["relations"][
                     relation + "|" + role + "|" + node["targetRole"]
                 ] = bool(selected)
-        history.append(current)
         try:
-            value = evaluate(self.ast, history, self.dialect)
+            self.history.append(current)
+            value = self.history.value()
         except (ValueError, TypeError, ArithmeticError) as exc:
             diagnostics.append({"status": "invalid_input", "reason": str(exc)})
             value = None
@@ -598,11 +730,6 @@ class Predicate(ContextEngine):
             diagnostics.append(
                 {"status": status, "reason": "history or operator input undetermined"}
             )
-        before = (
-            cast(dict[str, Any], thaw(cast(FrozenValue, prior[-1].frame.result)))
-            if prior
-            else None
-        )
         fire = (
             value is True
             if self.transition == "level"
@@ -617,6 +744,13 @@ class Predicate(ContextEngine):
                 )
             )
         )
+        result = {
+            "target": self.target,
+            "status": status,
+            "value": value,
+            "diagnostics": diagnostics,
+            "input": current,
+        }
         ctx.ops.append(
             SampleFrame(
                 self.spec.context_id,
@@ -624,21 +758,17 @@ class Predicate(ContextEngine):
                 ctx.view.cut,
                 self.spec.bindings,
                 self.spec.clocks,
-                {
-                    "target": self.target,
-                    "status": status,
-                    "value": value,
-                    "diagnostics": diagnostics,
-                    "input": current,
-                },
+                result,
                 self.spec.sources,
                 tuple(ctx.inputs),
             )
         )
+        if compact_causes and prefix.count:
+            sdk_frame_causes(ctx, prefix, cause_position)
         if fire:
             tokens = {
                 "$predicate": self.target,
-                "$from_ns": prior[-1].frame.physical_ns if prior else ctx.now.ns,
+                "$from_ns": before["input"]["t"] if before is not None else ctx.now.ns,
                 "$to_ns": ctx.now.ns,
             }
             ctx.emit(
@@ -653,8 +783,8 @@ class Predicate(ContextEngine):
             )
         # Schedule exact window boundaries only after real input changes. Timer-only
         # frames do not create an endless polling chain.
-        changed = not history[:-1] or any(
-            current[key] != history[-2][key] for key in ("fields", "relations")
+        changed = before is None or any(
+            current[key] != before["input"][key] for key in ("fields", "relations")
         )
         if changed:
             for duration in sorted(self.durations):
@@ -663,6 +793,8 @@ class Predicate(ContextEngine):
                         ctx.now.ns + duration,
                         {"target": self.target, "duration_ns": duration},
                     )
+        self._last_result = result
+        self._expected_count = prefix.count + 1
 
 
 def build(context: EngineBuild) -> Predicate:
