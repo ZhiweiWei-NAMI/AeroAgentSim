@@ -69,6 +69,10 @@ ns3 = "aeroagentsim.adapters.ns3:build"
 environment = "aeroagentsim.engines.environment:build"
 langgraph = "aeroagentsim.agents.langgraph:build"
 predicate = "aeroagentsim.engines.predicate:build"
+capture = "aeroagentsim.observations.capture:build"
+traffic_road_motion = "aeroagentsim.packs.traffic_accident.road_motion:build"
+traffic_route_inputs = "aeroagentsim.packs.traffic_accident.route_inputs:build"
+traffic_assessment = "aeroagentsim.packs.traffic_accident.traffic_assessment:build"
 
 [project.entry-points."aeroagentsim.models"]
 linear = "aeroagentsim.models:LinearConsumption"
@@ -78,4 +82,5 @@ wind = "aeroagentsim.models:WindConsumption"
 aerokernel = {path = "../aerokernel", editable = true}
 
 [tool.setuptools.package-data]
+"aeroagentsim.observations" = ["viewer_bridge.mjs"]
 "aeroagentsim.authoring" = ["assets/*.xml", "assets/*.json", "assets/*.txt"]
