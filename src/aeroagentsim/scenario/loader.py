@@ -44,6 +44,7 @@ from aeroagentsim.integrations.aerograph import (
 )
 
 from .subjects import declarations
+from .paths import source_path
 
 FORMAT = "aeroagentsim.scenario/v1"
 
@@ -221,7 +222,7 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         raise ScenarioError("registry: select exactly one snapshot or compile")
     if "snapshot" in registry_spec:
         compiled = read_snapshot(
-            base / text(registry_spec["snapshot"], "registry.snapshot")
+            source_path(text(registry_spec["snapshot"], "registry.snapshot"), base)
         )
         if registry_spec.get("digest") != compiled.digest:
             raise ScenarioError(
@@ -236,7 +237,7 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             {"fields", "relations", "policy"},
         )
         compiled = compile_registry(
-            base / text(spec["root"], "registry.compile.root"),
+            source_path(text(spec["root"], "registry.compile.root"), base),
             Selection(
                 tuple(seq(spec["types"], "registry.compile.types")),
                 None

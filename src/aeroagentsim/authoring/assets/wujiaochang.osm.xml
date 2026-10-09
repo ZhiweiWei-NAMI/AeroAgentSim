@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8'?>
+<osm version="0.6" generator="Overpass API 0.7.62.1 084b4234"><node id="86685897" lat="31.3066321" lon="121.5258365" />
+  <node id="600131735" lat="31.3046849" lon="121.5194109">
+    <tag k="highway" v="motorway_junction" />
+    <tag k="name" v="国和路" />
+    <tag k="name:en" v="Guohe Road" />
+    <tag k="ref" v="19" />
+  </node>
+  <node id="667438574" lat="31.3005140" lon="121.5025188" />
+  <node id="667438575" lat="31.3003750" lon="121.5025770" />
+  <node id="667438577" lat="31.3006015" lon="121.5033179" />
+  <node id="667438579" lat="31.3007405" lon="121.5032597" />
+  <node id="667438670" lat="31.3003293" lon="121.5005620" />
+  <node id="667438671" lat="31.3002000" lon="121.5006161" />
+  <node id="667438672" lat="31.3004172" lon="121.5013266" />
+  <node id="667438673" lat="31.3005464" lon="121.5012725" />
+  <node id="4396181899" lat="31.3015887" lon="121.5124760" />
+  <node id="4396181900" lat="31.3014443" lon="121.5121933" />
+  <node id="4396181901" lat="31.3011221" lon="121.5123461" />
+  <node id="4396181902" lat="31.3012625" lon="121.5127719" />
+  <node id="4396181903" lat="31.3012989" lon="121.5127719" />
+  <node id="4396181910" lat="31.3012134" lon="121.5127338" />
+  <node id="4396181911" lat="31.3012375" lon="121.5127607" />
+  <node id="4396181912" lat="31.3014768" lon="121.5121992" />
+  <node id="4396181913" lat="31.3014993" lon="121.5122172" />
+  <node id="4396181914" lat="31.3011441" lon="121.5123220" />
+  <node id="4396181915" lat="31.3011097" lon="121.5123796" />
+  <node id="4396181916" lat="31.3011116" lon="121.5124155" />
+  <node id="4396181917" lat="31.3013373" lon="121.5127634" />
+  <node id="4396181918" lat="31.3015782" lon="121.5126604" />
+  <node id="4396181919" lat="31.3016013" lon="121.5126354" />
+  <node id="4396181920" lat="31.3016152" lon="121.5126008" />
+  <node id="4396181921" lat="31.3016152" lon="121.5125581" />
+  <node id="4396181922" lat="31.3015179" lon="121.5122409" />
+  <way id="441927388">
+    <nd ref="4396181899" />
+    <nd ref="4396181922" />
+    <nd ref="4396181913" />
+    <nd ref="4396181912" />
+    <nd ref="4396181900" />
+    <nd ref="4396181914" />
+    <nd ref="4396181901" />
+    <nd ref="4396181915" />
+    <nd ref="4396181916" />
+    <nd ref="4396181910" />
+    <nd ref="4396181911" />
+    <nd ref="4396181902" />
+    <nd ref="4396181903" />
+    <nd ref="4396181917" />
+    <nd ref="4396181918" />
+    <nd ref="4396181919" />
+    <nd ref="4396181920" />
+    <nd ref="4396181921" />
+    <nd ref="4396181899" />
+    <tag k="building" v="commercial" />
+    <tag k="building:levels" v="33" />
+    <tag k="height" v="180" />
+  </way>
+  <way id="52519929">
+    <nd ref="667438670" />
+    <nd ref="667438671" />
+    <nd ref="667438672" />
+    <nd ref="667438673" />
+    <nd ref="667438670" />
+    <tag k="building" v="yes" />
+    <tag k="building:levels" v="4" />
+    <tag k="name" v="七号楼" />
+    <tag k="name:en" v="Building 7" />
+  </way>
+  <way id="52519858">
+    <nd ref="667438574" />
+    <nd ref="667438575" />
+    <nd ref="667438577" />
+    <nd ref="667438579" />
+    <nd ref="667438574" />
+    <tag k="building" v="yes" />
+    <tag k="name" v="一号楼" />
+    <tag k="name:en" v="Building 1" />
+  </way>
+  <way id="10487419">
+    <nd ref="86685897" />
+    <nd ref="600131735" />
+    <tag k="highway" v="trunk" />
+    <tag k="motorroad" v="yes" />
+    <tag k="name" v="中环路" />
+    <tag k="name:en" v="Middle Ring Road" />
+    <tag k="name:zh-Hant" v="中環路" />
+    <tag k="oneway" v="yes" />
+  </way>
+  </osm>

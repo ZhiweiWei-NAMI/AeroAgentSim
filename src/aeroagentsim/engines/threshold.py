@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-from pathlib import Path
 from typing import Any, cast
 
 from aerokernel import Activate, Dependency, Partition
@@ -15,6 +14,7 @@ from aerokernel.values import FrozenValue, thaw, typed_equal
 
 from aeroagentsim.platform.plugins import EngineBuild
 from aeroagentsim.scenario import ScenarioError
+from aeroagentsim.scenario.paths import source_path
 
 
 class Threshold(ContextEngine):
@@ -56,7 +56,7 @@ class Threshold(ContextEngine):
             or type(reference["sha256"]) is not str
         ):
             raise ValueError("threshold.native_reference: path and sha256 required")
-        path = Path(reference["path"])
+        path = source_path(reference["path"])
         if (
             not path.is_file()
             or hashlib.sha256(path.read_bytes()).hexdigest() != reference["sha256"]

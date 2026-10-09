@@ -69,36 +69,18 @@ legacy dependency set and emits `DeprecationWarning`; see
 ## Run the kinematic slice
 
 ```bash
+export AEROAGENTSIM_AEROGRAPH_ROOT=/absolute/path/to/AeroGraph
 aeroagentsim run scenarios/p1-slice.yaml --out runs
 aeroagentsim replay runs/<directory-printed-by-run>
 ```
 
-The P1 slice currently selects actual AeroGraph source at
-`/mnt/data2/weizhiwei/AeroGraph`, plus a hash-pinned predicate reference. That
-matching checkout is an input, not a pip dependency. The compiler reads persisted
-files only; do not run AeroGraph build scripts. With that input and dependencies
-ready, the 22 s workload took 8.02 s in P8, and replay returned
-`{"cut":1645,"ns":"22000000000","incomplete":false}`.
-
-For another checkout location, create your own scenario copy and update its real
-source references, preserving its hash pin:
+The P1 slice uses explicit `AEROAGENTSIM_AEROGRAPH_ROOT`, plus a hash-pinned
+predicate reference. That matching checkout is an input, not a pip dependency.
+The compiler reads persisted files only; do not run AeroGraph build scripts.
 
 ```bash
-export AEROGRAPH_ROOT=/absolute/path/to/AeroGraph
-python - <<'PYCODE'
-import os
-from pathlib import Path
-import yaml
-root = Path(os.environ["AEROGRAPH_ROOT"]).resolve()
-source = Path("scenarios/p1-slice.yaml")
-document = yaml.safe_load(source.read_text())
-document["registry"]["compile"]["root"] = str(root)
-document["engines"]["threshold"]["config"]["native_reference"]["path"] = str(
-    root / "semantic-directory/src/expanded_runtime.js"
-)
-Path("/tmp/p1-local.yaml").write_text(yaml.safe_dump(document, sort_keys=False))
-PYCODE
-aeroagentsim run /tmp/p1-local.yaml --out runs
+export AEROAGENTSIM_AEROGRAPH_ROOT=/absolute/path/to/AeroGraph
+aeroagentsim run scenarios/p1-slice.yaml --out runs
 ```
 
 A changed source hash should be reviewed and recompiled; replacing it blindly

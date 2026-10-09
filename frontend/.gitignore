@@ -34,3 +34,4 @@ pnpm-debug.log*
 test-results/
 playwright-report/
 public/assets/
+.asset-work/

@@ -1,0 +1,10 @@
+© OpenStreetMap contributors
+https://www.openstreetmap.org/copyright
+Database licensed under ODbL 1.0: https://opendatacommons.org/licenses/odbl/1.0/
+This bounded, historical Overpass extract is distributed in wujiaochang.osm.xml.
+It contains three buildings and one road; it is not the full district or a current map.
+No source coordinates, tags or IDs were synthesized.
+
+The complete historical source is supplied in wujiaochang-source.osm.xml
+(ODbL, source snapshot 2024-09-03T07:07:43Z), including its original note/meta.
+It is retained for source availability of the existing SUMO test network.

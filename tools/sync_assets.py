@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Sync redistributable viewer assets; runtime kernel dependencies are unaffected.
+"""Build licensed viewer assets directly from pinned public upstreams.
 
-Python stdlib only. Model conversion uses Three.js/linkedom and optional
-@gltf-transform/cli in frontend/src/scene/.work/converter (npm tooling).
+City data is built separately with tools/build_map.py. No neighboring checkout
+is read. Conversion tooling installs only into --work-dir, never frontend's
+node_modules. Downloads retain upstream notices and hashes in the inventory.
 """
 
 from __future__ import annotations
@@ -15,13 +16,14 @@ import struct
 import subprocess
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_BENCH = Path(
-    "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/aero-bench/frontend/public"
-)
-PX4 = "https://raw.githubusercontent.com/PX4/PX4-gazebo-models/main/"
-STYLE = "https://raw.githubusercontent.com/tordanik/OSM2World-default-style/master/"
+PX4_REVISION = "e5997f455e33ec071c7c677fc59a65781de496a4"
+STYLE_REVISION = "81ade9bf9793181774891548ac29448f366efd3c"
+PX4 = f"https://raw.githubusercontent.com/PX4/PX4-gazebo-models/{PX4_REVISION}/"
+STYLE = f"https://raw.githubusercontent.com/tordanik/OSM2World-default-style/{STYLE_REVISION}/"
+
 CONVERTER = r"""
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -78,37 +80,26 @@ const bytes=await new GLTFExporter().parseAsync(root,{binary:true,onlyVisible:tr
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", type=Path, default=DEFAULT_BENCH)
+    parser.add_argument("--out", type=Path, default=ROOT / "frontend/public/assets")
+    parser.add_argument("--work-dir", type=Path, default=ROOT / "frontend/.asset-work")
+    parser.add_argument("--models", choices=("car", "x500", "all"), default="all")
     parser.add_argument(
         "--optimize", choices=("meshopt", "draco", "none"), default="meshopt"
     )
-    parser.add_argument(
-        "--ktx2",
-        action="store_true",
-        help="Run UASTC texture conversion when toktx is installed",
-    )
     args = parser.parse_args()
-    dest = ROOT / "frontend/public/assets"
-    work = ROOT / "frontend/src/scene/.work/converter"
+    dest: Path = args.out.resolve()
+    work: Path = args.work_dir.resolve()
+    dest.mkdir(parents=True, exist_ok=True)
     work.mkdir(parents=True, exist_ok=True)
-    records: list[dict] = []
-    sources: list[dict] = []
+    records: list[dict[str, Any]] = []
 
     def record(
-        path: Path, license: str, attribution: str, source: str, transform: str = "copy"
+        path: Path,
+        license: str,
+        attribution: str,
+        source: str,
+        transform: str = "download",
     ) -> None:
-        if not path.is_relative_to(dest):
-            data = path.read_bytes()
-            sources.append(
-                {
-                    "source": source,
-                    "sha256": hashlib.sha256(data).hexdigest(),
-                    "size": len(data),
-                    "license": license,
-                    "attribution": attribution,
-                }
-            )
-            return
         data = path.read_bytes()
         records.append(
             {
@@ -122,107 +113,62 @@ def main() -> None:
             }
         )
 
-    def copy(src: Path, relative: str, license: str, attribution: str) -> Path:
+    def download(
+        base: str, upstream: str, relative: str, license: str, attribution: str
+    ) -> Path:
         path = dest / relative
         path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(src, path)
-        record(path, license, attribution, str(src))
-        return path
-
-    def download(url: str, relative: str, license: str, attribution: str) -> Path:
-        path = (
-            work / relative.removeprefix(".work/converter/")
-            if relative.startswith(".work/converter/")
-            else dest / relative
-        )
-        path.parent.mkdir(parents=True, exist_ok=True)
+        url = base + upstream
         with urllib.request.urlopen(url, timeout=90) as response:
-            path.write_bytes(response.read())
+            data = response.read()
+        pending = path.with_name(path.name + ".part")
+        pending.write_bytes(data)
+        pending.replace(path)
         record(path, license, attribution, url)
         return path
 
-    cc0 = "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style (CC0)"
-    osm = "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright; OSM2World produced work"
-    px4 = "Copyright (c) 2022 Rudis Laboratories (x500_base); PX4 Autopilot for Drones; https://github.com/PX4/PX4-gazebo-models"
-    download(STYLE + "COPYING.txt", "licenses/OSM2World-CC0.txt", "CC0-1.0", cc0)
-    download(PX4 + "LICENSE", "licenses/PX4-BSD.txt", "BSD-3-Clause", px4)
+    cc0 = "OSM2World-default-style contributors; https://github.com/tordanik/OSM2World-default-style"
+    px4 = "Copyright (c) 2022 Rudis Laboratories; PX4 Autopilot for Drones; https://github.com/PX4/PX4-gazebo-models"
+    download(STYLE, "COPYING.txt", "licenses/OSM2World-CC0.txt", "CC0-1.0", cc0)
     download(
-        PX4 + "models/x500_base/LICENSE", "licenses/X500-BSD.txt", "BSD-3-Clause", px4
+        STYLE, "textures/sky/DaySkyHDRI041B.hdr", "environment/day.hdr", "CC0-1.0", cc0
     )
-    notice = dest / "licenses/OSM-attribution.txt"
-    notice.write_text(
-        osm
-        + "\nDatabase license: https://opendatacommons.org/licenses/odbl/1.0/\nThe source OSM JSON is included at city/assets/<source.sha256> from city/manifest.json.\n"
-    )
-    record(notice, "ODbL-1.0", osm, "https://www.openstreetmap.org/copyright")
-    packdir = args.source / "osm2world/packs/shanghai-huangpu-east-v1"
-    pack = json.loads((packdir / "manifest.json").read_text())
-    copy(
-        packdir / "manifest.json",
-        "city/manifest.json",
-        "ODbL-1.0; CC0-1.0 textures",
-        osm + "; " + cc0,
-    )
-    references = [
-        pack["source"],
-        *[batch["file"] for batch in pack["batches"]],
-        *pack["textures"].values(),
-    ]
-    texture_hashes = {ref["sha256"] for ref in pack["textures"].values()}
-    for ref in {r["sha256"]: r for r in references}.values():
-        src = packdir / "assets" / ref["sha256"]
-        raw = src.read_bytes()
-        if (
-            len(raw) != ref["size_bytes"]
-            or hashlib.sha256(raw).hexdigest() != ref["sha256"]
-        ):
-            raise ValueError(f"Corrupt source pack chunk: {src}")
-        is_texture = ref["sha256"] in texture_hashes
-        copy(
-            src,
-            "city/assets/" + ref["sha256"],
-            "CC0-1.0" if is_texture else "ODbL-1.0",
-            cc0 if is_texture else osm,
-        )
-    copy(
-        args.source / "osm2world/style/textures/sky/DaySkyHDRI041B.hdr",
-        "environment/day.hdr",
-        "CC0-1.0",
-        cc0,
-    )
-    download(STYLE + "models/car/car.gltf", "models/car.gltf", "CC0-1.0", cc0)
-    download(STYLE + "models/car/car.bin", "models/car.bin", "CC0-1.0", cc0)
-    source = work / "px4"
-    source.mkdir(exist_ok=True)
-    download(
-        PX4 + "models/x500_base/model.sdf",
-        ".work/converter/px4/model.sdf",
-        "BSD-3-Clause",
-        px4,
-    )
-    for name in (
-        "NXP-HGD-CF.dae",
-        "5010Base.dae",
-        "5010Bell.dae",
-        "1345_prop_ccw.stl",
-        "1345_prop_cw.stl",
-    ):
+    if args.models in {"car", "all"}:
+        download(STYLE, "models/car/car.gltf", "models/car.gltf", "CC0-1.0", cc0)
+        download(STYLE, "models/car/car.bin", "models/car.bin", "CC0-1.0", cc0)
+    if args.models in {"x500", "all"}:
+        download(PX4, "LICENSE", "licenses/PX4-BSD.txt", "BSD-3-Clause", px4)
         download(
-            PX4 + "models/x500_base/meshes/" + name,
-            ".work/converter/px4/" + name,
+            PX4,
+            "models/x500_base/LICENSE",
+            "licenses/X500-BSD.txt",
             "BSD-3-Clause",
             px4,
         )
-    # Tools live only in the ignored asset work directory; no package.json/lockfile changes.
-    if not (work / "node_modules/linkedom").exists():
+        source = work / "px4"
+        source.mkdir(exist_ok=True)
+        for name, upstream in [
+            ("model.sdf", "model.sdf"),
+            *[
+                (name, "meshes/" + name)
+                for name in (
+                    "NXP-HGD-CF.dae",
+                    "5010Base.dae",
+                    "5010Bell.dae",
+                    "1345_prop_ccw.stl",
+                    "1345_prop_cw.stl",
+                )
+            ],
+        ]:
+            url = PX4 + "models/x500_base/" + upstream
+            with urllib.request.urlopen(url, timeout=90) as response:
+                (source / name).write_bytes(response.read())
         subprocess.run(
             [
                 "npm",
                 "install",
                 "--prefix",
                 str(work),
-                "--cache",
-                str(work.parent / "npm-cache"),
                 "--no-package-lock",
                 "linkedom@0.18.13",
                 "@gltf-transform/cli@4.5.1",
@@ -230,84 +176,68 @@ def main() -> None:
             check=True,
             cwd=ROOT,
         )
-    helper = work / "convert.mjs"
-    helper.write_text(CONVERTER)
-    model = dest / "models/x500.glb"
-    subprocess.run(["node", str(helper), str(source), str(model)], check=True, cwd=ROOT)
-    cli = work / "node_modules/.bin/gltf-transform"
-    transform = "PX4 SDF visual poses + Collada units, Y-up metres, authored PBR and welded smooth display normals; source labels/planes omitted"
-    if args.optimize != "none":
-        raw = work / "x500-uncompressed.glb"
-        shutil.copyfile(model, raw)
+        helper = work / "convert.mjs"
+        helper.write_text(CONVERTER)
+        model = dest / "models/x500.glb"
+        model.parent.mkdir(exist_ok=True)
         subprocess.run(
-            [
-                str(cli),
-                "optimize",
-                str(raw),
-                str(model),
-                "--compress",
-                args.optimize,
-                "--texture-compress",
-                "false",
-                "--simplify-ratio",
-                "0.05",
-                "--simplify-error",
-                "0.01",
-                "--simplify-lock-border",
-                "false",
-            ],
-            check=True,
+            ["node", str(helper), str(source), str(model)], check=True, cwd=ROOT
         )
-        transform += (
-            "; gltf-transform "
-            + args.optimize
-            + "; simplify ratio 0.05/error 0.01/border unlocked"
+        transform = "PX4 SDF visual poses, Collada units, Y-up metres, display PBR and welded normals"
+        if args.optimize != "none":
+            raw = work / "x500-uncompressed.glb"
+            shutil.copyfile(model, raw)
+            subprocess.run(
+                [
+                    str(work / "node_modules/.bin/gltf-transform"),
+                    "optimize",
+                    str(raw),
+                    str(model),
+                    "--compress",
+                    args.optimize,
+                    "--texture-compress",
+                    "false",
+                    "--simplify-ratio",
+                    "0.05",
+                    "--simplify-error",
+                    "0.01",
+                    "--simplify-lock-border",
+                    "false",
+                ],
+                check=True,
+            )
+            transform += "; gltf-transform " + args.optimize
+        raw_glb = model.read_bytes()
+        json_size = struct.unpack_from("<I", raw_glb, 12)[0]
+        gltf = json.loads(raw_glb[20 : 20 + json_size])
+        gltf["asset"]["extras"] = {
+            "bodyToAssetQuaternion": [-(2**-0.5), 0, 0, 2**-0.5],
+            "units": "metres",
+            "source": PX4 + "models/x500_base/model.sdf",
+            "displayGeometry": transform,
+        }
+        encoded = json.dumps(gltf, separators=(",", ":")).encode()
+        encoded += b" " * (-len(encoded) % 4)
+        tail = raw_glb[20 + json_size :]
+        model.write_bytes(
+            struct.pack("<4sII", b"glTF", 2, 20 + len(encoded) + len(tail))
+            + struct.pack("<I4s", len(encoded), b"JSON")
+            + encoded
+            + tail
         )
-    if args.ktx2:
-        if not shutil.which("toktx"):
-            raise RuntimeError("--ktx2 requires the real toktx executable")
-        # This X500 uses texture-free PBR, so KTX2 applies to caller-provided textured GLBs only.
-        print("X500 has no image textures; no KTX2 texture conversion is applicable.")
-    raw_glb = model.read_bytes()
-    json_size = struct.unpack_from("<I", raw_glb, 12)[0]
-    gltf = json.loads(raw_glb[20 : 20 + json_size])
-    gltf["asset"]["extras"] = {
-        "bodyToAssetQuaternion": [-(2**-0.5), 0, 0, 2**-0.5],
-        "units": "metres",
-        "source": PX4 + "models/x500_base/model.sdf",
-        "displayGeometry": transform,
-    }
-    encoded = json.dumps(gltf, separators=(",", ":")).encode()
-    encoded += b" " * (-len(encoded) % 4)
-    tail = raw_glb[20 + json_size :]
-    model.write_bytes(
-        struct.pack("<4sII", b"glTF", 2, 20 + len(encoded) + len(tail))
-        + struct.pack("<I4s", len(encoded), b"JSON")
-        + encoded
-        + tail
+        record(
+            model, "BSD-3-Clause", px4, PX4 + "models/x500_base/model.sdf", transform
+        )
+    inventory = dest / "inventory.json"
+    inventory.write_text(
+        json.dumps(
+            {"schema": "aeroagentsim.assets/v1", "assets": records},
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n"
     )
-    record(model, "BSD-3-Clause", px4, PX4 + "models/x500_base/model.sdf", transform)
-    # Source bytes remain available for reproducibility but are excluded from deployable inventory.
-    records = [r for r in records if not r["path"].startswith(".work/")]
-    manifest = {
-        "schema": "aeroagentsim.assets/v1",
-        "assets": sorted(records, key=lambda r: r["path"]),
-        "sources": sources,
-        "excluded": [
-            {
-                "path": "models/city-runtime/holybro-x500-textured-preview.glb",
-                "reason": "No local redistribution license; preview-normalized, replaced by BSD PX4 source",
-            },
-            {
-                "path": "models/bigcity/**",
-                "reason": "Unity package redistribution rights not established",
-            },
-        ],
-    }
-    (ROOT / "frontend/assets.manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
-    )
-    print(f"Synced {len(records)} assets, {sum(r['size'] for r in records):,} bytes")
+    print(f"Built {len(records)} assets; inventory: {inventory}")
 
 
 if __name__ == "__main__":

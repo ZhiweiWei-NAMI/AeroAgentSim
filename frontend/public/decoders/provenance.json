@@ -1,0 +1,26 @@
+[
+  {
+    "path": "draco/draco_wasm_wrapper.js",
+    "sha256": "8bb2952d2ba7d67e1414f8df819410cb0434a666be53f671fff75f68843d76f6",
+    "verified_upstream": "https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/jsm/libs/draco/gltf/draco_wasm_wrapper.js",
+    "license": "Apache-2.0"
+  },
+  {
+    "path": "draco/draco_decoder.wasm",
+    "sha256": "a680d927bed9cb864ddbd63521868891af2bfbe755092761b4837487618df8ac",
+    "verified_upstream": "https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/jsm/libs/draco/gltf/draco_decoder.wasm",
+    "license": "Apache-2.0"
+  },
+  {
+    "path": "basis/basis_transcoder.js",
+    "sha256": "8478b5b6d6b74e7d3082b89f6417321d8d1dc0307f2b30d4484bb11b441696a1",
+    "verified_upstream": "https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/jsm/libs/basis/basis_transcoder.js",
+    "license": "Apache-2.0"
+  },
+  {
+    "path": "basis/basis_transcoder.wasm",
+    "sha256": "6cf17dc889352c42e9acf8897107978d127005fe3386c36a0e3845e27967630a",
+    "verified_upstream": "https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/jsm/libs/basis/basis_transcoder.wasm",
+    "license": "Apache-2.0"
+  }
+]

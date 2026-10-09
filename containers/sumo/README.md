@@ -6,7 +6,7 @@ Build SUMO 1.27.1/TraCI from the public digest-pinned Python base and vendored w
 containers/sumo/build.sh
 docker run -d --name aas-p9-sumo --label aeroagentsim.job=p9 \
   --cpus 16 --memory 8g -p 127.0.0.1:19003:9000 aeroagentsim/sumo:standalone
-/mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python \
+python \
   containers/sumo/smoke.py --seconds 60 --repeats 2 --output /tmp/aas-p9/sumo-smoke
 docker stop aas-p9-sumo
 docker rm aas-p9-sumo
@@ -119,7 +119,7 @@ completion predicates and real validation numbers. The runtime contains no
 command receipt/evidence/audit verifier. Contract tests run without Docker:
 
 ~~~sh
-PYTHONDONTWRITEBYTECODE=1 /mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python \
+PYTHONDONTWRITEBYTECODE=1 python \
   -m pytest -p no:cacheprovider --basetemp=/tmp/aas-p3a/pytest containers/sumo/tests
 ~~~
 

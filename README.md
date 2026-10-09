@@ -44,6 +44,7 @@ checkout. From this repository:
 python3.11 -m venv --symlinks .venv
 source .venv/bin/activate
 pip install -e ../aerokernel -e '.[server]'
+export AEROAGENTSIM_AEROGRAPH_ROOT=/absolute/path/to/AeroGraph
 aeroagentsim run scenarios/p1-slice.yaml --out runs
 # Use the exact directory printed by run:
 aeroagentsim replay runs/<printed-run-directory-name>
@@ -52,10 +53,9 @@ aeroagentsim serve --help
 
 With dependencies and the matching AeroGraph source already available, the
 22-second kinematic slice runs in under two minutes on the measured host (8.02 s
-in P8). Installation/download time is separate. `p1-slice.yaml` currently pins
-`/mnt/data2/weizhiwei/AeroGraph` and its predicate source hash. For another layout,
-make a scenario copy with the real source paths; do not replace the registry or
-hash with mock data. [INSTALL.md](INSTALL.md) explains snapshots, source layout
+in P8). Installation/download time is separate. `p1-slice.yaml` uses the explicit
+`AEROAGENTSIM_AEROGRAPH_ROOT` source input and pins its predicate source hash.
+Keep that hash matched to the reviewed source; do not replace it with mock data. [INSTALL.md](INSTALL.md) explains snapshots, source layout
 and a portable snapshot-based logistics example.
 
 New Python code uses:

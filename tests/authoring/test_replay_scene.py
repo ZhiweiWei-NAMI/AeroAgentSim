@@ -5,15 +5,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from aeroagentsim.authoring.inputs import configured_ontology
 from aeroagentsim.authoring.replay import scene_header, snapshot_scene
 from aeroagentsim.authoring.workspace import WorkspaceStore
 from aeroagentsim.scenario import load_scenario
 
 
 def test_geometry_is_copied_before_later_draft_changes(tmp_path: Path) -> None:
-    store = WorkspaceStore(
-        tmp_path / "workspaces", Path("/mnt/data2/weizhiwei/AeroGraph")
-    )
+    store = WorkspaceStore(tmp_path / "workspaces", configured_ontology())
     workspace = store.create("city")
     scene = {
         "origin": {"lat": 31.3, "lon": 121.5, "alt": 0.0},
@@ -42,9 +41,7 @@ def test_geometry_is_copied_before_later_draft_changes(tmp_path: Path) -> None:
 def test_changed_scenario_does_not_attach_a_different_draft_scene(
     tmp_path: Path,
 ) -> None:
-    store = WorkspaceStore(
-        tmp_path / "workspaces", Path("/mnt/data2/weizhiwei/AeroGraph")
-    )
+    store = WorkspaceStore(tmp_path / "workspaces", configured_ontology())
     workspace = store.create("city")
     scenario = load_scenario(workspace["scenario"])
     draft = store.get(workspace["id"])

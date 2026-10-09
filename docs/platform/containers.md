@@ -28,21 +28,21 @@ Runtime example (make `/tmp/aas-p9` first):
 ```sh
 docker run -d --name aas-p9-px4 --label aeroagentsim.job=p9 --cpus 16 \
   --memory 16g -p 127.0.0.1:19000:9000 aeroagentsim/px4-gazebo:standalone
-/mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python \
+python \
   containers/px4-gazebo/smoke.py --port 19000 --vehicles 1 --runs 1 --step-ms 20 \
   --output /tmp/aas-p9/px4-smoke.json
 docker rm -f aas-p9-px4
 
 docker run -d --name aas-p9-sumo --label aeroagentsim.job=p9 --cpus 16 \
   --memory 16g -p 127.0.0.1:19003:9000 aeroagentsim/sumo:standalone
-/mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python \
+python \
   containers/sumo/smoke.py --port 19003 --seconds 60 --repeats 2 \
   --output /tmp/aas-p9/sumo-smoke
 docker rm -f aas-p9-sumo
 
 docker run -d --name aas-p9-ns3 --label aeroagentsim.job=p9 --cpus 16 \
   --memory 16g -p 127.0.0.1:19004:9000 aeroagentsim/ns3:standalone
-/mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python \
+python \
   containers/ns3/smoke.py --port 19004 --output /tmp/aas-p9/ns3-smoke
 docker rm -f aas-p9-ns3
 ```

@@ -30,9 +30,11 @@ optional city preview metadata. The YAML export contains only keys accepted by
 the scenario loader. Maps and preview layers remain authoring metadata; a scene
 preview does not configure an external simulator or prove collision coupling.
 
-Local extract IDs are configured server-side. The default sources are the
-read-only main checkout's `sumo_wujiaochang/osm_bbox.osm.xml` and
-`sumo_berlin/map.osm`. No map request downloads or changes the source extracts.
+Local extract IDs are configured server-side. The default is the packaged,
+attributed historical Wujiaochang selection (three buildings and one road).
+`AEROAGENTSIM_OSM_EXTRACTS` replaces it with an explicit JSON id-to-path map;
+invalid configuration fails. No map request downloads or changes source extracts.
+See [assets.md](assets.md) for larger public-source inputs and licence notices.
 The region is a WGS84 rectangle with an ENU anchor at its center. The user
 supplies anchor altitude and metres per building level. Missing building height
 must remain a diagnostic, and an estimate from `building:levels` records its
