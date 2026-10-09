@@ -8,6 +8,11 @@ import type { StaticOcclusion } from './occlusion';
 import { worldOrientation, worldPosition } from './coordinates';
 
 interface Batch { meshes: T.InstancedMesh[]; transforms: T.Matrix4[]; keys: EntityKey[]; capacity: number; loaded: boolean; far?: { mesh: T.InstancedMesh; keys: EntityKey[] }; outline?: T.Mesh[]; assetBasis?: T.Quaternion }
+// Generic accent for uncoloured bound glyphs: a warm coral complementary to the
+// blue city glass, so unstyled entities read against the cool modern skyline.
+// Explicit visual.color always wins; this default never touches styled bindings.
+const UNCOLOURED_GLYPH = '#ff8a5c';
+const UNCOLOURED_GLYPH_EMISSIVE = '#8a3d1f';
 export class EntityLayer {
   readonly root = new T.Group();
   readonly positions = new Map<string, T.Vector3>();
@@ -37,7 +42,16 @@ export class EntityLayer {
   }
   private createBatch(binding: PresentationBinding, capacity: number) {
     const geometry = binding.visual.kind==='model'&&binding.orientationField?new T.ConeGeometry(0.65,1.8,4).rotateX(Math.PI/2):new T.IcosahedronGeometry(0.85, 1);
-    const material = new T.MeshStandardMaterial({ color: binding.visual.color ?? '#edf5fc', roughness: 0.4, metalness: 0.15, emissive: binding.visual.color ?? '#bcd5ef', emissiveIntensity: 0.22 });
+    // The per-batch accent stays readable at marker and far-LOD sizes.
+    // Full model assets retain their source materials.
+    const styled = binding.visual.color != null;
+    const material = new T.MeshStandardMaterial({
+      color: styled ? binding.visual.color : UNCOLOURED_GLYPH,
+      roughness: styled ? 0.4 : 0.32,
+      metalness: 0.15,
+      emissive: styled ? binding.visual.color : UNCOLOURED_GLYPH_EMISSIVE,
+      emissiveIntensity: styled ? 0.22 : 0.12,
+    });
     const marker = new T.InstancedMesh(geometry, material, capacity);
     marker.castShadow = false; marker.frustumCulled = false; marker.count=0; this.root.add(marker);
     const batch: Batch = { meshes: [marker], transforms: [new T.Matrix4()], capacity, keys: [], loaded: binding.visual.kind !== 'model' };

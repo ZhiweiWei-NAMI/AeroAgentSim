@@ -15,7 +15,7 @@ function classify(batch: PackedBatch): Surface {
   return 'ground';
 }
 function makeSurface(kind: Surface): T.MeshStandardMaterial {
-  const colors: Record<Surface,string>={asphalt:'#424950',paving:'#b7b9b7',grass:'#779866',water:'#527e93',wood:'#999387',ground:'#b7b7a5',marking:'#efece2',crossing:'#efece2',foliage:'#567e49'};
+  const colors: Record<Surface,string>={asphalt:'#424950',paving:'#d5ccba',grass:'#50802e',water:'#527e93',wood:'#999387',ground:'#c4baa3',marking:'#efece2',crossing:'#efece2',foliage:'#4f853b'};
   const material=new T.MeshStandardMaterial({color:colors[kind],roughness:kind==='water'?0.22:0.9,metalness:kind==='water'?0.25:0,side:kind==='foliage'?T.DoubleSide:T.FrontSide});
   material.userData={displaySurface:kind,displayEstimate:'procedural finish, existing surface geometry'};
   material.customProgramCacheKey=()=>`procedural-surface-v2-${kind}`;
@@ -29,8 +29,8 @@ float surfaceHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453)
     if(kind==='paving'||kind==='wood')detail+=`vec2 paving=surfacePosition.xz/vec2(${kind==='wood'?'0.3,4.0':'1.5,0.75'});vec2 joints=abs(fract(paving)-0.5);float joint=smoothstep(0.475-max(fwidth(paving.x),fwidth(paving.y)),0.495,max(joints.x,joints.y));diffuseColor.rgb*=1.0-joint*0.19;`;
     if(kind==='grass')detail+='diffuseColor.rgb*=0.98+surfaceHash(floor(surfacePosition.xz/8.0))*0.04;';
     if(kind==='water')detail+='diffuseColor.rgb*=0.96+0.04*sin(surfacePosition.x*0.6+surfacePosition.z*0.8);';
-    if(kind==='marking')detail='if(fract(surfaceUV.y)<0.5)discard;';
-    if(kind==='crossing')detail='if(fract(surfaceUV.y*4.0)<0.48)discard;';
+    if(kind==='marking')detail='if(fract(surfaceUV.x)<0.5)discard;';
+    if(kind==='crossing')detail='if(fract(surfaceUV.x)<0.48)discard;';
     if(kind==='foliage')detail='vec2 leaf=(surfaceUV-0.5)*vec2(2.0,1.65);if(dot(leaf,leaf)>0.85)discard;diffuseColor.rgb*=0.85+surfaceHash(floor(surfaceUV*80.0))*0.3;';
     shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>\n${detail}`);
   };
@@ -136,7 +136,7 @@ export function createCityVegetation(source:unknown,pack:MeshPackManifest): T.Gr
     const trunks=new T.InstancedMesh(new T.CylinderGeometry(0.16,0.24,3.5,6),new T.MeshStandardMaterial({color:'#685c48',roughness:1}),trees.length);
     const crowns=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),new T.MeshStandardMaterial({color:'#ffffff',roughness:0.95}),trees.length);
     const matrix=new T.Matrix4(),dummy=new T.Object3D(),color=new T.Color();
-    trees.forEach(([x,z],i)=>{const height=5+random()*2.5,radius=1.8+random()*0.9;dummy.position.set(x,1.75,z);dummy.scale.set(1,1,1);dummy.rotation.y=random()*Math.PI*2;dummy.updateMatrix();trunks.setMatrixAt(i,dummy.matrix);dummy.position.y=height-1.4;dummy.scale.set(radius,height*.36,radius);dummy.updateMatrix();crowns.setMatrixAt(i,dummy.matrix);color.setHSL(0.23+random()*.045,0.22+random()*.14,0.25+random()*.1);crowns.setColorAt(i,color);});
+    trees.forEach(([x,z],i)=>{const height=5+random()*2.5,radius=1.8+random()*0.9;dummy.position.set(x,1.75,z);dummy.scale.set(1,1,1);dummy.rotation.y=random()*Math.PI*2;dummy.updateMatrix();trunks.setMatrixAt(i,dummy.matrix);dummy.position.y=height-1.4;dummy.scale.set(radius,height*.36,radius);dummy.updateMatrix();crowns.setMatrixAt(i,dummy.matrix);color.setHSL(0.23+random()*.045,0.48+random()*.18,0.23+random()*.08);crowns.setColorAt(i,color);});
     for(const mesh of [trunks,crowns]){mesh.castShadow=true;mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.userData.displayDecoration=true;root.add(mesh);}
   }
   root.userData={source:'verified-original-osm',observedTrees,estimatedTrees,surfaceCount,unresolvedRings,displayDecoration:true,displayEstimate:'tree placement along roads/parks, road widths without width/lanes tags; foliage shape'};
