@@ -1,0 +1,19 @@
+import type { FeedCommit, RunHeader, PredicateTruth, ChainInstance } from '../contracts/viewer-feed';
+export const at = (ns: string, microstep = 0) => ({ ns, microstep });
+export const task = { id: 'task-1', generation: 1 }, vehicle = { id: 'vehicle-1', generation: 2 }, weather = { id: 'weather-1', generation: 0 };
+export const fixtureHeader: RunHeader = {
+  contract: 'aeroagentsim.viewer-feed/v1', runId: 'fixture-kernel-run', epoch: 'fixture-epoch', registryDigest: 'fixture-registry', start: at('0'), end: at('9007199254740993'),
+  types: [{typeId:'model',displayName:'Model',ancestors:[],directory:'objects'}, {typeId:'vehicle',displayName:'Vehicle',ancestors:['model'],directory:'objects'}, {typeId:'task',displayName:'Task',ancestors:['model'],directory:'tasks'}, {typeId:'weather',displayName:'Weather',ancestors:['model'],directory:'environment'}],
+  fields: [{fieldId:'position',displayName:'Position',valueType:'vector',unit:'m',frame:'enu'}, {fieldId:'phase',displayName:'Phase',valueType:'string'}],
+  presentation: [{typeId:'vehicle',positionField:'position',frame:'enu',visual:{kind:'marker',color:'#40a9ff'}}],
+  behaviour: {extensions:['predicate-truth/v1','chain-instance/v1'], injectionPoints:[]},
+};
+export const emptyCommit = (commitIndex: number, ns = '0', microstep = 0): FeedCommit => ({ commitIndex, at: at(ns, microstep), created: [], removed: [], facts: [], retracted: [], edges: [], messages: [], receipts: [] });
+export const truth: PredicateTruth = { contextId:'ready/task-1',predicateId:'task.ready',roles:{task},profile:'committed_reactive/v1',status:'known',value:false,diagnostics:[],evaluatedAt:at('0'),readCut:{index:1,at:at('0')},validFrom:at('0'),validTo:null,op:'assert',acquired:{'task.phase':{clockId:'canonical',mappingId:'identity',numerator:'0',denominator:'1'}} };
+export const instance: ChainInstance = { instanceId:'response/task-1',templateId:'response',bindingId:'tasks',packageDigest:'fixture-package',roles:{task,vehicle},lifecycle:'created',state:'waiting',revision:0,variables:{},children:{},validFrom:at('0'),validTo:null,op:'assert' };
+export const fixtureCommits: FeedCommit[] = [
+  {...emptyCommit(1),created:[{...task,typeId:'task'},{...vehicle,typeId:'vehicle'},{...weather,typeId:'weather'}],facts:[{entity:vehicle,fieldId:'position',value:[10,20,5],producer:'motion',validFrom:at('0')},{entity:task,fieldId:'phase',value:'queued',producer:'behaviour',validFrom:at('0')}],edges:[{edgeId:'task/vehicle',relationId:'assigned_to',source:task,target:vehicle,op:'assert',validFrom:at('0')}],predicateTruth:[truth],chainInstances:[instance]},
+  {...emptyCommit(2,'10',1),predicateTruth:[{...truth,op:'close',validTo:at('10',1)},{...truth,status:'required_input',value:null,diagnostics:[{entity:task,field:'phase',producer:'behaviour',path:'predicates.task.ready.expression',reason:'required source history missing'}],evaluatedAt:at('10',1),readCut:{index:1,at:at('0')},validFrom:at('10',1),validTo:null}]},
+  {...emptyCommit(3,'10',2),predicateTruth:[{...truth,status:'required_input',value:null,diagnostics:['missing phase'],validFrom:at('10',1),validTo:at('10',2),op:'close'},{...truth,value:true,evaluatedAt:at('10',2),readCut:{index:2,at:at('10',1)},validFrom:at('10',2),validTo:null}],chainInstances:[{...instance,op:'close',validTo:at('10',2)},{...instance,lifecycle:'transitioned',transitionId:'launch',state:'moving',revision:1,validFrom:at('10',2),validTo:null}]},
+  {...emptyCommit(4,'9007199254740993'),facts:[{entity:vehicle,fieldId:'position',value:[25,35,10],producer:'motion',validFrom:at('9007199254740993')}],chainInstances:[{...instance,lifecycle:'transitioned',transitionId:'launch',state:'moving',revision:1,validFrom:at('10',2),validTo:at('9007199254740993'),op:'close'},{...instance,lifecycle:'completed',transitionId:'finish',state:'done',revision:{$integer:'9007199254740993'},validFrom:at('9007199254740993'),validTo:null}]},
+];

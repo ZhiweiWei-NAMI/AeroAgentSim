@@ -1,0 +1,32 @@
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { parseLosslessJson } from '../feeds/lossless-json';
+import { mapping, type Draft } from './model';
+interface Props { schema: unknown; value: unknown; onChange:(value:unknown)=>void; definitions?:Draft; path?:string; onValidityChange?:(valid:boolean)=>void }
+const PayloadValidity=createContext<(path:string,error:string)=>void>(()=>{});
+export function TypedPayloadForm(props:Props) {
+  const [errors,setErrors]=useState<Record<string,string>>({});
+  const report=useCallback((path:string,error:string)=>setErrors(previous=>{if(previous[path]===error||(!error&&!(path in previous)))return previous;const next={...previous};if(error)next[path]=error;else delete next[path];return next;}),[]);
+  const valid=Object.keys(errors).length===0;useEffect(()=>props.onValidityChange?.(valid),[valid,props.onValidityChange]);
+  return <PayloadValidity.Provider value={report}><PayloadFields {...props}/></PayloadValidity.Provider>;
+}
+function PayloadFields({schema,value,onChange,definitions={},path='Payload'}:Props) {
+  const [raw,setRaw]=useState(JSON.stringify(value,null,2)??''),[error,setError]=useState('');useEffect(()=>setRaw(JSON.stringify(value,null,2)??''),[value]);
+  const report=useContext(PayloadValidity);useEffect(()=>{report(path,error);return()=>report(path,'');},[report,path,error]);
+  const descriptor = typeof schema==='string'?definitions[schema]:mapping(schema)&&typeof schema.schema_ref==='string'?definitions[schema.schema_ref]:schema;
+  if(mapping(descriptor)&&descriptor.type==='record'&&mapping(descriptor.members)) {
+    const row=mapping(value)?value:{};
+    return <fieldset><legend>{path} · typed record</legend>{Object.entries(descriptor.members).map(([key,child])=><PayloadFields key={key} schema={child} value={row[key]} onChange={next=>onChange({...row,[key]:next})} definitions={definitions} path={`${path}.${key}`}/>)}
+      <details><summary>Complete payload / extra members</summary><textarea aria-label={`${path} JSON`} value={raw} onChange={event=>{setRaw(event.target.value);try{const next=parseLosslessJson(event.target.value,true);if(!mapping(next))throw Error('Record payload must be an object');onChange(next);setError('');}catch(problem){setError(String(problem));}}}/>{error&&<p role="alert">{error}</p>}</details></fieldset>;
+  }
+  if(mapping(descriptor)&&['string','boolean','number','integer'].includes(String(descriptor.type))) {
+    const kind=String(descriptor.type);
+    const numeric = mapping(value)?value.$integer??value.$number:value;
+    return <label>{path} · {kind}{kind==='boolean'?<select aria-label={path} value={typeof value==='boolean'?String(value):''} onChange={event=>onChange(event.target.value===''?undefined:event.target.value==='true')}><option value="">Unset</option><option>true</option><option>false</option></select>:<input aria-label={path} value={typeof numeric==='number'||typeof numeric==='string'?String(numeric):''} onChange={event=>{
+      const text=event.target.value;if(kind==='string'){onChange(text);return;}if(!text){onChange(undefined);setError('');return;}
+      if(kind==='integer'&&/^-?(0|[1-9]\d*)$/.test(text)){onChange({$integer:text});setError('');}
+      else if(kind==='number'&&Number.isFinite(Number(text))){onChange({$number:text});setError('');}
+      else setError(`Enter a typed ${kind}`);
+    }}/>} {error&&<span role="alert">{error}</span>}</label>;
+  }
+  return <label>{path} · {mapping(descriptor)?String(descriptor.type):'unsupported schema'} JSON<textarea aria-label={`${path} JSON`} rows={3} value={raw} onChange={event=>{setRaw(event.target.value);try{onChange(parseLosslessJson(event.target.value,true));setError('');}catch(problem){setError(String(problem));}}}/>{error&&<span role="alert">{error}</span>}</label>;
+}

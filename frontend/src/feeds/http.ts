@@ -1,3 +1,4 @@
+import { parseLosslessJson } from './lossless-json';
 import type { FeedCommit, RunHeader, ViewerFeed } from '../contracts/viewer-feed';
 
 export interface RunInfo { id: string; scenario: string; status: string; until_ns: string; error?: string }
@@ -43,6 +44,13 @@ export function validateHeader(value: unknown): RunHeader {
   const header = object(value);
   if (header.contract !== 'aeroagentsim.viewer-feed/v1') throw Error('Unsupported viewer contract');
   string(header.runId); string(header.registryDigest); instant(header.start);
+  if (header.epoch !== undefined) string(header.epoch);
+  if (header.kernelRunId !== undefined) string(header.kernelRunId);
+  if (header.behaviour !== undefined) {
+    const behaviour = object(header.behaviour);
+    array(behaviour.extensions).forEach(string);
+    portable(behaviour);
+  }
   if (header.end !== undefined) instant(header.end);
   for (const item of array(header.types)) {
     const type = object(item); string(type.typeId); string(type.displayName); array(type.ancestors).forEach(string);
@@ -81,6 +89,37 @@ export function validateCommit(value: unknown): FeedCommit {
     portable(message.payload);if(message.subjects!==undefined)array(message.subjects).forEach(key);
   }
   for (const item of array(commit.receipts)) { const receipt = object(item); string(receipt.commandId); string(receipt.status);portable(receipt.result); }
+  const roles = (value: unknown) => Object.values(object(value)).forEach(key);
+  const extensionTemporal = (row: ObjectValue) => {
+    instant(row.validFrom);
+    const { acquired, ...metadata } = row;
+    temporal(metadata); portable(row);
+  };
+  if (commit.predicateTruth !== undefined) for (const item of array(commit.predicateTruth)) {
+    const row = object(item); string(row.contextId); string(row.predicateId); string(row.profile); roles(row.roles);
+    if (!['known', 'required_input', 'invalid_input'].includes(String(row.status))) throw Error('Invalid predicate status');
+    if (row.status === 'known' ? typeof row.value !== 'boolean' : row.value !== null) throw Error('Predicate status/value mismatch');
+    const diagnostics = array(row.diagnostics);
+    if (row.status !== 'known' && !diagnostics.length) throw Error('Unknown predicate lacks diagnostics');
+    instant(row.evaluatedAt); const cut = object(row.readCut); counter(cut.index); instant(cut.at);
+    if (!['assert', 'close'].includes(String(row.op))) throw Error('Invalid predicate interval operation');
+    if (row.acquired !== undefined) for (const item of Object.values(object(row.acquired))) {
+      const stamp = object(item); string(stamp.clockId); string(stamp.mappingId);
+      if (stamp.numerator !== undefined) { string(stamp.numerator); if (!/^-?(0|[1-9][0-9]*)$/.test(stamp.numerator)) throw Error('Invalid acquisition numerator'); }
+      if (stamp.denominator !== undefined) { string(stamp.denominator); if (!/^[1-9][0-9]*$/.test(stamp.denominator)) throw Error('Invalid acquisition denominator'); }
+    }
+    extensionTemporal(row);
+  }
+  if (commit.chainInstances !== undefined) for (const item of array(commit.chainInstances)) {
+    const row = object(item); ['instanceId', 'templateId', 'bindingId', 'packageDigest', 'state'].forEach(name => string(row[name]));
+    roles(row.roles); object(row.variables); object(row.children);
+    if (!['created', 'transitioned', 'completed', 'failed', 'canceled'].includes(String(row.lifecycle))) throw Error('Invalid chain lifecycle');
+    if (typeof row.revision === 'number') counter(row.revision);
+    else { const revision = typeof row.revision === 'string' ? row.revision : object(row.revision).$integer; string(revision); if (!/^(0|[1-9][0-9]*)$/.test(revision)) throw Error('Invalid chain revision'); }
+    if (row.op !== undefined && !['assert', 'close'].includes(String(row.op))) throw Error('Invalid chain interval operation');
+    if (row.transitionId !== undefined && row.transitionId !== null) string(row.transitionId);
+    extensionTemporal(row);
+  }
   return commit as unknown as FeedCommit;
 }
 
@@ -89,7 +128,7 @@ export class RunsApi {
   async request(path: string, options?: RequestInit): Promise<unknown> {
     const response = await fetch(`${this.base}${path}`, options);
     if (!response.ok) throw Error(`HTTP ${response.status}: ${await response.text()}`);
-    return response.json();
+    return parseLosslessJson(await response.text());
   }
   async runs(signal?: AbortSignal): Promise<RunInfo[]> {
     const rows = array(await this.request('/v1/runs', { signal }));
@@ -110,7 +149,7 @@ export class RunsApi {
 
 export class HttpViewerFeed implements ViewerFeed {
   private readonly path: string;
-  constructor(private api: RunsApi, id: string, private mode: 'live' | 'replay' = 'replay', private status?: (status: string) => void) {
+  constructor(private api: RunsApi, id: string, private mode: 'live' | 'replay' = 'replay', private status?: (status: string) => void, private transportError?: (error: string) => void) {
     this.path = `/v1/runs/${encodeURIComponent(id)}`;
   }
   async header(): Promise<RunHeader> { return validateHeader(await this.api.request(`${this.path}/header`)); }
@@ -165,7 +204,7 @@ export class HttpViewerFeed implements ViewerFeed {
           }
         }
       if (signal?.aborted || ended) return;
-      } catch(error) {if(signal?.aborted)return;if(!(error instanceof TransportError))throw error;}
+      } catch(error) {if(signal?.aborted)return;if(!(error instanceof TransportError))throw error;this.transportError?.(error.message);}
       finally {if(reader) {try {await reader.cancel();}catch { /* A failed read already retains its transport error. */ }reader.releaseLock();}}
       if (++retries > 3) throw Error('SSE disconnected before end; reconnect to the recorded prefix');
       await new Promise<void>(resolve => {

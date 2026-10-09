@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Callable
 from functools import lru_cache
@@ -48,11 +49,38 @@ def create_router(
 
     @router.get("/catalog")
     def catalog() -> dict[str, Any]:
-        return checked(lambda: {"extracts": source_catalog(), "engines": engines()})
+        def read() -> dict[str, Any]:
+            from aeroagentsim.platform.plugins import EngineCatalog
+
+            items = engines()
+            engine_catalog = EngineCatalog()
+            for item in items:
+                if item["available"]:
+                    factory = engine_catalog.factory(item["id"])
+                    if hasattr(factory, "capability_descriptor"):
+                        descriptor = factory.capability_descriptor
+                        if not isinstance(descriptor, dict):
+                            raise TypeError(
+                                f"plugin {item['id']}.capability_descriptor: mapping required"
+                            )
+                        item["capability_descriptor"] = descriptor
+            return {"extracts": source_catalog(), "engines": items}
+
+        return checked(read)
 
     @router.get("/types")
     def types(q: str = "") -> dict[str, Any]:
-        return checked(lambda: store.catalog.search(q))
+        def read() -> dict[str, Any]:
+            result = store.catalog.search(q)
+            result["relations"] = [
+                {**record.data, "source": record.location()}
+                for rows in store.catalog.sources().relations.values()
+                for record in rows
+                if q.casefold() in str(record.data).casefold()
+            ]
+            return result
+
+        return checked(read)
 
     @router.get("/types/{type_id:path}")
     def type_detail(type_id: str) -> dict[str, Any]:
@@ -75,6 +103,54 @@ def create_router(
     @router.post("/workspaces/{identifier}")
     def save(identifier: str, body: dict[str, Any]) -> dict[str, Any]:
         return checked(lambda: store.save(identifier, body))
+
+    @router.post("/workspaces/{identifier}/templates/{name}")
+    def import_demo(identifier: str, name: str) -> dict[str, Any]:
+        return checked(lambda: store.import_demo(identifier, name))
+
+    @router.post("/workspaces/{identifier}/behaviours")
+    def edit_behaviour(identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return checked(lambda: store.edit_behaviour(identifier, body))
+
+    @router.get("/workspaces/{identifier}/behaviours/{index}/export")
+    def export_behaviour(identifier: str, index: int) -> dict[str, Any]:
+        return checked(lambda: store.export_behaviour(identifier, index))
+
+    @router.post("/workspaces/{identifier}/behaviours/{index}/validate")
+    def validate_behaviour(
+        identifier: str, index: int, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        if body:
+            raise HTTPException(422, "behaviour validation: save the draft first")
+        return checked(lambda: store.validate_behaviour(identifier, index))
+
+    @router.get("/runs/{run_id}/configuration")
+    def run_configuration(run_id: str) -> dict[str, Any]:
+        """Read pinned authoring inputs and actual WAL identity, never build an engine."""
+
+        def read() -> dict[str, Any]:
+            if run_root is None or not re.fullmatch(r"run-[a-f0-9]{32}", run_id):
+                raise FileNotFoundError("studio run: not found")
+            path = (run_root / run_id).resolve()
+            if not path.is_relative_to(run_root.resolve()):
+                raise ValueError("run path escapes configured root")
+            with (path / "journal.jsonl").open("rb") as stream:
+                line = stream.readline()
+            if not line.endswith(b"\n"):
+                raise ValueError("run WAL header is not committed yet")
+            header = json.loads(line)
+            if header.get("type") != "header" or header.get("index") != 0:
+                raise ValueError("run WAL lacks its identity header")
+            scenario = json.loads((path / "scenario.json").read_bytes())
+            return {
+                "service_run_id": run_id,
+                "kernel_run_id": header["run_id"],
+                "epoch": header["epoch"],
+                "scenario": scenario,
+                "resolved_bindings": header["resolved_bindings"],
+            }
+
+        return checked(read)
 
     @router.post("/workspaces/{identifier}/region")
     def region(identifier: str, body: dict[str, Any]) -> dict[str, Any]:

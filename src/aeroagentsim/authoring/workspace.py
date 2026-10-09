@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import importlib
 import json
 import math
 import re
@@ -128,7 +130,241 @@ class WorkspaceStore:
 
                 draft["scenario"] = normalize_wire(draft["scenario"], self.catalog)
             draft.pop("validation", None)
+            draft.pop("behaviour_validation", None)
             return self._write(draft)
+
+    def import_demo(self, identifier: str, name: str) -> dict[str, Any]:
+        """Import the actual shipped draft and pinned source files, without implying validity."""
+        from .templates import demo_source
+
+        source = demo_source(name)
+        with self.lock:
+            draft = self.get(identifier)
+            document = yaml.load(
+                (source / "scenario.yaml").read_bytes(), Loader=UniqueLoader
+            )
+            if not isinstance(document, dict):
+                raise TypeError("demo scenario: mapping required")
+            files = [path for path in source.rglob("*") if path.is_file()]
+            for path in files:
+                if not path.resolve().is_relative_to(source.resolve()):
+                    raise ValueError("demo source: symlink escapes template scope")
+            for path in files:
+                target = self.directory(identifier) / path.relative_to(source)
+                if not target.resolve().is_relative_to(self.directory(identifier)):
+                    raise ValueError("demo target escapes workspace")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(path.read_bytes())
+            draft["scenario"] = document
+            draft.pop("validation", None)
+            draft.pop("behaviour_validation", None)
+            draft.pop("behaviour_layout", None)
+            return self._write(draft)
+
+    def _behaviour_package(self, identifier: str, index: int) -> dict[str, Any]:
+        draft = self.get(identifier)
+        entries = draft["scenario"].get("behaviours", [])
+        if (
+            type(index) is not int
+            or not isinstance(entries, list)
+            or not 0 <= index < len(entries)
+        ):
+            raise ValueError("behaviours.index: existing package index required")
+        package = entries[index]
+        if not isinstance(package, dict):
+            raise TypeError("behaviours: package mapping required")
+        if "path" in package:
+            if set(package) != {"path", "sha256"} or not isinstance(
+                package["path"], str
+            ):
+                raise ValueError("behaviours: pinned path/sha256 reference required")
+            path = (self.directory(identifier) / package["path"]).resolve()
+            if not path.is_relative_to(self.directory(identifier)):
+                raise ValueError("behaviours.path: must stay inside workspace")
+            data = path.read_bytes()
+            if hashlib.sha256(data).hexdigest() != package["sha256"]:
+                raise ValueError("behaviours.sha256: package hash mismatch")
+            package = yaml.load(data, Loader=UniqueLoader)
+            if not isinstance(package, dict):
+                raise TypeError("behaviours: YAML mapping required")
+        return copy.deepcopy(package)
+
+    def edit_behaviour(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Keep unsupported authored content; editing never implies compilation success."""
+        if (
+            set(body) - {"index", "package", "yaml", "layout"}
+            or not set(body) & {"package", "yaml", "layout"}
+            or {"package", "yaml"} <= set(body)
+        ):
+            raise ValueError(
+                "behaviours: supply package or yaml, and optional index/layout"
+            )
+        with self.lock:
+            draft = self.get(identifier)
+            entries = draft["scenario"].get("behaviours", [])
+            if not isinstance(entries, list):
+                raise TypeError("behaviours: list required")
+            index = body.get("index", len(entries))
+            if type(index) is not int or not 0 <= index <= len(entries):
+                raise ValueError(
+                    "behaviours.index: replace existing or append at length"
+                )
+            if "package" in body or "yaml" in body:
+                package = body.get("package")
+                if "yaml" in body:
+                    if not isinstance(body["yaml"], str):
+                        raise TypeError("behaviours.yaml: string required")
+                    try:
+                        package = yaml.load(body["yaml"], Loader=UniqueLoader)
+                    except yaml.YAMLError as exc:
+                        raise ValueError(f"behaviours.yaml: {exc}") from exc
+                if not isinstance(package, dict):
+                    raise TypeError("behaviours.package: mapping required")
+                entries = copy.deepcopy(entries)
+                if index == len(entries):
+                    entries.append(copy.deepcopy(package))
+                else:
+                    entries[index] = copy.deepcopy(package)
+                draft["scenario"]["behaviours"] = entries
+            elif index == len(entries):
+                raise ValueError("behaviours.layout: select an existing package")
+            if "layout" in body:
+                if not isinstance(body["layout"], dict):
+                    raise TypeError("behaviours.layout: mapping required")
+                draft.setdefault("behaviour_layout", {})[str(index)] = copy.deepcopy(
+                    body["layout"]
+                )
+            draft.pop("validation", None)
+            draft.pop("behaviour_validation", None)
+            return self._write(draft)
+
+    def export_behaviour(self, identifier: str, index: int) -> dict[str, Any]:
+        """Draft export is available even for unsupported content; hashes identify real bytes."""
+        from aerokernel.values import canonical_json
+
+        package = self._behaviour_package(identifier, index)
+        text = yaml.safe_dump(package, allow_unicode=True, sort_keys=True)
+        draft = self.get(identifier)
+        spec = draft["scenario"]["behaviours"][index]
+        root = self.directory(identifier)
+        base = (root / spec["path"]).parent if "path" in spec else root
+        inline_model = copy.deepcopy(package)
+        inline: dict[str, Any] | None = inline_model
+        inline_errors: list[str] = []
+
+        def rebase(document: dict[str, Any]) -> None:
+            for imported in document.get("imports", []):
+                if not isinstance(imported, dict):
+                    raise TypeError("behaviours.imports: mapping required")
+                if "path" in imported:
+                    imported_path = (base / imported["path"]).resolve()
+                    if not imported_path.is_relative_to(root):
+                        raise ValueError(
+                            "behaviours.imports: must stay inside workspace"
+                        )
+                    imported["path"] = imported_path.relative_to(root).as_posix()
+                else:
+                    rebase(imported.get("document", imported))
+            registry = document.get("registry")
+            if isinstance(registry, dict) and "snapshot" in registry:
+                snapshot = (base / registry["snapshot"]).resolve()
+                if not snapshot.is_relative_to(root):
+                    raise ValueError(
+                        "behaviours.registry.snapshot: must stay inside workspace"
+                    )
+                registry["snapshot"] = snapshot.relative_to(root).as_posix()
+
+        if base != root:
+            try:
+                rebase(inline_model)
+            except (ValueError, TypeError, KeyError) as exc:
+                inline = None
+                inline_errors.append(str(exc))
+        return {
+            "package": package,
+            "inline_package": inline,
+            "inline_errors": inline_errors,
+            "yaml": text,
+            "sha256": hashlib.sha256(text.encode()).hexdigest(),
+            "semantic_digest": hashlib.sha256(canonical_json(package)).hexdigest(),
+            "layout": self.get(identifier)
+            .get("behaviour_layout", {})
+            .get(str(index), {}),
+        }
+
+    def validate_behaviour(self, identifier: str, index: int) -> dict[str, Any]:
+        """Compiler seam: package checks are distinct from full bound-run validation."""
+        from aerokernel.values import canonical_json
+
+        with self.lock:
+            package = self._behaviour_package(identifier, index)
+            input_digest = hashlib.sha256(canonical_json(package)).hexdigest()
+            draft = self.get(identifier)
+            cached = draft.get("behaviour_validation", {}).get(str(index))
+            source = f"workspace:{identifier}/behaviours/{index}"
+            result: dict[str, Any] = {
+                "valid": False,
+                "scope": "package_shape",
+                "input_digest": input_digest,
+                "errors": [],
+            }
+            try:
+                compiler = importlib.import_module("aeroagentsim.behaviours.compiler")
+            except ModuleNotFoundError as exc:
+                if exc.name not in {
+                    "aeroagentsim.behaviours",
+                    "aeroagentsim.behaviours.compiler",
+                }:
+                    raise
+                result.update(
+                    compiler_available=False,
+                    errors=[
+                        {
+                            "source": source,
+                            "path": "$",
+                            "message": "Temporary compiler seam: Job A is not integrated. Install the behaviour compiler/runtime before full validation or running.",
+                        }
+                    ],
+                )
+            else:
+                result["compiler_available"] = True
+                if compiler.__file__ is None:
+                    raise TypeError(
+                        "behaviour compiler lacks a file-backed version identity"
+                    )
+                compiler_path = Path(compiler.__file__)
+                compiler_digest = hashlib.sha256(compiler_path.read_bytes()).hexdigest()
+                result["compiler_digest"] = compiler_digest
+                if (
+                    isinstance(cached, dict)
+                    and not package.get("imports")
+                    and cached.get("input_digest") == input_digest
+                    and cached.get("compiler_digest") == compiler_digest
+                ):
+                    return dict(cached)
+                try:
+                    self._check_behaviour_refs([package], identifier)
+                    ir = compiler.compile_package(package, source=source)
+                    result.update(package_valid=True, compiled_digest=ir.digest)
+                    # build=None deliberately does not check registry, owners or engine capabilities.
+                    result["errors"] = [
+                        {
+                            "source": source,
+                            "path": "$",
+                            "message": "Package shape compiled. Validate the full scenario to resolve registry, writers, bindings and native compatibility before running.",
+                        }
+                    ]
+                except (ValueError, TypeError, KeyError) as exc:
+                    result["errors"] = [
+                        {
+                            "source": getattr(exc, "source", source),
+                            "path": getattr(exc, "path", "$"),
+                            "message": str(exc),
+                        }
+                    ]
+            draft.setdefault("behaviour_validation", {})[str(index)] = result
+            self._write(draft)
+            return result
 
     def region(
         self, identifier: str, region: dict[str, Any], source: Path
@@ -157,6 +393,47 @@ class WorkspaceStore:
             draft.pop("validation", None)
             return self._write(draft)
 
+    def _check_behaviour_refs(self, specs: Any, identifier: str) -> None:
+        root = self.directory(identifier)
+        active: set[Path] = set()
+
+        def visit(spec: Any, base: Path) -> None:
+            if not isinstance(spec, dict):
+                raise TypeError("behaviours: package mapping required")
+            path: Path | None = None
+            if "path" in spec:
+                if not isinstance(spec["path"], str):
+                    raise TypeError("behaviours.path: string required")
+                path = (base / spec["path"]).resolve()
+                if not path.is_relative_to(root):
+                    raise ValueError("behaviours.path: must stay inside workspace")
+                if path in active:
+                    raise ValueError("behaviours.imports: cyclic package references")
+                data = path.read_bytes()
+                if hashlib.sha256(data).hexdigest() != spec.get("sha256"):
+                    raise ValueError(
+                        "behaviours.sha256: referenced package hash mismatch"
+                    )
+                active.add(path)
+                document = yaml.load(data, Loader=UniqueLoader)
+                base = path.parent
+            else:
+                document = spec.get("document", spec)
+            if not isinstance(document, dict):
+                raise TypeError("behaviours: package mapping required")
+            imports = document.get("imports", [])
+            if not isinstance(imports, list):
+                raise TypeError("behaviours.imports: list required")
+            for imported in imports:
+                visit(imported, base)
+            if path is not None:
+                active.remove(path)
+
+        if not isinstance(specs, list):
+            raise TypeError("behaviours: list required")
+        for spec in specs:
+            visit(spec, root)
+
     def _base(self, document: dict[str, Any], identifier: str) -> Path:
         """Browser imports cannot widen the configured source-file scope."""
         registry = document.get("registry", {})
@@ -175,6 +452,13 @@ class WorkspaceStore:
             snapshot = (self.directory(identifier) / registry["snapshot"]).resolve()
             if not snapshot.is_relative_to(self.directory(identifier)):
                 raise ValueError("registry.snapshot: must be inside this workspace")
+        if "behaviours" in document:
+            self._check_behaviour_refs(document["behaviours"], identifier)
+        for engine in document.get("engines", {}).values():
+            if engine.get("plugin") == "behaviour" and "packages" in engine.get(
+                "config", {}
+            ):
+                self._check_behaviour_refs(engine["config"]["packages"], identifier)
         return self.directory(identifier)
 
     def validate(
@@ -202,7 +486,20 @@ class WorkspaceStore:
                     "digest": loaded.digest,
                 }
             except Exception as exc:  # noqa: BLE001 - validation returns the real diagnostic
-                result = {"valid": False, "errors": [f"{type(exc).__name__}: {exc}"]}
+                authored: BaseException = exc
+                while authored.__cause__ is not None and not hasattr(authored, "path"):
+                    authored = authored.__cause__
+                result = {
+                    "valid": False,
+                    "errors": [f"{type(exc).__name__}: {exc}"],
+                    "issues": [
+                        {
+                            "source": getattr(authored, "source", "scenario"),
+                            "path": getattr(authored, "path", "$"),
+                            "message": str(authored),
+                        }
+                    ],
+                }
             draft["validation"] = result
             self._write(draft)
             return result

@@ -23,6 +23,30 @@ export interface EntityKey {
   generation: number | string;
 }
 
+export interface SelectionKey extends EntityKey { runId: string; epoch: string }
+export interface RecordedCut { index: number; at: Instant }
+export interface PredicateTruth extends Omit<TemporalMetadata, 'acquired'> {
+  contextId: string; predicateId: string; roles: Record<string, EntityKey>;
+  profile: string; status: 'known' | 'required_input' | 'invalid_input'; value: boolean | null;
+  diagnostics: unknown[]; evaluatedAt: Instant; readCut: RecordedCut;
+  validFrom: Instant; op: 'assert' | 'close';
+  acquired?: Record<string, { clockId: string; mappingId: string; numerator?: string; denominator?: string }>;
+}
+export interface ChainInstance extends TemporalMetadata {
+  instanceId: string; templateId: string; bindingId: string; packageDigest: string;
+  roles: Record<string, EntityKey>; lifecycle: 'created' | 'transitioned' | 'completed' | 'failed' | 'canceled';
+  state: string; revision: number | string | { $integer: string }; variables: Record<string, unknown>;
+  children: Record<string, unknown>; transitionId?: string | null;
+  trigger?: unknown; evaluation?: unknown; validFrom: Instant; op?: 'assert' | 'close';
+}
+export interface BehaviourHeader {
+  packageDigests?: string[]; irDigests?: string[]; evaluatorDigests?: string[];
+  predicates?: unknown; chains?: unknown; bindings?: unknown;
+  injectionPoints?: Array<Record<string, unknown>>; injection_points?: Array<Record<string, unknown>>;
+  extensions: string[];
+  [key: string]: unknown;
+}
+
 export interface SourceStamp { clockId: string; mappingId: string; numerator: string; denominator: string }
 export interface VersionKey { journalIndex: number; itemOrdinal: number }
 export interface TemporalMetadata { validTo?: Instant | null; available?: Instant; version?: VersionKey; acquired?: SourceStamp; causes?: unknown[] }
@@ -64,6 +88,9 @@ export interface PresentationBinding {
 export interface RunHeader {
   contract: "aeroagentsim.viewer-feed/v1";
   runId: string;
+  epoch?: string;
+  kernelRunId?: string;
+  behaviour?: BehaviourHeader;
   registryDigest: string;
   origin?: { lat: number; lon: number; alt: number };
   types: TypeInfo[];
@@ -94,6 +121,8 @@ export interface FeedCommit {
   /** Subjects come from typed $ref values or declared payload paths, never arbitrary strings. */
   messages: Array<{ id: string; kind: "command" | "event"; schemaId: string; source: string; target?: string; topic?: string; at: Instant; payload: unknown; subjects?: EntityKey[] }>;
   receipts: Array<{ commandId: string; status: string; result?: unknown }>;
+  predicateTruth?: PredicateTruth[];
+  chainInstances?: ChainInstance[];
 }
 
 /**
