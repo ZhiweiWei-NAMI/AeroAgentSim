@@ -99,6 +99,17 @@ def overlay() -> dict[str, Any]:
             for name, schema in schemas.items()
         ],
         "messages": [
+            {
+                "id": PREFIX + "sample_signal",
+                "kind": "event",
+                "schema": record_schema(
+                    {
+                        "predicate": text,
+                        "from_ns": {"type": "integer"},
+                        "to_ns": {"type": "integer"},
+                    }
+                ),
+            },
             *[
                 {
                     "id": event,

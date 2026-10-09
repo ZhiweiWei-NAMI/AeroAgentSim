@@ -108,7 +108,7 @@ Rules form these templates, automatically bound on entity creation and task/rout
 
 Do not hardcode all instances. Bind road templates by `aas:TrafficRoadVehicle` ancestry plus task/route relations, routine UAV templates by `oo:UAV` ancestry/task kind, bid templates by coordinator-candidate relation, and capture template by an awarded capture task. Instance keys include relation/task episode and generation. Two events attempting one award conflict through one behaviour transaction/reservation, producing a recorded loser result.
 
-Sampled pose/dwell→chain→motion feedback must declare a positive return lag; proposed baseline is one motion publication interval and is shown in the console/report. Reactive task-only cascades can proceed at later microsteps of the same ns. Q6 remains sampled once per physical time; do not silently resample it in a chain loop.
+Sampled pose/dwell→chain→motion feedback must declare a positive return lag; the A2 verification profile declares 66,666,667 ns on all incoming messages of the shared behaviour partition, alongside explicit 1 Hz physical publication (§12). Reactive task-only cascades can proceed at later microsteps of the same ns. Q6 remains sampled once per physical time; do not silently resample it in a chain loop.
 
 For the bounded default demo, predeclare inactive `incident-capture-01` plus one arrival/dwell sampled context for each configured candidate; award activates the task/guards without rebinding a sampled role. Bind native-profile pose and velocity as separate role aliases to the same UAV generation with their actual Gazebo/boundary-observation clocks. Injected additional incidents can always spawn reactive report/award chains; further sampled capture episodes require predeclared task/context slots in a configured finite pool, until generic context lifecycle support is implemented. Do not claim unbounded sampled context spawning from current Q6/K4. Configure the actual lagged feedback partition/route for sampled events, including task-target inputs to the upstream cone.
 
@@ -286,3 +286,141 @@ MYPYPATH=src:../aerokernel:. "$task_d_python" -m mypy --strict --explicit-packag
 Mypy's additional source roots disambiguate the tools/tests namespace packages; kernel imports still resolve to the prescribed sibling checkout. Logs are `observations-final3.log` and `platform-tests-env.log` under `/tmp/aas-q/d/`.
 
 Two GLM writer sessions ran concurrently with separate report/recorder ownership and project context, using `workbuddy/glm-5.3-flash`, 131072 output budget and no effort. They produced reasoning/tool activity but no usable files before being stopped; their drafts are not claimed as completed. Two subsequent concurrent, read-only GLM audits completed with exit 0. Their actual outputs were reviewed: index continuity/closed-prefix and explicit decision-schema concerns are covered, while incorrect claims about the speed formula and already-checked artifact hashes were rejected. Session/config/output records remain under `/tmp/aas-q/d/dsh-home/`, `glm-report/`, `glm-recorder/`, `glm-check-record/` and `glm-check-report/`.
+
+## 12. Recorded A2 runtime timeline
+
+The shipped scenario now composes the behaviour executor, road/air physical owners,
+four predeclared Q6 arrival/dwell contexts, explicitly scripted decision proposals,
+and real browser capture/storage/upload verification. Alpha's actual medical-task
+lock rejects interruption; the edge selects Bravo using committed eligibility and
+ETA, waits for its stop receipt, then changes the assignment. Capture completion
+requires real goto/hold receipts, sampled dwell, stored PNG bytes and independent
+upload verification. Reports/bids use finite authored record slots rather than
+inventing runtime identity expressions.
+
+This verification profile declares **1 Hz** physics/publication, a 2 s maximum
+sample gap and 3 s stable dwell. It also declares a **66,666,667 ns return lag on
+the shared behaviour recipient**, affecting every incoming event/receipt. Field
+reactions remain reactive. These are timing changes from the historical 15 Hz
+source; the domain regression harness separately retains the original 15 Hz grid.
+Detection reads actual stopped speeds and reporter/participant proximity (20 m),
+and the incident/capture target uses the participant's committed pose at activation. Thus the
+early injected accident does not rely on a frozen route-progress threshold.
+
+The HTTP case creates a live worker with operator watermark zero, posts typed
+`aas.runtime.inject_event` to `POST /v1/runs/{id}/ingress` at 3 s with injection
+point `accident`, then explicitly closes the operator prefix through 90 s.
+Two recipient hops make incident activation available at 3.133333334 s. The CLI
+case closes its offline prefix at startup and uses the authored 8 s timer. Both
+activate the same finite incident/task slot; arbitrary new incidents require
+additional authored sampled contexts. The test does not infer source closure
+from event timestamps.
+
+The generated table below includes only committed `Emit` proposals, excluding
+enqueue/dispatch copies. Regenerate it with:
+
+```bash
+PYTHONPATH=src /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python \
+  scenarios/demos/traffic-accident/timeline.py TIMER_RUN_DIRECTORY HTTP_RUN_DIRECTORY
+```
+
+<!-- Generated by scenarios/demos/traffic-accident/timeline.py; times are sim seconds. -->
+| Event / chain transition | Authored timer (s) | HTTP injection (s) |
+| --- | ---: | ---: |
+| Accident activated; stop commands issued | 8.000000000 | 3.133333334 |
+| Stopped/proximity predicate → detection | 13.000000000 | 11.000000000 |
+| Reporter proposal → report sent | 13.266666667 | 11.266666667 |
+| Edge broadcasts capture task | 13.333333334 | 11.333333334 |
+| Alpha refuses its non-interruptible task | 13.433333334 | 11.433333334 |
+| Bravo offers its interruptible patrol | 13.633333334 | 11.633333334 |
+| Eligible minimum ETA → award proposed | 13.700000001 | 11.700000001 |
+| Actual stop receipt → award committed | 15.066666667 | 13.066666667 |
+| Goto receipt → hold command | 46.066666667 | 46.066666667 |
+| Hold receipt → dwelling | 48.066666667 | 48.066666667 |
+| Sampled 3 s dwell → capture requested | 49.066666667 | 49.066666667 |
+| Real PNG persisted | 49.066666667 | 49.066666667 |
+| Stored bytes verified; edge accepts | 49.266666667 | 49.266666667 |
+| Receipt-backed capture chain completes | 49.333333334 | 49.333333334 |
+
+Timer run `scenario-140075023735`: journal SHA-256 `c5d53631aea2bce4ff53c61f612ed6c86dbd7f89a98abf9ab83cfb0ae0653240`; PNG SHA-256 `5d04e0a9ffd8abb490c5500b0476e5113459373f8848fe73d3aca5aa8943bf98`; camera cut `{'index': 2143, 'instant': [49066666667, 2]}`.
+Pinned package `7fc6a0db99006b04c1f50194ffb086e1e43a56a02504270e1e4c1a9fd3b97c79`, IR `01517cab66231bb571b6ae7ad812283108e2f4097998b9511e2aa6f6892ba2be`.
+
+HTTP run `run-1c63cfc2458e4c0abf59971b0e833cb8`: journal SHA-256 `b5882139885ec56591121cd4c6f7f7f94b9e753314c563e11645dba6fe42c37b`; PNG SHA-256 `3dc27e56a00f70389252f7503f342ca60d071c5d86726af07232c9edead92f9f`; camera cut `{'index': 2160, 'instant': [49066666667, 2]}`.
+Pinned package `7fc6a0db99006b04c1f50194ffb086e1e43a56a02504270e1e4c1a9fd3b97c79`, IR `01517cab66231bb571b6ae7ad812283108e2f4097998b9511e2aa6f6892ba2be`.
+
+
+Capture uses actual Chromium WebGL with a pinned small Three.js viewer, primitive
+vehicle geometry and the recorded pose snapshot at the requested cut. It produces
+simulation-camera PNGs, not licensed city imagery or native camera pixels. The
+installed browser executable is explicit in the scenario. Native SUMO/PX4, live
+LLM, frontend operation and historical 72-view/video parity remain separate gates.
+
+The target stays at its measured activation location while physical stopping waits
+for the owner's publication boundary. In the early-injection journal the primary
+vehicle stops 6 m beyond that target and remains in Bravo's actual 70 m camera
+footprint. The operator event stops the two predeclared participants wherever
+they are; in this early case the second participant is about 59 m from the camera
+target. This is a staged accident response, not a computed collision or evidence
+that both vehicles share one location. The reporter completes its authored bypass at
+24.066666667 s in the timer case. In the early case it waits for the authored
+safe-corridor predicate rather than attempting a disconnected bypass. Reporting
+and capture do not require that separate departure chain to finish.
+
+A2 validation commands (from `wt-a`; generated runs/logs remain under
+`/tmp/aas-q/a/a2/`):
+
+Final gates: **624 passed, 6 deselected in 4412.04 s (1:13:32)**, with the prescribed
+complete suite run once. Ruff and strict mypy are clean on all 18 changed Python
+files. Both complete 90 s scenarios pass the end-to-end trace and physical-pose /
+PNG-integrity checks. CLI replay forbids plugin construction, predicate evaluation,
+decision callbacks and rendering, then compares the separate header and every
+subsequent expanded journal record; the reconstructed prefix is complete. Two
+retained timer runs and two retained operator runs also have identical WAL and PNG
+digests for their respective schedules. This measured equality does not claim
+equivalence to the historical 15 Hz run.
+
+The initial CLI test timed out on wall time after the business chain had completed;
+its host timeout was extended without changing simulation time. A later replay
+comparison failed because it included the header in `Kernel.records`; the kernel
+exposes that header separately. The corrected comparison has its own representative
+zero-call contract test and passes in the complete scene. Earlier targeted failures
+also exposed oversized repeated causal lists, missing native adapter wiring and an
+unavailable default browser revision; the implementation now shares recorded road
+evidence, declares the finite Q6 pool/lag, and selects an actual installed browser.
+No successful photo or receipt was synthesized on those failures.
+
+The six deselections follow `not docker and not llm`. Docker, live LLM, actual
+SUMO/PX4 replacement runs and frontend checks were not run; frontend was untouched.
+The observation gate did exercise actual Chromium PNG and ffmpeg export. No commit
+was made. Full-gate, ruff and mypy logs are `full-gate.txt`, `ruff-final.txt` and
+`mypy-final.txt` under `/tmp/aas-q/a/a2/`.
+
+```bash
+task_a2_python=/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python
+export PYTHONPATH=src MYPYPATH=src:../aerokernel:.
+task_a2_files=(
+  scenarios/demos/traffic-accident/timeline.py
+  src/aeroagentsim/behaviours/{compiler,records,sampled}.py
+  src/aeroagentsim/engines/behaviour.py
+  src/aeroagentsim/packs/traffic_accident/{camera,capture,decisions,road_motion}.py
+  src/aeroagentsim/platform/{plugins,simulation}.py
+  src/aeroagentsim/scenario/loader.py src/aeroagentsim/services/app.py
+  tests/demos/conftest.py
+  tests/demos/traffic_accident/{test_end_to_end,test_policy,test_runtime_contract,test_scenario}.py
+)
+"$task_a2_python" -m ruff check "${task_a2_files[@]}"
+"$task_a2_python" -m mypy --strict --explicit-package-bases "${task_a2_files[@]}"
+export AEROAGENTSIM_AEROGRAPH_ROOT=/mnt/data2/weizhiwei/AeroGraph
+export AEROAGENTSIM_CHROMIUM=/home/weizhiwei/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome
+export AEROAGENTSIM_FFMPEG=/usr/share/anaconda3/bin/ffmpeg
+TMPDIR=/tmp/aas-q/a/a2/tmp "$task_a2_python" -m pytest -q -p no:cacheprovider \
+  tests/platform tests/adapters tests/agents tests/packs tests/authoring \
+  tests/integrations tests/behaviours tests/demos tests/observations \
+  -m 'not docker and not llm' --basetemp=/tmp/aas-q/a/a2/full-gate
+```
+
+Two actual GLM writer sessions ran concurrently with separate decision/capture
+ownership, project context, `workbuddy/glm-5.3-flash`, 131072 output budget and no
+effort. Their sessions/tool activity were inspected. Neither produced a usable
+verified implementation before being stopped; their drafts were replaced and are
+not claimed as completed contributions.

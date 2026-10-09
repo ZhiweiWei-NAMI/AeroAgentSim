@@ -217,6 +217,9 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         specs = document.get("behaviours", config.get("packages", []))
         resolved = resolve_packages(specs, base)
         config["packages"] = resolved
+        from aeroagentsim.behaviours.sampled import expand_pool
+
+        expand_pool(document, resolved)
         if "behaviours" in document:
             document["behaviours"] = resolved
         descriptors = overlay()
@@ -857,25 +860,41 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
                 if definition["profile"] != "aerograph_sampled/v1":
                     continue
                 path = f"{package['source']}: $.predicates.{predicate_id}.adapter"
-                sample_spec = contexts.get(definition["adapter"]["context"])
-                if sample_spec is None or sample_spec.partition not in sampled_asts:
-                    raise ScenarioError(
-                        f"{path}: bind an actual finite Q6 predicate sample context"
-                    )
-                config = engines[sample_spec.partition]["config"]
-                if (
-                    config["event"] != definition["adapter"]["event"]
-                    or sampled_asts[sample_spec.partition] != definition["expression"]
-                    or thaw(cast(Any, sample_spec.parameters))
-                    != definition.get("parameters", {})
-                ):
-                    raise ScenarioError(
-                        f"{path}: expression, event and parameters must match the pinned Q6 sampled partition"
-                    )
-                if set(sample_spec.bindings) != set(definition["roles"]):
-                    raise ScenarioError(
-                        f"{path}: sampled role aliases must match the actual Q6 bindings"
-                    )
+                adapter = definition["adapter"]
+                for context_id in adapter.get("contexts", [adapter.get("context")]):
+                    sample_spec = contexts.get(context_id)
+                    if sample_spec is None or sample_spec.partition not in sampled_asts:
+                        raise ScenarioError(
+                            f"{path}: bind an actual finite Q6 predicate sample context"
+                        )
+                    config = engines[sample_spec.partition]["config"]
+                    expected = definition["expression"]
+                    if "contexts" in adapter:
+                        expected_config = copy.deepcopy(config)
+                        expected_config["definitions"][config["target"]][
+                            "expression"
+                        ] = expected
+                        from aeroagentsim.engines.predicate import (
+                            digest as predicate_digest,
+                        )
+
+                        expected_config["definitions_sha256"] = predicate_digest(
+                            expected_config["definitions"]
+                        )
+                        expected = prepare(expected_config)
+                    if (
+                        config["event"] != adapter["event"]
+                        or sampled_asts[sample_spec.partition] != expected
+                        or thaw(cast(Any, sample_spec.parameters))
+                        != definition.get("parameters", {})
+                    ):
+                        raise ScenarioError(
+                            f"{path}: expression, event and parameters must match the pinned Q6 sampled partition"
+                        )
+                    if set(sample_spec.bindings) != set(definition["roles"]):
+                        raise ScenarioError(
+                            f"{path}: sampled role aliases must match the actual Q6 bindings"
+                        )
     return Scenario(
         document,
         source,

@@ -77,6 +77,10 @@ def domain_document(
     """
     d = copy.deepcopy(document())
     d.pop("behaviours")
+    d.pop("ingress_streams")
+    # Historical domain comparisons select the original declared 15 Hz grid.
+    d["engines"]["road_motion"]["config"]["step_ns"] = 66_666_667
+    d["engines"]["air_motion"]["config"]["step_ns"] = 66_666_667
     selected_engines = {"route_inputs", "weather"}
     if roads:
         selected_engines.add("road_motion")

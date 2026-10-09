@@ -123,5 +123,5 @@ def test_sampled_hold_requires_full_coverage_and_resets() -> None:
     del broken[15]["fields"]["pose"]["he.aircraft.position_enu_m"]
     assert engine.evaluate(p["expression"], broken, "original") is None
     assert (
-        engine.evaluate(p["expression"], frames[:10] + frames[20:], "original") is None
+        engine.evaluate(p["expression"], frames[:1] + frames[30:], "original") is None
     )

@@ -134,7 +134,7 @@ def create_app(
 
             scenario = scope_capture_storage(scenario, path)
             # Validate engine declarations/bindings before returning a created run.
-            validation = Simulation(scenario)
+            validation = Simulation(scenario, run_directory=path)
             validation.close()
         except Exception as exc:
             raise HTTPException(422, str(exc)) from exc
