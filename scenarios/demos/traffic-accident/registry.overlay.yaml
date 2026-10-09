@@ -1,0 +1,1910 @@
+format: traffic-accident-overlay/v1
+provenance:
+  status: proposed scenario-local overlays
+  source: "demo-traffic-accident.md \xA73"
+  admission: explicit research scenario only
+types:
+- id: aas:TrafficRoadVehicle
+  parents:
+  - oo:GroundVehicle
+  abstract: false
+- id: aas:TrafficUAV
+  parents:
+  - oo:UAV
+  abstract: false
+- id: aas:TrafficCoordinator
+  parents:
+  - oo:ComputeNode
+  abstract: false
+- id: aas:TrafficIncident
+  parents:
+  - oo:ModelObject
+  abstract: false
+- id: aas:TrafficTask
+  parents:
+  - oo:Task
+  abstract: false
+- id: aas:TrafficRoute
+  parents:
+  - oo:ModelObject
+  abstract: false
+- id: aas:TrafficReport
+  parents:
+  - oo:ModelObject
+  abstract: false
+- id: aas:TrafficBid
+  parents:
+  - oo:ModelObject
+  abstract: false
+- id: aas:TrafficAssessment
+  parents:
+  - oo:ModelObject
+  abstract: false
+- id: aas:TrafficCapture
+  parents:
+  - oo:ObservationRecord
+  abstract: false
+- id: aas:TrafficRecording
+  parents:
+  - oo:ObservationRecord
+  abstract: false
+fields:
+- id: traffic.road.position_enu_m
+  type: aas:TrafficRoadVehicle
+  schema: &id001
+    type: vector
+    length: 3
+    items: &id002
+      type: number
+  metadata:
+    role: observation
+    unit: m
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    frame: enu
+    transform_revision: traffic.local/v1
+    writer_contract: road_motion
+- id: traffic.road.velocity_enu_mps
+  type: aas:TrafficRoadVehicle
+  schema: *id001
+  metadata:
+    role: observation
+    unit: m/s
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    frame: enu
+    transform_revision: traffic.local/v1
+    writer_contract: road_motion
+- id: traffic.road.attitude_xyzw
+  type: aas:TrafficRoadVehicle
+  schema: &id004
+    type: vector
+    length: 4
+    items: *id002
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    frame: enu
+    transform_revision: traffic.local/v1
+    writer_contract: road_motion
+- id: traffic.road.speed_mps
+  type: aas:TrafficRoadVehicle
+  schema: *id002
+  metadata:
+    role: observation
+    unit: m/s
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: road_motion
+- id: traffic.road.route_id
+  type: aas:TrafficRoadVehicle
+  schema: &id003
+    type: string
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: road_motion
+- id: traffic.road.lane_id
+  type: aas:TrafficRoadVehicle
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: road_motion
+- id: traffic.road.progress_m
+  type: aas:TrafficRoadVehicle
+  schema: *id002
+  metadata:
+    role: observation
+    unit: m
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: road_motion
+- id: traffic.road.blocked_by
+  type: aas:TrafficRoadVehicle
+  schema:
+    type: array
+    items:
+      type: ref
+      target_type: aas:TrafficRoadVehicle
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: road_motion
+- id: traffic.road.safe_gap
+  type: aas:TrafficRoadVehicle
+  schema: &id005
+    type: boolean
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: road_motion
+- id: traffic.uav.velocity_enu_mps
+  type: aas:TrafficUAV
+  schema: *id001
+  metadata:
+    role: observation
+    unit: m/s
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    frame: enu
+    transform_revision: traffic.local/v1
+    writer_contract: air_motion
+- id: traffic.uav.attitude_xyzw
+  type: aas:TrafficUAV
+  schema: *id004
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    frame: enu
+    transform_revision: traffic.local/v1
+    writer_contract: air_motion
+- id: traffic.uav.path_length_m
+  type: aas:TrafficUAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: m
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: air_motion
+- id: traffic.uav.energy_j
+  type: aas:TrafficUAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: J
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: air_motion
+- id: traffic.uav.legacy_battery_pct
+  type: aas:TrafficUAV
+  schema: *id002
+  metadata:
+    role: observation
+    unit: '%'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: air_motion
+- id: traffic.uav.battery_native
+  type: aas:TrafficUAV
+  schema:
+    type: record
+    members:
+      remaining_fraction: *id002
+      voltage_v: *id002
+    required:
+    - remaining_fraction
+    - voltage_v
+    extra: false
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: air_motion
+- id: traffic.actor.role
+  type: oo:Vehicle
+  schema:
+    type: string
+    enum:
+    - reporter
+    - incident
+    - candidate
+    - background
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.actor.current_task
+  type: oo:Vehicle
+  schema:
+    type: ref
+    target_type: aas:TrafficTask
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.actor.phase
+  type: oo:Vehicle
+  schema: *id003
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.actor.route_choice
+  type: oo:Vehicle
+  schema: *id003
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.actor.public_summary
+  type: oo:Vehicle
+  schema: *id003
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.edge.phase
+  type: aas:TrafficCoordinator
+  schema: *id003
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.edge.radius_m
+  type: aas:TrafficCoordinator
+  schema: *id002
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.edge.incident_ref
+  type: aas:TrafficCoordinator
+  schema:
+    type: ref
+    target_type: aas:TrafficIncident
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.edge.winner
+  type: aas:TrafficCoordinator
+  schema:
+    type: ref
+    target_type: aas:TrafficUAV
+    nullable: true
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.incident.active
+  type: aas:TrafficIncident
+  schema: *id005
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.incident.phase
+  type: aas:TrafficIncident
+  schema: *id003
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.incident.source_kind
+  type: aas:TrafficIncident
+  schema:
+    type: string
+    enum:
+    - authored_staged
+    - native_contact
+    - operator
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.incident.position_enu_m
+  type: aas:TrafficIncident
+  schema: *id001
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.incident.occurred_at
+  type: aas:TrafficIncident
+  schema:
+    type: record
+    members:
+      ns: &id006
+        type: integer
+        minimum: 0
+      microstep: *id006
+    required:
+    - ns
+    - microstep
+    extra: false
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.task.kind
+  type: aas:TrafficTask
+  schema:
+    type: string
+    enum:
+    - road_route
+    - staged_approach
+    - medical_delivery
+    - patrol
+    - capture
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.task.phase
+  type: aas:TrafficTask
+  schema: *id003
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.task.interruptible
+  type: aas:TrafficTask
+  schema: *id005
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.task.episode
+  type: aas:TrafficTask
+  schema: *id006
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.task.target_enu_m
+  type: aas:TrafficTask
+  schema: *id001
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.task.route_ref
+  type: aas:TrafficTask
+  schema:
+    type: ref
+    target_type: aas:TrafficRoute
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.task.capture_altitude_m
+  type: aas:TrafficTask
+  schema: *id002
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.task.dwell_s
+  type: aas:TrafficTask
+  schema: *id002
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.task.deadline_ns
+  type: aas:TrafficTask
+  schema: *id006
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.task.route_index
+  type: aas:TrafficTask
+  schema: *id006
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.task.motion
+  type: aas:TrafficTask
+  schema:
+    type: record
+    members:
+      speed_mps: *id002
+      progress_m: *id002
+      stop_progress_m: *id002
+      loop: *id005
+    required:
+    - speed_mps
+    - progress_m
+    - stop_progress_m
+    - loop
+    extra: false
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.route.points_enu_m
+  type: aas:TrafficRoute
+  schema:
+    type: array
+    items: *id001
+  metadata:
+    role: observation
+    unit: m
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: route_inputs
+- id: traffic.route.native_lane_id
+  type: aas:TrafficRoute
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: route_inputs
+- id: traffic.route.native_edges
+  type: aas:TrafficRoute
+  schema:
+    type: array
+    items: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: route_inputs
+- id: traffic.route.source_digest
+  type: aas:TrafficRoute
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: route_inputs
+- id: traffic.route.mode
+  type: aas:TrafficRoute
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: route_inputs
+- id: traffic.route.parameters
+  type: aas:TrafficRoute
+  schema:
+    type: record
+    members:
+      speed_mps: *id002
+      offset_m: *id002
+      radius_m: *id002
+      phase_rad: *id002
+      altitude_m: *id002
+    required: []
+    extra: false
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: route_inputs
+- id: traffic.assessment.distance_m
+  type: aas:TrafficAssessment
+  schema: *id002
+  metadata:
+    role: observation
+    unit: m
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: traffic_assessment
+- id: traffic.assessment.eta_s
+  type: aas:TrafficAssessment
+  schema: *id002
+  metadata:
+    role: observation
+    unit: s
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: traffic_assessment
+- id: traffic.assessment.budget_j
+  type: aas:TrafficAssessment
+  schema: *id002
+  metadata:
+    role: observation
+    unit: J
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: traffic_assessment
+- id: traffic.assessment.in_region
+  type: aas:TrafficAssessment
+  schema: *id005
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: traffic_assessment
+- id: traffic.assessment.feasible
+  type: aas:TrafficAssessment
+  schema: *id005
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: traffic_assessment
+- id: traffic.assessment.evidence
+  type: aas:TrafficAssessment
+  schema:
+    type: record
+    members: {}
+    required: []
+    extra: true
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: traffic_assessment
+- id: traffic.report.incident
+  type: aas:TrafficReport
+  schema:
+    type: ref
+    target_type: aas:TrafficIncident
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.report.actor
+  type: aas:TrafficReport
+  schema:
+    type: ref
+    target_type: oo:Vehicle
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.report.body
+  type: aas:TrafficReport
+  schema: *id003
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.bid.actor
+  type: aas:TrafficBid
+  schema:
+    type: ref
+    target_type: aas:TrafficUAV
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.bid.task
+  type: aas:TrafficBid
+  schema:
+    type: ref
+    target_type: aas:TrafficTask
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.bid.recommendation
+  type: aas:TrafficBid
+  schema:
+    type: string
+    enum:
+    - accept
+    - refuse
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.bid.reason
+  type: aas:TrafficBid
+  schema: *id003
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.bid.input_cut
+  type: aas:TrafficBid
+  schema: *id006
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.bid.decision_status
+  type: aas:TrafficBid
+  schema:
+    type: string
+    enum:
+    - succeeded
+    - failed
+    - deadline
+  metadata:
+    role: intent
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: behaviour
+- id: traffic.capture.request_id
+  type: aas:TrafficCapture
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.capture.actor
+  type: aas:TrafficCapture
+  schema:
+    type: ref
+    target_type: aas:TrafficUAV
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.capture.incident
+  type: aas:TrafficCapture
+  schema:
+    type: ref
+    target_type: aas:TrafficIncident
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.capture.source_cut
+  type: aas:TrafficCapture
+  schema: *id006
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.capture.acquired_at
+  type: aas:TrafficCapture
+  schema:
+    type: record
+    members:
+      ns: *id006
+      microstep: *id006
+    required:
+    - ns
+    - microstep
+    extra: false
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.capture.camera_digest
+  type: aas:TrafficCapture
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.capture.asset_digest
+  type: aas:TrafficCapture
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.capture.byte_count
+  type: aas:TrafficCapture
+  schema: *id006
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.capture.png_sha256
+  type: aas:TrafficCapture
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.capture.storage_status
+  type: aas:TrafficCapture
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.view_id
+  type: aas:TrafficRecording
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.source_run
+  type: aas:TrafficRecording
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.source_epoch
+  type: aas:TrafficRecording
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.generation
+  type: aas:TrafficRecording
+  schema: *id006
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.frame_start
+  type: aas:TrafficRecording
+  schema: *id006
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.frame_end
+  type: aas:TrafficRecording
+  schema: *id006
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.camera_preset
+  type: aas:TrafficRecording
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.fps
+  type: aas:TrafficRecording
+  schema: *id002
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.speed
+  type: aas:TrafficRecording
+  schema: *id002
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.codec
+  type: aas:TrafficRecording
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.width
+  type: aas:TrafficRecording
+  schema: *id006
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.height
+  type: aas:TrafficRecording
+  schema: *id006
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.sha256
+  type: aas:TrafficRecording
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+- id: traffic.recording.status
+  type: aas:TrafficRecording
+  schema: *id003
+  metadata:
+    role: observation
+    unit: '1'
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "docs/platform/demo-traffic-accident.md \xA73; Task B"
+    time_semantics: canonical computation; explicit half-open validity
+    writer_contract: capture
+relations:
+- id: traffic.task-assignee
+  source_type: aas:TrafficTask
+  target_type: oo:Vehicle
+  targets_per_source:
+    minimum: 0
+    maximum: 1
+  sources_per_target:
+    minimum: 0
+    maximum: 1
+  identity_policy: edge_id
+  metadata:
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "demo design \xA73"
+- id: traffic.actor-route
+  source_type: oo:Vehicle
+  target_type: aas:TrafficRoute
+  targets_per_source:
+    minimum: 0
+    maximum: 1
+  sources_per_target:
+    minimum: 0
+    maximum: null
+  identity_policy: edge_id
+  metadata:
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "demo design \xA73"
+- id: traffic.incident-participant
+  source_type: aas:TrafficIncident
+  target_type: aas:TrafficRoadVehicle
+  targets_per_source:
+    minimum: 0
+    maximum: 2
+  sources_per_target:
+    minimum: 0
+    maximum: null
+  identity_policy: edge_id
+  metadata:
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "demo design \xA73"
+- id: traffic.report-incident
+  source_type: aas:TrafficReport
+  target_type: aas:TrafficIncident
+  targets_per_source:
+    minimum: 0
+    maximum: 1
+  sources_per_target:
+    minimum: 0
+    maximum: null
+  identity_policy: edge_id
+  metadata:
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "demo design \xA73"
+- id: traffic.bid-task
+  source_type: aas:TrafficBid
+  target_type: aas:TrafficTask
+  targets_per_source:
+    minimum: 0
+    maximum: 1
+  sources_per_target:
+    minimum: 0
+    maximum: null
+  identity_policy: edge_id
+  metadata:
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "demo design \xA73"
+- id: traffic.assessment-bid
+  source_type: aas:TrafficAssessment
+  target_type: aas:TrafficBid
+  targets_per_source:
+    minimum: 0
+    maximum: 1
+  sources_per_target:
+    minimum: 0
+    maximum: null
+  identity_policy: edge_id
+  metadata:
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "demo design \xA73"
+- id: traffic.capture-incident
+  source_type: aas:TrafficCapture
+  target_type: aas:TrafficIncident
+  targets_per_source:
+    minimum: 0
+    maximum: 1
+  sources_per_target:
+    minimum: 0
+    maximum: null
+  identity_policy: edge_id
+  metadata:
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "demo design \xA73"
+- id: traffic.capture-actor
+  source_type: aas:TrafficCapture
+  target_type: aas:TrafficUAV
+  targets_per_source:
+    minimum: 0
+    maximum: 1
+  sources_per_target:
+    minimum: 0
+    maximum: null
+  identity_policy: edge_id
+  metadata:
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "demo design \xA73"
+- id: traffic.coordinator-candidate
+  source_type: aas:TrafficCoordinator
+  target_type: aas:TrafficUAV
+  targets_per_source:
+    minimum: 0
+    maximum: null
+  sources_per_target:
+    minimum: 0
+    maximum: null
+  identity_policy: edge_id
+  metadata:
+    reviewStatus: proposed
+    integrationDisposition: scenario_local_proposal
+    provenance: "demo design \xA73"
+messages:
+- id: traffic.road.follow
+  kind: command
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficRoadVehicle
+      route_id: *id003
+      progress_m: *id002
+      stop_progress_m: *id002
+      speed_mps: *id002
+      loop: *id005
+    required:
+    - actor
+    - route_id
+    - progress_m
+    - stop_progress_m
+    - speed_mps
+    - loop
+    extra: false
+  result_schema: &id007
+    type: record
+    members:
+      position: *id001
+      reason: *id003
+      blocked_by:
+        type: array
+        items: *id003
+    required: []
+    extra: false
+  cancel_support: false
+- id: traffic.road.bypass
+  kind: command
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficRoadVehicle
+      route_id: *id003
+      progress_m: *id002
+      stop_progress_m: *id002
+      speed_mps: *id002
+      loop: *id005
+    required:
+    - actor
+    - route_id
+    - progress_m
+    - stop_progress_m
+    - speed_mps
+    - loop
+    extra: false
+  result_schema: *id007
+  cancel_support: false
+- id: traffic.road.stop
+  kind: command
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficRoadVehicle
+    required:
+    - actor
+    extra: false
+  result_schema: *id007
+  cancel_support: false
+- id: traffic.air.move_to
+  kind: command
+  schema:
+    type: record
+    members:
+      entity:
+        type: ref
+        target_type: aas:TrafficUAV
+      target: *id001
+    required:
+    - entity
+    - target
+    extra: false
+  result_schema:
+    type: record
+    members:
+      entity: *id003
+      position: *id001
+      reason: *id003
+    required: []
+    extra: false
+  feedback_schema:
+    type: record
+    members: {}
+    required: []
+    extra: true
+  cancel_support: true
+- id: traffic.air.hold
+  kind: command
+  schema:
+    type: record
+    members:
+      entity:
+        type: ref
+        target_type: aas:TrafficUAV
+    required:
+    - entity
+    extra: false
+  result_schema:
+    type: record
+    members:
+      entity: *id003
+      position: *id001
+      reason: *id003
+    required: []
+    extra: false
+  feedback_schema:
+    type: record
+    members: {}
+    required: []
+    extra: true
+  cancel_support: true
+- id: traffic.air.stop
+  kind: command
+  schema:
+    type: record
+    members:
+      entity:
+        type: ref
+        target_type: aas:TrafficUAV
+    required:
+    - entity
+    extra: false
+  result_schema:
+    type: record
+    members:
+      entity: *id003
+      position: *id001
+      reason: *id003
+    required: []
+    extra: false
+  feedback_schema:
+    type: record
+    members: {}
+    required: []
+    extra: true
+  cancel_support: true
+- id: traffic.air.arrived
+  kind: event
+  schema:
+    type: record
+    members:
+      entity: *id003
+      position: *id001
+    required:
+    - entity
+    - position
+    extra: false
+- id: traffic.incident.activated
+  kind: event
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      actor:
+        type: ref
+        target_type: oo:Vehicle
+      request_id: *id003
+      source_cut: *id006
+      reason: *id003
+    required: []
+    extra: false
+- id: traffic.incident.detected
+  kind: event
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      actor:
+        type: ref
+        target_type: oo:Vehicle
+      request_id: *id003
+      source_cut: *id006
+      reason: *id003
+    required: []
+    extra: false
+- id: traffic.road.blocked
+  kind: event
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      actor:
+        type: ref
+        target_type: oo:Vehicle
+      request_id: *id003
+      source_cut: *id006
+      reason: *id003
+    required: []
+    extra: false
+- id: traffic.road.cleared
+  kind: event
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      actor:
+        type: ref
+        target_type: oo:Vehicle
+      request_id: *id003
+      source_cut: *id006
+      reason: *id003
+    required: []
+    extra: false
+- id: traffic.report.sent
+  kind: event
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficRoadVehicle
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      report:
+        type: ref
+        target_type: aas:TrafficReport
+      reason: &id008
+        type: string
+        min_length: 1
+    required:
+    - actor
+    - incident
+    - report
+    extra: false
+- id: traffic.broadcast
+  kind: event
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      actor:
+        type: ref
+        target_type: oo:Vehicle
+      request_id: *id003
+      source_cut: *id006
+      reason: *id003
+    required: []
+    extra: false
+- id: traffic.bid.joined
+  kind: event
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficUAV
+      bid:
+        type: ref
+        target_type: aas:TrafficBid
+      reason: *id008
+    required:
+    - actor
+    extra: false
+- id: traffic.award.proposed
+  kind: event
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficUAV
+      winner_id: *id008
+      reason: *id008
+      action: *id008
+    required: []
+    extra: false
+- id: traffic.award.committed
+  kind: event
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      actor:
+        type: ref
+        target_type: oo:Vehicle
+      request_id: *id003
+      source_cut: *id006
+      reason: *id003
+    required: []
+    extra: false
+- id: traffic.award.conflict
+  kind: event
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      actor:
+        type: ref
+        target_type: oo:Vehicle
+      request_id: *id003
+      source_cut: *id006
+      reason: *id003
+    required: []
+    extra: false
+- id: traffic.decision.failed
+  kind: event
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      actor:
+        type: ref
+        target_type: oo:Vehicle
+      request_id: *id003
+      source_cut: *id006
+      reason: *id003
+    required: []
+    extra: false
+- id: traffic.capture.requested
+  kind: event
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficUAV
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      request_id: *id008
+      source_cut:
+        type: integer
+        minimum: 0
+      reason: *id008
+      capture:
+        type: ref
+        target_type: aas:TrafficCapture
+      png_sha256: *id008
+    required:
+    - actor
+    - request_id
+    extra: false
+- id: traffic.capture.stored
+  kind: event
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficUAV
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      request_id: *id008
+      source_cut:
+        type: integer
+        minimum: 0
+      reason: *id008
+      capture:
+        type: ref
+        target_type: aas:TrafficCapture
+      png_sha256: *id008
+    required:
+    - actor
+    - request_id
+    extra: false
+- id: traffic.capture.accepted
+  kind: event
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficUAV
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      request_id: *id008
+      source_cut:
+        type: integer
+        minimum: 0
+      reason: *id008
+      capture:
+        type: ref
+        target_type: aas:TrafficCapture
+      png_sha256: *id008
+    required:
+    - actor
+    - request_id
+    extra: false
+- id: traffic.capture.failed
+  kind: event
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficUAV
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      request_id: *id008
+      source_cut:
+        type: integer
+        minimum: 0
+      reason: *id008
+      capture:
+        type: ref
+        target_type: aas:TrafficCapture
+      png_sha256: *id008
+    required:
+    - actor
+    - request_id
+    extra: false
+- id: traffic.inject.accident
+  kind: event
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      actor:
+        type: ref
+        target_type: oo:Vehicle
+      request_id: *id003
+      source_cut: *id006
+      reason: *id003
+    required: []
+    extra: false
+- id: traffic.inject.wind
+  kind: event
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      actor:
+        type: ref
+        target_type: oo:Vehicle
+      request_id: *id003
+      source_cut: *id006
+      reason: *id003
+    required: []
+    extra: false
+- id: traffic.inject.pause-test
+  kind: event
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      actor:
+        type: ref
+        target_type: oo:Vehicle
+      request_id: *id003
+      source_cut: *id006
+      reason: *id003
+    required: []
+    extra: false
+- id: traffic.command.inject.accident
+  kind: command
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+    required: []
+    extra: false
+  result_schema:
+    type: record
+    members:
+      reason: *id003
+    required: []
+    extra: false
+  cancel_support: false
+- id: traffic.command.inject.wind
+  kind: command
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+    required: []
+    extra: false
+  result_schema:
+    type: record
+    members:
+      reason: *id003
+    required: []
+    extra: false
+  cancel_support: false
+- id: traffic.command.inject.pause-test
+  kind: command
+  schema:
+    type: record
+    members:
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+    required: []
+    extra: false
+  result_schema:
+    type: record
+    members:
+      reason: *id003
+    required: []
+    extra: false
+  cancel_support: false
+- id: traffic.route.next
+  kind: command
+  schema:
+    type: record
+    members:
+      route:
+        type: ref
+        target_type: aas:TrafficRoute
+      index: *id006
+    required:
+    - route
+    - index
+    extra: false
+  result_schema:
+    type: record
+    members:
+      target: *id001
+      next_index: *id006
+      reason: *id003
+    required: []
+    extra: false
+  cancel_support: false
+- id: traffic.proposal.report
+  kind: event
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficRoadVehicle
+      incident:
+        type: ref
+        target_type: aas:TrafficIncident
+      decision:
+        type: string
+        enum:
+        - report
+      reason: *id008
+      action: *id008
+      departure:
+        type: string
+        enum:
+        - reroute_when_clear
+      route_id:
+        type: string
+        enum:
+        - adjacent_lane_bypass
+      route_reason: *id008
+    required:
+    - actor
+    - incident
+    - decision
+    - reason
+    - action
+    - departure
+    - route_id
+    - route_reason
+    extra: false
+- id: traffic.proposal.bid
+  kind: event
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficUAV
+      task:
+        type: ref
+        target_type: aas:TrafficTask
+      accept:
+        type: boolean
+      reason: *id008
+      action: *id008
+      alt_target_m:
+        type: number
+        enum:
+        - 70.0
+      input_cut:
+        type: integer
+        minimum: 0
+      decision_status:
+        type: string
+        enum:
+        - succeeded
+        - failed
+        - deadline
+    required:
+    - actor
+    - task
+    - accept
+    - reason
+    - action
+    - alt_target_m
+    - input_cut
+    - decision_status
+    extra: false
+- id: traffic.proposal.award
+  kind: event
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficUAV
+      reason: *id008
+      action: *id008
+      input_cut:
+        type: integer
+        minimum: 0
+    required:
+    - actor
+    - reason
+    - action
+    - input_cut
+    extra: false
+- id: traffic.assessment.link_bid
+  kind: command
+  schema:
+    type: record
+    members:
+      actor:
+        type: ref
+        target_type: aas:TrafficUAV
+      bid:
+        type: ref
+        target_type: aas:TrafficBid
+    required:
+    - actor
+    - bid
+    extra: false
+  result_schema:
+    type: record
+    members:
+      assessment:
+        type: ref
+        target_type: aas:TrafficAssessment
+      reason:
+        type: string
+    required: []
+    extra: false
+  cancel_support: false

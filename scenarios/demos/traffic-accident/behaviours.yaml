@@ -1,0 +1,4161 @@
+format: aeroagentsim.behaviour-package/v1
+id: traffic.accident
+revision: 1
+registry:
+  snapshot: registry.snapshot.json
+  digest_ref: scenario.registry_digest
+evaluator:
+  version: aerograph-predicate/1
+  dialect: original
+  source_sha256: fd3c2ebf35824431a02f5086092543d68e45405ebfd12acc6e7bb5fbe703232d
+  native_references_ref: registry.snapshot.json#/details/provenance
+budgets:
+  max_transitions_per_instance_per_ns: 64
+  max_instances: 10000
+  max_timers_per_instance: 16
+  max_creations_per_instance: 16
+predicates:
+  traffic.p.detected:
+    profile: committed_reactive/v1
+    roles:
+      incident: aas:TrafficIncident
+      reporter: aas:TrafficRoadVehicle
+    expression:
+      op: and
+      args:
+      - op: eq
+        args:
+        - field: traffic.incident.active
+          role: incident
+          path: []
+        - literal: true
+      - op: gte
+        args:
+        - field: traffic.road.progress_m
+          role: reporter
+          path: []
+        - parameter: detect_progress_m
+    parameters:
+      detect_progress_m: 83.95
+  traffic.p.gap_clear:
+    profile: committed_reactive/v1
+    roles:
+      reporter: aas:TrafficRoadVehicle
+    expression:
+      op: eq
+      args:
+      - field: traffic.road.safe_gap
+        role: reporter
+        path: []
+      - literal: true
+    parameters: {}
+  traffic.p.road_conflict:
+    profile: committed_reactive/v1
+    roles:
+      vehicle: aas:TrafficRoadVehicle
+    expression:
+      op: gt
+      args:
+      - op: len
+        args:
+        - field: traffic.road.blocked_by
+          role: vehicle
+          path: []
+      - literal: 0
+    parameters: {}
+  traffic.p.medical_locked:
+    profile: committed_reactive/v1
+    roles:
+      task: aas:TrafficTask
+    expression:
+      op: and
+      args:
+      - op: eq
+        args:
+        - field: traffic.task.kind
+          role: task
+          path: []
+        - literal: medical_delivery
+      - op: eq
+        args:
+        - field: traffic.task.interruptible
+          role: task
+          path: []
+        - literal: false
+      - op: eq
+        args:
+        - field: traffic.task.phase
+          role: task
+          path: []
+        - literal: executing
+    parameters: {}
+  traffic.p.bid_eligible:
+    profile: committed_reactive/v1
+    roles:
+      bid: aas:TrafficBid
+      task: aas:TrafficTask
+      assessment: aas:TrafficAssessment
+      capture_task: aas:TrafficTask
+    expression:
+      op: and
+      args:
+      - op: eq
+        args:
+        - field: traffic.bid.decision_status
+          role: bid
+          path: []
+        - literal: succeeded
+      - op: eq
+        args:
+        - field: traffic.bid.recommendation
+          role: bid
+          path: []
+        - literal: accept
+      - op: eq
+        args:
+        - field: traffic.task.interruptible
+          role: task
+          path: []
+        - literal: true
+      - op: eq
+        args:
+        - field: traffic.assessment.in_region
+          role: assessment
+          path: []
+        - literal: true
+      - op: eq
+        args:
+        - field: traffic.assessment.feasible
+          role: assessment
+          path: []
+        - literal: true
+      - op: eq
+        args:
+        - field: traffic.task.phase
+          role: capture_task
+          path: []
+        - literal: inactive
+    parameters: {}
+  traffic.p.arrived:
+    profile: aerograph_sampled/v1
+    roles: &id001
+      pose: aas:TrafficUAV
+      velocity: aas:TrafficUAV
+      task: aas:TrafficTask
+    expression: &id002
+      op: and
+      args:
+      - op: lte
+        args:
+        - op: distance
+          args:
+          - field: he.aircraft.position_enu_m
+            role: pose
+            path: []
+          - field: traffic.task.target_enu_m
+            role: task
+            path: []
+        - parameter: arrival_radius_m
+      - op: lte
+        args:
+        - op: vector_norm
+          args:
+          - field: traffic.uav.velocity_enu_mps
+            role: velocity
+            path: []
+        - parameter: stopped_speed_mps
+    parameters: &id003
+      arrival_radius_m: 1.5
+      stopped_speed_mps: 0.5
+      dwell_ns: 3000000000
+      max_sample_gap_ns: 133333334
+  traffic.p.dwell_ready:
+    profile: aerograph_sampled/v1
+    roles: *id001
+    expression:
+      op: hold
+      args:
+      - *id002
+      - parameter: dwell_ns
+      - parameter: max_sample_gap_ns
+    parameters: *id003
+  traffic.p.capture_accepted:
+    profile: committed_reactive/v1
+    roles:
+      capture: aas:TrafficCapture
+      task: aas:TrafficTask
+    expression:
+      op: and
+      args:
+      - op: eq
+        args:
+        - field: traffic.capture.storage_status
+          role: capture
+          path: []
+        - literal: stored
+      - op: eq
+        args:
+        - field: traffic.task.phase
+          role: task
+          path: []
+        - literal: edge_accepted
+    parameters: {}
+    use: post-storage inspection; completion also requires correlated edge receipt
+  traffic.p.capture_active:
+    profile: committed_reactive/v1
+    roles:
+      task: aas:TrafficTask
+    expression:
+      op: eq
+      args:
+      - field: traffic.task.phase
+        role: task
+        path: []
+      - literal: assigned
+    parameters: {}
+  traffic.p.always:
+    profile: committed_reactive/v1
+    roles: {}
+    expression:
+      op: eq
+      args:
+      - literal: true
+      - literal: true
+    parameters: {}
+  traffic.p.interruptible:
+    profile: committed_reactive/v1
+    roles:
+      task: aas:TrafficTask
+    expression:
+      op: eq
+      args:
+      - field: traffic.task.interruptible
+        role: task
+        path: []
+      - literal: true
+    parameters: {}
+  traffic.p.award_busy:
+    profile: committed_reactive/v1
+    roles:
+      task: aas:TrafficTask
+    expression:
+      op: ne
+      args:
+      - field: traffic.task.phase
+        role: task
+        path: []
+      - literal: inactive
+    parameters: {}
+  traffic.p.road_clear:
+    profile: committed_reactive/v1
+    roles:
+      vehicle: aas:TrafficRoadVehicle
+    parameters: {}
+    expression:
+      op: eq
+      args:
+      - op: len
+        args:
+        - field: traffic.road.blocked_by
+          role: vehicle
+          path: []
+      - literal: 0
+chains:
+  traffic.road_follow:
+    roles:
+      vehicle: aas:TrafficRoadVehicle
+      task: aas:TrafficTask
+      route: aas:TrafficRoute
+    trigger:
+      lifecycle: created
+    preconditions: &id005 []
+    states:
+    - initializing
+    - following
+    - block_pending
+    - waiting
+    - clear_pending
+    - finished
+    - failed
+    initial: initializing
+    terminal:
+    - finished
+    - failed
+    variables: {}
+    transition_policy: first_enabled
+    transitions:
+    - id: start
+      from: initializing
+      'on':
+        instance: activated
+      to: following
+      priority: 0
+      actions:
+      - id: follow
+        kind: command
+        capability: traffic.road.follow
+        payload:
+          actor:
+            $role: vehicle
+          route_id:
+            $variable: route_id
+          progress_m:
+            $variable: progress
+          stop_progress_m:
+            $variable: stop
+          speed_mps:
+            $variable: speed
+          loop:
+            $variable: loop
+        deadline_ns: 90000000000
+      - id: executing
+        kind: set
+        entity:
+          $role: task
+        field: traffic.task.phase
+        value: executing
+    - id: blocked
+      from: following
+      'on':
+        event: traffic.road.blocked
+      to: block_pending
+      priority: 0
+      actions:
+      - id: stable-block
+        kind: delay
+        duration_ns: 200000000
+    - id: clear
+      from: waiting
+      'on':
+        event: traffic.road.cleared
+      to: clear_pending
+      priority: 0
+      actions:
+      - id: stable-clear
+        kind: delay
+        duration_ns: 300000000
+    - id: finished
+      from: following
+      'on':
+        receipt: follow
+        status: succeeded
+      to: finished
+      priority: 0
+      actions:
+      - id: finished
+        kind: set
+        entity:
+          $role: task
+        field: traffic.task.phase
+        value: completed
+    - id: fail-following
+      from: following
+      'on':
+        receipt: follow
+        status:
+        - failed
+        - rejected
+        - canceled
+      to: failed
+      priority: 0
+      actions: &id004 []
+    - id: deadline-following
+      from: following
+      'on':
+        deadline: follow
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: stable-block
+      from: block_pending
+      'on':
+        timer: stable-block
+      to: waiting
+      priority: 0
+      actions:
+      - id: waiting
+        kind: set
+        entity:
+          $role: vehicle
+        field: traffic.actor.phase
+        value: waiting
+      guard: traffic.p.road_conflict
+    - id: transient-clear
+      from: block_pending
+      'on':
+        event: traffic.road.cleared
+      to: following
+      priority: 0
+      actions: []
+    - id: reblocked
+      from: clear_pending
+      'on':
+        event: traffic.road.blocked
+      to: waiting
+      priority: 0
+      actions: []
+    - id: stable-clear
+      from: clear_pending
+      'on':
+        timer: stable-clear
+      to: following
+      priority: 0
+      actions:
+      - id: resumed
+        kind: set
+        entity:
+          $role: vehicle
+        field: traffic.actor.phase
+        value: following
+      guard: traffic.p.road_clear
+    - id: finish-block_pending
+      from: block_pending
+      'on':
+        receipt: follow
+        status: succeeded
+      to: finished
+      priority: 0
+      actions: []
+    - id: fail-block_pending
+      from: block_pending
+      'on':
+        receipt: follow
+        status:
+        - failed
+        - rejected
+        - canceled
+      to: failed
+      priority: 0
+      actions: []
+    - id: timeout-block_pending
+      from: block_pending
+      'on':
+        deadline: follow
+      to: failed
+      priority: 0
+      actions: []
+    - id: finish-waiting
+      from: waiting
+      'on':
+        receipt: follow
+        status: succeeded
+      to: finished
+      priority: 0
+      actions: []
+    - id: fail-waiting
+      from: waiting
+      'on':
+        receipt: follow
+        status:
+        - failed
+        - rejected
+        - canceled
+      to: failed
+      priority: 0
+      actions: []
+    - id: timeout-waiting
+      from: waiting
+      'on':
+        deadline: follow
+      to: failed
+      priority: 0
+      actions: []
+    - id: finish-clear_pending
+      from: clear_pending
+      'on':
+        receipt: follow
+        status: succeeded
+      to: finished
+      priority: 0
+      actions: []
+    - id: fail-clear_pending
+      from: clear_pending
+      'on':
+        receipt: follow
+        status:
+        - failed
+        - rejected
+        - canceled
+      to: failed
+      priority: 0
+      actions: []
+    - id: timeout-clear_pending
+      from: clear_pending
+      'on':
+        deadline: follow
+      to: failed
+      priority: 0
+      actions: []
+  traffic.uav_routine:
+    roles:
+      uav: aas:TrafficUAV
+      task: aas:TrafficTask
+      route: aas:TrafficRoute
+    trigger:
+      lifecycle: created
+    preconditions: *id005
+    states:
+    - ready
+    - planning
+    - executing
+    - suspending
+    - suspended
+    - failed
+    initial: ready
+    terminal:
+    - suspended
+    - failed
+    variables: {}
+    transition_policy: first_enabled
+    transitions:
+    - id: next
+      from: ready
+      'on':
+        instance: activated
+      to: planning
+      priority: 0
+      actions:
+      - id: next
+        kind: command
+        capability: traffic.route.next
+        payload:
+          route:
+            $role: route
+          index:
+            $variable: route_index
+        deadline_ns: 90000000000
+    - id: leg
+      from: planning
+      'on':
+        receipt: next
+        status: succeeded
+      to: executing
+      priority: 0
+      actions:
+      - id: next-index
+        kind: set
+        entity:
+          $role: task
+        field: traffic.task.route_index
+        value:
+          $trigger: result.next_index
+      - id: leg
+        kind: command
+        capability: traffic.air.move_to
+        payload:
+          entity:
+            $role: uav
+          target:
+            $trigger: result.target
+        deadline_ns: 90000000000
+      - id: executing
+        kind: set
+        entity:
+          $role: task
+        field: traffic.task.phase
+        value: executing
+    - id: fail-planning
+      from: planning
+      'on':
+        receipt: next
+        status:
+        - failed
+        - rejected
+        - canceled
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: deadline-planning
+      from: planning
+      'on':
+        deadline: next
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: repeat
+      from: executing
+      'on':
+        receipt: leg
+        status: succeeded
+      to: planning
+      priority: 0
+      actions:
+      - id: next
+        kind: command
+        capability: traffic.route.next
+        payload:
+          route:
+            $role: route
+          index:
+            $variable: route_index
+        deadline_ns: 90000000000
+    - id: fail-executing
+      from: executing
+      'on':
+        receipt: leg
+        status:
+        - failed
+        - rejected
+        - canceled
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: deadline-executing
+      from: executing
+      'on':
+        deadline: leg
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: refuse-medical
+      from: executing
+      'on':
+        event: traffic.broadcast
+      to: executing
+      priority: 100
+      actions:
+      - id: locked
+        kind: emit
+        schema: traffic.bid.joined
+        topic: traffic.bid.joined
+        payload:
+          actor:
+            $role: uav
+          reason: medical route is noninterruptible
+      guard: traffic.p.medical_locked
+    - id: suspend
+      from: executing
+      'on':
+        event: traffic.award.proposed
+        subjects:
+          actor:
+            $role: uav
+      to: suspending
+      priority: 0
+      actions:
+      - id: stop
+        kind: command
+        capability: traffic.air.stop
+        payload:
+          entity:
+            $role: uav
+        deadline_ns: 90000000000
+      guard: traffic.p.interruptible
+    - id: fail-suspending
+      from: suspending
+      'on':
+        receipt: stop
+        status:
+        - failed
+        - rejected
+        - canceled
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: deadline-suspending
+      from: suspending
+      'on':
+        deadline: stop
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: suspended
+      from: suspending
+      'on':
+        receipt: stop
+        status: succeeded
+      to: suspended
+      priority: 0
+      actions:
+      - id: suspended
+        kind: set
+        entity:
+          $role: task
+        field: traffic.task.phase
+        value: suspended
+      - id: physical-suspended
+        kind: emit
+        schema: traffic.award.committed
+        topic: traffic.award.committed
+        payload:
+          actor:
+            $role: uav
+  traffic.incident_report:
+    roles:
+      incident: aas:TrafficIncident
+      reporter: aas:TrafficRoadVehicle
+    trigger:
+      lifecycle: created
+    preconditions: *id005
+    states:
+    - inactive
+    - staged
+    - reporting
+    - reported
+    - failed
+    initial: inactive
+    terminal:
+    - reported
+    - failed
+    variables: {}
+    transition_policy: first_enabled
+    transitions:
+    - id: schedule
+      from: inactive
+      'on':
+        instance: activated
+      to: inactive
+      priority: 0
+      actions:
+      - id: accident-time
+        kind: delay
+        duration_ns: 8000000000
+    - id: timer
+      from: inactive
+      'on':
+        timer: accident-time
+      to: staged
+      priority: 0
+      actions: &id006
+      - id: active
+        kind: set
+        entity:
+          $role: incident
+        field: traffic.incident.active
+        value: true
+      - id: phase
+        kind: set
+        entity:
+          $role: incident
+        field: traffic.incident.phase
+        value: active
+      - id: activated
+        kind: emit
+        schema: traffic.incident.activated
+        topic: traffic.incident.activated
+        payload:
+          incident:
+            $role: incident
+    - id: inject
+      from: inactive
+      'on':
+        event: traffic.inject.accident
+      to: staged
+      priority: 0
+      actions: *id006
+    - id: detect
+      from: staged
+      'on':
+        predicate: traffic.p.detected
+        edge: entered
+      to: reporting
+      priority: 0
+      actions:
+      - id: detected
+        kind: emit
+        schema: traffic.incident.detected
+        topic: traffic.incident.detected
+        payload:
+          incident:
+            $role: incident
+          actor:
+            $role: reporter
+    - id: report
+      from: reporting
+      'on':
+        event: traffic.report.sent
+      to: reported
+      priority: 0
+      actions: []
+    - id: decision-failure
+      from: reporting
+      'on':
+        event: traffic.decision.failed
+      to: failed
+      priority: 0
+      actions: []
+  traffic.reporter_departure:
+    roles:
+      reporter: aas:TrafficRoadVehicle
+      route: aas:TrafficRoute
+    trigger:
+      event: traffic.report.sent
+    preconditions: *id005
+    states:
+    - waiting_gap
+    - retry_wait
+    - bypassing
+    - network_continuing
+    - failed
+    initial: waiting_gap
+    terminal:
+    - failed
+    variables: {}
+    transition_policy: first_enabled
+    transitions:
+    - id: borrow
+      from: waiting_gap
+      'on':
+        predicate: traffic.p.gap_clear
+        edge: while
+      to: bypassing
+      priority: 0
+      actions:
+      - id: bypass
+        kind: command
+        capability: traffic.road.bypass
+        payload:
+          actor:
+            $role: reporter
+          route_id: adjacent_lane_bypass
+          progress_m: 0.0
+          stop_progress_m:
+            $variable: bypass_length
+          speed_mps: 5.5
+          loop: false
+        deadline_ns: 90000000000
+      guard: traffic.p.gap_clear
+    - id: continue
+      from: bypassing
+      'on':
+        receipt: bypass
+        status: succeeded
+      to: network_continuing
+      priority: 0
+      actions:
+      - id: network
+        kind: command
+        capability: traffic.road.follow
+        payload:
+          actor:
+            $role: reporter
+          route_id:
+            $variable: network_route
+          progress_m:
+            $variable: network_progress
+          stop_progress_m:
+            $variable: network_length
+          speed_mps: 6.0
+          loop: true
+        deadline_ns: 90000000000
+    - id: fail-bypassing
+      from: bypassing
+      'on':
+        receipt: bypass
+        status:
+        - failed
+        - canceled
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: deadline-bypassing
+      from: bypassing
+      'on':
+        deadline: bypass
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: network-failed
+      from: network_continuing
+      'on':
+        receipt: network
+        status:
+        - failed
+        - rejected
+      to: failed
+      actions: []
+      priority: 0
+    - id: network-deadline
+      from: network_continuing
+      'on':
+        deadline: network
+      to: failed
+      actions: []
+      priority: 0
+    - id: occupied-corridor
+      from: bypassing
+      'on':
+        receipt: bypass
+        status: rejected
+        result_matches:
+          reason: borrow corridor occupied
+      to: retry_wait
+      priority: 10
+      actions:
+      - id: retry-gap
+        kind: delay
+        duration_ns: 300000000
+    - id: retry-gap
+      from: retry_wait
+      'on':
+        timer: retry-gap
+      to: waiting_gap
+      priority: 0
+      actions: []
+    - id: other-rejection
+      from: bypassing
+      'on':
+        receipt: bypass
+        status: rejected
+      to: failed
+      priority: 0
+      actions: []
+    retry_policy:
+      action: bypass
+      maximum_attempts: 10
+      idempotency: new physical command after real rejection; no retry after failure
+      exhaustion: failed with original rejection evidence
+  traffic.solicit_award:
+    roles:
+      coordinator: aas:TrafficCoordinator
+      task: aas:TrafficTask
+      candidate: aas:TrafficUAV
+      bid: aas:TrafficBid
+      assessment: aas:TrafficAssessment
+      current_task: aas:TrafficTask
+    trigger:
+      event: traffic.report.sent
+    preconditions: *id005
+    states:
+    - broadcast
+    - collecting
+    - selecting
+    - suspending
+    - assigned
+    - no_candidate
+    - failed
+    initial: broadcast
+    terminal:
+    - assigned
+    - no_candidate
+    - failed
+    variables: {}
+    transition_policy: first_enabled
+    transitions:
+    - id: broadcast
+      from: broadcast
+      'on':
+        instance: activated
+      to: collecting
+      priority: 0
+      actions:
+      - id: broadcast
+        kind: emit
+        schema: traffic.broadcast
+        topic: traffic.broadcast
+        payload:
+          incident:
+            $variable: incident
+      - id: bid-deadline
+        kind: delay
+        duration_ns: 20000000000
+    - id: join
+      from: collecting
+      'on':
+        event: traffic.bid.joined
+      to: selecting
+      priority: 0
+      actions: []
+    - id: award
+      from: selecting
+      'on':
+        instance: continued
+      to: suspending
+      priority: 0
+      actions:
+      - id: select
+        kind: emit
+        schema: traffic.award.proposed
+        topic: traffic.award.proposed
+        payload:
+          actor:
+            $role: candidate
+      guard: traffic.p.bid_eligible
+    - id: no-candidate
+      from: collecting
+      'on':
+        timer: bid-deadline
+      to: no_candidate
+      priority: 0
+      actions: *id004
+    - id: assigned
+      from: suspending
+      'on':
+        event: traffic.award.committed
+      to: assigned
+      priority: 0
+      actions:
+      - id: close-patrol
+        kind: close_relation
+        edge_id:
+          $variable: old_assignment
+      - id: capture-assignee
+        kind: assert_relation
+        edge_id:
+          $variable: new_assignment
+        relation: traffic.task-assignee
+        source:
+          $role: task
+        target:
+          $role: candidate
+      - id: assigned
+        kind: set
+        entity:
+          $role: task
+        field: traffic.task.phase
+        value: assigned
+      guard: traffic.p.bid_eligible
+    - id: decision-failure
+      from: collecting
+      'on':
+        event: traffic.decision.failed
+      to: failed
+      priority: 0
+      actions: *id004
+    predicate_roles:
+      traffic.p.bid_eligible:
+        task: current_task
+        capture_task: task
+        bid: bid
+        assessment: assessment
+  traffic.capture_execute:
+    roles:
+      uav: aas:TrafficUAV
+      task: aas:TrafficTask
+      incident: aas:TrafficIncident
+    trigger:
+      predicate: traffic.p.capture_active
+      edge: while
+    preconditions:
+    - traffic.p.capture_active
+    states:
+    - dispatching
+    - enroute
+    - holding
+    - dwelling
+    - capture_requested
+    - storing
+    - edge_acceptance
+    - completed
+    - failed
+    initial: dispatching
+    terminal:
+    - completed
+    - failed
+    variables: {}
+    transition_policy: first_enabled
+    transitions:
+    - id: goto
+      from: dispatching
+      'on':
+        instance: activated
+      to: enroute
+      priority: 0
+      actions:
+      - id: goto
+        kind: command
+        capability: traffic.air.move_to
+        payload:
+          entity:
+            $role: uav
+          target:
+            $variable: target
+        deadline_ns: 90000000000
+    - id: fail-enroute
+      from: enroute
+      'on':
+        receipt: goto
+        status:
+        - failed
+        - rejected
+        - canceled
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: deadline-enroute
+      from: enroute
+      'on':
+        deadline: goto
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: hold
+      from: enroute
+      'on':
+        receipt: goto
+        status: succeeded
+      to: holding
+      priority: 0
+      actions:
+      - id: hold
+        kind: command
+        capability: traffic.air.hold
+        payload:
+          entity:
+            $role: uav
+        deadline_ns: 90000000000
+    - id: fail-holding
+      from: holding
+      'on':
+        receipt: hold
+        status:
+        - failed
+        - rejected
+        - canceled
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: deadline-holding
+      from: holding
+      'on':
+        deadline: hold
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: dwell
+      from: holding
+      'on':
+        receipt: hold
+        status: succeeded
+      to: dwelling
+      priority: 0
+      actions: []
+    - id: capture
+      from: dwelling
+      'on':
+        predicate: traffic.p.dwell_ready
+        edge: while
+      to: capture_requested
+      priority: 0
+      actions:
+      - id: request
+        kind: emit
+        schema: traffic.capture.requested
+        topic: traffic.capture.requested
+        payload:
+          actor:
+            $role: uav
+          incident:
+            $role: incident
+          request_id:
+            $variable: request_id
+      - id: upload-deadline
+        kind: delay
+        duration_ns: 10000000000
+      guard: traffic.p.dwell_ready
+    - id: stored
+      from: capture_requested
+      'on':
+        event: traffic.capture.stored
+        correlation:
+          request_id:
+            $variable: request_id
+          actor:
+            $role: uav
+      to: edge_acceptance
+      priority: 0
+      actions: []
+    - id: accepted
+      from: edge_acceptance
+      'on':
+        event: traffic.capture.accepted
+        correlation:
+          request_id:
+            $variable: request_id
+          actor:
+            $role: uav
+          requires_event: traffic.capture.stored
+      to: completed
+      priority: 0
+      actions:
+      - id: complete
+        kind: set
+        entity:
+          $role: task
+        field: traffic.task.phase
+        value: completed
+      - id: terminal
+        kind: complete
+    - id: timeout-capture_requested
+      from: capture_requested
+      'on':
+        timer: upload-deadline
+      to: failed
+      priority: 0
+      actions:
+      - id: failed
+        kind: set
+        entity:
+          $role: task
+        field: traffic.task.phase
+        value: failed
+    - id: invalid-capture_requested
+      from: capture_requested
+      'on':
+        event: traffic.capture.failed
+        correlation:
+          request_id:
+            $variable: request_id
+          actor:
+            $role: uav
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: timeout-storing
+      from: storing
+      'on':
+        timer: upload-deadline
+      to: failed
+      priority: 0
+      actions:
+      - id: failed
+        kind: set
+        entity:
+          $role: task
+        field: traffic.task.phase
+        value: failed
+    - id: invalid-storing
+      from: storing
+      'on':
+        event: traffic.capture.failed
+        correlation:
+          request_id:
+            $variable: request_id
+          actor:
+            $role: uav
+      to: failed
+      priority: 0
+      actions: *id004
+    - id: timeout-edge_acceptance
+      from: edge_acceptance
+      'on':
+        timer: upload-deadline
+      to: failed
+      priority: 0
+      actions:
+      - id: failed
+        kind: set
+        entity:
+          $role: task
+        field: traffic.task.phase
+        value: failed
+    - id: invalid-edge_acceptance
+      from: edge_acceptance
+      'on':
+        event: traffic.capture.failed
+        correlation:
+          request_id:
+            $variable: request_id
+          actor:
+            $role: uav
+      to: failed
+      priority: 0
+      actions: *id004
+    completion_policy:
+      requires:
+      - goto:succeeded
+      - hold:succeeded
+      - capture.stored:matching_request_actor_cut
+      - capture.accepted:matching_edge_receipt
+      deadline_action: upload-deadline
+      failure_terminal: failed
+  traffic.record_report:
+    roles:
+      actor: aas:TrafficRoadVehicle
+      incident: aas:TrafficIncident
+    trigger:
+      event: traffic.proposal.report
+    preconditions: []
+    states:
+    - creating
+    - populating
+    - recorded
+    - failed
+    initial: creating
+    terminal:
+    - recorded
+    - failed
+    variables: {}
+    transitions:
+    - id: identity
+      from: creating
+      'on':
+        instance: activated
+      to: populating
+      priority: 0
+      actions:
+      - id: create
+        kind: create_entity
+        entity:
+          $variable: record
+      - id: publish-wave
+        kind: delay
+        duration_ns: 0
+        continuation: next_reactive_microstep
+    - id: publish
+      from: populating
+      'on':
+        timer: publish-wave
+      to: recorded
+      priority: 0
+      actions:
+      - id: actor
+        kind: set
+        entity:
+          $variable: record
+        field: traffic.report.actor
+        value:
+          $role: actor
+      - id: incident
+        kind: set
+        entity:
+          $variable: record
+        field: traffic.report.incident
+        value:
+          $role: incident
+      - id: body
+        kind: set
+        entity:
+          $variable: record
+        field: traffic.report.body
+        value:
+          $variable: reason
+      - id: subject
+        kind: assert_relation
+        edge_id:
+          $variable: subject_edge
+        relation: traffic.report-incident
+        source:
+          $variable: record
+        target:
+          $role: incident
+      - id: published
+        kind: emit
+        schema: traffic.report.sent
+        topic: traffic.report.sent
+        payload:
+          actor:
+            $role: actor
+          incident:
+            $role: incident
+          report:
+            $variable: record
+  traffic.record_bid:
+    roles:
+      actor: aas:TrafficUAV
+      task: aas:TrafficTask
+    trigger:
+      event: traffic.proposal.bid
+    preconditions: []
+    states:
+    - creating
+    - populating
+    - assessing
+    - recorded
+    - failed
+    initial: creating
+    terminal:
+    - recorded
+    - failed
+    variables: {}
+    transitions:
+    - id: identity
+      from: creating
+      'on':
+        instance: activated
+      to: populating
+      priority: 0
+      actions:
+      - id: create
+        kind: create_entity
+        entity:
+          $variable: record
+      - id: publish-wave
+        kind: delay
+        duration_ns: 0
+        continuation: next_reactive_microstep
+    - id: publish
+      from: populating
+      'on':
+        timer: publish-wave
+      to: assessing
+      priority: 0
+      actions:
+      - id: actor
+        kind: set
+        entity:
+          $variable: record
+        field: traffic.bid.actor
+        value:
+          $role: actor
+      - id: task
+        kind: set
+        entity:
+          $variable: record
+        field: traffic.bid.task
+        value:
+          $role: task
+      - id: recommendation
+        kind: set
+        entity:
+          $variable: record
+        field: traffic.bid.recommendation
+        value:
+          $variable: recommendation
+      - id: reason
+        kind: set
+        entity:
+          $variable: record
+        field: traffic.bid.reason
+        value:
+          $variable: reason
+      - id: cut
+        kind: set
+        entity:
+          $variable: record
+        field: traffic.bid.input_cut
+        value:
+          $variable: input_cut
+      - id: status
+        kind: set
+        entity:
+          $variable: record
+        field: traffic.bid.decision_status
+        value:
+          $variable: decision_status
+      - id: subject
+        kind: assert_relation
+        edge_id:
+          $variable: subject_edge
+        relation: traffic.bid-task
+        source:
+          $variable: record
+        target:
+          $role: task
+      - id: assessment-link
+        kind: command
+        capability: traffic.assessment.link_bid
+        payload:
+          actor:
+            $role: actor
+          bid:
+            $variable: record
+        deadline_ns: 1000000000
+    - id: assessment-ready
+      from: assessing
+      'on':
+        receipt: assessment-link
+        status: succeeded
+      to: recorded
+      priority: 0
+      actions:
+      - id: published
+        kind: emit
+        schema: traffic.bid.joined
+        topic: traffic.bid.joined
+        payload:
+          actor:
+            $role: actor
+          bid:
+            $variable: record
+    - id: assessment-failure
+      from: assessing
+      'on':
+        receipt: assessment-link
+        status:
+        - failed
+        - rejected
+      to: failed
+      priority: 0
+      actions: []
+    - id: assessment-timeout
+      from: assessing
+      'on':
+        deadline: assessment-link
+      to: failed
+      priority: 0
+      actions: []
+bindings:
+- id: road-follow
+  chain: traffic.road_follow
+  match:
+    vehicle:
+      is_a: aas:TrafficRoadVehicle
+    task:
+      relation: traffic.task-assignee
+      target_role: vehicle
+      source_role: task
+    route:
+      relation: traffic.actor-route
+      source_role: vehicle
+      target_role: route
+  variables:
+    route_id:
+      field: traffic.road.route_id
+      role: vehicle
+    progress:
+      field: traffic.task.motion
+      role: task
+      path:
+      - progress_m
+    stop:
+      field: traffic.task.motion
+      role: task
+      path:
+      - stop_progress_m
+    speed:
+      field: traffic.task.motion
+      role: task
+      path:
+      - speed_mps
+    loop:
+      field: traffic.task.motion
+      role: task
+      path:
+      - loop
+  multiplicity: once_per_task_episode
+  episode_field: traffic.task.episode
+  on_unbind: retain_until_terminal
+- id: uav-routine
+  chain: traffic.uav_routine
+  match:
+    uav:
+      is_a: oo:UAV
+    task:
+      relation: traffic.task-assignee
+      target_role: uav
+      source_role: task
+      field: traffic.task.kind
+      in:
+      - medical_delivery
+      - patrol
+    route:
+      relation: traffic.actor-route
+      source_role: uav
+      target_role: route
+  variables:
+    route_index:
+      field: traffic.task.route_index
+      role: task
+  multiplicity: once_per_task_episode
+  episode_field: traffic.task.episode
+  on_unbind: retain_until_terminal
+- id: report
+  chain: traffic.incident_report
+  match:
+    incident:
+      is_a: aas:TrafficIncident
+    reporter:
+      is_a: aas:TrafficRoadVehicle
+      field: traffic.actor.role
+      equals: reporter
+  variables: {}
+  multiplicity: once_per_entity
+  on_unbind: retain_until_terminal
+- id: reporter-departure
+  chain: traffic.reporter_departure
+  match:
+    reporter:
+      is_a: aas:TrafficRoadVehicle
+      field: traffic.actor.role
+      equals: reporter
+    route:
+      id: adjacent_lane_bypass
+  variables:
+    bypass_length: 52.885589383282316
+    network_route: route.vehicle.005
+    network_progress: 1078.0311203661308
+    network_length: 10102.856321308596
+  multiplicity: once_per_relation
+  on_unbind: retain_until_terminal
+- id: award
+  chain: traffic.solicit_award
+  match:
+    coordinator:
+      is_a: aas:TrafficCoordinator
+    candidate:
+      relation: traffic.coordinator-candidate
+      source_role: coordinator
+      target_role: candidate
+    task:
+      is_a: aas:TrafficTask
+      field: traffic.task.kind
+      equals: capture
+    bid:
+      relation: traffic.bid-task
+      source_role: bid
+      target_role: task
+    assessment:
+      relation: traffic.assessment-bid
+      source_role: assessment
+      target_role: bid
+    current_task:
+      relation: traffic.task-assignee
+      source_role: current_task
+      target_role: candidate
+  selection:
+    policy: minimum_known_feasible_eta
+    field: traffic.assessment.eta_s
+    role: assessment
+    tie_break: EntityRef
+    limit: 1
+    revalidate: traffic.p.bid_eligible
+    join: all_candidates_or_deadline
+  variables:
+    incident:
+      field: traffic.edge.incident_ref
+      role: coordinator
+    old_assignment:
+      relation_assertion_id: traffic.task-assignee
+      source_role: current_task
+      target_role: candidate
+    new_assignment:
+      stable_id:
+        binding: award
+        roles:
+        - task
+        - candidate
+        episode_field: traffic.task.episode
+  multiplicity: once_per_task_episode
+  episode_field: traffic.task.episode
+  on_unbind: retain_until_terminal
+- id: capture
+  chain: traffic.capture_execute
+  match:
+    task:
+      is_a: aas:TrafficTask
+      field: traffic.task.kind
+      equals: capture
+    uav:
+      relation: traffic.task-assignee
+      source_role: task
+      target_role: uav
+    incident:
+      is_a: aas:TrafficIncident
+  variables:
+    target:
+      field: traffic.task.target_enu_m
+      role: task
+    request_id:
+      stable_id:
+        binding: capture
+        roles:
+        - task
+        - uav
+        episode_field: traffic.task.episode
+  multiplicity: once_per_task_episode
+  episode_field: traffic.task.episode
+  on_unbind: retain_until_terminal
+- id: record-report
+  chain: traffic.record_report
+  match:
+    actor:
+      event_subject: actor
+    incident:
+      event_subject: incident
+  variables:
+    record:
+      stable_entity_ref:
+        type_id: aas:TrafficReport
+        binding: record-report
+        roles:
+        - actor
+        - incident
+        invocation_event_version: true
+    reason:
+      $trigger: payload.reason
+    subject_edge:
+      stable_id:
+        binding: record-report
+        roles:
+        - actor
+        - incident
+        invocation_event_version: true
+  multiplicity: once_per_entity
+  episode_field: traffic.incident.occurred_at
+  on_unbind: retain_until_terminal
+- id: record-bid
+  chain: traffic.record_bid
+  match:
+    actor:
+      event_subject: actor
+    task:
+      event_subject: task
+  variables:
+    record:
+      stable_entity_ref:
+        type_id: aas:TrafficBid
+        binding: record-bid
+        roles:
+        - actor
+        - task
+        invocation_event_version: true
+    reason:
+      $trigger: payload.reason
+    recommendation:
+      typed_choice:
+        condition:
+          $trigger: payload.accept
+        'true': accept
+        'false': refuse
+    input_cut:
+      $trigger: payload.input_cut
+    decision_status:
+      $trigger: payload.decision_status
+    subject_edge:
+      stable_id:
+        binding: record-bid
+        roles:
+        - actor
+        - task
+        invocation_event_version: true
+  multiplicity: once_per_task_episode
+  episode_field: traffic.task.episode
+  on_unbind: retain_until_terminal
+conflicts:
+- id: occupancy-blocked
+  roles:
+    vehicle: aas:TrafficRoadVehicle
+  predicate: traffic.p.road_conflict
+  edge: entered
+  emits: traffic.road.blocked
+- id: occupancy-cleared
+  roles:
+    vehicle: aas:TrafficRoadVehicle
+  predicate: traffic.p.road_conflict
+  edge: exited
+  emits: traffic.road.cleared
+- id: capture-reservation-conflict
+  roles:
+    task: aas:TrafficTask
+  predicate: traffic.p.award_busy
+  edge: while
+  emits: traffic.award.conflict
+  arbitration: one task-assignee edge; stable executor order; losing reservation receives
+    conflict receipt
+injection_points:
+- id: accident
+  stream_id: operator
+  command: traffic.command.inject.accident
+  target: behaviour
+  emits: traffic.inject.accident
+- id: wind
+  stream_id: operator
+  command: traffic.command.inject.wind
+  target: behaviour
+  emits: traffic.inject.wind
+- id: pause-test
+  stream_id: operator
+  command: traffic.command.inject.pause-test
+  target: behaviour
+  emits: traffic.inject.pause-test
+feedback:
+  profile: aerograph_sampled/v1
+  return_lag_ns: 66666667
+  partition: behaviour_sampled_feedback
+  reason: one explicit motion publication interval; A must compile this into Dependency/message
+    graph
+sampled_contexts:
+- id: capture.alpha
+  roles:
+    pose: uav.alpha
+    velocity: uav.alpha
+    task: incident-capture-01
+  sources:
+    pose: air_motion
+    velocity: air_motion
+    task: behaviour
+  clocks:
+    pose:
+    - canonical
+    - canonical
+    velocity:
+    - canonical
+    - canonical
+    task:
+    - canonical
+    - canonical
+  predicates:
+  - traffic.p.arrived
+  - traffic.p.dwell_ready
+  same_identity_roles:
+  - - pose
+    - velocity
+- id: capture.bravo
+  roles:
+    pose: uav.bravo
+    velocity: uav.bravo
+    task: incident-capture-01
+  sources:
+    pose: air_motion
+    velocity: air_motion
+    task: behaviour
+  clocks:
+    pose:
+    - canonical
+    - canonical
+    velocity:
+    - canonical
+    - canonical
+    task:
+    - canonical
+    - canonical
+  predicates:
+  - traffic.p.arrived
+  - traffic.p.dwell_ready
+  same_identity_roles:
+  - - pose
+    - velocity
+bootstrap_relations:
+  owner: behaviour
+  acquired_ns: 0
+  valid_from_ns: 0
+  assertions:
+  - id: assignment.vehicle.reporter
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.reporter
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.reporter
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.reporter
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.reporter
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: lane.incident
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.incident.a
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.incident.a
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.incident.a
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.incident.a
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.incident.a
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: lane.incident
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.incident.b
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.incident.b
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.incident.b
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.incident.b
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.incident.b
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: lane.incident
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.001
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.001
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.001
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.001
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.001
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.001
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.002
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.002
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.002
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.002
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.002
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.002
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.003
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.003
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.003
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.003
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.003
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.003
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.004
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.004
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.004
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.004
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.004
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.004
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.005
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.005
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.005
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.005
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.005
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.005
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.006
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.006
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.006
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.006
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.006
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.006
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.007
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.007
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.007
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.007
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.007
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.007
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.008
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.008
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.008
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.008
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.008
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.008
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.009
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.009
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.009
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.009
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.009
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.009
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.010
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.010
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.010
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.010
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.010
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.010
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.011
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.011
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.011
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.011
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.011
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.011
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.012
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.012
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.012
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.012
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.012
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.012
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.013
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.013
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.013
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.013
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.013
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.013
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.014
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.014
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.014
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.014
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.014
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.014
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.015
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.015
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.015
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.015
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.015
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.015
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.016
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.016
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.016
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.016
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.016
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.016
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.017
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.017
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.017
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.017
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.017
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.017
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.018
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.018
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.018
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.018
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.018
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.018
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.019
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.019
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.019
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.019
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.019
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.019
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.020
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.020
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.020
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.020
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.020
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.020
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.021
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.021
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.021
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.021
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.021
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.021
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.022
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.022
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.022
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.022
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.022
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.022
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.023
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.023
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.023
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.023
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.023
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.023
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.024
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.024
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.024
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.024
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.024
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.024
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.025
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.025
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.025
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.025
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.025
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.025
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.027
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.027
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.027
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.027
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.027
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.027
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.028
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.028
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.028
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.028
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.028
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.028
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.029
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.029
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.029
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.029
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.029
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.029
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.030
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.030
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.030
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.030
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.030
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.030
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.031
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.031
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.031
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.031
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.031
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.031
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.032
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.032
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.032
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.032
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.032
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.032
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.033
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.033
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.033
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.033
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.033
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.033
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.034
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.034
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.034
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.034
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.034
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.034
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.035
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.035
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.035
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.035
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.035
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.035
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.036
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.036
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.036
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.036
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.036
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.036
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.037
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.037
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.037
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.037
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.037
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.037
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.038
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.038
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.038
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.038
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.038
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.038
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.039
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.039
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.039
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.039
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.039
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.039
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.040
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.040
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.040
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.040
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.040
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.040
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.026
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.026
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.026
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.026
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.026
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.026
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.041
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.041
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.041
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.041
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.041
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.041
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.042
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.042
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.042
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.042
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.042
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.042
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.043
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.043
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.043
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.043
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.043
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.043
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.044
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.044
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.044
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.044
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.044
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.044
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.045
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.045
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.045
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.045
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.045
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.045
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.046
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.046
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.046
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.046
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.046
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.046
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.047
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.047
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.047
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.047
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.047
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.047
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.048
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.048
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.048
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.048
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.048
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.048
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.049
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.049
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.049
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.049
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.049
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.049
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.050
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.050
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.050
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.050
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.050
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.050
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.051
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.051
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.051
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.051
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.051
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.051
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.052
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.052
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.052
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.052
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.052
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.052
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.053
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.053
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.053
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.053
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.053
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.053
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.054
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.054
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.054
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.054
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.054
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.054
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.055
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.055
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.055
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.055
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.055
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.055
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.056
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.056
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.056
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.056
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.056
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.056
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.057
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.057
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.057
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.057
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.057
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.057
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.058
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.058
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.058
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.058
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.058
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.058
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.059
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.059
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.059
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.059
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.059
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.059
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.vehicle.060
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: road-task.vehicle.060
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.060
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: route-intent.vehicle.060
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.060
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.vehicle.060
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.uav.alpha
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: medical-delivery-01
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.alpha
+        generation: 0
+        type_id: aas:TrafficUAV
+  - id: route-intent.uav.alpha
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.alpha
+        generation: 0
+        type_id: aas:TrafficUAV
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.uav.alpha
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.uav.bravo
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: district-patrol-02
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bravo
+        generation: 0
+        type_id: aas:TrafficUAV
+  - id: route-intent.uav.bravo
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bravo
+        generation: 0
+        type_id: aas:TrafficUAV
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.uav.bravo
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.uav.bg.01
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: background-patrol-01
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bg.01
+        generation: 0
+        type_id: aas:TrafficUAV
+  - id: route-intent.uav.bg.01
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bg.01
+        generation: 0
+        type_id: aas:TrafficUAV
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.uav.bg.01
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.uav.bg.02
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: background-patrol-02
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bg.02
+        generation: 0
+        type_id: aas:TrafficUAV
+  - id: route-intent.uav.bg.02
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bg.02
+        generation: 0
+        type_id: aas:TrafficUAV
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.uav.bg.02
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.uav.bg.03
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: background-patrol-03
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bg.03
+        generation: 0
+        type_id: aas:TrafficUAV
+  - id: route-intent.uav.bg.03
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bg.03
+        generation: 0
+        type_id: aas:TrafficUAV
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.uav.bg.03
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.uav.bg.04
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: background-patrol-04
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bg.04
+        generation: 0
+        type_id: aas:TrafficUAV
+  - id: route-intent.uav.bg.04
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bg.04
+        generation: 0
+        type_id: aas:TrafficUAV
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.uav.bg.04
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.uav.bg.05
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: background-patrol-05
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bg.05
+        generation: 0
+        type_id: aas:TrafficUAV
+  - id: route-intent.uav.bg.05
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bg.05
+        generation: 0
+        type_id: aas:TrafficUAV
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.uav.bg.05
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: assignment.uav.bg.06
+    relation: traffic.task-assignee
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: background-patrol-06
+        generation: 0
+        type_id: aas:TrafficTask
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bg.06
+        generation: 0
+        type_id: aas:TrafficUAV
+  - id: route-intent.uav.bg.06
+    relation: traffic.actor-route
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bg.06
+        generation: 0
+        type_id: aas:TrafficUAV
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: route.uav.bg.06
+        generation: 0
+        type_id: aas:TrafficRoute
+  - id: participant.a
+    relation: traffic.incident-participant
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: incident.01
+        generation: 0
+        type_id: aas:TrafficIncident
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.incident.a
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: participant.b
+    relation: traffic.incident-participant
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: incident.01
+        generation: 0
+        type_id: aas:TrafficIncident
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: vehicle.incident.b
+        generation: 0
+        type_id: aas:TrafficRoadVehicle
+  - id: candidate.alpha
+    relation: traffic.coordinator-candidate
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: edge.coordinator
+        generation: 0
+        type_id: aas:TrafficCoordinator
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.alpha
+        generation: 0
+        type_id: aas:TrafficUAV
+  - id: candidate.bravo
+    relation: traffic.coordinator-candidate
+    source:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: edge.coordinator
+        generation: 0
+        type_id: aas:TrafficCoordinator
+    target:
+      $ref:
+        run_id: traffic-accident
+        epoch: '0'
+        id: uav.bravo
+        generation: 0
+        type_id: aas:TrafficUAV
+  phase: after_endpoint_identity_commit
+requires_compiler_features:
+- relation tuple selectors
+- predicate role aliases
+- bootstrap relation wave
+- stable authored ID expressions
+- minimum-known-feasible-ETA selector after candidate join
+- receipt/event correlation and retained children
+- positive-lag sampled-feedback partition
+- typed stable entity references from event identity
+- event subject role bindings
+- typed choice expressions for validated acceptance enum

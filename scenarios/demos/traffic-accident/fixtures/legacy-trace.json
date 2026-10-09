@@ -1,0 +1,962 @@
+{
+  "source": "results/run-20261008-030056/trajectory.jsonl",
+  "sha256": "18828341d9f1a25058b6782eb20df8fbbe5b7c375a2a6b5536288091d479b513",
+  "kind": "historical recorded snapshots; not authoritative receipts",
+  "transform": "E=X,N=-Z,U=Y",
+  "samples": [
+    {
+      "time_s": 0.0,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            74.25419341897226,
+            -2.7948941564708685,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            81.57414423061469,
+            -43.84657246258789,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            102.12862306821755,
+            -142.2278088734043,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -452.2472,
+            -370.3729,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            156.94997649389938,
+            -123.03744113461998,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.9499764938994,
+            -93.03744113461998,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.067,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            74.32390349037448,
+            -3.188772952479359,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            81.64878853433602,
+            -44.23954603411905,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            102.01999498079986,
+            -141.84284142202176,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -452.65914794835624,
+            -370.50734949097296,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            156.54362482926197,
+            -123.26691030994463,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.9492992455862,
+            -93.57077389462128,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.133,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            74.3936135617767,
+            -3.5826517484878497,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            81.72343283805735,
+            -44.632519605650224,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            101.91136689338218,
+            -141.4578739706392,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -453.07089156255614,
+            -370.6424165895807,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            156.13727316462456,
+            -123.49637948526929,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.94726750501474,
+            -94.10410321463486,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.2,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            74.46332363317892,
+            -3.9765305444963404,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            81.79807714177868,
+            -45.02549317718138,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            101.80273880596448,
+            -141.07290651925666,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -453.48174056122866,
+            -370.7801876971018,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            155.73092149998715,
+            -123.72584866059394,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.94388128528976,
+            -94.63742565469515,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.267,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            74.53303370458113,
+            -4.370409340504831,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            81.8727214455,
+            -45.41846674871255,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            101.6941107185468,
+            -140.6879390678741,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -453.8925895599011,
+            -370.9179588046229,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            155.32456983534973,
+            -123.95531783591859,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.93914060825233,
+            -95.17073777488099,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.333,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            74.60274377598334,
+            -4.764288136513321,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            81.94736574922133,
+            -45.811440320243705,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            101.58548263112911,
+            -140.3029716164916,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -454.3034385585736,
+            -371.055729912144,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            154.91821817071232,
+            -124.18478701124324,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.93304550447976,
+            -95.70403613533776,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.4,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            74.67245384738557,
+            -5.158166932521812,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            82.02201005294266,
+            -46.20441389177488,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            101.47685454371141,
+            -139.91800416510898,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -454.7142875572461,
+            -371.1935010196651,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            154.5118665060749,
+            -124.4142561865679,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.9255960132853,
+            -96.23731729629962,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.467,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            74.74216391878778,
+            -5.552045728530302,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            82.09665435666399,
+            -46.59738746330603,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            101.36822645629374,
+            -139.53303671372646,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -455.1251365559186,
+            -371.3312721271862,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            154.1055148414375,
+            -124.64372536189255,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.9167921827181,
+            -96.77057781811165,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.533,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            74.81187399019,
+            -5.945924524538793,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            82.17129866038532,
+            -46.9903610348372,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            101.25959836887604,
+            -139.1480692623439,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -455.5359855545911,
+            -371.4690432347073,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            153.69916317680008,
+            -124.8731945372172,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.90663406956276,
+            -97.30381426125203,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.6,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            74.88158406159222,
+            -6.339803320547284,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            82.24594296410665,
+            -47.38333460636835,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            101.15097028145836,
+            -138.76310181096136,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -455.94683455326356,
+            -371.6068143422284,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            153.29281151216267,
+            -125.10266371254185,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.8951217393389,
+            -97.83702318635429,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.667,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            74.95129413299443,
+            -6.733682116555774,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            82.32058726782797,
+            -47.77630817789952,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            101.04234219404067,
+            -138.37813435957884,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -456.3576835519361,
+            -371.74458544974954,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            152.88645984752526,
+            -125.3321328878665,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.88225526630083,
+            -98.37020115422942,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.733,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            75.02100420439665,
+            -7.127560912564265,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            82.3952315715493,
+            -48.16928174943068,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            100.93371410662299,
+            -137.9931669081963,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -456.76853255060854,
+            -371.8823565572706,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            152.48010818288785,
+            -125.56160206319116,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.8680347334371,
+            -98.90334472588808,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.8,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            75.09071427579887,
+            -7.521439708572755,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            82.46987587527063,
+            -48.562255320961846,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            100.8250860192053,
+            -137.60819945681374,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -457.17938154928106,
+            -372.0201276647917,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            152.07375651825043,
+            -125.79107123851581,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.85246023247004,
+            -99.43645046256282,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.867,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            75.16042434720109,
+            -7.915318504581245,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            82.54452017899196,
+            -48.95522889249301,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            100.71645793178762,
+            -137.22323200543116,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -457.5902305479535,
+            -372.1578987723128,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            151.66740485361302,
+            -126.02054041384046,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.8355318638548,
+            -99.96951492573018,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 0.933,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            75.22966663570473,
+            -8.309279473131015,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            82.61916448271329,
+            -49.348202464024176,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            100.60782984436992,
+            -136.8382645540486,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -458.00107954662604,
+            -372.2956698798339,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            151.2610531889756,
+            -126.25000958916512,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.8172497367791,
+            -100.50253467713296,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 1.0,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            75.2983682096399,
+            -8.70333542567942,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            82.69380878643462,
+            -49.741176035555334,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            100.49920175695225,
+            -136.45329710266608,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -458.4119285452985,
+            -372.433440987355,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            150.8547015243382,
+            -126.47947876448977,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            301.79761396916246,
+            -101.0355062788023,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 32.733,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            99.99356920962403,
+            -134.62184700884913,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            91.52627531529414,
+            -90.77680465096134,
+            0.0
+          ],
+          "speed_mps": 0.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            92.35307553170007,
+            -95.30141011703077,
+            0.0
+          ],
+          "speed_mps": 0.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -436.07300736990754,
+            -276.4093074009509,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            -42.56869084307063,
+            -235.70680621902437,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            158.76839413709482,
+            -292.12360103444706,
+            145.0
+          ]
+        }
+      }
+    },
+    {
+      "time_s": 60.467,
+      "road": {
+        "vehicle.reporter": {
+          "position_enu_m": [
+            1.457360531026401,
+            -221.09020597724793,
+            0.0
+          ],
+          "speed_mps": 6.0
+        },
+        "vehicle.incident.a": {
+          "position_enu_m": [
+            91.52627531529414,
+            -90.77680465096134,
+            0.0
+          ],
+          "speed_mps": 0.0
+        },
+        "vehicle.incident.b": {
+          "position_enu_m": [
+            92.35307553170007,
+            -95.30141011703077,
+            0.0
+          ],
+          "speed_mps": 0.0
+        },
+        "vehicle.001": {
+          "position_enu_m": [
+            -491.11523258113846,
+            -157.55515771648246,
+            0.0
+          ],
+          "speed_mps": 6.5
+        }
+      },
+      "air": {
+        "uav.alpha": {
+          "position_enu_m": [
+            -211.61098333223424,
+            -331.1659831540798,
+            145.0
+          ]
+        },
+        "uav.bravo": {
+          "position_enu_m": [
+            91.9499764938994,
+            -93.03744113461998,
+            70.0
+          ]
+        }
+      }
+    }
+  ]
+}

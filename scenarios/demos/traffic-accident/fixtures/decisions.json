@@ -1,0 +1,52 @@
+{
+  "mode": "scripted",
+  "model": "traffic-fixture/v1",
+  "responses": {
+    "vehicle_report": [
+      {
+        "decision": "report",
+        "reason": "事故车已停止，报告现场位置",
+        "action": "向边缘上报",
+        "departure": "reroute_when_clear",
+        "route_id": "adjacent_lane_bypass",
+        "route_reason": "临时借相邻车道后回原路网，仅在空隙安全时出发"
+      }
+    ],
+    "uav_alpha": [
+      {
+        "accept": false,
+        "reason": "医疗任务不可中断",
+        "action": "继续原医疗路线",
+        "alt_target_m": 70
+      }
+    ],
+    "uav_bravo": [
+      {
+        "accept": true,
+        "reason": "巡航任务可中断，等待实时资格核验",
+        "action": "准备投标",
+        "alt_target_m": 70
+      }
+    ],
+    "edge_award": [
+      {
+        "winner_id": "uav.bravo",
+        "reason": "唯一满足当前规则的候选",
+        "action": "请求派遣"
+      }
+    ]
+  },
+  "input_expectations": {
+    "report_route": "adjacent_lane_bypass",
+    "alpha_interruptible": false,
+    "bravo_interruptible": true,
+    "capture_altitude_m": 70,
+    "required_nodes": [
+      "vehicle_report",
+      "uav_alpha",
+      "uav_bravo",
+      "edge_award"
+    ]
+  },
+  "provenance": "authored deterministic stub, not historical model responses"
+}
