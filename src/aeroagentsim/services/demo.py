@@ -90,7 +90,10 @@ def demo_document(profile: str = "kinematic") -> tuple[dict[str, Any], Path]:
         )
         requirements = "; ".join(native["configuration_required"])
         raise ValueError(
-            f"{profile} has a configuration contract, not a runnable replacement yet. Required: {requirements}. Use --profile kinematic for the shipped demo."
+            f"{profile} has a configuration contract, not a runnable "
+            "replacement yet. Required: "
+            f"{requirements}. "
+            "Use --profile kinematic for the shipped demo."
         )
     configure_console(document, source)
     renderer = document["engines"]["capture"]["config"]["renderer"]
@@ -148,7 +151,14 @@ def outcome(directory: Path) -> dict[str, Any]:
     }
 
 
-def run_demo(*, profile: str, headless: bool, port: int, out: Path) -> None:
+def run_demo(
+    *,
+    profile: str,
+    headless: bool,
+    port: int,
+    out: Path,
+    provenance: str | None = None,
+) -> None:
     repository = Path(__file__).resolve().parents[3]
     frontend = repository / "frontend/dist"
     if not headless and not (frontend / "index.html").is_file():
@@ -158,7 +168,9 @@ def run_demo(*, profile: str, headless: bool, port: int, out: Path) -> None:
     if headless:
         document, source = demo_document(profile)
         directory = out.resolve() / ("traffic-accident-" + uuid.uuid4().hex[:12])
-        with RunSession(load_scenario(document, base=source), directory) as session:
+        with RunSession(
+            load_scenario(document, base=source), directory, provenance=provenance
+        ) as session:
             session.run()
         print(json.dumps(outcome(directory)), flush=True)
         return
@@ -184,6 +196,8 @@ def run_demo(*, profile: str, headless: bool, port: int, out: Path) -> None:
     document, _ = demo_document(profile)
     # Workspace copies keep relative package/snapshot paths local to that draft.
     draft["scenario"]["engines"] = document["engines"]
+    if provenance is not None:
+        draft["scenario"]["provenance"] = provenance
     store.save(draft["id"], {"scenario": draft["scenario"]})
     url = console + "/studio?workspace=" + draft["id"]
     print(

@@ -128,7 +128,17 @@ Switching profiles creates a new run with ownership recompiled; no hot writer tr
 
 The SUMO profile also needs an explicit assessment producer for safe-gap/blocked-by and route progress in the normalized road contract. Its native XY field is `traffic.sumo.position_xy_m`; frame conversion owns ENU pose/velocity/attitude, SUMO owns compatible lane/speed/route fields, and a geometry computation owner supplies corridor occupancy/progress with native sample causes. No second road-kinematic engine runs beside SUMO. PX4 owns direct ENU UAV pose and measured battery; a trajectory/assessment plugin computes path length or planning results into distinct fields without integrating a competing flight state.
 
-Baseline default publication step is proposed `66666667 ns` (explicit 15 Hz approximation), with configured rational source stamps; recording remains 15 fps. Pin zero initial velocity or moving initial velocity **as authored initial conditions**, route/altitude parameters, positive speed/acceleration, seed and run limit. Native profiles choose their actual supported grids and source mappings instead of copying this step blindly. The baseline wind profile explicitly supplies `[[0.0,0.0]]`; any gust and consumption coefficient are authored/calibration inputs.
+The release demo defaults to lean provenance and `1000000000 ns` physics/
+publication (1 Hz). This is the measured rate above real time on this machine;
+2 Hz has not been measured. Playback interpolates bracketed poses for display;
+live-follow still follows newly committed cuts, without extrapolating future
+states. Display/capture fps is separate from physics publication. Use
+`aeroagentsim demo traffic-accident --headless --provenance full` for full audit.
+Pin zero initial velocity or moving initial velocity **as authored initial
+conditions**, route/altitude parameters, positive speed/acceleration, seed and run
+limit. Native profiles choose their actual supported grids and source mappings.
+The wind profile explicitly supplies `[[0.0,0.0]]`; gust and consumption
+coefficients are authored/calibration inputs.
 
 Decision modes are explicit in the scenario:
 

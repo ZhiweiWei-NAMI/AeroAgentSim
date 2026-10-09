@@ -171,6 +171,7 @@ class Scenario:
     clock_mappings: tuple[ClockMapping, ...] | None = None
     ingress: dict[str, EngineIngress] = dataclass_field(default_factory=dict)
     ingress_streams: tuple[IngressStream, ...] = ()
+    provenance: str = "lean"
 
 
 def load_scenario(
@@ -228,7 +229,8 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
                 if item["id"] in existing:
                     if existing[item["id"]] != item:
                         raise ScenarioError(
-                            f"registry.{category}.{item['id']}: conflicts with behaviour overlay"
+                            f"registry.{category}.{item['id']}: conflicts "
+                            "with behaviour overlay"
                         )
                 else:
                     authored.append(item)
@@ -267,6 +269,7 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         "clock_mappings",
         "ingress_streams",
         "behaviours",
+        "provenance",
     }
     if extra := set(document) - allowed:
         raise ScenarioError(f"scenario: unknown keys {sorted(extra)}")
@@ -720,7 +723,8 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             for m in clock_mappings
         ):
             raise ScenarioError(
-                "clock_mappings: retain identity canonical mapping for local model policies"
+                "clock_mappings: retain identity canonical mapping for local "
+                "model policies"
             )
     ingress: dict[str, EngineIngress] = {}
     mappings = {
@@ -852,12 +856,17 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
                         != definition.get("parameters", {})
                     ):
                         raise ScenarioError(
-                            f"{path}: expression, event and parameters must match the Q6 sampled partition"
+                            f"{path}: expression, event and parameters must "
+                            "match the Q6 sampled partition"
                         )
                     if set(sample_spec.bindings) != set(definition["roles"]):
                         raise ScenarioError(
-                            f"{path}: sampled role aliases must match the actual Q6 bindings"
+                            f"{path}: sampled role aliases must match the "
+                            "actual Q6 bindings"
                         )
+    provenance = document.get("provenance", "lean")
+    if type(provenance) is not str or provenance not in {"lean", "full"}:
+        raise ScenarioError("provenance: expected lean or full")
     return Scenario(
         document,
         source,
@@ -875,4 +884,5 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         clock_mappings,
         ingress,
         tuple(streams.values()),
+        provenance,
     )

@@ -118,9 +118,10 @@ def test_live_policy_receipt_seal_and_offline_replay(
         assert header["ingress_policy"] is None
         assert (header["major"], header["minor"], header["semantic_version"]) == (
             2,
-            0,
-            3,
+            1,
+            4,
         )
+        assert header["provenance"] == "lean"
         assert header["ingress_streams"][0]["fields"]["id"] == "sensor"
 
 
