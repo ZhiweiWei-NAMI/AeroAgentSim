@@ -68,6 +68,7 @@ sumo = "aeroagentsim.adapters.sumo:build"
 ns3 = "aeroagentsim.adapters.ns3:build"
 environment = "aeroagentsim.engines.environment:build"
 langgraph = "aeroagentsim.agents.langgraph:build"
+predicate = "aeroagentsim.engines.predicate:build"
 
 [project.entry-points."aeroagentsim.models"]
 linear = "aeroagentsim.models:LinearConsumption"

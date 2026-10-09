@@ -749,6 +749,16 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             raise ScenarioError(f"{path}: {exc}", code=exc.code) from exc
         stream_paths.setdefault(stream_id, path)
         ingress[engine_id] = EngineIngress(mapping_id, policy, stream_id)
+    # AST admission belongs to scenario load, before a kernel or external engine
+    # starts. This does not alter the registry compiler or its snapshot digest.
+    for engine_id, item in engines.items():
+        if item["plugin"] == "predicate":
+            from aeroagentsim.engines.predicate import prepare
+
+            try:
+                prepare(item["config"])
+            except (ValueError, KeyError, TypeError) as exc:
+                raise ScenarioError(f"engines.{engine_id}.config: {exc}") from exc
     return Scenario(
         document,
         source,

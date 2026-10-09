@@ -77,6 +77,7 @@ BUILTINS = {
     "workflow": "aeroagentsim.engines.workflow",
     "records": "aeroagentsim.engines.records",
     "threshold": "aeroagentsim.engines.threshold",
+    "predicate": "aeroagentsim.engines.predicate",
     "logistics": "aeroagentsim.packs.logistics",
     "inspection": "aeroagentsim.packs.inspection",
     "environment": "aeroagentsim.engines.environment",
