@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Collapse, Empty, Input, Select, Space, Spin, Table, Tag } from 'antd';
 import { ExpressionControl } from '../../behaviours/ExpressionControl';
 import { readableName } from '../guided-model';
@@ -52,6 +52,14 @@ export function DomainPluginsStep({ scenario, onChange, engines, onValidityChang
   const partitions = Object.entries(scenario?.engines ?? {}) as Array<[string, Row]>;
   const engineById = useMemo(() => new Map(engines.map(e => [e.id, e])), [engines]);
 
+  // Retain authored configurations when exploring and returning to a profile.
+  const profileConfigs = useRef(new Map<string, Record<string, unknown>>());
+  const switchEngine = (partition: string, next: string) => {
+    const current = scenario.engines[partition];
+    profileConfigs.current.set(`${partition}/${current.plugin}`, current.config);
+    const config = profileConfigs.current.get(`${partition}/${next}`) ?? {};
+    onChange({...scenario, engines: {...scenario.engines, [partition]: {...current, plugin: next, config}}});
+  };
   const [openDomains, setOpenDomains] = useState<string[]>(['air']);
   const [configValidity,setConfigValidity]=useState<Record<string,boolean>>({});
   const [replacePartition, setReplacePartition] = useState('');
@@ -170,7 +178,7 @@ export function DomainPluginsStep({ scenario, onChange, engines, onValidityChang
             const available = plugin?.available;
             return <Card key={partitionId} size="small" className="guided-domain-partition" title={readName(partitionId, item)}
               extra={available === undefined ? <Tag>plugin not in catalog</Tag> : available ? <Tag color="green">available</Tag> : <Tag color="red">unavailable</Tag>}>
-              <label className="guided-domain-engine-label">Engine<Select aria-label={`Engine ${partitionId}`} value={item.plugin} options={engines.filter(engine=>engine.id===item.plugin || (key==='air' ? /kinematic|px4|gazebo/.test(engine.id) : key==='road' ? /sumo|road_motion/.test(engine.id) : key==='network' ? /network|ns3|ns-3|ideal/.test(engine.id) : key==='weather' ? /weather|environment/.test(engine.id) : true)).map(engine=>({value:engine.id,label:`${readableName(engine.id)}${engine.available?'':' · unavailable'}`,disabled:!engine.available}))} onChange={next=>onChange({...scenario,engines:{...scenario.engines,[partitionId]:{...item,plugin:next,config:{}}}})}/></label>
+              <label className="guided-domain-engine-label">Engine<Select aria-label={`Engine ${partitionId}`} value={item.plugin} options={engines.filter(engine=>engine.id===item.plugin || (key==='air' ? /kinematic|px4|gazebo/.test(engine.id) : key==='road' ? /sumo|road_motion/.test(engine.id) : key==='network' ? /network|ns3|ns-3|ideal/.test(engine.id) : key==='weather' ? /weather|environment/.test(engine.id) : true)).map(engine=>({value:engine.id,label:`${readableName(engine.id)}${engine.available?'':' · unavailable'}`,disabled:!engine.available}))} onChange={next=>switchEngine(partitionId,next)}/></label>
               {plugin?.error && <Alert type="error" showIcon message={plugin.error} />}
               {available === false && <Alert type="warning" showIcon message="This plugin is not available in the current deployment; its configuration is shown read-only." />}
               {plugin

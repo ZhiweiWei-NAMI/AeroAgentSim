@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Input, Select, Space, Table, Tag } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import type { EntityKey } from '../contracts/viewer-feed';
-import { HttpViewerFeed, RunsApi, type RunInfo, type WaitingContext } from '../feeds/http';
+import { awaitRunConfiguration, HttpViewerFeed, RunsApi, type RunInfo, type WaitingContext } from '../feeds/http';
 import { TemporalFeedStore as FeedStore } from '../feeds/temporal-store';
 import { displayTime } from './display-time';
 import { ConceptHelp } from '../console/ConceptHelp';
 import { PlaybackClock } from '../viewport/clock';
 import { DualRunViews } from '../behaviours/DualRunViews';
 import { RunOperations } from '../behaviours/RunOperations';
+import { activateInjectionShortcut } from '../behaviours/injection-defaults';
 import { ArtifactsPanel } from '../observations/ArtifactsPanel';
 import { CaptureConsole } from '../observations/CaptureConsole';
 import { InspectionPanel } from './InspectionPanel';
@@ -59,19 +60,23 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
     if (!runId) { setSession(undefined); return; }
     const abort = new AbortController();
     setStatus('loading'); setError(undefined); setSession(undefined); setCut(undefined);cutRef.current=undefined; setSelected(undefined); follow.current = mode === 'live'; setWaiting(undefined);
-    const feed = new HttpViewerFeed(api, runId, mode, (value, context) => { setStatus(value); setWaiting(['waiting_for_input', 'input_timeout'].includes(value) ? context : undefined); }, setError);
+    let activeStore: FeedStore | undefined;
+    const feed = new HttpViewerFeed(api, runId, mode, (value, context) => {
+      setStatus(value); setWaiting(['waiting_for_input', 'input_timeout'].includes(value) ? context : undefined);
+      if (activeStore) activeStore.liveFollow = mode === 'live' && follow.current && !['paused','completed','stopped','faulted','interrupted','input_timeout'].includes(value);
+    }, setError);
     void feed.header().then(async header => {
       if (abort.signal.aborted) return;
       if (header.epoch === undefined || header.kernelRunId === undefined) {
         try {
-          const configuration = await api.request(`/v1/studio/runs/${encodeURIComponent(runId)}/configuration`, {signal:abort.signal}) as {service_run_id:string;kernel_run_id:string;epoch:string};
+          const configuration = await awaitRunConfiguration(api, runId, abort.signal) as {service_run_id:string;kernel_run_id:string;epoch:string};
           if (configuration.service_run_id !== runId || typeof configuration.epoch !== 'string' || typeof configuration.kernel_run_id !== 'string' || header.epoch!==undefined&&header.epoch!==configuration.epoch) throw Error('Run configuration identity disagrees with feed');
           header.epoch = configuration.epoch; header.kernelRunId = configuration.kernel_run_id;
-        } catch (problem) { if (!abort.signal.aborted) setError(`Run identity unavailable: ${String(problem)}`); }
+        } catch (problem) { throw Error(`Run identity unavailable: ${String(problem)}`); }
       }
       if (abort.signal.aborted) return;
       const store = new FeedStore(header), clock = new PlaybackClock(header.start.ns, header.end?.ns ?? header.start.ns);
-      store.liveFollow = mode === 'live';
+      activeStore = store; store.liveFollow = mode === 'live';
       if (requestedEpoch && header.epoch !== requestedEpoch) throw Error('Requested selection epoch disagrees with the run header');
       setSession({ store, clock });
       return feed.subscribe(0, commit => {
@@ -135,7 +140,7 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
     {session && <WaitingBanner waiting={waiting} terminal={status === 'input_timeout'} injectionHref="#run-operations" onInject={() => {
       const controls=document.getElementById('run-operations');
       controls?.scrollIntoView({behavior:'smooth'});
-      controls?.querySelector<HTMLElement>('[aria-label="Injection point"], [aria-label="Command schema"]')?.focus();
+      if(controls)activateInjectionShortcut(controls);
     }} />}
     {!session&&!error&&<PageState kind="loading" title="Connecting to the run" description="Loading its recorded entities and timeline." />}
     {session && <><main className="viewer-main" data-testid="inspect-views" data-city-binding={session.store.header.scene?.city?.kind ?? 'absent'}><section className="viewer-stage">
@@ -148,7 +153,7 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
       <RunTimeline store={session.store} clock={session.clock} cut={cut} mode={mode} onSeek={seek}
         onPlay={() => { setCut(undefined);cutRef.current=undefined;follow.current=false;session.store.liveFollow=false;session.clock.playing?session.clock.pause():session.clock.play();tick(); }}
         onLive={() => {follow.current=true;session.store.liveFollow=true;setCut(undefined);cutRef.current=undefined;session.clock.seek(session.clock.end);session.store.seek(session.clock.ns);tick();}} onTick={tick} />
-      <section id="run-operations" className="run-inspection-panels"><RunOperations api={api} runId={runId} store={session.store} commitCut={cut} onSelect={select} onSeek={seekJournal} mode={mode} interactive={interactive} />
+      <section id="run-operations" className="run-inspection-panels"><RunOperations api={api} runId={runId} store={session.store} selected={selected} commitCut={cut} onSelect={select} onSeek={seekJournal} mode={mode} interactive={interactive} />
         <ArtifactsPanel api={api} runId={runId} store={session.store} commitCut={cut} onSeek={seekJournal} /></section></>}
   </div>;
 }

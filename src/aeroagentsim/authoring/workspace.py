@@ -19,6 +19,7 @@ import yaml
 from aeroagentsim.platform.simulation import Simulation
 from aeroagentsim.scenario import load_scenario
 from aeroagentsim.scenario.loader import UniqueLoader
+from aeroagentsim.scenario.paths import source_path
 
 from .catalog import Catalog, SnapshotCatalog
 from .templates import (
@@ -81,6 +82,9 @@ class WorkspaceStore:
         else:
             self.catalog = Catalog(self.ontology_root)
         self.lock = threading.RLock()
+        self._snapshot_catalogs: dict[
+            str, tuple[tuple[str, int, int], SnapshotCatalog]
+        ] = {}
 
     def catalog_for(self, identifier: str | None = None) -> Catalog:
         if self.ontology_root is not None:
@@ -91,8 +95,26 @@ class WorkspaceStore:
                 identifier = workspaces[0]["id"]
         if identifier is None:
             return self.catalog
-        document = self.get(identifier)["scenario"]
-        return SnapshotCatalog(document, base=self._base(document, identifier))
+        draft = self.get(identifier)
+        document = draft["scenario"]
+        # Entity and engine edits do not change the ontology. Cache the actual
+        # compiled registry by its declaration, not by every workspace save.
+        base = self._base(document, identifier)
+        snapshot_stat = source_path(document["registry"]["snapshot"], base).stat()
+        registry_key = (
+            json.dumps(document["registry"], sort_keys=True),
+            snapshot_stat.st_size,
+            snapshot_stat.st_mtime_ns,
+        )
+        with self.lock:
+            cached = self._snapshot_catalogs.get(identifier)
+            if cached is not None and cached[0] == registry_key:
+                return cached[1]
+            catalog = SnapshotCatalog(document, base=base)
+            if len(self._snapshot_catalogs) >= 32:
+                self._snapshot_catalogs.pop(next(iter(self._snapshot_catalogs)))
+            self._snapshot_catalogs[identifier] = (registry_key, catalog)
+            return catalog
 
     def directory(self, identifier: str) -> Path:
         if not re.fullmatch(r"studio-[a-f0-9]{32}", identifier):

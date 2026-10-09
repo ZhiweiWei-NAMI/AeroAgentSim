@@ -70,9 +70,10 @@ describe('procedural lite traffic city', () => {
 });
 
 describe('procedural vehicle stand-ins', () => {
-  it('matches the recorded camera primitives for car and uav without asset fetches', () => {
+  it('decorates schematic vehicles without changing the body scale or fetching assets', () => {
     const car = proceduralCar();
-    expect(car.children).toHaveLength(1);
+    expect(car.getObjectByName('procedural-car-windows')).toBeDefined();
+    expect(car.children.filter(child=>child.name==='procedural-car-wheel')).toHaveLength(4);
     const body = car.children[0] as T.Mesh;
     const size = new T.Vector3();
     new T.Box3().setFromObject(body).getSize(size);
@@ -81,7 +82,7 @@ describe('procedural vehicle stand-ins', () => {
     const uav = proceduralUav();
     const meshes: T.Mesh[] = [];
     uav.traverse(child => { if (child instanceof T.Mesh) meshes.push(child); });
-    expect(meshes).toHaveLength(3); // body + two crossing rotor bars
+    expect(meshes).toHaveLength(7); // body, arms and four rotor rings
     const bar = meshes[1] as T.Mesh;
     const barSize = new T.Vector3();
     new T.Box3().setFromObject(bar).getSize(barSize);

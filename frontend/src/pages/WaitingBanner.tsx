@@ -9,8 +9,8 @@ export function WaitingBanner({ waiting, terminal, injectionHref, onInject }: { 
   const at = displayTime(waiting.at_ns);
   const message = terminal
     ? `The declared wait budget expired while awaiting ${streams} at ${at}.`
-    : `Awaiting ${streams} at ${at}. Inject the event or advance the stream watermark.`;
+    : waiting.stream_ids.includes('operator') ? `Ready for an operator event at ${at}. Inject event sends the prepared event. Edit its payload in Run controls.` : `Waiting for ${streams} at ${at}.`;
   return <Alert type={terminal ? 'error' : 'info'} showIcon role="status" data-testid={terminal ? 'input-timeout-banner' : 'waiting-banner'}
-    message={terminal ? 'Input wait timed out' : waiting.stream_ids.includes('operator') ? 'Waiting for operator event — inject or advance' : 'Waiting for external input'} description={message}
+    message={terminal ? 'Input wait timed out' : waiting.stream_ids.includes('operator') ? 'Waiting for operator event' : 'Waiting for external input'} description={message}
     action={!terminal && <Button href={injectionHref} onClick={onInject}>Inject event</Button>} />;
 }

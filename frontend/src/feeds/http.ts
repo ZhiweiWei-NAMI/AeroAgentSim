@@ -166,6 +166,24 @@ export class RunsApi {
   }
 }
 
+/** A new run is admitted before its worker commits the identity header. */
+export async function awaitRunConfiguration(api: RunsApi, runId: string, signal?: AbortSignal): Promise<unknown> {
+  const deadline = Date.now() + 30_000;
+  while (true) {
+    signal?.throwIfAborted();
+    try { return await api.request(`/v1/studio/runs/${encodeURIComponent(runId)}/configuration`, {signal}); }
+    catch (error) {
+      if (!String(error).includes('HTTP 422') || !String(error).includes('run WAL header is not committed yet') || Date.now() >= deadline) throw error;
+      await new Promise<void>((resolve, reject) => {
+        const abort = () => { clearTimeout(timer); reject(signal?.reason); };
+        const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(); }, 250);
+        signal?.addEventListener('abort', abort, {once:true});
+        if (signal?.aborted) abort();
+      });
+    }
+  }
+}
+
 export class HttpViewerFeed implements ViewerFeed {
   private readonly path: string;
   constructor(private api: RunsApi, id: string, private mode: 'live' | 'replay' = 'replay', private status?: (status: string, waiting?: WaitingContext) => void, private transportError?: (error: string) => void) {

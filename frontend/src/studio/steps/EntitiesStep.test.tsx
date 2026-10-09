@@ -26,3 +26,11 @@ test('initial fields use inherited registry schemas and preserve unrecognized au
  await waitFor(()=>expect(onChange).toHaveBeenCalledTimes(1));
  expect(onChange.mock.calls[0][0].entities[0].facts).toEqual({extension:'keep',energy:{$number:'12'}});
 });
+
+
+test('an AeroGraph deep link opens the actual workspace entity',async()=>{
+ const scenario={registry:{types:[{id:'Vehicle',name:'Vehicle',parents:[],abstract:false}],fields:[]},entities:[{id:'alpha',type:'Vehicle',facts:{}}]};
+ render(<EntitiesStep initialEntityId="alpha" scenario={scenario} onChange={vi.fn()} api={new StudioApi('http://unused')}/>);
+ expect(await screen.findByRole('dialog')).toHaveTextContent('Alpha');
+ expect(screen.getByRole('dialog')).toHaveTextContent('Type ancestry:');
+});

@@ -14,6 +14,7 @@ from typing import Any
 
 from aeroagentsim.integrations.aerograph.source import Sources
 
+from .catalog import SnapshotCatalog
 from .workspace import WorkspaceStore
 
 MARKER = '<script id="semantic-data" type="application/json">'
@@ -310,13 +311,6 @@ def _type_closure(parents: dict[str, list[str]]) -> dict[str, set[str]]:
 
 def explorer_payload(store: WorkspaceStore, workspace_id: str | None) -> dict[str, Any]:
     """Assemble the explorer catalog; the current workspace owns writers/counts."""
-    catalog = store.catalog
-    sources = catalog.sources()
-    document = sources.read("entity-directory/data/concepts.json")
-    concepts = document["concepts"]
-    if not isinstance(concepts, list):
-        raise TypeError("entity-directory: concepts array required")
-
     # Recorded update order is authoritative; filesystem timestamps can tie
     # even when two sequential API writes have distinct update timestamps.
     drafts = store.list()
@@ -324,6 +318,18 @@ def explorer_payload(store: WorkspaceStore, workspace_id: str | None) -> dict[st
         workspace_id = drafts[0]["id"] if drafts else None
     draft = store.get(workspace_id) if workspace_id is not None else None
     scenario = draft["scenario"] if draft is not None else {}
+    catalog = store.catalog_for(workspace_id)
+    sources = None if isinstance(catalog, SnapshotCatalog) else catalog.sources()
+    snapshot = catalog.search() if sources is None else None
+    concepts = (
+        snapshot["types"]
+        if snapshot is not None
+        else sources.read("entity-directory/data/concepts.json")["concepts"]
+        if sources is not None
+        else []
+    )
+    if not isinstance(concepts, list):
+        raise TypeError("catalog: concepts array required")
 
     workspace_types = _workspace_types(scenario) if scenario else []
     packages, package_errors = (
@@ -358,10 +364,13 @@ def explorer_payload(store: WorkspaceStore, workspace_id: str | None) -> dict[st
             continue
         seen_types.add(type_id)
         parent = row.get("parent")
-        if isinstance(parent, str):
-            parents[type_id] = [parent]
-        else:
-            parents[type_id] = []
+        parents[type_id] = (
+            list(row["parents"])
+            if snapshot is not None
+            else [parent]
+            if isinstance(parent, str)
+            else []
+        )
         navigation = row.get("navigation")
         types.append(
             {
@@ -370,10 +379,10 @@ def explorer_payload(store: WorkspaceStore, workspace_id: str | None) -> dict[st
                 "description": row.get("description"),
                 "parents": parents[type_id],
                 "abstract": row.get("abstract"),
-                "directory": navigation.get("view")
-                if isinstance(navigation, dict)
-                else None,
-                "origin": "native",
+                "directory": row.get("directory")
+                if snapshot is not None
+                else (navigation.get("view") if isinstance(navigation, dict) else None),
+                "origin": "snapshot" if snapshot is not None else "native",
             }
         )
     indexed_types = {row["id"]: row for row in types}
@@ -407,7 +416,27 @@ def explorer_payload(store: WorkspaceStore, workspace_id: str | None) -> dict[st
 
     # Native field rows first; workspace declarations replace the same ID and
     # carry the authoritative writers for this draft.
-    fields = {row["id"]: row for row in _native_fields(sources)}
+    native_fields = (
+        _native_fields(sources)
+        if sources is not None
+        else [
+            {
+                "id": row["id"],
+                "name": row.get("name"),
+                "description": row.get("description"),
+                "declaring_type": row["declaringClass"],
+                "schema": row["valueSchema"],
+                "metadata": {
+                    key: row[key] for key in _FIELD_METADATA_KEYS if key in row
+                },
+                "origin": "snapshot",
+            }
+            for row in snapshot["fields"]
+        ]
+        if snapshot is not None
+        else []
+    )
+    fields = {row["id"]: row for row in native_fields}
     for row in workspace_fields:
         native_field = fields.get(row["id"])
         if native_field is not None:
@@ -424,7 +453,7 @@ def explorer_payload(store: WorkspaceStore, workspace_id: str | None) -> dict[st
             if key in row["metadata"]
         }
 
-    definitions = _cache.get(catalog.root)
+    definitions = _cache.get(catalog.root) if sources is not None else {}
     native_predicates = [
         {
             "id": row["id"],
@@ -452,9 +481,15 @@ def explorer_payload(store: WorkspaceStore, workspace_id: str | None) -> dict[st
         "workspace": {"id": draft["id"], "name": draft["name"]}
         if draft is not None
         else None,
+        "catalog_scope": "scenario-snapshot"
+        if snapshot is not None
+        else "aerograph-source",
+        "catalog_notice": snapshot["catalog_notice"] if snapshot is not None else None,
         "types": types,
         "fields": list(fields.values()),
-        "relations": [
+        "relations": catalog.relations()
+        if isinstance(catalog, SnapshotCatalog)
+        else [
             {
                 key: record.data[key]
                 for key in (
@@ -468,7 +503,7 @@ def explorer_payload(store: WorkspaceStore, workspace_id: str | None) -> dict[st
                 )
                 if key in record.data
             }
-            for rows in sources.relations.values()
+            for rows in (sources.relations.values() if sources is not None else [])
             for record in rows
         ],
         "workspace_relations": scenario.get("registry", {}).get("relations", []),
@@ -493,7 +528,5 @@ def explorer_payload(store: WorkspaceStore, workspace_id: str | None) -> dict[st
         "chains": chains,
         "entities": entities,
         "package_errors": package_errors,
-        "workspaces": [
-            {"id": item["id"], "name": item["name"]} for item in drafts
-        ],
+        "workspaces": [{"id": item["id"], "name": item["name"]} for item in drafts],
     }

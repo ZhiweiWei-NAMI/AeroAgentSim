@@ -16,8 +16,9 @@ import type { PackedBatch, PackedObject, PackedRange } from './mesh-pack';
  *   the shared batched-facade material (city-materials), one draw call;
  * - roads: lane polylines swept by their declared width_m, surfaced by the
  *   shared procedural asphalt (city-surfaces);
- * - vehicles: the same primitive stand-ins the recorded standalone camera
- *   (packs/traffic_accident/camera.html) uses, matched here for both the viewer and the capture path.
+ * - vehicles: schematic bodies with decorative windows, wheels and rotor
+ *   rings, shared by the console and city capture path. The explicitly selected
+ *   primitive test camera retains its simpler geometry.
  *
  * Render mapping matches worldPosition 'enu': x = east, y = up, z = -north.
  * Procedural vehicle assets use the reserved "procedural:" URL scheme
@@ -125,8 +126,8 @@ function roadMesh(roads: ReadonlyArray<LiteCityRoad>): T.Mesh | undefined {
       const x = points[i][0], y = points[i][2] + 0.02, z = -points[i][1];
       position.push(x + dn * half, y, z + de * half, x - dn * half, y, z - de * half);
       normal.push(0, 1, 0, 0, 1, 0);
-      uv.push(0, distance, 1, distance);
       distance += i > 0 ? Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]) : 0;
+      uv.push(0, distance, 1, distance);
     }
     for (let i = 0; i < points.length - 1; i++) {
       const v = base + 2 * i;
@@ -142,6 +143,18 @@ function roadMesh(roads: ReadonlyArray<LiteCityRoad>): T.Mesh | undefined {
   geometry.setIndex(indices);
   const material = surfaceMaterial({ ...PROCEDURAL_PACK, layer: 'roads' as const,
     material: { ...PROCEDURAL_PACK.material, base_color_texture: '/procedural/asphalt.png' } } as PackedBatch);
+  const finish=material.onBeforeCompile.bind(material);
+  material.onBeforeCompile=(shader,renderer)=>{
+    finish(shader,renderer);
+    // Paint is a display estimate over recorded lane geometry, not a lane
+    // boundary or traffic-rule observation in the simulation.
+    shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+      float laneEdge=1.0-step(0.025,min(surfaceUV.x,1.0-surfaceUV.x));
+      float dash=(1.0-step(0.012,abs(surfaceUV.x-0.5)))*(1.0-step(3.4,mod(surfaceUV.y,7.0)));
+      diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.84,0.84,0.76),max(laneEdge,dash)*0.88);`);
+  };
+  material.customProgramCacheKey=()=> 'lite-lane-paint/v1';
+  material.userData.displayEstimate='Lane-edge and dash paint are display estimates on recorded lane polylines';
   const mesh = new T.Mesh(geometry, material);
   mesh.name = 'lite-roads';
   mesh.receiveShadow = true;
@@ -171,17 +184,21 @@ function part(dimensions: [number, number, number], color: number): T.Mesh {
   return mesh;
 }
 
-/**
- * Shared vehicle stand-ins, identical in shape and colour to the recorded
- * standalone camera (packs/traffic_accident/camera.html): car body
- * 2.2 x 1.4 x 4 (render x/y/z, length along render z), UAV body 2 x 0.5 x 2
- * with two crossing 4 m rotor bars. Positioned by the caller at the committed
- * pose; no asset fetch.
- */
+/** Shared schematic vehicles. Windows, wheels and rotor detail are display effects. */
 export function proceduralCar(): T.Group {
   const car = new T.Group();
   car.name = 'procedural-car';
-  car.add(part([2.2, 1.4, 4], 0xe8a444));
+  const body=part([2.2,1.4,4],0xe8a444);body.name='procedural-car-body';car.add(body);
+  const glass=part([1.8,0.03,2.15],0x263f50);glass.position.set(0,0.72,-0.1);glass.name='procedural-car-windows';car.add(glass);
+  for(const x of [-1.11,1.11]){const side=part([0.025,0.48,2.15],0x263f50);side.position.set(x,0.35,-0.1);car.add(side);}
+  for(const x of [-1.02,1.02])for(const z of [-1.3,1.3]){
+    const wheel=new T.Mesh(new T.CylinderGeometry(0.36,0.36,0.22,12),new T.MeshStandardMaterial({color:0x1d2730,roughness:0.95}));
+    wheel.rotation.z=Math.PI/2;wheel.position.set(x,-0.52,z);wheel.castShadow=true;wheel.name='procedural-car-wheel';car.add(wheel);
+  }
+  for(const x of [-0.65,0.65])for(const z of [-2.02,2.02]){
+    const light=part([0.48,0.13,0.03],z<0?0xf6efd5:0xbc4034);light.position.set(x,-0.05,z);car.add(light);
+  }
+  car.userData.displayEstimate='Schematic body, windows, wheels and lights; committed position and orientation are unchanged';
   return car;
 }
 export function proceduralUav(): T.Group {
@@ -193,7 +210,12 @@ export function proceduralUav(): T.Group {
   const rotors = new T.Group();
   rotors.name = 'procedural-uav-rotors';
   rotors.add(part([4, 0.16, 0.2], 0x37434a), part([0.2, 0.16, 4], 0x37434a));
+  for(const [x,z] of [[-1.8,0],[1.8,0],[0,-1.8],[0,1.8]]){
+    const rotor=new T.Mesh(new T.TorusGeometry(0.42,0.035,6,16),new T.MeshStandardMaterial({color:0x273842,roughness:0.6}));
+    rotor.rotation.x=Math.PI/2;rotor.position.set(x,0.12,z);rotor.name='procedural-uav-rotor';rotors.add(rotor);
+  }
   uav.add(rotors);
+  uav.userData.displayEstimate='Schematic body, rotor arms and rings; no inferred flight dynamics';
   return uav;
 }
 
