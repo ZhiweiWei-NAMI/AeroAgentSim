@@ -84,7 +84,7 @@ def test_http_injection_uses_existing_named_ingress_route(tmp_path: Path) -> Non
     doc["ingress_streams"][0]["initial_watermark_ns"] = 0
     doc["ingress_streams"][0]["timeout_s"] = 5
     doc["registry"]["snapshot"] = str(base / "registry.snapshot.json")
-    with TestClient(create_app(tmp_path / "runs")) as client:
+    with TestClient(create_app(tmp_path / "runs"), base_url="http://localhost") as client:
         created = client.post("/v1/runs", json=doc)
         assert created.status_code == 201, created.text
         run_id = created.json()["id"]

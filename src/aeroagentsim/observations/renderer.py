@@ -47,6 +47,20 @@ class StubRenderer:
         pass
 
 
+def browser_executable_path(configured: Path | None = None) -> Path | None:
+    """Prefer an authored executable, then the operator override, else Playwright."""
+    if configured is None:
+        value = os.environ.get("AEROAGENTSIM_CHROMIUM")
+        if value is None:
+            return None
+        if not value:
+            raise ValueError("AEROAGENTSIM_CHROMIUM: executable path must be nonempty")
+        configured = Path(value)
+    if not configured.is_file():
+        raise FileNotFoundError(f"Chromium executable does not exist: {configured}")
+    return configured
+
+
 class BrowserRenderer:
     """One Node/Playwright browser process per bridge, reused across requests.
 
@@ -79,7 +93,7 @@ class BrowserRenderer:
         self.viewer_url, self.node_modules = viewer_url, node_modules.resolve()
         self.timeout_s = timeout_s
         self.executable = executable
-        self.browser_executable = browser_executable
+        self.browser_executable = browser_executable_path(browser_executable)
         self.software_gl = software_gl
         self.service_run_id = service_run_id
         self.process: subprocess.Popen[bytes] | None = None

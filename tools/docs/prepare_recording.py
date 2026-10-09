@@ -36,9 +36,9 @@ def prepare(base: str, output: Path, replay_source: Path | None, timeout: float)
     # The shipped recorded responses run through the actual LangGraph executor,
     # producing inspectable model/tool records without making a paid model call.
     fixture = json.loads(Path(workspace["scenario"]["engines"]["decisions"]["config"]["fixture_path"]).read_text())
-    workspace = request(base, f"/v1/studio/workspaces/{wid}/decision-profile", {"provider": {
-        "base_url": "http://127.0.0.1:8788/v1", "model": "traffic-accident-recorded", "api_key_env": "DOCS_UNUSED_KEY",
-    }})
+    workspace = request(base, f"/v1/studio/workspaces/{wid}/decision-profile", {
+        "provider": {"profile": os.environ.get("AEROAGENTSIM_DOCS_PROVIDER_PROFILE", "default")},
+    })
     scenario = workspace["scenario"]
     # Explicit scripted-provider accounting: no model inference is performed.
     responses: dict[str, list[dict[str, Any]]] = {}
@@ -52,8 +52,8 @@ def prepare(base: str, output: Path, replay_source: Path | None, timeout: float)
     scenario["engines"]["decisions"]["config"]["provider"] = {
         "mode": "stub", "model": "traffic-accident-recorded", "responses": responses,
     }
-    # The endpoint default is an absolute 1s deadline; the demo decision occurs later.
-    scenario["engines"]["decisions"]["config"]["budget"]["sim_deadline_ns"] = scenario["run"]["until_ns"]
+    # Keep the endpoint's per-decision timeout; a later trigger gets its own
+    # deadline rather than inheriting an absolute deadline near simulation zero.
     workspace = request(base, f"/v1/studio/workspaces/{wid}", {"scenario": scenario})
     validation = request(base, f"/v1/studio/workspaces/{wid}/validate", {"scenario": workspace["scenario"]})
     if validation.get("valid") is not True:

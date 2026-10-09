@@ -9,6 +9,8 @@ from typing import Any
 
 from aerokernel.values import canonical_json
 
+from aeroagentsim.services.node_deps import node_modules_root
+
 from .templates import demo_source
 
 CITY_ASSET_ID = "traffic-city-assets/v1"
@@ -83,9 +85,8 @@ def configure_console(
     """Keep physical assumptions; select the real viewer or an explicit primitive test camera."""
     config = document["engines"]["decisions"]["config"]
     config["fixture_path"] = str(directory / "fixtures/decisions.json")
-    document["engines"]["capture"]["config"]["renderer"]["node_modules"] = str(
-        Path(__file__).resolve().parents[3] / "frontend/node_modules"
-    )
+    capture = document["engines"]["capture"]["config"]
+    capture["renderer"]["node_modules"] = str(node_modules_root())
     if primitive:
         return {"capture_mode": "primitive-test", "city_available": False}
     # The interactive console uses the public demo's real-time profile.
@@ -103,7 +104,11 @@ def configure_console(
         + console
         + "/v1/studio/demo-capture-assets",
         "node_modules": capture["renderer"]["node_modules"],
-        "browser_executable": capture["renderer"]["browser_executable"],
+        **(
+            {"browser_executable": capture["renderer"]["browser_executable"]}
+            if "browser_executable" in capture["renderer"]
+            else {}
+        ),
         "timeout_s": 120.0,
     }
     bridge = document["engines"]["capture_bridge"]["config"]
@@ -171,10 +176,10 @@ def live_decisions(document: dict[str, Any], provider: dict[str, Any]) -> None:
     """Grant model proposals only, using observations of actual authored actors/tasks."""
     from aeroagentsim.agents.langgraph import record_descriptor
 
-    if set(provider) != {"base_url", "model", "api_key_env"} or any(
+    if set(provider) != {"profile"} or any(
         not isinstance(value, str) or not value for value in provider.values()
     ):
-        raise ValueError("Live provider requires explicit base_url/model/api_key_env")
+        raise ValueError("Live provider requires a named operator profile")
     candidates = [
         row
         for row in document["entities"]
@@ -227,7 +232,7 @@ def live_decisions(document: dict[str, Any], provider: dict[str, Any]) -> None:
             },
             "budget": {
                 "wall_timeout_s": 120,
-                "sim_deadline_ns": 1000000000,
+                "sim_timeout_ns": 1000000000,
                 "max_calls": 4,
                 "max_tokens": 8000,
                 "max_retries": 1,

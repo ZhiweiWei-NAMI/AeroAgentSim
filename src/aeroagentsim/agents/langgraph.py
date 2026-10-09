@@ -11,8 +11,10 @@ from importlib.metadata import version
 from typing import Any, cast
 
 from aerokernel import CommandRequest, Dependency, Partition
+from aerokernel.codec import decode_record
 from aerokernel.errors import KernelError
 from aerokernel.journal import iter_records
+from aerokernel.messages import Delivery, Emit
 from aerokernel.relations import RelationDependency
 from aerokernel.sdk import ContextEngine, EngineContext
 from aerokernel.values import thaw
@@ -27,6 +29,25 @@ from .provider import OpenAIProvider, Provider, ProviderError
 
 RECORD_SCHEMA = "aas.langgraph.record"
 RECORD_TOPIC = "langgraph-records"
+
+
+def delivery_route(ctx: EngineContext, delivery: Delivery) -> str:
+    """Recover the actual route from this delivery's committed publication.
+
+    Delivery.recipient names a partition, even for topic fanout. The event's
+    origin points to its losslessly retained Emit proposal in both WAL modes.
+    """
+    message = delivery.message
+    if message.kind == "command":
+        return delivery.recipient
+    origin = message.origin
+    if origin is None or origin.record_index > ctx.view.cut.index:
+        raise ValueError("event delivery has no visible committed publication")
+    item = ctx.view._store.records.item(origin.record_index - 1, origin.item_index)
+    proposal = decode_record(item["proposal"])
+    if not isinstance(proposal, Emit) or proposal.schema_id != message.schema_id:
+        raise ValueError("event delivery origin is not its Emit proposal")
+    return proposal.target_or_topic
 
 
 def record_descriptor() -> dict[str, Any]:
@@ -135,15 +156,18 @@ class LangGraphDecision(ContextEngine):
         self.factory, self.pin = factory_info(cfg["factory"])
         self.cfg = cfg
         self.budget = cfg["budget"]
-        if set(self.budget) != {
+        required_budget = {
             "wall_timeout_s",
-            "sim_deadline_ns",
             "max_calls",
             "max_tokens",
             "max_retries",
             "max_prompt_bytes",
             "recursion_limit",
-        }:
+        }
+        if set(self.budget) not in (
+            required_budget | {"sim_deadline_ns"},
+            required_budget | {"sim_timeout_ns"},
+        ):
             raise ValueError("explicit graph budgets required")
         for key, value in self.budget.items():
             if key == "wall_timeout_s":
@@ -232,7 +256,7 @@ class LangGraphDecision(ContextEngine):
             self.provider = provider
         elif pcfg["mode"] == "stub" and set(pcfg) == {"mode", "model", "responses"}:
             self.provider = ScriptedProvider(pcfg["model"], pcfg["responses"])
-        elif pcfg["mode"] == "live":
+        elif pcfg["mode"] == "live" and set(pcfg) == {"mode", "profile"}:
             self.provider = OpenAIProvider.from_config(
                 {k: v for k, v in pcfg.items() if k != "mode"}
             )
@@ -336,7 +360,16 @@ class LangGraphDecision(ContextEngine):
     def on_inputs(self, ctx: EngineContext) -> None:
         for delivery in ctx.inbox:
             message = delivery.message
-            if not any(row["schema"] == message.schema_id for row in self.triggers):
+            if message.kind not in {"event", "command"} or not any(
+                row["schema"] == message.schema_id for row in self.triggers
+            ):
+                continue
+            route = delivery_route(ctx, delivery)
+            route_key = "topic" if message.kind == "event" else "target"
+            if not any(
+                row["schema"] == message.schema_id and row.get(route_key) == route
+                for row in self.triggers
+            ):
                 continue
             self.sequence += 1
             decision = f"{self.partition.id}/{self.sequence}"
@@ -359,23 +392,27 @@ class LangGraphDecision(ContextEngine):
                 "trigger": {
                     "id": message.id,
                     "schema": message.schema_id,
+                    route_key: route,
                     "payload": thaw(message.payload),
                     "at_ns": message.at.ns,
                 },
             }
+            budget = dict(self.budget)
+            if "sim_timeout_ns" in budget:
+                budget["sim_deadline_ns"] = ctx.now.ns + budget.pop("sim_timeout_ns")
             invocation = {
                 "initial": initial,
                 "options": self.cfg["options"],
                 "pin": self.pin,
-                "budget": self.budget,
+                "budget": budget,
                 "model": self.provider.model,
             }
             self.record(ctx, decision, "observation", invocation)
-            client = JournalClient(self.provider, self.provider.model, self.budget)
+            client = JournalClient(self.provider, self.provider.model, budget)
             result: dict[str, Any] | None = None
             failure: dict[str, Any] | None = None
             try:
-                if ctx.now.ns > self.budget["sim_deadline_ns"]:
+                if ctx.now.ns > budget["sim_deadline_ns"]:
                     raise ProviderError(
                         "SIM_TIMEOUT", "absolute simulated deadline expired"
                     )

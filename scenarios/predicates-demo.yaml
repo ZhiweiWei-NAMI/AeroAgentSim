@@ -121,10 +121,10 @@ engines:
             sourceReview: null
             status: preserved_source_definition
             sourceReferences:
-            - path: /mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json
+            - path: research/original-graph/decoded.json
               commit: 04374d3e2a7b83e8a33d5a727103f48197de50d2
               pointer: /model/TC/0/528
-            - path: /mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json
+            - path: research/original-graph/decoded.json
               commit: 04374d3e2a7b83e8a33d5a727103f48197de50d2
               pointer: /model/TC/4/528
             nativeMetadata:
@@ -195,10 +195,10 @@ engines:
             basis:
               kind: preserved_original_ast
               sourceReferences:
-              - path: /mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json
+              - path: research/original-graph/decoded.json
                 commit: 04374d3e2a7b83e8a33d5a727103f48197de50d2
                 pointer: /model/TC/0/528
-              - path: /mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json
+              - path: research/original-graph/decoded.json
                 commit: 04374d3e2a7b83e8a33d5a727103f48197de50d2
                 pointer: /model/TC/4/528
               sourceFieldIds:
@@ -206,10 +206,10 @@ engines:
             sourceReview: null
             status: preserved_source_definition
             sourceReferences:
-            - path: /mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json
+            - path: research/original-graph/decoded.json
               commit: 04374d3e2a7b83e8a33d5a727103f48197de50d2
               pointer: /model/TC/0/528
-            - path: /mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json
+            - path: research/original-graph/decoded.json
               commit: 04374d3e2a7b83e8a33d5a727103f48197de50d2
               pointer: /model/TC/4/528
       target: predicate:hu.predicate.actor_stationary

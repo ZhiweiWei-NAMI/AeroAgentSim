@@ -1,4 +1,4 @@
-/** Ported from aero-bench osm2world/pack.ts; source contract retained. */
+/** OSM2World mesh-pack loader; original source contract retained. */
 interface GeographicOrigin { readonly latitude_deg: number; readonly longitude_deg: number; }
 type StaticLayer = "buildings" | "roads" | "terrain";
 interface TraceTarget { readonly kind: "building" | "road"; readonly id: string; }

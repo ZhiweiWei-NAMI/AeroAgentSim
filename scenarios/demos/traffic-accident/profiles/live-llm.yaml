@@ -126,7 +126,7 @@ engines:
         facts: []
       budget:
         wall_timeout_s: 120.0
-        sim_deadline_ns: 90000000000
+        sim_timeout_ns: 1000000000
         max_calls: 8
         max_tokens: 16384
         max_retries: 3
@@ -134,8 +134,7 @@ engines:
         recursion_limit: 12
       provider:
         mode: live
-        base_url: http://127.0.0.1:8788/v1
-        model: glm-5.3-flashx
+        profile: default
   decision_failures:
     plugin: traffic_decision_failures
     config: {}

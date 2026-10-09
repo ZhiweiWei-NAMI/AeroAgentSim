@@ -384,7 +384,7 @@ def sdk_frame_causes(ctx: EngineContext, prefix: FramePrefix, position: int) -> 
     """Preserve SDK first-occurrence order across a prefix/explicit boundary.
 
     SampleFrame has already captured its raw (duplicate-preserving) causes.
-    Emit/timers use SDK deduplication. K5's local frame index lets us check the
+    Emit/timers use SDK deduplication. The local frame index lets us check the
     few explicit inputs without expanding the whole prefix. Only an actual
     overlap requires a shortened prefix and explicit surviving tail.
     """
@@ -569,7 +569,7 @@ class Predicate(ContextEngine):
 
     def on_inputs(self, ctx: EngineContext) -> None:
         prefix = ctx.view.sample_frame_prefix(self.spec.context_id)
-        # K5 exposes codec admission on the local Store, but not on StateView.
+        # The kernel exposes codec admission on the local Store, but not on StateView.
         # Inspect it once per invocation; never probe by publishing a bad cause.
         compact_causes = ctx.view._store.allow_frame_prefix
         prior = (

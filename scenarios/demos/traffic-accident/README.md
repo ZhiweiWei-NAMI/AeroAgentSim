@@ -3,13 +3,15 @@
 The integrated scene uses the shared behaviour runtime, real physical owners and explicit authored stub decisions. The default profile declares 1 Hz physics/publication and a 66,666,667 ns shared message lag. The original 15 Hz domain comparison remains a separate test profile. Actual headless Chromium renders committed poses with primitive geometry; this is simulation-camera output, not the licensed city viewer or native imagery.
 
 ```bash
-PYTHONPATH=src AEROAGENTSIM_AEROGRAPH_ROOT=/mnt/data2/weizhiwei/AeroGraph \
-  /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python \
-  -m aeroagentsim.services.cli run scenarios/demos/traffic-accident/scenario.yaml \
-  --out /tmp/aas-q/a/runs
+python -m aeroagentsim.services.cli run scenarios/demos/traffic-accident/scenario.yaml \
+  --out /tmp/aas-demo/runs
 ```
 
-The scenario explicitly selects the installed Chromium executable under `capture.config.renderer.browser_executable`; adjust it to an actual installed browser before running elsewhere. No Node dependency installation is required in this worktree.
+Set `AEROAGENTSIM_AEROGRAPH_ROOT=/path/to/AeroGraph` when running from source
+against a full AeroGraph checkout; snapshot-only environments do not need it. The
+capture renderer uses the Playwright Chromium installed via `npx playwright
+install chromium` (or the executable given by `AEROAGENTSIM_CHROMIUM`); no
+browser path is hard-coded in the scenario.
 
 Default: 63 road vehicles, 8 UAVs and one nonspatial coordinator. The end-to-end
 gate produces Bravo's incident PNG; it does not record the historical 72 views.
@@ -19,12 +21,11 @@ cannot stop Alpha, authorize an occupied bypass or complete a photograph.
 
 ## Import and inspect now
 
-From the worktree root, with the prescribed Python 3.11 interpreter:
+From the worktree root:
 
 ```bash
-PYTHONPATH=src /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python \
-  tools/demos/import_traffic_accident.py /absolute/read-only/demo \
-  /tmp/aas-q/b/imported
+python tools/demos/import_traffic_accident.py /absolute/read-only/demo \
+  /tmp/aas-demo/imported
 ```
 
 The importer writes deterministic `inputs.json` and `city-manifest.json`; it never
@@ -51,8 +52,9 @@ old command receipts, missing clocks or capture causes.
 
 ## Console/API workflow
 
-1. Start the existing service, for example `aeroagentsim serve --out /tmp/aas-q/b/runs
-   --scenario-root . --frontend frontend/dist`. In Studio import `scenario.yaml`
+```bash
+python -m aeroagentsim.services.cli serve --out /tmp/aas-demo/runs \
+   --scenario-root . --frontend frontend/dist In Studio import `scenario.yaml`
    together with its pinned registry/behaviour/input closure; review proposed local
    overlays, active field owners, calm weather and the selected kinematic profile.
 2. Validate the frozen package, Q6 dialect/roles/clocks, ownership, positive sampled
@@ -79,12 +81,10 @@ The HTTP and CLI end-to-end gates are in `tests/demos/traffic_accident/test_end_
 ## Domain verification
 
 ```bash
-PYTHONPATH=src AEROAGENTSIM_Q6_AST=/absolute/pinned/predicate_ast.py \
-  /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python \
-  -m pytest -q -p no:cacheprovider -m 'not docker' tests/demos
+python -m pytest -q -p no:cacheprovider -m 'not docker' tests/demos
 ```
 
-The environment path is only needed before Q6 is integrated. Without Q6, its tests explicitly skip rather than use a copied evaluator.
+Predicate-related tests skip when the pinned predicate AST is not configured, rather than use a copied evaluator.
 Domain tests select the real physical plugins at the original 15 Hz and an explicitly test-authored target
 producer, remove all behaviour fields/relations and feed actual typed commands. They
 compare two road/air journals byte-for-byte, test swept blockage, compute shared-model

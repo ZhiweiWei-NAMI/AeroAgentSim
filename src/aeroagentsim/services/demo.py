@@ -25,7 +25,7 @@ from aeroagentsim.scenario.loader import UniqueLoader
 
 
 def browser_path(modules: Path) -> str:
-    """Use an explicit browser or install Playwright's real Chromium on first use."""
+    """Use an explicit browser, else the Playwright-selected installed Chromium."""
     configured = os.environ.get("AEROAGENTSIM_CHROMIUM")
     if configured:
         if not Path(configured).is_file():
@@ -33,16 +33,8 @@ def browser_path(modules: Path) -> str:
                 f"AEROAGENTSIM_CHROMIUM: browser missing: {configured}"
             )
         return configured
-    # Reuse installed Chromium without upgrading or cleaning a shared cache.
-    cached = Path.home() / ".cache/ms-playwright"
-    candidates = sorted(
-        cached.glob(
-            "chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell"
-        )
-    )
-    candidates += sorted(cached.glob("chromium-*/chrome-linux64/chrome"))
-    if candidates:
-        return str(candidates[-1])
+    # Let Playwright choose its platform-specific cache or the operator override.
+    environment = {**os.environ, "PLAYWRIGHT_SKIP_BROWSER_GC": "1"}
     script = (
         "const {pathToFileURL}=require('node:url');"
         "import(pathToFileURL(process.argv[1]).href).then(p=>console.log(p.chromium.executablePath()))"
@@ -50,13 +42,9 @@ def browser_path(modules: Path) -> str:
     module = modules / "playwright/index.mjs"
     if not module.is_file():
         raise FileNotFoundError(
-            "Demo capture needs frontend dependencies: cd frontend && npm ci"
+            "Demo capture needs Playwright: set AEROAGENTSIM_NODE_MODULES, "
+            "install frontend dependencies, or allow the first-use npm bootstrap"
         )
-    environment = {
-        **os.environ,
-        "PLAYWRIGHT_BROWSERS_PATH": str(modules.parent / ".playwright"),
-        "PLAYWRIGHT_SKIP_BROWSER_GC": "1",
-    }
     result = subprocess.run(
         ["node", "-e", script, str(module)],
         check=True,
@@ -79,7 +67,9 @@ def browser_path(modules: Path) -> str:
     return path
 
 
-def demo_document(profile: str = "kinematic") -> tuple[dict[str, Any], Path]:
+def demo_document(
+    profile: str = "kinematic", *, standalone: bool = False
+) -> tuple[dict[str, Any], Path]:
     source = demo_source("traffic-accident")
     document = yaml.load((source / "scenario.yaml").read_bytes(), Loader=UniqueLoader)
     if not isinstance(document, dict):
@@ -95,7 +85,14 @@ def demo_document(profile: str = "kinematic") -> tuple[dict[str, Any], Path]:
             f"{requirements}. "
             "Use --profile kinematic for the shipped demo."
         )
-    configure_console(document, source)
+    configure_console(document, source, primitive=standalone)
+    if standalone:
+        # Standalone capture uses shipped OSM footprints, without a console server.
+        capture = document["engines"]["capture"]["config"]
+        capture["renderer"]["asset_digest"] = "traffic-lite-city/v1"
+        document["engines"]["capture_bridge"]["config"]["asset_digest"] = (
+            "traffic-lite-city/v1"
+        )
     renderer = document["engines"]["capture"]["config"]["renderer"]
     renderer["browser_executable"] = browser_path(Path(renderer["node_modules"]))
     if profile == "live-llm":
@@ -109,14 +106,9 @@ def demo_document(profile: str = "kinematic") -> tuple[dict[str, Any], Path]:
             raise ValueError(
                 "live-llm requires " + ", ".join(missing) + " and the langgraph extra"
             )
-        live_decisions(
-            document,
-            {
-                "base_url": os.environ[names[0]],
-                "model": os.environ[names[1]],
-                "api_key_env": os.environ[names[2]],
-            },
-        )
+        # Scenarios never carry endpoints or credential env selectors; the
+        # provider resolves them from the operator's trusted environment.
+        live_decisions(document, {"profile": "live-llm"})
     return document, source
 
 
@@ -166,7 +158,7 @@ def run_demo(
             "Frontend build missing. Run: cd frontend && npm ci && npm run build"
         )
     if headless:
-        document, source = demo_document(profile)
+        document, source = demo_document(profile, standalone=True)
         directory = out.resolve() / ("traffic-accident-" + uuid.uuid4().hex[:12])
         with RunSession(
             load_scenario(document, base=source), directory, provenance=provenance

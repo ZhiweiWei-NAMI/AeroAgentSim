@@ -163,14 +163,16 @@ def test_stop_while_waiting_reports_input_and_closes_replayable_prefix(
     realtime: dict[str, Any], tmp_path: Path
 ) -> None:
     realtime["engines"]["sensor"]["ingress"]["timeout_s"] = 0.3
-    with TestClient(create_app(tmp_path / "runs")) as client:
+    with TestClient(
+        create_app(tmp_path / "runs"), base_url="http://localhost"
+    ) as client:
         run_id = client.post("/v1/runs", json=realtime).json()["id"]
         waiting = run_status(client, run_id, "waiting_for_input")
         assert waiting["waiting"] == {"stream_ids": ["sensor"], "at_ns": "100000000"}
         page = client.get(f"/v1/runs/{run_id}/commits").json()
         assert page["status"] == "waiting_for_input"
         assert page["waiting"] == waiting["waiting"]
-        assert client.post(f"/v1/runs/{run_id}/stop").status_code == 200
+        assert client.post(f"/v1/runs/{run_id}/stop", json={}).status_code == 200
         stopped = run_status(client, run_id, "stopped")
         assert "error" not in stopped and "waiting" not in stopped
         restored = replay(tmp_path / "runs" / run_id / "journal.jsonl")
@@ -184,16 +186,18 @@ def test_pause_resume_during_input_wait_preserves_cut_and_accepts_progress(
     realtime: dict[str, Any], tmp_path: Path
 ) -> None:
     realtime["engines"]["sensor"]["ingress"].pop("timeout_s")
-    with TestClient(create_app(tmp_path / "runs")) as client:
+    with TestClient(
+        create_app(tmp_path / "runs"), base_url="http://localhost"
+    ) as client:
         run_id = client.post("/v1/runs", json=realtime).json()["id"]
         run_status(client, run_id, "waiting_for_input")
         route = f"/v1/runs/{run_id}"
-        assert client.post(route + "/pause").status_code == 200
+        assert client.post(route + "/pause", json={}).status_code == 200
         run_status(client, run_id, "paused")
         cursor = client.get(route + "/commits").json()["next"]
         time.sleep(0.06)
         assert client.get(route + "/commits").json()["next"] == cursor
-        assert client.post(route + "/resume").status_code == 200
+        assert client.post(route + "/resume", json={}).status_code == 200
         run_status(client, run_id, "waiting_for_input")
         assert (
             client.post(
@@ -208,7 +212,9 @@ def test_explicit_input_timeout_is_clear_terminal_status_without_fault(
     realtime: dict[str, Any], tmp_path: Path
 ) -> None:
     realtime["engines"]["sensor"]["ingress"]["timeout_s"] = 0.08
-    with TestClient(create_app(tmp_path / "runs")) as client:
+    with TestClient(
+        create_app(tmp_path / "runs"), base_url="http://localhost"
+    ) as client:
         run_id = client.post("/v1/runs", json=realtime).json()["id"]
         timed_out = run_status(client, run_id, "input_timeout")
         assert "WATERMARK_TIMEOUT" in timed_out["error"]
@@ -216,7 +222,7 @@ def test_explicit_input_timeout_is_clear_terminal_status_without_fault(
         restored = replay(tmp_path / "runs" / run_id / "journal.jsonl")
         assert not restored.incomplete
         assert not any(record["type"] == "fault" for record in restored.records)
-        assert client.post(f"/v1/runs/{run_id}/stop").status_code == 409
+        assert client.post(f"/v1/runs/{run_id}/stop", json={}).status_code == 409
 
 
 @pytest.mark.parametrize(
@@ -283,7 +289,9 @@ def test_source_mapping_and_engine_target(realtime: dict[str, Any]) -> None:
 
 
 def test_http_live_ingress_and_replay(realtime: dict[str, Any], tmp_path: Path) -> None:
-    with TestClient(create_app(tmp_path / "runs")) as client:
+    with TestClient(
+        create_app(tmp_path / "runs"), base_url="http://localhost"
+    ) as client:
         created = client.post("/v1/runs", json=realtime)
         assert created.status_code == 201, created.text
         run_id = created.json()["id"]

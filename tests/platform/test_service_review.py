@@ -30,7 +30,8 @@ def test_created_run_has_committed_configuration_despite_delayed_startup(
     monkeypatch.setattr(RunSession, "start", delayed_start)
     document["run"]["until_ns"] = 0
     with TestClient(
-        create_app(tmp_path / "runs", studio_root=tmp_path / "studio")
+        create_app(tmp_path / "runs", studio_root=tmp_path / "studio"),
+        base_url="http://localhost",
     ) as client:
         created = client.post("/v1/runs", json=document)
         assert created.status_code == 201, created.text
@@ -69,7 +70,9 @@ def artifacts(path: Path) -> RunStorage:
 
 def test_h6_restart_recovers_complete_wal_prefix(tmp_path: Path) -> None:
     storage = artifacts(tmp_path / "runs" / "run")
-    with TestClient(create_app(tmp_path / "runs")) as client:
+    with TestClient(
+        create_app(tmp_path / "runs"), base_url="http://localhost"
+    ) as client:
         page = client.get("/v1/runs/run/commits?from=1").json()
     assert [item["commitIndex"] for item in page["commits"]] == [1, 2, 3]
     assert storage.metadata()["status"] == "interrupted"
@@ -97,7 +100,9 @@ def test_h4_sse_interleaving_cannot_lose_final_tail(
         return original(self, start, limit)
 
     monkeypatch.setattr(RunStorage, "records", records)
-    with TestClient(create_app(tmp_path / "runs")) as client:
+    with TestClient(
+        create_app(tmp_path / "runs"), base_url="http://localhost"
+    ) as client:
         response = client.get("/v1/runs/run/stream?from=1")
     assert "id: 3\n" in response.text
     assert '"finalCursor":4' in response.text.replace(" ", "")
@@ -157,7 +162,9 @@ def test_h9_semantic_id_cannot_escape_output_root(
 ) -> None:
     document["id"] = "../escaped"
     document["run"]["until_ns"] = 0
-    with TestClient(create_app(tmp_path / "runs")) as client:
+    with TestClient(
+        create_app(tmp_path / "runs"), base_url="http://localhost"
+    ) as client:
         response = client.post("/v1/runs", json={"scenario": document})
         assert response.status_code == 201, response.text
         run = response.json()

@@ -139,7 +139,7 @@ def test_catalog_and_real_run_replay(tmp_path: Path) -> None:
     app = create_app(
         tmp_path / "runs", scenario_root=tmp_path, studio_root=tmp_path / "studio"
     )
-    with TestClient(app) as client:
+    with TestClient(app, base_url="http://localhost") as client:
         catalog = client.get("/v1/studio/catalog")
         assert catalog.status_code == 200 and catalog.json()["extracts"]
         types = client.get("/v1/studio/types").json()["types"]

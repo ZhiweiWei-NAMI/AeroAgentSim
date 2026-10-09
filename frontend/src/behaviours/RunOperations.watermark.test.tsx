@@ -11,8 +11,9 @@ it('pauses a waiting run by keyboard and recognizes resume back into the wait', 
   const api = new RunsApi('http://api');
   let status = 'waiting_for_input';
   const runs = vi.spyOn(api, 'runs').mockImplementation(async () => [{ id: 'waiting', scenario: 'external', status, until_ns: '100' }]);
-  const request = vi.spyOn(api, 'request').mockImplementation(async path => {
+  const request = vi.spyOn(api, 'request').mockImplementation(async (path, options) => {
     if (path.endsWith('/configuration')) return { scenario: { id: 'external', behaviours: [] } };
+    expect(options).toMatchObject({method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
     const action = path.split('/').at(-1);
     if (action === 'pause') status = 'paused';
     else if (action === 'resume') status = 'waiting_for_input';

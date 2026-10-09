@@ -29,7 +29,9 @@ def test_api_run_page_sse_and_no_viewer_writes(
     document: dict[str, Any], tmp_path: Path
 ) -> None:
     document["run"]["until_ns"] = 2_000_000_000
-    with TestClient(create_app(tmp_path / "runs")) as client:
+    with TestClient(
+        create_app(tmp_path / "runs"), base_url="http://localhost"
+    ) as client:
         response = client.post("/v1/runs", json={"scenario": document})
         assert response.status_code == 201, response.text
         run_id = response.json()["id"]
@@ -50,7 +52,7 @@ def test_api_run_page_sse_and_no_viewer_writes(
             text = "".join(stream.iter_text())
             assert "event: commit" in text and "event: end" in text
         assert hashlib.sha256(journal.read_bytes()).hexdigest() == digest
-        assert client.post(f"/v1/runs/{run_id}/resume").status_code == 409
+        assert client.post(f"/v1/runs/{run_id}/resume", json={}).status_code == 409
         assert client.get(f"/v1/runs/{run_id}/commits?from=-1").status_code == 422
         assert client.get("/v1/runs/missing/header").status_code == 404
 
@@ -61,25 +63,30 @@ def test_safe_boundary_pause_resume_stop(
     document["run"].update(
         until_ns=10_000_000_000, advance_ns=100_000_000, pacing="realtime"
     )
-    with TestClient(create_app(tmp_path / "runs")) as client:
+    with TestClient(
+        create_app(tmp_path / "runs"), base_url="http://localhost"
+    ) as client:
         response = client.post("/v1/runs", json=document)
         assert response.status_code == 201, response.text
         run_id = response.json()["id"]
         wait_status(client, run_id, {"running"})
-        assert client.post(f"/v1/runs/{run_id}/pause").status_code == 200
+        assert client.post(f"/v1/runs/{run_id}/pause", json={}).status_code == 200
         wait_status(client, run_id, {"paused"})
         journal = tmp_path / "runs" / run_id / "journal.jsonl"
         before = journal.read_bytes()
         time.sleep(0.2)
         assert journal.read_bytes() == before
-        assert client.post(f"/v1/runs/{run_id}/resume").status_code == 200
+        assert client.post(f"/v1/runs/{run_id}/resume", json={}).status_code == 200
         wait_status(client, run_id, {"running"})
-        assert client.post(f"/v1/runs/{run_id}/stop").status_code == 200
+        assert client.post(f"/v1/runs/{run_id}/stop", json={}).status_code == 200
         wait_status(client, run_id, {"stopped"})
 
 
 def test_path_scope_and_invalid_body(tmp_path: Path) -> None:
-    with TestClient(create_app(tmp_path / "runs", scenario_root=tmp_path)) as client:
+    with TestClient(
+        create_app(tmp_path / "runs", scenario_root=tmp_path),
+        base_url="http://localhost",
+    ) as client:
         assert (
             client.post(
                 "/v1/runs", json={"scenario_path": "../../etc/passwd"}

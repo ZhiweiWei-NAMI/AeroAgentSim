@@ -2,11 +2,12 @@
 # Build → isolated real backend → completed replay → eight paced recordings → GIFs.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORK_DIR=/tmp/aas-q/e3g
-PYTHON="${AEROAGENTSIM_DOCS_PYTHON:-$ROOT/../AeroAgentSim-platform/.venv/bin/python}"
+WORK_DIR=/tmp/aas-q/e3h
+PYTHON="${AEROAGENTSIM_DOCS_PYTHON:-python}"
 FFMPEG="${FFMPEG:-}"
 GATES=0
 SKIP_BUILD=0
+SKIP_GIFS=0
 REPLAY_SOURCE=""
 REUSE_CONTEXT=""
 MEDIA_ARGS=(--trim 00-overview=0.8:30 --trim 04-aerograph=0.8:30)
@@ -14,6 +15,7 @@ while [ "$#" -gt 0 ]; do
  case "$1" in
   --gates) GATES=1;;
   --skip-build) SKIP_BUILD=1;;
+  --skip-gifs) SKIP_GIFS=1;;
   --ffmpeg) FFMPEG="$2"; shift;;
   --work-dir) WORK_DIR="$2"; shift;;
   --python) PYTHON="$2"; shift;;
@@ -24,14 +26,24 @@ while [ "$#" -gt 0 ]; do
  esac
  shift
 done
-[ -x "$PYTHON" ] || { echo "Set --python to the installed AeroAgentSim Python environment" >&2; exit 1; }
+# Resolve a basename default (e.g. "python") via command -v; --python wins.
+if command -v "$PYTHON" >/dev/null 2>&1; then
+ PYTHON="$(command -v "$PYTHON")"
+fi
+[ -x "$PYTHON" ] || { echo "Set --python or AEROAGENTSIM_DOCS_PYTHON to the installed Python with uvicorn and the backend dependencies" >&2; exit 1; }
 case "$WORK_DIR" in "$ROOT"|"$ROOT"/*) echo "Scratch must be outside the repository" >&2; exit 1;; esac
 mkdir -p "$WORK_DIR"
 cd "$ROOT"
 export NO_PROXY=127.0.0.1,localhost no_proxy=127.0.0.1,localhost
 export AEROAGENTSIM_DOCS_WORKDIR="$WORK_DIR" AEROAGENTSIM_DOCS_ROOT="$WORK_DIR/backend"
 export AEROAGENTSIM_DOCS_VIDEO_DIR="$WORK_DIR/videos" AEROAGENTSIM_DOCS_CONTEXT="$WORK_DIR/context.json"
-export AEROAGENTSIM_CHROMIUM="${AEROAGENTSIM_CHROMIUM:-$HOME/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell}"
+# Resolve the installed browser before selecting a scratch video-encoder cache.
+if [ -z "${AEROAGENTSIM_CHROMIUM:-}" ]; then
+ AEROAGENTSIM_CHROMIUM="$(cd frontend && node -p 'require("playwright").chromium.executablePath()')"
+ export AEROAGENTSIM_CHROMIUM
+ echo "Using Playwright's Chromium: $AEROAGENTSIM_CHROMIUM"
+fi
+[ -x "$AEROAGENTSIM_CHROMIUM" ] || { echo "AEROAGENTSIM_CHROMIUM is not an executable: $AEROAGENTSIM_CHROMIUM (try 'npx playwright install chromium')" >&2; exit 1; }
 # No implicit private source or asset paths: an unset environment records the
 # same packaged snapshot and lite city that a public clone receives.
 if [ -n "${AEROAGENTSIM_TRAFFIC_ASSET_ROOT:-}" ]; then
@@ -40,7 +52,6 @@ if [ -n "${AEROAGENTSIM_TRAFFIC_ASSET_ROOT:-}" ]; then
 else
  echo "Recording the public lite city and scenario registry snapshot"
 fi
-[ -x "$AEROAGENTSIM_CHROMIUM" ] || { echo "Set AEROAGENTSIM_CHROMIUM to Chromium" >&2; exit 1; }
 if [ "$GATES" -eq 1 ]; then
  (cd frontend && npm run typecheck && npx vitest run)
 fi
@@ -55,9 +66,11 @@ if [ -z "$FFMPEG" ]; then
  "$WORK_DIR/venv/bin/python" -m pip install --quiet imageio-ffmpeg
  FFMPEG="$("$WORK_DIR/venv/bin/python" -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')"
 fi
-export PLAYWRIGHT_BROWSERS_PATH="$WORK_DIR/browser-cache"
 # Playwright's downloadable encoder is unavailable on some older Linux hosts.
 # Point its scratch registry at the explicitly selected, GIF-capable ffmpeg.
+# Only linked after the browser is resolved: the scratch registry must not
+# pre-create a browsers path that would defeat Playwright's own resolution.
+export PLAYWRIGHT_BROWSERS_PATH="$WORK_DIR/browser-cache"
 FFMPEG_REVISION="$(cd frontend && node -p "require('./node_modules/playwright-core/browsers.json').browsers.find(b=>b.name==='ffmpeg').revision")"
 mkdir -p "$PLAYWRIGHT_BROWSERS_PATH/ffmpeg-$FFMPEG_REVISION"
 ln -sfn "$FFMPEG" "$PLAYWRIGHT_BROWSERS_PATH/ffmpeg-$FFMPEG_REVISION/ffmpeg-linux"
@@ -69,6 +82,7 @@ url=urllib.parse.urlparse(json.load(open(sys.argv[1]))["baseURL"])
 if url.hostname != "127.0.0.1" or url.port is None:
     raise SystemExit("Context must use a local recording server")
 with socket.socket() as s:
+    s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
     s.bind((url.hostname,url.port))
 print(url.port)
 PY
@@ -117,4 +131,8 @@ else
 fi
 rm -f "$AEROAGENTSIM_DOCS_VIDEO_DIR/recordings.json"
 (cd frontend && npx playwright test --config playwright.flows.config.ts)
-"$PYTHON" tools/docs/make_gifs.py --input "$AEROAGENTSIM_DOCS_VIDEO_DIR" --output docs/media --ffmpeg "$FFMPEG" --report "$WORK_DIR/media-report.json" "${MEDIA_ARGS[@]}"
+if [ "$SKIP_GIFS" -eq 1 ]; then
+ echo "Skipping GIF conversion (--skip-gifs); videos remain in $AEROAGENTSIM_DOCS_VIDEO_DIR"
+else
+ "$PYTHON" tools/docs/make_gifs.py --input "$AEROAGENTSIM_DOCS_VIDEO_DIR" --output docs/media --ffmpeg "$FFMPEG" --report "$WORK_DIR/media-report.json" "${MEDIA_ARGS[@]}"
+fi

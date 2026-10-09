@@ -27,7 +27,7 @@ def test_rest_list_get_download_and_readonly(tmp_path: Path) -> None:
     kernel, capture, request = setup_capture(run, FixtureRenderer(png()))
     capture.store.register(request)
     record = capture.store.put(request, png(), renderer_mode="stub")
-    with TestClient(create_app(root)) as client:
+    with TestClient(create_app(root), base_url="http://localhost") as client:
         base = "/v1/runs/run-1/artifacts"
         assert client.get(base).json() == [record]
         detail = client.get(base + "/" + record["digest"]).json()
@@ -101,7 +101,7 @@ def test_upload_actor_cut_conflict_and_worker_event(tmp_path: Path) -> None:
             "denominator": 1,
         },
     }
-    with TestClient(app) as client:
+    with TestClient(app, base_url="http://localhost") as client:
         url = "/v1/runs/run-1/capture-artifacts"
         wrong = replace(request, actor=replace(request.actor, id="wrong"))
         assert (
@@ -186,8 +186,10 @@ def test_exact_capture_prefix_is_readable_before_worker_index_refresh(
     (run / "index.json").write_text("[]")
     index_before = (run / "index.json").read_bytes()
     journal_before = (run / "journal.jsonl").read_bytes()
-    with TestClient(create_app(root)) as client:
-        response = client.get("/v1/runs/run-1/capture-requests/photo-1%2Fepisode-0/scene")
+    with TestClient(create_app(root), base_url="http://localhost") as client:
+        response = client.get(
+            "/v1/runs/run-1/capture-requests/photo-1%2Fepisode-0/scene"
+        )
         assert response.status_code == 200, response.text
         scene = response.json()
         assert scene["source_cut"] == request.to_data()["source_cut"]

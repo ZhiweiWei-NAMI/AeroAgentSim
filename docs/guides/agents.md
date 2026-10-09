@@ -24,11 +24,24 @@ the demo accident graph factory is
 ## The provider
 
 `OpenAIProvider.from_config` ([../../src/aeroagentsim/agents/provider.py](../../src/aeroagentsim/agents/provider.py))
-accepts exactly `base_url`, `model` and `api_key_env`. Omitted settings fall
-back to `AAS_LLM_BASE_URL`, `AAS_LLM_MODEL` and `AAS_LLM_API_KEY`; defaults
-are `http://127.0.0.1:8788/v1` and `glm-5.3-flashx` with no required key. An
-explicit scenario setting wins over the environment. Only the resolved model
-name is recorded — credentials never enter prompts or records. There is no
+accepts only a named `profile`. URLs, model settings and credential environment
+variable names come from operator configuration, never from submitted scenarios.
+The `default` profile uses `AAS_LLM_BASE_URL`, `AAS_LLM_MODEL` and
+`AAS_LLM_API_KEY`; defaults are `http://127.0.0.1:8788/v1` and
+`glm-5.3-flashx` with no required key. To configure named profiles, set
+`AEROAGENTSIM_PROVIDER_PROFILES` to a JSON mapping, or point
+`AEROAGENTSIM_PROVIDER_CONFIG` at a server-side JSON file with that mapping:
+
+```json
+{"research": {"base_url": "https://your-endpoint.example/v1", "model": "your-model", "api_key_env": "MY_KEY_VAR"}}
+```
+
+The environment mapping overrides file entries of the same name. Populate
+`MY_KEY_VAR` on the server, then select `provider: {profile: research}` in the
+scenario. Unknown profiles and scenario-supplied URLs or credential selectors
+are rejected. The console's live-provider form also accepts a profile name.
+Provider failures record a short safe message and HTTP status where available;
+upstream error bodies and request headers are discarded. There is no
 automatic retry: transport failures and `WALL_TIMEOUT` are recorded typed
 failures, and a late reply cannot mutate simulation state.
 
@@ -66,8 +79,7 @@ zz_decision:
       max_retries: 2
       max_prompt_bytes: 262144
     provider:
-      base_url: http://127.0.0.1:8788/v1
-      model: glm-5.3-flashx
+      profile: default
 ```
 
 Trigger `points` accept absolute `timer_ns`, granted `event` schemas,
@@ -79,9 +91,13 @@ accepted, executing and terminal receipts — a proposal is never described as
 completed.
 
 The `langgraph` engine requires explicit graph budgets (`wall_timeout_s` ≤
-300, `sim_deadline_ns`, `max_calls`, `max_tokens`, `max_retries`,
+300, exactly one of `sim_timeout_ns` or `sim_deadline_ns`, `max_calls`, `max_tokens`, `max_retries`,
 `max_prompt_bytes`, `recursion_limit`) and grants with
 `fields/relations/commands/events/facts`.
+`sim_timeout_ns` is a duration measured from each decision's trigger time;
+`sim_deadline_ns` is an absolute simulated timestamp. The shipped live demo
+uses a one-second duration, so decisions after the first simulated second
+remain eligible. Each invocation records its resolved deadline for replay.
 
 ## Live-LLM demo invocation
 
@@ -101,7 +117,9 @@ aeroagentsim demo traffic-accident --profile live-llm --headless --out runs/demo
 
 All three `AEROAGENTSIM_LLM_*` variables are required (checked in
 [../../src/aeroagentsim/services/demo.py](../../src/aeroagentsim/services/demo.py));
-the third names the environment variable that actually holds the key. Without
+the third names the environment variable that actually holds the key. These
+operator settings define the built-in `live-llm` provider profile; the scenario
+stores only its name. Without
 them, or with the `agents` extra missing, the command fails fast. The
 default `--profile kinematic` runs fully offline with authored stub decisions
 from
@@ -129,4 +147,6 @@ explicit `USAGE_MISSING` failure, never a silent zero.
   synthetic successful decisions.
 
 See also: [external events](external-events.md) for triggering agents from
-live inputs, [behaviours](behaviours.md) for consuming proposals.
+live inputs, [behaviours](behaviours.md) for consuming proposals, and
+[HTTP API security](../reference/http-api.md#request-boundary) for local hosting
+and bearer authentication on non-local deployments.

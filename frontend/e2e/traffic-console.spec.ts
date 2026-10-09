@@ -1,18 +1,17 @@
 import { test, expect } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
 
 test('real traffic console: draft, compiler, operator accident, award, city photo and shared cut',async({page,baseURL})=>{
- mkdirSync('/tmp/aas-q/e3g/screenshots',{recursive:true});
+ const screenshot=(name:string)=>test.info().outputPath(`${name}.png`);
  if (!baseURL) throw Error('Console e2e requires its configured API URL');
  await page.goto(`/?api=${encodeURIComponent(baseURL)}`);
  await expect(page.getByTestId('home-page')).toBeVisible();
- await page.screenshot({path:'/tmp/aas-q/e3g/screenshots/home.png'});
+ await page.screenshot({path:screenshot('home')});
  await page.getByTestId('nav-aerograph').click();await expect(page.getByTestId('aerograph-page')).toBeVisible({timeout:30_000});
  await expect(page.getByTestId('aerograph-page')).toHaveAttribute('data-ready','true',{timeout:30_000});
  await expect(page.getByTestId('aerograph-tree')).toBeVisible({timeout:30_000});
- await page.screenshot({path:'/tmp/aas-q/e3g/screenshots/aerograph.png'});
+ await page.screenshot({path:screenshot('aerograph')});
  await page.getByTestId('nav-runs').click();await expect(page.getByTestId('runs-page')).toBeVisible();
- await page.screenshot({path:'/tmp/aas-q/e3g/screenshots/runs.png'});
+ await page.screenshot({path:screenshot('runs')});
  await page.getByTestId('nav-home').click();await page.getByTestId('open-traffic-demo').click();
  await page.waitForURL(/\/studio\?template=traffic-accident/);
  await expect(page.getByTestId('studio-step-entities')).toBeVisible({timeout:60_000});
@@ -20,7 +19,7 @@ test('real traffic console: draft, compiler, operator accident, award, city phot
  await expect(page.getByLabel('Package ID')).toHaveValue('traffic.accident');
  await page.getByRole('button',{name:'Validate',exact:true}).click();
  await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeEnabled({timeout:60_000});
- await page.screenshot({path:'/tmp/aas-q/e3g/screenshots/studio.png'});
+ await page.screenshot({path:screenshot('studio')});
  await page.getByRole('button',{name:'Run now',exact:true}).click();
  await page.waitForURL(/\/runs\/run-/,{timeout:60_000});
  const run=page.url().match(/\/runs\/(run-[a-f0-9]+)/)![1];
@@ -41,14 +40,14 @@ test('real traffic console: draft, compiler, operator accident, award, city phot
  await expect(page.getByAltText(/^Stored capture /)).toBeVisible({timeout:60_000});
 
  await page.getByRole('button',{name:'Alpha',exact:true}).click();
- await page.screenshot({path:'/tmp/aas-q/e3g/screenshots/run.png'});
+ await page.screenshot({path:screenshot('run')});
  await page.getByText(/Recorded overlays/).click();
  const transition=page.getByTestId('chain-transition').first();const targetCut=await transition.getAttribute('data-transition-cut');await transition.click();
  await page.getByTestId('nav-inspect').click();await page.waitForURL(/\/inspect\/run-/);
- await page.screenshot({path:'/tmp/aas-q/e3g/screenshots/inspect.png'});
+ await page.screenshot({path:screenshot('inspect')});
  await page.setViewportSize({width:1280,height:1000});
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
- await page.screenshot({path:'/tmp/aas-q/e3g/screenshots/inspect-1280.png'});
+ await page.screenshot({path:screenshot('inspect-1280')});
  const graph=page.getByRole('region',{name:'Synchronized AeroGraph view'});const dual=page.getByTestId('dual-run-views');
  await expect(dual).toHaveAttribute('data-cut',targetCut as string);
  await expect(graph).toHaveAttribute('data-cut',await dual.getAttribute('data-cut') as string);

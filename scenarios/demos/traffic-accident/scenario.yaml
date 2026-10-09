@@ -8083,7 +8083,6 @@ engines:
       run_directory: '@run'
       renderer:
         mode: traffic_browser
-        browser_executable: /home/weizhiwei/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome
         node_modules: frontend/node_modules
         timeout_s: 20.0
         asset_digest: traffic-camera-assets/v1

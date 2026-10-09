@@ -275,7 +275,7 @@ def test_real_nonspatial_completion_in_rest_pages_and_sse_reconnect(
     with RunSession(load_scenario(document), tmp_path / "runs" / "job") as session:
         session.run()
     app = create_app(tmp_path / "runs")
-    with TestClient(app) as client:
+    with TestClient(app, base_url="http://localhost") as client:
         head = client.get("/v1/runs/job/header").json()
         assert head["presentation"] == []
         assert head["messageSubjects"]["q3.job.finished"] == [

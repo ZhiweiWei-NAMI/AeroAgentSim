@@ -155,7 +155,7 @@ def test_explorer_route_selects_latest_draft_and_rejects_bad_ids(
     app = create_app(
         tmp_path / "runs", scenario_root=tmp_path, studio_root=tmp_path / "studio"
     )
-    with TestClient(app) as client:
+    with TestClient(app, base_url="http://localhost") as client:
         first = client.post("/v1/studio/workspaces", json={"name": "older"}).json()
         second = client.post("/v1/studio/workspaces", json={"name": "newer"}).json()
         # Filesystem timestamp precision must not override recorded update order.
