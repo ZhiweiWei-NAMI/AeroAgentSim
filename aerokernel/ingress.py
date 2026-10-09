@@ -19,11 +19,11 @@ from .values import ResourceBudget, canonical_json
 
 @dataclass(frozen=True)
 class IngressPolicy:
-    """One declared closed-prefix stream and its bounded waiting policy."""
+    """One declared closed-prefix stream; omitted timeout waits indefinitely."""
 
     initial_watermark_ns: int
     lateness: str = "reject"
-    timeout_s: float = 1.0
+    timeout_s: float | None = None
     speed_ratio: float | None = None
     allowed_lateness_ns: int | None = None
 
@@ -38,8 +38,8 @@ class IngressPolicy:
             raise KernelError(
                 "INGRESS_LATENESS", "nonnegative integer ns bound required"
             )
-        for name, value in (("timeout", self.timeout_s), ("ratio", self.speed_ratio)):
-            if value is None and name == "ratio":
+        for value in (self.timeout_s, self.speed_ratio):
+            if value is None:
                 continue
             if (
                 not isinstance(value, (int, float))
@@ -48,6 +48,14 @@ class IngressPolicy:
                 or value <= 0
             ):
                 raise KernelError("INGRESS_WAIT", "positive finite wait/ratio required")
+
+
+@dataclass(frozen=True)
+class IngressWait:
+    """Actual blocked boundary and the streams whose closed prefixes lag it."""
+
+    target_ns: int
+    stream_ids: tuple[str, ...]
 
 
 @dataclass(frozen=True)

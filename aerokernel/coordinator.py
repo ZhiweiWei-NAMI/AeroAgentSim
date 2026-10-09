@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import platform
 import threading
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import asdict
 from types import MappingProxyType
 from typing import Any
@@ -19,6 +19,7 @@ from .ingress import (
     IngressPolicy,
     IngressReceipt,
     IngressStream,
+    IngressWait,
     receipt_for,
     safe_partitions,
 )
@@ -894,9 +895,14 @@ class Kernel:
                 raise KernelError("INGRESS_RECEIPT", "unknown live command identity")
             return self._store.ingress_receipts[command_id]
 
-    def _wait_watermark(self, ns: int, deadlines: dict[str, float]) -> None:
+    def _wait_watermark(
+        self,
+        ns: int,
+        deadlines: dict[str, float],
+        on_wait: Callable[[IngressWait | None], bool] | None,
+    ) -> bool:
         if not self._store.watermarks:
-            return
+            return True
         import time
 
         selected_cut = self._store.cut
@@ -908,17 +914,27 @@ class Kernel:
                 for s in self._store.ingress_dependencies.get(p, ())
                 if self._store.watermarks[s] < ns
             }
-            remaining = min(deadlines[s] for s in blocked) - time.monotonic()
-            if remaining <= 0:
+            if on_wait is not None and not on_wait(
+                IngressWait(ns, tuple(sorted(blocked)))
+            ):
+                return False
+            finite = [deadlines[s] for s in blocked if s in deadlines]
+            remaining = min(finite) - time.monotonic() if finite else None
+            if remaining is not None and remaining <= 0:
                 raise KernelError(
                     "WATERMARK_TIMEOUT",
                     "declared closed-prefix wait timed out",
                     target_ns=ns,
+                    stream_ids=tuple(sorted(blocked)),
                     watermarks=dict(self._store.watermarks),
                 )
-            self._ingress_condition.wait(remaining)
+            delay = remaining
+            if on_wait is not None:
+                delay = min(0.05, remaining) if remaining is not None else 0.05
+            self._ingress_condition.wait(delay)
             if self._store.cut != selected_cut:
-                return
+                return True
+        return on_wait is None or on_wait(None)
 
     def _pace_to(self, ns: int, selected: tuple[str, ...] | None = None) -> None:
         names = (
@@ -1142,12 +1158,22 @@ class Kernel:
                 trace=self._trace,
             )
 
-    def run_until(self, ns: int) -> StateView:
-        """Settle an exact limit, waiting only under a declared live policy."""
-        with self._ingress_condition:
-            return self._run_until(ns)
+    def run_until(
+        self, ns: int, *, on_wait: Callable[[IngressWait | None], bool] | None = None
+    ) -> StateView:
+        """Settle a limit, or yield a committed prefix when on_wait returns False.
 
-    def _run_until(self, ns: int) -> StateView:
+        The callback observes actual watermark waits (None when unblocked), is
+        polled at most every 50ms while waiting, and must not advance the kernel.
+        Yielding and WATERMARK_TIMEOUT preserve a replayable, nonfaulted prefix;
+        a caller can resume the same target after supplying input.
+        """
+        with self._ingress_condition:
+            return self._run_until(ns, on_wait=on_wait)
+
+    def _run_until(
+        self, ns: int, *, on_wait: Callable[[IngressWait | None], bool] | None = None
+    ) -> StateView:
         self._guard()
         if (
             type(ns) is not int
@@ -1193,10 +1219,11 @@ class Kernel:
                 if self._store.watermarks:
                     if wait_deadlines is None:
                         wait_start = time.monotonic()
-                        wait_deadlines = {
-                            s: wait_start + self._policy(s).timeout_s
-                            for s in self._store.watermarks
-                        }
+                        wait_deadlines = {}
+                        for stream in self._store.watermarks:
+                            timeout = self._policy(stream).timeout_s
+                            if timeout is not None:
+                                wait_deadlines[stream] = wait_start + timeout
                     safe = safe_partitions(self._store, to)
                     selected = tuple(
                         p for p in safe if self._store.frontiers[p][0].ns < to
@@ -1217,7 +1244,8 @@ class Kernel:
                         self._publish(candidate.state, record)
                         self._settle(to, seal=False)
                         pre_wait_cut = self._store.cut
-                    self._wait_watermark(to, wait_deadlines)
+                    if not self._wait_watermark(to, wait_deadlines, on_wait):
+                        return self.view()
                 if pre_wait_cut != self._store.cut:
                     continue
                 self._pace_to(to)
@@ -1245,7 +1273,10 @@ class Kernel:
                 self._settle(to)
                 wait_deadlines = None
         except Exception as exc:
-            if not self._store.faulted:
+            expected_timeout = (
+                isinstance(exc, KernelError) and exc.code == "WATERMARK_TIMEOUT"
+            )
+            if not self._store.faulted and not expected_timeout:
                 self._fault(exc)
             raise
         return self.view()
@@ -1263,6 +1294,8 @@ class Kernel:
         state.cuts.append(Cut(record["index"], state.cut.instant))
         if kind == "run_limit":
             state.run_target = fields["limit_ns"]
+        elif kind == "run_stop":
+            state.run_target = None
         elif kind in {"watermark", "source_progress"}:
             state.watermarks[fields["stream_id"]] = fields["watermark_ns"]
             if fields["stream_id"] == "default" and self.ingress_policy is not None:
@@ -1280,6 +1313,13 @@ class Kernel:
         from .pause import hold_wall_clock
 
         hold_wall_clock(self, duration_s, reason)
+
+    @property
+    def sealed_ns(self) -> int:
+        """Actual common sealed frontier, including after a yielded wait."""
+        if self._store.sealed_ns is None:
+            raise KernelError("RUN_STATE", "kernel has not started")
+        return self._store.sealed_ns
 
     def view(self, cut: Cut | None = None) -> StateView:
         """Read the current or an issued historical prefix, including faulted runs."""
@@ -1305,6 +1345,13 @@ class Kernel:
         if self._closed:
             return
         with self._ingress_condition:
+            if (
+                self._bound
+                and self._store.sealed_ns is not None
+                and not self._store.faulted
+                and (self._store.run_target is not None or self._store.pending_ingress)
+            ):
+                self._record_control("run_stop", {})
             self._closed = True
             self._ingress_condition.notify_all()
         errors = []
