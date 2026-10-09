@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import math
+import re
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import yaml
 from aerokernel import (
@@ -59,7 +61,19 @@ class ScenarioError(ValueError):
 
 
 class UniqueLoader(yaml.SafeLoader):
-    """Do not let duplicate YAML keys silently replace authored bindings."""
+    """YAML 1.2 Boolean spellings and duplicate-key rejection."""
+
+    yaml_implicit_resolvers: ClassVar[dict[Any, Any]] = {  # type: ignore[misc]
+        key: [(tag, regex) for tag, regex in entries if tag != "tag:yaml.org,2002:bool"]
+        for key, entries in yaml.SafeLoader.yaml_implicit_resolvers.items()
+    }
+
+
+UniqueLoader.add_implicit_resolver(
+    "tag:yaml.org,2002:bool",
+    re.compile(r"^(?:true|false|True|False|TRUE|FALSE)$"),
+    list("tTfF"),
+)
 
 
 def _mapping(loader: UniqueLoader, node: yaml.MappingNode) -> dict[str, Any]:
@@ -185,7 +199,59 @@ def load_scenario(
 
 
 def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
+    document = copy.deepcopy(document)
     _finite(document, "scenario")
+    behaviour_engines = [
+        name
+        for name, item in document.get("engines", {}).items()
+        if item.get("plugin") == "behaviour"
+    ]
+    if "behaviours" in document or behaviour_engines:
+        from aeroagentsim.behaviours.compiler import resolve_packages
+        from aeroagentsim.behaviours.records import TYPE, overlay
+
+        if len(behaviour_engines) != 1:
+            raise ScenarioError("behaviours: declare exactly one behaviour engine")
+        engine_id = behaviour_engines[0]
+        config = document["engines"][engine_id]["config"]
+        specs = document.get("behaviours", config.get("packages", []))
+        resolved = resolve_packages(specs, base)
+        config["packages"] = resolved
+        if "behaviours" in document:
+            document["behaviours"] = resolved
+        descriptors = overlay()
+        for category, items in descriptors.items():
+            authored = document["registry"].setdefault(category, [])
+            existing = {item["id"]: item for item in authored}
+            for item in items:
+                if item["id"] in existing:
+                    if existing[item["id"]] != item:
+                        raise ScenarioError(
+                            f"registry.{category}.{item['id']}: conflicts with behaviour overlay"
+                        )
+                else:
+                    authored.append(item)
+        bindings = document["bindings"]
+        rules = bindings.setdefault("rules", [])
+        fields = [item["id"] for item in descriptors["fields"]]
+        if not any(
+            rule["type"] == TYPE and rule["writer"] == engine_id for rule in rules
+        ):
+            rules.append(
+                {
+                    "writer": engine_id,
+                    "type": TYPE,
+                    "fields": fields,
+                    "ids": "behaviour:*",
+                }
+            )
+        if not any(
+            rule["type"] == TYPE and rule["controller"] == engine_id
+            for rule in bindings["lifecycle"]
+        ):
+            bindings["lifecycle"].append(
+                {"controller": engine_id, "type": TYPE, "ids": "behaviour:*"}
+            )
     allowed = {
         "format",
         "id",
@@ -199,6 +265,7 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         "origin",
         "clock_mappings",
         "ingress_streams",
+        "behaviours",
     }
     if extra := set(document) - allowed:
         raise ScenarioError(f"scenario: unknown keys {sorted(extra)}")
@@ -253,6 +320,29 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             ),
             Policy(**obj(spec.get("policy", {}), "registry.compile.policy")),
         )
+    snapshot_digests: dict[Path, str] = {}
+    if "snapshot" in registry_spec:
+        snapshot_digests[source_path(registry_spec["snapshot"], base).resolve()] = (
+            compiled.digest
+        )
+    for engine_id in behaviour_engines:
+        for package in document["engines"][engine_id]["config"]["packages"]:
+            requirements = package["document"].get("registry", {})
+            if "snapshot" not in requirements:
+                continue
+            package_source = Path(package["source"])
+            package_base = package_source.parent if package_source.is_file() else base
+            required_snapshot = source_path(
+                requirements["snapshot"], package_base
+            ).resolve()
+            if required_snapshot not in snapshot_digests:
+                snapshot_digests[required_snapshot] = read_snapshot(
+                    required_snapshot
+                ).digest
+            if snapshot_digests[required_snapshot] != compiled.digest:
+                raise ScenarioError(
+                    f"{package['source']}: $.registry.snapshot: package requires a different pinned registry snapshot"
+                )
     types = list(compiled.registry.types)
     fields = list(compiled.registry.fields)
     messages = list(compiled.registry.messages)
@@ -545,6 +635,7 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         ),
     )
     engines = obj(document["engines"], "engines")
+    sampled_asts: dict[str, dict[str, Any]] = {}
     for engine_id, item in engines.items():
         item = contract(item, f"engines.{engine_id}", {"plugin", "config"}, {"ingress"})
         text(item["plugin"], f"engines.{engine_id}.plugin")
@@ -756,9 +847,35 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             from aeroagentsim.engines.predicate import prepare
 
             try:
-                prepare(item["config"])
+                sampled_asts[engine_id] = prepare(item["config"])
             except (ValueError, KeyError, TypeError) as exc:
                 raise ScenarioError(f"engines.{engine_id}.config: {exc}") from exc
+    contexts = {spec.context_id: spec for spec in manifest.samples}
+    for engine_id in behaviour_engines:
+        for package in engines[engine_id]["config"]["packages"]:
+            for predicate_id, definition in package["document"]["predicates"].items():
+                if definition["profile"] != "aerograph_sampled/v1":
+                    continue
+                path = f"{package['source']}: $.predicates.{predicate_id}.adapter"
+                sample_spec = contexts.get(definition["adapter"]["context"])
+                if sample_spec is None or sample_spec.partition not in sampled_asts:
+                    raise ScenarioError(
+                        f"{path}: bind an actual finite Q6 predicate sample context"
+                    )
+                config = engines[sample_spec.partition]["config"]
+                if (
+                    config["event"] != definition["adapter"]["event"]
+                    or sampled_asts[sample_spec.partition] != definition["expression"]
+                    or thaw(cast(Any, sample_spec.parameters))
+                    != definition.get("parameters", {})
+                ):
+                    raise ScenarioError(
+                        f"{path}: expression, event and parameters must match the pinned Q6 sampled partition"
+                    )
+                if set(sample_spec.bindings) != set(definition["roles"]):
+                    raise ScenarioError(
+                        f"{path}: sampled role aliases must match the actual Q6 bindings"
+                    )
     return Scenario(
         document,
         source,

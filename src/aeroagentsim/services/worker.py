@@ -43,6 +43,7 @@ def execute(
                 return
             try:
                 if operation == "ingress":
+                    validate_injection(active, body)
                     engine, command, stamp, stream_id = submission(body)
                     result = receipt_data(
                         active.submit_live(engine, command, stamp, stream_id=stream_id)
@@ -143,3 +144,62 @@ def execute(
                 error = f"{error + '; ' if error else ''}cleanup: {type(exc).__name__}: {exc}"
         storage.index()
         storage.status(outcome, error=error)
+
+
+def validate_injection(active: RunSession, body: Any) -> None:
+    """Validate the pinned injection manifest before K4 admission, without mutation."""
+    from aeroagentsim.behaviours.records import INJECT
+
+    if not isinstance(body, dict):
+        raise TypeError("ingress: expected mapping")
+    declared: list[tuple[str, dict[str, Any]]] = []
+    for engine_id, engine in active.scenario.engines.items():
+        if engine["plugin"] != "behaviour":
+            continue
+        for package in engine["config"]["packages"]:
+            document = package.get("document", package)
+            declared.extend(
+                (engine_id, point) for point in document.get("injection_points", [])
+            )
+    schema = body.get("schema")
+    if schema != INJECT and schema not in {point["command"] for _, point in declared}:
+        return
+    payload = contract(
+        body.get("payload"), "ingress.payload", {"injection_point", "payload"}
+    )
+    point_id = text(payload["injection_point"], "ingress.payload.injection_point")
+    candidates = [
+        (engine, point)
+        for engine, point in declared
+        if point["id"] == point_id and point["command"] == schema
+    ]
+    if len(candidates) != 1:
+        raise ValueError(
+            "ingress.payload.injection_point: unknown or ambiguous injection point/command"
+        )
+    selected_engine, point = candidates[0]
+    if (
+        body.get("engine", selected_engine) != selected_engine
+        or body.get("target") != point["target"]
+        or point["target"] != selected_engine
+    ):
+        raise ValueError(
+            "ingress.target: injection point belongs to another behaviour engine"
+        )
+    if body.get("stream_id") != point["stream_id"]:
+        raise ValueError(
+            "ingress.stream_id: injection point requires its declared named stream"
+        )
+    streams = [
+        stream
+        for stream in active.scenario.ingress_streams
+        if stream.id == point["stream_id"] and selected_engine in stream.engine_ids
+    ]
+    if len(streams) != 1:
+        raise ValueError(
+            "ingress.stream_id: injection stream is not bound to the behaviour engine"
+        )
+    descriptor = active.scenario.registry.message(point["emits"])
+    if descriptor.kind != "event":
+        raise ValueError("ingress.injection_point: event descriptor required")
+    active.scenario.registry.validate(descriptor.schema, payload["payload"])

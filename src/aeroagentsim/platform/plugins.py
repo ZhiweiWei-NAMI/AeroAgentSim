@@ -68,6 +68,7 @@ class EngineBuild:
 
 Factory = Callable[[EngineBuild], Engine]
 BUILTINS = {
+    "behaviour": "aeroagentsim.engines.behaviour",
     "ingress-consumer": "aeroagentsim.engines.ingress_consumer",
     "langgraph": "aeroagentsim.agents.langgraph",
     "telemetry": "aeroagentsim.engines.telemetry",

@@ -264,6 +264,7 @@ def create_app(
 
     @app.post("/v1/runs/{run_id}/ingress")
     async def live_ingress(run_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Admit typed input after worker-side injection-manifest validation."""
         return await asyncio.to_thread(worker_input_call, run_id, "ingress", body)
 
     @app.post("/v1/runs/{run_id}/watermark")

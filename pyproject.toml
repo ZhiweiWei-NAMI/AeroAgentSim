@@ -63,6 +63,7 @@ aeroagentsim = "aeroagentsim.services.cli:main"
 # satisfied by that sibling checkout; release publication requires a published
 # matching kernel, or an immutable VCS URL configured by the release owner.
 [project.entry-points."aeroagentsim.engines"]
+behaviour = "aeroagentsim.engines.behaviour:build"
 px4_gazebo = "aeroagentsim.adapters.px4_gazebo:build"
 sumo = "aeroagentsim.adapters.sumo:build"
 ns3 = "aeroagentsim.adapters.ns3:build"

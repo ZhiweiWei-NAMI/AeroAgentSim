@@ -5,11 +5,13 @@ from __future__ import annotations
 import threading
 import time
 from pathlib import Path
+from typing import cast
 
 from aerokernel import CommandRequest, IngressReceipt, Journal, Kernel, Stamp
 from aerokernel.engine import Engine, Partition
 from aerokernel.errors import KernelError
 from aerokernel.state import StateView
+from aerokernel.values import canonical_json
 
 from aeroagentsim.models import MotionModel, motion_model
 from aeroagentsim.scenario import Scenario, ScenarioError, load_scenario
@@ -58,8 +60,16 @@ class Simulation:
                 partitions,
                 models,
             )
+            engine: Engine
             try:
-                engine = catalog.build(item["plugin"], build)
+                if item["plugin"] == "predicate" and any(
+                    item["plugin"] == "behaviour" for item in scenario.engines.values()
+                ):
+                    from aeroagentsim.engines.behaviour import RecordedPredicate
+
+                    engine = cast(Engine, RecordedPredicate(build))
+                else:
+                    engine = catalog.build(item["plugin"], build)
             except ScenarioError:
                 raise
             except StopIteration as exc:
@@ -201,6 +211,56 @@ class RunSession:
                 durability=self.scenario.document["outputs"]["durability"],
             ),
         )
+        self.storage._atomic(
+            "manifest.json",
+            {**self.storage.metadata(), "epoch": self.scenario.manifest.epoch},
+        )
+        packages = [
+            p
+            for engine in self.scenario.engines.values()
+            if engine["plugin"] == "behaviour"
+            for p in engine["config"]["packages"]
+        ]
+        if packages:
+            metadata = self.storage.metadata()
+            self.storage._atomic(
+                "manifest.json",
+                {
+                    **metadata,
+                    "epoch": self.scenario.manifest.epoch,
+                    "behaviour_digests": [
+                        {"package": p["digest"], "ir": p["ir_digest"]} for p in packages
+                    ],
+                },
+            )
+            (directory / "behaviour.ir.json").write_bytes(
+                canonical_json(
+                    {"packages": packages, "evaluator": "aerograph-predicate/1"}
+                )
+            )
+        legacy = {
+            name: item
+            for name, item in self.scenario.engines.items()
+            if item["plugin"] in {"workflow", "threshold"}
+        }
+        if legacy:
+            from aeroagentsim.behaviours.compat import (
+                compile_threshold,
+                compile_workflow,
+            )
+
+            (directory / "behaviour.compat.ir.json").write_bytes(
+                canonical_json(
+                    {
+                        name: (
+                            compile_workflow(item["config"])
+                            if item["plugin"] == "workflow"
+                            else compile_threshold(item["config"])
+                        )
+                        for name, item in legacy.items()
+                    }
+                )
+            )
         self.now_ns = 0
         self.closed = False
         self.started = False

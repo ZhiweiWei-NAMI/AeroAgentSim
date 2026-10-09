@@ -1,0 +1,99 @@
+format: aeroagentsim.scenario/v1
+id: nonspatial-task-queue
+registry:
+  snapshot: registry.snapshot.json
+  digest: d0519bdbbb0dde27d8488ee5c0408c87fe6a550f4353b330e2bba344cd64c75a
+  types:
+  - {id: example:Task, parents: [], abstract: false}
+  fields:
+  - id: example.task.phase
+    type: example:Task
+    schema: {type: string, enum: [queued, assigned, completed, interrupted]}
+    metadata: {role: task}
+  messages:
+  - id: example.interrupt
+    kind: event
+    schema: {type: record, members: {reason: {type: string}}, required: [reason], extra: false}
+  - id: example.conflict
+    kind: event
+    schema: {type: record, members: {task: {type: ref}}, required: [task], extra: false}
+entities:
+- {id: task-1, type: example:Task, facts: {example.task.phase: queued}}
+bindings:
+  rules:
+  - {writer: behaviour, type: example:Task, fields: [example.task.phase]}
+  lifecycle:
+  - {controller: behaviour, type: example:Task}
+  commands:
+  - schema: aas.runtime.inject_event
+    target: behaviour
+    at_ns: 5
+    payload: {injection_point: interrupt, payload: {reason: operator-test}}
+engines:
+  behaviour:
+    plugin: behaviour
+    config:
+      produces: [example.task.phase]
+      capabilities: {}
+behaviours:
+- format: aeroagentsim.behaviour-package/v1
+  id: example.queue
+  revision: 1
+  registry: {digest_ref: scenario.registry_digest}
+  evaluator: {version: aerograph-predicate/1, dialect: original}
+  budgets: {max_transitions_per_instance_per_ns: 64, max_instances: 100, max_timers_per_instance: 8, max_creations_per_instance: 8}
+  predicates:
+    ready:
+      profile: committed_reactive/v1
+      roles: {task: 'example:Task'}
+      expression: {op: eq, args: [{field: example.task.phase, role: task, path: []}, {literal: queued}]}
+    interrupted:
+      profile: committed_reactive/v1
+      roles: {task: 'example:Task'}
+      expression: {op: eq, args: [{field: example.task.phase, role: task, path: []}, {literal: interrupted}]}
+  chains:
+    queue:
+      roles: {task: 'example:Task'}
+      trigger: {predicate: ready, edge: while}
+      preconditions: [ready]
+      initial: waiting
+      states: [waiting, assigned, done, interrupted]
+      terminal: [done, interrupted]
+      transitions:
+      - id: assign
+        from: waiting
+        on: {instance: activated}
+        to: assigned
+        priority: 0
+        actions:
+        - {id: assignment, kind: set, entity: {$role: task}, field: example.task.phase, value: assigned}
+        - {id: work, kind: delay, duration_ns: 10}
+      - id: finish
+        from: assigned
+        on: {timer: work}
+        to: done
+        priority: 0
+        actions:
+        - {id: completion, kind: set, entity: {$role: task}, field: example.task.phase, value: completed}
+      - id: interrupt
+        from: assigned
+        on: {event: example.interrupt}
+        to: interrupted
+        priority: 10
+        actions:
+        - {id: interruption, kind: set, entity: {$role: task}, field: example.task.phase, value: interrupted}
+  bindings:
+  - id: task-queue
+    chain: queue
+    match: {task: {is_a: 'example:Task'}}
+    variables: {}
+    multiplicity: once_per_entity
+    on_unbind: retain_until_terminal
+  conflicts:
+  - {id: interrupted-task, roles: {task: 'example:Task'}, predicate: interrupted, edge: entered, emits: example.conflict}
+  injection_points:
+  - {id: interrupt, stream_id: operator, command: aas.runtime.inject_event, target: behaviour, emits: example.interrupt}
+ingress_streams:
+- {id: operator, mapping_id: canonical, engine_ids: [behaviour], initial_watermark_ns: 20, lateness: reject, timeout_s: 1}
+run: {pacing: fast, seed: 7, until_ns: 20, advance_ns: 5}
+outputs: {durability: flush}
