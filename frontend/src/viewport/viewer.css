@@ -63,3 +63,15 @@
 .mission-timeline p { padding: 0 12px 8px; color: #91afc1; }
 .event-strip { height: 7px; position: relative; margin: 4px 5px 0; background: #223c4d88; border-radius: 2px; }
 .event-strip button { position: absolute; width: 4px; height: 7px; padding: 0; border: 0; background: #67d9ea; cursor: pointer; }
+.viewer-presentation { position: absolute; inset: 0 0 48px; display: flex; flex-direction: column; min-height: 0; }
+.presentation-tabs { display: flex; flex: 0 0 auto; gap: 6px; padding: 6px 12px; align-items: center; background: #e7eef3; font-size: 11px; flex-wrap: wrap; }
+.presentation-tabs button { background: #fff; color: #243e50; border: 1px solid #b1c5d0; border-radius: 4px; padding: 6px 10px; cursor: pointer; }
+.presentation-tabs button[aria-pressed="true"] { background: #183d54; color: #fff; }
+.presentation-content { display: flex; flex: 1; min-height: 0; }
+.spatial-pane { position: relative; flex: 1; min-width: 0; }
+.nonspatial-pane { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; padding: 10px; background: #f5f9fc; overflow: hidden; }
+.has-spatial .nonspatial-pane { max-width: 48%; border-left: 1px solid #b7c9d4; }
+.inspector-first .mission-timeline { margin-top: 8px; flex: 0 0 auto; }
+.viewer-stage:has(.inspector-first) > .viewport-caption { bottom: 8px; color: #25465b; background: #dceaf3; }
+.viewer-stage:has(.has-spatial) > .viewport-caption { bottom: 8px; }
+@media (max-width: 950px) { .has-spatial .nonspatial-pane { max-width: 55%; } .presentation-tabs span { display: none; } }

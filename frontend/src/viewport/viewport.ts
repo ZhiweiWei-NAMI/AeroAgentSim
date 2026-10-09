@@ -105,6 +105,7 @@ export class Viewport {
   }
   render(store: FeedStore, ns: string, deltaSeconds: number, trails = true) {
     if (this.disposed) return;
+    const frameStarted = performance.now();
     const chosen = this.mode === 'cinematic' ? this.director.choose(store,ns,deltaSeconds,this.selected) : this.selected;
     this.staticRoot.updateMatrixWorld(true); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.staticRoot.children);
     if(!this.framed && this.layer.positions.size){
@@ -132,6 +133,12 @@ export class Viewport {
     this.container.dataset.spatialCount=String(this.layer.positions.size);
     this.container.dataset.drawCalls=String(this.renderer.info.render.calls);
     this.container.dataset.triangles=String(this.renderer.info.render.triangles);
+    this.container.dataset.geometries=String(this.renderer.info.memory.geometries);
+    this.container.dataset.textures=String(this.renderer.info.memory.textures);
+    this.container.dataset.cameraPosition=JSON.stringify(this.camera.position.toArray());
+    this.container.dataset.cameraTarget=JSON.stringify(this.controls.target.toArray());
+    this.container.dataset.cameraFov=String(this.camera.fov);
+    this.container.dataset.renderMs=String(performance.now()-frameStarted);
     if(deltaSeconds>0&&!document.hidden){
       this.qualityTime+=deltaSeconds;this.qualityFrames++;
       if(this.qualityTime>5){

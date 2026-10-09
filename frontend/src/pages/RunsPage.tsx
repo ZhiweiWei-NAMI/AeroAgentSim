@@ -6,7 +6,7 @@ import { HttpViewerFeed, RunsApi, type RunInfo } from '../feeds/http';
 import { TemporalFeedStore as FeedStore } from '../feeds/temporal-store';
 import { seconds } from '../feeds/format';
 import { PlaybackClock } from '../viewport/clock';
-import { ViewportView } from '../viewport/ViewportView';
+import { ViewerPresentation } from '../viewport/ViewerPresentation';
 import { EntityInspector } from '../viewport/EntityInspector';
 import { entityId, resolveBinding } from '../viewport/bindings';
 import '../viewport/viewer.css';
@@ -97,7 +97,7 @@ export default function RunsPage() {
       {(['pause', 'resume', 'stop'] as const).map(action => <Button key={action} onClick={() => control(action)}>{action}</Button>)}</Space></header>
     {error && <Alert type="error" message={error} />}
     {session && <><main className="viewer-main"><section className="viewer-stage">
-      <ViewportView store={session.store} clock={session.clock} selected={selected} mode="orbit" quality="med" trails={true} commitCut={cut}
+      <ViewerPresentation store={session.store} clock={session.clock} selected={selected} mode="orbit" quality="med" trails={true} commitCut={cut}
         onSelect={setSelected} onTick={tick} onError={error => setError(String(error))} onQuality={() => {}} />
       <div className="viewport-caption" title={`${clock?.ns} ns`}>{store?.entities.size} entities · {store?.header.presentation.length ? store.header.presentation.map(binding=>{const field=store.header.fields.find(field=>field.fieldId===binding.positionField);return `${field?.frame ?? binding.frame} ${field?.unit ?? ''}`.trim();}).join(', ') : 'no spatial binding'} · {clock && seconds(clock.ns,store?.header.start.ns)}</div></section>
       <aside className="viewer-sidebar"><Select aria-label="Entity" showSearch optionFilterProp="label" style={{ width: '100%' }} value={selected && entityId(selected)} options={[...session.store.entities].map(([id, entity]) => ({ value: id, label: entity.key.id }))} onChange={id => setSelected(session.store.entities.get(id)?.key)} />

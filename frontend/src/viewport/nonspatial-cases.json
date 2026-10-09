@@ -1,0 +1,10 @@
+[
+  {"case":"state-exact-zero-at-create","ns":"0","commitCut":1,"expectedValue":0,"edgeActive":true},
+  {"case":"state-exact-false","ns":"1","commitCut":2,"expectedValue":false,"edgeActive":true},
+  {"case":"state-exact-null","ns":"2","commitCut":3,"expectedValue":null,"edgeActive":true},
+  {"case":"state-absent-after-retraction","ns":"3","commitCut":4,"expectedValue":{"absent":true},"edgeActive":true},
+  {"case":"state-still-absent-before-close","ns":"4","commitCut":5,"expectedValue":{"absent":true},"edgeActive":true},
+  {"case":"edge-closed-at-validTo5","ns":"5","commitCut":5,"expectedValue":{"absent":true},"edgeActive":false},
+  {"case":"edge-cancelled-supersedes","ns":"6","commitCut":6,"expectedValue":{"absent":true},"edgeActive":false},
+  {"case":"rewind-to-zero-cut1","ns":"0","commitCut":1,"expectedValue":0,"edgeActive":true}
+]

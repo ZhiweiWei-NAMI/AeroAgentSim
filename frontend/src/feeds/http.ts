@@ -44,7 +44,10 @@ export function validateHeader(value: unknown): RunHeader {
   if (header.contract !== 'aeroagentsim.viewer-feed/v1') throw Error('Unsupported viewer contract');
   string(header.runId); string(header.registryDigest); instant(header.start);
   if (header.end !== undefined) instant(header.end);
-  for (const item of array(header.types)) { const type = object(item); string(type.typeId); string(type.displayName); array(type.ancestors).forEach(string); }
+  for (const item of array(header.types)) {
+    const type = object(item); string(type.typeId); string(type.displayName); array(type.ancestors).forEach(string);
+    if (type.directory !== undefined) string(type.directory);
+  }
   for (const item of array(header.fields)) {
     const field = object(item); string(field.fieldId); string(field.displayName); string(field.valueType);
     if (field.unit !== undefined && field.unit !== null) string(field.unit);
