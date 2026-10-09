@@ -68,8 +68,7 @@ def test_live_dispatch_sixty_seconds(
                 fact = view.field((ref, "aas.p1.order_state"), view.instant)
                 if isinstance(fact, Fact) and thaw(fact.value) == "accepted":
                     completed.append(fact.valid.start.ns / 1e9)
-        for line in simulation.kernel.journal.bytes.splitlines():
-            record = json.loads(line)
+        for record in simulation.kernel.iter_records():
             if record.get("type") == "header":
                 continue
             for message in project(record)["messages"]:

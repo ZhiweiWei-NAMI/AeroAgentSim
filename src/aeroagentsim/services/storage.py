@@ -9,7 +9,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from aerokernel.values import canonical_json
+from aerokernel.compact import expand_record
+from aerokernel.journal_codec import decode_frame
+from aerokernel.journal_stream import RecordReader
+from aerokernel.values import ResourceBudget, canonical_json, parse_json
 
 if TYPE_CHECKING:
     from aeroagentsim.scenario import Scenario
@@ -21,6 +24,17 @@ def _read_index(
 ) -> list[dict[str, int]]:
     """Cache only immutable atomic index versions; WAL records stay authoritative."""
     return json.loads(path.read_text())  # type: ignore[no-any-return]
+
+
+@lru_cache(maxsize=16)
+def _journal_format(
+    path: Path, identity: tuple[int, int, int]
+) -> tuple[int, ResourceBudget]:
+    """Cache the immutable header's format/budget, not its full scenario payload."""
+    with RecordReader(path) as reader:
+        header = next(reader)
+        assert reader.budget is not None
+        return header["major"], reader.budget
 
 
 class RunStorage:
@@ -121,10 +135,23 @@ class RunStorage:
         if not entries:
             return result
         offset = bisect_left(entries, start, key=lambda entry: entry["index"])
-        with (self.directory / "journal.jsonl").open("rb") as stream:
+        journal = self.directory / "journal.jsonl"
+        info = journal.stat()
+        major, budget = _journal_format(
+            journal, (info.st_dev, info.st_ino, entries[0]["length"])
+        )
+        with journal.open("rb") as stream:
             for entry in entries[offset : offset + limit]:
                 stream.seek(entry["offset"])
-                result.append(json.loads(stream.read(entry["length"])))
+                record = parse_json(stream.read(entry["length"]), budget)
+                if (
+                    not isinstance(record, dict)
+                    or record.get("index") != entry["index"]
+                ):
+                    raise ValueError("WAL record differs from its indexed coordinate")
+                if major == 2 and entry["index"] != 0:
+                    record = decode_frame(record, budget)
+                result.append(expand_record(record))
                 if len(result) >= limit:
                     break
         return result

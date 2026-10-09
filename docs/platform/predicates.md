@@ -197,3 +197,120 @@ PYTHONPATH=src /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin
 Replay reported `cut: 51`, `ns: 7000000000`, `incomplete: false`.
 
 Independent headless DSH sessions used the requested `workbuddy/glm-5.3-flash` profile with a 131072 output budget and no effort setting. Each session owned a separate scratch directory. Evaluator and second-review sessions exited with `model stopped: error`; the census session did not finish a deliverable, and the native bridge session still had one failing self-test. The two remaining sessions were stopped after inspecting their artifacts. No unverified GLM code was integrated; the delivered evaluator, census and native differential bridge were independently implemented and checked by the primary agent.
+
+## Incremental sampled evaluation (Q6b, 2026-10-09)
+
+`SampleHistory` caches inputs when its owning context's committed prefix advances;
+steady callbacks never thaw preceding frames again. A cold start or an invocation
+that did not commit reconstructs from real committed frames. Level expressions
+retain only the current input; the previous frame result remains separately
+available for the existing event envelope and change-triggered timers. Frames,
+truth/unknown/invalid-input diagnostics, sample profiles and publication cadence
+are unchanged. `predicate_ast.py` and its authored source pin are unchanged; no
+behaviour adapter change is required for A's concurrent dispatch work.
+
+The reach calculation retains the last frame at/before a window boundary and
+recurses from that **actual anchor** through nested windows/scopes. Pairwise
+operators retain their predecessor. It preserves incomplete startup coverage,
+boundary inclusivity, maximum gaps, scope changes and `count_window`'s distinct
+count range. Sparse histories can require old anchors: the bound is semantic,
+not an arbitrary frame-count cap. Within each retained window the original
+native-compatible evaluator remains the oracle; no continuous interpolation or
+new temporal operators are introduced.
+
+Console integration must opt in with `Journal(..., codec="positional-deflate")`;
+Q6b does not change RunSession/default journal construction. History *data* is
+trimmed, but legacy evidence remains complete. Journal 2.0
+uses `sample_frame_prefix(context_id)` in the original cause position. Raw frame
+causes preserve duplicates; SDK event/timer causes preserve the original first
+occurrence order even if an explicit input overlaps the prefix. Journal 1.x
+retains its explicit cause list. K5 has no public StateView codec capability or
+indexed frame-membership query; the local plugin reads its Store's authoritative
+`allow_frame_prefix` flag and indexed frame coordinates after the public prefix
+access check. It neither changes kernel state nor discovers support by attempting
+an invalid publication. This in-process compatibility access is specific to K5.
+
+The Hypothesis differential compares every sampled prefix against full-history
+truth, diagnostics and level/entered/exited emissions, including nested windows,
+missing values, irregular spacing, scopes and maximum gaps. Existing native-JS
+and real-predicate oracle cases also execute the bounded path. A real dual-codec
+scenario compares every record after cause expansion; another test covers SDK
+prefix/explicit overlap and raw duplicate preservation.
+
+Measured results (same full 63-road-vehicle/8-UAV scenario; output under
+`/tmp/aas-q/q6b/`; benchmark wrappers change only the codec and reference callback):
+
+| Workload | Before | Q6b |
+|---|---:|---:|
+| Level, 1,350 samples: input thaw + AST evaluation | 14.726 ms/evaluation | 10.693 µs/evaluation; 1 input retained |
+| 3 s hold, 1,350 samples at 15 Hz | 16.546 ms/evaluation | 205.712 µs/evaluation; 46 inputs retained |
+| Full scene, 3 s at 15 Hz, sampled callbacks (182) | 0.286 s | 0.170 s |
+| Full scene, 90 s at §12's 1 Hz, sampled callbacks (364) | 1.482 s | 0.245 s |
+| Full scene, 30 s at 15 Hz, sampled callbacks (2,608) | 37.831 s, previously recorded by K5 | 6.692 s, measured here |
+
+Microbenchmarks exclude kernel/SDK overhead. The 30 s historical baseline was not
+rerun and predates K5's final authority-sharing change; the 3 s and 90 s callback
+comparisons use a saved pre-change `Predicate` implementation with the same
+current compiler inputs, adapter and kernel. An initial benchmark failed to
+replace the adapter's inherited implementation and was discarded as a baseline.
+The measured runs overlapped other verification work; they are observations,
+not isolated hardware limits.
+
+Q6b's 30 s run took 508.748 s (RTF 0.05897), with 117.723 s total callbacks,
+including 98.621 s behaviour reactions, a 48.990 MB journal and 1428.082 MiB peak
+RSS. **The joint live targets are not met by Q6b alone.** A's dispatch changes
+are not present here. K5 still expands resolved historical cause lists; input
+caching and raw prefixes do not remove that kernel storage cost. A full 30 s
+replay performance measurement is not claimed.
+
+Streaming expansion proves all **507 records** of the 3 s/15 Hz prefix and all
+**3,980 records** of the complete 90 s/1 Hz chain are equal to the saved reference
+callback run, including ordered causes, frame results, diagnostics, physical
+facts, events and capture results. The same current compiler/provenance inputs
+are used on both sides; this isolates the callback change. The complete chain
+also matches §12's timer timeline (activation 8 s, detection 13 s, award
+15.066666667 s, capture 49.066666667 s, acceptance 49.266666667 s).
+
+
+Two independent DSH GLM audits completed with exit 0 and separate scratch-only
+ownership. Their native-anchor and SDK overlap findings were checked against
+source and tests; set-only cause comparison and a blanket extra-sentinel rule
+were rejected. Model/profile: `workbuddy/glm-5.3-flash`, 131072 output budget,
+no effort parameter. Reports are in `native-audit/` and `evidence-audit/` under
+`/tmp/aas-q/q6b/`.
+
+Q6b final gates ran once from `wt-q6b`:
+
+```bash
+export AEROAGENTSIM_AEROGRAPH_ROOT=/mnt/data2/weizhiwei/AeroGraph
+export PYTHONPATH=src
+export MYPYPATH=../aerokernel
+PY=/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python
+$PY -m ruff check src/aeroagentsim/engines/predicate.py tests/platform/test_predicate_differential.py tests/platform/test_predicate_incremental.py
+$PY -m mypy --strict src/aeroagentsim/engines/predicate.py tests/platform/test_predicate_differential.py tests/platform/test_predicate_incremental.py
+$PY -m pytest -q -p no:cacheprovider -m 'not docker' tests/platform/test_predicate*.py tests/behaviours tests/demos --basetemp=/tmp/aas-q/q6b/pytest-gates
+```
+
+Ruff and strict mypy passed on the three touched Python files. The agreed test
+suite passed **101 tests in 684.42 s**, including both full demo end-to-end cases
+and zero-call replay. No cases were skipped or deselected. No Docker/frontend
+checks ran because neither was touched. The prior targeted runs passed three
+native/window/deadline tests, two evidence tests and one randomized
+truth/diagnostics/emission test. The first evidence run failed because its test
+forgot to pass the selected codec to Journal; the corrected target and the final
+gate passed. No Git commit was made.
+
+Measurement/equivalence commands used the saved reference implementation and
+scratch-only wrappers (no wrapper or copied source is a product dependency):
+
+```bash
+$PY /tmp/aas-q/q6b/perf_run.py --baseline --hz 15 --seconds 3 --out /tmp/aas-q/q6b/before-3s
+$PY /tmp/aas-q/q6b/perf_run.py --hz 15 --seconds 3 --out /tmp/aas-q/q6b/after-3s
+$PY /tmp/aas-q/q6b/perf_run.py --hz 15 --seconds 30 --out /tmp/aas-q/q6b/after-30s
+$PY /tmp/aas-q/q6b/perf_run.py --baseline --hz 1 --seconds 90 --out /tmp/aas-q/q6b/before-90s
+$PY /tmp/aas-q/q6b/perf_run.py --hz 1 --seconds 90 --out /tmp/aas-q/q6b/after-90s
+$PY /tmp/aas-q/q6b/microbench.py
+$PY /tmp/aas-q/q6b/compare_records.py /tmp/aas-q/q6b/before-3s/journal.jsonl /tmp/aas-q/q6b/after-3s/journal.jsonl
+$PY /tmp/aas-q/q6b/compare_records.py /tmp/aas-q/q6b/before-90s/journal.jsonl /tmp/aas-q/q6b/after-90s/journal.jsonl
+$PY /tmp/aas-q/q6b/timeline_check.py
+```

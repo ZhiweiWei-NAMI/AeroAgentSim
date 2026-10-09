@@ -6,6 +6,8 @@ import hashlib
 import json
 import shutil
 import subprocess
+from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +15,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from aeroagentsim.engines.predicate import NATIVE_SHA256, digest, prepare
+from aeroagentsim.engines.predicate import NATIVE_SHA256, SampleHistory, digest, prepare
 from aeroagentsim.engines.predicate_ast import evaluate, validate_ast
 from aeroagentsim.scenario.paths import source_path
 
@@ -50,6 +52,10 @@ def compare(oracle: Path, commands: list[dict[str, Any]]) -> None:
     for command, row in zip(commands, rows, strict=True):
         validate_ast(command["ast"], "differential")
         actual = evaluate(command["ast"], command["history"], command["dialect"])
+        incremental = SampleHistory(command["ast"], command["dialect"])
+        for frame in command["history"]:
+            incremental.append(frame)
+        assert incremental.value() == actual
         assert row["status"] not in {"execution_error", "invalid_input"}, (command, row)
         assert actual == row["value"], (command, actual, row)
 
@@ -278,6 +284,114 @@ def test_exact_ns_above_javascript_safe_integer() -> None:
     ast = {"op": "hold", "args": [literal(True), literal(3)]}
     assert evaluate(ast, [{"t": boundary}, {"t": boundary + 2}], "original") is None
     assert evaluate(ast, [{"t": boundary}, {"t": boundary + 3}], "original") is True
+
+
+@given(
+    st.lists(
+        st.tuples(
+            st.integers(1, 20), st.one_of(st.none(), st.booleans()), st.integers(0, 2)
+        ),
+        min_size=2,
+        max_size=80,
+    ),
+    st.integers(0, 30),
+    st.integers(0, 30),
+)
+@settings(max_examples=60, deadline=None)
+def test_incremental_nested_windows_match_full_history(
+    samples: list[tuple[int, bool | None, int]],
+    outer: int,
+    inner: int,
+) -> None:
+    field = {"field": "b", "role": "subject", "path": []}
+    scope = {"op": "sequence", "args": [{"field": "scope", "role": "subject"}]}
+    asts = [
+        {"op": name, "args": [field, literal(outer), literal(8)], "asScope": scope}
+        for name in (
+            "hold",
+            "all_window",
+            "any_window",
+            "count_window",
+            "stable_window",
+            "entered",
+            "exited",
+            "changed",
+        )
+    ]
+    asts += [
+        {
+            "op": "gt",
+            "args": [field, literal(0)],
+        },  # Native invalid numeric input diagnostics.
+        {
+            "op": "hold",
+            "args": [{"op": "hold", "args": [field, literal(inner)]}, literal(outer)],
+        },
+        {"op": "hold", "args": [{"op": "entered", "args": [field]}, literal(outer)]},
+        {
+            "op": "entered",
+            "args": [{"op": "any_window", "args": [field, literal(inner)]}],
+        },
+    ]
+
+    def outcome(compute: Callable[[], Any]) -> dict[str, Any]:
+        try:
+            value = compute()
+        except (ValueError, TypeError, ArithmeticError) as exc:
+            return {
+                "status": "invalid_input",
+                "value": None,
+                "diagnostics": [{"status": "invalid_input", "reason": str(exc)}],
+            }
+        return {
+            "status": "required_input" if value is None else "known",
+            "value": value,
+            "diagnostics": [
+                {
+                    "status": "required_input",
+                    "reason": "history or operator input undetermined",
+                }
+            ]
+            if value is None
+            else [],
+        }
+
+    for ast in asts:
+        incremental = SampleHistory(ast, "original")
+        full: list[dict[str, Any]] = []
+        time = 0
+        previous: dict[str, Any] | None = None
+        previous_time: int | None = None
+        emitted: list[tuple[str, int | None, int]] = []
+        reference_emitted: list[tuple[str, int | None, int]] = []
+        for advance, value, identity in samples:
+            time += advance
+            frame = {
+                "t": time,
+                "fields": {"subject": {"b": value, "scope": identity}},
+                "parameters": {},
+                "relations": {},
+            }
+            full.append(frame)
+            incremental.append(frame)
+            actual = outcome(incremental.value)
+            reference = outcome(partial(evaluate, ast, full, "original"))
+            assert actual == reference, (ast, full)
+            for result, events in ((actual, emitted), (reference, reference_emitted)):
+                if result["status"] == "known":
+                    if result["value"] is True:
+                        events.append(("level", previous_time, time))
+                    if previous is not None and previous["status"] == "known":
+                        if previous["value"] is False and result["value"] is True:
+                            events.append(("entered", previous_time, time))
+                        if previous["value"] is True and result["value"] is False:
+                            events.append(("exited", previous_time, time))
+            assert emitted == reference_emitted
+            previous, previous_time = reference, time
+    point = SampleHistory({"op": "eq", "args": [field, literal(True)]}, "original")
+    for frame in full:
+        point.append(frame)
+    assert len(point.frames) == 1
 
 
 def test_real_aerograph_golden_predicates(oracle: Path) -> None:

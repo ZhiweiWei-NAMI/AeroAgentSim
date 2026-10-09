@@ -10,6 +10,7 @@ from typing import Any, cast
 
 from aerokernel.codec import decode_record
 from aerokernel.compact import expand_record
+from aerokernel.journal import iter_records
 from aerokernel.values import thaw
 
 from aeroagentsim.observations.artifacts import ArtifactStore
@@ -21,21 +22,21 @@ def read_events(path: Path) -> list[tuple[int, str, dict[str, Any]]]:
     if RunStorage(path).metadata()["status"] != "completed":
         raise ValueError(f"timeline requires a completed run: {path}")
     result = []
-    with (path / "journal.jsonl").open() as stream:
-        for line in stream:
-            record = expand_record(json.loads(line))
-            for item in record.get("items", []):
-                if "proposal" not in item or "message" not in item:
-                    continue
-                message = decode_record(item["message"])
-                if message.kind == "event":
-                    result.append(
-                        (
-                            message.at.ns,
-                            message.schema_id,
-                            cast(dict[str, Any], thaw(message.payload)),
-                        )
+    # Stream either wire codec, then expand compact semantic fact rows.
+    for raw in iter_records(path / "journal.jsonl"):
+        record = expand_record(raw)
+        for item in record.get("items", []):
+            if "proposal" not in item or "message" not in item:
+                continue
+            message = decode_record(item["message"])
+            if message.kind == "event":
+                result.append(
+                    (
+                        message.at.ns,
+                        message.schema_id,
+                        cast(dict[str, Any], thaw(message.payload)),
                     )
+                )
     return result
 
 
@@ -109,12 +110,15 @@ def render(timer: Path, operator: Path) -> str:
     for label, path in (("Timer", timer), ("HTTP", operator)):
         package = json.loads((path / "behaviour.ir.json").read_text())["packages"][0]
         capture = ArtifactStore(path).get("incident-capture-01/episode-0")
-        raw = (path / "journal.jsonl").read_bytes()
+        digest = hashlib.sha256()
+        with (path / "journal.jsonl").open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1 << 20), b""):
+                digest.update(chunk)
         output.extend(
             (
                 "",
                 (
-                    f"{label} run `{path.name}`: journal SHA-256 `{hashlib.sha256(raw).hexdigest()}`; "
+                    f"{label} run `{path.name}`: journal SHA-256 `{digest.hexdigest()}`; "
                     f"PNG SHA-256 `{capture['digest']}`; camera cut `{capture['request']['source_cut']}`."
                 ),
                 f"Pinned package `{package['digest']}`, IR `{package['ir_digest']}`.",

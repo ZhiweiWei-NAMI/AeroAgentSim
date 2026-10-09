@@ -14,7 +14,7 @@ from typing import Any, cast
 import pytest
 from aerokernel.codec import decode_record
 from aerokernel.compact import expand_record
-from aerokernel.journal import replay
+from aerokernel.journal import iter_records, replay
 from aerokernel.values import thaw
 from fastapi.testclient import TestClient
 
@@ -28,26 +28,30 @@ from aeroagentsim.services.app import create_app
 from aeroagentsim.services.storage import RunStorage
 from tests.demos.conftest import SCENARIO
 
+# Full-scene runs plus engine-free replay take minutes; marked slow so fast
+# suites can deselect them, while the final gate still collects this module.
+pytestmark = pytest.mark.slow
+
 
 def trace(path: Path) -> list[tuple[int, str, dict[str, Any]]]:
     result = []
-    with (path / "journal.jsonl").open() as stream:
-        for line in stream:
-            record = expand_record(json.loads(line))
-            for item in record.get("items", []):
-                if "message" in item and "proposal" in item:
-                    message = decode_record(item["message"])
-                    if message.kind == "event" and (
-                        message.schema_id.startswith("traffic.")
-                        or message.schema_id.startswith("aas.behaviour.")
-                    ):
-                        result.append(
-                            (
-                                message.at.ns,
-                                message.schema_id,
-                                cast(dict[str, Any], thaw(message.payload)),
-                            )
+    # Stream codec expansion, then expand compact fact rows for diagnostics.
+    for raw in iter_records(path / "journal.jsonl"):
+        record = expand_record(raw)
+        for item in record.get("items", []):
+            if "message" in item and "proposal" in item:
+                message = decode_record(item["message"])
+                if message.kind == "event" and (
+                    message.schema_id.startswith("traffic.")
+                    or message.schema_id.startswith("aas.behaviour.")
+                ):
+                    result.append(
+                        (
+                            message.at.ns,
+                            message.schema_id,
+                            cast(dict[str, Any], thaw(message.payload)),
                         )
+                    )
     return result
 
 
@@ -155,7 +159,9 @@ def assert_chain(path: Path, *, source: str) -> None:
     footprint = poses["uav.bravo"][2] * math.tan(
         math.radians(record["request"]["camera"]["fov"] / 2)
     )
-    assert math.dist(poses["uav.bravo"][:2], poses["vehicle.incident.a"][:2]) < footprint
+    assert (
+        math.dist(poses["uav.bravo"][:2], poses["vehicle.incident.a"][:2]) < footprint
+    )
     assert events["traffic.capture.accepted"][0]["png_sha256"] == record["digest"]
     assert RunStorage(path).metadata()["status"] == "completed"
 
@@ -197,11 +203,12 @@ def assert_replay(path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     restored = replay(path / "journal.jsonl")
     # Kernel replay already checks canonical encodings against its reconstructed
     # commits. Compare every expanded record, including all physical facts/causes,
-    # without repeating those costly canonical serialization passes here.
-    with (path / "journal.jsonl").open() as stream:
-        assert json.loads(next(stream)) == restored.header
-        for line, record in zip(stream, restored.records, strict=True):
-            assert expand_record(json.loads(line)) == record
+    # without repeating those costly canonical serialization passes here. The
+    # header is the first yielded record; the rest stream from iter_records.
+    stream = iter_records(path / "journal.jsonl")
+    assert next(stream) == restored.header
+    for record, replayed in zip(stream, restored.iter_records(), strict=True):
+        assert expand_record(record) == replayed
     assert not restored.incomplete
 
 

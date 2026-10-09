@@ -588,7 +588,176 @@ TMPDIR=/tmp/aas-q/a/a3/tmp "$task_a3_python" -m pytest -q -p no:cacheprovider \
   -m 'not docker and not llm' --basetemp=/tmp/aas-q/a/a3/full-gate --durations=5
 ```
 
-## 13. LIVE decision profile
+## 14. A4 indexed dispatch and journal 2.0 migration
+
+Measured against platform `1af8965` and the installed, unchanged kernel
+`0e10c1f`. Q6b is **not merged into this worktree**: this measures A4's part,
+not the joint incremental-evaluator result. The shipped scenario remains 1 Hz;
+the benchmark explicitly selects 15 Hz for both physical owners and retains all
+63 road vehicles and 8 UAVs.
+
+Discovery now retains memberships per binding/conflict rule and invalidates joins
+through selector field/type, relation and lifecycle indexes. Instance dispatch
+indexes the current state's predicate dependencies by exact entity generation
+and field, relations, sampled-context identity, and event schema/role correlation.
+Timers and command receipts address their owning instance directly. Continuations
+and unpublished instances retain explicit wakeups. Candidate sorting, binding
+identities and cleanup policies are unchanged.
+
+Reactive guards execute once per immutable invocation cut. Reusing a result
+appends the same ordered fact/relation read evidence that another evaluation
+would have read. The committed `predicate_evaluated` subscription/adoption route
+remains intact, including sampled frames; it is not replaced with private truth.
+Unauthored lifecycle notifications remain delivered/journaled without allocating
+a mutable payload copy. No evaluation publications, diagnostics, causes, actors
+or physics/publication steps were dropped.
+
+### Individual A4 measurements
+
+Both runs use positional/DEFLATE, a single 30-second grant, and include loading,
+binding, bootstrap and close. Baseline sources were copied to A4 scratch before
+editing; the baseline uses this worktree's scenario paths and the installed K5.
+Values are measured, not extrapolated:
+
+| Full actor set, 15 Hz / 30 s | Before dispatch indexing | After |
+|---|---:|---:|
+| Behaviour reactions (1,358 calls) | 90.274 s | 6.852 s |
+| All reset/advance/react callbacks | 139.164 s | 52.997 s |
+| Q6 sampled callbacks | 37.773 s | 34.812 s |
+| Wall / CPU | 632.785 / 632.249 s | 552.488 / 552.402 s |
+| RTF | 0.04741 | 0.05430 |
+| Journal MB (decimal) | 52.936 | 52.936 |
+| Peak RSS MiB | 1,447.5 | 1,447.6 |
+
+Behaviour reaction time decreased **92.4% (13.2×)**. Other remaining callback
+costs include road advancement 10.276 s and the four sampled partitions 34.812 s.
+Even excluding every sampled callback leaves 18.185 s of callbacks, above the
+joint 15 s allowance; Q6b alone cannot be assumed to close that remaining gap.
+Approximately 499.5 s remains outside reset/advance/react callbacks. The joint
+15 s callback, 15 MB journal, 400 MB RSS and 30 s replay targets are **not met**
+by A4 alone. Replay of the 30-second journal was still running beyond 30 wall
+seconds and was interrupted; no completed replay cut or replay peak RSS was
+captured. K5's documented flat resolved historical causes/payload costs remain;
+A4 does not edit the kernel or the concurrent Q6 evaluator.
+
+The three-second 15 Hz prefix expands identically to the A3 1.x reference:
+**507 records equal**, after normalizing only the declared 2.0 header's codec
+and semantic-version fields. The final 30-second before/after journals are
+**byte-identical**, verified with `cmp`, all 8,423 lines, SHA-256
+`a024835a97e02df12f2bc9a9445176ecc8106aea416a87efa747f4a119466d0c`.
+This stronger same-codec result also preserves every expanded ordered cause.
+The redundant streaming 30-second comparison was stopped once byte equality
+was proven; it is not claimed as a completed expanded-record pass.
+The full shipped **90-second, 1 Hz timer chain** also expands identically to A3:
+all **4,069 records equal**, including facts, evaluations, diagnostics, transitions,
+frame publications and ordered causes, with only the declared codec header
+normalized. Consequently the §12 event timeline is unchanged. Its new-codec
+journal is 13,262,700 bytes; its PNG retains SHA-256
+`5d04e0a9ffd8abb490c5500b0476e5113459373f8848fe73d3aca5aa8943bf98`.
+This is not a 90-second/15 Hz performance measurement.
+The full HTTP-injected 90-second journal likewise expands identically to A3:
+**4,086 records equal**; its journal is 13,072,248 bytes and its PNG retains
+SHA-256 `3dc27e56a00f70389252f7503f342ca60d071c5d86726af07232c9edead92f9f`.
+
+### Readers and operation
+
+`Simulation` defaults to `Journal(codec="positional-deflate")`; an explicitly
+supplied Journal retains its selection. `RunSession` defaults to 2.0 and accepts
+`journal_codec="json"` for a legacy writer. Its manifest pins the actual codec,
+major/minor and codec identifier from the constructed kernel header. This is a
+declared wire-codec change; evaluator and behaviour versions remain unchanged.
+
+Storage reads seek directly to indexed byte ranges, use the kernel's validated
+header budget/codec, and expand positional frames and compact fact rows. Existing
+indexes require no rewrite. Projector/feed and subject reconstruction consume
+those semantic records through their existing projection hooks. Timeline, capture
+scene and LangGraph transcript readers now stream codec expansion; replay tests
+use `kernel.iter_records()` instead of materializing `kernel.records`. Timeline
+hashing also streams bytes. An actual A2-era 1.x run passed header/feed projection
+and indexed-page equality checks at records 1, 100 and 4,000.
+
+Both traffic-accident end-to-end tests carry the already-registered `slow` marker.
+For everyday checks use `-m 'not docker and not llm and not slow'`; the final
+gate retains `-m 'not docker and not llm'`, so it includes both full chains.
+Reproduce the benchmark with §12's environment:
+
+```bash
+"$task_a2_python" scenarios/demos/traffic-accident/profile_runtime.py \
+  --hz 15 --seconds 30 --codec positional-deflate --out /tmp/aas-q/a/a4/reproduce-30
+"$task_a2_python" scenarios/demos/traffic-accident/profile_runtime.py \
+  --replay /tmp/aas-q/a/a4/reproduce-30/journal.jsonl
+```
+
+Raw measurements/drafts remain in `/tmp/aas-q/a/a4/`. Two actual concurrent GLM
+writers used separate ownership with `workbuddy/glm-5.3-flash`, 131072 output
+budget and no effort. Their sandbox allowed scratch drafts rather than direct
+worktree edits. Both sessions and drafts were reviewed and stopped within the
+bounded task window. Storage budget-name shadowing, unnecessary codec annotations
+in integer offset indexes, and missing compact-row expansion were corrected
+during integration; their draft tests were replaced with targeted real-kernel
+tests. No unverified GLM test result is claimed.
+
+### A4 validation and exact gates
+
+Final targeted dispatch/projection tests: **24 passed in 20.81 s**.
+Codec/ingress/agent targets: **53 passed, 1 deselected in 59.78 s**.
+Ruff and strict mypy passed on the 15 changed Python files, plus the subsequently
+corrected service-review fixture file (16 files total).
+
+The full gate ran **once**: **626 passed, 2 failed, 6 deselected in 1410.11 s**.
+Both failures were `test_h6_restart_recovers_complete_wal_prefix` and
+`test_h4_sse_interleaving_cannot_lose_final_tail`: their synthetic WAL omitted its
+header/resource budgets and the new reader correctly rejected it. The fixture
+now uses an actual committed kernel WAL prefix. The corrected module passed
+**4/4 in 3.58 s**; the full suite was not rerun. The first fixture retest omitted
+the AeroGraph environment variable: the two corrected cases passed, while its
+other two cases had setup errors; the correctly configured retest passed all four.
+This is not presented as an uninterrupted green full-gate run.
+
+The full gate includes both `slow` end-to-end tests: timer CLI chain with zero
+evaluator/model/renderer calls on replay, and the live HTTP-injection chain.
+Their durations were 576.40 s and 179.52 s. Docker/LLM tests were excluded by the
+agreed expression; no frontend files changed, so frontend gates were not run.
+No kernel files were changed and no commit was created. Exact commands:
+
+```bash
+task_a4_python=/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python
+task_a4_files=(
+  src/aeroagentsim/behaviours/dispatch.py src/aeroagentsim/engines/behaviour.py
+  src/aeroagentsim/platform/simulation.py src/aeroagentsim/services/{storage,artifacts}.py
+  src/aeroagentsim/agents/langgraph.py
+  scenarios/demos/traffic-accident/{profile_runtime,timeline}.py
+  tests/platform/{test_journal_codec,test_realtime,test_realtime_streams_example}.py
+  tests/behaviours/test_dispatch.py tests/demos/traffic_accident/test_end_to_end.py
+  tests/agents/{test_decision,test_llm}.py
+)
+PYTHONPATH=src "$task_a4_python" -m ruff check "${task_a4_files[@]}"
+PYTHONPATH=src MYPYPATH=src:../aerokernel:. "$task_a4_python" \
+  -m mypy --strict --explicit-package-bases "${task_a4_files[@]}"
+PYTHONPATH=src "$task_a4_python" -m ruff check tests/platform/test_service_review.py
+PYTHONPATH=src MYPYPATH=src:../aerokernel:. "$task_a4_python" \
+  -m mypy --strict --explicit-package-bases tests/platform/test_service_review.py
+export PYTHONPATH=src
+export AEROAGENTSIM_AEROGRAPH_ROOT=/mnt/data2/weizhiwei/AeroGraph
+export AEROAGENTSIM_CHROMIUM=/home/weizhiwei/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome
+export AEROAGENTSIM_FFMPEG=/usr/share/anaconda3/bin/ffmpeg
+"$task_a4_python" -m pytest -q -p no:cacheprovider \
+  tests/behaviours/test_dispatch.py tests/behaviours/test_runtime.py \
+  tests/behaviours/test_receipts.py tests/behaviours/test_projection.py \
+  -m 'not docker and not llm'
+"$task_a4_python" -m pytest -q -p no:cacheprovider \
+  tests/platform/test_journal_codec.py tests/platform/test_realtime.py \
+  tests/platform/test_realtime_streams_example.py tests/agents/test_decision.py \
+  tests/agents/test_langgraph_example.py -m 'not docker and not llm'
+TMPDIR=/tmp/aas-q/a/a4/tmp "$task_a4_python" -m pytest -q -p no:cacheprovider \
+  tests/platform tests/adapters tests/agents tests/packs tests/authoring \
+  tests/integrations tests/behaviours tests/demos tests/observations \
+  -m 'not docker and not llm' --basetemp=/tmp/aas-q/a/a4/full-gate --durations=5
+"$task_a4_python" -m pytest -q -p no:cacheprovider \
+  tests/platform/test_service_review.py -m 'not docker and not llm'
+```
+
+## 15. LIVE decision profile
 
 Use `--engine-profile scenarios/demos/traffic-accident/profiles/live-llm.yaml`
 with the CLI in §12. This selects the journaled LangGraph plugin and the local

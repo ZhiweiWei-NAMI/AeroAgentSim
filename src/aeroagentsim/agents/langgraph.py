@@ -14,6 +14,7 @@ from typing import Any, cast
 
 from aerokernel import CommandRequest, Dependency, Partition
 from aerokernel.errors import KernelError
+from aerokernel.journal import iter_records
 from aerokernel.relations import RelationDependency
 from aerokernel.sdk import ContextEngine, EngineContext
 from aerokernel.values import thaw
@@ -441,8 +442,7 @@ class LangGraphDecision(ContextEngine):
 def journal_decisions(data: bytes) -> dict[str, list[dict[str, Any]]]:
     """Read graph transcripts from the canonical WAL, never a sidecar log."""
     result: dict[str, list[dict[str, Any]]] = {}
-    for line in data.splitlines():
-        record = json.loads(line)
+    for record in iter_records(data):
         if record.get("type") == "header":
             continue
         for message in project(record)["messages"]:

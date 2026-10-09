@@ -12,8 +12,9 @@ from unittest.mock import patch
 
 import pytest
 from aerokernel import CommandRequest, IngressReceipt, Instant, Stamp
+from aerokernel.compact import expand_record
 from aerokernel.errors import KernelError
-from aerokernel.journal import replay
+from aerokernel.journal import iter_records, replay
 from fastapi.testclient import TestClient
 
 from aeroagentsim.platform import RunSession, Simulation
@@ -115,7 +116,11 @@ def test_live_policy_receipt_seal_and_offline_replay(
             == lateness
         )
         assert header["ingress_policy"] is None
-        assert header["minor"] == 3
+        assert (header["major"], header["minor"], header["semantic_version"]) == (
+            2,
+            0,
+            3,
+        )
         assert header["ingress_streams"][0]["fields"]["id"] == "sensor"
 
 
@@ -264,8 +269,8 @@ def test_http_live_ingress_and_replay(realtime: dict[str, Any], tmp_path: Path) 
             time.sleep(0.01)
         directory = tmp_path / "runs" / run_id
         records = [
-            json.loads(line)
-            for line in (directory / "journal.jsonl").read_text().splitlines()
+            expand_record(record)
+            for record in iter_records(directory / "journal.jsonl")
         ]
         with (
             patch(

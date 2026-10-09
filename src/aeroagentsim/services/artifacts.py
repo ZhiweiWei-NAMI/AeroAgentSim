@@ -8,12 +8,15 @@ import copy
 import json
 from collections.abc import Callable
 from dataclasses import replace
+from itertools import islice
 from pathlib import Path
 from typing import Any
 
 import yaml
 from aerokernel.codec import decode_record
 from aerokernel.compact import expand_record
+from aerokernel.errors import KernelError
+from aerokernel.journal import iter_records
 from aerokernel.values import canonical_json
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
@@ -50,27 +53,25 @@ def mount_artifacts(
             # A renderer runs inside an advance, before worker index refresh.
             # The owner has already validated/registered this committed cut.
             # Read through exactly that issued prefix without mutating indexes.
-            with (path / "journal.jsonl").open("rb") as stream:
-                for expected in range(capture.source_cut.index + 1):
-                    line = stream.readline()
-                    if not line.endswith(b"\n"):
+            seen = -1
+            for expected, record in enumerate(
+                islice(
+                    iter_records(path / "journal.jsonl"), capture.source_cut.index + 1
+                )
+            ):
+                seen = expected
+                if record["index"] != expected:
+                    raise ValueError("capture journal prefix has an index gap")
+                if expected == capture.source_cut.index:
+                    decoded = expand_record(record)
+                    if decode_record(decoded["instant"]) != capture.source_cut.instant:
                         raise ValueError(
-                            "requested committed prefix is not readable yet"
+                            "capture source cut differs from the journal instant"
                         )
-                    record = json.loads(line)
-                    if record["index"] != expected:
-                        raise ValueError("capture journal prefix has an index gap")
-                    if expected == capture.source_cut.index:
-                        decoded = expand_record(record)
-                        if (
-                            decode_record(decoded["instant"])
-                            != capture.source_cut.instant
-                        ):
-                            raise ValueError(
-                                "capture source cut differs from the journal instant"
-                            )
-                    if expected > 0:
-                        commits.append(project(record, subjects=subjects))
+                if expected > 0:
+                    commits.append(project(record, subjects=subjects))
+            if seen != capture.source_cut.index:
+                raise ValueError("requested committed prefix is not readable yet")
             return {
                 "contract": "aeroagentsim.capture-scene/v1",
                 "service_run_id": run_id,
@@ -80,7 +81,7 @@ def mount_artifacts(
             }
         except FileNotFoundError as exc:
             raise HTTPException(404, "Unknown capture request or journal") from exc
-        except (ValueError, TypeError, KeyError, OSError) as exc:
+        except (ValueError, TypeError, KeyError, OSError, KernelError) as exc:
             raise HTTPException(409, str(exc)) from exc
 
     @app.get("/v1/runs/{run_id}/artifacts")
