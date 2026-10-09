@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { EngineConfigForm } from './EngineConfigForm';
+import { Details } from '../console/Details';
 
 export interface EngineDescriptor {
   id: string; available: boolean; description: string; error?: string; config_schema?: unknown;
@@ -35,7 +36,7 @@ export function PluginOwnershipPanel({ scenario, engines, onChange }: Props) {
     <label>Replace partition <select aria-label="Profile partition" value={partition} onChange={event => { setPartition(event.target.value); setPlugin(''); setConfig({}); setError(''); }}><option value="">Select</option>{partitions.map(([id]) => <option key={id}>{id}</option>)}</select></label>
     <label>Plugin <select aria-label="Replacement profile" value={plugin} onChange={event => { setPlugin(event.target.value); setConfig({}); }}><option value="">Select installed profile</option>{engines.map(item => <option key={item.id} value={item.id} disabled={!item.available}>{item.id} {item.available ? '' : '· unavailable'}</option>)}</select></label>
     <label>Required command IDs <input aria-label="Required capabilities" value={required} onChange={event => setRequired(event.target.value)} placeholder="Comma-separated schema IDs" /></label>
-    {descriptor && <><p>{descriptor.description}</p><EngineConfigForm key={`${partition}/${plugin}`} schema={descriptor.config_schema} value={config} onChange={setConfig} onValidityChange={setConfigValid} /><details><summary>Installed capability descriptor</summary><pre>{descriptor.capability_descriptor ? JSON.stringify(descriptor.capability_descriptor, null, 2) : 'Not advertised by this plugin'}</pre></details></>}
+    {descriptor && <><p>{descriptor.description}</p><EngineConfigForm key={`${partition}/${plugin}`} schema={descriptor.config_schema} value={config} onChange={setConfig} onValidityChange={setConfigValid} /><Details title="Installed capability descriptor" buttonLabel="Capability descriptor"><pre>{descriptor.capability_descriptor ? JSON.stringify(descriptor.capability_descriptor, null, 2) : 'Not advertised by this plugin'}</pre></Details></>}
     {checks.map(issue => <p key={issue}>{issue}</p>)}
     <button disabled={!partition || !descriptor?.available || !configValid || contradictory.length > 0} onClick={() => { try { onChange({ ...scenario, engines: { ...scenario.engines, [partition]: { ...scenario.engines[partition], plugin, config } } }); setError(''); } catch (problem) { setError(String(problem)); } }}>Apply profile to draft</button>
     {error && <p role="alert">{error}</p>}

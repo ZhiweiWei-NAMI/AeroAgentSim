@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { mapping } from '../behaviours/model';
 import { BehaviourEditor } from '../behaviours/BehaviourEditor';
 import { StudioApi, type TypeRow, type Workspace } from './api';
+import { Details } from '../console/Details';
 
 type Package = Record<string, unknown>;
 interface Props {
@@ -24,7 +25,7 @@ export function BehavioursPanel({ api, workspace, scenario, types, fields, relat
       const next = { format: 'aeroagentsim.behaviour-package/v1', id: '', revision: 1, registry: {digest_ref:'scenario.registry_digest'}, evaluator: {version:'aerograph-predicate/1'}, budgets: {max_transitions_per_instance_per_ns:64,max_instances:10000}, predicates:{}, chains:{}, bindings:[], conflicts:[], injection_points:[] };
       onChange({ ...scenario, behaviours: [...packages, next] }); setIndex(packages.length); setErrors([]); setResult(undefined);
     }}>Add behaviour package</button>
-    {mapping(value) && 'path' in value ? <div><p>Referenced package {String(value.path)} · content hash {String(value.sha256)}</p><button onClick={()=>void perform(async()=>{await save();const output=await api.request<{inline_package:Package|null;inline_errors:string[]}>(`${base}/behaviours/${index}/export`);if(!mapping(output.inline_package))throw Error(`Pinned package cannot become inline: ${output.inline_errors.join('; ')}`);change(output.inline_package);})}>Edit pinned package as inline draft</button></div> : mapping(value) ? <BehaviourEditor key={`${workspace.id}/${index}`} value={value} onChange={change} capabilities={Object.keys(scenario.engines?.behaviour?.config?.capabilities??{})} events={(scenario.registry?.messages??[]).filter((row:Record<string,unknown>)=>row.kind==='event').map((row:Record<string,unknown>)=>String(row.id))} types={types} fields={fields} relations={relations} errors={[...errors,...issues]} onValidityChange={onValidityChange}
+    {mapping(value) && 'path' in value ? <div><p>Referenced package {String(value.path)}</p><Details title="Pinned reference" buttonLabel="Reference details"><pre>{JSON.stringify({ path: value.path, sha256: value.sha256 }, null, 2)}</pre></Details><button onClick={()=>void perform(async()=>{await save();const output=await api.request<{inline_package:Package|null;inline_errors:string[]}>(`${base}/behaviours/${index}/export`);if(!mapping(output.inline_package))throw Error(`Pinned package cannot become inline: ${output.inline_errors.join('; ')}`);change(output.inline_package);})}>Edit pinned package as inline draft</button></div> : mapping(value) ? <BehaviourEditor key={`${workspace.id}/${index}`} value={value} onChange={change} capabilities={Object.keys(scenario.engines?.behaviour?.config?.capabilities??{})} events={(scenario.registry?.messages??[]).filter((row:Record<string,unknown>)=>row.kind==='event').map((row:Record<string,unknown>)=>String(row.id))} types={types} fields={fields} relations={relations} errors={[...errors,...issues]} onValidityChange={onValidityChange}
       onValidate={() => void perform(async () => {
         await save();
         const validation = await api.request<{valid:boolean;errors:Array<{path:string;message:string}>}>(`${base}/behaviours/${index}/validate`, {});
@@ -34,7 +35,7 @@ export function BehavioursPanel({ api, workspace, scenario, types, fields, relat
         await save(); await api.request(`${base}/behaviours`, {index,yaml}); onApply(await api.request<Workspace>(base)); setErrors([]); setResult(undefined);
       }}
       onExportYaml={async () => { await save(); const output = await api.request<{yaml:string}>(`${base}/behaviours/${index}/export`); return output.yaml; }} /> : value!==undefined&&<p role="alert">Unsupported package entry retained: {JSON.stringify(value)}. Edit the Scenario JSON.</p>}
-    {result !== undefined && <details open><summary>Server package validation</summary><pre>{JSON.stringify(result, null, 2)}</pre></details>}
+    {result !== undefined && <Details title="Server package validation" buttonLabel="Server package validation"><pre>{JSON.stringify(result, null, 2)}</pre></Details>}
     {error && <p role="alert">{error}</p>}
   </section>;
 }

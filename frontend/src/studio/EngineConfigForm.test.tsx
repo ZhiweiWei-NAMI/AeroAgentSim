@@ -49,6 +49,7 @@ describe('engine configuration descriptors', () => {
   it.each([undefined, { type: 'object', properties: { rows: { type: 'array', items: { type: 'number' } } } }, { type: 'object', oneOf: [] }])('retains the raw editor for absent/unsupported descriptors (%j)', schema => {
     const changed = vi.fn(), validity = vi.fn();
     render(<Editor schema={schema} changed={changed} validity={validity} />);
+    fireEvent.click(screen.getByTestId('details-trigger'));
     const raw = screen.getByLabelText('Plugin configuration JSON');
     fireEvent.change(raw, { target: { value: '{bad json' } });
     expect(screen.getByRole('alert')).toBeInTheDocument();

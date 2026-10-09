@@ -1,3 +1,4 @@
+import { Details } from '../console/Details';
 import { useEffect, useRef, useState } from 'react';
 
 type Config = Record<string, unknown>;
@@ -85,14 +86,14 @@ export function EngineConfigForm({ schema, value, onChange, onValidityChange }: 
   return <div className="engine-config-form">
     {form ? <Fields schema={schema} value={value} path="Config" onChange={onChange} /> : <>
       <p>{schema === undefined ? 'This plugin has no configuration descriptor. Edit its configuration as JSON.' : 'This descriptor needs features outside the form editor. Edit its configuration as JSON.'}</p>
-      <textarea aria-label="Plugin configuration JSON" rows={8} value={raw} onChange={e => {
+      <Details title="Plugin configuration JSON"><textarea aria-label="Plugin configuration JSON" rows={8} value={raw} onChange={e => {
         const text = e.target.value; setRaw(text);
         try {
           const next: unknown = JSON.parse(text);
           if (!object(next)) throw Error('Plugin configuration must be a JSON object');
           sent.current = next; setParseError(''); onChange(next);
         } catch (error) { setParseError(String(error)); }
-      }} />
+      }} /></Details>
     </>}
     {errors.length > 0 && <div role="alert">{errors.map(error => <p key={error}>{error}</p>)}</div>}
   </div>;

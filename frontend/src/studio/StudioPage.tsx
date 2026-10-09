@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Collapse, Input, InputNumber, Select, Space, Table, Tabs, Tag } from 'antd';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { useConsoleNotice } from '../console/Notifications';
+import { PageState } from '../console/PageState';
 import { useI18n } from '../i18n/I18nProvider';
 import { StudioApi, type Workspace, type TypeRow, type TypeDetail } from './api';
 import { ScenePreview } from './ScenePreview';
@@ -10,6 +12,8 @@ import { TrafficEntityTable } from './TrafficEntityTable';
 import { EngineConfigForm } from './EngineConfigForm';
 import { BehavioursPanel } from './BehavioursPanel';
 import { PluginOwnershipPanel, type EngineDescriptor } from './PluginOwnershipPanel';
+import { Details } from '../console/Details';
+import { PageHeader } from '../console/PageState';
 import { parseAuthoringJson } from '../feeds/lossless-json';
 import './studio.css';
 
@@ -19,6 +23,8 @@ const customTypes: TypeRow[] = [
   { id: 'aas:StudioAirspace', name: 'Studio airspace / 空域', parents: ['oo:ModelObject'], abstract: false },
 ];
 export default function StudioPage() {
+  const location=useLocation();
+  const notify=useConsoleNotice();
   const { locale, setLocale } = useI18n();
   const m = (en: string, zh: string) => locale === 'zh-CN' ? zh : en;
   const base = new URLSearchParams(location.search).get('api') ?? window.location.origin;
@@ -36,6 +42,8 @@ export default function StudioPage() {
   const [newConfig, setNewConfig] = useState<Record<string, unknown>>({}), [newConfigValid, setNewConfigValid] = useState(true);
   const [editingPartition, setEditingPartition] = useState(''), [editingConfigValid, setEditingConfigValid] = useState(true);
   const [behaviourValid,setBehaviourValid]=useState(true);
+  // StrictMode remounts effects twice in development; guard duplicate demo template creations.
+  const launchRequest = useRef<string>();
   const behaviourValidity=useCallback((valid:boolean)=>{setBehaviourValid(valid);if(!valid)setValidation(undefined);},[]);
   const selectedPlugin = catalog?.engines.find(item => item.id === plugin);
   const engineDraft = useMemo(() => {
@@ -52,7 +60,7 @@ export default function StudioPage() {
   const editedEngine = engineDraft.engines?.[editingPartition];
   const editedPlugin = catalog?.engines.find(item => item.id === editedEngine?.plugin);
   const apply = (w: Workspace) => { setEngineDirty(false); setBindingDirty(false); setWorkspace(w); setDocument(JSON.stringify(w.scenario, null, 2)); setEngineJson(JSON.stringify(w.scenario.engines, null, 2)); setBindingJson(JSON.stringify(w.scenario.bindings, null, 2)); setName(w.name); setValidation(w.validation); setRunId(''); if (w.region) { setExtract(w.region.extract); setBounds(w.region.bounds); setAlt(w.region.alt); setLevelHeight(w.region.level_height_m); } };
-  const action = async (fn: () => Promise<void>) => { setBusy(true); setError(''); try { await fn(); } catch (e) { setError(String(e)); } finally { setBusy(false); } };
+  const action = async (fn: () => Promise<void>) => { setBusy(true); setError(''); try { await fn(); } catch (e) { setError(String(e)); notify({kind:'error',message:String(e)}); } finally { setBusy(false); } };
   const path = (suffix = '') => `/v1/studio/workspaces/${workspace!.id}${suffix}`;
   const parsed = () => { const doc = parseAuthoringJson(document) as Record<string, any>; if(engineDirty) doc.engines=parseAuthoringJson(engineJson) as Record<string, any>; if(bindingDirty) doc.bindings=parseAuthoringJson(bindingJson); return doc; };
   const save = async () => { if(!behaviourValid)throw Error('Correct invalid behaviour JSON before saving'); if (engineDraft.error || editedEngine && !editingConfigValid) throw Error(engineDraft.error || 'Correct the selected engine configuration before saving'); const w = await api.request<Workspace>(path(), { name, scenario: parsed() }); apply(w); return w; };
@@ -61,20 +69,33 @@ export default function StudioPage() {
   const changeKind = (value: string) => { setKind(value); setType(value === 'entity' ? 'oo:UAV' : value === 'facility' ? 'aas:StudioFacility' : 'aas:StudioAirspace'); setEngine(value === 'entity' ? 'kinematic' : 'workflow'); setEntityId(value === 'entity' ? 'uav-1' : value === 'facility' ? 'facility-1' : 'airspace-1'); setPosition([0, 0, value === 'entity' ? 10 : 0]); };
   const chooseType = async (id: string) => { setType(id); if (id.startsWith('aas:Studio')) { const doc = parsed(); setDetail({ id, parents: ['oo:ModelObject'], abstract: false, fields: doc.registry.fields.filter((f: any) => f.type === 'oo:ModelObject' || f.type === id).map((f: any) => ({...f, declaring_type:f.type})) }); } else setDetail(await api.request<TypeDetail>(`/v1/studio/types/${encodeURIComponent(id)}`)); };
   const place = async () => { await save(); const body: any = {id: entityId, type, kind, engine, position, facts: JSON.parse(facts)}; if (kind === 'airspace') Object.assign(body, {polygon: JSON.parse(polygon), floor_m: floor, ceiling_m: ceiling}); apply(await api.request<Workspace>(path('/place'), body)); setEntityId(entityId.replace(/\d+$/, n => String(Number(n) + 1))); };
-  const validate = async () => { if(!behaviourValid)throw Error('Correct invalid behaviour JSON before validation'); const scenario = parsed(); const result = await api.request<NonNullable<Workspace['validation']>>(path('/validate'), {scenario}); apply({...workspace!, scenario, validation: result}); };
+  const validate = async () => { if(!behaviourValid)throw Error('Correct invalid behaviour JSON before validation'); const scenario = parsed(); const result = await api.request<NonNullable<Workspace['validation']>>(path('/validate'), {scenario}); apply({...workspace!, scenario, validation: result});notify({kind:result.valid?'success':'error',message:result.valid?'Scenario valid. Ready to run.':'Validation found authoring errors.'}); };
   const editDocument = (value: string) => { setDocument(value); setEngineDirty(false); setBindingDirty(false); try { const doc=parseAuthoringJson(value) as Record<string, any>; setEngineJson(JSON.stringify(doc.engines,null,2)); setBindingJson(JSON.stringify(doc.bindings,null,2)); } catch {} setValidation(undefined); setRunId(''); };
+  const openDemo = async () => {
+    const w = await api.request<Workspace>('/v1/studio/workspaces', {name:'Traffic accident (demo)'});
+    apply(await api.request<Workspace>(`/v1/studio/workspaces/${w.id}/templates/traffic-accident`, {console:true,capture_mode:'city'}));
+    setWorkspaces(await api.request('/v1/studio/workspaces'));
+  };
+  useEffect(() => {
+    const params=new URLSearchParams(location.search),target=params.get('workspace');
+    const request=`${base}/${location.search}`;
+    if (launchRequest.current===request || (!target && params.get('template')!=='traffic-accident')) return;
+    launchRequest.current=request;
+    void action(async()=>{if(target) apply(await api.request<Workspace>(`/v1/studio/workspaces/${encodeURIComponent(target)}`));else await openDemo();});
+  },[api,location.search]);
   const currentSource = catalog?.extracts.find(e => e.id === extract);
   const draft = (() => { try { return parsed(); } catch { return undefined; } })();
   const scenario = draft;
   const typeOptions = [...customTypes, ...types].map(t => ({value: t.id, label: `${t.id} · ${t.name ?? ''}`, disabled: t.abstract}));
   return <div className="city-studio">
-    <header className="studio-header"><div><h1>{m('City Studio', '城市场景工作室')}</h1><span>{m('Local sources · explicit writers · versioned scenarios', '本地来源 · 显式写者 · 版本化场景')}</span></div>
-      <Space><Link to={`/runs?api=${encodeURIComponent(base)}`}>{m('Runs', '运行记录')}</Link><Select aria-label="Language" value={locale} options={[{value:'en-US',label:'English'},{value:'zh-CN',label:'简体中文'}]} onChange={setLocale} /></Space></header>
+    <PageHeader eyebrow="Studio" title={m('Studio', '工作室')} description={m('Configure entities, field writers and behaviour rules, then validate and run.', '配置实体、字段写者与行为规则，然后验证并运行。')} actions={<Space><Link to={`/runs?api=${encodeURIComponent(base)}`}>{m('Runs', '运行记录')}</Link><Select aria-label="Language" value={locale} options={[{value:'en-US',label:'English'},{value:'zh-CN',label:'简体中文'}]} onChange={setLocale} /></Space>} />
     {error && <Alert type="error" showIcon message={error} closable onClose={() => setError('')} />}
+    {!catalog&&!error&&<PageState kind="loading" title="Loading Studio" />}
+    {!workspace&&catalog&&<PageState kind="empty" title="Start with a scenario" description="Open the traffic accident demo, select a saved workspace or create your own." />}
     <Space wrap className="studio-workspaces"><Input aria-label="Workspace name" value={name} onChange={e => setName(e.target.value)} style={{width:210}} />
       <Button loading={busy} onClick={() => void action(async () => { const w = await api.request<Workspace>('/v1/studio/workspaces', {name}); apply(w); setWorkspaces(await api.request('/v1/studio/workspaces')); })}>{m('Create workspace', '创建工作区')}</Button>
       <Select aria-label="Workspace" placeholder={m('Open workspace', '打开工作区')} style={{width:230}} value={workspace?.id} options={workspaces.map(w => ({value:w.id,label:w.name}))} onChange={id => void action(async () => { apply(await api.request(`/v1/studio/workspaces/${id}`)); })} />
-      <Button disabled={busy} onClick={()=>void action(async()=>{const w=await api.request<Workspace>('/v1/studio/workspaces',{name:'Traffic accident (demo)'});apply(await api.request<Workspace>(`/v1/studio/workspaces/${w.id}/templates/traffic-accident`,{console:true,capture_mode:'city'}));setWorkspaces(await api.request('/v1/studio/workspaces'));})}>{m('Traffic accident (demo)','交通事故（演示）')}</Button>
+      <Button disabled={busy} onClick={()=>void action(openDemo)}>{m('Traffic accident (demo)','交通事故（演示）')}</Button>
       <Button disabled={!workspace || busy} onClick={() => void action(async () => { await save(); setWorkspaces(await api.request('/v1/studio/workspaces')); })}>{m('Save workspace', '保存工作区')}</Button></Space>
     {workspace && <div className="studio-layout"><section className="studio-canvas-column">
       <Card title={m('Region & scene', '区域与场景')}><Space wrap><Select aria-label="Local extract" style={{width:170}} value={extract} options={catalog?.extracts.map(e => ({value:e.id,label:e.name}))} onChange={id => { setExtract(id); setBounds(catalog!.extracts.find(e => e.id === id)!.bounds); }} />
@@ -88,7 +109,8 @@ export default function StudioPage() {
       </Card>
       {draft?.id==='traffic-accident'&&<Card><DemoSettings api={api} workspace={workspace} save={save} onApply={apply} profiles={catalog?.demo_profiles??{}}/></Card>}
       <Card title={m('Validation & execution','验证与运行')}><Space wrap><Button disabled={busy} onClick={()=>void action(validate)}>{m('Validate','验证')}</Button><Button type="primary" disabled={busy || !behaviourValid || !validation?.valid || !!engineDraft.error || (!!editedEngine && !editingConfigValid)} onClick={()=>void action(async()=>{const run=await api.request<{id:string}>('/v1/runs',{scenario:parsed(),studio_workspace:workspace.id});setRunId(run.id);window.location.assign(`/runs/${encodeURIComponent(run.id)}?api=${encodeURIComponent(base)}&mode=live`);})}>{m('Run now','立即运行')}</Button>{runId && <Link to={`/runs/${encodeURIComponent(runId)}?api=${encodeURIComponent(base)}&mode=live`}>{m('Open run console','打开运行控制台')}</Link>}</Space>
-        {validation && <Alert style={{marginTop:12}} type={validation.valid?'success':'error'} message={validation.valid?m('Scenario valid','场景有效'):m('Validation failed','验证失败')} description={validation.valid?<code>{validation.digest}</code>:validation.errors.join('\n')} />}</Card>
+        {validation && <Alert style={{marginTop:12}} type={validation.valid?'success':'error'} message={validation.valid?m('Scenario valid','场景有效'):m('Validation failed','验证失败')} description={validation.valid?undefined:validation.errors.join('\n')} />}
+        {validation?.valid && <div style={{marginTop:12}}><Details title={m('Validation digest','验证摘要')} buttonLabel={m('Validation details','验证详情')}><pre>{JSON.stringify(validation,null,2)}</pre></Details></div>}</Card>
     </section><aside><Tabs items={[
       {key:'entities',label:'Entities by AeroGraph type',children:draft&&<TrafficEntityTable registryFields={workspace.registry_catalog?.fields} schemas={workspace.registry_catalog?.schemas} scenario={draft} onChange={next=>editDocument(JSON.stringify(next,null,2))}/>},
       {key:'behaviours',label:m('Behaviours','行为链'),children: draft ? <Card><BehavioursPanel api={api} workspace={workspace} scenario={draft} types={[...new Map([...types,...(workspace.registry_catalog?.types??[]),...(draft.registry?.types ?? [])].map(row=>[row.id,row])).values()]} fields={[...new Map([...fields,...(workspace.registry_catalog?.fields??[]),...(draft.registry?.fields ?? [])].map(row=>[row.id,row])).values()]} relations={[...new Map([...relations,...(draft.registry?.relations ?? [])].map(row=>[row.id,row])).values()]} onChange={next => editDocument(JSON.stringify(next,null,2))} onApply={apply} save={save} onValidityChange={behaviourValidity} issues={validation?.issues} /></Card> : <Alert type="error" message="Correct the scenario JSON to edit behaviours" />},
@@ -99,14 +121,14 @@ export default function StudioPage() {
         <Space wrap>{['East','North','Up'].map((label,i)=><div className="studio-field" key={label}>{m(label,['东','北','上'][i])} (m)<InputNumber aria-label={label} value={position[i]} onChange={v=>{if(v!==null)setPosition(position.map((n,j)=>i===j?v:n));}} /></div>)}</Space>
         <div className="studio-field">{m('Engine','引擎')}<Select aria-label="Engine" style={{width:'100%'}} value={engine} options={[{value:'kinematic',label:'kinematic'},{value:'workflow',label:'workflow'}]} onChange={setEngine} /></div>
         <p className="studio-muted">{m('Kinematic template: initial rest, 100 kJ, 10 m/s, 5 m/s². Edit assumptions in Engines. Workflow keeps authored fields and a placed state.','运动学模板：初始静止、100 kJ、10 m/s、5 m/s²。可在引擎编辑器修改假设。工作流保留配置字段和放置状态。')}</p>
-        <div className="studio-field">{m('Authored facts (JSON)','配置字段 (JSON)')}<Input.TextArea aria-label="Authored facts" rows={2} value={facts} onChange={e=>setFacts(e.target.value)} /></div>
-        {kind==='airspace' && <><Input.TextArea aria-label="Airspace polygon" value={polygon} onChange={e=>setPolygon(e.target.value)} /><Space><InputNumber aria-label="Airspace floor" value={floor} onChange={v=>{if(v!==null)setFloor(v);}} /><InputNumber aria-label="Airspace ceiling" value={ceiling} onChange={v=>{if(v!==null)setCeiling(v);}} /></Space><p>{m('Geometry only; authority and enforcement require explicit rules.','仅配置几何；权限和强制约束须显式声明规则。')}</p></>}
+        <Details title="Authored facts"><div className="studio-field"><Input.TextArea aria-label="Authored facts" rows={2} value={facts} onChange={e=>setFacts(e.target.value)} /></div></Details>
+        {kind==='airspace' && <><Details title="Airspace polygon"><Input.TextArea aria-label="Airspace polygon" value={polygon} onChange={e=>setPolygon(e.target.value)} /></Details><Space><InputNumber aria-label="Airspace floor" value={floor} onChange={v=>{if(v!==null)setFloor(v);}} /><InputNumber aria-label="Airspace ceiling" value={ceiling} onChange={v=>{if(v!==null)setCeiling(v);}} /></Space><p>{m('Geometry only; authority and enforcement require explicit rules.','仅配置几何；权限和强制约束须显式声明规则。')}</p></>}
         <Button type="primary" disabled={busy} onClick={()=>void action(place)}>{kind==='entity'?m('Place entity','放置实体'):kind==='facility'?m('Place facility','放置设施'):m('Place airspace','放置空域')}</Button>
         <Table size="small" pagination={false} rowKey="id" dataSource={scenario?.entities} columns={[{title:m('Entity','实体'),dataIndex:'id'},{title:m('Type','类型'),dataIndex:'type'}]} />
       </Space></Card>},
       {key:'types',label:m('AeroGraph','AeroGraph'),children:<Card><Input.Search aria-label="Search types and fields" value={query} onChange={e=>setQuery(e.target.value)} onSearch={q=>void action(()=>search(q))} placeholder={m('Search all directories','搜索全部目录')} />
         <Table size="small" rowKey="id" pagination={{pageSize:6}} dataSource={types} onRow={t=>({onClick:()=>void action(()=>chooseType(t.id))})} columns={[{title:m('Type','类型'),dataIndex:'id'},{title:m('Directory','目录'),dataIndex:'directory'},{title:m('Abstract','抽象'),dataIndex:'abstract',render:v=>v?'✓':''}]} />
-        {detail && <><h3>{detail.id}</h3><p>{m('Parents','父类')}: {detail.parents.join(' → ')} {detail.abstract && <Tag>abstract</Tag>}</p><Table size="small" rowKey="id" pagination={{pageSize:6}} dataSource={detail.fields} columns={[{title:m('Inherited field','继承字段'),dataIndex:'id'},{title:m('Declared by','声明类型'),dataIndex:'declaring_type'},{title:m('Unit / frame','单位 / 坐标系'),render:(_,f)=>[typeof f.metadata.unit==='object'?JSON.stringify(f.metadata.unit):f.metadata.unit,f.metadata.frame].filter(Boolean).join(' · ')},{title:m('Schema','结构'),render:(_,f)=><details><summary>{f.schema.type}</summary><pre>{JSON.stringify(f.schema,null,2)}</pre></details>}]} /></>}
+        {detail && <><h3>{detail.id}</h3><p>{m('Parents','父类')}: {detail.parents.join(' → ')} {detail.abstract && <Tag>abstract</Tag>}</p><Table size="small" rowKey="id" pagination={{pageSize:6}} dataSource={detail.fields} columns={[{title:m('Inherited field','继承字段'),dataIndex:'id'},{title:m('Declared by','声明类型'),dataIndex:'declaring_type'},{title:m('Unit / frame','单位 / 坐标系'),render:(_,f)=>[typeof f.metadata.unit==='object'?JSON.stringify(f.metadata.unit):f.metadata.unit,f.metadata.frame].filter(Boolean).join(' · ')},{title:m('Schema','结构'),render:(_,f)=><Details title="Field schema" buttonLabel={f.schema.type}><pre>{JSON.stringify(f.schema,null,2)}</pre></Details>}]} /></>}
         <Collapse items={[{key:'fields',label:m(`Field search (${fields.length})`,`字段搜索 (${fields.length})`),children:<Table rowKey={(f:any)=>`${f.id}/${f.source?.file}`} size="small" pagination={{pageSize:6}} dataSource={fields} columns={[{title:'ID',dataIndex:'id'},{title:m('Declaring class','声明类型'),dataIndex:'declaringClass'},{title:m('Units','单位'),render:(_,f)=>JSON.stringify(f.unit)}]} />}]} /></Card>},
       {key:'engines',label:m('Engines & writers','引擎与写者'),children:<Card><Space wrap><Select aria-label="Plugin" value={plugin} style={{width:160}} options={catalog?.engines.map(e=>({value:e.id,label:`${e.id}${e.available?'':' · unavailable'}`,disabled:!e.available}))} onChange={value=>{setPlugin(value);setNewConfig({});}} /><Input aria-label="Partition ID" style={{width:120}} value={partition} onChange={e=>setPartition(e.target.value)} /><Button disabled={!selectedPlugin?.available || !newConfigValid} onClick={()=>{try{const doc=parsed();if(!partition.trim()||doc.engines[partition])throw Error('Partition ID must be new and nonempty');doc.engines[partition]={plugin,config:newConfig};editDocument(JSON.stringify(doc,null,2));setEngineJson(JSON.stringify(doc.engines,null,2));setEditingPartition(partition);}catch(e){setError(String(e));}}}>{m('Add engine','添加引擎')}</Button></Space>
         {selectedPlugin?.error && <Alert type="error" message={selectedPlugin.error} />}
@@ -119,10 +141,12 @@ export default function StudioPage() {
         </>}
         {draft && <PluginOwnershipPanel scenario={draft} engines={catalog?.engines ?? []} onChange={next => editDocument(JSON.stringify(next,null,2))} />}
         <p>{m('Configure the real plugin before validation. Writer bindings are per field.','验证前配置真实插件。每个字段须绑定写者。')}</p><Table rowKey={(b:any)=>`${b.entity??b.type}/${b.field??b.fields?.join(',')}/${b.writer}`} size="small" pagination={{pageSize:6}} dataSource={[...(scenario?.bindings.exact??[]),...(scenario?.bindings.rules??[])]} columns={[{title:m('Entity / type','实体 / 类型'),render:(_,b)=>b.entity??b.type},{title:m('Fields','字段'),render:(_,b)=>b.field??b.fields.join(', ')},{title:m('Writer','写者'),dataIndex:'writer'}]} />
-        <div className="studio-field">{m('Engines (JSON)','引擎 (JSON)')}<Input.TextArea aria-label="Engine editor" rows={10} value={engineJson} onChange={e=>{setEngineJson(e.target.value);setEngineDirty(true);setValidation(undefined);}} /></div><div className="studio-field">{m('Bindings (JSON)','绑定 (JSON)')}<Input.TextArea aria-label="Binding editor" rows={8} value={bindingJson} onChange={e=>{setBindingJson(e.target.value);setBindingDirty(true);setValidation(undefined);}} /></div>
+        <Details title={m('Engines (raw JSON)','引擎（原始 JSON）')} buttonLabel={m('Engine JSON','引擎 JSON')}><div className="studio-field"><Input.TextArea aria-label="Engine editor" rows={10} value={engineJson} onChange={e=>{setEngineJson(e.target.value);setEngineDirty(true);setValidation(undefined);}} /></div></Details>
+        <Details title={m('Bindings (raw JSON)','绑定（原始 JSON）')} buttonLabel={m('Binding JSON','绑定 JSON')}><div className="studio-field"><Input.TextArea aria-label="Binding editor" rows={8} value={bindingJson} onChange={e=>{setBindingJson(e.target.value);setBindingDirty(true);setValidation(undefined);}} /></div></Details>
         <Button disabled={busy || !!engineDraft.error || (!!editedEngine && !editingConfigValid)} onClick={()=>void action(async()=>{const doc=parsed();doc.engines=parseAuthoringJson(engineJson) as Record<string, any>;doc.bindings=parseAuthoringJson(bindingJson);apply(await api.request(path(),{scenario:doc}));})}>{m('Apply and save','应用并保存')}</Button></Card>},
       {key:'yaml',label:m('YAML & advanced','YAML 与高级编辑'),children:<Card><Space><Button disabled={busy} onClick={()=>void action(async()=>{await save();setYaml(await api.export(workspace.id));})}>{m('Export YAML','导出 YAML')}</Button><Button disabled={!yaml} onClick={()=>{const url=URL.createObjectURL(new Blob([yaml],{type:'application/yaml'}));const a=documentGlobal.createElement('a');a.href=url;a.download=`${workspace.id}.yaml`;a.click();URL.revokeObjectURL(url);}}>{m('Download','下载')}</Button><Button disabled={!yaml||busy} onClick={()=>void action(async()=>{apply(await api.request(path('/import'),{yaml}));})}>{m('Import YAML','导入 YAML')}</Button></Space>
-        <Input.TextArea aria-label="Scenario YAML" rows={12} value={yaml} onChange={e=>setYaml(e.target.value)} /><div className="studio-field">{m('Full scenario JSON','完整场景 JSON')}<Input.TextArea aria-label="Scenario editor" rows={18} value={document} onChange={e=>editDocument(e.target.value)} /></div></Card>},
+        <Input.TextArea aria-label="Scenario YAML" rows={12} value={yaml} onChange={e=>setYaml(e.target.value)} />
+        <div style={{marginTop:12}}><Details title={m('Full scenario JSON','完整场景 JSON')} buttonLabel={m('Scenario JSON','场景 JSON')}><div className="studio-field"><Input.TextArea aria-label="Scenario editor" rows={18} value={document} onChange={e=>editDocument(e.target.value)} /></div></Details></div></Card>},
     ]} /></aside></div>}
   </div>;
 }

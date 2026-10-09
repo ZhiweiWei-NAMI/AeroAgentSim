@@ -1,4 +1,5 @@
 /** Structured authoring form for behaviour triggers: the compiler requires exactly one explicit category. */
+import { Details } from '../console/Details';
 import { ExpressionControl } from './ExpressionControl';
 import { useEffect, useRef, useState } from 'react';
 import { mapping, type Draft } from './model';
@@ -54,10 +55,10 @@ function Json({label, value, onChange}: {label: string; value: unknown; onChange
   const [draft, setDraft] = useState(() => JSON.stringify(value, null, 2) ?? ''), [error, setError] = useState('');
   const sent = useRef(value);
   useEffect(() => { if (value !== sent.current) { setDraft(JSON.stringify(value, null, 2) ?? ''); setError(''); sent.current = value; } }, [value]);
-  return <label className="behaviour-json">{label}<textarea aria-label={label} rows={6} value={draft} onChange={event => {
+  return <Details title={label}><label className="behaviour-json">{label}<textarea aria-label={label} rows={6} value={draft} onChange={event => {
     setDraft(event.target.value);
     try { const next = parseLosslessJson(event.target.value, true); sent.current = next; onChange(next); setError(''); } catch (problem) { setError(String(problem)); }
-  }}/>{error && <span role="alert">{error}</span>}</label>;
+  }}/>{error && <span role="alert">{error}</span>}</label></Details>;
 }
 
 function ExactNs({label, value, onChange}: {label: string; value: unknown; onChange: (next: unknown) => void}) {

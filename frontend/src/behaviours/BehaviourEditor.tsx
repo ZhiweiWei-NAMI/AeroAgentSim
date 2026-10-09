@@ -1,3 +1,4 @@
+import { Details } from '../console/Details';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { applicableFields, applicableRelations, arity, astKind, mapping, operators, patch, temporal, type AuthorType, type Draft, type Path } from './model';
 import { parseLosslessJson } from '../feeds/lossless-json';
@@ -15,7 +16,7 @@ function Json({label,value,onChange}:{label:string;value:unknown;onChange:(value
   const [text,setText]=useState(()=>JSON.stringify(value,null,2) ?? ''),[error,setError]=useState('');const sent=useRef(value); const report=useContext(EditorValidity);
   useEffect(()=>{report(label,error);return()=>report(label,'');},[report,label,error]);
   useEffect(()=>{if(value!==sent.current){setText(JSON.stringify(value,null,2) ?? '');setError('');sent.current=value;}},[value]);
-  return <label className="behaviour-json">{label}<textarea aria-label={label} rows={4} value={text} onChange={event=>{setText(event.target.value);try{const next=parseLosslessJson(event.target.value,true);sent.current=next;onChange(next);setError('');}catch(problem){setError(String(problem));}}}/>{error&&<span role="alert">{error}</span>}</label>;
+  return <Details title={label}><label className="behaviour-json">{label}<textarea aria-label={label} rows={4} value={text} onChange={event=>{setText(event.target.value);try{const next=parseLosslessJson(event.target.value,true);sent.current=next;onChange(next);setError('');}catch(problem){setError(String(problem));}}}/>{error&&<span role="alert">{error}</span>}</label></Details>;
 }
 function Ast({node,onChange,path,roles,types,fields,depth=0}:{node:unknown;onChange:(node:unknown)=>void;path:string;roles:Draft;types:AuthorType[];fields:Draft[];depth?:number}) {
   const relations=useContext(RelationCatalog);
@@ -44,7 +45,7 @@ function Ast({node,onChange,path,roles,types,fields,depth=0}:{node:unknown;onCha
     {(row.op==='all'||row.op==='any')?<><label>Bound variable <input value={String(row.var??'')} onChange={event=>set('var',event.target.value)}/></label>{['array','predicate','applicabilityExpression'].filter(key=>key in row).map(key=><Ast key={key} node={row[key]} onChange={next=>set(key,next)} path={`${path}.${key}`} roles={roles} types={types} fields={fields} depth={depth+1}/>)}</>:Array.isArray(row.args)&&<>{row.args.map((child,index)=><Ast key={index} node={child} onChange={next=>set('args',(row.args as unknown[]).map((item,i)=>index===i?next:item))} path={`${path}.args[${index}]`} roles={roles} types={types} fields={fields} depth={depth+1}/>)}
       {!arity[String(row.op)]&&<button onClick={()=>set('args',[...(row.args as unknown[]),{literal:null}])}>Add operand</button>}</>}
       {'asScope' in row&&<Ast node={row.asScope} onChange={next=>set('asScope',next)} path={`${path}.asScope`} roles={roles} types={types} fields={fields} depth={depth+1}/>}</>}
-    <details><summary>Complete node / extension keys</summary><Json label={`${path} complete node`} value={row} onChange={onChange}/></details>
+    <Json label={`${path} complete node`} value={row} onChange={onChange}/>
   </fieldset>;
 }
 function Roles({value,onChange,types,label}:{value:unknown;onChange:(next:unknown)=>void;types:AuthorType[];label:string}) {
@@ -67,7 +68,7 @@ function Actions({value,onChange,label,roles,types,fields,capabilities}:{value:u
     {action.kind==='command'&&<label>Command capability<input aria-label={`${label} action ${index} capability`} list="command-capabilities" value={typeof action.capability==='string'?action.capability:''} onChange={event=>set(index,{...action,capability:event.target.value})}/><datalist id="command-capabilities">{capabilities.map(id=><option key={id}>{id}</option>)}</datalist></label>}
     {['command','emit'].includes(String(action.kind))&&<>{['schema',action.kind==='command'?'target':'topic'].map(key=><label key={key}>{key}<input value={typeof action[key]==='string'?action[key] as string:''} onChange={event=>set(index,{...action,[key]:event.target.value})}/></label>)}<ExpressionControl label={`${label} action ${index} payload`} value={action.payload} onChange={next=>set(index,{...action,payload:next})}/></>}
     {['delay','cancel_command','cancel_timer'].includes(String(action.kind))&&<Json label={`${label} action ${index} timing / child identity`} value={action} onChange={next=>set(index,next)}/>}
-    <details><summary>Complete typed action / unsupported keys</summary><Json label={`${label} action ${index} JSON`} value={action} onChange={next=>set(index,next)}/></details>
+    <Json label={`${label} action ${index} JSON`} value={action} onChange={next=>set(index,next)}/>
   </fieldset>:<Json key={index} label={`${label} unsupported action ${index}`} value={action} onChange={next=>set(index,next)}/>)}
     <select aria-label={`${label} new action kind`} value={kind} onChange={event=>setKind(event.target.value)}>{kinds.map(name=><option key={name}>{name}</option>)}</select><button onClick={()=>onChange([...value,{id:`action-${value.length+1}`,kind}])}>Add ordered action</button></fieldset>;
 }
@@ -114,10 +115,10 @@ export function BehaviourEditor({value,onChange,types=[],fields=[],relations=[],
           <label>Priority <input aria-label={`Transition ${index} priority`} type="number" value={typeof transition.priority==='number'?transition.priority:''} onChange={event=>update(['chains',id,'transitions',index,'priority'],event.target.value===''?undefined:event.target.valueAsNumber)}/></label>
           <Trigger events={events} actions={Array.isArray(row.transitions)?row.transitions.filter(mapping).flatMap(item=>Array.isArray(item.actions)?item.actions.filter(mapping).flatMap(action=>typeof action.id==='string'?[action.id]:[]):[]):[]} value={transition.on} onChange={next=>update(['chains',id,'transitions',index,'on'],next)} label={`Transition ${index} on`} predicates={Object.keys(predicates)}/>
           <Actions capabilities={capabilities} label={`Transition ${index} ordered actions`} value={transition.actions} onChange={next=>update(['chains',id,'transitions',index,'actions'],next)} roles={mapping(row.roles)?row.roles:{}} types={types} fields={fields}/>
-          <details><summary>Complete transition</summary><Json label={`Transition ${index} JSON`} value={transition} onChange={next=>update(['chains',id,'transitions',index],next)}/></details>
+          <Json label={`Transition ${index} JSON`} value={transition} onChange={next=>update(['chains',id,'transitions',index],next)}/>
         </fieldset>:<Json key={index} label={`Unsupported transition ${index}`} value={transition} onChange={next=>update(['chains',id,'transitions',index],next)}/>)}
       </>}
-      <details><summary>Complete element / unsupported content</summary><Json label={`${tab}.${id} complete JSON`} value={row} onChange={next=>update([tab,id],next)}/></details></div>}</>}
+      <Json label={`${tab}.${id} complete JSON`} value={row} onChange={next=>update([tab,id],next)}/></div>}</>}
     {['bindings','conflicts','injection_points'].includes(tab)&&<Declarations section={tab} value={value[tab]} onChange={next=>update([tab],next)} types={types}/>}
     {tab==='raw'&&<><Json label="Behaviour package JSON" value={value} onChange={next=>{if(!mapping(next))throw Error('Behaviour package must be a mapping');onChange(next);}}/>
       <label>YAML round trip <textarea aria-label="Behaviour package YAML" rows={10} value={yaml} onChange={event=>setYaml(event.target.value)}/></label>

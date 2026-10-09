@@ -1,3 +1,4 @@
+import { Details } from '../console/Details';
 import React, { useMemo, useState } from "react";
 
 type Json = any;
@@ -22,7 +23,7 @@ const writeInt = (raw: string): Json | undefined => {
 function ValueEditor({ value, schema: supplied, schemas, onWrite }: { value: Json; schema?: Json; schemas:Record<string,any>; onWrite: (v: Json) => void }) {
   const schema=typeof supplied==='string'?schemas[supplied]:supplied?.schema_ref?schemas[supplied.schema_ref]:supplied;
   if(value===null||value===undefined)return <code>{value===null?'Explicit null':'Unset'}</code>;
-  const ro = <code style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{JSON.stringify(value)}</code>;
+  const ro = <Details title="Field value"><code style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{JSON.stringify(value)}</code></Details>;
   const num = (step: string, write: (s: string) => void) =>
     <input type="number" step={step} value={typeof value === "number" ? value : ""} onChange={e => write(e.target.value)} />;
   if (value && typeof value === "object" && !Array.isArray(value) && value[INT] !== undefined)
@@ -45,7 +46,7 @@ function ValueEditor({ value, schema: supplied, schemas, onWrite }: { value: Jso
       <input key={i} type="number" step="any" style={{ width: 90 }} value={value[i] ?? ""} onChange={e => { const v = Number(e.target.value); if (e.target.value !== "" && Number.isFinite(v)) { const next = value.slice(); next[i] = v; onWrite(next); } }} />)}</span>;
   }
   if (st === "ref" || (value && typeof value === "object" && !Array.isArray(value) && value.$ref))
-    return <span>ref → <code>{JSON.stringify(value?.$ref ?? value)}</code> (read-only; edit via raw scenario)</span>;
+    return <span>ref → {value?.$ref?.id ?? 'reference'} <Details title="Entity reference"><pre>{JSON.stringify(value?.$ref ?? value,null,2)}</pre></Details></span>;
   return ro; // unknown schema / arrays / nested objects: complete value, read-only
 }
 
