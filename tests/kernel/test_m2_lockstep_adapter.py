@@ -88,7 +88,7 @@ def test_exact_stop_adapter_integrates_to_3_ms_before_applying_the_input():
         adapter.partition, timing=Timing("lockstep", latch=False, exact_stop=True)
     )
     adapter.partitions = (adapter.partition,)
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(original._store.registry, original._store.manifest, (adapter,))
     k.start()
     k.submit(

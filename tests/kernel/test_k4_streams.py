@@ -49,7 +49,7 @@ class Target(SimpleEngine):
         return ()
 
 
-def make(*, slow_policy=None, fast_policy=None):
+def make(*, slow_policy=None, fast_policy=None, provenance="full"):
     fast, slow = Target("fast"), Target("slow")
     streams = (
         IngressStream(
@@ -63,6 +63,7 @@ def make(*, slow_policy=None, fast_policy=None):
         ),
     )
     k = Kernel(
+        provenance=provenance,
         ingress_streams=streams,
         mappings=(
             ClockMapping("fast-clock", "fast-native", offset_ns=10),
@@ -90,8 +91,9 @@ def request(target, ns, value=1, key=None):
     return CommandRequest("do", target, Instant(max(0, ns)), value, key)
 
 
-def test_slow_stream_does_not_block_fast_native_work_or_command_delivery():
-    k, fast, slow = make()
+@pytest.mark.parametrize("provenance", ["lean", "full"])
+def test_slow_stream_does_not_block_fast_native_work_or_command_delivery(provenance):
+    k, fast, slow = make(provenance=provenance)
     mid = k.submit_live(request("fast", 5), source("fast", 5), stream_id="fast-stream")
     k.advance_watermark(20, stream_id="fast-stream")
     errors = []
@@ -290,16 +292,16 @@ def test_stream_preflight_configuration_and_binding():
         },
     ):
         with pytest.raises(KernelError):
-            Kernel(**kwargs)
+            Kernel(provenance="full", **kwargs)
     for stream, engine_id in (
         (replace(s, mapping_id="absent"), "e"),
         (s, "other"),
         (replace(s, engine_ids=("other",)), "e"),
     ):
-        k = Kernel(ingress_streams=(stream,))
+        k = Kernel(provenance="full", ingress_streams=(stream,))
         with pytest.raises(KernelError):
             k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (Target(engine_id),))
-    k = Kernel()
+    k = Kernel(provenance="full")
     with pytest.raises(KernelError, match="RUN_STATE"):
         _ = k.ingress_watermarks
     with pytest.raises(KernelError, match="RUN_STATE"):
@@ -377,10 +379,11 @@ def assert_closure_trace(k):
 def test_closure_never_exceeds_min_for_multi_stream_engine(a, b):
     target = Target("target")
     k = Kernel(
+        provenance="full",
         ingress_streams=(
             IngressStream("a", IngressPolicy(0), "canonical", ("target",)),
             IngressStream("b", IngressPolicy(0), "canonical", ("target",)),
-        )
+        ),
     )
     k.bind(
         MemoryRegistry(
@@ -432,6 +435,7 @@ def test_dependency_streams_propagate_to_downstream_engine_and_timeout():
         Partition("slow", "slow", produces=("f",), timing=Timing("real_time"))
     )
     k = Kernel(
+        provenance="full",
         ingress_streams=(
             IngressStream(
                 "a", IngressPolicy(0, timeout_s=0.02), "canonical", ("fast",)
@@ -439,7 +443,7 @@ def test_dependency_streams_propagate_to_downstream_engine_and_timeout():
             IngressStream(
                 "b", IngressPolicy(0, timeout_s=0.02), "canonical", ("slow",)
             ),
-        )
+        ),
     )
     k.bind(
         MemoryRegistry(
@@ -543,10 +547,11 @@ def test_independent_sample_cone_settles_before_unrelated_slow_stream():
 
     old, evaluator, _ = setup()
     k = Kernel(
+        provenance="full",
         ingress_streams=(
             IngressStream("a", IngressPolicy(20), "canonical", ("source",)),
             IngressStream("b", IngressPolicy(0), "canonical", ("slow",)),
-        )
+        ),
     )
     engines = tuple(old._engines.values()) + (Target("slow"),)
     registry = MemoryRegistry.from_data(old._store.registry.to_data())
@@ -592,6 +597,7 @@ def test_independent_sample_cone_settles_before_unrelated_slow_stream():
 def test_atomic_cohort_requires_all_its_streams():
     fast, slow = Target("fast"), Target("slow")
     k = Kernel(
+        provenance="full",
         ingress_streams=(
             IngressStream(
                 "a", IngressPolicy(20, timeout_s=0.02), "canonical", ("fast",)
@@ -599,7 +605,7 @@ def test_atomic_cohort_requires_all_its_streams():
             IngressStream(
                 "b", IngressPolicy(0, timeout_s=0.02), "canonical", ("slow",)
             ),
-        )
+        ),
     )
     k.bind(
         MemoryRegistry(
@@ -655,9 +661,10 @@ def test_sampling_declared_upstream_and_command_receipts_propagate_streams():
     evaluator = SimpleEngine(Partition("eval", "eval"))
     spec = SampleSpec("scope", "eval", upstream=("source",))
     k = Kernel(
+        provenance="full",
         ingress_streams=(
             IngressStream("s", IngressPolicy(0), "canonical", ("source",)),
-        )
+        ),
     )
     k.bind(
         MemoryRegistry(()),
@@ -683,10 +690,11 @@ def test_sampling_declared_upstream_and_command_receipts_propagate_streams():
         Partition("target", "target", commands=("do",), timing=Timing("real_time"))
     )
     k = Kernel(
+        provenance="full",
         ingress_streams=(
             IngressStream("a", IngressPolicy(0), "canonical", ("sender",)),
             IngressStream("b", IngressPolicy(0), "canonical", ("target",)),
-        )
+        ),
     )
     k.bind(
         MemoryRegistry(

@@ -183,12 +183,14 @@ class RecordLog(AppendList[Any]):
         self._cause_indexes: AppendList[
             tuple[object, list[dict[str, Any] | FactAuthority] | None]
         ] = AppendList()
+        self.provenance = "full"
         self._entities: dict[tuple[Any, ...], Any] = {}
         self._fact_authorities: dict[tuple[str, Any, str], FactAuthority] = {}
 
     def fork(self) -> RecordLog:
         """Retain this exact prefix of the shared encoded log."""
         result = RecordLog(self.data, self.length, self.budget)
+        result.provenance = self.provenance
         result._decoded = self._decoded
         result._cause_indexes = self._cause_indexes.fork()
         result._entities = self._entities
@@ -201,7 +203,8 @@ class RecordLog(AppendList[Any]):
         items = record.get("items", [])
         metadata = (
             None
-            if items
+            if self.provenance == "lean"
+            or items
             and all(
                 "$fact" in item or "$retract" in item or item.get("kind") == "return"
                 for item in items
@@ -336,11 +339,18 @@ class RecordLog(AppendList[Any]):
             self._decoded.move_to_end(key)
             return cached[1]
         line = value.read() if isinstance(value, FileFrame) else value
-        record = cast(dict[str, Any], parse_json(line, self.budget))
+        budget = self.budget
+        if self.provenance == "lean":
+            from .values import ResourceBudget
+
+            budget = ResourceBudget(
+                budget.integer_digits, budget.frame_bytes, budget.nesting_depth * 2 + 2
+            )
+        record = cast(dict[str, Any], parse_json(line, budget))
         if "data" in record:
             from .journal_codec import decode_frame
 
-            record = decode_frame(record, self.budget)
+            record = decode_frame(record, self.budget, lean=self.provenance == "lean")
         self._decoded[key] = (line, record)
         if len(self._decoded) > 8:
             self._decoded.popitem(last=False)

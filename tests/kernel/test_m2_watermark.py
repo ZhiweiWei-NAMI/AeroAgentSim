@@ -26,7 +26,7 @@ def make(policy):
             calls.append(to)
             return super().advance(partition, to, view)
 
-    k = Kernel(ingress_policy=policy)
+    k = Kernel(provenance="full", ingress_policy=policy)
     k.bind(
         MemoryRegistry(()),
         BindingManifest("r", "e"),
@@ -101,7 +101,7 @@ def test_optional_pacing_waits_without_changing_transaction_order():
 
 def test_real_time_cannot_bind_without_a_declared_watermark():
     with pytest.raises(KernelError, match="INGRESS_POLICY"):
-        Kernel().bind(
+        Kernel(provenance="full").bind(
             MemoryRegistry(()),
             BindingManifest("r", "e"),
             (SimpleEngine(Partition("p", "e", timing=Timing("real_time"))),),

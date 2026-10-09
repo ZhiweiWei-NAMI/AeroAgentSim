@@ -59,7 +59,7 @@ def test_same_text_id_remove_create_forbidden_in_both_orders_and_cohort_batches(
         def on_react(self, view, inbox, dirty):
             return order[1:] if separate_batches and view.instant.ns == 1 else ()
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry((TypeDescriptor("Old"), TypeDescriptor("New"))),
         BindingManifest(
@@ -125,7 +125,7 @@ def test_cancel_publication_eligibility_dispatch_apply_lag_then_latch(source, fi
             timing=Timing("fixed_step", 4) if fixed else Timing(),
         )
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     engines = (
         (target,)
         if source == "host"
@@ -185,7 +185,7 @@ def test_every_kernel_command_origin_kind_cannot_replace_actual_target_dispatch(
             )
             return (Emit("event", "event", "empty", view.instant, None, causes=(ref,)),)
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (),
@@ -257,7 +257,7 @@ def test_nested_timer_lifecycle_receipt_dirty_and_retained_records_are_immutable
                     mutated.append(d.kind)
             return ()
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (TypeDescriptor("T"),),
@@ -305,7 +305,7 @@ def test_nested_timer_lifecycle_receipt_dirty_and_retained_records_are_immutable
 
 def test_lagged_history_is_empty_but_explicit_precreation_cut_errors():
     entity = EntityRef("r", "e", "id", 0, "T")
-    k = Kernel()
+    k = Kernel(provenance="full")
 
     class Controller(SimpleEngine):
         def initialize(self, view):
@@ -345,7 +345,7 @@ def test_consistently_shifted_dispatch_behind_seal_is_not_replayable():
         def initialize(self, view):
             return (ScheduleTimer("tick", Instant(2), None),)
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry((), messages=(MessageDescriptor("do", "command"),)),
         BindingManifest("r", "e"),
@@ -448,7 +448,7 @@ def test_historical_lifecycle_action_causes_require_declared_scope(kind):
             )
             return (Emit("event", "event", "empty", view.instant, None, (cause,)),)
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (TypeDescriptor("T"),),
@@ -504,7 +504,7 @@ def test_own_historical_command_publication_is_not_a_self_dispatch():
             )
             return (Emit("event", "event", "empty", view.instant, None, (origin,)),)
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (),

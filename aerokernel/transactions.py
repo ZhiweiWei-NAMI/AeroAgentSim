@@ -43,6 +43,8 @@ from .state import ABSENT, Fact, FactVersions, Life, Retraction, Store, Work
 from .time import ClockMapping, Cut, Instant
 from .values import ResourceBudget, freeze, freeze_normalized, normalize, typed_equal
 
+_EMPTY_CAUSES: tuple[ItemRef, ...] = ()
+
 
 def coordinates(ref: ItemRef) -> dict[str, int]:
     """Portable item coordinates for action/journal items."""
@@ -83,6 +85,8 @@ def eligibility(
         if latched != ns:
             microstep = 0
         ns = latched
+    if store.provenance == "lean" and (lag or ns != max(requested.ns, available.ns)):
+        normalize(ns, store.actions.budget)
     return Instant(ns, microstep)
 
 
@@ -147,7 +151,11 @@ class Candidate:
         raw: tuple[ItemRef | LocalCause | FramePrefix, ...],
         local: list[ItemRef],
         intent: dict[str, Any],
+        *,
+        cleanup: bool = False,
     ) -> tuple[ItemRef, ...]:
+        if self.before.provenance == "lean" and not cleanup:
+            return (self.before.pending_intents[intent["partition"]],)
         if not raw:
             return ()
         result: list[ItemRef] = []
@@ -550,6 +558,8 @@ class Candidate:
     def stamp(self, stamp: Any) -> int:
         if stamp in self.mapped_stamps:
             return self.mapped_stamps[stamp]
+        if self.before.provenance == "lean":
+            normalize(encode(stamp), self.budget)
         mapping = self.mappings.get(stamp.mapping_id)
         if mapping is None:
             raise KernelError("CLOCK_MAPPING", "unknown pinned mapping")
@@ -558,6 +568,8 @@ class Candidate:
             raise KernelError(
                 "ACQUISITION_FUTURE", "acquisition cannot follow publication"
             )
+        if self.before.provenance == "lean":
+            normalize(ns, self.budget)
         self.mapped_stamps[stamp] = ns
         return ns
 
@@ -569,6 +581,19 @@ class Candidate:
         local: list[ItemRef],
         bootstrap: bool,
     ) -> None:
+        if (
+            self.before.provenance == "lean"
+            and getattr(op, "causes", _EMPTY_CAUSES) is not _EMPTY_CAUSES
+        ):
+            op = replace(op, causes=())  # type: ignore[type-var]
+        if self.before.provenance == "lean":
+            if isinstance(op, (FactWrite, RetractFact, AssertEdge, ActivateObligation)):
+                if op.valid not in self.intervals:
+                    normalize(encode(op.valid), self.budget)
+            elif isinstance(op, ScheduleTimer):
+                normalize(encode(op.due), self.budget)
+            elif isinstance(op, Create):
+                normalize(op.ref.to_data(), self.budget)
         raw = getattr(op, "causes", ())
         causes = self.cause_refs(raw, local, intent)
         out = self.add(
@@ -604,7 +629,7 @@ class Candidate:
                 raise KernelError(
                     "LIFECYCLE_OWNER", "remove requires lifecycle controller"
                 )
-            cleanup = self.cause_refs(op.cleanup_refs, local, intent)
+            cleanup = self.cause_refs(op.cleanup_refs, local, intent, cleanup=True)
             participants = self.state.manifest.participants(op.ref, self.state.registry)
             for participant in participants:
                 if self.state.ready.get((op.ref, participant)) not in cleanup:
@@ -741,6 +766,8 @@ class Candidate:
 
             publish_frame(self, partition, op, out, phase)
         elif isinstance(op, Emit):
+            if self.before.provenance == "lean":
+                normalize(encode(op.at), self.budget)
             p = self.state.partitions[partition]
             if op.target_or_topic not in p.message_targets:
                 raise KernelError(
@@ -763,6 +790,8 @@ class Candidate:
                 )
             source = ("partition", partition)
             sequence = self.state.sequences.get(source, 0)
+            if self.before.provenance == "lean":
+                normalize(sequence, self.budget)
             self.state.sequences[source] = sequence + 1
             mid = message_id(
                 self.state.manifest.run_id, self.state.manifest.epoch, *source, sequence
@@ -950,6 +979,8 @@ class Candidate:
             return None
         seq_key = (source_kind, source)
         seq = self.state.sequences.get(seq_key, 0)
+        if self.before.provenance == "lean":
+            normalize(seq, self.budget)
         self.state.sequences[seq_key] = seq + 1
         mid = message_id(
             self.state.manifest.run_id,

@@ -23,7 +23,7 @@ def test_nonzero_grid_origin_holds_until_first_declared_native_boundary():
             return ()
 
     engine = Grid(Partition("p", "e", timing=Timing("fixed_step", 20, origin_ns=10)))
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (engine,))
     k.start()
     k.run_until(3)
@@ -62,7 +62,7 @@ def test_exact_split_integrates_to_input_boundary_then_reacts_then_next_grid():
             "p", "e", commands=("input",), timing=Timing("fixed_step", 20, latch=False)
         )
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (), messages=(MessageDescriptor("input", "command", {"type": "integer"}),)

@@ -171,7 +171,7 @@ def test_complete_lifecycle_big_integer_and_identifiable_server_timeout():
 def test_sdk_engine_runs_through_remote_proxy_and_replays_without_server():
     client, thread, failures = service(engine=SimpleEngine(Partition("p", "e")))
     remote = RemoteEngine(client)
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (remote,))
     k.start()
     k.run_until(20)
@@ -190,7 +190,7 @@ def test_wrong_batch_native_cut_taints_and_never_partially_publishes():
 
     client, thread, failures = service(engine=Bad(Partition("p", "e")))
     remote = RemoteEngine(client)
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (remote,))
     k.start()
     before = k.view().cut
@@ -253,7 +253,9 @@ def test_remote_toy_fields_actions_feedback_dirty_and_native_cuts_match_local():
         threads.append(thread)
         errors.append(faults)
         engines.append(RemoteEngine(client))
-    remote = Kernel(root_seed=123, configuration=dict(unstarted.configuration))
+    remote = Kernel(
+        provenance="full", root_seed=123, configuration=dict(unstarted.configuration)
+    )
     remote.bind(unstarted._store.registry, unstarted._store.manifest, tuple(engines))
     remote.start()
     remote.run_until(13 * MS)
@@ -288,7 +290,7 @@ def test_real_subprocess_binary_stdio_is_protocol_only():
         stderr=subprocess.PIPE,
     )
     remote = RemoteEngine(process.stdout, process.stdin)
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (remote,))
     k.start()
     k.run_until(3)
@@ -390,7 +392,7 @@ def test_wire_fault_after_real_native_work_keeps_all_facts_unpublished(fault):
     remote = RemoteEngine(
         client, budget=ResourceBudget(frame_bytes=8192), timeouts={"advance": 0.04}
     )
-    k = Kernel(budget=ResourceBudget(frame_bytes=8192))
+    k = Kernel(provenance="full", budget=ResourceBudget(frame_bytes=8192))
     registry = MemoryRegistry(
         (TypeDescriptor("T"),), (FieldDescriptor("x", "T", {"type": "integer"}),)
     )
@@ -477,7 +479,7 @@ def test_malformed_error_types_and_pinned_profile_corruption_are_rejected():
         assert c.state == "tainted"
     client, thread, faults = service(engine=SimpleEngine(Partition("p", "e")))
     engine = RemoteEngine(client)
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (engine,))
     k.start()
     for key, value in (

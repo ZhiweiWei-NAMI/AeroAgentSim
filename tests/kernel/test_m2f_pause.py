@@ -42,7 +42,7 @@ def make(policy=None, server_policy=None):
         pause_policy=server_policy or policy,
     )
     remote = RemoteEngine(client, timeouts=timeouts, pause_policy=policy)
-    kernel = Kernel()
+    kernel = Kernel(provenance="full")
     kernel.bind(MemoryRegistry(()), BindingManifest("r", "e"), (remote,))
     kernel.start()
     return kernel, client, thread, failures, closed, native
@@ -215,7 +215,7 @@ def test_host_abort_unblocks_timed_out_native_work_before_serial_cleanup():
         abort_timeout_s=0.1,
     )
     remote = RemoteEngine(client)
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (remote,))
     try:
         with pytest.raises(KernelError, match="RPC_REMOTE"):
@@ -248,7 +248,7 @@ def test_abort_failure_is_reported_and_cleanup_still_runs():
         engine=Broken(Partition("p", "e")), abort=abort, abort_timeout_s=0.1
     )
     remote = RemoteEngine(client)
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (remote,))
     try:
         with pytest.raises(KernelError, match="RPC_REMOTE"):

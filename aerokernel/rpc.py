@@ -261,6 +261,7 @@ def _projection(view: StateView, owners: tuple[Partition, ...]) -> dict[str, Any
         relations=tuple(relation_descriptors),
     )
     return {
+        **({"provenance": "lean"} if view.provenance == "lean" else {}),
         "registry": registry.to_data(),
         "manifest": store.manifest.to_data(),
         "partitions": encode(tuple(store.partitions.values())),
@@ -322,6 +323,10 @@ def _view(data: Any, budget: ResourceBudget) -> StateView:
             "status": "returned",
             "operation_refs": refs,
         }
+    provenance = data.get("provenance", "full")
+    if provenance not in {"lean", "full"}:
+        raise KernelError("PROVENANCE", "unsupported RPC provenance level")
+    store.provenance = actions.provenance = provenance
     store.cuts = AppendList(list(decode_record(data["cuts"])))
     store.action_snapshots[store.cut.index] = actions
     store.action_snapshot_indices.append(store.cut.index)

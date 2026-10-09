@@ -27,6 +27,42 @@ def from_header(header: dict[str, Any]) -> Kernel:
     from .binding import BindingManifest
     from .registry import MemoryRegistry
 
+    if (header.get("major") == 1 and header.get("minor") == 4) or (
+        header.get("major") == 2 and header.get("minor") == 1
+    ):
+        from .journal_codec import CODEC, LEAN_CODEC
+
+        compressed = header.get("major") == 2
+        if (
+            header.get("provenance") != "lean"
+            or type(header.get("policy_version")) is not int
+            or header["policy_version"] not in {2, 3}
+            or type(header.get("major")) is not int
+            or type(header.get("minor")) is not int
+            or (compressed and header.get("codec") != LEAN_CODEC)
+            or (
+                compressed
+                and (
+                    type(header.get("semantic_version")) is not int
+                    or header["semantic_version"] != 4
+                )
+            )
+        ):
+            raise KernelError("JOURNAL_HEADER", "unsupported lean journal header")
+        legacy = dict(header)
+        legacy["minor"] = 0 if compressed else legacy["policy_version"]
+        if compressed:
+            legacy["semantic_version"] = legacy["policy_version"]
+            legacy["codec"] = CODEC
+        del legacy["provenance"], legacy["policy_version"]
+        kernel = from_header(legacy)
+        kernel.provenance = kernel._store.provenance = "lean"
+        kernel._store.actions.provenance = "lean"
+        kernel._store.records.provenance = "lean"
+        kernel.journal.provenance = "lean"
+        kernel.header = header
+        return kernel
+
     if header.get("major") == 2:
         from .journal_codec import CODEC
 
@@ -151,6 +187,7 @@ def from_header(header: dict[str, Any]) -> Kernel:
     manifest = BindingManifest.from_data(header["manifest"])
     mappings = decode_record(header["mappings"])
     kernel = cls(
+        provenance="full",
         root_seed=header["root_seed"],
         mappings=mappings,
         max_microsteps=header["max_microsteps"],
@@ -287,7 +324,13 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
     elif kind in {"live_ingress", "live_ingress_rejection"}:
         from .ingress import reserve_live
 
-        legacy = self.header.get("semantic_version", self.header["minor"]) < 3
+        legacy = (
+            self.header.get(
+                "policy_version",
+                self.header.get("semantic_version", self.header["minor"]),
+            )
+            < 3
+        )
         stream_id = "default" if legacy else record["stream_id"]
         policy = self._policy(stream_id)
         if decode_record(record["policy"]) != policy:
@@ -355,7 +398,10 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
         state.cuts.append(Cut(record["index"], instant))
     elif (
         kind in {"watermark", "source_progress"}
-        and self.header.get("semantic_version", self.header["minor"]) == 3
+        and self.header.get(
+            "policy_version", self.header.get("semantic_version", self.header["minor"])
+        )
+        == 3
     ):
         stream_id = record["stream_id"]
         policy = self._policy(stream_id)
@@ -434,7 +480,11 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
     elif kind == "seal":
         state = self._store.clone()
         if (
-            self.header.get("semantic_version", self.header["minor"]) == 3
+            self.header.get(
+                "policy_version",
+                self.header.get("semantic_version", self.header["minor"]),
+            )
+            == 3
             and instant != state.cut.instant
         ):
             raise KernelError("JOURNAL_SEAL", "seal must cite the settled instant")
@@ -575,6 +625,7 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
             self._read_only = False
             previous_journal = self.journal
             self.journal = Journal(budget=self.budget)
+            self.journal.provenance = self.provenance
             try:
                 self.cancel(record["command_id"])
                 state = self._store
@@ -596,6 +647,14 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
     historical = expected if "fact_tables" in record else expand_record(expected)
 
     def equal(left: dict[str, Any], right: dict[str, Any]) -> bool:
+        if self.provenance == "lean":
+            import json
+
+            # Both trees are admitted/generated portable records; C JSON keeps
+            # bool/int/float distinctions without another recursive audit copy.
+            return json.dumps(left, sort_keys=True, allow_nan=False) == json.dumps(
+                right, sort_keys=True, allow_nan=False
+            )
         if self.header["major"] == 2:
             return typed_equal(left, right)
         return canonical_json(left, self.budget) == canonical_json(right, self.budget)
@@ -608,14 +667,28 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
             raise KernelError(
                 "JOURNAL_SEMANTICS", "record differs from normalized legal effects"
             )
-    if self.header["major"] == 2:
+    if self.provenance == "lean":
+        import json
+
+        # Payloads were admitted above. The private prefix uses canonical JSON,
+        # not the historical positional codec; Path replay pins original frames.
+        line = (
+            json.dumps(
+                compact_operations(expected),
+                sort_keys=True,
+                ensure_ascii=False,
+                allow_nan=False,
+                separators=(",", ":"),
+            )
+            + "\n"
+        ).encode("utf-8")
+    elif self.header["major"] == 2:
         from .journal_codec import encode_frame
 
-        state.records.freeze_tail(
-            encode_frame(compact_operations(expected), self.budget)
-        )
+        line = encode_frame(compact_operations(expected), self.budget)
     else:
-        state.records.freeze_tail(canonical_json(expected, self.budget))
+        line = canonical_json(expected, self.budget)
+    state.records.freeze_tail(line)
     if state.actions.states.writes:
         state.action_snapshots[state.cut.index] = state.actions
         state.action_snapshot_indices.append(state.cut.index)

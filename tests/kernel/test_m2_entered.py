@@ -141,7 +141,7 @@ def test_sdk_evaluator_records_known_and_unresolved_without_interpreting_in_core
     )
     from aerokernel import Kernel
 
-    live = Kernel()
+    live = Kernel(provenance="full")
     live.bind(k._store.registry, k._store.manifest, engines)
     live.start()
     live.run_until(1)
@@ -170,7 +170,7 @@ def test_entered_sdk_frame_results_and_opaque_role_keys():
     evaluator = Evaluator(old.partition, old.spec)
     from aerokernel import Kernel
 
-    live = Kernel()
+    live = Kernel(provenance="full")
     live.bind(
         k._store.registry,
         k._store.manifest,
@@ -223,7 +223,7 @@ def test_entered_sdk_emits_one_event_citing_current_and_prior_frames():
         k._store.registry.fields,
         (MessageDescriptor("entered", schema=schema),),
     )
-    live = Kernel()
+    live = Kernel(provenance="full")
     live.bind(
         registry,
         k._store.manifest,

@@ -92,7 +92,7 @@ class Script(SimpleEngine):
 
 
 def make(engine=None, **kwargs):
-    k = Kernel(**kwargs)
+    k = Kernel(provenance="full", **kwargs)
     k.bind(*contracts(), (Script() if engine is None else engine,))
     return k
 
@@ -320,7 +320,7 @@ def test_fixed_grid_latches_command_after_completed_interval():
     registry, manifest = contracts(
         messages=(MessageDescriptor("set", "command", {"type": "integer"}),)
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(registry, manifest, (Fixed(),))
     initial = k.start().cut
     mid = k.submit(CommandRequest("set", "owner", Instant(3), 9, ingress_at_ns=3))

@@ -285,6 +285,8 @@ def publish_frame(
         state.known(ref, op.cut)
     frozen: FrozenValue = freeze(op.result, candidate.budget)
     frame = replace(op, result=frozen)
+    if state.provenance == "lean":
+        frame = replace(frame, causes=(state.pending_intents[partition],))
     row = RecordedFrame(frame, candidate.instant, partition, out)
     history = prior.fork() if isinstance(prior, AppendList) else AppendList(list(prior))
     history.append(row)

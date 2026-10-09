@@ -93,7 +93,7 @@ class Evaluator(SimpleEngine):
         return (frame, *self.bad)
 
 
-def setup(*, child=False, bad=()):
+def setup(*, child=False, bad=(), provenance="full"):
     registry = MemoryRegistry(
         (TypeDescriptor("T"),),
         tuple(FieldDescriptor(f, "T", {"type": "integer"}) for f in ("x", "y")),
@@ -164,7 +164,7 @@ def setup(*, child=False, bad=()):
         lifecycle=(LifecycleRule("controller", "T"),),
         samples=tuple(specs),
     )
-    k = Kernel()
+    k = Kernel(provenance=provenance)
     k.bind(registry, manifest, tuple(engines))
     return k, evaluator, child_engine
 
@@ -235,10 +235,10 @@ def test_transitive_zero_lag_sample_feedback_rejects_and_positive_lag_breaks_it(
     relay = Partition("relay", "relay", produces=("y",), consumes=(Dependency("z"),))
     sample = Partition("sample", "sample", produces=("z",), consumes=(Dependency("x"),))
     with pytest.raises(KernelError, match="SAMPLE_CYCLE"):
-        Kernel().bind(
+        Kernel(provenance="full").bind(
             registry, manifest, tuple(SimpleEngine(p) for p in (owner, relay, sample))
         )
-    Kernel().bind(
+    Kernel(provenance="full").bind(
         registry,
         manifest,
         tuple(

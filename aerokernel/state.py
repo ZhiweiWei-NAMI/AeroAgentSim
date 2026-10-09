@@ -287,6 +287,7 @@ class Store:
         self.sequences: Overlay[tuple[str, str], int] = Overlay()
         self.intents: Overlay[ItemRef, dict[str, Any]] = Overlay()
         self.pending_intents: dict[str, ItemRef] = {}
+        self.latest_returned: dict[tuple[str, str], ItemRef] = {}
         self.frontiers = {p: (Instant(0), 0) for p in partitions}
         self.native_cuts = {p: self.cuts[0] for p in partitions}
         self.timers: Overlay[tuple[str, ...], dict[str, Any]] = Overlay()
@@ -305,6 +306,7 @@ class Store:
         self.faulted = False
         self.max_microsteps = 1024
         self.allow_frame_prefix = False
+        self.provenance = "full"
 
     @property
     def cut(self) -> Cut:
@@ -338,6 +340,7 @@ class Store:
             "sequences",
             "frontiers",
             "pending_intents",
+            "latest_returned",
             "native_cuts",
             "watermarks",
             "source_progress",
@@ -484,6 +487,11 @@ class StateView:
         )
         self.native_reached_ns = native_reached_ns
 
+    @property
+    def provenance(self) -> str:
+        """Pinned invocation audit level, also exposed to SDK/RPC engines."""
+        return self._store.provenance
+
     def _cut(self, known_at: Cut | None) -> Cut:
         cut = self.cut if known_at is None else known_at
         self._store.check_cut(cut)
@@ -590,6 +598,9 @@ class StateView:
         LocalCause alone is invocation-local. Retain it with invocation_ref to
         learn the actual publication reference later, without predicting IDs or
         waiting for a message echo. Resolution grants no additional cause scope.
+        Lean retains only each partition's latest returned call per phase;
+        resolve in the next same-phase callback and retain the resulting ItemRef.
+        Full retains every returned invocation. Issued views keep their snapshots.
         """
         intent = self._store.intents.get(invocation)
         if intent is None:

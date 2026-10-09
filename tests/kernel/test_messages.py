@@ -331,7 +331,7 @@ class Target(SimpleEngine):
 
 
 def kernel(target, **manifest_args):
-    k = Kernel()
+    k = Kernel(provenance="full")
     manifest = BindingManifest(
         "r",
         "e",
@@ -404,7 +404,7 @@ def test_cancel_decision_routes_to_partition_control_even_when_name_matches_ingr
             return ()
 
     control = Control()
-    k = Kernel()
+    k = Kernel(provenance="full")
     manifest = BindingManifest(
         "r",
         "e",

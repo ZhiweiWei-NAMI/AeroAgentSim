@@ -80,7 +80,7 @@ def test_manifest_relation_and_obligation_rules_clone_and_replay_real_versions()
             self.wakeup_ns = None
             return CloseEdge("edge"), EndObligation("minimum")
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (TypeDescriptor("T"),),

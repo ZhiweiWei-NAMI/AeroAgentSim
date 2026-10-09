@@ -1,6 +1,6 @@
-# aerokernel design specification, v0.2 (additive)
+# aerokernel design specification, v0.3 (provenance levels)
 
-This document is normative. **MUST** defines a conformance requirement; **SHOULD** permits a documented alternative. The target is an independent Python >=3.10 package, pure standard library at runtime, implementable in approximately 3–5k lines excluding adapters and tests. AeroAgentSim is the platform consuming it; AeroBench is an adapter migration source. The v0.1 scope in section 13 remains; the local ingress amendment in section 14 takes precedence for v0.2.
+This document is normative. **MUST** defines a conformance requirement; **SHOULD** permits a documented alternative. The target is an independent Python >=3.10 package, pure standard library at runtime. AeroAgentSim is the platform consuming it; AeroBench is an adapter migration source. The v0.1 scope in section 13 remains; section 14 takes precedence for local ingress, section 15 for full audit encoding, and section 16 for provenance levels.
 
 ## 1. Boundary and source authority
 
@@ -623,3 +623,83 @@ hashes; subsequent appends cannot expose an unacknowledged suffix. Uncached read
 committed ranges MUST fail; decoded cache entries retain acknowledged values. The backing journal must remain available while
 issued views are used. WAL flush/fsync precedes visibility as before, and the
 metadata/file indexes are not independently authoritative journal records.
+
+## 16. v0.3 amendment: lean invocation provenance (K7)
+
+`Kernel(provenance="lean"|"full")` MUST default to `lean`. The choice is
+pinned when binding and MUST be admitted explicitly from the journal header.
+This amendment changes audit detail; it does not change engine-visible state,
+time coordination, time seals, writer authority, message ordering, receipt
+transitions, ingress watermarks, or WAL-before-publication semantics.
+
+### 16.1 Lean and full contracts
+
+In lean mode each engine operation's resolved cause sequence MUST contain only
+the ItemRef of its invocation intent. Resolved emitted messages and sampled
+frames MUST use that same cause. The intent retains its exact read cut, native
+input cut, grant, delivered messages, dirty notifications and dispatch identities.
+External inputs retain their reservation/publication identity and original stamp;
+kernel-generated routing/timer records retain their operational references.
+Lean provenance identifies which invocation committed an item; it MUST NOT be
+presented as a list of the fields actually read by the engine.
+
+The live index MUST retain pending intents and compact operation mappings for
+each partition's latest returned invocation per phase (bootstrap, advance, react,
+sample), without returned inbox/read trees. `StateView.committed_operation`
+and RPC `committed_operations` MUST resolve those own committed local proposals
+with the existing ownership and read-cut checks. Engines MUST resolve a local
+proposal during their next callback of that phase and retain its resulting
+ItemRef if needed later. Superseded mappings are absent (`CAUSE_UNKNOWN`);
+previously issued views retain their immutable mappings. Full mode retains all
+returned invocations. Historical invocation inputs MUST remain available through
+the immutable WAL. Lean publication and replay MAY
+serialize already admitted payloads and kernel-generated metadata directly,
+without another normalization copy. Payload nesting/integer/value budgets remain
+checked at admission; newly issued coordinates, stamps and intervals are checked
+once. Lean wire-record nesting has a framing allowance of `2*nesting_depth+2`,
+while decoded payloads MUST still satisfy the original payload budget. Both
+expanded and physical byte limits remain enforced. Arbitrary public
+`Journal.append` calls retain normal validation unless the kernel supplies its
+internal trusted-record flag.
+
+Engine-supplied proposal `causes` MUST be discarded before normalization,
+encoding or per-reference validation, including ItemRef, LocalCause and
+FramePrefix citations. Recorded proposals carry an empty `causes` sequence.
+The SDK MUST avoid constructing read vectors in lean mode; `StateView.provenance`
+and RPC view projections expose the pinned choice. Actual field/frame reads MUST
+still enforce declared scope, lag and the permitted read cut.
+
+Receipt, feedback and cancel decisions MUST retain target ownership, an actual
+recorded command/cancel dispatch, legal current-state transitions, cancellation
+correlation and typed payload/result validation. Lean decisions use the kernel's
+current action head and dispatch index instead of requiring their repetition in
+proposal causes. `Message.origin`, command IDs, dispatch IDs and receipt heads
+remain operational identities. `Remove.cleanup_refs` is likewise operational
+authorization: actual participant acknowledgments and their visibility/order
+MUST still be checked; it is not discarded with audit `causes`.
+
+Full mode MUST retain the previous ordered explicit-vector validation, expansion
+and encoding, including duplicates and prefix expansion. Its existing journal
+1.x/2.0 headers and bytes MUST remain unchanged on the pinned runtime. The
+provenance requirements in earlier sections apply to full mode unless this
+section explicitly retains them for lean mode.
+
+### 16.2 Journal admission and replay
+
+Lean JSON journals use version 1.4; lean compressed journals use version 2.1,
+`semantic_version:4`, and `codec:"canonical-deflate/v1"`. Both MUST declare
+`provenance:"lean"` and integer `policy_version:2|3`, selecting the existing
+offline/single-stream or named-stream ingress record rules. A 2.1 frame contains
+one independently zlib-compressed canonical JSON record, base64 encoded in the
+existing type/index/optional-phase envelope. Compression level is 6. Expanded
+and physical frame budgets remain enforced; there is no positional tree or
+cross-frame dictionary. Version 2.0 retains `positional-deflate/v1` unchanged.
+Unsupported or malformed headers MUST fail; absent provenance in a supported
+historical 1.x/2.0 header means full audit semantics, not the new default.
+
+Engine-free replay MUST reproduce committed state history, messages, receipts
+and time using the admitted provenance level. Re-execution with identical pinned
+engines, inputs and run-control schedule MUST produce identical bytes for that
+level and codec. Lean and full runs need not have identical journal bytes or
+audit causes. Lean mode requires none of K6's segmented cause sequences,
+cross-record payload references or payload-node storage.

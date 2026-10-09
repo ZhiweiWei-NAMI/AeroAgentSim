@@ -205,11 +205,14 @@ class EngineContext:
         self.ops: list[object] = []
         self.heads: dict[str, Cause] = {}
         self.inputs: list[Cause] = []
-        self.inputs.extend(d.dispatch_ref for d in inbox)
-        self.inputs.extend(d.cause for d in dirty)
+        if view.provenance == "full":
+            self.inputs.extend(d.dispatch_ref for d in inbox)
+            self.inputs.extend(d.cause for d in dirty)
         self._rng = rng
 
     def _causes(self, *extra: Cause) -> tuple[Cause, ...]:
+        if self.view.provenance == "lean":
+            return ()
         return tuple(dict.fromkeys(self.inputs + list(extra)))
 
     def _append(self, operation: object) -> LocalCause:
@@ -223,7 +226,8 @@ class EngineContext:
         """Read an explicitly selected/dependent field and retain its version cause."""
         fact = self.view.field((ref, field), self.now if valid_at is None else valid_at)
         if isinstance(fact, Fact):
-            self.inputs.append(fact.version)
+            if self.view.provenance == "full":
+                self.inputs.append(fact.version)
             return fact.value
         return ABSENT
 
@@ -294,7 +298,8 @@ class EngineContext:
         edges = self.view.relations(
             relation_id, self.now if valid_at is None else valid_at
         )
-        self.inputs.extend(e.version for e in edges)
+        if self.view.provenance == "full":
+            self.inputs.extend(e.version for e in edges)
         return edges
 
     def replace_relation(

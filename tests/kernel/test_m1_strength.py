@@ -47,7 +47,7 @@ def test_transaction_flush_failure_after_actual_stateful_call():
             return (Emit("event", "event", "empty", view.instant, 7),)
 
     writer = Writer(Partition("p", "e", emits=("event",), message_targets=("empty",)))
-    k = Kernel(journal=Journal(sink))
+    k = Kernel(provenance="full", journal=Journal(sink))
     k.bind(
         MemoryRegistry(
             (), messages=(MessageDescriptor("event", schema={"type": "integer"}),)
@@ -88,7 +88,7 @@ def test_every_prefix_pending_and_authorized_work_matches_authored_schedule():
         SimpleEngine(Partition("a", "a", subscribes=("topic",), message_lag_ns=2)),
         SimpleEngine(Partition("b", "b", subscribes=("topic",), message_lag_ns=7)),
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (), messages=(MessageDescriptor("event", schema={"type": "integer"}),)

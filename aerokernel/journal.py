@@ -35,6 +35,7 @@ class Journal:
         if codec not in {"json", "positional-deflate"}:
             raise KernelError("JOURNAL_CODEC", "unsupported journal codec")
         self.codec = codec
+        self.provenance = "full"
         if durability not in {"flush", "fsync"}:
             raise KernelError("DURABILITY", "unsupported durability policy")
         self.budget = ResourceBudget() if budget is None else budget
@@ -55,12 +56,37 @@ class Journal:
         self.failed = False
 
     def append(
-        self, record: dict[str, Any], *, trusted_fact_rows: bool = False
+        self,
+        record: dict[str, Any],
+        *,
+        trusted_fact_rows: bool = False,
+        trusted_record: bool = False,
     ) -> bytes:
         """A failed append taints the writer and leaves the live prefix unchanged."""
         if self.failed:
             raise KernelError("JOURNAL_TAINTED", "journal has already failed")
-        if self.codec == "positional-deflate" and record.get("type") != "header":
+        if trusted_record and self.provenance == "lean":
+            # Kernel-owned metadata and detached payloads were admitted already.
+            # This path does not make an additional audit copy of the whole tree.
+            line = (
+                json.dumps(
+                    record,
+                    sort_keys=True,
+                    ensure_ascii=False,
+                    allow_nan=False,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            ).encode("utf-8")
+            if len(line) > self.budget.frame_bytes:
+                from .errors import ResourceLimit
+
+                raise ResourceLimit("encoded frame bytes exceeded")
+        elif (
+            self.codec == "positional-deflate"
+            and self.provenance == "full"
+            and record.get("type") != "header"
+        ):
             from .journal_codec import encode_frame
 
             line = encode_frame(record, self.budget)
@@ -169,6 +195,14 @@ class Journal:
                 raise ResourceLimit("encoded frame bytes exceeded")
         else:
             line = canonical_json(record, self.budget)
+        if (
+            self.codec == "positional-deflate"
+            and self.provenance == "lean"
+            and record.get("type") != "header"
+        ):
+            from .journal_codec import compress_frame
+
+            line = compress_frame(record, line, self.budget, level=6)
         try:
             written = self.sink.write(line)
             if written != len(line):
@@ -263,18 +297,29 @@ def read_records(
                 raise KernelError(
                     "JOURNAL_HEADER", "malformed resource budgets"
                 ) from exc
-        record = parse_json(line, active_budget)
+        frame_budget = active_budget
+        if records and records[0].get("provenance") == "lean":
+            frame_budget = ResourceBudget(
+                active_budget.integer_digits,
+                active_budget.frame_bytes,
+                active_budget.nesting_depth * 2 + 2,
+            )
+        record = parse_json(line, frame_budget)
         if not isinstance(record, dict):
             raise KernelError("JOURNAL_RECORD", "record must be an object")
         if records and records[0].get("major") == 2:
             from .journal_codec import decode_frame
 
-            record = decode_frame(record, active_budget)
+            record = decode_frame(
+                record, active_budget, lean=records[0].get("provenance") == "lean"
+            )
         records.append(record)
         if len(records) == 1 and record.get("major") == 2:
-            from .journal_codec import CODEC
+            from .journal_codec import CODEC, LEAN_CODEC
 
-            if record.get("codec") != CODEC:
+            if record.get("codec") != (
+                LEAN_CODEC if record.get("minor") == 1 else CODEC
+            ):
                 raise KernelError("JOURNAL_HEADER", "unsupported journal 2.0 codec")
         if len(records) == 1 and budget is None:
             raw_budget = record.get("budget")

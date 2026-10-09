@@ -39,6 +39,7 @@ def make(policy, timing=REAL_TIME):
 
     target = Target()
     k = Kernel(
+        provenance="full",
         ingress_policy=policy,
         mappings=(
             ClockMapping("source-v1", "source", offset_ns=10),

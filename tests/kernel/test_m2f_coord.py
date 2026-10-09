@@ -101,7 +101,7 @@ def test_all_relation_outputs_fault_during_actual_native_hold(bound, kind):
         owner.partition, timing=Timing("lockstep", 20, certified_hold=True)
     )
     owner.partitions = (owner.partition,)
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(old._store.registry, old._store.manifest, (owner, reader))
     owner.horizon = lambda partition, cut: Horizon(
         owner.logical, owner.native_ns, 20, bound, None, cut
@@ -135,7 +135,9 @@ def test_all_relation_outputs_fault_during_actual_native_hold(bound, kind):
 
 
 def test_pacing_waits_to_wall_clock_deadline_with_controlled_clock(monkeypatch):
-    k = Kernel(ingress_policy=IngressPolicy(50_000_000, speed_ratio=1))
+    k = Kernel(
+        provenance="full", ingress_policy=IngressPolicy(50_000_000, speed_ratio=1)
+    )
     k.bind(
         MemoryRegistry(()),
         BindingManifest("r", "e"),
@@ -167,10 +169,11 @@ def test_relation_bootstrap_acquisition_validates_actual_mapped_source(mapped_ns
         (replace(edge(), acquired=Stamp("source", mapped_ns - 10, 1, "source-v1")),)
     )
     k = Kernel(
+        provenance="full",
         mappings=(
             ClockMapping("canonical", "canonical"),
             ClockMapping("source-v1", "source", offset_ns=10),
-        )
+        ),
     )
     k.bind(old._store.registry, old._store.manifest, (owner, reader))
     try:
@@ -231,7 +234,7 @@ def test_hold_allows_nonoutput_scheduling_and_activation():
         return view.batch((ScheduleTimer("next", Instant(4), {}), Activate("owner")))
 
     owner.advance = hold
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(old._store.registry, old._store.manifest, (owner, reader))
     try:
         k.start()

@@ -71,7 +71,7 @@ def test_declared_zero_lag_scc_reads_jacobi_base_and_settles_without_reintegrati
         (TypeDescriptor("T"),),
         tuple(FieldDescriptor(f, "T", {"type": "integer"}) for f in ("x", "y")),
     )
-    k = Kernel(max_microsteps=16)
+    k = Kernel(provenance="full", max_microsteps=16)
     k.bind(
         registry,
         BindingManifest(
@@ -141,7 +141,7 @@ def test_equal_state_does_not_quiesce_an_event_cycle_and_fault_is_replayable():
                 ),
             )
 
-    k = Kernel(max_microsteps=5)
+    k = Kernel(provenance="full", max_microsteps=5)
     k.bind(
         MemoryRegistry(
             (TypeDescriptor("T"),),

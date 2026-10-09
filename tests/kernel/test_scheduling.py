@@ -57,7 +57,7 @@ class TimerEngine(SimpleEngine):
 
 def test_timer_and_inbox_use_earliest_microstep_not_latest_deadline():
     engine = TimerEngine()
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (engine,))
     k.start()
     assert engine.seen == [(1, ["activation"]), (3, ["timer"]), (6, ["timer"])]
@@ -82,7 +82,7 @@ def test_invalid_owned_timer_and_activation_proposals_reject(ops):
         def initialize(self, view):
             return ops
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (Bad(Partition("p", "e")),))
     with pytest.raises(KernelError):
         k.start()
@@ -93,7 +93,7 @@ def test_idempotency_uses_original_request_after_seal_advances():
     registry = MemoryRegistry(
         (), messages=(MessageDescriptor("do", "command", {"type": "integer"}),)
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(registry, BindingManifest("r", "e"), (engine,))
     k.start()
     request = CommandRequest("do", "target", Instant(3), 1, "key")
@@ -119,7 +119,7 @@ def test_lifecycle_cohort_activated_through_member_runs_before_unrelated_writer(
             seen.append((self.partition.id, view.instant.microstep))
             return ()
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     engines = (
         Named(Partition("member", "member")),
         Named(Partition("controller", "controller", lifecycle=True)),
@@ -161,7 +161,7 @@ def test_route_lag_is_applied_once_before_recipient_grid_latch_and_empty_fanout(
             return ()
 
     sub = Sub()
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         MemoryRegistry(
             (), messages=(MessageDescriptor("event", "event", {"type": "integer"}),)
@@ -194,7 +194,7 @@ def test_route_lag_is_applied_once_before_recipient_grid_latch_and_empty_fanout(
 )
 def test_external_profiles_require_declared_contracts(partition):
     with pytest.raises(KernelError):
-        Kernel().bind(
+        Kernel(provenance="full").bind(
             MemoryRegistry(()), BindingManifest("r", "e"), (SimpleEngine(partition),)
         )
 
@@ -211,7 +211,7 @@ def test_external_profiles_require_declared_contracts(partition):
 )
 def test_invalid_selected_timing_and_route_policies_fail_bind(partition):
     with pytest.raises(KernelError):
-        Kernel().bind(
+        Kernel(provenance="full").bind(
             MemoryRegistry(()), BindingManifest("r", "e"), (SimpleEngine(partition),)
         )
 
@@ -222,7 +222,7 @@ def test_nonreactive_zero_lag_cycle_fails_at_bind():
     )
     manifest = BindingManifest("r", "e", rules=(BindingRule("p", "T", ("x",)),))
     with pytest.raises(KernelError, match="CYCLE_REENTRY"):
-        Kernel().bind(
+        Kernel(provenance="full").bind(
             registry,
             manifest,
             (
@@ -270,7 +270,7 @@ def test_output_promise_faults_before_fact_publication_and_echo_mismatch():
         rules=(BindingRule("p", "T", ("x",)),),
         lifecycle=(LifecycleRule("p", "T"),),
     )
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(
         registry,
         manifest,
@@ -291,7 +291,7 @@ def test_output_promise_faults_before_fact_publication_and_echo_mismatch():
         def advance(self, partition, to, view):
             return replace(view.batch(), native_reached_ns=999)
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(MemoryRegistry(()), BindingManifest("r", "e"), (Echo(Partition("p", "e")),))
     k.start()
     with pytest.raises(KernelError, match="INVOCATION_FRONTIER"):
@@ -332,7 +332,7 @@ def test_engine_originated_cancel_is_owned_and_result_routed():
                     return (RequestCancel(command),)
             return ()
 
-    k = Kernel()
+    k = Kernel(provenance="full")
     k.bind(registry(), BindingManifest("r", "e"), (Origin(), Target()))
     k.start()
     assert next(iter(k._store.actions.states.values())).status == "canceled"
@@ -352,6 +352,6 @@ def test_frontier_structural_integers_reject_bool_and_mappings_stay_pinned():
         Horizon(Instant(0), False, None, None, None, cut)
     with pytest.raises(KernelError):
         Horizon(Instant(0), 0, False, None, None, cut)
-    k = Kernel()
+    k = Kernel(provenance="full")
     with pytest.raises(TypeError):
         k.mappings["canonical"] = ClockMapping("canonical", "canonical", offset_ns=1)

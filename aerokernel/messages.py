@@ -252,10 +252,12 @@ class Actions:
         self.dispatches: Overlay[str, Delivery] = Overlay()
         self.cancel_heads: Overlay[str, ItemRef] = Overlay()
         self.decisions: set[str] = set()
+        self.provenance = "full"
 
     def clone(self) -> Actions:
         """Detach mutable candidate indexes, retaining immutable record values."""
         other = Actions(self.registry, self.budget)
+        other.provenance = self.provenance
         other.states = self.states.fork()
         other.schemas = self.schemas.fork()
         other.dispatches = self.dispatches.fork()
@@ -350,13 +352,13 @@ class Actions:
             raise KernelError(
                 "ACTION_TARGET", "only designated target can issue receipts"
             )
-        if head is None or head not in cause_refs:
+        if head is None or (self.provenance == "full" and head not in cause_refs):
             raise KernelError("ACTION_HEAD", "decision must cite current receipt head")
         dispatch = self.dispatches.get(id if message_id is None else message_id)
         if (
             dispatch is None
             or dispatch.recipient != partition
-            or dispatch.dispatch_ref not in cause_refs
+            or (self.provenance == "full" and dispatch.dispatch_ref not in cause_refs)
         ):
             raise KernelError(
                 "ACTION_DISPATCH", "decision must cite actual original/cancel dispatch"
@@ -385,7 +387,7 @@ class Actions:
         if state.status == "canceling":
             if (
                 state.target != partition
-                or state.head not in cause_refs
+                or (self.provenance == "full" and state.head not in cause_refs)
                 or self.cancel_heads.get(op.command_id) != state.head
             ):
                 raise KernelError(
