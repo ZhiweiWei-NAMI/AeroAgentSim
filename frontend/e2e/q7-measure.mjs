@@ -62,10 +62,13 @@ async function measure(label, selector, extra = {}, exercise = false) {
   await page.waitForTimeout(2000);
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Performance.enable');
+  if (process.env.Q7_TRACE === '1') {await cdp.send('Profiler.enable');await cdp.send('Profiler.start');}
+  if (process.env.Q7_TRACE === '1') await cdp.send('Tracing.start', { categories: 'devtools.timeline,v8,blink.user_timing,gpu', transferMode: 'ReturnAsStream' });
   let watchdog;
   const data = await Promise.race([page.evaluate(async ({ selector, exercise }) => {
     const frames = [], diagnostics = [], target = document.querySelector(selector);
     if (!target) throw Error(`Missing measurement target: ${selector}`);
+    const startDiagnostics={...target.dataset};
     let last, start;
     await new Promise(resolve => {
       function tick(now) {
@@ -79,28 +82,49 @@ async function measure(label, selector, extra = {}, exercise = false) {
       }
       requestAnimationFrame(tick);
     });
-    return { frames, diagnostics };
+    return { frames, diagnostics, startDiagnostics };
   }, { selector, exercise }), new Promise((_, reject) => {
     watchdog = setTimeout(() => reject(Error('Frame sampling exceeded 60 seconds: ' + label)), 60000);
   })]).finally(() => clearTimeout(watchdog));
+  if (process.env.Q7_TRACE === '1') {
+    const {profile} = await cdp.send('Profiler.stop');writeFileSync(`${out}/${label}-cpu.json`,JSON.stringify(profile));
+    const completed = new Promise(resolve => cdp.once('Tracing.tracingComplete', resolve));
+    await cdp.send('Tracing.end');
+    const { stream } = await completed;
+    let trace = '';
+    for (;;) { const chunk = await cdp.send('IO.read', { handle: stream }); trace += chunk.data; if (chunk.eof) break; }
+    await cdp.send('IO.close', { handle: stream });
+    writeFileSync(`${out}/${label}-trace.json`, trace);
+  }
   const performanceMetrics = await cdp.send('Performance.getMetrics');
   const heap = performanceMetrics.metrics.find(m => m.name === 'JSHeapUsedSize');
   const root = await page.locator(selector).evaluate(node => ({ ...node.dataset }));
   if (selector === '#city-map' || selector === '[data-testid="viewport"]') verifyRenderer(root.gpu);
+  const actualFrames = data.diagnostics.filter((d, i, all) => d.renderCount === undefined || (d.idle !== 'true' && d.renderCount !== (i === 0 ? data.startDiagnostics?.renderCount : all[i-1].renderCount)));
+  const activeRendering=exercise || extra.interaction?.includes('playback');
+  if (root.renderCount !== undefined && activeRendering && actualFrames.length < data.frames.length * .8) throw Error('Active interaction failed to render continuously: ' + label);
+  if (root.renderCount !== undefined && !activeRendering && actualFrames.length > 2) throw Error('Paused viewport failed to become idle: ' + label);
   const calls = data.diagnostics.filter(d => d.drawCalls !== undefined).map(d => Number(d.drawCalls));
   const triangles = data.diagnostics.filter(d => d.triangles !== undefined).map(d => Number(d.triangles));
-  const render = data.diagnostics.filter(d => d.renderMs !== undefined).map(d => Number(d.renderMs));
+  const render = actualFrames.filter(d => d.renderMs !== undefined).map(d => Number(d.renderMs));
   if (selector === '#city-map' || selector === '[data-testid="viewport"]') {
-    if (!calls.length || !triangles.length || !render.length) throw Error('Missing spatial renderer counters: ' + label);
+    if (!calls.length || !triangles.length || (!render.length && root.renderCount === undefined)) throw Error('Missing spatial renderer counters: ' + label);
   }
   if ([...data.frames, ...calls, ...triangles, ...render].some(value => !Number.isFinite(value))) throw Error('Invalid measurement counter: ' + label);
+  const timings = {};
+  for (const field of ['updateMs', 'entitiesMs', 'labelsMs', 'submitMs', 'gpuMs']) {
+    const samples = field === 'gpuMs' ? data.diagnostics.filter((d, i, all) => d.gpuSample !== undefined && d.gpuSample !== (i === 0 ? data.startDiagnostics?.gpuSample : all[i-1].gpuSample)) : actualFrames;
+    const values = samples.filter(d => d[field] !== undefined).map(d => Number(d[field]));
+    if (values.some(value => !Number.isFinite(value))) throw Error('Invalid timing: ' + field);
+    timings[field] = values.length ? { p50: percentile(values, .5), p95: percentile(values, .95), p99: percentile(values, .99) } : null;
+  }
   const screenshot = `${out}/${label}-${mode}.png`;
   await page.screenshot({ path: screenshot, timeout: 90000 });
   const gpuProcesses = await browserCdp.send('SystemInfo.getProcessInfo');
   // Shared device totals and the driver process table are raw observations, not
   // browser VRAM estimates. Correlate graphics PIDs with gpuProcesses offline.
   const nvidiaSnapshot = mode === 'hardware' ? execFileSync('nvidia-smi', [], { encoding: 'utf8', timeout: 10000 }) : null;
-  const record = { label, ...extra, measuredAt: new Date().toISOString(), frames: data.frames.length, frameMs: { p50: percentile(data.frames, .5), p95: percentile(data.frames, .95), p99: percentile(data.frames, .99) },
+  const record = { label, timings, actualRenderSamples: actualFrames.length, ...extra, measuredAt: new Date().toISOString(), frames: data.frames.length, frameMs: { p50: percentile(data.frames, .5), p95: percentile(data.frames, .95), p99: percentile(data.frames, .99) },
     drawCalls: calls.length ? { p50: percentile(calls, .5), max: Math.max(...calls) } : null,
     triangles: triangles.length ? { p50: percentile(triangles, .5), max: Math.max(...triangles) } : null,
     renderCpuMs: render.length ? { p50: percentile(render, .5), p95: percentile(render, .95), p99: percentile(render, .99) } : null,
@@ -142,20 +166,44 @@ try {
       } else body = [{ id: feed.header.runId, scenario: label, status: 'completed', until_ns: feed.header.end.ns }];
       return route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
     });
-    await page.goto(`${base}/runs/${encodeURIComponent(feed.header.runId)}?mode=replay${city ? '&scene=huangpu' : ''}`, { waitUntil: 'domcontentloaded' });
+    let releaseHdri;
+    if (city && process.env.Q7_LATE_HDRI === '1') {
+      const pending=new Promise(resolve=>{releaseHdri=resolve;});
+      await page.route('**/assets/environment/day.hdr', async route=>{await pending;await route.continue();});
+    }
+    await page.goto(`${base}/runs/${encodeURIComponent(feed.header.runId)}?mode=replay&perf=1${city ? '&scene=huangpu' : ''}`, { waitUntil: 'domcontentloaded' });
     console.log('Page opened:', label);
     if (feed.header.presentation.length) {
       const viewport = page.getByTestId('viewport');
       await expect(viewport).toHaveAttribute('data-rendered', 'true');
-      if (city) { await expect(viewport).toHaveAttribute('data-city', 'loaded'); await expect(viewport).toHaveAttribute('data-ibl', 'hdri'); }
+      if (city) {
+        await expect(viewport).toHaveAttribute('data-city', 'loaded');
+        if(releaseHdri){
+          await expect.poll(()=>viewport.getAttribute('data-models')).toBe('loaded');
+          await expect(viewport).toHaveAttribute('data-idle','true');
+          const previous=Number(await viewport.getAttribute('data-render-count'));
+          releaseHdri();
+          await expect(viewport).toHaveAttribute('data-ibl','hdri');
+          await expect.poll(async()=>Number(await viewport.getAttribute('data-render-count'))).toBeGreaterThan(previous);
+          await page.unroute('**/assets/environment/day.hdr');
+          results.lateHdriRepaint=true;
+        } else await expect(viewport).toHaveAttribute('data-ibl', 'hdri');
+      }
       await page.getByLabel('View quality').selectOption('med');
       if (city) await expect.poll(() => viewport.getAttribute('data-models')).toBe('loaded');
       console.log('Rendering ready:', label);
       await measure(label, '[data-testid="viewport"]', { scene: city ? 'Huangpu east' : 'base', committedCut: 'first', quality: 'med' });
-      if (label === 'p1-scale-city-100') {
+      if (process.env.Q7_ACTIVE === '1' && (label !== 'p1-scale-city-100' || process.env.Q7_REGULAR_ONLY === '1')) await measure(label + '-orbit', '[data-testid="viewport"]', { interaction: 'wheel zoom every animation frame', quality: 'med' }, true);
+      if (label === 'p1-scale-city-100' && process.env.Q7_REGULAR_ONLY !== '1') {
         // Match the actual render surface and FOV, not just the outer page.
         await page.addStyleTag({ content: '.viewer-header,.viewer-timeline,.viewer-sidebar,.presentation-tabs,.viewport-caption,.director-toolbar,.mission-overlay,.scene-status,.scene-attribution{display:none!important}.viewer-presentation{inset:0!important}.viewer-demo{height:900px!important;min-height:0!important}.viewer-stage{height:900px!important}' });
         await measure('matched-aas-100', '[data-testid="viewport"]', { city: 'Huangpu east', entityCount: 100, quality: 'med' });
+        if (process.env.Q7_ACTIVE === '1') {
+          await measure('matched-aas-100-orbit', '[data-testid="viewport"]', { interaction: 'wheel zoom every animation frame', quality: 'med' }, true);
+          await page.locator('button[aria-label="Play"]').evaluate(button => button.click());
+          await measure('matched-aas-100-playback', '[data-testid="viewport"]', { interaction: 'recorded feed playback, display interpolation', quality: 'med' });
+          await page.locator('button[aria-label="Pause playback"]').evaluate(button => button.click());
+        }
       }
     } else {
       await expect(page.getByTestId('viewer-presentation')).toHaveClass(/inspector-first/);

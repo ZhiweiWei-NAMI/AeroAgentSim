@@ -1,12 +1,166 @@
-# Viewer evaluation — Q7 + Q7b / D-viewer
+# Viewer evaluation — V1 / Q7 + Q7b
 
-The nonspatial presentation is implemented. Q7b completes the previously unmeasured
-hardware part with verified RTX 3090 rendering and three repetitions per case for
-both Vulkan and SwiftShader. GL/EGL also identifies the hardware but captures a black
-3D viewport in this viewer; its timings are retained only as fault diagnostics.
-The retirement decision remains **open**: the measured
-limits and remaining visual/authoring/UI scope still require owner disposition.
-The matched hardware result does not establish superiority over AeroBench.
+V1 meets the matched hardware viewport target with **active** rendering: three
+RTX 3090 Vulkan repetitions give 16.7 / 16.8 / 16.8 ms during zoom and
+16.7 / 16.7 / 16.8 ms during recorded playback. The measured AeroBench reference
+is 33.5 / 66.7 / 83.3 ms. Paused cadence is reported separately from throughput.
+The retirement decision remains open for broader visual, authoring and UI scope.
+Q7/Q7b evidence below is retained as historical provenance.
+
+## V1 — viewport performance follow-up
+
+**The matched hardware target is met with active rendering.** The following results
+use the same retained Q7 city, HDRI, model and feed bytes, balanced (`med`) quality,
+Chromium 151.0.7922.34, DPR 1, and the original matched 1440 × 900 surface / 48° FOV.
+Hardware runs use `--use-gl=angle --use-angle=vulkan --enable-features=Vulkan
+--disable-vulkan-surface`; both browser probe and each spatial renderer must identify
+NVIDIA. One browser runs at a time; no other user's processes were changed.
+
+```
+Hardware: ANGLE (NVIDIA, Vulkan 1.3.242 (NVIDIA NVIDIA GeForce RTX 3090 (0x00002204)), NVIDIA)
+Software: ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)
+```
+
+The CPU profile identified the cause: the top three entries, `getVertexPosition`,
+`intersectTriangle` and `_computeIntersections`, took approximately 78% of scale100
+samples. The fresh baseline's matched label p50 was 75.4 ms, versus 2.1 ms for
+render submission. [CPU profile](/tmp/aas-q/v1/before-profile/p1-scale-city-100-cpu.json)
+and [Chrome trace](/tmp/aas-q/v1/before-hardware-r1/matched-aas-100-trace.json)
+retain the measurements.
+
+Static label occlusion now uses a BVH and Three's original local triangle test,
+including material sides, transforms, groups and instances. Floating-origin shifts
+translate cached bounds instead of rebuilding triangles. Labels reuse scratch
+vectors, read overlay dimensions once, and keep a bounded hidden-label pool.
+Unchanged instance matrices are not uploaded; shadows update when casters, lighting,
+assets, quality or the origin change. Paused unchanged orbit views retain their
+frame; playback and cinematic cameras continue rendering. Idle UI ticks no longer
+rebuild React event lists. AO half resolution, SMAA, bloom, balanced 2048 shadows,
+materials, models and HDRI retain their previous settings. No dependency was added.
+Exact inspectors still read committed facts; display interpolation and its label
+are unchanged.
+
+**Measurement distinction:** historical/before spatial cases continuously rendered
+an unchanged paused cut. After spatial throughput cases actively zoom every rAF or
+play the recorded feed. The paused after cases have zero actual render samples;
+their approximately 16.7 ms rAF intervals are idle browser cadence, not throughput.
+The harness reports actual render samples, excludes cached counters from CPU/GPU
+timing distributions, checks active rendering and idle settling, and deduplicates
+asynchronous GPU-query results. Graph measurements still exercise wheel zoom.
+
+**RTX 3090 / Vulkan — three independent invocations per case.** Nearest-rank pooled
+frame percentiles, ms; values are rounded to 0.1 ms without altering raw samples.
+
+| Case | Before p50 / p95 / p99 | After p50 / p95 / p99 | After intervals r1 / r2 / r3 | Actual spatial renders r1 / r2 / r3 |
+|---|---|---|---|---|
+| City / 5, active zoom | 16.7 / 16.8 / 16.8 | 16.7 / 16.7 / 16.8 | 361 / 361 / 361 | 361 / 361 / 361 |
+| City / 100, standard surface, active zoom | 83.3 / 100.0 / 100.1 | 16.7 / 16.7 / 16.8 | 361 / 361 / 361 | 361 / 361 / 361 |
+| Matched city / 100, active zoom | 83.4 / 133.4 / 150.0 | 16.7 / 16.8 / 16.8 | 360 / 360 / 361 | 360 / 360 / 361 |
+| Matched city / 100, playback | 83.4 / 133.4 / 150.0 | 16.7 / 16.7 / 16.8 | 361 / 361 / 361 | 361 / 361 / 361 |
+| Synthetic / 1,000, active zoom | 16.7 / 33.4 / 33.4 | 16.7 / 33.3 / 33.4 | 346 / 343 / 322 | 346 / 343 / 322 |
+| Topology / 2,000 nodes, 5,000 edges, active zoom | 16.7 / 16.8 / 16.8 | 16.7 / 16.7 / 16.8 | 361 / 361 / 361 | N/A (canvas graph) |
+| AeroBench native matched / 94 | 49.9 / 66.8 / 83.4 | 33.5 / 66.7 / 83.3 | 133 / 142 / 129 | N/A (native continuous loop) |
+
+The earlier Q7b reference remains 83.4 / 100.1 / 100.1 ms for our matched scene and
+33.4 / 66.7 / 66.7 ms for AeroBench. The fresh before series above has a wider
+matched tail. Its first repetition included tracing; a separate CPU-profile run is
+excluded from pooled percentiles. Final repetitions run without tracing. Host CPU/GPU load was not isolated; some
+QA ran during the overall series. GPUs remain shared: these are observed short-run results,
+not an exclusive-device guarantee. AeroBench's different entity models/positions
+and native animation remain the workload limitation described in Q7b.
+
+**Verified SwiftShader — three independent invocations per case.** Before values
+reuse the three Q7b software repetitions; after values come from the final build.
+
+| Case | Before p50 / p95 / p99 | After active p50 / p95 / p99 | After intervals r1 / r2 / r3 |
+|---|---|---|---|
+| City / 5, active zoom | 616.7 / 883.2 / 1016.6 | 600.0 / 783.3 / 866.7 | 13 / 13 / 13 |
+| City / 100, standard surface, active zoom | 650.0 / 833.2 / 883.3 | 616.7 / 766.6 / 850.0 | 13 / 13 / 12 |
+| Matched city / 100, active zoom | 916.6 / 983.3 / 983.4 | 966.5 / 1166.6 / 1216.7 | 9 / 9 / 10 |
+| Matched city / 100, playback | 916.6 / 983.3 / 983.4 | 966.6 / 1016.6 / 1033.4 | 8 / 7 / 7 |
+| Synthetic / 1,000, active zoom | 499.9 / 550.0 / 616.6 | 466.7 / 583.3 / 616.7 | 16 / 16 / 16 |
+| Topology / 2,000 nodes, 5,000 edges, active zoom | 16.7 / 16.8 / 16.8 | 16.7 / 16.7 / 16.8 | 361 / 361 / 360 |
+
+Software spatial samples are sparse in six-second windows, so their p95/p99 often
+select the maximum interval. Software rendering remains slow. AeroBench software
+was not rerun: its Q7b samples take approximately 11 s per interval; the retained
+three-run 11066.3 / 11266.1 / 11266.1 ms result is historical, not a V1 claim.
+
+**Actual hardware rendering diagnostics — pooled p50 / p95 / p99, ms.**
+
+| Case | Update CPU | Labels CPU | Submit CPU | GPU elapsed query | Calls p50 (max) | Triangles p50 (max) |
+|---|---|---|---|---|---|---|
+| City / 5, active zoom | 0.3 / 0.5 / 0.6 | 0.1 / 0.1 / 0.2 | 2.9 / 4.1 / 5.1 | 0.5 / 0.5 / 0.5 | 90 (90) | 177,712 (177,712) |
+| City / 100, standard surface, active zoom | 1.2 / 1.8 / 2.1 | 0.3 / 0.5 / 0.6 | 2.8 / 3.9 / 4.7 | 0.5 / 0.5 / 0.5 | 90 (90) | 192,912 (192,912) |
+| Matched city / 100, active zoom | 1.3 / 1.8 / 2.2 | 0.3 / 0.5 / 0.6 | 2.7 / 3.8 / 4.7 | 0.6 / 0.6 / 0.6 | 88 (90) | 189,816 (192,912) |
+| Matched city / 100, playback | 1.4 / 1.9 / 2.2 | 0.3 / 0.4 / 0.5 | 2.5 / 3.4 / 4.0 | 0.7 / 0.7 / 0.7 | 94 (94) | 238,315 (238,315) |
+| Synthetic / 1,000, active zoom | 8.7 / 12.2 / 14.5 | 0.8 / 1.2 / 1.9 | 1.2 / 1.9 / 2.6 | 0.4 / 0.4 / 0.4 | 47 (47) | 162,364 (162,364) |
+
+`EXT_disjoint_timer_query_webgl2` is available on this hardware series. Queries are
+asynchronous, bounded to four pending objects, and disjoint results are rejected;
+GPU samples lag the CPU frame. Software extension availability is recorded per run;
+missing timings remain absent. Reused shadow passes account for reduced submitted
+calls/triangles; they do not remove city or entity geometry. The matched before r3
+and delivery r1 PNGs are byte-identical, SHA-256
+`29f8a3638ab225ed6777b68dfbf565883911626d9b49660068f738f10bc8ca62`.
+[Before image](/tmp/aas-q/v1/before-hardware-r3/matched-aas-100-hardware.png),
+[after image](/tmp/aas-q/v1/delivery-hardware-r1/matched-aas-100-hardware.png).
+
+Late HDRI repaint was verified by delaying the actual HDRI network request until
+the viewport became idle, releasing it, and requiring a new render. This passed
+in all three standard-surface hardware/software runs and three matched hardware
+runs. The delivery build adds explicit HDRI/static-attachment invalidation to the
+full-series build; renderer hot paths are the same.
+
+Raw frame/diagnostic samples, renderer strings, screenshots, browser GPU PID and
+shared-device snapshots are linked in [final summary](/tmp/aas-q/v1/final-summary.json),
+[delivery matched summary](/tmp/aas-q/v1/delivery-summary.json),
+[standard-surface summary](/tmp/aas-q/v1/regular-summary.json), and
+[fresh before summary](/tmp/aas-q/v1/before-summary.json).
+Exploratory traced after runs remain under `/tmp/aas-q/v1/after-hardware-r*` and
+are excluded from final pooled results. All artifacts and builds stay in scratch.
+
+Reproduction from this worktree (reuse the Q7 asset/feed directories):
+
+```bash
+cd frontend
+npm run build -- --outDir /tmp/aas-q/v1/delivery-dist
+# Link assets/{city,environment,models,licenses} from /tmp/aas-q/q7/viewer-dist/assets/.
+npm run preview -- --host 127.0.0.1 --port 18870 --strictPort --outDir /tmp/aas-q/v1/delivery-dist
+# AeroBench: npm run preview -- --host 127.0.0.1 --port 18871 --strictPort
+# Run from /tmp/aas-q/q7/aerobench-copy, never the live tree.
+cd ..
+Q7_GL=hardware Q7_ACTIVE=1 Q7_OUT=/tmp/aas-q/v1/repro-hardware-r1 \
+ Q7_VIEWER_URL=http://127.0.0.1:18870 Q7_BENCH_URL=http://127.0.0.1:18871 \
+ node frontend/e2e/q7-measure.mjs
+# Repeat r1/r2/r3, with slice-feed.json / scale100-feed.json / aerobench-copy links in Q7_OUT.
+# Software: Q7_GL=swiftshader, Q7_SKIP_BENCH=1.
+# Standard-surface active scale100: Q7_REGULAR_ONLY=1 Q7_CASES=p1-scale-city-100.
+# Separate profiling: Q7_TRACE=1 (Chrome trace and CPU profile).
+node frontend/e2e/q7-summarize.mjs /tmp/aas-q/v1/repro-summary.json \
+ /tmp/aas-q/v1/repro-hardware-r1 /tmp/aas-q/v1/repro-hardware-r2 /tmp/aas-q/v1/repro-hardware-r3
+```
+
+Validation from `frontend/`:
+
+- `npm run typecheck` — passed; [log](/tmp/aas-q/v1/typecheck-final.log).
+- `npm test -- --no-cache` — **23 files / 113 tests passed**; [log](/tmp/aas-q/v1/frontend-tests-delivery.log). Includes exact-feed/inspector boundaries, 18 occlusion cases, floating-origin translation, and unsupported/busy/disjoint GPU timers. `--no-cache` keeps Vitest from writing through the shared node_modules symlink.
+- `npm run build -- --outDir /tmp/aas-q/v1/delivery-dist` — passed; [log](/tmp/aas-q/v1/delivery-build.log).
+- `node --check frontend/e2e/q7-{measure,fixtures,gpu-probe,summarize}.mjs` individually and `git diff --check` — passed.
+- All spatial measurements rejected incorrect renderer strings; all final measurement invocations completed without captured page errors. Graph selection, exact state scrub and edge close/rewind checks passed in all six full-series invocations. Late HDRI repaint passed in all nine supplemental invocations.
+- No Python source, backend API, engine, journal, or dependency was changed; ruff, mypy, backend pytest and Docker suites were not applicable and were not run.
+
+Actual concurrent WorkBuddy DSH review/test sessions used `workbuddy/glm-5.3-flash`,
+131072 maxTokens, no effort parameter, and explicit ownership. The read-only review
+completed. The initial implementation deliberation was cancelled; the test writer
+landed fixtures that the parent corrected during integration. Session outcomes,
+accepted/rejected claims and raw logs are retained in
+[GLM disposition](/tmp/aas-q/v1/glm-disposition.md) and `/tmp/aas-q/v1/dsh-home`.
+All browsers and the two owned preview servers were stopped. No Git commit/branch
+operation was performed; no source in another worktree or live AeroBench was modified.
+Boundary exception: initial Vitest commands wrote the result cache through the shared
+node_modules symlink (`AeroAgentSim-platform/frontend/node_modules/.vite/vitest/results.json`,
+mtime 22:06:30). Final tests use `--no-cache`; the external cache was not restored or removed.
 
 ## Recorded facts and presentation
 
@@ -175,7 +329,7 @@ AeroBench's hardware workload includes shadows (calls p50/max 959/967; about 8.3
 triangles), while its software workload disables them (749 calls / about 7.63
 million triangles). Our Balanced workload retains shadows in both modes. The
 matched camera, surface and area do not equate entity types, positions, models,
-visual detail or physics. The measured matched platform viewer remains slower
+visual detail or physics. In Q7b the measured matched platform viewer remained slower
 than AeroBench on the usable hardware backend despite fewer calls/triangles.
 Its CPU update/submission times also remain substantial; these include scene
 updates and render submission and do not identify a specific bottleneck or measure
@@ -537,6 +691,6 @@ and actual session logs remain under `/tmp/aas-q/q7/glm-cases`, `glm-audit`,
 gate verification remained the parent agent's responsibility.
 
 The nonspatial presentation gate has usable implementation and measured evidence.
-Q7b completes the missing hardware measurements and software reruns. D-viewer's
-performance acceptance and broader visual/authoring replacement decision remain
-open; this report does not authorize retiring AeroBench.
+Q7b completes the missing hardware measurements and software reruns. V1 meets the
+matched hardware viewport target; broader visual/authoring replacement remains open.
+This report does not authorize retiring AeroBench.
