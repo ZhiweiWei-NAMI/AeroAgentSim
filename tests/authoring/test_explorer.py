@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -157,6 +158,10 @@ def test_explorer_route_selects_latest_draft_and_rejects_bad_ids(
     with TestClient(app) as client:
         first = client.post("/v1/studio/workspaces", json={"name": "older"}).json()
         second = client.post("/v1/studio/workspaces", json={"name": "newer"}).json()
+        # Filesystem timestamp precision must not override recorded update order.
+        for draft in (first, second):
+            path = tmp_path / "studio" / draft["id"] / "draft.json"
+            os.utime(path, ns=(1_700_000_000_000_000_000,) * 2)
         default = client.get("/v1/studio/explorer")
         assert default.status_code == 200
         assert default.json()["workspace"] == {

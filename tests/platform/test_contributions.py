@@ -100,7 +100,8 @@ def weather_document(base: dict[str, Any], mode: str) -> dict[str, Any]:
 
 
 def fly(d: dict[str, Any]) -> tuple[Simulation, str]:
-    sim = Simulation(load_scenario(d))
+    # Read-evidence assertions require full provenance (lean discards raw causes).
+    sim = Simulation(load_scenario(d), provenance="full")
     sim.start()
     command = sim.kernel.submit(
         CommandRequest(
@@ -242,7 +243,7 @@ def test_motion_energy_have_independent_writers(
         return engine
 
     monkeypatch.setattr(EngineCatalog, "build", factory)
-    sim = Simulation(load_scenario(d))
+    sim = Simulation(load_scenario(d), provenance="full")
     sim.start()
     sim.run_until(SECOND)
     command = sim.kernel.submit(
@@ -347,7 +348,7 @@ def test_reads_before_super_hooks_keep_their_versions(
     # The model itself does not read weather; only the extension's pre-super read
     # supplies this cause, reproducing the review's lost-provenance failure.
     d["engines"]["motion"]["config"].pop("consumption_model")
-    sim, _ = fly(d)
+    sim, _ = fly(d)  # fly() constructs provenance="full"; causes below need raw audit.
     weather_version = next(
         version_key(f)
         for r in sim.kernel.records
@@ -384,7 +385,7 @@ def test_directional_consumption_case_table(
     wind = [[float(v) for v in case["wind"][:2]]]
     d["entities"][1]["facts"][WIND] = wind
     d["engines"]["weather"]["config"]["profiles"]["wind"][WIND]["value"] = wind
-    sim = Simulation(load_scenario(d))
+    sim = Simulation(load_scenario(d), provenance="full")
     sim.start()
     config = d["engines"]["motion"]["config"]
     model = WindConsumption(
@@ -401,7 +402,7 @@ def test_directional_consumption_case_table(
         float(case["elapsed_s"]),
         float(case["distance_m"]),
     )
-    ctx = EngineContext(sim.kernel.view())
+    ctx = EngineContext(sim.kernel.view())  # full provenance keeps read inputs.
     ref = sim.scenario.manifest.entities[0]
     assert model.consumption(ctx, ref, segment) == case["expected_consumption_j"]
     assert model.budget(ctx, ref, (segment,)) == case["expected_consumption_j"]
@@ -415,7 +416,7 @@ def test_energy_only_kinematic_is_not_a_static_energy_fallback(
     d = weather_document(wind_base, "calm")
     d["bindings"]["rules"][0]["fields"] = [ENERGY]
     with pytest.raises(ValueError, match="energy-only"):
-        Simulation(load_scenario(d))
+        Simulation(load_scenario(d), provenance="full")
 
 
 def test_unselected_plugins_do_not_change_legacy_model(

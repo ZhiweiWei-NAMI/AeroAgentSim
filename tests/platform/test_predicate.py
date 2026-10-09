@@ -23,13 +23,20 @@ def demo() -> dict[str, Any]:
     return copy.deepcopy(load_scenario(Path("scenarios/predicates-demo.yaml")).document)
 
 
+def full_journal(path: Path) -> Simulation:
+    """Read-evidence assertions below need full provenance audit semantics."""
+    return Simulation(
+        load_scenario(Path("scenarios/predicates-demo.yaml")),
+        journal=Journal(path),
+        provenance="full",
+    )
+
+
 def test_temporal_event_exact_ns_and_identical_replay(tmp_path: Path) -> None:
     logs = []
     for index in range(2):
         path = tmp_path / f"run-{index}.jsonl"
-        sim = Simulation(
-            load_scenario(Path("scenarios/predicates-demo.yaml")), journal=Journal(path)
-        )
+        sim = full_journal(path)
         try:
             sim.start()
             sim.run_until(3_999_999_999)
@@ -334,7 +341,7 @@ def test_committed_relation_assertion_closure_and_causes(
         )
 
     monkeypatch.setattr(EngineCatalog, "build", factory)
-    sim = Simulation(load_scenario(document))
+    sim = Simulation(load_scenario(document), provenance="full")
     try:
         sim.start()
         sim.run_until(2_000_000_000)

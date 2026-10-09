@@ -317,13 +317,11 @@ def explorer_payload(store: WorkspaceStore, workspace_id: str | None) -> dict[st
     if not isinstance(concepts, list):
         raise TypeError("entity-directory: concepts array required")
 
+    # Recorded update order is authoritative; filesystem timestamps can tie
+    # even when two sequential API writes have distinct update timestamps.
+    drafts = store.list()
     if workspace_id is None:
-        drafts = [
-            (path, (path / "draft.json").stat().st_mtime_ns)
-            for path in sorted(store.root.glob("studio-*"))
-            if (path / "draft.json").is_file()
-        ]
-        workspace_id = max(drafts, key=lambda item: item[1])[0].name if drafts else None
+        workspace_id = drafts[0]["id"] if drafts else None
     draft = store.get(workspace_id) if workspace_id is not None else None
     scenario = draft["scenario"] if draft is not None else {}
 
@@ -496,6 +494,6 @@ def explorer_payload(store: WorkspaceStore, workspace_id: str | None) -> dict[st
         "entities": entities,
         "package_errors": package_errors,
         "workspaces": [
-            {"id": item["id"], "name": item["name"]} for item in store.list()
+            {"id": item["id"], "name": item["name"]} for item in drafts
         ],
     }

@@ -201,9 +201,18 @@ through CLI and HTTP, including partial service, mapped progress, tail admission
 rejected idempotency and exact offline reconstruction. `test_realtime.py` retains
 single-source reject/delay coverage and tests declaration/admission edge cases.
 
-Live declarations write journal 1.3 with complete streams, mappings and policy
-encodings pinned in the header, plus per-stream decisions and progress/closure
-records. Historical 1.1/1.2 journals replay under their original semantics; offline
-workloads without live declarations retain 1.2 bytes. Replay never constructs
+Runs default to lean provenance: each engine output cites its invocation, which
+records delivered inputs and its read cut. Choose scenario `provenance: full`,
+`Simulation(..., provenance="full")`, or CLI `run`/`demo --provenance full` for
+explicit read-vector auditing. A CLI/run override is pinned in the saved scenario
+copy and run manifest. Ownership, typed receipts, watermarks and time seals apply
+in both modes.
+
+Default compressed lean journals use 2.1 (`semantic_version: 4`,
+`provenance: lean`); lean JSON journals use 1.4. Full keeps historical 1.2/1.3 or
+compressed 2.0 encodings, including their offline/named-stream policy version.
+Live headers pin complete streams, mappings and policies, followed by per-stream
+decisions and progress/closure records. Historical journals replay under their
+original semantics. Replay never constructs
 plugins or calls engines, sources, RNG or live clocks. Missing closure produces a
 recorded timeout/fault and an incomplete prefix, never synthetic success.

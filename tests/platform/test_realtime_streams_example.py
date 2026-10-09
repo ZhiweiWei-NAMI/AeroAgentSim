@@ -82,7 +82,8 @@ def test_two_source_cli_and_offline_replay(
         records[0]["major"],
         records[0]["minor"],
         records[0]["semantic_version"],
-    ) == (2, 0, 3)
+    ) == (2, 1, 4)
+    assert records[0]["provenance"] == "lean"
     assert records[0]["ingress_policy"] is None
     assert not any(record["type"] == "live_ingress" for record in records)
     with (
@@ -101,6 +102,51 @@ def test_two_source_cli_and_offline_replay(
         main()
     result = json.loads(capsys.readouterr().out)
     assert result["ns"] == "300000000" and not result["incomplete"]
+
+
+def test_cli_provenance_flag_overrides_scenario_header(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The CLI --provenance override reaches the kernel header without a demo rerun."""
+    with patch(
+        "sys.argv",
+        [
+            "aeroagentsim",
+            "run",
+            "scenarios/realtime-streams.yaml",
+            "--out",
+            str(tmp_path),
+            "--provenance",
+            "full",
+        ],
+    ):
+        main()
+    directory = Path(json.loads(capsys.readouterr().out)["run"])
+    header = expand_record(next(iter_records(directory / "journal.jsonl")))
+    assert "provenance" not in header
+    assert (header["major"], header["minor"], header["semantic_version"]) == (2, 0, 3)
+
+
+def test_cli_rejects_unknown_provenance(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with (
+        pytest.raises(SystemExit),
+        patch(
+            "sys.argv",
+            [
+                "aeroagentsim",
+                "run",
+                "scenarios/realtime-streams.yaml",
+                "--out",
+                str(tmp_path),
+                "--provenance",
+                "audit",
+            ],
+        ),
+    ):
+        main()
+    capsys.readouterr()
 
 
 def test_two_source_http_partial_service_lateness_and_replay(

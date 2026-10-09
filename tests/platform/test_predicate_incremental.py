@@ -93,6 +93,7 @@ def test_full_history_legacy_and_incremental_prefix_records_identical(
         sim = Simulation(
             load_scenario(Path("scenarios/predicates-demo.yaml")),
             journal=Journal(path, codec=codec),
+            provenance="full",
         )
         try:
             sim.start()
@@ -112,6 +113,7 @@ def test_sdk_prefix_overlap_preserves_order_and_raw_duplicates(tmp_path: Path) -
     sim = Simulation(
         load_scenario(Path("scenarios/predicates-demo.yaml")),
         journal=Journal(tmp_path / "overlap.jsonl", codec="positional-deflate"),
+        provenance="full",
     )
     try:
         sim.start()

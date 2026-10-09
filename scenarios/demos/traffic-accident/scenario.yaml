@@ -1,5 +1,6 @@
 format: aeroagentsim.scenario/v1
 id: traffic-accident
+provenance: lean
 registry:
   snapshot: registry.snapshot.json
   types:
@@ -7930,6 +7931,7 @@ engines:
         route_id: route.vehicle.060
         speed_mps: 8.9
         stop_progress_m: 2971.846467495306
+      # Release default: 1 Hz physics/publication, measured above real time.
       step_ns: 1000000000
       clearance_m: 0.55
       bypass_clearance_m: 0.8
@@ -7981,6 +7983,7 @@ engines:
         reason: reason
       command_entity_key: entity
       command_target_key: target
+      # Match road publication; display interpolation does not add physics steps.
       step_ns: 1000000000
       lifecycle: true
       frame:

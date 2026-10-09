@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import cast
 
@@ -29,18 +30,35 @@ class Simulation:
         *,
         journal: Journal | None = None,
         run_directory: Path | None = None,
+        provenance: str | None = None,
     ) -> None:
         try:
-            self._construct(scenario, journal=journal, run_directory=run_directory)
+            self._construct(
+                scenario,
+                journal=journal,
+                run_directory=run_directory,
+                provenance=provenance,
+            )
         except StopIteration as exc:
             raise ScenarioError(
-                "scenario.bind: unexpected exhausted iterator during Simulation construction"
+                "scenario.bind: unexpected exhausted iterator during "
+                "Simulation construction"
             ) from exc
 
     def _construct(
-        self, scenario: Scenario, *, journal: Journal | None, run_directory: Path | None
+        self,
+        scenario: Scenario,
+        *,
+        journal: Journal | None,
+        run_directory: Path | None,
+        provenance: str | None,
     ) -> None:
         self.scenario = scenario
+        # The scenario setting is the pinned default; an explicit override must
+        # be a valid value itself (no null/unknown coercion or fallback).
+        effective = scenario.provenance if provenance is None else provenance
+        if type(effective) is not str or effective not in {"lean", "full"}:
+            raise ScenarioError("provenance: expected lean or full")
         # Explicitly supplied journals keep their codec, including historical 1.x.
         if journal is None:
             journal = Journal(codec="positional-deflate")
@@ -86,7 +104,8 @@ class Simulation:
                 raise
             except StopIteration as exc:
                 raise ScenarioError(
-                    f"engines.{engine_id}.config: plugin exhausted an iterator during construction"
+                    f"engines.{engine_id}.config: plugin exhausted an iterator "
+                    "during construction"
                 ) from exc
             except (ValueError, KeyError, TypeError) as exc:
                 raise ScenarioError(
@@ -98,7 +117,8 @@ class Simulation:
                 engine_id in stream.engine_ids for stream in scenario.ingress_streams
             ):
                 raise ScenarioError(
-                    f"engines.{engine_id}.ingress: real_time requires an explicit ingress policy"
+                    f"engines.{engine_id}.ingress: real_time requires an "
+                    "explicit ingress policy"
                 )
             self.ingress_targets[engine_id] = {p.id for p in engine.partitions}
             for partition in engine.partitions:
@@ -119,6 +139,7 @@ class Simulation:
             mappings=scenario.clock_mappings,
             journal=journal,
             ingress_streams=scenario.ingress_streams,
+            provenance=effective,
             configuration={
                 "scenario": scenario.document,
             },
@@ -153,7 +174,8 @@ class Simulation:
             if len(candidates) != 1:
                 raise KernelError(
                     "INGRESS_STREAM",
-                    "ingress.stream_id: explicit stream required for ambiguous or absent binding",
+                    "ingress.stream_id: explicit stream required for ambiguous "
+                    "or absent binding",
                 )
         selected = candidates[0]
         if engine_id is not None and engine_id not in streams[selected].engine_ids:
@@ -208,10 +230,20 @@ class RunSession:
         *,
         prepared: bool = False,
         journal_codec: str = "positional-deflate",
+        provenance: str | None = None,
     ) -> None:
-        self.scenario = (
-            scenario if isinstance(scenario, Scenario) else load_scenario(scenario)
-        )
+        loaded = scenario if isinstance(scenario, Scenario) else load_scenario(scenario)
+        # Pin the run-level override before persistence so the stored scenario
+        # copy, the run manifest and the kernel all agree.
+        if provenance is not None:
+            if type(provenance) is not str or provenance not in {"lean", "full"}:
+                raise ScenarioError("provenance: expected lean or full")
+            loaded = replace(
+                loaded,
+                provenance=provenance,
+                document={**loaded.document, "provenance": provenance},
+            )
+        self.scenario = loaded
         self.storage = RunStorage(directory)
         if not prepared:
             self.storage.prepare(self.scenario)
@@ -229,6 +261,7 @@ class RunSession:
             {
                 **self.storage.metadata(),
                 "epoch": self.scenario.manifest.epoch,
+                "provenance": self.scenario.provenance,
                 "journal_codec": self.simulation.kernel.journal.codec,
                 "journal_major": self.simulation.kernel.header["major"],
                 "journal_minor": self.simulation.kernel.header["minor"],
@@ -252,6 +285,7 @@ class RunSession:
                 {
                     **metadata,
                     "epoch": self.scenario.manifest.epoch,
+                    "provenance": self.scenario.provenance,
                     "behaviour_packages": [p["package_id"] for p in packages],
                 },
             )
@@ -399,7 +433,10 @@ class RunSession:
             previous = self.storage.metadata().get("error")
             self._status(
                 "faulted",
-                error=f"{previous + '; ' if previous else ''}cleanup: {type(failure).__name__}: {failure}",
+                error=(
+                    f"{previous + '; ' if previous else ''}cleanup: "
+                    f"{type(failure).__name__}: {failure}"
+                ),
             )
             raise failure
 
