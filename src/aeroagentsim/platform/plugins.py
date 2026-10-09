@@ -70,6 +70,7 @@ class EngineBuild:
 
 Factory = Callable[[EngineBuild], Engine]
 BUILTINS = {
+    "traffic_decision_failures": "aeroagentsim.packs.traffic_accident.decision_failures",
     "traffic_decisions": "aeroagentsim.packs.traffic_accident.decisions",
     "traffic_capture_bridge": "aeroagentsim.packs.traffic_accident.capture",
     "traffic_camera_capture": "aeroagentsim.packs.traffic_accident.camera",

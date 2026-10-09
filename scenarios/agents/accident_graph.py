@@ -52,6 +52,76 @@ class GraphState(TypedDict):
     outputs: list[dict[str, Any]]
 
 
+def demo_snapshot(state: GraphState, options: dict[str, Any]) -> dict[str, Any]:
+    """Resolve current-task references from granted, committed facts, never fixtures."""
+    rows = state["observation"]["fields"]
+
+    def field(identity: str, name: str) -> Any:
+        matches = [
+            r for r in rows if r["entity"]["id"] == identity and r["field"] == name
+        ]
+        if len(matches) != 1 or matches[0]["status"] != "known":
+            raise ValueError(f"missing committed observation: {identity}.{name}")
+        return matches[0]["value"]
+
+    def position(value: list[float]) -> dict[str, float]:
+        # The demo is ENU; the legacy prompt uses x/east, y/up, z/north.
+        return dict(zip(("x", "z", "y"), value, strict=True))
+
+    trigger = state["trigger"]
+    incident = trigger["payload"]["incident"]
+    incident_id = incident["$ref"]["id"]
+    payload: dict[str, Any] = {
+        **trigger["payload"],
+        "time_s": int(state["observation"]["valid_at"]["ns"]) / 1e9,
+        "incident_ref": incident,
+        "incident": {
+            "id": incident_id,
+            "position": position(field(incident_id, "traffic.incident.position_enu_m")),
+        },
+        "region_radius_m": options["region_radius_m"],
+        "uav_speed_mps": options["uav_speed_mps"],
+    }
+    if trigger["schema"] == "traffic.incident.detected":
+        actor = trigger["payload"]["actor"]
+        payload.update(
+            actor_ref=actor,
+            ego={
+                "id": actor["$ref"]["id"],
+                "position": position(
+                    field(actor["$ref"]["id"], "traffic.road.position_enu_m")
+                ),
+            },
+            reroute_candidates=options["reroute_candidates"],
+        )
+    elif trigger["schema"] == "traffic.broadcast":
+        if field(options["task_id"], "traffic.task.capture_altitude_m") != 70:
+            raise ValueError("committed capture altitude differs from prompt contract")
+        uavs = []
+        for identity in options["candidates"]:
+            task = field(identity, "traffic.actor.current_task")["$ref"]["id"]
+            uavs.append(
+                {
+                    "id": identity,
+                    "position": position(field(identity, "he.aircraft.position_enu_m")),
+                    "energy_j": field(identity, "traffic.uav.energy_j"),
+                    "current_task": {
+                        "id": task,
+                        "kind": field(task, "traffic.task.kind"),
+                        "phase": field(task, "traffic.task.phase"),
+                        "interruptible": field(task, "traffic.task.interruptible"),
+                    },
+                }
+            )
+        payload["uavs"] = uavs
+    else:
+        raise ValueError("unsupported demo graph trigger")
+    return {
+        "trigger": {**trigger, "payload": payload},
+        "report": {"incident": payload["incident"]},
+    }
+
+
 def public_strings(
     value: dict[str, Any], members: set[str], texts: tuple[str, ...]
 ) -> None:
@@ -92,6 +162,7 @@ def build_graph(
 ) -> StateGraph[GraphState, None, GraphState, GraphState]:
     """Explicit snapshot inputs; parallel bids join before discretionary award."""
     graph = StateGraph(GraphState)
+    proposals = options.get("mode") == "proposals"
 
     async def vehicle_report(state: GraphState) -> dict[str, Any]:
         payload = state["trigger"]["payload"]
@@ -114,13 +185,27 @@ def build_graph(
             validate_report,
             user_prefix="实时观测：",
         )
-        return {
+        result: dict[str, Any] = {
             "report": {
                 "incident": incident,
                 "reporter_position": ego["position"],
                 "model": response,
             }
         }
+        if proposals:
+            result["outputs"] = [
+                {
+                    "kind": "event",
+                    "schema": "traffic.proposal.report",
+                    "topic": "traffic.proposal.report",
+                    "payload": {
+                        "actor": payload["actor_ref"],
+                        "incident": payload["incident_ref"],
+                        **response,
+                    },
+                }
+            ]
+        return result
 
     def edge_broadcast(state: GraphState) -> dict[str, Any]:
         payload = state["trigger"]["payload"]
@@ -157,7 +242,11 @@ def build_graph(
             "ego": {
                 "id": identity,
                 "position": uav["position"],
-                "battery_pct": uav["battery_pct"],
+                **(
+                    {"energy_j": uav["energy_j"]}
+                    if proposals
+                    else {"battery_pct": uav["battery_pct"]}
+                ),
             },
             "current_task": uav["current_task"],
             "incident": {
@@ -170,9 +259,17 @@ def build_graph(
 
         def validate(value: dict[str, Any]) -> None:
             validate_bid(value)
-            if value["accept"] and not interruptible:
+            if proposals and type(value["alt_target_m"]) is not float:
+                raise ValueError(
+                    "typed proposal alt_target_m requires JSON floating-point 70.0; integer 70 is rejected"
+                )
+            if value["accept"] and not interruptible and not proposals:
                 raise ValueError("noninterruptible current task cannot accept")
 
+        if proposals:
+            observation["typed_output_contract"] = {
+                "alt_target_m": "必须输出JSON浮点数70.0，整数70不符合kernel number类型；不做类型转换"
+            }
         response = await client.ask_json(
             key, BID_PROMPT, observation, validate, user_prefix="实时观测："
         )
@@ -188,7 +285,12 @@ def build_graph(
                     "action": response["action"],
                     "distance_m": round(distance, 1),
                     "eta_s": round(eta, 1),
-                    "battery_pct": uav["battery_pct"],
+                    "model": response,
+                    **(
+                        {"energy_j": uav["energy_j"]}
+                        if proposals
+                        else {"battery_pct": uav["battery_pct"]}
+                    ),
                     "task_id": uav["current_task"]["id"],
                     "interruptible": interruptible,
                     "position": uav["position"],
@@ -252,10 +354,46 @@ def build_graph(
         ("edge_award", edge_award),
     ):
         graph.add_node(name, node)
-    graph.add_edge(START, "vehicle_report")
-    graph.add_edge("vehicle_report", "edge_broadcast")
+    if proposals:
+        graph.add_node("snapshot", lambda state: demo_snapshot(state, options))
+
+        def publish_bids(state: GraphState) -> dict[str, Any]:
+            return {
+                "outputs": [
+                    {
+                        "kind": "event",
+                        "schema": "traffic.proposal.bid",
+                        "topic": "traffic.proposal.bid",
+                        "payload": {
+                            "actor": options["candidate_refs"][bid["uav_id"]],
+                            "task": options["task_ref"],
+                            **bid["model"],
+                            "input_cut": state["observation"]["known_at"]["index"],
+                            "decision_status": "succeeded",
+                        },
+                    }
+                    for bid in state["bids"]
+                ]
+            }
+
+        graph.add_node("publish_bids", publish_bids)
+        graph.add_edge(START, "snapshot")
+        graph.add_conditional_edges(
+            "snapshot",
+            lambda state: (
+                "vehicle_report"
+                if state["trigger"]["schema"] == "traffic.incident.detected"
+                else "edge_broadcast"
+            ),
+        )
+        graph.add_edge("vehicle_report", END)
+        graph.add_edge(["uav_alpha", "uav_bravo"], "publish_bids")
+        graph.add_edge("publish_bids", END)
+    else:
+        graph.add_edge(START, "vehicle_report")
+        graph.add_edge("vehicle_report", "edge_broadcast")
+        graph.add_edge(["uav_alpha", "uav_bravo"], "edge_award")
     graph.add_edge("edge_broadcast", "uav_alpha")
     graph.add_edge("edge_broadcast", "uav_bravo")
-    graph.add_edge(["uav_alpha", "uav_bravo"], "edge_award")
     graph.add_edge("edge_award", END)
     return graph

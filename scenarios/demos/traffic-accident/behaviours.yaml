@@ -1712,6 +1712,19 @@ chains:
         kind: delay
         duration_ns: 20000000000
       priority: 0
+    - id: decision-failure
+      from: collecting
+      'on':
+        event: traffic.decision.failed
+      to: no_candidate
+      actions:
+      - id: phase
+        kind: set
+        entity:
+          $role: coordinator
+        field: traffic.edge.phase
+        value: no_candidate
+      priority: 100
     - id: join
       from: collecting
       'on':
