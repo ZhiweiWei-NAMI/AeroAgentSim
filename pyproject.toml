@@ -11,7 +11,7 @@ authors = [
     {name = "Zhiwei Wei", email = "2311769@tongji.edu.cn"}
 ]
 requires-python = ">=3.10"
-dependencies = ["aerokernel>=0.1.0.dev0,<0.2", "pyyaml>=6"]
+dependencies = ["aerokernel>=0.2.0.dev0,<0.3", "pyyaml>=6"]
 
 [project.optional-dependencies]
 # CI-validated compatible range: Starlette >=1.8 removes the TestClient httpx

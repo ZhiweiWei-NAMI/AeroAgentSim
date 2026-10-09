@@ -6,7 +6,7 @@ import threading
 import time
 from pathlib import Path
 
-from aerokernel import CommandRequest, Journal, Kernel, Stamp
+from aerokernel import CommandRequest, IngressReceipt, Journal, Kernel, Stamp
 from aerokernel.engine import Engine, Partition
 from aerokernel.errors import KernelError
 from aerokernel.state import StateView
@@ -15,7 +15,6 @@ from aeroagentsim.models import MotionModel, motion_model
 from aeroagentsim.scenario import Scenario, ScenarioError, load_scenario
 from aeroagentsim.services.storage import RunStorage
 
-from .ingress import IngressJournal, IngressReceipt
 from .plugins import EngineBuild, EngineCatalog
 
 
@@ -73,9 +72,8 @@ class Simulation:
                     code=getattr(exc, "code", None),
                 ) from exc
             engines.append(engine)
-            if (
-                any(p.timing.mode == "real_time" for p in engine.partitions)
-                and engine_id not in scenario.ingress
+            if any(p.timing.mode == "real_time" for p in engine.partitions) and not any(
+                engine_id in stream.engine_ids for stream in scenario.ingress_streams
             ):
                 raise ScenarioError(
                     f"engines.{engine_id}.ingress: real_time requires an explicit ingress policy"
@@ -94,15 +92,11 @@ class Simulation:
                     raise ScenarioError(
                         f"entities.{ref.id}.facts.{field}: no declared writer binding"
                     )
-        self.ingress_journal = IngressJournal(Journal() if journal is None else journal)
-        self._submission_lock = threading.Lock()
         self.kernel = Kernel(
             root_seed=scenario.seed,
             mappings=scenario.clock_mappings,
-            journal=self.ingress_journal,
-            ingress_policy=next(iter(scenario.ingress.values())).policy
-            if scenario.ingress
-            else None,
+            journal=journal,
+            ingress_streams=scenario.ingress_streams,
             configuration={
                 "scenario_digest": scenario.digest,
                 "registry_snapshot_digest": scenario.compiled.digest,
@@ -117,39 +111,68 @@ class Simulation:
     def run_until(self, ns: int) -> StateView:
         return self.kernel.run_until(ns)
 
-    def submit_live(
-        self, engine_id: str, command: CommandRequest, stamp: Stamp
-    ) -> IngressReceipt:
-        binding = self.scenario.ingress.get(engine_id)
-        if binding is None:
+    def resolve_stream(
+        self, stream_id: str | None, engine_id: str | None = None
+    ) -> str:
+        """Resolve omitted Q1 addressing, without aliasing explicit stream IDs."""
+        streams = self.kernel.ingress_streams
+        if stream_id is not None:
+            if stream_id not in streams:
+                raise KernelError(
+                    "INGRESS_STREAM", f"ingress.stream_id: unknown stream {stream_id!r}"
+                )
+            candidates = [stream_id]
+        else:
+            candidates = [
+                stream.id
+                for stream in streams.values()
+                if engine_id is None or engine_id in stream.engine_ids
+            ]
+            if "default" in candidates:
+                candidates = ["default"]
+            if len(candidates) != 1:
+                raise KernelError(
+                    "INGRESS_STREAM",
+                    "ingress.stream_id: explicit stream required for ambiguous or absent binding",
+                )
+        selected = candidates[0]
+        if engine_id is not None and engine_id not in streams[selected].engine_ids:
             raise KernelError(
-                "INGRESS_POLICY", f"engines.{engine_id}.ingress: no declared policy"
+                "INGRESS_BINDING",
+                f"engines.{engine_id}.ingress: engine outside stream domain",
             )
-        if command.target not in self.ingress_targets[engine_id]:
-            raise KernelError(
-                "COMMAND_ROUTE",
-                f"engines.{engine_id}.ingress: target belongs to another engine",
-            )
-        if stamp.mapping_id != binding.mapping_id:
-            raise KernelError(
-                "CLOCK_MAPPING",
-                f"engines.{engine_id}.ingress: source mapping differs from declaration",
-            )
-        with self._submission_lock:
-            self.ingress_journal.last_rejection = None
-            try:
-                mid = self.kernel.submit_live(command, stamp)
-            except KernelError as exc:
-                if (
-                    exc.code != "LATE_INGRESS"
-                    or self.ingress_journal.last_rejection is None
-                ):
-                    raise
-                return self.ingress_journal.last_rejection
-            return self.ingress_journal.receipts[mid]
+        return selected
 
-    def advance_watermark(self, ns: int) -> None:
-        self.kernel.advance_watermark(ns)
+    def submit_live(
+        self,
+        engine_id: str | None,
+        command: CommandRequest,
+        stamp: Stamp,
+        *,
+        stream_id: str | None = None,
+    ) -> IngressReceipt:
+        if engine_id is not None:
+            if engine_id not in self.ingress_targets:
+                raise KernelError(
+                    "COMMAND_ROUTE", f"engines.{engine_id}: unknown engine"
+                )
+            if command.target not in self.ingress_targets[engine_id]:
+                raise KernelError(
+                    "COMMAND_ROUTE",
+                    f"engines.{engine_id}.ingress: target belongs to another engine",
+                )
+        selected = self.resolve_stream(stream_id, engine_id)
+        return self.kernel.admit_live(command, stamp, stream_id=selected)
+
+    def advance_watermark(self, ns: int, *, stream_id: str | None = None) -> None:
+        self.kernel.advance_watermark(ns, stream_id=self.resolve_stream(stream_id))
+
+    def advance_source_progress(
+        self, stamp: Stamp, *, stream_id: str | None = None
+    ) -> None:
+        self.kernel.advance_source_progress(
+            stamp, stream_id=self.resolve_stream(stream_id)
+        )
 
     def close(self) -> None:
         self.kernel.close()
@@ -193,18 +216,33 @@ class RunSession:
             self.storage.status(status, error=error)
 
     def submit_live(
-        self, engine_id: str, command: CommandRequest, stamp: Stamp
+        self,
+        engine_id: str | None,
+        command: CommandRequest,
+        stamp: Stamp,
+        *,
+        stream_id: str | None = None,
     ) -> IngressReceipt:
         if not self.started or self.closed:
             raise RuntimeError("live ingress requires a started open run session")
-        receipt = self.simulation.submit_live(engine_id, command, stamp)
+        receipt = self.simulation.submit_live(
+            engine_id, command, stamp, stream_id=stream_id
+        )
         self._index()
         return receipt
 
-    def advance_watermark(self, ns: int) -> None:
+    def advance_watermark(self, ns: int, *, stream_id: str | None = None) -> None:
         if not self.started or self.closed:
             raise RuntimeError("watermark requires a started open run session")
-        self.simulation.advance_watermark(ns)
+        self.simulation.advance_watermark(ns, stream_id=stream_id)
+        self._index()
+
+    def advance_source_progress(
+        self, stamp: Stamp, *, stream_id: str | None = None
+    ) -> None:
+        if not self.started or self.closed:
+            raise RuntimeError("source progress requires a started open run session")
+        self.simulation.advance_source_progress(stamp, stream_id=stream_id)
         self._index()
 
     def start(self) -> StateView:

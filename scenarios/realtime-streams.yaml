@@ -1,0 +1,55 @@
+format: aeroagentsim.scenario/v1
+id: realtime-streams
+registry:
+  snapshot: realtime-registry.snapshot.json
+  digest: c9cc44b4399863cecbfa65f786d95defcf340c427d54b1e9d98580b5cda31be6
+  messages:
+  - id: aas.stream.observe
+    kind: command
+    schema: &observation
+      type: record
+      members:
+        value: {type: number}
+      required: [value]
+      extra: false
+    result_schema: *observation
+entities: []
+bindings:
+  lifecycle: []
+  # Explicit offline examples, never presented as live source observations.
+  commands:
+  - {schema: aas.stream.observe, target: fast, at_ns: 50000000, payload: {value: 21.5}}
+  - {schema: aas.stream.observe, target: slow, at_ns: 50000000, payload: {value: 18.0}}
+engines:
+  fast:
+    plugin: ingress-consumer
+    config: {command: aas.stream.observe}
+  slow:
+    plugin: ingress-consumer
+    config: {command: aas.stream.observe}
+ingress_streams:
+- id: fast-source
+  mapping_id: fast-ns
+  engine_ids: [fast]
+  # CLI offline run closes the authored interval; the live demo resets to 0.
+  initial_watermark_ns: 300000000
+  lateness: reject
+  allowed_lateness_ns: 20000000
+  timeout_s: 10
+- id: slow-source
+  mapping_id: slow-ticks
+  engine_ids: [slow]
+  initial_watermark_ns: 300000000
+  lateness: delay
+  allowed_lateness_ns: 50000000
+  timeout_s: 10
+clock_mappings:
+- {mapping_id: canonical, clock_id: canonical}
+- {mapping_id: fast-ns, clock_id: fast-clock, p: 1, q: 1, rounding: exact}
+- {mapping_id: slow-ticks, clock_id: slow-clock, offset_ns: 1000, p: 2, q: 1, rounding: exact}
+run:
+  pacing: fast
+  seed: 7
+  until_ns: 300000000
+  advance_ns: 100000000
+outputs: {durability: flush}

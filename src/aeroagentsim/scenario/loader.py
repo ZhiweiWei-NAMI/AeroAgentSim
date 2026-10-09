@@ -19,6 +19,7 @@ from aerokernel import (
     ExactBinding,
     FieldDescriptor,
     IngressPolicy,
+    IngressStream,
     Instant,
     LifecycleRule,
     MemoryRegistry,
@@ -136,6 +137,7 @@ def _finite(value: Any, path: str) -> None:
 class EngineIngress:
     mapping_id: str
     policy: IngressPolicy
+    stream_id: str
 
 
 @dataclass(frozen=True)
@@ -156,6 +158,7 @@ class Scenario:
     advance_ns: int
     clock_mappings: tuple[ClockMapping, ...] | None = None
     ingress: dict[str, EngineIngress] = dataclass_field(default_factory=dict)
+    ingress_streams: tuple[IngressStream, ...] = ()
 
 
 def load_scenario(
@@ -195,6 +198,7 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         "outputs",
         "origin",
         "clock_mappings",
+        "ingress_streams",
     }
     if extra := set(document) - allowed:
         raise ScenarioError(f"scenario: unknown keys {sorted(extra)}")
@@ -623,17 +627,27 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
     digest = hashlib.sha256(canonical_json(document)).hexdigest()
     clock_mappings = None
     if "clock_mappings" in document:
-        clock_mappings = tuple(
-            ClockMapping(
-                **contract(
-                    item,
-                    "clock_mappings[]",
-                    {"mapping_id", "clock_id"},
-                    {"offset_ns", "p", "q", "rounding"},
-                )
+        authored_mappings = []
+        mapping_ids: set[str] = set()
+        for index, item in enumerate(seq(document["clock_mappings"], "clock_mappings")):
+            path = f"clock_mappings[{index}]"
+            spec = contract(
+                item,
+                path,
+                {"mapping_id", "clock_id"},
+                {"offset_ns", "p", "q", "rounding"},
             )
-            for item in seq(document["clock_mappings"], "clock_mappings")
-        )
+            try:
+                mapping = ClockMapping(**spec)
+            except (ValueError, TypeError) as exc:
+                raise ScenarioError(
+                    f"{path}: {exc}", code=getattr(exc, "code", None)
+                ) from exc
+            if mapping.mapping_id in mapping_ids:
+                raise ScenarioError(path + ".mapping_id: duplicate mapping_id")
+            mapping_ids.add(mapping.mapping_id)
+            authored_mappings.append(mapping)
+        clock_mappings = tuple(authored_mappings)
         if not any(
             m.mapping_id == "canonical"
             and m.clock_id == "canonical"
@@ -649,8 +663,62 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         m.mapping_id: m
         for m in clock_mappings or (ClockMapping("canonical", "canonical"),)
     }
-    if clock_mappings is not None and len(mappings) != len(clock_mappings):
-        raise ScenarioError("clock_mappings: duplicate mapping_id")
+    streams: dict[str, IngressStream] = {}
+    stream_paths: dict[str, str] = {}
+
+    def stream_policy(spec: dict[str, Any], path: str) -> tuple[str, IngressPolicy]:
+        mapping_id = text(spec["mapping_id"], path + ".mapping_id")
+        if mapping_id not in mappings:
+            raise ScenarioError(path + ".mapping_id: unknown clock mapping")
+        lateness = text(spec["lateness"], path + ".lateness")
+        if lateness not in {"reject", "delay"}:
+            raise ScenarioError(path + ".lateness: expected reject or delay")
+        timeout = numeric(spec["timeout_s"], path + ".timeout_s")
+        if timeout <= 0:
+            raise ScenarioError(path + ".timeout_s: positive wait budget required")
+        return mapping_id, IngressPolicy(
+            integer(spec["initial_watermark_ns"], path + ".initial_watermark_ns"),
+            lateness,
+            timeout,
+            allowed_lateness_ns=integer(
+                spec["allowed_lateness_ns"], path + ".allowed_lateness_ns"
+            )
+            if "allowed_lateness_ns" in spec
+            else None,
+        )
+
+    policy_keys = {"mapping_id", "initial_watermark_ns", "lateness", "timeout_s"}
+    for index, authored in enumerate(
+        seq(document.get("ingress_streams", []), "ingress_streams")
+    ):
+        path = f"ingress_streams[{index}]"
+        spec = contract(
+            authored, path, policy_keys | {"id", "engine_ids"}, {"allowed_lateness_ns"}
+        )
+        stream_id = text(spec["id"], path + ".id")
+        if stream_id in streams:
+            raise ScenarioError(path + ".id: duplicate stream declaration")
+        engine_ids = tuple(
+            text(value, f"{path}.engine_ids[{i}]")
+            for i, value in enumerate(seq(spec["engine_ids"], path + ".engine_ids"))
+        )
+        if not engine_ids or len(set(engine_ids)) != len(engine_ids):
+            raise ScenarioError(
+                path + ".engine_ids: unique nonempty engine list required"
+            )
+        for i, engine_id in enumerate(engine_ids):
+            if engine_id not in engines:
+                raise ScenarioError(
+                    f"{path}.engine_ids[{i}]: unknown engine {engine_id}"
+                )
+        mapping_id, policy = stream_policy(spec, path)
+        try:
+            streams[stream_id] = IngressStream(
+                stream_id, policy, mapping_id, engine_ids
+            )
+        except KernelError as exc:
+            raise ScenarioError(f"{path}: {exc}", code=exc.code) from exc
+        stream_paths[stream_id] = path
     for engine_id, item in engines.items():
         if "ingress" not in item:
             continue
@@ -658,24 +726,29 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         spec = contract(
             item["ingress"],
             path,
-            {"mapping_id", "initial_watermark_ns", "lateness", "timeout_s"},
+            policy_keys,
+            {"stream_id", "allowed_lateness_ns"},
         )
-        mapping_id = text(spec["mapping_id"], path + ".mapping_id")
-        if mapping_id not in mappings:
-            raise ScenarioError(path + ".mapping_id: unknown clock mapping")
+        mapping_id, policy = stream_policy(spec, path)
+        stream_id = text(spec.get("stream_id", engine_id), path + ".stream_id")
+        prior = streams.get(stream_id)
+        if prior is not None:
+            if prior.mapping_id != mapping_id or prior.policy != policy:
+                raise ScenarioError(
+                    f"{path}: inconsistent declaration of stream {stream_id!r}; "
+                    f"first declared at {stream_paths[stream_id]}"
+                )
+            engine_ids = tuple(dict.fromkeys((*prior.engine_ids, engine_id)))
+        else:
+            engine_ids = (engine_id,)
         try:
-            policy = IngressPolicy(
-                integer(spec["initial_watermark_ns"], path + ".initial_watermark_ns"),
-                text(spec["lateness"], path + ".lateness"),
-                numeric(spec["timeout_s"], path + ".timeout_s"),
+            streams[stream_id] = IngressStream(
+                stream_id, policy, mapping_id, engine_ids
             )
         except KernelError as exc:
-            raise ScenarioError(f"{path}: {exc}") from exc
-        if ingress and policy != next(iter(ingress.values())).policy:
-            raise ScenarioError(
-                path + ": kernel uses one shared watermark stream; policies must match"
-            )
-        ingress[engine_id] = EngineIngress(mapping_id, policy)
+            raise ScenarioError(f"{path}: {exc}", code=exc.code) from exc
+        stream_paths.setdefault(stream_id, path)
+        ingress[engine_id] = EngineIngress(mapping_id, policy, stream_id)
     return Scenario(
         document,
         source,
@@ -693,4 +766,5 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         integer(run["advance_ns"], "run.advance_ns", 1),
         clock_mappings,
         ingress,
+        tuple(streams.values()),
     )
