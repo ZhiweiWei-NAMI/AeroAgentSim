@@ -100,6 +100,17 @@ def create_router(
     def type_detail(type_id: str) -> dict[str, Any]:
         return checked(lambda: store.catalog.type_detail(type_id))
 
+    @router.get("/explorer")
+    def explorer(workspace_id: str | None = None) -> dict[str, Any]:
+        from .explorer import explorer_payload
+
+        def read() -> dict[str, Any]:
+            if workspace_id is not None:
+                store.directory(workspace_id)  # validate the identifier shape first
+            return explorer_payload(store, workspace_id)
+
+        return checked(read)
+
     @router.get("/workspaces")
     def workspaces() -> list[dict[str, Any]]:
         return checked(store.list)

@@ -1,0 +1,80 @@
+/* AeroGraph explorer page. Scope: .aerograph only. Tokens come from console.css (:root). */
+
+
+.aerograph { display: flex; flex-direction: column; gap: var(--csl-sp-4); }
+
+.aerograph-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--csl-sp-3); }
+.aerograph-toolbar .aerograph-workspace { min-width: 220px; }
+.aerograph-meta { color: var(--csl-text-muted); font-size: var(--csl-fs-sm); }
+
+.aerograph-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--csl-sp-4); align-items: start; }
+@media (max-width: 1100px) { .aerograph-layout { grid-template-columns: minmax(0, 1fr); } }
+
+.aerograph-tree { background: var(--csl-surface); border: 1px solid var(--csl-border-strong); border-radius: 8px; padding: var(--csl-sp-3); }
+.aerograph-tree-search { margin-bottom: var(--csl-sp-2); }
+.aerograph-tree-body { max-height: 560px; overflow: auto; }
+.aerograph-tree ul { list-style: none; margin: 0; padding-left: var(--csl-sp-4); }
+.aerograph-tree > .aerograph-tree-body > ul { padding-left: 0; }
+.aerograph-tree button {
+  display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: var(--csl-sp-2);
+  background: none; border: 0; border-radius: 6px; padding: 3px 8px; text-align: left; cursor: pointer;
+  color: var(--csl-text); font: inherit; font-size: var(--csl-fs-sm);
+}
+.aerograph-tree button:hover { background: rgba(13, 127, 116, 0.08); }
+.aerograph-tree button.is-selected { background: var(--csl-teal-050); color: var(--csl-teal-600); font-weight: 600; }
+.aerograph-tree .aerograph-count { color: var(--csl-text-muted); font-variant-numeric: tabular-nums; flex: none; }
+.aerograph-tree .aerograph-type-abstract { color: var(--csl-text-muted); font-style: italic; }
+
+.aerograph-main { display: flex; flex-direction: column; gap: var(--csl-sp-4); min-width: 0; }
+
+.aerograph-crumbs { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin-bottom: 2px; font-size: var(--csl-fs-sm); }
+.aerograph-crumbs button { background: none; border: 0; padding: 0; color: var(--csl-teal-600); cursor: pointer; font: inherit; font-size: var(--csl-fs-sm); }
+.aerograph-crumbs button:hover { text-decoration: underline; }
+.aerograph-crumb-sep { color: var(--csl-border-strong); }
+.aerograph-crumb-current { color: var(--csl-text); font-weight: 600; }
+
+.aerograph-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--csl-sp-2); }
+.aerograph-title h2 { margin: 0; font-size: var(--csl-fs-lg); color: var(--csl-navy-900); }
+.aerograph-title .aerograph-cn { color: var(--csl-text-muted); font-size: var(--csl-fs-md); }
+.aerograph-badges { display: flex; gap: var(--csl-sp-2); align-items: center; }
+.aerograph-desc { margin: var(--csl-sp-2) 0 0; color: var(--csl-text-muted); max-width: 860px; }
+
+.aerograph-panel { background: var(--csl-surface); border: 1px solid var(--csl-border-strong); border-radius: 8px; padding: var(--csl-sp-4); }
+.aerograph-panel > h3 { margin: 0 0 var(--csl-sp-2); font-size: var(--csl-fs-md); color: var(--csl-navy-900); }
+.aerograph-panel > .aerograph-hint { margin: 0 0 var(--csl-sp-2); color: var(--csl-text-muted); font-size: var(--csl-fs-sm); }
+.aerograph-panel .ant-table { margin-top: var(--csl-sp-2); }
+
+.aerograph-references { list-style: none; margin: var(--csl-sp-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.aerograph-references li { display: flex; align-items: baseline; gap: var(--csl-sp-2); }
+.aerograph-references .aerograph-ref-name { font-weight: 550; color: var(--csl-text); }
+.aerograph-references .aerograph-ref-desc { color: var(--csl-text-muted); font-size: var(--csl-fs-sm); }
+.aerograph-references .aerograph-ref-kind { flex: none; }
+
+.aerograph-entities { list-style: none; margin: var(--csl-sp-2) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--csl-sp-2); }
+.aerograph-entities a { text-decoration: none; }
+
+.aerograph-graph { position: relative; border: 1px solid var(--csl-border-strong); border-radius: 8px; background: #fbfcfd; touch-action: none; overflow: hidden; }
+.aerograph-graph svg { display: block; width: 100%; height: auto; cursor: grab; user-select: none; }
+.aerograph-graph svg.is-panning { cursor: grabbing; }
+.aerograph-graph-hint { position: absolute; right: var(--csl-sp-2); bottom: var(--csl-sp-1); color: var(--csl-text-muted); font-size: var(--csl-fs-xs); background: rgba(255, 255, 255, 0.85); border-radius: 4px; padding: 2px 6px; pointer-events: none; }
+
+.aerograph-details-pre { max-height: 420px; overflow: auto; margin: 0; font-size: var(--csl-fs-sm); background: var(--csl-navy-900); color: #dbe6ee; border-radius: 6px; padding: var(--csl-sp-3); }
+
+.aerograph-tree-label {display:flex;justify-content:space-between;gap:8px;width:100%;font-size:12px;line-height:1.5}
+.aerograph-tree-label>span:first-child {white-space:normal;overflow-wrap:anywhere}
+.aerograph-tree .ant-tree-node-content-wrapper {min-width:0;flex:1}
+.aerograph-tree {position:sticky;top:76px}
+.aerograph-tree-body {max-height:70vh}
+.aerograph-graph-controls {display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--csl-surface);border-bottom:1px solid var(--csl-border);font-size:11px;color:var(--csl-text-muted)}
+.aerograph-graph-controls>span {flex:1}
+.aerograph-type-node {cursor:pointer;outline:none}
+.aerograph-type-node:focus-visible rect {stroke:var(--csl-teal-500);stroke-width:3}
+.aerograph-references {max-height:400px;overflow:auto}
+.aerograph-references li {flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--csl-border)}
+.aerograph-ref-desc {flex-basis:100%;overflow-wrap:anywhere}
+.aerograph-panel .ant-table-cell {overflow-wrap:anywhere;font-size:12px}
+.aerograph-workspace {width:280px}
+.aerograph-title h2 {font-size:23px;letter-spacing:-.4px}
+.aerograph-title .aerograph-cn {font-size:14px}
+.aerograph-title {gap:10px}
+@media(max-width:1300px){.aerograph-layout {grid-template-columns:250px minmax(0,1fr)}}

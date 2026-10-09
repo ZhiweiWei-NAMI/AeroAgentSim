@@ -35,6 +35,7 @@ test('real traffic console: draft, compiler, operator accident, award, city phot
 
  await page.getByRole('button',{name:'Alpha',exact:true}).click();
  await page.screenshot({path:'/tmp/aas-q/e3b/screenshots/run.png'});
+ await page.getByText(/Recorded overlays/).click();
  const transition=page.getByTestId('chain-transition').first();const targetCut=await transition.getAttribute('data-transition-cut');await transition.click();
  await page.getByTestId('nav-inspect').click();await page.waitForURL(/\/inspect\/run-/);
  await page.screenshot({path:'/tmp/aas-q/e3b/screenshots/inspect.png'});
