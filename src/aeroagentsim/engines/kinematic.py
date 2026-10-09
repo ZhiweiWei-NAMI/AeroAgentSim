@@ -6,10 +6,11 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-from aerokernel import Activate, EntityRef, Partition, Timing
+from aerokernel import Activate, Dependency, EntityRef, Partition, Timing
 from aerokernel.sdk import Command, ContextEngine, EngineContext
 from aerokernel.values import Value, thaw
 
+from aeroagentsim.models import Segment, finite, motion_model
 from aeroagentsim.platform.plugins import EngineBuild
 
 from .common import bootstrap_owned, policies
@@ -70,6 +71,9 @@ class Kinematic(ContextEngine):
 
     def __init__(self, build: EngineBuild) -> None:
         self.build = build
+        # Manifest authority is immutable for a reference/generation; resolve it
+        # once rather than matching fleet-wide selectors at every native step.
+        self.energy_ownership: dict[EntityRef, bool] = {}
         config = build.config
         allowed = {
             "model",
@@ -91,6 +95,9 @@ class Kinematic(ContextEngine):
             "lifecycle",
             "frame",
             "initial_state",
+            "consumption_model",
+            "reserve_j",
+            "energy_lag_ns",
         }
         if set(config) - allowed:
             raise ValueError(
@@ -128,13 +135,31 @@ class Kinematic(ContextEngine):
         self.max_speed = number(config["max_speed_m_s"], "max_speed_m_s")
         self.accel = number(config["max_accel_m_s2"], "max_accel_m_s2")
         energy = config["energy"]
-        if set(energy) != {"capacity_j", "idle_w", "per_m_j"}:
-            raise ValueError("kinematic.energy: declare capacity_j, idle_w, per_m_j")
+        plugin = config.get("consumption_model", {"plugin": "linear"})["plugin"]
+        required_energy = {"capacity_j"}
+        if plugin in {"linear", "wind"}:
+            required_energy |= {"idle_w", "per_m_j"}
+        if required_energy - set(energy) or set(energy) - {
+            "capacity_j",
+            "idle_w",
+            "per_m_j",
+        }:
+            raise ValueError(
+                "kinematic.energy: declare capacity_j and the selected model's coefficients"
+            )
         if set(frame) != {"convention", "unit", "transform_revision"}:
             raise ValueError("kinematic.frame: unknown or missing model contract")
         self.capacity = number(energy["capacity_j"], "energy.capacity_j")
-        self.idle = number(energy["idle_w"], "energy.idle_w")
-        self.per_m = number(energy["per_m_j"], "energy.per_m_j")
+        if build.id not in build.models:
+            build.models[build.id] = motion_model(
+                config, build.registry, build.entities
+            )
+        self.model = build.models[build.id]
+        self.consumption_model = self.model.consumption
+        self.reserve = finite(config.get("reserve_j", 0.0), "reserve_j")
+        energy_lag = config.get("energy_lag_ns", 0)
+        if type(energy_lag) is not int or energy_lag < 0:
+            raise ValueError("kinematic.energy_lag_ns: nonnegative integer required")
         if "initial_state" in config:
             initial_state = config["initial_state"]
             if not isinstance(initial_state, dict) or set(initial_state) != {
@@ -156,7 +181,11 @@ class Kinematic(ContextEngine):
         if any(
             not math.isfinite(v) or v <= 0
             for v in (self.max_speed, self.accel, self.capacity)
-        ) or any(not math.isfinite(v) or v < 0 for v in (self.idle, self.per_m)):
+        ) or any(
+            number(energy[key], f"energy.{key}") < 0
+            for key in ("idle_w", "per_m_j")
+            if key in energy
+        ):
             raise ValueError(
                 "kinematic: speed/acceleration/capacity must be positive; energy coefficients finite nonnegative"
             )
@@ -248,7 +277,42 @@ class Kinematic(ContextEngine):
             Partition(
                 build.id,
                 build.id,
-                produces=fields,
+                produces=tuple(
+                    f
+                    for f in fields
+                    if any(
+                        r.partition == build.id and f in r.fields
+                        for r in build.manifest.rules
+                    )
+                    or any(
+                        e.partition == build.id and e.field == f
+                        for e in build.manifest.exact
+                    )
+                ),
+                consumes=tuple(
+                    Dependency(
+                        f,
+                        lag_ns=config.get("energy_lag_ns", 0)
+                        if f == self.energy_field
+                        else 0,
+                    )
+                    for f in dict.fromkeys(
+                        self.consumption_model.dependencies
+                        + (
+                            (self.energy_field,)
+                            if any(
+                                r.partition != build.id
+                                and self.energy_field in r.fields
+                                for r in build.manifest.rules
+                            )
+                            or any(
+                                e.partition != build.id and e.field == self.energy_field
+                                for e in build.manifest.exact
+                            )
+                            else ()
+                        )
+                    )
+                ),
                 commands=tuple(self.schemas.values()),
                 emits=(self.arrival_schema,),
                 message_targets=(self.topic,),
@@ -284,13 +348,25 @@ class Kinematic(ContextEngine):
     def _owns(self, ref: EntityRef) -> bool:
         if not self.build.registry.is_a(ref.type_id, self.build.config["type_id"]):
             return False
-        slots = {self.position_field, self.velocity_field, self.energy_field}
-        owned = slots & set(self.build.owned_fields(ref))
+        slots = {self.position_field, self.velocity_field}
+        selected = set(self.build.owned_fields(ref))
+        owned = slots & selected
+        if not owned and self.energy_field in selected:
+            raise ValueError(
+                f"kinematic.ownership.{ref.id}: an energy-only binding requires an independent energy producer, not a trajectory engine"
+            )
         if owned and owned != slots:
             raise ValueError(
-                f"kinematic.ownership.{ref.id}: all model slots must share one writer"
+                f"kinematic.ownership.{ref.id}: this trajectory model requires position and velocity authority together"
             )
         return owned == slots
+
+    def _owns_energy(self, ref: EntityRef) -> bool:
+        if ref not in self.energy_ownership:
+            self.energy_ownership[ref] = self.energy_field in self.build.owned_fields(
+                ref
+            )
+        return self.energy_ownership[ref]
 
     def _sync(self, ctx: EngineContext) -> None:
         """Consume actual lifecycle notifications, including new generations."""
@@ -305,6 +381,7 @@ class Kinematic(ContextEngine):
                 continue
             life = ctx.view.lifecycle(ref)
             if life.removed is not None:
+                self.energy_ownership.pop(ref, None)
                 item = self.fleet.pop(ref.id, None)
                 if item is not None and item.command is not None:
                     raise ValueError(
@@ -330,19 +407,35 @@ class Kinematic(ContextEngine):
                 raise ValueError("kinematic.initial_state: exceeds model bounds")
             elapsed = (ctx.now.ns - life.created.instant.ns) / 1e9
             distance = math.sqrt(sum(v * v for v in velocity)) * elapsed
-            consumption = self.idle * elapsed + self.per_m * distance
-            if consumption > energy and any(velocity):
-                raise ValueError(
-                    f"kinematic.initial_state: dynamic generation {ref.id} depleted before first native boundary"
+            if self._owns_energy(ref):
+                displacement = tuple(v * elapsed for v in velocity)
+                consumption = finite(
+                    self.consumption_model.consumption(
+                        ctx,
+                        ref,
+                        Segment(
+                            (displacement[0], displacement[1], displacement[2]),
+                            elapsed,
+                            distance,
+                        ),
+                    ),
+                    "consumption",
                 )
+                if consumption > energy and any(velocity):
+                    raise ValueError(
+                        f"kinematic.initial_state: dynamic generation {ref.id} depleted before first native boundary"
+                    )
+                energy = max(0.0, energy - consumption)
+            else:
+                energy = number(ctx.get(ref, self.energy_field), "stored energy")
             position = [p + v * elapsed for p, v in zip(position, velocity)]
-            energy = max(0.0, energy - consumption)
             self.fleet[ref.id] = Motion(
                 ref, position, velocity, energy, integrated_ns=ctx.now.ns
             )
             ctx.set(ref, self.position_field, position)
             ctx.set(ref, self.velocity_field, velocity)
-            ctx.set(ref, self.energy_field, energy)
+            if self._owns_energy(ref):
+                ctx.set(ref, self.energy_field, energy)
 
     def _result(self, **values: Any) -> dict[str, Any]:
         return {self.result_fields[key]: value for key, value in values.items()}
@@ -369,6 +462,8 @@ class Kinematic(ContextEngine):
                 command, self._result(reason="entity is outside configured fleet")
             )
             return
+        if not self._owns_energy(item.ref):
+            item.energy = number(ctx.get(item.ref, self.energy_field), "stored energy")
         if kind == "move_to" and any(item.velocity):
             ctx.reject(
                 command,
@@ -399,13 +494,40 @@ class Kinematic(ContextEngine):
             length, duration = speed * speed / (2 * self.accel), speed / self.accel
         step_ns = self.partition.timing.step_ns
         assert step_ns is not None
-        cost = self.per_m * length + self.idle * max(
+        seconds = max(
             step_ns / 1e9, math.ceil(duration * 1e9 / step_ns) * step_ns / 1e9
         )
-        if cost > item.energy:
+        if kind == "move_to":
+            budget_delta = tuple(b - a for a, b in zip(item.position, goal))
+        else:
+            speed = math.sqrt(sum(v * v for v in item.velocity))
+            budget_delta = tuple(
+                v / speed * length if speed else 0.0 for v in item.velocity
+            )
+        cost = finite(
+            self.consumption_model.budget(
+                ctx,
+                item.ref,
+                (
+                    Segment(
+                        (budget_delta[0], budget_delta[1], budget_delta[2]),
+                        seconds,
+                        length,
+                    ),
+                ),
+            ),
+            "budget",
+        )
+        if cost + self.reserve > item.energy:
             ctx.reject(
                 command,
-                self._result(reason="insufficient energy for bounded trajectory"),
+                self._result(
+                    reason=(
+                        "energy reserve would be violated"
+                        if self.reserve and cost <= item.energy
+                        else "insufficient energy for bounded trajectory"
+                    )
+                ),
             )
             return
         if item.command is not None:
@@ -446,10 +568,11 @@ class Kinematic(ContextEngine):
 
     def step(self, ctx: EngineContext) -> None:
         activated = False
+        retained_inputs = list(ctx.inputs)
         for item in self.fleet.values():
             dt = (ctx.now.ns - item.integrated_ns) / 1e9
             item.integrated_ns = ctx.now.ns
-            ctx.inputs = (
+            ctx.inputs = retained_inputs + (
                 [] if item.command is None else [item.command.delivery.dispatch_ref]
             )
             previous = list(item.position)
@@ -492,7 +615,23 @@ class Kinematic(ContextEngine):
             moved = math.sqrt(
                 sum((a - b) ** 2 for a, b in zip(previous, item.position))
             )
-            consumption = self.idle * dt + self.per_m * moved
+            if not self._owns_energy(item.ref):
+                item.energy = number(
+                    ctx.get(item.ref, self.energy_field), "stored energy"
+                )
+            delta = tuple(b - a for a, b in zip(previous, item.position))
+            consumption = (
+                finite(
+                    self.consumption_model.consumption(
+                        ctx,
+                        item.ref,
+                        Segment((delta[0], delta[1], delta[2]), dt, moved),
+                    ),
+                    "consumption",
+                )
+                if self._owns_energy(item.ref)
+                else 0.0
+            )
             if (
                 consumption > item.energy
                 and item.command is None
@@ -510,17 +649,23 @@ class Kinematic(ContextEngine):
                 item.energy -= consumption
             ctx.set(item.ref, self.position_field, item.position)
             ctx.set(item.ref, self.velocity_field, item.velocity)
-            ctx.set(item.ref, self.energy_field, item.energy)
+            if self._owns_energy(item.ref):
+                ctx.set(item.ref, self.energy_field, item.energy)
         if activated:
             ctx.ops.append(Activate(self.partition.id))
 
     def on_inputs(self, ctx: EngineContext) -> None:
+        # Preserve reads made by a model/wrapper before entering this hook;
+        # exclude the automatically seeded fleet inbox/dirty causes, which each
+        # independent control scopes below to avoid quadratic envelopes.
+        automatic = {d.dispatch_ref for d in ctx.inbox} | {d.cause for d in ctx.dirty}
+        retained_inputs = [cause for cause in ctx.inputs if cause not in automatic]
         self._sync(ctx)
         # Finish integrated outcomes before applying newly latched controls.
         for item in self.fleet.values():
             if item.command is None:
                 continue
-            ctx.inputs = [
+            ctx.inputs = retained_inputs + [
                 dirty.cause for dirty in ctx.dirty if dirty.kind == "activation"
             ]
             ctx.get(item.ref, self.position_field)
@@ -555,7 +700,7 @@ class Kinematic(ContextEngine):
         for delivery in ctx.inbox:
             # Independent controls cite their own actual dispatch, preventing an
             # unrelated fleet inbox from generating quadratic causal envelopes.
-            ctx.inputs = [delivery.dispatch_ref]
+            ctx.inputs = retained_inputs + [delivery.dispatch_ref]
             if delivery.message.kind == "cancel":
                 cancel_payload = payload(thaw(delivery.message.payload))
                 command = ctx.command(str(cancel_payload["command_id"]))

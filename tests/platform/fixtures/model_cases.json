@@ -1,0 +1,98 @@
+[
+  {
+    "name": "calm10m east2s",
+    "displacement": [
+      10,
+      0,
+      0
+    ],
+    "elapsed_s": 2,
+    "distance_m": 10,
+    "wind": [
+      0,
+      0,
+      0
+    ],
+    "expected_consumption_j": 90
+  },
+  {
+    "name": "headwind10m east2s",
+    "displacement": [
+      10,
+      0,
+      0
+    ],
+    "elapsed_s": 2,
+    "distance_m": 10,
+    "wind": [
+      -10,
+      0,
+      0
+    ],
+    "expected_consumption_j": 190
+  },
+  {
+    "name": "tailwind10m east2s",
+    "displacement": [
+      10,
+      0,
+      0
+    ],
+    "elapsed_s": 2,
+    "distance_m": 10,
+    "wind": [
+      10,
+      0,
+      0
+    ],
+    "expected_consumption_j": 90
+  },
+  {
+    "name": "crosswind10m east2s",
+    "displacement": [
+      10,
+      0,
+      0
+    ],
+    "elapsed_s": 2,
+    "distance_m": 10,
+    "wind": [
+      0,
+      10,
+      0
+    ],
+    "expected_consumption_j": 90
+  },
+  {
+    "name": "stationary2s",
+    "displacement": [
+      0,
+      0,
+      0
+    ],
+    "elapsed_s": 2,
+    "distance_m": 0,
+    "wind": [
+      -10,
+      0,
+      0
+    ],
+    "expected_consumption_j": 140
+  },
+  {
+    "name": "west10m2s",
+    "displacement": [
+      -10,
+      0,
+      0
+    ],
+    "elapsed_s": 2,
+    "distance_m": 10,
+    "wind": [
+      -10,
+      0,
+      0
+    ],
+    "expected_consumption_j": 90
+  }
+]
