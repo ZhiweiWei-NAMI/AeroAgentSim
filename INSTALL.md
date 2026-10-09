@@ -44,7 +44,25 @@ repository URL is invented here; the orchestrator owns publication and pins.
 | `docs` | Sphinx, RTD theme, MyST and documentation extensions |
 
 For example, `pip install -e ../aerokernel -e '.[server,dev]'` enables development
-without installing SimPy. `from aeroagentsim import Environment` requires the
+without installing SimPy.
+
+### Compatible versions and reproducible CI installs
+
+The `server` extra is bounded to the CI-validated FastAPI/Starlette range
+(`fastapi>=0.115,<0.144`, `starlette>=0.46,<1.8`): newer Starlette releases
+require the `httpx2` package for `fastapi.testclient.TestClient`, and Starlette
+>=1.8 removes the `httpx` fallback entirely. The `dev` extra therefore declares
+`httpx2>=2,<3` alongside `httpx>=0.27,<0.29` so `TestClient` works across the
+whole bounded range. For reproducible CI and local installs, pass the exact-pin
+constraints file: `pip install -e ../aerokernel -e '.[server,dev]' -c
+constraints/dev.txt` pins fastapi 0.143.0, starlette 1.7.0, httpx 0.28.1,
+uvicorn 0.54.0, pydantic 2.14.0, anyio 4.15.1, pytest 9.1.1 and hypothesis
+6.168.5 (`.github/workflows/tests.yml` installs with this file). `pip check`
+inside such an environment must stay clean. When the server extra is installed
+without the constraints file, the upper bounds alone still resolve a compatible
+set; re-pin `constraints/dev.txt` deliberately after revalidating the suite.
+
+`from aeroagentsim import Environment` requires the
 legacy dependency set and emits `DeprecationWarning`; see
 [MIGRATION-v1.md](docs/platform/MIGRATION-v1.md).
 

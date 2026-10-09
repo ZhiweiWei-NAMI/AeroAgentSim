@@ -46,7 +46,7 @@ jobs:
           node-version: "22"
       - name: Install minimal platform and test tools
         working-directory: platform
-        run: python -m pip install -e ../aerokernel -e '.[server,dev]'
+        run: python -m pip install -e ../aerokernel -e '.[server,dev]' -c constraints/dev.txt
       - name: Independent non-Docker tests
         working-directory: platform
         run: |
@@ -96,7 +96,7 @@ jobs:
       - name: Install and expose read-only source layout
         working-directory: platform
         run: |
-          python -m pip install -e ../aerokernel -e '.[server,dev]'
+          python -m pip install -e ../aerokernel -e '.[server,dev]' -c constraints/dev.txt
           sudo mkdir -p /mnt/data2/weizhiwei
           sudo ln -s "$GITHUB_WORKSPACE/aerograph" /mnt/data2/weizhiwei/AeroGraph
       - name: Full platform and decision tests without Docker or model calls
