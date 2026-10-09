@@ -1,0 +1,5 @@
+# Runtime Python dependencies; pinned by version.
+grpcio==1.83.1
+mavsdk==3.17.2
+protobuf==7.36.0
+typing-extensions==4.16.0

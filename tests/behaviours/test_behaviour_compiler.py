@@ -9,7 +9,7 @@ from typing import Any, cast
 import pytest
 import yaml
 
-from aeroagentsim.behaviours.compiler import compile_package, digest, resolve_packages
+from aeroagentsim.behaviours.compiler import compile_package, resolve_packages
 from aeroagentsim.behaviours.schema import CompileError
 from aeroagentsim.scenario.loader import UniqueLoader
 
@@ -27,7 +27,7 @@ def test_compiled_dependencies_and_content_identity() -> None:
     p = package()
     ir = compile_package(p, source="queue.yaml")
     assert ir.dependencies["ready"] == (("task", "example.task.phase"),)
-    assert ir.digest == digest(p)
+    assert ir.package_id == f"{p['id']}@{p['revision']}"
     assert ir.to_data()["document"] == p
     p["id"] = "changed"
     assert ir.document["id"] == "example.queue"
@@ -78,28 +78,19 @@ def test_invalid_construct_has_authored_path(mutation: str, path: str) -> None:
     assert path in str(error.value)
 
 
-def test_external_digest_mismatch_and_duplicate_yaml(tmp_path: Path) -> None:
+def test_external_package_and_duplicate_yaml(tmp_path: Path) -> None:
     file = tmp_path / "package.yaml"
     file.write_text(yaml.safe_dump(package()))
-    with pytest.raises(CompileError, match="sha256 mismatch"):
-        resolve_packages([{"path": file.name, "sha256": "0" * 64}], tmp_path)
+    resolved = resolve_packages([{"path": file.name}], tmp_path)
+    assert resolved[0]["document"] == package()
+    assert "digest" not in resolved[0] and "ir_digest" not in resolved[0]
     file.write_text("id: first\nid: second\n")
-    import hashlib
-
     with pytest.raises(ValueError, match="duplicate"):
-        resolve_packages(
-            [
-                {
-                    "path": file.name,
-                    "sha256": hashlib.sha256(file.read_bytes()).hexdigest(),
-                }
-            ],
-            tmp_path,
-        )
+        resolve_packages([{"path": file.name}], tmp_path)
 
 
 def test_repeat_compile_does_not_mutate_package() -> None:
     p = package()
     before = copy.deepcopy(p)
-    assert compile_package(p).digest == compile_package(p).digest
+    assert compile_package(p).to_data() == compile_package(p).to_data()
     assert p == before

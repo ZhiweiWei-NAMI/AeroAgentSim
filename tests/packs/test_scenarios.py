@@ -46,9 +46,7 @@ def test_logistics_small_30_orders() -> None:
 def test_px4_scenario_compiles_without_docker() -> None:
     scenario = load_scenario(SCENARIOS / "logistics-px4.yaml")
     generator = runpy.run_path(str(SCENARIOS / "generate.py"))
-    assert generator["px4"](scenario.document["registry"]["digest"]) == dict(
-        scenario.document
-    )
+    assert generator["px4"]() == dict(scenario.document)
     assert scenario.until_ns == 300_000_000_000
     assert scenario.engines["flight"]["plugin"] == "px4_gazebo"
     assert (

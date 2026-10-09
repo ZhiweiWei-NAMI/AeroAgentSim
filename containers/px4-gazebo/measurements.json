@@ -1,6 +1,5 @@
 {
   "image": "aeroagentsim/px4-gazebo:dev-p2a-ipc2",
-  "image_id": "sha256:9a421a10219067220de9b337d3d9af018e43f5758bd77cdc18a4ecb0bad04ed0",
   "seed": 42,
   "physics_step_ns": 4000000,
   "flight_agent_barrier_ns": 200000000,

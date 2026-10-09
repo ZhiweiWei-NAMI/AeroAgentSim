@@ -64,7 +64,7 @@ class Child:
 class Instance:
     ref: EntityRef
     package: dict[str, Any]
-    digest: str
+    package_id: str
     binding: dict[str, Any]
     template: str
     roles: dict[str, EntityRef]
@@ -182,7 +182,7 @@ class Behaviour(ContextEngine):
                         (binding["selection"]["role"], binding["selection"]["field"])
                     )
                 self.discovery.register(
-                    (ir.digest, binding["id"]),
+                    (ir.package_id, binding["id"]),
                     chain_roles,
                     binding["match"],
                     reads,
@@ -252,7 +252,7 @@ class Behaviour(ContextEngine):
                 targets.add(point.get("topic", point["emits"]))
             for rule in p.get("conflicts", []):
                 self.conflict_discovery.register(
-                    (ir.digest, rule["id"]),
+                    (ir.package_id, rule["id"]),
                     rule["roles"],
                     rule.get("match", {}),
                     [],
@@ -422,7 +422,7 @@ class Behaviour(ContextEngine):
             "instanceId": m.ref.id,
             "templateId": m.template,
             "bindingId": m.binding["id"],
-            "packageDigest": m.digest,
+            "packageDigest": m.package_id,
             "roles": {r: {"$ref": ref.to_data()} for r, ref in m.roles.items()},
             "lifecycle": lifecycle,
             "state": m.state,
@@ -461,7 +461,7 @@ class Behaviour(ContextEngine):
         if context is None:
             context = stable_id(
                 [
-                    m.digest,
+                    m.package_id,
                     predicate,
                     {name: ref.to_data() for name, ref in sorted(roles.items())},
                 ],
@@ -708,7 +708,7 @@ class Behaviour(ContextEngine):
         for ir in self.packages:
             p = ir.document
             for binding in sorted(p["bindings"], key=lambda b: b["id"]):
-                key = (ir.digest, binding["id"])
+                key = (ir.package_id, binding["id"])
                 if key not in affected:
                     continue
                 previous.update(self.binding_members.get(key, ()))
@@ -740,7 +740,7 @@ class Behaviour(ContextEngine):
                         [
                             self.build.manifest.run_id,
                             self.build.manifest.epoch,
-                            ir.digest,
+                            ir.package_id,
                             binding["id"],
                             binding["chain"],
                             {name: r.to_data() for name, r in sorted(roles.items())},
@@ -760,13 +760,13 @@ class Behaviour(ContextEngine):
                             [
                                 m
                                 for m in self.instances.values()
-                                if m.digest == ir.digest
+                                if m.package_id == ir.package_id
                             ]
                         )
                         >= p["budgets"]["max_instances"]
                     ):
                         raise RuntimeError(
-                            f"behaviour budget max_instances: package={ir.digest} binding={binding['id']} cut={ctx.view.cut.index}"
+                            f"behaviour budget max_instances: package={ir.package_id} binding={binding['id']} cut={ctx.view.cut.index}"
                         )
                     ref = EntityRef(
                         self.build.manifest.run_id,
@@ -778,7 +778,7 @@ class Behaviour(ContextEngine):
                     m = Instance(
                         ref,
                         p,
-                        ir.digest,
+                        ir.package_id,
                         binding,
                         binding["chain"],
                         roles,
@@ -1033,7 +1033,7 @@ class Behaviour(ContextEngine):
                 PREFIX + "action_started",
                 {
                     "instanceId": m.ref.id,
-                    "packageDigest": m.digest,
+                    "packageDigest": m.package_id,
                     "revision": m.revision,
                     "transitionId": m.prior_record["transitionId"]
                     if m.prior_record
@@ -1414,14 +1414,14 @@ class Behaviour(ContextEngine):
         # Conflict rules use the identical Q6 evidence/edge contract.
         for ir in self.packages:
             for rule in ir.document.get("conflicts", []):
-                conflict_key = (ir.digest, rule["id"])
+                conflict_key = (ir.package_id, rule["id"])
                 if conflict_key in self.changed_conflicts:
                     self.conflict_tuples[conflict_key] = [
                         (
                             roles,
                             stable_id(
                                 [
-                                    ir.digest,
+                                    ir.package_id,
                                     rule["id"],
                                     {
                                         name: r.to_data()
@@ -1460,7 +1460,7 @@ class Behaviour(ContextEngine):
                         fresh,
                     )
                     emission_key = (
-                        ir.digest,
+                        ir.package_id,
                         rule["id"],
                         context,
                         repr(truth.signature),
@@ -1506,7 +1506,7 @@ class Behaviour(ContextEngine):
                             PREFIX + "conflict",
                             {
                                 "ruleId": rule["id"],
-                                "packageDigest": ir.digest,
+                                "packageDigest": ir.package_id,
                                 "predicateId": predicate,
                                 "evaluation": truth.record,
                                 "roles": {
@@ -1656,7 +1656,7 @@ class Behaviour(ContextEngine):
             if selection is None or transition["from"] != m.chain["initial"]:
                 continue
             group = (
-                m.digest,
+                m.package_id,
                 m.binding["id"],
                 *(m.roles[role] for role in selection["group_roles"]),
             )
@@ -1782,7 +1782,7 @@ class Behaviour(ContextEngine):
                         "instanceId": identity,
                         "transitionId": transition["id"],
                         "reason": "slot reserved by an earlier candidate",
-                        "packageDigest": m.digest,
+                        "packageDigest": m.package_id,
                     },
                     topic=PREFIX + "records",
                 )

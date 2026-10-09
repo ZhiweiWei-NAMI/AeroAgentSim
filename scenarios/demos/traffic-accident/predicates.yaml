@@ -2,11 +2,9 @@ format: traffic-accident-predicates/v1
 evaluator:
   version: aerograph-predicate/1
   dialect: original
-  source_sha256: fd3c2ebf35824431a02f5086092543d68e45405ebfd12acc6e7bb5fbe703232d
   native_references_ref: registry.snapshot.json#/details/provenance
   native_references:
   - path: ${AEROAGENTSIM_AEROGRAPH_ROOT}/semantic-directory/src/original_runtime.js
-    sha256: 6e1f60e885208b333fb20d69d24b7c49e9a14aec7c8578917b0b1d30dc2a10e6
 predicates:
   traffic.p.detected:
     profile: committed_reactive/v1

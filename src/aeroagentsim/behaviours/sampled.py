@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from aeroagentsim.engines.predicate import FORMAT, VERSION, digest, prepare
+from aeroagentsim.engines.predicate import FORMAT, VERSION, prepare
 
 from .bindings import stable_id
 from .schema import CompileError
@@ -47,13 +47,6 @@ def expand_pool(document: dict[str, Any], packages: list[dict[str, Any]]) -> Non
                     raise CompileError(
                         package["source"], path, "sample partition identity collision"
                     )
-                native = p.get("evaluator", {}).get("native_references")
-                if not native:
-                    raise CompileError(
-                        package["source"],
-                        path,
-                        "finite pool requires pinned evaluator.native_references",
-                    )
                 definitions = {
                     predicate_id: {
                         "schemaVersion": FORMAT,
@@ -70,7 +63,6 @@ def expand_pool(document: dict[str, Any], packages: list[dict[str, Any]]) -> Non
                 config = {
                     "version": VERSION,
                     "definitions": definitions,
-                    "definitions_sha256": digest(definitions),
                     "target": predicate_id,
                     "context": context_id,
                     "parameters": definition.get("parameters", {}),
@@ -78,7 +70,6 @@ def expand_pool(document: dict[str, Any], packages: list[dict[str, Any]]) -> Non
                     "event": definition["adapter"]["event"],
                     "topic": "aas.behaviour.native_sample",
                     "transition": "level",
-                    "native_references": native,
                 }
                 try:
                     prepare(config)

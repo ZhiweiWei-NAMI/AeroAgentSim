@@ -2,7 +2,6 @@ format: aeroagentsim.scenario/v1
 id: logistics-px4
 registry:
   snapshot: aerograph.snapshot.json
-  digest: 2e8374426ca802e45aa2eeed7dbea6a8cbbfcf788a0e90eea369562e7066fd01
   types:
   - id: aas:Custodian
     parents:

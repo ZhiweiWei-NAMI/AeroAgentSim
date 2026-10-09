@@ -1,9 +1,8 @@
-"""Compile pinned packages once; fail at the authored path before world binding."""
+"""Compile packages once; fail at the authored path before world binding."""
 
 from __future__ import annotations
 
 import copy
-import hashlib
 import re
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -11,7 +10,6 @@ from typing import Any, ClassVar, cast
 
 import yaml
 from aerokernel import EntityRef
-from aerokernel.values import canonical_json
 
 from aeroagentsim.engines.predicate import VERSION, nodes
 from aeroagentsim.engines.predicate_ast import TEMPORAL, validate_ast
@@ -34,10 +32,6 @@ ACTIONS = {
     "complete": (set(), {"status"}),
 }
 PROFILES = {"committed_reactive/v1", "aerograph_sampled/v1"}
-
-
-def digest(value: object) -> str:
-    return hashlib.sha256(canonical_json(value)).hexdigest()
 
 
 class Compiler:
@@ -659,14 +653,6 @@ def compile_package(
     registry_requirements = c.shape(
         p.get("registry", {}), "$.registry", set(), {"snapshot", "digest_ref"}
     )
-    if (
-        "digest_ref" in registry_requirements
-        and registry_requirements["digest_ref"] != "scenario.registry_digest"
-    ):
-        c.fail(
-            "$.registry.digest_ref",
-            "registry requirements bind the run's pinned scenario.registry_digest",
-        )
     if "snapshot" in registry_requirements:
         c.text(registry_requirements["snapshot"], "$.registry.snapshot")
     if p.get("evaluator", {}).get("version", VERSION) != VERSION:
@@ -685,15 +671,6 @@ def compile_package(
     )
     if evaluator.get("dialect", "original") not in {"original", "expanded"}:
         c.fail("$.evaluator.dialect", "supported Q6 dialects are original and expanded")
-    if "source_sha256" in evaluator:
-        from aeroagentsim.engines import predicate_ast
-
-        assert predicate_ast.__file__ is not None
-        if (
-            hashlib.sha256(Path(predicate_ast.__file__).read_bytes()).hexdigest()
-            != evaluator["source_sha256"]
-        ):
-            c.fail("$.evaluator.source_sha256", "pinned Q6 library digest mismatch")
     supported_features = {
         "relation tuple selectors",
         "predicate role aliases",
@@ -1257,7 +1234,7 @@ def compile_package(
     p["bindings"].sort(key=lambda binding: binding["id"])
     if "conflicts" in p:
         p["conflicts"].sort(key=lambda rule: rule["id"])
-    return PackageIR(p, digest(p), source, dependencies)
+    return PackageIR(p, f"{p['id']}@{p['revision']}", source, dependencies)
 
 
 class UniqueLoader(yaml.SafeLoader):
@@ -1290,10 +1267,10 @@ UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _ma
 
 
 def resolve_packages(specs: list[Any], base: Path) -> list[dict[str, Any]]:
-    """Resolve content-pinned imports from the scenario root, preserving closure."""
+    """Resolve imports from the scenario root, preserving closure."""
     result = []
     active: set[Path] = set()
-    seen: dict[str, str] = {}
+    seen: dict[str, dict[str, Any]] = {}
 
     def load(spec: Any, directory: Path, authored_path: str) -> None:
         if not isinstance(spec, dict):
@@ -1302,18 +1279,16 @@ def resolve_packages(specs: list[Any], base: Path) -> list[dict[str, Any]]:
             )
         source = str(directory) + ":" + authored_path
         if "path" in spec:
-            if set(spec) != {"path", "sha256"}:
+            if "path" not in spec or set(spec) - {"path", "sha256"}:
                 raise CompileError(
                     source,
                     authored_path,
-                    "external package requires exact path and sha256",
+                    "external package requires a path",
                 )
             path = (directory / spec["path"]).resolve()
             if path in active:
                 raise CompileError(str(path), "$", "cyclic package import")
             raw = path.read_bytes()
-            if hashlib.sha256(raw).hexdigest() != spec["sha256"]:
-                raise CompileError(str(path), "$", "package sha256 mismatch")
             active.add(path)
             document = yaml.load(raw, Loader=UniqueLoader)
             source = str(path)
@@ -1326,12 +1301,12 @@ def resolve_packages(specs: list[Any], base: Path) -> list[dict[str, Any]]:
                 load(imported, directory, f"$.imports[{i}]")
         ir = compile_package(document, source=source)
         if ir.document["id"] in seen:
-            if seen[ir.document["id"]] != ir.digest:
+            if seen[ir.document["id"]] != ir.document:
                 raise CompileError(
                     source, "$.id", "conflicting package identity in closure"
                 )
         else:
-            seen[ir.document["id"]] = ir.digest
+            seen[ir.document["id"]] = ir.document
             result.append(ir.to_data())
         if path is not None:
             active.remove(path)

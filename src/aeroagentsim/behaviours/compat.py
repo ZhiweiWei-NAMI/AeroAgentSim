@@ -12,8 +12,6 @@ shared runtime through `build_legacy_workflow` / `build_legacy_threshold`.
 from __future__ import annotations
 
 import copy
-import hashlib
-import json
 from collections import deque
 from dataclasses import dataclass
 from dataclasses import field as data_field
@@ -37,7 +35,6 @@ from aerokernel.values import FrozenValue, thaw, typed_equal
 from aeroagentsim.engines.common import bootstrap_owned, policies
 from aeroagentsim.platform.plugins import EngineBuild
 from aeroagentsim.scenario import ScenarioError
-from aeroagentsim.scenario.paths import source_path
 
 TERMINAL = {"succeeded", "failed", "rejected", "canceled"}
 RECEIPTS = TERMINAL | {"submitted", "accepted", "executing", "canceling"}
@@ -614,21 +611,6 @@ class LegacyThresholdExecutor(ContextEngine):
                 f"engines.{build.id}.config.context: sampled context {context!r} "
                 f"is bound to engine {self.spec.partition!r}"
             )
-        reference = cfg["native_reference"]
-        if (
-            set(reference) != {"path", "sha256"}
-            or type(reference["path"]) is not str
-            or type(reference["sha256"]) is not str
-        ):
-            raise ValueError("threshold.native_reference: path and sha256 required")
-        path = source_path(reference["path"])
-        if (
-            not path.is_file()
-            or hashlib.sha256(path.read_bytes()).hexdigest() != reference["sha256"]
-        ):
-            raise ValueError(
-                "threshold.native_reference: missing source or hash mismatch"
-            )
         ast = cfg["ast"]
         if set(ast) != {"op", "args"} or ast["op"] not in {
             "gte",
@@ -905,31 +887,16 @@ class LegacyThresholdExecutor(ContextEngine):
             )
 
 
-def _digest(payload: dict[str, Any]) -> str:
-    """Canonical digest of a descriptive IR payload, for pinning and audit."""
-    canonical = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    )
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-
-
 def compile_workflow(config: dict[str, Any]) -> dict[str, Any]:
     """Descriptive IR for the legacy workflow config, as authored (no semantics claimed).
 
     Keys are validated for presence only; comparator strings are copied verbatim
     and interpreted exclusively by `LegacyWorkflowExecutor`.
     """
-    ir = _workflow_ir_without_digest(config)
-    ir["digest"] = _digest(ir)
-    return ir
+    return _workflow_ir(config)
 
 
-def compile_workflow_digest(config: dict[str, Any]) -> str:
-    """Canonical digest of the descriptive workflow IR (pinning/audit helper)."""
-    return _digest(_workflow_ir_without_digest(config))
-
-
-def _workflow_ir_without_digest(config: dict[str, Any]) -> dict[str, Any]:
+def _workflow_ir(config: dict[str, Any]) -> dict[str, Any]:
     for key in (
         "produces",
         "consumes",
@@ -1001,24 +968,16 @@ def compile_threshold(config: dict[str, Any]) -> dict[str, Any]:
     `comparator` copies the configured AST op verbatim; no comparator is
     reimplemented here — evaluation stays with `LegacyThresholdExecutor`.
     """
-    ir = _threshold_ir_without_digest(config)
-    ir["digest"] = _digest(ir)
-    return ir
+    return _threshold_ir(config)
 
 
-def compile_threshold_digest(config: dict[str, Any]) -> str:
-    """Canonical digest of the descriptive threshold IR (pinning/audit helper)."""
-    return _digest(_threshold_ir_without_digest(config))
-
-
-def _threshold_ir_without_digest(config: dict[str, Any]) -> dict[str, Any]:
+def _threshold_ir(config: dict[str, Any]) -> dict[str, Any]:
     for key in (
         "context",
         "ast",
         "event",
         "topic",
         "parameters",
-        "native_reference",
     ):
         if key not in config:
             raise ValueError(f"threshold.config: missing required key {key!r}")

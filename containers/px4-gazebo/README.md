@@ -1,6 +1,6 @@
 # PX4/Gazebo backend
 
-AeroAgentSim's container-side lockstep flight simulator. It starts PX4 SITL and Gazebo Harmonic from a public digest-pinned base, and MAVSDK 3.17.2 built from verified source with the inherited patch, without loading the AeroBench service or its workload/evidence machinery. Runtime Python dependencies are installed from the vendored hash lock; the host smoke client uses only the standard library.
+AeroAgentSim's container-side lockstep flight simulator. It starts PX4 SITL and Gazebo Harmonic from a public base, and MAVSDK 3.17.2 built from pinned upstream commits with the inherited patch, without loading the AeroBench service or its workload machinery. Runtime Python dependencies are version-pinned; the host smoke client uses only the standard library.
 
 ```bash
 containers/px4-gazebo/build.sh
@@ -62,25 +62,17 @@ TMPDIR=/tmp/aas-p9-px4 PYTHONPATH=containers/px4-gazebo PYTHONDONTWRITEBYTECODE=
   containers/px4-gazebo/tests
 ```
 
-## Standalone build provenance
+## Build provenance
 
-The Dockerfile has no AeroBench base image or repository dependency. Public bases,
-verified source archives, vendored dependency locks/patches, build timings, image
-sizes and real validation results are listed in
-[the container build record](../../docs/platform/containers.md). APT-selected
-artifact URLs/SHA-256 values and installed package versions are retained under
-`/opt/aeroagentsim/build-inputs`; Python wheel selection is recorded alongside
-its enforced hash lock. Build-only caches, wheels and compilers are excluded
-from the runtime where a separate build stage is used.
+The Dockerfile has no AeroBench base image or repository dependency. Upstream
+source commits and package versions are pinned by version/commit. Build-only
+caches, wheels and compilers are excluded from the runtime where a separate
+build stage is used.
 
 `mavsdk-incoming-heartbeat-timeout.patch`, `mavlink-offline-python.patch`,
-`pymavlink-build-requirements.lock`, `requirements.lock`,
-`inject_contact_sensors.py` and `patch_camera_model.py` were copied byte-for-byte
-from AeroBench's `containers/px4-gazebo/`. Its Dockerfile supplies the adapted
-source-build recipe. The patch includes the audit-journal argument still required
-by the slim launcher and local, verified third-party archives for offline CMake
-compilation. Camera/contact post-patch hashes are enforced. The slim service
-never loads or references AeroBench's airspace transition plugin, so that plugin
-is excluded. The compiled MAVSDK output hash is measured per build; source and
-patch hashes are the reproducibility constraints because compilers/system
-libraries can change its binary bytes.
+`pymavlink-build-requirements.txt`, `requirements.txt`,
+`inject_contact_sensors.py` and `patch_camera_model.py` were adapted from
+AeroBench's `containers/px4-gazebo/`. The patch includes the audit-journal
+argument still required by the slim launcher and local third-party archives for
+offline CMake compilation. The slim service never loads or references
+AeroBench's airspace transition plugin, so that plugin is excluded.

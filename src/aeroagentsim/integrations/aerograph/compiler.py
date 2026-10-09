@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
@@ -488,9 +487,6 @@ def compile_registry(
             "raw_types": raw_types,
             "producer_hints": hints,
             "normalizations": normalizations,
-            "normalization_digest": hashlib.sha256(
-                canonical_json(normalizations)[:-1]
-            ).hexdigest(),
             "exclusions": exclusion_list,
             "admissions": admissions,
             "review": {
@@ -502,8 +498,6 @@ def compile_registry(
             },
             "provenance": {
                 "descriptors": provenance,
-                "input_sha256": dict(sorted(sources.hashes.items())),
-                "git": sources.git_provenance(),
             },
             "statistics": {
                 "selected_types": len(selected_types),

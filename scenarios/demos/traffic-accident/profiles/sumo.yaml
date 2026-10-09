@@ -25,8 +25,8 @@ owners:
     - traffic.road.safe_gap
 configuration_required:
 - SUMO service URL/protocol capabilities
-- licence-attributed net.xml + original OSM source + digests
-- explicit demand.xml + route/native edge IDs + digests
+- licence-attributed net.xml + original OSM source
+- explicit demand.xml + route/native edge IDs
 - native XY offset/rotation -> traffic.local/v1; vertical datum
 - actual staged-stop readback; actual reporter native reroute
 - complete occupancy source coverage; no XY masquerading as ENU

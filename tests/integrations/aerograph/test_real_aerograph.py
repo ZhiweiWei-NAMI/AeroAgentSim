@@ -20,7 +20,7 @@ def test_real_three_type_slice(tmp_path: Path) -> None:
     policy = Policy(admit_proposed=True)
     first = compile_registry(ROOT, SLICE, policy)
     second = compile_registry(ROOT, reversed(SLICE), policy)
-    assert first.digest == second.digest
+    assert first.to_data() == second.to_data()
     assert first.registry.digest == second.registry.digest
     assert first.statistics["compile_blockers"] == 0
     assert first.statistics["selected_types"] == 3
@@ -31,7 +31,7 @@ def test_real_three_type_slice(tmp_path: Path) -> None:
     assert first.details["admissions"]
     out = tmp_path / "real.snapshot.json"
     first.write_snapshot(out)
-    assert read_snapshot(out).digest == first.digest
+    assert read_snapshot(out).to_data() == first.to_data()
 
 
 @pytest.mark.integration

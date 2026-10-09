@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from bisect import bisect_left
 from functools import lru_cache
@@ -66,11 +65,7 @@ class RunStorage:
                 "id": self.directory.name,
                 "kernel_run_id": scenario.run_id,
                 "scenario": scenario.document["id"],
-                "scenario_digest": scenario.digest,
-                "registry_digest": hashlib.sha256(
-                    canonical_json(scenario.registry.to_data())
-                ).hexdigest(),
-                "compiled_registry_digest": scenario.compiled.digest,
+                "registry_id": scenario.run_id + "/registry",
                 "until_ns": str(scenario.until_ns),
                 "status": "created",
             },

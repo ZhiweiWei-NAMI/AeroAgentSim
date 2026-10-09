@@ -1,4 +1,4 @@
-"""Scalar sampled guards and enforced native profile provenance."""
+"""Scalar sampled guards and authored AST validation."""
 
 from __future__ import annotations
 
@@ -43,14 +43,17 @@ def test_sampled_scalar_lte_emits_real_entered_interval(
         simulation.close()
 
 
-@pytest.mark.parametrize("case", ["missing_reference", "wrong_hash", "wrong_left_tag"])
-def test_native_profile_is_enforced(document: dict[str, Any], case: str) -> None:
+def test_invalid_sampled_ast_is_rejected(document: dict[str, Any]) -> None:
     cfg = document["engines"]["threshold"]["config"]
-    if case == "missing_reference":
-        cfg["native_reference"]["path"] = "/nonexistent/profile.js"
-    elif case == "wrong_hash":
-        cfg["native_reference"]["sha256"] = "0" * 64
-    else:
-        cfg["ast"]["args"][0]["op"] = "fabricated"
+    cfg["ast"]["args"][0]["op"] = "fabricated"
     with pytest.raises(ValueError, match="threshold"):
         Simulation(load_scenario(document))
+
+
+def test_python_threshold_needs_no_native_source_pin(document: dict[str, Any]) -> None:
+    document["engines"]["threshold"]["config"].pop("native_reference")
+    simulation = Simulation(load_scenario(document))
+    try:
+        simulation.start()
+    finally:
+        simulation.close()

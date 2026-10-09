@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import shutil
 import subprocess
@@ -18,7 +17,7 @@ from aerokernel.codec import decode_record
 from aerokernel.compact import expand_record
 from aerokernel.values import canonical_json
 
-from aeroagentsim.observations.contracts import CaptureRequest, content_digest
+from aeroagentsim.observations.contracts import CaptureRequest
 from aeroagentsim.observations.png import validate_png
 from aeroagentsim.observations.renderer import BrowserRenderer, Renderer
 from aeroagentsim.scenario.loader import contract, text
@@ -102,9 +101,6 @@ def record_views(
     manifest: dict[str, Any] = {
         "contract": "aeroagentsim.replay-recordings/v1",
         "source_run": metadata,
-        "journal_sha256": hashlib.sha256(
-            (run / "journal.jsonl").read_bytes()
-        ).hexdigest(),
         "fps": fps,
         "speed": str(speed),
         "terminal_frame_hold_s": str(Fraction(1, fps)),
@@ -115,7 +111,6 @@ def record_views(
         rows.append(
             {
                 **view,
-                "camera_digest": content_digest(canonical_json(view["camera"])),
                 "status": "pending",
                 "source_cuts": [
                     {
@@ -140,7 +135,10 @@ def record_views(
             actor = EntityRef.from_data(view["actor"])
             if actor.run_id != metadata["kernel_run_id"]:
                 raise ValueError("camera actor belongs to another kernel run")
-            filename = content_digest(view["id"].encode()) + ".mp4"
+            filename = (
+                "".join(c if c.isalnum() or c in "-._" else "-" for c in view["id"])
+                + ".mp4"
+            )
             target = output / filename
             with tempfile.TemporaryDirectory(
                 dir=output, prefix=".frames-"
@@ -220,7 +218,6 @@ def record_views(
             row.update(
                 status="completed",
                 file=filename,
-                digest=content_digest(data),
                 byte_count=len(data),
                 frame_count=counts[-1],
                 encoder=encoder,

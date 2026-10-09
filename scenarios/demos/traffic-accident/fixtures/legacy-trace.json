@@ -1,6 +1,5 @@
 {
   "source": "results/run-20261008-030056/trajectory.jsonl",
-  "sha256": "18828341d9f1a25058b6782eb20df8fbbe5b7c375a2a6b5536288091d479b513",
   "kind": "historical recorded snapshots; not authoritative receipts",
   "transform": "E=X,N=-Z,U=Y",
   "samples": [
@@ -958,5 +957,6 @@
         }
       }
     }
-  ]
+  ],
+  "source_id": "18828341d9f1a25058b6782eb20df8fbbe5b7c375a2a6b5536288091d479b513"
 }

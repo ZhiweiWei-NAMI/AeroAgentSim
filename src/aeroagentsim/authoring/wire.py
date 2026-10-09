@@ -60,19 +60,18 @@ def normalize_wire(
     registry = result.get("registry", {})
     if not isinstance(registry, dict):
         return result
+    registry.pop("digest", None)
     fields = {
         f["id"]: f["schema"]
         for f in registry.get("fields", [])
         if isinstance(f, dict) and "id" in f and "schema" in f
     }
     definitions: dict[str, Any] = {}
-    pinned = "snapshot" in registry
-    if pinned:
+    snapshot_bound = "snapshot" in registry
+    if snapshot_bound:
         if base is None:
-            raise ValueError("Pinned registry normalization requires its document base")
+            raise ValueError("Registry snapshot normalization requires its document base")
         compiled = read_snapshot(source_path(registry["snapshot"], base))
-        if compiled.digest != registry.get("digest"):
-            raise ValueError("Pinned registry digest mismatch during normalization")
         definitions.update(compiled.registry.to_data()["schemas"])
         for field in compiled.registry.fields:
             fields.setdefault(field.id, thaw(field.schema))
@@ -101,7 +100,7 @@ def normalize_wire(
     custom = {
         t["id"] for t in registry.get("types", []) if isinstance(t, dict) and "id" in t
     }
-    source_types = {} if pinned else catalog.sources().types
+    source_types = {} if snapshot_bound else catalog.sources().types
     for entity in entities:
         if not isinstance(entity, dict):
             continue

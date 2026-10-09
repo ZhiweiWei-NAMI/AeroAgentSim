@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -11,6 +10,8 @@ from typing import Any
 from aerokernel.values import canonical_json
 
 from .templates import demo_source
+
+CITY_ASSET_ID = "traffic-city-assets/v1"
 
 
 def city_assets() -> tuple[Path, dict[str, dict[str, Any]]]:
@@ -34,14 +35,12 @@ def city_assets() -> tuple[Path, dict[str, dict[str, Any]]]:
 def city_file(name: str) -> Path:
     root, files = city_assets()
     if name not in files:
-        raise FileNotFoundError("Asset is absent from the pinned demo inventory")
+        raise FileNotFoundError("Asset is absent from the demo inventory")
     path = (root / name).resolve()
     if not path.is_relative_to(root):
         raise ValueError("Demo asset escapes configured root")
-    data = path.read_bytes()
-    row = files[name]
-    if len(data) != row["bytes"] or hashlib.sha256(data).hexdigest() != row["sha256"]:
-        raise ValueError(f"Demo asset differs from its pinned source: {name}")
+    if not path.is_file():
+        raise FileNotFoundError(f"Demo asset is missing: {name}")
     return path
 
 
@@ -52,15 +51,17 @@ def capture_manifest() -> bytes:
         "scene.json",
         *(row["url"].removeprefix("/assets/") for row in scene["buildings"]),
     }
+    for name in sorted(required):
+        city_file(name)
     return canonical_json(
         {
             "format": "aeroagentsim.capture-assets/v1",
+            "asset_id": CITY_ASSET_ID,
             "environment": "viewer-default/v1",
             "files": [
                 {
                     "url": "/v1/studio/demo-assets/" + name,
-                    "sha256": files[name]["sha256"],
-                    "byte_count": files[name]["bytes"],
+                    "asset_id": files[name]["asset_id"],
                 }
                 for name in sorted(required)
             ],
@@ -79,8 +80,7 @@ def configure_console(
     )
     if primitive:
         return {"capture_mode": "primitive-test", "city_available": False}
-    manifest = capture_manifest()
-    digest = hashlib.sha256(manifest).hexdigest()
+    capture_manifest()
     console = os.environ.get(
         "AEROAGENTSIM_CONSOLE_URL", "http://127.0.0.1:8002"
     ).rstrip("/")
@@ -96,7 +96,7 @@ def configure_console(
         "timeout_s": 120.0,
     }
     bridge = document["engines"]["capture_bridge"]["config"]
-    bridge.update(asset_digest=digest, width=1024, height=768, timeout_s=120.0)
+    bridge.update(asset_digest=CITY_ASSET_ID, width=1024, height=768, timeout_s=120.0)
     bridge["camera"] = {
         "revision": "traffic-city-nadir/v1",
         "preset": "actor-nadir",
@@ -104,7 +104,7 @@ def configure_console(
         "fov": 55.0,
         "near": 0.15,
         "far": 16000.0,
-        "provenance": "committed actor pose; pinned original traffic city meshes",
+        "provenance": "committed actor pose; original traffic city meshes",
     }
     return {
         "capture_mode": "city",
@@ -116,7 +116,7 @@ def configure_console(
                 "url": console + "/v1/studio/demo-assets/scene.json",
             },
             "camera": {"position": [280, 220, 300], "target": [91.95, 0, 93.04]},
-            "attribution": "Original demo city geometry; see pinned city-manifest.json for provenance",
+            "attribution": "Original demo city geometry; see city-manifest.json for attribution",
         },
     }
 

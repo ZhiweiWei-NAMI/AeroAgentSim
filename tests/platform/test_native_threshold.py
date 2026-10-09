@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import subprocess
 from typing import Any, cast
@@ -15,7 +14,6 @@ from aerokernel.values import thaw
 from aeroagentsim.platform import Simulation
 from aeroagentsim.platform.plugins import EngineBuild, EngineCatalog
 from aeroagentsim.scenario import load_scenario
-from aeroagentsim.scenario.paths import source_path
 from aeroagentsim.services.projector import project
 from tests.platform.test_sample_missing import RetractionWriter
 
@@ -26,11 +24,6 @@ def test_native_expanded_positive_negative_missing_first_true(
 ) -> None:
     scenario = load_scenario(document)
     config = scenario.engines["threshold"]["config"]
-    reference = config["native_reference"]
-    assert (
-        hashlib.sha256(source_path(reference["path"]).read_bytes()).hexdigest()
-        == reference["sha256"]
-    )
     descriptor = scenario.registry.field(config["field"])
     contract = {
         "id": "aas.p1.reached_x",

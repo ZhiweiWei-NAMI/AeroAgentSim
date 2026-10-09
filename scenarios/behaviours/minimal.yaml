@@ -2,7 +2,6 @@ format: aeroagentsim.scenario/v1
 id: nonspatial-task-queue
 registry:
   snapshot: registry.snapshot.json
-  digest: d0519bdbbb0dde27d8488ee5c0408c87fe6a550f4353b330e2bba344cd64c75a
   types:
   - {id: example:Task, parents: [], abstract: false}
   fields:
@@ -39,7 +38,7 @@ behaviours:
 - format: aeroagentsim.behaviour-package/v1
   id: example.queue
   revision: 1
-  registry: {digest_ref: scenario.registry_digest}
+  registry: {snapshot: registry.snapshot.json}
   evaluator: {version: aerograph-predicate/1, dialect: original}
   budgets: {max_transitions_per_instance_per_ns: 64, max_instances: 100, max_timers_per_instance: 8, max_creations_per_instance: 8}
   predicates:

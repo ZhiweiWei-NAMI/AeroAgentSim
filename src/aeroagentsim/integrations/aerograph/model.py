@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
@@ -101,23 +100,23 @@ class Policy:
 
 @dataclass(frozen=True)
 class CompiledRegistry:
-    """Kernel descriptors plus pinned relation, provenance and binding hints.
+    """Kernel descriptors plus relation, source locations and binding hints.
 
-    ``digest`` covers the whole artifact. ``registry.digest`` covers only the
-    kernel subset. Mappings/arrays are deeply frozen, and exports are detached.
+    Mappings/arrays are deeply frozen, and exports are detached.
     """
 
     registry: MemoryRegistry
     details: Mapping[str, Any]
-    digest: str = field(init=False)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "details", freeze(dict(self.details)))
-        object.__setattr__(
-            self,
-            "digest",
-            hashlib.sha256(canonical_json(self.payload())[:-1]).hexdigest(),
-        )
+        details = dict(self.details)
+        details.pop("normalization_digest", None)
+        if "provenance" in details:
+            provenance = dict(details["provenance"])
+            provenance.pop("input_sha256", None)
+            provenance.pop("git", None)
+            details["provenance"] = provenance
+        object.__setattr__(self, "details", freeze(details))
 
     def payload(self) -> dict[str, Any]:
         return {
@@ -128,7 +127,7 @@ class CompiledRegistry:
         }
 
     def to_data(self) -> dict[str, Any]:
-        return {**self.payload(), "digest": self.digest}
+        return self.payload()
 
     @property
     def relations(self) -> tuple[Mapping[str, Any], ...]:
@@ -176,25 +175,27 @@ class CompiledRegistry:
 
 
 def write_snapshot(compiled: CompiledRegistry, path: Path | str) -> None:
-    """Write sorted canonical JSON, including the verified artifact digest."""
+    """Write sorted canonical JSON."""
     compiled.write_snapshot(path)
 
 
 def read_snapshot(path: Path | str) -> CompiledRegistry:
-    """Load only pinned JSON; never consult the live ontology."""
+    """Load snapshot JSON; never consult the live ontology.
+
+    Legacy snapshots carrying an artifact ``digest`` or a plain
+    ``snapshot_id`` are accepted for compatibility; neither is verified and
+    neither is retained.
+    """
     data = parse_json(Path(path).read_bytes())
     if (
         not isinstance(data, dict)
-        or set(data) != {"format", "compiler_version", "registry", "details", "digest"}
+        or not {"format", "compiler_version", "registry", "details"} <= set(data)
+        or set(data)
+        - {"format", "compiler_version", "registry", "details", "digest", "snapshot_id"}
         or data["format"] != FORMAT
         or data["compiler_version"] != COMPILER_VERSION
     ):
         raise ValueError("Unsupported registry snapshot format/version")
     if not isinstance(data["registry"], dict) or not isinstance(data["details"], dict):
         raise TypeError("Snapshot registry and details must be records")
-    result = CompiledRegistry(
-        MemoryRegistry.from_data(data["registry"]), data["details"]
-    )
-    if result.digest != data["digest"]:
-        raise ValueError("Snapshot digest mismatch; regenerate from reviewed inputs")
-    return result
+    return CompiledRegistry(MemoryRegistry.from_data(data["registry"]), data["details"])

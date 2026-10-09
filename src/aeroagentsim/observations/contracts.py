@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import hashlib
+import base64
 import math
 import re
 from dataclasses import dataclass
@@ -16,14 +16,17 @@ from aeroagentsim.platform.ingress import source_stamp
 from aeroagentsim.scenario.loader import contract, integer, text
 
 
-def digest(value: Any) -> str:
-    if not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None:
-        raise ValueError("expected lowercase SHA-256 digest")
+def artifact_id(request_id: str) -> str:
+    """Reversible, URL/file-safe request identity; never an image content hash."""
+    text(request_id, "capture.request_id")
+    return base64.urlsafe_b64encode(request_id.encode()).decode().rstrip("=")
+
+
+def artifact_key(value: Any) -> str:
+    """Accept current IDs and old hash-named files without checking content."""
+    if not isinstance(value, str) or re.fullmatch(r"[A-Za-z0-9_-]+", value) is None:
+        raise ValueError("artifact id: URL/file-safe identifier required")
     return value
-
-
-def content_digest(value: bytes) -> str:
-    return hashlib.sha256(value).hexdigest()
 
 
 def stamp_data(stamp: Stamp) -> dict[str, Any]:
@@ -52,7 +55,7 @@ class CaptureRequest:
         text(self.request_id, "capture.request_id")
         if text(self.run_id, "capture.run_id") != self.actor.run_id:
             raise ValueError("capture actor belongs to a different run")
-        digest(self.asset_digest)
+        text(self.asset_digest, "capture.asset_id")
         if not isinstance(self.camera, dict) or not self.camera:
             raise ValueError("capture.camera: explicit camera manifest required")
         canonical_json(self.camera)
@@ -70,7 +73,7 @@ class CaptureRequest:
 
     @property
     def camera_digest(self) -> str:
-        return content_digest(canonical_json(self.camera))
+        return self.request_id + "/camera"
 
     def to_data(self) -> dict[str, Any]:
         return {

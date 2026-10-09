@@ -1,6 +1,5 @@
 {
   "source": "results/run-20261008-030056/decisions.jsonl",
-  "sha256": "07a9a9b852ac45a4883d176ecbb880e97ed5899886c09330e1a039da3af14d52",
   "kind": "actual historical rounded model-input distance/ETA; no historical energy budget",
   "rows": [
     {
@@ -37,5 +36,6 @@
       "distance_3d_m": 223.0,
       "eta_s": 27.9
     }
-  ]
+  ],
+  "source_id": "07a9a9b852ac45a4883d176ecbb880e97ed5899886c09330e1a039da3af14d52"
 }

@@ -1,9 +1,8 @@
-"""Version-pinned AeroGraph AST evaluation over settled, committed kernel inputs."""
+"""AeroGraph AST evaluation over settled, committed kernel inputs."""
 
 from __future__ import annotations
 
 import copy
-import hashlib
 from bisect import bisect_left, bisect_right
 from decimal import Decimal
 from typing import Any, cast
@@ -14,20 +13,15 @@ from aerokernel.operations import SampleFrame
 from aerokernel.relations import RelationDependency
 from aerokernel.sdk import ContextEngine, EngineContext
 from aerokernel.state import Fact
-from aerokernel.values import FrozenValue, canonical_json, thaw
+from aerokernel.values import FrozenValue, thaw
 
 from aeroagentsim.platform.plugins import EngineBuild
-from aeroagentsim.scenario.paths import source_path
 
 from .predicate_ast import TEMPORAL as AST_TEMPORAL
 from .predicate_ast import evaluate, validate_ast
 
 VERSION = "aerograph-predicate/1"
 FORMAT = "aerograph.predicate-definition/v1"
-NATIVE_SHA256 = {
-    "original_runtime.js": "6e1f60e885208b333fb20d69d24b7c49e9a14aec7c8578917b0b1d30dc2a10e6",
-    "expanded_runtime.js": "3780dc2f3d6fc7d7e01850595d10f60d98f378f9036e8722e4c7d820bd75f869",
-}
 TEMPORAL = {
     "hold",
     "all_window",
@@ -39,17 +33,11 @@ TEMPORAL = {
 }
 
 
-def digest(value: object) -> str:
-    """Use the kernel's portable canonical JSON, including its terminal newline."""
-    return hashlib.sha256(canonical_json(value)).hexdigest()
-
-
 def prepare(config: dict[str, Any]) -> dict[str, Any]:
-    """Resolve a pinned definition closure and reject unsupported nodes at load."""
+    """Resolve a definition closure and reject unsupported nodes at load."""
     required = {
         "version",
         "definitions",
-        "definitions_sha256",
         "target",
         "context",
         "parameters",
@@ -57,9 +45,10 @@ def prepare(config: dict[str, Any]) -> dict[str, Any]:
         "event",
         "topic",
         "transition",
-        "native_references",
     }
     if set(config) - required - {
+        "definitions_sha256",  # Accepted for old authored scenarios; never checked.
+        "native_references",
         "field_roles",
         "relation_roles",
         "relation_profiles",
@@ -74,11 +63,8 @@ def prepare(config: dict[str, Any]) -> dict[str, Any]:
             f"predicate {identity}: unsupported evaluator version {config['version']}"
         )
     definitions = config["definitions"]
-    if (
-        not isinstance(definitions, dict)
-        or digest(definitions) != config["definitions_sha256"]
-    ):
-        raise ValueError(f"predicate {identity}: definition digest mismatch")
+    if not isinstance(definitions, dict):
+        raise TypeError(f"predicate {identity}: definition mapping required")
     if config["temporal_unit"] not in {"s", "ns"}:
         raise ValueError(
             f"predicate {identity}: explicit temporal_unit s or ns required"
@@ -87,26 +73,6 @@ def prepare(config: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(
             f"predicate {identity}: unsupported transition {config['transition']}"
         )
-    references = config["native_references"]
-    if not isinstance(references, list) or not references:
-        raise ValueError(
-            f"predicate {identity}: pinned native evaluator sources required"
-        )
-    for reference in references:
-        if not isinstance(reference, dict) or set(reference) != {"path", "sha256"}:
-            raise ValueError(f"predicate {identity}: malformed native source reference")
-        path = source_path(reference["path"])
-        if NATIVE_SHA256.get(path.name) != reference["sha256"]:
-            raise ValueError(
-                f"predicate {identity}: unsupported native evaluator revision: {path.name}"
-            )
-        if (
-            not path.is_file()
-            or hashlib.sha256(path.read_bytes()).hexdigest() != reference["sha256"]
-        ):
-            raise ValueError(
-                f"predicate {identity}: native source hash mismatch: {path}"
-            )
     active: set[str] = set()
     resolved_nodes = 0
 
@@ -168,15 +134,11 @@ def prepare(config: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(
             f"predicate {identity}: canonical definition schema/kind required"
         )
-    required_runtime = (
-        "original_runtime.js"
-        if target["execution"]["nativeDialect"] == "original_compact_ast"
-        else "expanded_runtime.js"
-    )
-    if required_runtime not in {source_path(r["path"]).name for r in references}:
-        raise ValueError(
-            f"predicate {identity}: pin {required_runtime} for the selected native dialect"
-        )
+    if target["execution"]["nativeDialect"] not in {
+        "original_compact_ast",
+        "expanded_typed_ast",
+    }:
+        raise ValueError(f"predicate {identity}: unsupported native dialect")
     target_expression = target["expression"]
     if target.get("applicability") is not None:
         raise ValueError(

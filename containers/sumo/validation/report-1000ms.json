@@ -32,7 +32,6 @@
         "v189",
         "v197"
       ],
-      "trajectory_sha256": "d1d95916dd20b90b3a56f9921557b6783959de8b34e4146dcc823b98c0cc088e",
       "trajectory": "/tmp/aas-p3a/results/trajectory-1000ms-1.jsonl",
       "commands": {
         "reroute": {
@@ -416,7 +415,6 @@
         "v189",
         "v197"
       ],
-      "trajectory_sha256": "d1d95916dd20b90b3a56f9921557b6783959de8b34e4146dcc823b98c0cc088e",
       "trajectory": "/tmp/aas-p3a/results/trajectory-1000ms-2.jsonl",
       "commands": {
         "reroute": {

@@ -950,7 +950,7 @@ fields:
     provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
-- id: traffic.capture.png_sha256
+- id: traffic.capture.asset_id
   type: aas:TrafficCapture
   schema: *id008
   metadata:
@@ -1104,7 +1104,7 @@ fields:
     provenance: docs/platform/demo-traffic-accident.md §3; Task B
     time_semantics: canonical computation; explicit half-open validity
     writer_contract: capture
-- id: traffic.recording.sha256
+- id: traffic.recording.asset_id
   type: aas:TrafficRecording
   schema: *id003
   metadata:
@@ -1632,7 +1632,7 @@ messages:
       capture:
         type: ref
         target_type: aas:TrafficCapture
-      png_sha256: *id010
+      asset_id: *id010
     required:
     - actor
     - request_id
@@ -1656,7 +1656,7 @@ messages:
       capture:
         type: ref
         target_type: aas:TrafficCapture
-      png_sha256: *id010
+      asset_id: *id010
     required:
     - actor
     - request_id
@@ -1680,7 +1680,7 @@ messages:
       capture:
         type: ref
         target_type: aas:TrafficCapture
-      png_sha256: *id010
+      asset_id: *id010
     required:
     - actor
     - request_id
@@ -1704,7 +1704,7 @@ messages:
       capture:
         type: ref
         target_type: aas:TrafficCapture
-      png_sha256: *id010
+      asset_id: *id010
     required:
     - actor
     - request_id

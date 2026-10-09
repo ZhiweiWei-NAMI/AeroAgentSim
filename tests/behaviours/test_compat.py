@@ -17,9 +17,7 @@ from aeroagentsim.behaviours.compat import (
     LegacyThresholdExecutor,
     LegacyWorkflowExecutor,
     compile_threshold,
-    compile_threshold_digest,
     compile_workflow,
-    compile_workflow_digest,
 )
 from aeroagentsim.engines.behaviour import (
     build_legacy_threshold,
@@ -39,7 +37,6 @@ def document() -> Iterator[dict[str, Any]]:
         doc = copy.deepcopy(scenario.document)
         doc["registry"].pop("compile")
         doc["registry"]["snapshot"] = str(path)
-        doc["registry"]["digest"] = scenario.compiled.digest
         yield doc
 
 
@@ -192,7 +189,7 @@ def test_threshold_ir_json_round_trip() -> None:
     assert ir["comparator"] == "exists"
 
 
-def test_ir_digests_are_stable_and_content_bound() -> None:
+def test_ir_is_stable_and_retains_authored_semantics() -> None:
     config = {
         "produces": ["f"],
         "consumes": [],
@@ -225,18 +222,15 @@ def test_ir_digests_are_stable_and_content_bound() -> None:
         ],
     }
     first = compile_workflow(config)
-    assert (
-        first["digest"]
-        == compile_workflow_digest(config)
-        == compile_workflow(config)["digest"]
-    )
+    assert first == compile_workflow(config)
+    assert "digest" not in first
     changed = cast(dict[str, Any], copy.deepcopy(config))
     predicate = cast(
         dict[str, Any],
         changed["machines"][0]["states"]["s0"]["transitions"][0]["predicate"],
     )
     predicate["op"] = "gte"
-    assert compile_workflow_digest(changed) != first["digest"]
+    assert compile_workflow(changed) != first
     threshold_config = {
         "context": "c",
         "event": "e",
@@ -252,12 +246,8 @@ def test_ir_digests_are_stable_and_content_bound() -> None:
         },
     }
     threshold_ir = compile_threshold(threshold_config)
-    assert (
-        threshold_ir["digest"]
-        == compile_threshold_digest(threshold_config)
-        == compile_threshold(threshold_config)["digest"]
-    )
-    assert compile_threshold_digest(threshold_config) != compile_workflow_digest(config)
+    assert threshold_ir == compile_threshold(threshold_config)
+    assert "digest" not in threshold_ir
 
 
 def test_pinned_replay_uses_moved_threshold_executor(

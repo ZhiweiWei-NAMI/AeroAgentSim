@@ -4,8 +4,8 @@ A real ns-3.48 Wi-Fi ad-hoc/IPv4/UDP backend with a stdlib Python TCP service.
 Nodes are opaque identities with ENU positions. There are no entity-type,
 mission, workload, session-token or AeroBench artifact dependencies.
 
-Build from the public digest-pinned Ubuntu 24.04 base and SHA-256-verified
-ns-3.48 release archive:
+Build from the public Ubuntu 24.04 base and the official ns-3.48 release
+archive over HTTPS:
 
 ```sh
 containers/ns3/build.sh
@@ -43,18 +43,4 @@ python -m ruff check \
 ```
 
 See [the backend specification](../../docs/platform/ns3-backend.md) for protocol,
-model assumptions, recovered source hashes, measured results and limitations.
-The original sources from all inspected tags are retained in
-`recovered/sources.tar.gz`, with per-tag hashes in `recovered/provenance.json`;
-they are archival and excluded from the Docker build context.
-
-## Standalone build provenance
-
-The Dockerfile has no AeroBench base image or repository dependency. Public bases,
-verified source archives, vendored dependency locks/patches, build timings, image
-sizes and real validation results are listed in
-[the container build record](../../docs/platform/containers.md). APT-selected
-artifact URLs/SHA-256 values and installed package versions are retained under
-`/opt/aeroagentsim/build-inputs`; Python wheel selection is recorded alongside
-its enforced hash lock. Build-only caches, wheels and compilers are excluded
-from the runtime where a separate build stage is used.
+model assumptions, measured results and limitations.

@@ -71,7 +71,6 @@ class Catalog:
                 }
                 for f in compiled.effective_fields(type_id)
             ],
-            "digest": compiled.digest,
             "schemas": compiled.registry.to_data()["schemas"],
             "provenance": thaw(compiled.provenance),
             "normalizations": thaw(compiled.normalizations),

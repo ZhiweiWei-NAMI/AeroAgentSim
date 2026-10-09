@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
-import struct
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from aerokernel.errors import KernelError
@@ -704,32 +702,37 @@ def test_cycle_and_missing_actual_parent(tmp_path: Path) -> None:
         compile_registry(root, ["t:A"])
 
 
-def test_snapshot_roundtrip_pinned_provenance_and_tampering(tmp_path: Path) -> None:
+def test_snapshot_roundtrip_pinned_provenance_and_legacy_digest(tmp_path: Path) -> None:
     root = ontology(tmp_path / "ontology", relations=[relation("r:x")])
     c = compile_registry(root, ["t:Child"])
     path = tmp_path / "registry.snapshot.json"
     write_snapshot(c, path)
     saved = path.read_bytes()
     assert saved == canonical_json(c.to_data())
+    assert "digest" not in json.loads(saved)
     descriptor = c.provenance["descriptors"]["fields"]["f:x"]
     assert (
         descriptor["file"] == "semantic-directory/data/definitions.json"
         and descriptor["pointer"] == "/0"
     )
-    for name, sha in c.provenance["input_sha256"].items():
-        assert hashlib.sha256((root / name).read_bytes()).hexdigest() == sha
     (root / "semantic-directory/data/definitions.json").unlink()
     restored = read_snapshot(path)
-    assert restored.digest == c.digest
     assert restored.registry.digest == c.registry.digest
     assert restored.to_data() == c.to_data()
     assert [r["id"] for r in restored.effective_relations("t:Child")] == ["r:x"]
     with pytest.raises(TypeError):
         restored.producer_hints["f:x"]["authority"] = True
+    # Legacy snapshots with an unverified artifact digest still load.
     data = json.loads(saved)
-    data["details"]["relations"][0]["target_type"] = "changed"
+    data["digest"] = "0" * 64
+    legacy = tmp_path / "legacy.snapshot.json"
+    legacy.write_text(json.dumps(data))
+    assert read_snapshot(legacy).to_data() == c.to_data()
+    # Shape validation still rejects unsupported formats.
+    data.pop("digest")
+    data["format"] = "other"
     path.write_text(json.dumps(data))
-    with pytest.raises(ValueError, match="digest mismatch"):
+    with pytest.raises(ValueError, match="Unsupported registry snapshot"):
         read_snapshot(path)
 
 
@@ -740,12 +743,13 @@ def test_snapshot_roundtrip_pinned_provenance_and_tampering(tmp_path: Path) -> N
     deadline=None,
 )
 @given(st.permutations(["t:Base", "t:Child", "t:Other"]))
-def test_digest_selection_order_invariant(tmp_path: Path, selected: list[str]) -> None:
+def test_selection_order_invariant_snapshot(
+    tmp_path: Path, selected: list[str]
+) -> None:
     root = ontology(tmp_path)
-    assert (
-        compile_registry(root, selected).digest
-        == compile_registry(root, ["t:Other", "t:Child", "t:Base"]).digest
-    )
+    first = compile_registry(root, selected).to_data()
+    second = compile_registry(root, ["t:Other", "t:Child", "t:Base"]).to_data()
+    assert first == second
 
 
 @settings(
@@ -771,8 +775,10 @@ def test_cardinality_bound_roundtrip(
     c = compile_registry(root, ["t:Child"])
     path = tmp_path / "snapshot.json"
     c.write_snapshot(path)
-    assert read_snapshot(path).digest == c.digest
-    assert thaw(c.relations[0]["cardinality"])["targets_per_source"] == {
+    assert read_snapshot(path).to_data() == c.to_data()
+    assert cast(dict[str, Any], thaw(c.relations[0]["cardinality"]))[
+        "targets_per_source"
+    ] == {
         "min": lo,
         "max": hi,
     }
@@ -791,36 +797,11 @@ def test_manifest_shards(tmp_path: Path) -> None:
     )
 
 
-def test_git_metadata_dirty_is_measured_without_git_commands(tmp_path: Path) -> None:
-    root = ontology(tmp_path)
-    git = root / ".git"
-    git.mkdir()
-    head = "1" * 40
-    (git / "HEAD").write_text(head)
-    # One staged blob differs from the worktree. Git commands are unnecessary.
-    filename = b"entity-directory/data/concepts.json"
-    entry = (
-        struct.pack("!10I", 0, 0, 0, 0, 0, 0, 0o100644, 0, 0, 0)
-        + bytes(20)
-        + struct.pack("!H", len(filename))
-        + filename
-        + b"\0"
-    )
-    entry += b"\0" * (-len(entry) % 8)
-    (git / "index").write_bytes(struct.pack("!4sII", b"DIRC", 2, 1) + entry)
-    c = compile_registry(root, ["t:Child"])
-    assert c.provenance["git"]["head"] == head
-    assert c.provenance["git"]["dirty"] is True
-    assert (
-        "entity-directory/data/concepts.json" in c.provenance["git"]["changed_tracked"]
-    )
-
-
 def test_cli_compile_inspect_and_failure(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     root = ontology(tmp_path / "ontology")
-    out, report = tmp_path / "snapshot.json", tmp_path / "report.md"
+    out = tmp_path / "snapshot.json"
     assert (
         main(
             [
@@ -831,8 +812,6 @@ def test_cli_compile_inspect_and_failure(
                 "t:Child",
                 "--out",
                 str(out),
-                "--report",
-                str(report),
             ]
         )
         == 0
@@ -842,7 +821,6 @@ def test_cli_compile_inspect_and_failure(
     result = json.loads(capsys.readouterr().out)
     assert result["fields"][0]["unit"]["symbol"] == "m"
     assert result["fields"][0]["producer_hints"]["authority"] is False
-    assert "f:x" in report.read_text() or "fields" in report.read_text()
     with pytest.raises(SystemExit) as exc:
         main(["compile", "--root", str(root), "--select", "missing", "--out", str(out)])
     assert exc.value.code == 2

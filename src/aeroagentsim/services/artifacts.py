@@ -17,20 +17,18 @@ from aerokernel.codec import decode_record
 from aerokernel.compact import expand_record
 from aerokernel.errors import KernelError
 from aerokernel.journal import iter_records
-from aerokernel.values import canonical_json
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
 
 from aeroagentsim.observations.artifacts import ArtifactStore
 from aeroagentsim.observations.contracts import (
     CaptureRequest,
+    artifact_id,
     browser_decode,
     browser_encode,
-    content_digest,
-    digest,
 )
 from aeroagentsim.platform.ingress import submission
-from aeroagentsim.scenario.loader import Scenario, contract, integer
+from aeroagentsim.scenario.loader import Scenario, contract
 from aeroagentsim.services.projector import project
 from aeroagentsim.services.subjects import projection_context
 
@@ -125,8 +123,7 @@ def mount_artifacts(
             data,
             media_type="image/png",
             headers={
-                "ETag": '"sha256-' + content + '"',
-                "X-Content-SHA256": content,
+                "ETag": '"' + content + '"',
                 "Content-Length": str(len(data)),
                 "Content-Disposition": f'attachment; filename="{content}.png"',
             },
@@ -159,11 +156,10 @@ def mount_artifacts(
                 {
                     "request",
                     "png_base64",
-                    "digest",
-                    "byte_count",
                     "at_ns",
                     "source_stamp",
                 },
+                {"digest", "byte_count"},
             )
             capture = CaptureRequest.from_data(body["request"])
             store = ArtifactStore(path)
@@ -182,12 +178,8 @@ def mount_artifacts(
                 raise ValueError("capture upload requires one configured capture owner")
             owner, config = owners[0]
             png = base64.b64decode(body["png_base64"], validate=True)
-            content = digest(body["digest"])
+            content = artifact_id(capture.request_id)
 
-            if content_digest(png) != content or len(png) != integer(
-                body["byte_count"], "capture.byte_count", 1
-            ):
-                raise ValueError("upload content hash/byte count mismatch")
             ingress = {
                 "engine": owner,
                 "schema": config["storage_result_schema"],
@@ -228,7 +220,7 @@ def mount_artifacts(
 
 
 def scope_capture_storage(scenario: Scenario, directory: Path) -> Scenario:
-    """Pin the service-assigned run path before validation and journal creation.
+    """Assign the service run path before validation and journal creation.
 
     Only the output location changes; registry, identities, bindings and clocks
     remain the already compiled immutable objects. Direct RunSession callers
@@ -250,5 +242,4 @@ def scope_capture_storage(scenario: Scenario, directory: Path) -> Scenario:
         document=document,
         engines=document["engines"],
         source=yaml.safe_dump(document, sort_keys=True),
-        digest=content_digest(canonical_json(document)),
     )

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 from pathlib import Path
 from typing import Any, cast
 
@@ -13,7 +12,6 @@ from aerokernel.sdk import ContextEngine, EngineContext
 from aerokernel.values import FrozenValue, thaw
 
 from aeroagentsim.engines.common import bootstrap_owned, policies
-from aeroagentsim.engines.predicate import NATIVE_SHA256, digest
 from aeroagentsim.platform import Simulation
 from aeroagentsim.platform.plugins import EngineBuild, EngineCatalog
 from aeroagentsim.scenario import ScenarioError, load_scenario
@@ -109,19 +107,20 @@ def test_unsupported_construct_rejected_at_load(construct: str) -> None:
     document = demo()
     cfg = document["engines"]["predicate"]["config"]
     cfg["definitions"][cfg["target"]]["expression"] = {"op": construct, "args": []}
-    cfg["definitions_sha256"] = digest(cfg["definitions"])
     with pytest.raises(
         ScenarioError, match=f"hu.predicate.actor_stationary.*{construct}"
     ):
         load_scenario(document)
 
 
-def test_hash_pin_and_missing_parameter() -> None:
+def test_definition_changes_need_no_pin_and_parameters_remain_required() -> None:
     document = demo()
     cfg = document["engines"]["predicate"]["config"]
-    cfg["definitions_sha256"] = "0" * 64
-    with pytest.raises(ScenarioError, match="digest mismatch"):
-        load_scenario(document)
+    cfg["definitions"][cfg["target"]]["expression"] = {"literal": True}
+    assert (
+        load_scenario(document).engines["predicate"]["config"]["definitions"]
+        == cfg["definitions"]
+    )
     document = demo()
     document["engines"]["predicate"]["config"]["parameters"] = {}
     document["bindings"]["samples"][0]["parameters"] = {}
@@ -144,7 +143,6 @@ def test_applicability_and_computed_duration_rejected_at_load() -> None:
                     {"op": "add", "args": [{"literal": 1}, {"literal": 2}]},
                 ],
             }
-        cfg["definitions_sha256"] = digest(cfg["definitions"])
         with pytest.raises(
             ScenarioError, match=f"hu.predicate.actor_stationary.*{construct}"
         ):
@@ -158,7 +156,6 @@ def test_null_window_does_not_create_event_or_timer() -> None:
         "op": "hold",
         "args": [{"literal": True}, {"literal": None}],
     }
-    cfg["definitions_sha256"] = digest(cfg["definitions"])
     sim = Simulation(load_scenario(document))
     try:
         sim.start()
@@ -189,7 +186,6 @@ def test_original_dialect_rejects_non_native_leaves() -> None:
         document = demo()
         cfg = document["engines"]["predicate"]["config"]
         cfg["definitions"][cfg["target"]]["expression"] = expression
-        cfg["definitions_sha256"] = digest(cfg["definitions"])
         with pytest.raises(
             ScenarioError, match=f"hu.predicate.actor_stationary.*{construct}"
         ):
@@ -221,17 +217,6 @@ def test_sample_source_mismatch_records_diagnostic_without_event() -> None:
         ]
     finally:
         sim.close()
-
-
-def test_existing_snapshots_unchanged() -> None:
-    # These byte hashes predate adding the predicate plugin. No compiler output
-    # fields or source-input enumeration changed.
-    expected = {
-        "scenarios/packs/aerograph.snapshot.json": "ee0a65bc7a4cb05a2a43703d610fbeab5fa56cc11dc7e67dea26186c02569ea1",
-        "scenarios/realtime-registry.snapshot.json": "34ca922cb61c19c066f575a61aa53d06da58f1180d5d958fd3169eac7ff1cdd1",
-    }
-    for filename, before in expected.items():
-        assert hashlib.sha256(Path(filename).read_bytes()).hexdigest() == before
 
 
 class EdgeWriter(ContextEngine):
@@ -325,11 +310,9 @@ def test_committed_relation_assertion_closure_and_causes(
                         "${AEROAGENTSIM_AEROGRAPH_ROOT}/semantic-directory/src/expanded_runtime.js"
                     )
                 ),
-                "sha256": NATIVE_SHA256["expanded_runtime.js"],
             }
         ],
     )
-    cfg["definitions_sha256"] = digest(cfg["definitions"])
     sample = document["bindings"]["samples"][0]
     sample.update(
         bindings={"source": "observation-1", "target": "observation-2"},

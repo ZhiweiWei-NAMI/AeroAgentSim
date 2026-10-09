@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from aerokernel import Cut, Instant
@@ -207,7 +206,7 @@ def test_projector_contract_and_lossless_times(
     run_header = header(directory)
     assert run_header["contract"] == "aeroagentsim.viewer-feed/v1"
     runtime_bytes = (directory / "runtime.registry.json").read_bytes()
-    assert run_header["registryDigest"] == hashlib.sha256(runtime_bytes).hexdigest()
+    assert run_header["registryDigest"] == session.scenario.run_id + "/registry"
     assert run_header["runtimeRegistry"] == json.loads(runtime_bytes)
     assert run_header["messages"] == run_header["runtimeRegistry"]["messages"]
     commands = [m for m in run_header["messages"] if m["kind"] == "command"]
@@ -218,7 +217,10 @@ def test_projector_contract_and_lossless_times(
     sample = next(
         f for f in run_header["fields"] if f["fieldId"] == "aas.p1.position_sample"
     )
-    assert sample["frame"] == session.scenario.registry.field("aas.p1.position_sample").metadata["frame"]
+    assert (
+        sample["frame"]
+        == session.scenario.registry.field("aas.p1.position_sample").metadata["frame"]
+    )
     linked = [
         m
         for record in session.simulation.kernel.records
@@ -337,5 +339,5 @@ def test_relation_and_sampled_frame_gate(slice_run: tuple[RunSession, Path]) -> 
     assert len(times) == len(set(times))
     assert frames[0].frame.physical_ns == 0
     assert all(
-        state["value"] is False for state in frames[0].frame.result["states"].values()
+        state["value"] is False for state in cast(dict[str, Any], frames[0].frame.result)["states"].values()
     )

@@ -19,7 +19,6 @@ def pinned(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     document = copy.deepcopy(scenario.document)
     document["registry"].pop("compile")
     document["registry"]["snapshot"] = str(path)
-    document["registry"]["digest"] = scenario.compiled.digest
     return document
 
 

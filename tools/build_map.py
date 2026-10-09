@@ -10,7 +10,6 @@ not the historical textured OSM2World mesh-pack producer.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import shutil
 import urllib.parse
@@ -78,7 +77,6 @@ def main() -> None:
         "provenance.json": {
             "source": origin,
             "query": query,
-            "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
             "license": "ODbL-1.0",
             "bounds": bounds,
             "assumptions": {"alt_m": args.alt_m, "level_height_m": args.level_height_m},

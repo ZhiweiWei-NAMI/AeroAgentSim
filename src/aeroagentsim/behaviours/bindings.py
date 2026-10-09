@@ -13,6 +13,8 @@ from aerokernel.values import canonical_json, thaw
 
 
 def stable_id(value: object, prefix: str = "behaviour") -> str:
+    # Internal bounded identity key, never a package/content integrity claim.
+    # Full role tuples can be large; this preserves deterministic compact IDs.
     return prefix + ":" + hashlib.sha256(canonical_json(value)).hexdigest()
 
 
@@ -37,9 +39,8 @@ def tuples(
     match: dict[str, Any],
     *,
     live: tuple[EntityRef, ...] | None = None,
-    eligible: dict[
-        tuple[str, str | None, str | None], tuple[EntityRef, ...]
-    ] | None = None,
+    eligible: dict[tuple[str, str | None, str | None], tuple[EntityRef, ...]]
+    | None = None,
 ) -> list[tuple[dict[str, EntityRef], tuple[object, ...]]]:
     names = sorted(roles)
     if live is None:

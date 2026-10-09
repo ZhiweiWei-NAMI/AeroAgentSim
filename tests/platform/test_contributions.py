@@ -78,7 +78,7 @@ def wind_base(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     path = tmp_path_factory.mktemp("wind-snapshot") / "snapshot.json"
     scenario.compiled.write_snapshot(path)
     d["registry"].pop("compile")
-    d["registry"].update(snapshot=str(path), digest=scenario.compiled.digest)
+    d["registry"].update(snapshot=str(path))
     descriptor = scenario.registry.field(WIND)
     assert descriptor.declaring_type == "oo:WindField"
     assert descriptor.schema["items"]["length"] == 2
