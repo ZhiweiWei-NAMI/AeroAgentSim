@@ -1,0 +1,2451 @@
+{
+  "source_sha256": "de89b3b29f0a718f6a45b995caca2bbe78302ea37d8a9a705d521623ffcea3c1",
+  "fixtures": [
+    {
+      "target": "predicate:hu.predicate.gripper_load_acquired",
+      "domains": [
+        "信息跨域视图"
+      ],
+      "sourceDomain": "human_urban",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/0",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "gte",
+            "args": [
+              {
+                "field": "hu.manipulator.gripper_force_n",
+                "role": "original:owner-role:228",
+                "path": []
+              },
+              {
+                "parameter": "original:parameter:hu.predicate.gripper_load_acquired:grip_force_n",
+                "sourceName": "grip_force_n",
+                "sourceDefaultPresent": true,
+                "sourceDefault": 5
+              }
+            ]
+          },
+          {
+            "op": "lte",
+            "args": [
+              {
+                "field": "hu.object.relative_speed_mps",
+                "role": "original:owner-role:209",
+                "path": []
+              },
+              {
+                "parameter": "original:parameter:hu.predicate.gripper_load_acquired:grip_relative_mps",
+                "sourceName": "grip_relative_mps",
+                "sourceDefaultPresent": true,
+                "sourceDefault": 0.05
+              }
+            ]
+          },
+          {
+            "op": "gt",
+            "args": [
+              {
+                "field": "hu.object.height_above_ground_m",
+                "role": "original:owner-role:210",
+                "path": []
+              },
+              {
+                "parameter": "original:parameter:hu.predicate.gripper_load_acquired:grip_lift_m",
+                "sourceName": "grip_lift_m",
+                "sourceDefaultPresent": true,
+                "sourceDefault": 0.05
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 10,
+          "fields": {
+            "original:owner-role:228": {
+              "hu.manipulator.gripper_force_n": 20
+            },
+            "original:owner-role:209": {
+              "hu.object.relative_speed_mps": 0.01
+            },
+            "original:owner-role:210": {
+              "hu.object.height_above_ground_m": 0.3
+            }
+          },
+          "relations": {},
+          "parameters": {
+            "original:parameter:hu.predicate.gripper_load_acquired:grip_force_n": 5,
+            "original:parameter:hu.predicate.gripper_load_acquired:grip_relative_mps": 0.05,
+            "original:parameter:hu.predicate.gripper_load_acquired:grip_lift_m": 0.05
+          }
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.observation_binding_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/2",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.sample.observed_subject_id",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "field": "dt.sample.expected_subject_id",
+                "role": "original:owner-role:1",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.sample.observed_quantity",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "field": "dt.sample.expected_quantity",
+                "role": "original:owner-role:1",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.sample.observed_unit",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "field": "dt.sample.expected_unit",
+                "role": "original:owner-role:1",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:0": {
+              "dt.sample.observed_subject_id": "asset-A",
+              "dt.sample.observed_quantity": "temperature",
+              "dt.sample.observed_unit": "Cel"
+            },
+            "original:owner-role:1": {
+              "dt.sample.expected_subject_id": "asset-A",
+              "dt.sample.expected_quantity": "temperature",
+              "dt.sample.expected_unit": "Cel"
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.acquisition_completeness_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/4",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.acquisition.window_closed",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": true
+              }
+            ]
+          },
+          {
+            "op": "gte",
+            "args": [
+              {
+                "op": "unique_count",
+                "args": [
+                  {
+                    "field": "dt.acquisition.received_sample_ids",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              },
+              {
+                "field": "dt.acquisition.expected_samples",
+                "role": "original:owner-role:1",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:0": {
+              "dt.acquisition.window_closed": true,
+              "dt.acquisition.received_sample_ids": [
+                "0",
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9"
+              ]
+            },
+            "original:owner-role:1": {
+              "dt.acquisition.expected_samples": 10
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.pointcloud_structure_ready",
+      "domains": [
+        "信息跨域视图"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/6",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "gt",
+            "args": [
+              {
+                "field": "dt.cloud.height",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "op": "gt",
+            "args": [
+              {
+                "field": "dt.cloud.width",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "op": "gt",
+            "args": [
+              {
+                "field": "dt.cloud.point_step_bytes",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "op": "gte",
+            "args": [
+              {
+                "field": "dt.cloud.row_step_bytes",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "op": "mul",
+                "args": [
+                  {
+                    "field": "dt.cloud.point_step_bytes",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  },
+                  {
+                    "field": "dt.cloud.width",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.cloud.data_bytes",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "op": "mul",
+                "args": [
+                  {
+                    "field": "dt.cloud.row_step_bytes",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  },
+                  {
+                    "field": "dt.cloud.height",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:0": {
+              "dt.cloud.height": 2,
+              "dt.cloud.width": 3,
+              "dt.cloud.point_step_bytes": 16,
+              "dt.cloud.row_step_bytes": 48,
+              "dt.cloud.data_bytes": 96
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.pointcloud_coverage_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/8",
+      "ast": {
+        "op": "gte",
+        "args": [
+          {
+            "field": "dt.cloud.valid_points",
+            "role": "original:owner-role:2",
+            "path": []
+          },
+          {
+            "field": "dt.cloud.required_points",
+            "role": "original:owner-role:3",
+            "path": []
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:2": {
+              "dt.cloud.valid_points": 6
+            },
+            "original:owner-role:3": {
+              "dt.cloud.required_points": 5
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.gnss_estimate_available_ready",
+      "domains": [
+        "信息跨域视图"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/10",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "gte",
+            "args": [
+              {
+                "field": "dt.gnss.status",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "op": "in",
+            "args": [
+              {
+                "field": "dt.gnss.covariance_type",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": [
+                  1,
+                  2,
+                  3
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:0": {
+              "dt.gnss.status": 0,
+              "dt.gnss.covariance_type": 2
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.imu_estimate_available_ready",
+      "domains": [
+        "信息跨域视图"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/12",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "ne",
+            "args": [
+              {
+                "field": "dt.imu.orientation_covariance_first",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": -1
+              }
+            ]
+          },
+          {
+            "op": "gt",
+            "args": [
+              {
+                "field": "dt.imu.orientation_covariance_norm",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": 0
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:0": {
+              "dt.imu.orientation_covariance_first": 0.01,
+              "dt.imu.orientation_covariance_norm": 0.02
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.joint_payload_ready",
+      "domains": [
+        "信息跨域视图"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/14",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "op": "unique_count",
+                "args": [
+                  {
+                    "field": "dt.joint.names",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              },
+              {
+                "op": "len",
+                "args": [
+                  {
+                    "field": "dt.joint.names",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "gt",
+            "args": [
+              {
+                "op": "len",
+                "args": [
+                  {
+                    "field": "dt.joint.names",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "op": "len",
+                "args": [
+                  {
+                    "field": "dt.joint.positions",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              },
+              {
+                "op": "len",
+                "args": [
+                  {
+                    "field": "dt.joint.names",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "or",
+            "args": [
+              {
+                "op": "eq",
+                "args": [
+                  {
+                    "op": "len",
+                    "args": [
+                      {
+                        "field": "dt.joint.velocities",
+                        "role": "original:owner-role:0",
+                        "path": []
+                      }
+                    ]
+                  },
+                  {
+                    "literal": 0
+                  }
+                ]
+              },
+              {
+                "op": "eq",
+                "args": [
+                  {
+                    "op": "len",
+                    "args": [
+                      {
+                        "field": "dt.joint.velocities",
+                        "role": "original:owner-role:0",
+                        "path": []
+                      }
+                    ]
+                  },
+                  {
+                    "op": "len",
+                    "args": [
+                      {
+                        "field": "dt.joint.names",
+                        "role": "original:owner-role:0",
+                        "path": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:0": {
+              "dt.joint.names": [
+                "joint1",
+                "joint2"
+              ],
+              "dt.joint.positions": [
+                0.2,
+                0.1
+              ],
+              "dt.joint.velocities": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.data_freshness_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/16",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "gte",
+            "args": [
+              {
+                "op": "sub",
+                "args": [
+                  {
+                    "field": "dt.sample.now_s",
+                    "role": "original:owner-role:4",
+                    "path": []
+                  },
+                  {
+                    "field": "dt.sample.phenomenon_time_s",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "op": "lte",
+            "args": [
+              {
+                "op": "sub",
+                "args": [
+                  {
+                    "field": "dt.sample.now_s",
+                    "role": "original:owner-role:4",
+                    "path": []
+                  },
+                  {
+                    "field": "dt.sample.phenomenon_time_s",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              },
+              {
+                "field": "dt.sample.max_age_s",
+                "role": "original:owner-role:3",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:4": {
+              "dt.sample.now_s": 10.2
+            },
+            "original:owner-role:0": {
+              "dt.sample.phenomenon_time_s": 10.0
+            },
+            "original:owner-role:3": {
+              "dt.sample.max_age_s": 1.0
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.temporal_alignment_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/18",
+      "ast": {
+        "op": "lte",
+        "args": [
+          {
+            "op": "add",
+            "args": [
+              {
+                "op": "abs",
+                "args": [
+                  {
+                    "op": "sub",
+                    "args": [
+                      {
+                        "field": "dt.pair.time_a_s",
+                        "role": "original:owner-role:0",
+                        "path": []
+                      },
+                      {
+                        "field": "dt.pair.time_b_s",
+                        "role": "original:owner-role:0",
+                        "path": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "field": "dt.pair.uncertainty_a_s",
+                "role": "original:owner-role:5",
+                "path": []
+              },
+              {
+                "field": "dt.pair.uncertainty_b_s",
+                "role": "original:owner-role:5",
+                "path": []
+              }
+            ]
+          },
+          {
+            "field": "dt.pair.max_skew_s",
+            "role": "original:owner-role:6",
+            "path": []
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:0": {
+              "dt.pair.time_a_s": 10,
+              "dt.pair.time_b_s": 10.01
+            },
+            "original:owner-role:5": {
+              "dt.pair.uncertainty_a_s": 0.005,
+              "dt.pair.uncertainty_b_s": 0.005
+            },
+            "original:owner-role:6": {
+              "dt.pair.max_skew_s": 0.05
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.coordinate_alignment_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/20",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.transform.parent_frame",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "field": "dt.transform.required_parent",
+                "role": "original:owner-role:6",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.transform.child_frame",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "field": "dt.transform.required_child",
+                "role": "original:owner-role:6",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "ne",
+            "args": [
+              {
+                "field": "dt.transform.parent_frame",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "field": "dt.transform.child_frame",
+                "role": "original:owner-role:0",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "op": "len",
+                "args": [
+                  {
+                    "field": "dt.transform.rotation",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              },
+              {
+                "literal": 4
+              }
+            ]
+          },
+          {
+            "op": "lte",
+            "args": [
+              {
+                "op": "abs",
+                "args": [
+                  {
+                    "op": "sub",
+                    "args": [
+                      {
+                        "op": "norm",
+                        "args": [
+                          {
+                            "field": "dt.transform.rotation",
+                            "role": "original:owner-role:0",
+                            "path": []
+                          }
+                        ]
+                      },
+                      {
+                        "literal": 1
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "field": "dt.transform.norm_tolerance",
+                "role": "original:owner-role:6",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:0": {
+              "dt.transform.parent_frame": "map",
+              "dt.transform.child_frame": "base_link",
+              "dt.transform.rotation": [
+                0,
+                0,
+                0,
+                1
+              ]
+            },
+            "original:owner-role:6": {
+              "dt.transform.required_parent": "map",
+              "dt.transform.required_child": "base_link",
+              "dt.transform.norm_tolerance": 0.001
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.data_lineage_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/22",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "set_equal",
+            "args": [
+              {
+                "field": "dt.lineage.required_input_ids",
+                "role": "original:owner-role:7",
+                "path": []
+              },
+              {
+                "field": "dt.lineage.used_input_ids",
+                "role": "original:owner-role:0",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.lineage.required_calibration_version",
+                "role": "original:owner-role:7",
+                "path": []
+              },
+              {
+                "field": "dt.lineage.used_calibration_version",
+                "role": "original:owner-role:0",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.lineage.output_id",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "field": "dt.lineage.accepted_output_id",
+                "role": "original:owner-role:8",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:7": {
+              "dt.lineage.required_input_ids": [
+                "sample-A",
+                "sample-B"
+              ],
+              "dt.lineage.required_calibration_version": "cal-7"
+            },
+            "original:owner-role:0": {
+              "dt.lineage.used_input_ids": [
+                "sample-A",
+                "sample-B"
+              ],
+              "dt.lineage.used_calibration_version": "cal-7",
+              "dt.lineage.output_id": "product-A"
+            },
+            "original:owner-role:8": {
+              "dt.lineage.accepted_output_id": "product-A"
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.fusion_innovation_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/24",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "gt",
+            "args": [
+              {
+                "field": "dt.fusion.innovation_variance",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "op": "lte",
+            "args": [
+              {
+                "op": "div",
+                "args": [
+                  {
+                    "op": "mul",
+                    "args": [
+                      {
+                        "field": "dt.fusion.innovation",
+                        "role": "original:owner-role:0",
+                        "path": []
+                      },
+                      {
+                        "field": "dt.fusion.innovation",
+                        "role": "original:owner-role:0",
+                        "path": []
+                      }
+                    ]
+                  },
+                  {
+                    "field": "dt.fusion.innovation_variance",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              },
+              {
+                "field": "dt.fusion.max_normalized_innovation",
+                "role": "original:owner-role:6",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:0": {
+              "dt.fusion.innovation_variance": 0.25,
+              "dt.fusion.innovation": 0.2
+            },
+            "original:owner-role:6": {
+              "dt.fusion.max_normalized_innovation": 9
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.uncertainty_propagation_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/26",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "gt",
+            "args": [
+              {
+                "field": "dt.fusion.prior_variance",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "op": "gt",
+            "args": [
+              {
+                "field": "dt.fusion.measurement_variance",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "op": "lte",
+            "args": [
+              {
+                "op": "abs",
+                "args": [
+                  {
+                    "op": "sub",
+                    "args": [
+                      {
+                        "field": "dt.fusion.reported_posterior_variance",
+                        "role": "original:owner-role:0",
+                        "path": []
+                      },
+                      {
+                        "op": "div",
+                        "args": [
+                          {
+                            "op": "mul",
+                            "args": [
+                              {
+                                "field": "dt.fusion.prior_variance",
+                                "role": "original:owner-role:0",
+                                "path": []
+                              },
+                              {
+                                "field": "dt.fusion.measurement_variance",
+                                "role": "original:owner-role:0",
+                                "path": []
+                              }
+                            ]
+                          },
+                          {
+                            "op": "add",
+                            "args": [
+                              {
+                                "field": "dt.fusion.prior_variance",
+                                "role": "original:owner-role:0",
+                                "path": []
+                              },
+                              {
+                                "field": "dt.fusion.measurement_variance",
+                                "role": "original:owner-role:0",
+                                "path": []
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "field": "dt.fusion.covariance_tolerance",
+                "role": "original:owner-role:6",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:0": {
+              "dt.fusion.prior_variance": 1,
+              "dt.fusion.measurement_variance": 0.25,
+              "dt.fusion.reported_posterior_variance": 0.2
+            },
+            "original:owner-role:6": {
+              "dt.fusion.covariance_tolerance": 0.0001
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.map_payload_ready",
+      "domains": [
+        "网络与计算"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/28",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "gt",
+            "args": [
+              {
+                "field": "dt.grid.width",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "op": "gt",
+            "args": [
+              {
+                "field": "dt.grid.height",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "op": "gt",
+            "args": [
+              {
+                "field": "dt.grid.resolution_m",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "literal": 0
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "op": "len",
+                "args": [
+                  {
+                    "field": "dt.grid.data",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              },
+              {
+                "op": "mul",
+                "args": [
+                  {
+                    "field": "dt.grid.width",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  },
+                  {
+                    "field": "dt.grid.height",
+                    "role": "original:owner-role:0",
+                    "path": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:0": {
+              "dt.grid.width": 3,
+              "dt.grid.height": 2,
+              "dt.grid.resolution_m": 0.1,
+              "dt.grid.data": [
+                0,
+                0,
+                1,
+                0,
+                -1,
+                0
+              ]
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.map_completeness_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/30",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.map.scope_complete",
+                "role": "original:owner-role:9",
+                "path": []
+              },
+              {
+                "literal": true
+              }
+            ]
+          },
+          {
+            "op": "subset",
+            "args": [
+              {
+                "field": "dt.map.required_cell_ids",
+                "role": "original:owner-role:9",
+                "path": []
+              },
+              {
+                "field": "dt.map.observed_cell_ids",
+                "role": "original:owner-role:10",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:9": {
+              "dt.map.scope_complete": true,
+              "dt.map.required_cell_ids": [
+                "0:0",
+                "0:1",
+                "1:0"
+              ]
+            },
+            "original:owner-role:10": {
+              "dt.map.observed_cell_ids": [
+                "0:0",
+                "0:1",
+                "1:0"
+              ]
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.map_adoption_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束",
+        "网络与计算"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/32",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.map.current_id",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "field": "dt.map.required_id",
+                "role": "original:owner-role:11",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.map.current_version",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "field": "dt.map.required_version",
+                "role": "original:owner-role:11",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.map.consumer_ack_version",
+                "role": "original:owner-role:12",
+                "path": []
+              },
+              {
+                "field": "dt.map.required_version",
+                "role": "original:owner-role:11",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:0": {
+              "dt.map.current_id": "map-A",
+              "dt.map.current_version": "7"
+            },
+            "original:owner-role:11": {
+              "dt.map.required_id": "map-A",
+              "dt.map.required_version": "7"
+            },
+            "original:owner-role:12": {
+              "dt.map.consumer_ack_version": "7"
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.track_association_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/34",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.track.id_a",
+                "role": "original:owner-role:13",
+                "path": []
+              },
+              {
+                "field": "dt.track.id_b",
+                "role": "original:owner-role:14",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.track.comparison_frame_a",
+                "role": "original:owner-role:13",
+                "path": []
+              },
+              {
+                "field": "dt.track.comparison_frame_b",
+                "role": "original:owner-role:14",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "lte",
+            "args": [
+              {
+                "op": "distance",
+                "args": [
+                  {
+                    "field": "dt.track.position_a",
+                    "role": "original:owner-role:13",
+                    "path": []
+                  },
+                  {
+                    "field": "dt.track.position_b",
+                    "role": "original:owner-role:14",
+                    "path": []
+                  }
+                ]
+              },
+              {
+                "field": "dt.track.max_separation_m",
+                "role": "original:owner-role:15",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:13": {
+              "dt.track.id_a": "object-A",
+              "dt.track.comparison_frame_a": "map",
+              "dt.track.position_a": [
+                1,
+                2,
+                3
+              ]
+            },
+            "original:owner-role:14": {
+              "dt.track.id_b": "object-A",
+              "dt.track.comparison_frame_b": "map",
+              "dt.track.position_b": [
+                1.1,
+                2,
+                3
+              ]
+            },
+            "original:owner-role:15": {
+              "dt.track.max_separation_m": 0.5
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.twin_replica_ready",
+      "domains": [
+        "信息跨域视图"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/36",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.twin.stream_id",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "field": "dt.twin.source_stream_id",
+                "role": "original:owner-role:16",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.twin.version",
+                "role": "original:owner-role:0",
+                "path": []
+              },
+              {
+                "field": "dt.twin.source_version",
+                "role": "original:owner-role:16",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.twin.content_token",
+                "role": "original:owner-role:17",
+                "path": []
+              },
+              {
+                "field": "dt.twin.source_content_token",
+                "role": "original:owner-role:16",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.twin.snapshot_complete",
+                "role": "original:owner-role:17",
+                "path": []
+              },
+              {
+                "literal": true
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:0": {
+              "dt.twin.stream_id": "asset-A/reported",
+              "dt.twin.version": 7
+            },
+            "original:owner-role:16": {
+              "dt.twin.source_stream_id": "asset-A/reported",
+              "dt.twin.source_version": 7,
+              "dt.twin.source_content_token": "content-A"
+            },
+            "original:owner-role:17": {
+              "dt.twin.content_token": "content-A",
+              "dt.twin.snapshot_complete": true
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.replica_conflict_ready",
+      "domains": [
+        "信息跨域视图"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/38",
+      "ast": {
+        "op": "or",
+        "args": [
+          {
+            "op": "ne",
+            "args": [
+              {
+                "field": "dt.twin.incoming_version",
+                "role": "original:owner-role:18",
+                "path": []
+              },
+              {
+                "field": "dt.twin.version",
+                "role": "original:owner-role:0",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.twin.incoming_content_token",
+                "role": "original:owner-role:18",
+                "path": []
+              },
+              {
+                "field": "dt.twin.content_token",
+                "role": "original:owner-role:17",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:18": {
+              "dt.twin.incoming_version": 7,
+              "dt.twin.incoming_content_token": "content-A"
+            },
+            "original:owner-role:0": {
+              "dt.twin.version": 7
+            },
+            "original:owner-role:17": {
+              "dt.twin.content_token": "content-A"
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.desired_reported_ack_ready",
+      "domains": [
+        "信息跨域视图"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/40",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.desired.command_id",
+                "role": "original:owner-role:19",
+                "path": []
+              },
+              {
+                "field": "dt.reported.applied_command_id",
+                "role": "original:owner-role:20",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.desired.command_version",
+                "role": "original:owner-role:19",
+                "path": []
+              },
+              {
+                "field": "dt.reported.applied_command_version",
+                "role": "original:owner-role:20",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.reported.apply_result",
+                "role": "original:owner-role:20",
+                "path": []
+              },
+              {
+                "literal": 0
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:19": {
+              "dt.desired.command_id": "command-A",
+              "dt.desired.command_version": 5
+            },
+            "original:owner-role:20": {
+              "dt.reported.applied_command_id": "command-A",
+              "dt.reported.applied_command_version": 5,
+              "dt.reported.apply_result": 0
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.twin_projection_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/42",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.twin.measurement_id",
+                "role": "original:owner-role:17",
+                "path": []
+              },
+              {
+                "field": "dt.physical.measurement_id",
+                "role": "original:owner-role:21",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "lte",
+            "args": [
+              {
+                "op": "abs",
+                "args": [
+                  {
+                    "op": "sub",
+                    "args": [
+                      {
+                        "field": "dt.twin.value",
+                        "role": "original:owner-role:17",
+                        "path": []
+                      },
+                      {
+                        "field": "dt.physical.value",
+                        "role": "original:owner-role:21",
+                        "path": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "field": "dt.twin.value_tolerance",
+                "role": "original:owner-role:22",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:17": {
+              "dt.twin.measurement_id": "measurement-A",
+              "dt.twin.value": 23
+            },
+            "original:owner-role:21": {
+              "dt.physical.measurement_id": "measurement-A",
+              "dt.physical.value": 23.1
+            },
+            "original:owner-role:22": {
+              "dt.twin.value_tolerance": 0.2
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.forecast_update_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/44",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.forecast.input_version",
+                "role": "original:owner-role:23",
+                "path": []
+              },
+              {
+                "field": "dt.forecast.required_input_version",
+                "role": "original:owner-role:24",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "lte",
+            "args": [
+              {
+                "field": "dt.forecast.now_s",
+                "role": "original:owner-role:4",
+                "path": []
+              },
+              {
+                "field": "dt.forecast.valid_until_s",
+                "role": "original:owner-role:23",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.forecast.output_version",
+                "role": "original:owner-role:23",
+                "path": []
+              },
+              {
+                "field": "dt.forecast.consumer_version",
+                "role": "original:owner-role:12",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:23": {
+              "dt.forecast.input_version": 7,
+              "dt.forecast.valid_until_s": 60,
+              "dt.forecast.output_version": 3
+            },
+            "original:owner-role:24": {
+              "dt.forecast.required_input_version": 7
+            },
+            "original:owner-role:4": {
+              "dt.forecast.now_s": 50
+            },
+            "original:owner-role:12": {
+              "dt.forecast.consumer_version": 3
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.forecast_accuracy_ready",
+      "domains": [
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/46",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.forecast.target_time_s",
+                "role": "original:owner-role:23",
+                "path": []
+              },
+              {
+                "field": "dt.forecast.outcome_time_s",
+                "role": "original:owner-role:25",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "lte",
+            "args": [
+              {
+                "op": "abs",
+                "args": [
+                  {
+                    "op": "sub",
+                    "args": [
+                      {
+                        "field": "dt.forecast.prediction",
+                        "role": "original:owner-role:23",
+                        "path": []
+                      },
+                      {
+                        "field": "dt.forecast.realized",
+                        "role": "original:owner-role:25",
+                        "path": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "field": "dt.forecast.error_limit",
+                "role": "original:owner-role:26",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:23": {
+              "dt.forecast.target_time_s": 50,
+              "dt.forecast.prediction": 12
+            },
+            "original:owner-role:25": {
+              "dt.forecast.outcome_time_s": 50,
+              "dt.forecast.realized": 12.4
+            },
+            "original:owner-role:26": {
+              "dt.forecast.error_limit": 1
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:dt.predicate.simulation_live_ready",
+      "domains": [
+        "业务与运行",
+        "信息跨域视图",
+        "法规与运行约束"
+      ],
+      "sourceDomain": "digital_twin",
+      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "pointer": "/model/X/48",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.sim.scenario_id",
+                "role": "original:owner-role:27",
+                "path": []
+              },
+              {
+                "field": "dt.live.scenario_id",
+                "role": "original:owner-role:28",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "eq",
+            "args": [
+              {
+                "field": "dt.sim.control_input",
+                "role": "original:owner-role:27",
+                "path": []
+              },
+              {
+                "field": "dt.live.control_input",
+                "role": "original:owner-role:28",
+                "path": []
+              }
+            ]
+          },
+          {
+            "op": "lte",
+            "args": [
+              {
+                "op": "distance",
+                "args": [
+                  {
+                    "field": "dt.sim.position",
+                    "role": "original:owner-role:27",
+                    "path": []
+                  },
+                  {
+                    "field": "dt.live.position",
+                    "role": "original:owner-role:28",
+                    "path": []
+                  }
+                ]
+              },
+              {
+                "field": "dt.sim.position_tolerance_m",
+                "role": "original:owner-role:29",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 5,
+          "fields": {
+            "original:owner-role:27": {
+              "dt.sim.scenario_id": "scenario-A",
+              "dt.sim.control_input": [
+                0.5,
+                0
+              ],
+              "dt.sim.position": [
+                1,
+                2,
+                0
+              ]
+            },
+            "original:owner-role:28": {
+              "dt.live.scenario_id": "scenario-A",
+              "dt.live.control_input": [
+                0.5,
+                0
+              ],
+              "dt.live.position": [
+                1.1,
+                2,
+                0
+              ]
+            },
+            "original:owner-role:29": {
+              "dt.sim.position_tolerance_m": 0.25
+            }
+          },
+          "relations": {},
+          "parameters": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original"
+    },
+    {
+      "target": "predicate:hu.predicate.actor_stationary",
+      "domains": [
+        "信息跨域视图"
+      ],
+      "sourceDomain": "human_urban",
+      "source": "semantic-directory/index.html",
+      "pointer": "predicateFormat/definitions/predicate:hu.predicate.actor_stationary",
+      "ast": {
+        "op": "hold",
+        "args": [
+          {
+            "op": "lte",
+            "args": [
+              {
+                "field": "hu.actor.speed_mps",
+                "role": "original:owner-role:97",
+                "path": []
+              },
+              {
+                "parameter": "original:parameter:hu.predicate.actor_stationary:stationary_mps",
+                "sourceName": "stationary_mps",
+                "sourceDefaultPresent": true,
+                "sourceDefault": 0.15
+              }
+            ]
+          },
+          {
+            "literal": 3
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 0,
+          "fields": {
+            "original:owner-role:97": {
+              "hu.actor.speed_mps": 0.0
+            }
+          },
+          "parameters": {
+            "original:parameter:hu.predicate.actor_stationary:stationary_mps": 0.15
+          },
+          "relations": {}
+        },
+        {
+          "t": 3,
+          "fields": {
+            "original:owner-role:97": {
+              "hu.actor.speed_mps": 0.0
+            }
+          },
+          "parameters": {
+            "original:parameter:hu.predicate.actor_stationary:stationary_mps": 0.15
+          },
+          "relations": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original",
+      "input_provenance": "authored test history, not a captured measurement"
+    },
+    {
+      "target": "predicate:proposal:p08:predicate:memory-finite-cap",
+      "domains": [
+        "网络与计算"
+      ],
+      "sourceDomain": "machine_network",
+      "source": "semantic-directory/data/pilot.json",
+      "pointer": "/predicates/1",
+      "ast": {
+        "op": "and",
+        "args": [
+          {
+            "relation": "proposal:taxonomy:T05.relation.ObservedUsageOfAllocation",
+            "sourceRole": "usage",
+            "targetRole": "allocation"
+          },
+          {
+            "op": "lte",
+            "args": [
+              {
+                "field": "mn.memory.current_byte",
+                "role": "original:owner-role:340",
+                "path": []
+              },
+              {
+                "field": "mn.memory.max_byte",
+                "role": "original:owner-role:340",
+                "path": []
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 10,
+          "fields": {
+            "original:owner-role:340": {
+              "mn.memory.current_byte": 100,
+              "mn.memory.max_byte": 200
+            }
+          },
+          "parameters": {},
+          "relations": {
+            "proposal:taxonomy:T05.relation.ObservedUsageOfAllocation|usage|allocation": true
+          }
+        }
+      ],
+      "expected": true,
+      "dialect": "expanded",
+      "input_provenance": "authored pilot binding; complete directed edge evidence"
+    },
+    {
+      "target": "predicate:he.p.thermal.sensor_fault",
+      "domains": [
+        "物理实体"
+      ],
+      "source": "semantic-directory/index.html",
+      "pointer": "predicateFormat/definitions/predicate:he.p.thermal.sensor_fault",
+      "ast": {
+        "op": "eq",
+        "args": [
+          {
+            "field": "he.thermal.temperature_channel_fault",
+            "role": "original:owner-role:156",
+            "path": []
+          },
+          {
+            "literal": true
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 0,
+          "fields": {
+            "original:owner-role:156": {
+              "he.thermal.temperature_channel_fault": true
+            }
+          },
+          "parameters": {},
+          "relations": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original",
+      "input_provenance": "authored test input for unchanged canonical condition"
+    },
+    {
+      "target": "predicate:hu.predicate.road.midblock_zone",
+      "domains": [
+        "环境与空间"
+      ],
+      "source": "semantic-directory/index.html",
+      "pointer": "predicateFormat/definitions/predicate:hu.predicate.road.midblock_zone",
+      "ast": {
+        "op": "eq",
+        "args": [
+          {
+            "field": "hu.road.zone.midblock",
+            "role": "original:owner-role:183",
+            "path": []
+          },
+          {
+            "literal": true
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 0,
+          "fields": {
+            "original:owner-role:183": {
+              "hu.road.zone.midblock": true
+            }
+          },
+          "parameters": {},
+          "relations": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "original",
+      "input_provenance": "authored test input for unchanged canonical condition"
+    },
+    {
+      "target": "predicate:expanded:predicate:exp.state.12a84f165b10458cffe22799",
+      "domains": [
+        "电磁"
+      ],
+      "source": "semantic-directory/index.html",
+      "pointer": "predicateFormat/definitions/predicate:expanded:predicate:exp.state.12a84f165b10458cffe22799",
+      "ast": {
+        "op": "eq",
+        "args": [
+          {
+            "field": "exp.field.em.signal.gnss_evidence",
+            "role": "subject",
+            "path": [
+              "navigationAuthentication"
+            ]
+          },
+          {
+            "literal": "not_available"
+          }
+        ]
+      },
+      "history": [
+        {
+          "t": 0,
+          "fields": {
+            "subject": {
+              "exp.field.em.signal.gnss_evidence": {
+                "navigationAuthentication": "not_available"
+              }
+            }
+          },
+          "parameters": {},
+          "relations": {}
+        }
+      ],
+      "expected": true,
+      "dialect": "expanded",
+      "input_provenance": "authored test input for unchanged canonical condition"
+    }
+  ]
+}
