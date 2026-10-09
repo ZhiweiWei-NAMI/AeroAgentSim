@@ -1,47 +1,6 @@
-"""
-Pytest configuration and fixtures for AirFogSim tests.
-"""
+"""Expose the platform source tree for repository tests."""
 
-import pytest
 import sys
-import os
 from pathlib import Path
 
-# Add src directory to Python path for testing
-src_path = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(src_path))
-
-
-
-@pytest.fixture
-def env():
-    """Create a test environment (legacy SimPy runtime, imported lazily)."""
-    from airfogsim.core.environment import Environment
-
-    return Environment()
-
-
-@pytest.fixture
-def drone_agent(env):
-    """Create a test drone agent."""
-    from airfogsim.agent.drone import DroneAgent
-
-    return env.create_agent(
-        DroneAgent,
-        "test_drone",
-        properties={
-            'position': (0, 0, 0),
-            'battery_level': 100
-        }
-    )
-
-
-@pytest.fixture
-def sample_waypoints():
-    """Sample waypoints for testing."""
-    return [
-        (0, 0, 100),    # Take off
-        (100, 100, 150), # Midpoint
-        (200, 200, 150), # Destination
-        (200, 200, 0),   # Land
-    ]
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
