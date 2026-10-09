@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: [main, develop]
   workflow_dispatch:
+  workflow_call:
 
 # Release uses the aerokernel/ subtree. Until it lands, set
 # AEROKERNEL_REPOSITORY and AEROKERNEL_REF for the sibling development checkout.
@@ -50,7 +51,7 @@ jobs:
         run: |
           # RELEASE: kernel path
           if [ -d ./aerokernel ]; then kernel=./aerokernel; else kernel=../aerokernel; fi
-          python -m pip install -e "$kernel" -e '.[server,dev]' -c constraints/dev.txt
+          python -m pip install -e "$kernel[test]" -e '.[server,dev]' -c constraints/dev.txt
       - name: Install console and camera dependencies
         working-directory: platform/frontend
         run: |
@@ -60,11 +61,25 @@ jobs:
       - name: Independent non-Docker tests
         working-directory: platform
         run: |
+          # Canonical-source compatibility cases run in the AeroGraph job below.
           python -m pytest tests/integrations/aerograph/test_compiler.py tests/adapters \
             tests/agents/test_provider.py tests/platform/test_public_api.py \
+            tests/platform/test_realtime.py tests/platform/test_construction_cleanup.py \
+            tests/platform/test_release_ci.py tests/platform/test_public_docs.py \
+            tests/behaviours tests/observations tests/packs \
             tests/authoring/test_snapshot_catalog.py tests/demos/traffic_accident/test_public_demo.py \
+            tests/demos/traffic_accident/test_packaging.py \
+            --ignore=tests/behaviours/test_compat.py \
+            --deselect=tests/observations/test_artifact_service.py::test_service_output_scope_without_mutating_input \
             -m 'not docker and not llm' -p no:cacheprovider \
             --basetemp=/tmp/aas-ci/tests
+      - name: Kernel test suite
+        working-directory: platform
+        run: |
+          # RELEASE: kernel path
+          if [ -d ./aerokernel ]; then kernel=./aerokernel; else kernel=../aerokernel; fi
+          cd "$kernel"
+          python -m pytest
       - name: CLI and packaging
         working-directory: platform
         run: |
@@ -72,9 +87,8 @@ jobs:
           aeroagentsim serve --help
           python -c "from aeroagentsim import Simulation; import sys; assert not any(m.startswith(('airfogsim', 'aero_bench', 'simpy')) for m in sys.modules)"
 
-  # Full P1/decision gates use the pinned real AeroGraph files (read-only).
-  # Their scenarios currently encode /mnt/data2/weizhiwei/AeroGraph. Enable
-  # this job when a matching source revision is available to CI.
+  # Source-dependent suites use the pinned real AeroGraph files (read-only).
+  # Public runtime, behaviour and replay suites run unconditionally above.
   aerograph:
     needs: non-docker
     if: ${{ vars.AEROGRAPH_REPOSITORY != '' && vars.AEROGRAPH_REF != '' }}
@@ -88,6 +102,7 @@ jobs:
         with:
           path: platform
       - uses: actions/checkout@v4
+        if: ${{ hashFiles('platform/aerokernel/pyproject.toml') == '' }}
         with:
           repository: ${{ vars.AEROKERNEL_REPOSITORY }}
           token: ${{ secrets.KERNEL_READ_TOKEN || github.token }}
@@ -105,15 +120,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Install and expose read-only source layout
+      - name: Install platform and kernel
         working-directory: platform
         run: |
-          python -m pip install -e ../aerokernel -e '.[server,dev]' -c constraints/dev.txt
-          sudo mkdir -p /mnt/data2/weizhiwei
-          sudo ln -s "$GITHUB_WORKSPACE/aerograph" /mnt/data2/weizhiwei/AeroGraph
+          # RELEASE: kernel path
+          if [ -d ./aerokernel ]; then kernel=./aerokernel; else kernel=../aerokernel; fi
+          python -m pip install -e "$kernel[test]" -e '.[server,dev]' -c constraints/dev.txt
+      - name: Install camera dependencies
+        working-directory: platform/frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run build
       - name: Full platform and decision tests without Docker or model calls
         working-directory: platform
         run: |
           python -m pytest tests/platform tests/agents tests/integrations/aerograph \
+            tests/behaviours tests/observations \
             -m 'not docker and not llm' -p no:cacheprovider \
             --basetemp=/tmp/aas-ci-graph/tests

@@ -358,6 +358,192 @@ def test_relation_predicate_and_once_per_assertion_binding() -> None:
     sim.close()
 
 
+def test_while_trigger_retries_after_precondition_becomes_true() -> None:
+    """A fresh precondition retries a dormant, still-true while trigger."""
+    doc = document()
+    doc["ingress_streams"] = []
+    doc["registry"]["fields"].append(
+        {
+            "id": "example.task.flag",
+            "type": "example:Task",
+            "schema": {"type": "boolean"},
+            "metadata": {},
+        }
+    )
+    doc["entities"][0]["facts"]["example.task.phase"] = "idle"
+    doc["registry"]["fields"][0]["schema"]["enum"] = [
+        "queued",
+        "assigned",
+        "completed",
+        "interrupted",
+        "idle",
+    ]
+    package = doc["behaviours"][0]
+    package["predicates"]["ready"] = {
+        "profile": "committed_reactive/v1",
+        "roles": {"task": "example:Task"},
+        "expression": {
+            "op": "eq",
+            "args": [
+                {"field": "example.task.phase", "role": "task", "path": []},
+                {"literal": "queued"},
+            ],
+        },
+        "parameters": {},
+    }
+    package["predicates"]["gate"] = {
+        "profile": "committed_reactive/v1",
+        "roles": {"task": "example:Task"},
+        "expression": {
+            "op": "eq",
+            "args": [
+                {"field": "example.task.flag", "role": "task", "path": []},
+                {"literal": True},
+            ],
+        },
+        "parameters": {},
+    }
+    chain = package["chains"]["queue"]
+    chain["trigger"] = {"predicate": "ready", "edge": "while"}
+    chain["preconditions"] = ["gate"]
+    chain["transitions"] = [
+        {
+            "id": "assign",
+            "from": "waiting",
+            "on": {"instance": "activated"},
+            "to": "done",
+            "priority": 0,
+            "actions": [
+                {
+                    "id": "s",
+                    "kind": "set",
+                    "entity": {"$role": "task"},
+                    "field": "example.task.phase",
+                    "value": "assigned",
+                }
+            ],
+        }
+    ]
+    package["chains"]["writer"] = {
+        "roles": {"task": "example:Task"},
+        "trigger": {"timer": "boot", "after_ns": 5},
+        "preconditions": [],
+        "initial": "w1",
+        "states": ["w1", "w2", "wdone"],
+        "terminal": ["wdone"],
+        "transitions": [
+            {
+                "id": "w1",
+                "from": "w1",
+                "on": {"instance": "activated"},
+                "to": "w2",
+                "priority": 0,
+                "actions": [
+                    {
+                        "id": "sp",
+                        "kind": "set",
+                        "entity": {"$role": "task"},
+                        "field": "example.task.phase",
+                        "value": "queued",
+                    },
+                    {"id": "late", "kind": "delay", "duration_ns": 15},
+                ],
+            },
+            {
+                "id": "w2",
+                "from": "w2",
+                "on": {"timer": "late"},
+                "to": "wdone",
+                "priority": 0,
+                "actions": [
+                    {
+                        "id": "sf",
+                        "kind": "set",
+                        "entity": {"$role": "task"},
+                        "field": "example.task.flag",
+                        "value": True,
+                    },
+                    {"id": "cdone", "kind": "complete", "status": "completed"},
+                ],
+            },
+        ],
+    }
+    doc["engines"]["behaviour"]["config"]["produces"] = [
+        "example.task.phase",
+        "example.task.flag",
+    ]
+    doc["bindings"]["rules"].append(
+        {
+            "writer": "behaviour",
+            "type": "example:Task",
+            "fields": ["example.task.flag"],
+        }
+    )
+    package["bindings"].append(
+        {
+            "id": "writer-b",
+            "chain": "writer",
+            "match": {"task": {"is_a": "example:Task"}},
+            "variables": {},
+            "multiplicity": "once_per_entity",
+            "on_unbind": "retain_until_terminal",
+        }
+    )
+    # Another instance samples the same trigger context before the guard
+    # passes: retry must work for existing cached truth, not just first sampling.
+    package["chains"]["observer"] = {
+        "roles": {"task": "example:Task"},
+        "trigger": {"predicate": "ready", "edge": "entered"},
+        "preconditions": [],
+        "initial": "watching",
+        "states": ["watching", "done"],
+        "terminal": ["done"],
+        "transitions": [
+            {
+                "id": "observed",
+                "from": "watching",
+                "on": {"instance": "activated"},
+                "to": "done",
+                "priority": 0,
+                "actions": [
+                    {"id": "finish", "kind": "complete", "status": "completed"}
+                ],
+            }
+        ],
+    }
+    package["bindings"].append(
+        {
+            "id": "a-observer",
+            "chain": "observer",
+            "match": {"task": {"is_a": "example:Task"}},
+            "variables": {},
+            "multiplicity": "once_per_entity",
+            "on_unbind": "retain_until_terminal",
+        }
+    )
+    sim = Simulation(load_scenario(doc, base=BASE))
+    sim.start()
+    sim.run_until(15)
+    # The `ready` while-edge fired while `gate` was false: still dormant, no
+    # re-fire, no spurious activation.
+    assert value(sim) == "queued"
+    sim.run_until(60)
+    # `gate` became true at t=20; that fresh precondition revision re-enables
+    # the still-true `ready` level trigger without a new phase revision.
+    assert value(sim) == "assigned"
+    assert (
+        len(
+            [
+                row
+                for row in emitted(sim, "aas.behaviour.created")
+                if row["op"] == "assert" and row["templateId"] == "queue"
+            ]
+        )
+        == 1
+    )
+    sim.close()
+
+
 def test_injection_interrupts_and_conflict_uses_committed_edge() -> None:
     sim = Simulation(load_scenario(document(injected=True), base=BASE))
     sim.start()

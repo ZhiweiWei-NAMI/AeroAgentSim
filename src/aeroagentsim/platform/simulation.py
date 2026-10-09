@@ -40,24 +40,50 @@ class Simulation:
         run_directory: Path | None = None,
         provenance: str | None = None,
     ) -> None:
+        engines: list[Engine] = []
+        owned_journal = (
+            Journal(codec="positional-deflate") if journal is None else journal
+        )
         try:
             self._construct(
                 scenario,
-                journal=journal,
+                journal=owned_journal,
+                engines=engines,
                 run_directory=run_directory,
                 provenance=provenance,
             )
-        except StopIteration as exc:
-            raise ScenarioError(
-                "scenario.bind: unexpected exhausted iterator during "
-                "Simulation construction"
-            ) from exc
+        except Exception as exc:
+            # Ownership transfers to the kernel only after successful binding.
+            # Failed binding may have registered just a subset of these engines.
+            failures: list[Exception] = []
+            for engine in reversed(engines):
+                try:
+                    engine.close()
+                except Exception as cleanup:  # noqa: BLE001 - close every engine before reporting
+                    failures.append(cleanup)
+            try:
+                owned_journal.close()
+            except Exception as cleanup:  # noqa: BLE001 - report journal cleanup with engine errors
+                failures.append(cleanup)
+            if failures:
+                raise ScenarioError(
+                    f"scenario.bind: {exc}; construction cleanup failed: "
+                    + "; ".join(str(failure) for failure in failures),
+                    code=getattr(exc, "code", None),
+                ) from exc
+            if isinstance(exc, StopIteration):
+                raise ScenarioError(
+                    "scenario.bind: unexpected exhausted iterator during "
+                    "Simulation construction"
+                ) from exc
+            raise
 
     def _construct(
         self,
         scenario: Scenario,
         *,
-        journal: Journal | None,
+        journal: Journal,
+        engines: list[Engine],
         run_directory: Path | None,
         provenance: str | None,
     ) -> None:
@@ -68,11 +94,8 @@ class Simulation:
         if type(effective) is not str or effective not in {"lean", "full"}:
             raise ScenarioError("provenance: expected lean or full")
         # Explicitly supplied journals keep their codec, including historical 1.x.
-        if journal is None:
-            journal = Journal(codec="positional-deflate")
         catalog = EngineCatalog()
         partitions: dict[str, Partition] = {}
-        engines: list[Engine] = []
         self.ingress_targets: dict[str, set[str]] = {}
         # Allocate before factory order: planners and movers share object identity.
         models: dict[str, MotionModel] = {}

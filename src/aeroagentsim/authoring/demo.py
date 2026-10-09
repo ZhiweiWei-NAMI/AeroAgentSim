@@ -9,6 +9,8 @@ from typing import Any
 
 from aerokernel.values import canonical_json
 
+from aeroagentsim.services.node_deps import node_modules_root
+
 from .templates import demo_source
 
 CITY_ASSET_ID = "traffic-city-assets/v1"
@@ -77,9 +79,8 @@ def configure_console(
     """Keep physical assumptions; select the real viewer or an explicit primitive test camera."""
     config = document["engines"]["decisions"]["config"]
     config["fixture_path"] = str(directory / "fixtures/decisions.json")
-    document["engines"]["capture"]["config"]["renderer"]["node_modules"] = str(
-        Path(__file__).resolve().parents[3] / "frontend/node_modules"
-    )
+    capture = document["engines"]["capture"]["config"]
+    capture["renderer"]["node_modules"] = str(node_modules_root())
     if primitive:
         return {"capture_mode": "primitive-test", "city_available": False}
     capture_manifest()
@@ -113,7 +114,11 @@ def configure_console(
         + console
         + "/v1/studio/demo-capture-assets",
         "node_modules": capture["renderer"]["node_modules"],
-        "browser_executable": capture["renderer"]["browser_executable"],
+        **(
+            {"browser_executable": capture["renderer"]["browser_executable"]}
+            if "browser_executable" in capture["renderer"]
+            else {}
+        ),
         "timeout_s": 120.0,
     }
     bridge = document["engines"]["capture_bridge"]["config"]

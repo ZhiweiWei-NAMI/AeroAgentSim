@@ -7,7 +7,7 @@ and without any runtime download dependency for the demo itself.
 
 Sources & mapping
 -----------------
-* Building ids / local centers / heights come from the source aero-bench scene
+* Building ids / local centers / heights come from the original traffic-demo city scene
   (READ ONLY): each building entry supplies id, x, y, z, height. Local frame:
   E = x, N = -z, U = y (verified against the incident, which the demo renders
   at X=92, Z=-93 while the scene stores position x=91.95, z=+93.04).
