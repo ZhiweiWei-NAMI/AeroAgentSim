@@ -56,7 +56,7 @@ export function recordedAccidentPayload(store:TemporalFeedStore):Draft|undefined
 export function RunOperations({api,runId,store,onSelect,onSeek,mode}:Props) {
   const [fields,setFields]=useState<Record<string,string>>({schema:'',target:'',stream_id:'',at_ns:'',clock_id:'',mapping_id:'',numerator:'',denominator:'',idempotency_key:''}),[payload,setPayload]=useState<unknown>({}),[point,setPoint]=useState(''),[points,setPoints]=useState<Draft[]>([]),[error,setError]=useState(''),[admissions,setAdmissions]=useState<unknown[]>([]),[busy,setBusy]=useState(false),[operation,setOperation]=useState<Draft>(),[effective,setEffective]=useState<string>();
   const [operator,setOperator]=useState(false),[horizon,setHorizon]=useState('0');
-  const operatorNs=useRef(0n), operatorStep=useRef(1000000000n), operations=useRef<Promise<unknown>>(Promise.resolve());
+  const operatorNs=useRef(0n), operatorStep=useRef(1000000000n), operatorEnd=useRef<bigint>(), operations=useRef<Promise<unknown>>(Promise.resolve());
   const serialized=(action:()=>Promise<unknown>)=>{const result=operations.current.then(action,action);operations.current=result;return result;};
   const [payloadValid,setPayloadValid]=useState(true);
   const messages=advertisedMessages(store),commands=messages.filter(row=>row.kind==='command');const chosen=commands.find(row=>row.id===fields.schema),injection=points.find(row=>row.id===point);
@@ -65,7 +65,7 @@ export function RunOperations({api,runId,store,onSelect,onSeek,mode}:Props) {
   useEffect(()=>{const declared=store.header.behaviour?.injectionPoints??store.header.behaviour?.injection_points;if(declared)setPoints(declared);
     const abort=new AbortController();void api.request(`/v1/studio/runs/${encodeURIComponent(runId)}/configuration`,{signal:abort.signal}).then(value=>{
       if(!mapping(value)||!mapping(value.scenario))throw Error('Pinned run configuration is malformed');
-      if(!abort.signal.aborted){setPoints(injectionPointsFromScenario(value.scenario));if(value.scenario.id==='traffic-accident'){const timing=operatorTiming(value.scenario);operatorStep.current=timing.step;const recorded=store.commits.at(-1);operatorNs.current=recorded&&BigInt(recorded.at.ns)>timing.initial?BigInt(recorded.at.ns):timing.initial;setHorizon(operatorNs.current.toString());setOperator(true);}}
+      if(!abort.signal.aborted){setPoints(injectionPointsFromScenario(value.scenario));if(value.scenario.id==='traffic-accident'){const timing=operatorTiming(value.scenario);operatorStep.current=timing.step;const until=mapping(value.scenario.run)?value.scenario.run.until_ns:undefined;const end=typeof until==='number'&&Number.isSafeInteger(until)?String(until):mapping(until)?until.$integer:undefined;if(typeof end!=='string'||!/^(0|[1-9]\d*)$/.test(end))throw Error('Operator run limit must be a declared exact nonnegative integer');operatorEnd.current=BigInt(end);const recorded=store.commits.at(-1);operatorNs.current=recorded&&BigInt(recorded.at.ns)>timing.initial?BigInt(recorded.at.ns):timing.initial;setHorizon(operatorNs.current.toString());setOperator(true);}}
     }).catch(problem=>{if(!abort.signal.aborted)setError(String(problem));});return()=>abort.abort();
   },[api,runId,store]);
   useEffect(()=>{
@@ -75,8 +75,10 @@ export function RunOperations({api,runId,store,onSelect,onSeek,mode}:Props) {
   useEffect(()=>{
     if(!operator||mode!=='live')return;
     let active=true;
-    const timer=setInterval(()=>{const recorded=store.commits.at(-1);if(!recorded||BigInt(recorded.at.ns)<operatorNs.current)return;
-      void serialized(async()=>{if(!active)return;const next=operatorNs.current+operatorStep.current;const reply=await api.request(`/v1/runs/${encodeURIComponent(runId)}/watermark`,{method:'POST',headers:{'Content-Type':'application/json'},body:stringifyLossless({stream_id:'operator',watermark_ns:{$integer:next.toString()}})});if(!mapping(reply)||String(reply.watermark_ns)!==next.toString())throw Error('Operator watermark receipt mismatch');operatorNs.current=next;setHorizon(next.toString());}).catch(problem=>{if(active){setError(String(problem));setOperator(false);}});
+    // Source progress is acknowledged independently of event production: an idle
+    // closed prefix need not have a journal event at its right boundary.
+    const timer=setInterval(()=>{if(!store.commits.length)return;
+      void serialized(async()=>{if(!active||operatorEnd.current===undefined||operatorNs.current>=operatorEnd.current)return;const next=operatorNs.current+operatorStep.current>operatorEnd.current?operatorEnd.current:operatorNs.current+operatorStep.current;const reply=await api.request(`/v1/runs/${encodeURIComponent(runId)}/watermark`,{method:'POST',headers:{'Content-Type':'application/json'},body:stringifyLossless({stream_id:'operator',watermark_ns:{$integer:next.toString()}})});if(!mapping(reply)||String(reply.watermark_ns)!==next.toString())throw Error('Operator watermark receipt mismatch');operatorNs.current=next;setHorizon(next.toString());}).catch(problem=>{if(active){setError(String(problem));setOperator(false);}});
     },1000);
     return()=>{active=false;clearInterval(timer);};
   },[operator,mode,api,runId,store]);

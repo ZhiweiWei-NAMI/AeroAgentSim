@@ -2,15 +2,16 @@ import { test, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 
 test('real traffic console: draft, compiler, operator accident, award, city photo and shared cut',async({page})=>{
- mkdirSync('/tmp/aas-q/e2/screenshots',{recursive:true});
- await page.goto('/studio?api=http://127.0.0.1:8002');
+ mkdirSync('/tmp/aas-q/e3a/screenshots',{recursive:true});
+ await page.goto('/?api=http://127.0.0.1:8002');
+ await page.waitForURL(/\/studio\?api=/);
  await page.getByRole('button',{name:'Traffic accident (demo)',exact:true}).click();
  await expect(page.getByRole('tab',{name:'Entities by AeroGraph type'})).toBeVisible({timeout:60_000});
  await page.getByRole('tab',{name:'Behaviours',exact:true}).click();
  await expect(page.getByLabel('Package ID')).toHaveValue('traffic.accident');
  await page.getByRole('button',{name:'Validate',exact:true}).click();
  await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeEnabled({timeout:60_000});
- await page.screenshot({path:'/tmp/aas-q/e2/screenshots/draft.png'});
+ await page.screenshot({path:'/tmp/aas-q/e3a/screenshots/draft.png'});
  await page.getByRole('button',{name:'Run now',exact:true}).click();
  await page.waitForURL(/\/runs\/run-/,{timeout:60_000});
  const run=page.url().match(/\/runs\/(run-[a-f0-9]+)/)![1];
@@ -27,7 +28,7 @@ test('real traffic console: draft, compiler, operator accident, award, city phot
  await expect(page.getByAltText(/^Stored capture /)).toBeVisible({timeout:60_000});
 
  await page.getByRole('button',{name:'Alpha',exact:true}).click();
- await page.screenshot({path:'/tmp/aas-q/e2/screenshots/run.png'});
+ await page.screenshot({path:'/tmp/aas-q/e3a/screenshots/run.png'});
  const transition=page.getByRole('button',{name:/^Seek .* → .* · .* · cut /}).first();await transition.click();
  const graph=page.getByRole('region',{name:'Synchronized AeroGraph view'});const dual=page.getByTestId('dual-run-views');
  await expect(graph).toHaveAttribute('data-cut',await dual.getAttribute('data-cut') as string);
