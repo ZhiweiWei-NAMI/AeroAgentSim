@@ -15,7 +15,7 @@ export default defineConfig({
   use: { baseURL: 'http://127.0.0.1:4179', viewport: { width: 1440, height: 1000 },
     launchOptions: { executablePath, args: ['--no-sandbox', '--enable-unsafe-swiftshader', '--use-angle=swiftshader'] } },
   webServer: [
-    { cwd: process.cwd(), command: 'cd .. && PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src:.venv/lib/python3.11/site-packages:tests/authoring /mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python -m uvicorn server:app --host 127.0.0.1 --port 8017', url: 'http://127.0.0.1:8017/v1/studio/catalog', reuseExistingServer: false, timeout: 60_000 },
-    { cwd: process.cwd(), command: 'npm run preview -- --host 127.0.0.1 --port 4179 --strictPort --outDir src/studio/.build', url: 'http://127.0.0.1:4179', reuseExistingServer: false, timeout: 60_000 },
+    { cwd: process.cwd(), command: 'cd .. && PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src:tests/authoring python -m uvicorn server:app --host 127.0.0.1 --port 8017', url: 'http://127.0.0.1:8017/v1/studio/catalog', reuseExistingServer: false, timeout: 60_000 },
+    { cwd: process.cwd(), command: 'npm run preview -- --host 127.0.0.1 --port 4179 --strictPort --outDir dist', url: 'http://127.0.0.1:4179', reuseExistingServer: false, timeout: 60_000 },
   ],
 });

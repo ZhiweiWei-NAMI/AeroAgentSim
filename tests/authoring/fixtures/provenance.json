@@ -1,11 +1,16 @@
 {
-  "osm_source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/sumo_wujiaochang/osm_bbox.osm.xml",
+  "osm_source": "historical extract: sumo_wujiaochang/osm_bbox.osm.xml",
   "selected_way_ids": [
     "441927388",
     "52519929",
     "52519858",
     "10487419"
   ],
-  "network_source": "/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim/sumo_wujiaochang/osm.net.xml",
-  "network": "unmodified precompiled network; no synthetic geometry"
+  "network_source": "historical SUMO output: sumo_wujiaochang/osm.net.xml",
+  "network": "unmodified precompiled network; no synthetic geometry",
+  "license": "ODbL-1.0",
+  "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright",
+  "license_url": "https://opendatacommons.org/licenses/odbl/1.0/",
+  "source_availability": "Complete ODbL source supplied at src/aeroagentsim/authoring/assets/wujiaochang-source.osm.xml",
+  "full_source_sha256": "087f90f238e054156747059472fe35d74608a1bb0621fbbc01648754bff439f8"
 }

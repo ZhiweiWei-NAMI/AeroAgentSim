@@ -7,7 +7,7 @@ containers/px4-gazebo/build.sh
 docker run -d --name aas-p9-px4 --label aeroagentsim.job=p9 \
   --cpus 16 --memory 16g -p 127.0.0.1:19000:9000 \
   aeroagentsim/px4-gazebo:standalone
-/mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python \
+python \
   containers/px4-gazebo/smoke.py --port 19000 --vehicles 1 --runs 1 --step-ms 20 \
   --output /tmp/aas-p9-px4/p2b-flight-sweep.json
 docker rm -f aas-p9-px4
@@ -57,7 +57,7 @@ Run the host contract checks with:
 
 ```bash
 TMPDIR=/tmp/aas-p9-px4 PYTHONPATH=containers/px4-gazebo PYTHONDONTWRITEBYTECODE=1 \
-  /mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python -m pytest \
+  python -m pytest \
   -q -p no:cacheprovider --basetemp /tmp/aas-p9-px4/p2b-pytest \
   containers/px4-gazebo/tests
 ```

@@ -11,10 +11,14 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
+from aeroagentsim.authoring.inputs import configured_ontology
 from aeroagentsim.authoring.workspace import WorkspaceStore
 from aeroagentsim.services.app import create_app
 
-ONTOLOGY = Path("/mnt/data2/weizhiwei/AeroGraph")
+try:
+    ONTOLOGY = configured_ontology()
+except ValueError as error:  # unconfigured: AEROAGENTSIM_AEROGRAPH_ROOT unset/invalid
+    pytest.skip(str(error), allow_module_level=True)
 
 
 @pytest.fixture

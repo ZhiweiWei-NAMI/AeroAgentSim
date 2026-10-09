@@ -8,6 +8,7 @@ from typing import Any
 
 import yaml
 
+from aeroagentsim.authoring.inputs import configured_ontology
 from aeroagentsim.integrations.aerograph import Selection, compile_registry
 
 ROOT = Path(__file__).resolve().parent
@@ -796,7 +797,7 @@ def px4(digest: str) -> dict[str, Any]:
 
 def main() -> None:
     snapshot = compile_registry(
-        "/mnt/data2/weizhiwei/AeroGraph",
+        configured_ontology(),
         Selection(
             (
                 "oo:UAV",

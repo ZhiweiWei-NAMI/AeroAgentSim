@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from aerokernel import Interval, Partition, Timing
@@ -82,7 +82,8 @@ def test_unknown_breaks_transition_baseline(
     view = simulation.run_until(5_000_000_000)
     frames = view.sample_frames(sample["context"])
     assert [
-        frame.frame.result["states"][entity["id"]]["status"] for frame in frames
+        cast(dict[str, Any], frame.frame.result)["states"][entity["id"]]["status"]
+        for frame in frames
     ] == ["known", "known", "required_input", "known", "known", "known"]
     events = [
         m

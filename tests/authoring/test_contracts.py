@@ -7,13 +7,14 @@ from pathlib import Path
 import pytest
 from aerokernel import Fact, Instant
 
+from aeroagentsim.authoring.inputs import configured_ontology
 from aeroagentsim.authoring.workspace import WorkspaceStore
 from aeroagentsim.platform.simulation import Simulation
 from aeroagentsim.scenario import load_scenario
 
 
 def test_authored_command_changes_authoritative_motion(tmp_path: Path) -> None:
-    store = WorkspaceStore(tmp_path, Path("/mnt/data2/weizhiwei/AeroGraph"))
+    store = WorkspaceStore(tmp_path, configured_ontology())
     workspace = store.create("motion")
     workspace = store.place(
         workspace["id"],
@@ -45,8 +46,10 @@ def test_authored_command_changes_authoritative_motion(tmp_path: Path) -> None:
         )
         energy = view.field((ref, "aas.studio.energy_j"), Instant(3_000_000_000))
         assert isinstance(position, Fact)
+        assert isinstance(position.value, tuple)
         assert list(position.value) == [5.0, 0.0, 10.0]
         assert isinstance(energy, Fact)
+        assert isinstance(energy.value, (int, float))
         assert energy.value < 100_000.0
     finally:
         simulation.close()
@@ -55,7 +58,7 @@ def test_authored_command_changes_authoritative_motion(tmp_path: Path) -> None:
 def test_airspace_rejects_collinear_polygon_without_modifying_draft(
     tmp_path: Path,
 ) -> None:
-    store = WorkspaceStore(tmp_path, Path("/mnt/data2/weizhiwei/AeroGraph"))
+    store = WorkspaceStore(tmp_path, configured_ontology())
     workspace = store.create("airspace")
     with pytest.raises(ValueError, match="nonzero area"):
         store.place(
@@ -75,7 +78,7 @@ def test_airspace_rejects_collinear_polygon_without_modifying_draft(
 
 
 def test_valid_airspace_retains_authored_geometry_and_writer(tmp_path: Path) -> None:
-    store = WorkspaceStore(tmp_path, Path("/mnt/data2/weizhiwei/AeroGraph"))
+    store = WorkspaceStore(tmp_path, configured_ontology())
     workspace = store.create("airspace")
     workspace = store.place(
         workspace["id"],
@@ -105,7 +108,7 @@ def test_valid_airspace_retains_authored_geometry_and_writer(tmp_path: Path) -> 
 def test_browser_numbers_restore_only_declared_quantities(tmp_path: Path) -> None:
     from aeroagentsim.authoring.wire import normalize_wire
 
-    store = WorkspaceStore(tmp_path, Path("/mnt/data2/weizhiwei/AeroGraph"))
+    store = WorkspaceStore(tmp_path, configured_ontology())
     workspace = store.create("wire")
     workspace = store.place(
         workspace["id"],

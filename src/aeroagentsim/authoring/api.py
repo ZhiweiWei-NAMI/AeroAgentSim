@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import re
 from collections.abc import Callable
 from functools import lru_cache
@@ -13,14 +12,10 @@ from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse
 
 from .catalog import engines
+from .inputs import configured_extracts, configured_ontology
 from .workspace import WorkspaceStore
 
 T = TypeVar("T")
-MAIN = Path("/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim")
-DEFAULT_EXTRACTS = {
-    "wujiaochang": MAIN / "sumo_wujiaochang/osm_bbox.osm.xml",
-    "berlin": MAIN / "sumo_berlin/map.osm",
-}
 
 
 def checked(action: Callable[[], T]) -> T:
@@ -41,7 +36,7 @@ def create_router(
     """Only configured local extracts are exposed, never arbitrary host-file paths."""
     from .scene import extract_bounds, generate_sumo
 
-    sources = DEFAULT_EXTRACTS if extracts is None else extracts
+    sources = configured_extracts() if extracts is None else extracts
     router = APIRouter(prefix="/v1/studio", tags=["studio"])
 
     @lru_cache(maxsize=1)
@@ -171,9 +166,7 @@ def mount_studio(
     run_root: Path | None = None,
 ) -> WorkspaceStore:
     """Serve hook, with local source roots configurable by the integrator."""
-    ontology = ontology_root or Path(
-        os.environ.get("AEROAGENTSIM_AEROGRAPH_ROOT", "/mnt/data2/weizhiwei/AeroGraph")
-    )
+    ontology = configured_ontology() if ontology_root is None else ontology_root
     store = WorkspaceStore(root, ontology)
     app.include_router(create_router(store, extracts=extracts, run_root=run_root))
     app.state.studio = store

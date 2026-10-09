@@ -21,7 +21,7 @@ Run the service and smoke test from the repository root:
 ```sh
 docker run -d --name aas-p9-ns3 --label aeroagentsim.job=p9 \
   --cpus 16 --memory 8g -p 127.0.0.1:19004:9000 aeroagentsim/ns3:standalone
-/mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python \
+python \
   containers/ns3/smoke.py --port 19004 --output /tmp/aas-p9/ns3-smoke
 # Remove only the container you just created.
 docker rm -f aas-p9-ns3
@@ -36,9 +36,9 @@ Host-only contract tests and lint:
 
 ```sh
 HYPOTHESIS_STORAGE_DIRECTORY=/tmp/aas-p4/hypothesis PYTHONDONTWRITEBYTECODE=1 \
-  /mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python -m pytest \
+  python -m pytest \
   -q -p no:cacheprovider containers/ns3/tests
-/mnt/data2/weizhiwei/aeroagentsim/aerokernel/.venv/bin/python -m ruff check \
+python -m ruff check \
   --cache-dir /tmp/aas-p4/ruff-cache containers/ns3
 ```
 

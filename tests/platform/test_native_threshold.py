@@ -5,19 +5,19 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
-from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from aerokernel import Interval
 from aerokernel.sdk import EngineContext
 from aerokernel.values import thaw
-from test_sample_missing import RetractionWriter
 
 from aeroagentsim.platform import Simulation
 from aeroagentsim.platform.plugins import EngineBuild, EngineCatalog
 from aeroagentsim.scenario import load_scenario
+from aeroagentsim.scenario.paths import source_path
 from aeroagentsim.services.projector import project
+from tests.platform.test_sample_missing import RetractionWriter
 
 
 def test_native_expanded_positive_negative_missing_first_true(
@@ -28,7 +28,7 @@ def test_native_expanded_positive_negative_missing_first_true(
     config = scenario.engines["threshold"]["config"]
     reference = config["native_reference"]
     assert (
-        hashlib.sha256(Path(reference["path"]).read_bytes()).hexdigest()
+        hashlib.sha256(source_path(reference["path"]).read_bytes()).hexdigest()
         == reference["sha256"]
     )
     descriptor = scenario.registry.field(config["field"])
@@ -127,7 +127,10 @@ def test_native_expanded_positive_negative_missing_first_true(
         simulation.start()
         view = simulation.run_until(3_000_000_000)
         frames = view.sample_frames(sample["context"])
-        assert [f.frame.result["states"][entity["id"]]["status"] for f in frames] == [
+        assert [
+            cast(dict[str, Any], f.frame.result)["states"][entity["id"]]["status"]
+            for f in frames
+        ] == [
             "known",
             "known",
             "required_input",
@@ -145,7 +148,7 @@ def test_native_expanded_positive_negative_missing_first_true(
         if index:
             item["history"] = [inputs[index - 1]]
     payload = {"data": data, "inputs": inputs}
-    script = "const fs=require('fs'); const {AeroGraphExpandedRuntime:R}=require('/mnt/data2/weizhiwei/AeroGraph/semantic-directory/src/expanded_runtime.js'); const p=JSON.parse(fs.readFileSync(0,'utf8')); const r=new R(p.data); console.log(JSON.stringify(p.inputs.map(x=>r.evaluate('entered',x))));"
+    script = "const fs=require('fs'); const {AeroGraphExpandedRuntime:R}=require(process.env.AEROAGENTSIM_AEROGRAPH_ROOT+'/semantic-directory/src/expanded_runtime.js'); const p=JSON.parse(fs.readFileSync(0,'utf8')); const r=new R(p.data); console.log(JSON.stringify(p.inputs.map(x=>r.evaluate('entered',x))));"
     result = subprocess.run(
         ["node", "-e", script],
         input=json.dumps(payload),

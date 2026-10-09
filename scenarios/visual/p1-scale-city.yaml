@@ -4,7 +4,7 @@ format: aeroagentsim.scenario/v1
 id: p1-scale
 registry:
   compile:
-    root: /mnt/data2/weizhiwei/AeroGraph
+    root: ${AEROAGENTSIM_AEROGRAPH_ROOT}
     types:
     - oo:UAV
     fields:

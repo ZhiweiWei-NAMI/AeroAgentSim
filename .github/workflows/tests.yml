@@ -69,6 +69,8 @@ jobs:
     if: ${{ vars.AEROGRAPH_REPOSITORY != '' && vars.AEROGRAPH_REF != '' }}
     runs-on: ubuntu-latest
     env:
+      AEROAGENTSIM_AEROGRAPH_ROOT: ${{ github.workspace }}/aerograph
+    env:
       PYTHONDONTWRITEBYTECODE: "1"
       HYPOTHESIS_STORAGE_DIRECTORY: /tmp/aas-ci-graph/hypothesis
     steps:

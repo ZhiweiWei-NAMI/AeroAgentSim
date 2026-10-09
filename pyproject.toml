@@ -56,3 +56,6 @@ ns3 = "aeroagentsim.adapters.ns3:build"
 
 [tool.uv.sources]
 aerokernel = {path = "../aerokernel", editable = true}
+
+[tool.setuptools.package-data]
+"aeroagentsim.authoring" = ["assets/*.xml", "assets/*.json", "assets/*.txt"]

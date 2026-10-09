@@ -2,7 +2,7 @@ format: aeroagentsim.scenario/v1
 id: p1-slice
 registry:
   compile:
-    root: /mnt/data2/weizhiwei/AeroGraph
+    root: ${AEROAGENTSIM_AEROGRAPH_ROOT}
     types:
     - oo:UAV
     - oo:Order
@@ -886,7 +886,7 @@ engines:
       parameters:
         thresholdXM: 10.0
       native_reference:
-        path: /mnt/data2/weizhiwei/AeroGraph/semantic-directory/src/expanded_runtime.js
+        path: ${AEROAGENTSIM_AEROGRAPH_ROOT}/semantic-directory/src/expanded_runtime.js
         sha256: 3780dc2f3d6fc7d7e01850595d10f60d98f378f9036e8722e4c7d820bd75f869
   acceptance:
     plugin: workflow

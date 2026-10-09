@@ -3,8 +3,11 @@
 import hashlib
 from copy import deepcopy
 from pathlib import Path
+from typing import Any
 
 import yaml
+
+from aeroagentsim.scenario.paths import source_path
 
 POS = "he.aircraft.position_enu_m"
 VEL = "aas.p1.velocity_enu_m_s"
@@ -18,7 +21,7 @@ SUB = "oo:shared.observationRecord.observedSubjectRef"
 VEC = {"type": "vector", "items": {"type": "number"}, "length": 3}
 
 
-def record(members):
+def record(members: dict[str, Any]) -> dict[str, Any]:
     return {
         "type": "record",
         "members": members,
@@ -39,12 +42,12 @@ RESULT = {
     "extra": False,
 }
 ARRIVAL = record({"entity": STRING, "machine": STRING, "position": VEC})
-base = {
+base: dict[str, Any] = {
     "format": "aeroagentsim.scenario/v1",
     "id": "p1-slice",
     "registry": {
         "compile": {
-            "root": "/mnt/data2/weizhiwei/AeroGraph",
+            "root": "${AEROAGENTSIM_AEROGRAPH_ROOT}",
             "types": ["oo:UAV", "oo:Order", "oo:MetricObservation"],
             "fields": [POS, ACQ, AVAIL, SUB],
             "relations": ["oo:relation:observation-subject"],
@@ -321,10 +324,10 @@ base["engines"]["threshold"]["config"].update(
     },
     parameters={"thresholdXM": 10.0},
     native_reference={
-        "path": "/mnt/data2/weizhiwei/AeroGraph/semantic-directory/src/expanded_runtime.js",
+        "path": "${AEROAGENTSIM_AEROGRAPH_ROOT}/semantic-directory/src/expanded_runtime.js",
         "sha256": hashlib.sha256(
-            Path(
-                "/mnt/data2/weizhiwei/AeroGraph/semantic-directory/src/expanded_runtime.js"
+            source_path(
+                "${AEROAGENTSIM_AEROGRAPH_ROOT}/semantic-directory/src/expanded_runtime.js"
             ).read_bytes()
         ).hexdigest(),
     },
