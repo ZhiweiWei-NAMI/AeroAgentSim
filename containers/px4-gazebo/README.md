@@ -1,16 +1,16 @@
 # PX4/Gazebo backend
 
-AeroAgentSim's container-side lockstep flight simulator. It starts PX4 SITL and Gazebo Harmonic from a public base, and MAVSDK 3.17.2 built from pinned upstream commits with the inherited patch, without loading the AeroBench service or its workload machinery. Runtime Python dependencies are version-pinned; the host smoke client uses only the standard library.
+AeroAgentSim's container-side lockstep flight simulator. It starts PX4 SITL and Gazebo Harmonic from a public base, and MAVSDK 3.17.2 built from pinned upstream commits with the inherited patch, without loading any external service or its workload machinery. Runtime Python dependencies are version-pinned; the host smoke client uses only the standard library.
 
 ```bash
 containers/px4-gazebo/build.sh
-docker run -d --name aas-p9-px4 --label aeroagentsim.job=p9 \
+docker run -d --name aas-px4 --label aeroagentsim.job=release \
   --cpus 16 --memory 16g -p 127.0.0.1:19000:9000 \
   aeroagentsim/px4-gazebo:standalone
 python \
   containers/px4-gazebo/smoke.py --port 19000 --vehicles 1 --runs 1 --step-ms 20 \
-  --output /tmp/aas-p9-px4/p2b-flight-sweep.json
-docker rm -f aas-p9-px4
+  --output /tmp/px4-flight-sweep.json
+docker rm -f aas-px4
 ```
 
 Each container owns one world and accepts one connection at a time. `close` cleans up its world and leaves the TCP listener available for a new run. A disconnect also cleans up. Every reset starts new native processes and fresh PX4 parameter/data directories. There is one reset per connection, with no crash resume or automatic retries.
@@ -51,28 +51,29 @@ The later aerokernel adapter must wrap this backend with `aerokernel.rpc` invoca
 
 Use `--step-ms 20` for one cadence, or `--step-ms 4,20,100,200` for a sweep. Each cadence runs `--runs` fresh connections/resets; comparisons remain within a cadence. `--vehicles 3 --step-ms 20 --runs 2` measures fleet scaling. A failure exits nonzero and retains partial observations, including cleanup errors.
 
-`AAS_PROFILE=1` enables optional `advance.result.profile_wall_ns`, a map of measured phase durations in integer wall nanoseconds. The client summarizes actual phases and their counts. Service logs additionally report response encoding, socket drain and total server RPC duration; these cannot be included in the response they measure. Profiling does not change simulation time or telemetry values. [P2b measurements](../../docs/platform/px4-backend.md#p2b-barrier-performance-2026-10-08) include matched before/after probes and complete flight repeats.
+`AAS_PROFILE=1` enables optional `advance.result.profile_wall_ns`, a map of measured phase durations in integer wall nanoseconds. The client summarizes actual phases and their counts. Service logs additionally report response encoding, socket drain and total server RPC duration; these cannot be included in the response they measure. Profiling does not change simulation time or telemetry values.
 
 Run the host contract checks with:
 
 ```bash
-TMPDIR=/tmp/aas-p9-px4 PYTHONPATH=containers/px4-gazebo PYTHONDONTWRITEBYTECODE=1 \
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=containers/px4-gazebo \
   python -m pytest \
-  -q -p no:cacheprovider --basetemp /tmp/aas-p9-px4/p2b-pytest \
+  -q -p no:cacheprovider \
   containers/px4-gazebo/tests
 ```
 
 ## Build provenance
 
-The Dockerfile has no AeroBench base image or repository dependency. Upstream
+The Dockerfile has no external base image or repository dependency. Upstream
 source commits and package versions are pinned by version/commit. Build-only
 caches, wheels and compilers are excluded from the runtime where a separate
 build stage is used.
 
 `mavsdk-incoming-heartbeat-timeout.patch`, `mavlink-offline-python.patch`,
 `pymavlink-build-requirements.txt`, `requirements.txt`,
-`inject_contact_sensors.py` and `patch_camera_model.py` were adapted from
-AeroBench's `containers/px4-gazebo/`. The patch includes the audit-journal
-argument still required by the slim launcher and local third-party archives for
-offline CMake compilation. The slim service never loads or references
-AeroBench's airspace transition plugin, so that plugin is excluded.
+`inject_contact_sensors.py` and `patch_camera_model.py` were adapted from an
+earlier internal `containers/px4-gazebo/` definition. The patch includes the
+audit-journal argument still required by the slim launcher and local
+third-party archives for offline CMake compilation. The slim service never
+loads or references the earlier internal airspace transition plugin, so that
+plugin is excluded.

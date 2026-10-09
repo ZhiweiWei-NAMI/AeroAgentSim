@@ -1,4 +1,4 @@
-"""Docker is opt-in; all artifact/cache writes remain inside the E1 scratch root."""
+"""Docker is opt-in; all artifact/cache writes remain inside the caller's scratch root."""
 
 import os
 from pathlib import Path
@@ -7,7 +7,7 @@ import pytest
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    config.addinivalue_line("markers", "docker: real E1 native Docker integration")
+    config.addinivalue_line("markers", "docker: real native Docker integration")
 
 
 def pytest_collection_modifyitems(
@@ -22,7 +22,7 @@ def pytest_collection_modifyitems(
 
 @pytest.fixture(autouse=True)
 def standalone_docker_images(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch):
-    """Opt into P9 images without changing checked-in scenarios or launcher semantics.
+    """Opt into standalone images without changing checked-in scenarios or launcher semantics.
 
     Supply all three AEROAGENTSIM_IMAGE_{PX4,SUMO,NS3} variables. Results and
     pytest temporary files stay in the caller's authorized --basetemp directory.
@@ -38,9 +38,9 @@ def standalone_docker_images(request: pytest.FixtureRequest, monkeypatch: pytest
     from aeroagentsim.adapters import container, runner
 
     originals = {
-        "PX4": "aeroagentsim/px4-gazebo:dev-p2b",
-        "SUMO": "aeroagentsim/sumo:dev-p3a-5",
-        "NS3": "aeroagentsim/ns3:dev-p4b",
+        "PX4": "aeroagentsim/px4-gazebo:dev",
+        "SUMO": "aeroagentsim/sumo:dev",
+        "NS3": "aeroagentsim/ns3:dev",
     }
     mapping = {}
     for key, backend in backends.items():
@@ -49,7 +49,7 @@ def standalone_docker_images(request: pytest.FixtureRequest, monkeypatch: pytest
             pytest.fail(f"invalid standalone image override for {key}: {image!r}")
         mapping[originals[key]] = image
     monkeypatch.setattr(container, "_ALLOWED_IMAGES", frozenset(mapping.values()))
-    monkeypatch.setattr(container, "_JOB_LABEL_VALUE", "p9")
+    monkeypatch.setattr(container, "_JOB_LABEL_VALUE", "docker-test")
     monkeypatch.setattr(container, "_CPUS", "16")
     launcher = runner.DockerContainer
 

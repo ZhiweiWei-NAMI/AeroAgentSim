@@ -615,7 +615,7 @@ class Candidate:
         phase = intent["phase"]
         if isinstance(op, UnsupportedOperation):
             raise NotImplementedError(
-                f"M2_{op.feature.upper()}: unsupported bound operation"
+                f"{op.feature.upper()}: unsupported bound operation"
             )
         if isinstance(op, Create):
             if phase == "advance":

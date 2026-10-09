@@ -35,7 +35,7 @@ def document() -> Iterator[dict[str, Any]]:
         path = Path(directory) / "snapshot.json"
         scenario.compiled.write_snapshot(path)
         doc = copy.deepcopy(scenario.document)
-        doc["registry"].pop("compile")
+        doc["registry"].pop("compile", None)
         doc["registry"]["snapshot"] = str(path)
         yield doc
 

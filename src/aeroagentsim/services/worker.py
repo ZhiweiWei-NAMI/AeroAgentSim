@@ -171,7 +171,7 @@ def execute(
 
 
 def validate_injection(active: RunSession, body: Any) -> None:
-    """Validate the pinned injection manifest before K4 admission, without mutation."""
+    """Validate the pinned injection manifest before runtime admission, without mutation."""
     from aeroagentsim.behaviours.records import INJECT
 
     if not isinstance(body, dict):

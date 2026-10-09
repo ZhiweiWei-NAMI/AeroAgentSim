@@ -1,4 +1,4 @@
-// Adapted from recovered AeroBench ScenePropagationLossModel (see provenance).
+// Ray-based obstacle attenuation loss model (see provenance).
 // Volumes now intersect the actual ENU ray inside ns-3 instead of requiring a
 // benchmark-derived link attenuation input. Wi-Fi peers share one medium.
 #pragma once

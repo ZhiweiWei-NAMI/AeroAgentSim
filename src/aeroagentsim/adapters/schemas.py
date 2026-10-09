@@ -1,4 +1,4 @@
-"""Typed flattened commands and native event/result records for E1 adapters."""
+"""Typed flattened commands and native event/result records for the native adapters."""
 
 from __future__ import annotations
 

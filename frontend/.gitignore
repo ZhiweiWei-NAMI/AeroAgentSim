@@ -31,7 +31,6 @@ pnpm-debug.log*
 
 # Local npm cache (pinned for this workspace)
 .npm-cache/
-.glm/
 .tmp/
 test-results/
 playwright-report/

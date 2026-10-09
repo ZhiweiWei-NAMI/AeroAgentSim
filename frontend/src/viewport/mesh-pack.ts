@@ -3,7 +3,7 @@ interface GeographicOrigin { readonly latitude_deg: number; readonly longitude_d
 type StaticLayer = "buildings" | "roads" | "terrain";
 interface TraceTarget { readonly kind: "building" | "road"; readonly id: string; }
 
-export const MESH_PACK_SCHEMA = "aero-bench.osm2world-mesh-pack/v1";
+export const MESH_PACK_SCHEMA = "aeroagentsim.osm2world-mesh-pack/v1";
 export const MAX_PACK_CHUNK_BYTES = 64 * 1024 * 1024;
 /** Opaque file reference: the name is not a content hash and is never checked. */
 export interface PackFile { readonly asset_id: string; readonly size_bytes: number; }
@@ -27,7 +27,7 @@ export interface PackedBatch {
 }
 export interface PackedObject { readonly id: string; readonly tags: Readonly<Record<string, string>>; }
 export interface PackCoordinateContract {
-  readonly schema_version: "aero-bench.osm2world-source-coordinates/v1";
+  readonly schema_version: "aeroagentsim.osm2world-source-coordinates/v1";
   readonly recipe: "source-node-bounds-local-Mercator-then-declared-origin-translation";
   readonly converter_origin: GeographicOrigin;
   readonly stored_translation_xz_m: readonly [number, number];
@@ -96,7 +96,7 @@ export function parseMeshPack(value: unknown): MeshPackManifest {
   const source = file(root.source);
   const coordinates = object(root.coordinate_contract, ["schema_version", "recipe", "converter_origin",
     "stored_translation_xz_m", "earth_circumference_m", "native_point_quantization_m", "storage"], "pack source coordinates");
-  if (coordinates.schema_version !== "aero-bench.osm2world-source-coordinates/v1"
+  if (coordinates.schema_version !== "aeroagentsim.osm2world-source-coordinates/v1"
       || coordinates.recipe !== "source-node-bounds-local-Mercator-then-declared-origin-translation"
       || coordinates.earth_circumference_m !== 40075016.686 || coordinates.native_point_quantization_m !== 0.001
       || coordinates.storage !== "source-mesh-float32-converter-coordinates-then-declared-origin-translation") {
@@ -110,7 +110,7 @@ export function parseMeshPack(value: unknown): MeshPackManifest {
     throw Error("pack source translation must contain x/z metres");
   }
   const sourceCoordinates: PackCoordinateContract = {
-    schema_version: "aero-bench.osm2world-source-coordinates/v1",
+    schema_version: "aeroagentsim.osm2world-source-coordinates/v1",
     recipe: "source-node-bounds-local-Mercator-then-declared-origin-translation",
     converter_origin: { latitude_deg: converterLatitude, longitude_deg: converterLongitude },
     stored_translation_xz_m: [finite(coordinates.stored_translation_xz_m[0], "pack source translation x"),

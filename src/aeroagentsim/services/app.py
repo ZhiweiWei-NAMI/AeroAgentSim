@@ -40,7 +40,7 @@ def create_app(
     root = root.resolve()
     scenario_root = Path.cwd() if scenario_root is None else scenario_root.resolve()
     root.mkdir(parents=True, exist_ok=True)
-    # Linux local P1 worker: fork preserves the compiled immutable registry without
+    # Linux local worker: fork preserves the compiled immutable registry without
     # pickling MappingProxyType or re-reading a concurrently changing source tree.
     context = multiprocessing.get_context("fork")
     workers: dict[str, tuple[Any, Any, Any]] = {}

@@ -1,4 +1,4 @@
-"""Executable M1 §12 trace, exact sequence and engine-free prefix reconstruction."""
+"""Executable DESIGN §12 trace, exact sequence and engine-free prefix reconstruction."""
 
 from __future__ import annotations
 

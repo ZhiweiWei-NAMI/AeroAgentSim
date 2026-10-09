@@ -26,8 +26,10 @@ completed city-capture run, records eight 1280×800 Playwright stories, and writ
 960px/12fps GIFs to `docs/media`. Pass `--skip-gifs` to stop after the
 recordings, so flow verification leaves the existing `docs/media` GIFs
 untouched. It stops only its own server. Browser videos, logs,
-productive-segment timings and the size/duration report stay under
-`/tmp/aas-q/e3h`. Cursor highlights and captions are injected by tests only. A
+productive-segment timings and the size/duration report stay under the script's
+scratch work directory (a fresh temporary directory by default; pass `--work-dir`
+or set `AEROAGENTSIM_DOCS_WORK_DIR` to keep it stable). Cursor highlights and
+captions are injected by tests only. A
 black calibration prelude, excluded from the GIF, aligns segment marks with the
 actual screencast start rather than assuming Playwright starts recording at page
 creation. The hero and explorer omit their first 0.8 seconds of compositor
@@ -66,7 +68,8 @@ The simulation story keeps display interpolation separate from exact committed
 state.
 
 After selector-only changes, resume against the same owned backend storage with
-`--skip-build --skip-gifs --reuse-context /tmp/aas-q/e3h/context.json`. Its
+`--skip-build --skip-gifs --reuse-context WORK_DIR/context.json`, where `WORK_DIR`
+is the scratch work directory of the recording being resumed. Its
 recorded local port must be free. For targeted reruns, preserve
 `videos/recordings.json` and use Playwright’s filename filter; successful videos
 are copied out of its disposable output directory.

@@ -3,7 +3,7 @@ import { HttpViewerFeed, RunsApi, validateCommit } from './http';
 const commit = () => ({ commitIndex: 1, at: { ns: '0', microstep: 0 }, created: [], removed: [], facts: [], retracted: [], edges: [], messages: [], receipts: [] });
 const end = () => new Response(new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode('event: end\ndata: {"status":"completed","finalCursor":1}\n\n')); controller.close(); } }));
 afterEach(() => { vi.unstubAllGlobals(); });
-describe('P1 review transport counterexamples', () => {
+describe('Transport counterexamples', () => {
   it('H7 retries a rejected stream opening from acknowledged cursor', async () => {
     const api = new RunsApi('http://example'); vi.spyOn(api, 'request').mockResolvedValue({ commits: [], next: 1, status: 'running' });
     const fetch = vi.fn().mockRejectedValueOnce(new TypeError('network')).mockResolvedValueOnce(end()); vi.stubGlobal('fetch', fetch);

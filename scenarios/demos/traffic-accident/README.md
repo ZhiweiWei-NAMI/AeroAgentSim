@@ -4,7 +4,7 @@ The integrated scene uses the shared behaviour runtime, real physical owners and
 
 ```bash
 python -m aeroagentsim.services.cli run scenarios/demos/traffic-accident/scenario.yaml \
-  --out /tmp/aas-demo/runs
+  --out /tmp/traffic-accident-demo/runs
 ```
 
 Set `AEROAGENTSIM_AEROGRAPH_ROOT=/path/to/AeroGraph` when running from source
@@ -25,7 +25,7 @@ From the worktree root:
 
 ```bash
 python tools/demos/import_traffic_accident.py /absolute/read-only/demo \
-  /tmp/aas-demo/imported
+  /tmp/traffic-accident-demo/imported
 ```
 
 The importer writes deterministic `inputs.json` and `city-manifest.json`; it never
@@ -53,7 +53,7 @@ old command receipts, missing clocks or capture causes.
 ## Console/API workflow
 
 ```bash
-python -m aeroagentsim.services.cli serve --out /tmp/aas-demo/runs \
+python -m aeroagentsim.services.cli serve --out /tmp/traffic-accident-demo/runs \
    --scenario-root . --frontend frontend/dist In Studio import `scenario.yaml`
    together with its pinned registry/behaviour/input closure; review proposed local
    overlays, active field owners, calm weather and the selected kinematic profile.

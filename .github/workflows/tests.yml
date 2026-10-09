@@ -8,8 +8,6 @@ on:
   workflow_dispatch:
   workflow_call:
 
-# Release uses the aerokernel/ subtree. Until it lands, set
-# AEROKERNEL_REPOSITORY and AEROKERNEL_REF for the sibling development checkout.
 jobs:
   non-docker:
     runs-on: ubuntu-latest
@@ -18,28 +16,11 @@ jobs:
         python-version: ["3.10", "3.11"]
     env:
       PYTHONDONTWRITEBYTECODE: "1"
-      HYPOTHESIS_STORAGE_DIRECTORY: /tmp/aas-ci/hypothesis
+      HYPOTHESIS_STORAGE_DIRECTORY: ${{ runner.temp }}/platform/hypothesis
     steps:
       - uses: actions/checkout@v4
         with:
           path: platform
-      - name: Require development kernel checkout configuration
-        if: ${{ hashFiles('platform/aerokernel/pyproject.toml') == '' }}
-        env:
-          KERNEL_REPOSITORY: ${{ vars.AEROKERNEL_REPOSITORY }}
-          KERNEL_REF: ${{ vars.AEROKERNEL_REF }}
-        run: |
-          test -n "$KERNEL_REPOSITORY" && test -n "$KERNEL_REF" || {
-            echo 'Set AEROKERNEL_REPOSITORY and AEROKERNEL_REF; see INSTALL.md.'
-            exit 1
-          }
-      - uses: actions/checkout@v4
-        if: ${{ hashFiles('platform/aerokernel/pyproject.toml') == '' }}
-        with:
-          repository: ${{ vars.AEROKERNEL_REPOSITORY }}
-          token: ${{ secrets.KERNEL_READ_TOKEN || github.token }}
-          ref: ${{ vars.AEROKERNEL_REF }}
-          path: aerokernel
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -49,9 +30,7 @@ jobs:
       - name: Install minimal platform and test tools
         working-directory: platform
         run: |
-          # RELEASE: kernel path
-          if [ -d ./aerokernel ]; then kernel=./aerokernel; else kernel=../aerokernel; fi
-          python -m pip install -e "$kernel[test]" -e '.[server,dev]' -c constraints/dev.txt
+          python -m pip install -e "./aerokernel[test]" -e '.[server,dev]' -c constraints/dev.txt
       - name: Install console and camera dependencies
         working-directory: platform/frontend
         run: |
@@ -62,24 +41,17 @@ jobs:
         working-directory: platform
         run: |
           # Canonical-source compatibility cases run in the AeroGraph job below.
-          python -m pytest tests/integrations/aerograph/test_compiler.py tests/adapters \
-            tests/agents/test_provider.py tests/platform/test_public_api.py \
-            tests/platform/test_realtime.py tests/platform/test_construction_cleanup.py \
-            tests/platform/test_release_ci.py tests/platform/test_public_docs.py \
-            tests/behaviours tests/observations tests/packs \
-            tests/authoring/test_snapshot_catalog.py tests/demos/traffic_accident/test_public_demo.py \
+          python -m pytest tests/platform tests/integrations/aerograph/test_compiler.py \
+            tests/adapters tests/agents/test_provider.py tests/behaviours \
+            tests/observations tests/packs tests/authoring/test_snapshot_catalog.py \
+            tests/demos/traffic_accident/test_public_demo.py \
             tests/demos/traffic_accident/test_packaging.py \
-            --ignore=tests/behaviours/test_compat.py \
             --deselect=tests/observations/test_artifact_service.py::test_service_output_scope_without_mutating_input \
             -m 'not docker and not llm' -p no:cacheprovider \
-            --basetemp=/tmp/aas-ci/tests
+            --basetemp=${{ runner.temp }}/platform/tests
       - name: Kernel test suite
-        working-directory: platform
-        run: |
-          # RELEASE: kernel path
-          if [ -d ./aerokernel ]; then kernel=./aerokernel; else kernel=../aerokernel; fi
-          cd "$kernel"
-          python -m pytest
+        working-directory: platform/aerokernel
+        run: python -m pytest -q
       - name: CLI and packaging
         working-directory: platform
         run: |
@@ -96,18 +68,11 @@ jobs:
     env:
       AEROAGENTSIM_AEROGRAPH_ROOT: ${{ github.workspace }}/aerograph
       PYTHONDONTWRITEBYTECODE: "1"
-      HYPOTHESIS_STORAGE_DIRECTORY: /tmp/aas-ci-graph/hypothesis
+      HYPOTHESIS_STORAGE_DIRECTORY: ${{ runner.temp }}/platform-graph/hypothesis
     steps:
       - uses: actions/checkout@v4
         with:
           path: platform
-      - uses: actions/checkout@v4
-        if: ${{ hashFiles('platform/aerokernel/pyproject.toml') == '' }}
-        with:
-          repository: ${{ vars.AEROKERNEL_REPOSITORY }}
-          token: ${{ secrets.KERNEL_READ_TOKEN || github.token }}
-          ref: ${{ vars.AEROKERNEL_REF }}
-          path: aerokernel
       - uses: actions/checkout@v4
         with:
           repository: ${{ vars.AEROGRAPH_REPOSITORY }}
@@ -123,9 +88,7 @@ jobs:
       - name: Install platform and kernel
         working-directory: platform
         run: |
-          # RELEASE: kernel path
-          if [ -d ./aerokernel ]; then kernel=./aerokernel; else kernel=../aerokernel; fi
-          python -m pip install -e "$kernel[test]" -e '.[server,dev]' -c constraints/dev.txt
+          python -m pip install -e "./aerokernel[test]" -e '.[server,dev]' -c constraints/dev.txt
       - name: Install camera dependencies
         working-directory: platform/frontend
         run: |
@@ -138,4 +101,4 @@ jobs:
           python -m pytest tests/platform tests/agents tests/integrations/aerograph \
             tests/behaviours tests/observations \
             -m 'not docker and not llm' -p no:cacheprovider \
-            --basetemp=/tmp/aas-ci-graph/tests
+            --basetemp=${{ runner.temp }}/platform-graph/tests

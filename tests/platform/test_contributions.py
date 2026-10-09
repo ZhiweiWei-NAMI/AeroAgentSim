@@ -29,10 +29,14 @@ SECOND = 1_000_000_000
 
 @pytest.fixture(scope="module")
 def wind_base(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
-    """Pin real AeroGraph environment descriptors, without writing to AeroGraph."""
+    """Reuse the committed UAV/wind descriptors and authored example contracts."""
     d: dict[str, Any] = yaml.safe_load(Path("scenarios/p1-slice.yaml").read_text())
-    d["registry"]["compile"]["types"].append("oo:WindField")
-    d["registry"]["compile"]["fields"].append(WIND)
+    d["registry"]["snapshot"] = str(
+        Path("scenarios/demos/traffic-accident/registry.snapshot.json").resolve()
+    )
+    pack = json.loads(Path("scenarios/packs/aerograph.snapshot.json").read_text())
+    order = next(t for t in pack["registry"]["types"] if t["id"] == "oo:Order")
+    d["registry"]["types"].append(order)
     mover = d["entities"][0]
     mover["facts"].update(
         {POS: [0.0, 0.0, 0.0], VEL: [0.0, 0.0, 0.0], ENERGY: 100000.0}
@@ -77,7 +81,7 @@ def wind_base(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     scenario = load_scenario(d)
     path = tmp_path_factory.mktemp("wind-snapshot") / "snapshot.json"
     scenario.compiled.write_snapshot(path)
-    d["registry"].pop("compile")
+    d["registry"].pop("compile", None)
     d["registry"].update(snapshot=str(path))
     descriptor = scenario.registry.field(WIND)
     assert descriptor.declaring_type == "oo:WindField"

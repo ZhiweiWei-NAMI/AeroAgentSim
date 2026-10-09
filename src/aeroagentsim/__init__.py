@@ -7,7 +7,7 @@ from typing import Any
 try:
     __version__ = version("aeroagentsim")
 except PackageNotFoundError:
-    __version__ = "1.1.1"  # source distribution version
+    __version__ = "2.0.0"  # source distribution version
 
 _EXPORTS = {
     "Simulation": ("aeroagentsim.platform.simulation", "Simulation"),

@@ -5,5 +5,5 @@ import pytest
 
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
-        "markers", "llm: real local GLM gateway integration (no mocks)"
+        "markers", "llm: real local OpenAI-compatible gateway integration (no mocks)"
     )

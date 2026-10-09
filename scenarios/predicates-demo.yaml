@@ -1,14 +1,9 @@
 # Authored observation profile; this is not a live camera measurement.
 format: aeroagentsim.scenario/v1
 id: predicates-demo
+# Public profile: committed snapshot plus explicitly authored scenario contracts.
+# These overlays do not claim to reproduce the full AeroGraph catalog.
 registry:
-  compile:
-    root: ${AEROAGENTSIM_AEROGRAPH_ROOT}
-    types:
-    - oo:ActorObservation
-    fields:
-    - hu.actor.speed_mps
-    relations: []
   messages:
   - id: demo.stationary.entered
     kind: event
@@ -26,6 +21,21 @@ registry:
       - from_ns
       - to_ns
       extra: false
+  snapshot: realtime-registry.snapshot.json
+  types:
+  - id: oo:ActorObservation
+    parents:
+    - oo:ObservationRecord
+    abstract: false
+  fields:
+  - id: hu.actor.speed_mps
+    type: oo:ActorObservation
+    schema:
+      type: number
+    metadata:
+      role: observation
+      clock: canonical
+      unit: m/s
 entities:
 - id: observation-1
   type: oo:ActorObservation

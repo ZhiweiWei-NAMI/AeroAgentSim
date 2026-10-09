@@ -54,12 +54,20 @@ def browser_path(modules: Path) -> str:
     )
     path = result.stdout.strip()
     if not Path(path).is_file():
-        subprocess.run(
-            ["node", str(modules / "playwright/cli.js"), "install", "chromium"],
-            check=True,
-            env=environment,
-            stdout=sys.stderr,
-        )
+        try:
+            subprocess.run(
+                ["node", str(modules / "playwright/cli.js"), "install", "chromium"],
+                check=True,
+                env=environment,
+                stdout=sys.stderr,
+            )
+        except subprocess.CalledProcessError as exc:
+            raise RuntimeError(
+                "Chromium installation failed. Install Playwright's browser and "
+                "system libraries on a supported OS, or set "
+                "AEROAGENTSIM_CHROMIUM to a compatible Chromium executable. "
+                "See docs/getting-started/install.md."
+            ) from exc
     if not Path(path).is_file():
         raise FileNotFoundError(
             f"Playwright Chromium is missing after installation: {path}"

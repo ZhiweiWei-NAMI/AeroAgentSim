@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aeroagentsim"
-version = "1.1.1"
+version = "2.0.0"
 description = "General-purpose ontology-driven multi-engine simulation platform"
 readme = "README.md"
 authors = [
     {name = "Zhiwei Wei", email = "2311769@tongji.edu.cn"}
 ]
 requires-python = ">=3.10"
-dependencies = ["aerokernel>=0.2.0.dev0,<0.3", "pyyaml>=6"]
+dependencies = ["aerokernel>=0.2.0,<0.3", "pyyaml>=6"]
 
 [project.optional-dependencies]
 langgraph = ["langgraph>=1.2.14,<2"]
@@ -52,10 +52,8 @@ include = ["aeroagentsim", "aeroagentsim.*"]
 [project.scripts]
 aeroagentsim = "aeroagentsim.services.cli:main"
 
-# Editable local development: pip install -e ../aerokernel -e '.[server]'.
-# PEP 508 has no portable relative path. The version requirement above is
-# satisfied by that sibling checkout; release publication requires a published
-# matching kernel, or an immutable VCS URL configured by the release owner.
+# Install the included kernel and platform together:
+# python -m pip install -e ./aerokernel -e '.[server]'.
 [project.entry-points."aeroagentsim.engines"]
 behaviour = "aeroagentsim.engines.behaviour:build"
 px4_gazebo = "aeroagentsim.adapters.px4_gazebo:build"
@@ -78,9 +76,20 @@ linear = "aeroagentsim.models:LinearConsumption"
 wind = "aeroagentsim.models:WindConsumption"
 
 [tool.uv.sources]
-aerokernel = {path = "../aerokernel", editable = true}
+aerokernel = {path = "./aerokernel", editable = true}
 
 [tool.setuptools.package-data]
 "aeroagentsim.observations" = ["viewer_bridge.mjs"]
 "aeroagentsim.packs.traffic_accident" = ["camera.html"]
 "aeroagentsim.authoring" = ["assets/*.xml", "assets/*.json", "assets/*.txt"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.isort]
+# The kernel is a separately installed distribution, including in this subtree.
+known-third-party = ["aerokernel"]

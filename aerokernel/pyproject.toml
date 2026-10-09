@@ -4,12 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aerokernel"
-version = "0.2.0.dev0"
+readme = "README.md"
+description = "Pure-stdlib discrete-event runtime with coordinated heterogeneous engines"
+version = "0.2.0"
 requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
 test = ["pytest", "hypothesis", "pytest-cov"]
+
+[tool.setuptools]
+# A plain editable search path keeps the inner package importable when the
+# containing subtree directory is also visible from the platform repository.
+package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]
 include = ["aerokernel*"]

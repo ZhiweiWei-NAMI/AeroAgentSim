@@ -17,7 +17,7 @@ def test_enum_entered_profile_over_actual_scanner_states() -> None:
     cfg["ast"]["args"][0]["field"] = "review.scan_phase"
     cfg["parameters"]["limit_dbm"] = "finished"
     document["bindings"]["samples"][0]["parameters"]["limit_dbm"] = "finished"
-    simulation = Simulation(load_scenario(document))
+    simulation = Simulation(load_scenario(document, base=Path("scenarios")))
     try:
         simulation.start()
         view = simulation.run_until(100_000_000)
@@ -79,7 +79,7 @@ def test_relation_presence_uses_actual_record_link() -> None:
             "parameters": {},
         }
     )
-    simulation = Simulation(load_scenario(document))
+    simulation = Simulation(load_scenario(document, base=Path("scenarios")))
     try:
         simulation.start()
         view = simulation.run_until(100_000_000)
@@ -100,7 +100,7 @@ def test_relation_presence_uses_actual_record_link() -> None:
 def test_wrong_native_source_is_diagnostic_not_false() -> None:
     document = load_scenario(Path("scenarios/p1-spectrum.yaml")).document
     document["bindings"]["samples"][0]["sources"]["receiver"] = "rule"
-    simulation = Simulation(load_scenario(document))
+    simulation = Simulation(load_scenario(document, base=Path("scenarios")))
     try:
         simulation.start()
         view = simulation.run_until(100_000_000)

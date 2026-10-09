@@ -12,7 +12,7 @@ python -m pip install -e ./aerokernel -e '.[server]'
 aeroagentsim demo traffic-accident
 ```
 
-当前开发工作区若使用相邻内核目录，将 `./aerokernel` 改为 `../aerokernel`。浏览器依赖和系统环境见英文安装指南。
+浏览器依赖和系统环境见英文安装指南。
 
 - [英文文档首页](docs/README.md)
 - [安装](docs/getting-started/install.md)与[快速入门](docs/getting-started/quickstart.md)

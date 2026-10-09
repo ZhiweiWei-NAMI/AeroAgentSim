@@ -1,6 +1,5 @@
 import { createRequire } from 'node:module';
 import { mkdirSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 const require = createRequire(new URL('../../frontend/package.json', import.meta.url));
 const { chromium, expect } = require('@playwright/test');
@@ -11,7 +10,7 @@ const body = process.env.P1_SCENARIO_BODY ? '{"scenario":'+readFileSync(process.
 const response = await fetch(`${api}/v1/runs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
 if (!response.ok) throw Error(await response.text());
 const run = await response.json();
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ?? join(homedir(), '.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell'), headless: true, args: ['--no-sandbox', '--enable-unsafe-swiftshader', '--use-angle=swiftshader'] });
+const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ?? process.env.AEROAGENTSIM_CHROMIUM, headless: true, args: ['--no-sandbox', '--enable-unsafe-swiftshader', '--use-angle=swiftshader'] });
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];

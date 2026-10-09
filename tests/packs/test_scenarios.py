@@ -1,4 +1,4 @@
-"""Full P5 kinematic gate and native PX4 contract for orchestrator execution."""
+"""Full kinematic gate and native PX4 contract for the orchestration engine."""
 
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ def test_logistics_px4_native_parcel_and_replay(
     """Real telemetry/receipts gate pickup and delivery; no timer-only transfers."""
     from aeroagentsim.adapters import container
 
-    monkeypatch.setattr(container, "_JOB_LABEL_VALUE", "p5f")
+    monkeypatch.setattr(container, "_JOB_LABEL_VALUE", "pack-test")
     scenario = load_scenario(SCENARIOS / "logistics-px4.yaml")
     path = tmp_path / "journal.jsonl"
     with AdapterRun(scenario, containers=True, journal=Journal(path)) as run:

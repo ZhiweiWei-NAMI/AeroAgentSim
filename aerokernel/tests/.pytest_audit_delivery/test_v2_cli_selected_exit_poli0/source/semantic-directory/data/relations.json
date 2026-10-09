@@ -1,1 +1,0 @@
-[{"id": "rel", "displayName": "rel", "sourceClass": "oo:ModelObject", "targetClass": "oo:ModelObject", "kind": "has_a", "cardinality": {"min": 0, "max": "*"}, "identityPolicy": "stable references", "validTime": "[start,end)", "sources": [], "reviewStatus": "proposed"}]

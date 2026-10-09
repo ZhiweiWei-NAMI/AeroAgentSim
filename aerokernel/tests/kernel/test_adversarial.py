@@ -1,4 +1,4 @@
-"""Adversarial authority, temporal and routing traces for M1."""
+"""Adversarial authority, temporal and routing traces."""
 
 from __future__ import annotations
 

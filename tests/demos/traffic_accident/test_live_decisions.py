@@ -361,7 +361,7 @@ def test_live_flagship_cli_and_zero_call_replay(
 ) -> None:
     # Reuse the explicitly supplied completed CLI run in verification; otherwise
     # this marked test performs a complete new live run.
-    existing = os.environ.get("AAS_R5_LIVE_RUN")
+    existing = os.environ.get("AAS_LIVE_ACCIDENT_RUN")
     if existing is None:
         result = subprocess.run(
             [
@@ -407,9 +407,9 @@ def test_live_flagship_cli_and_zero_call_replay(
         for row in rows
         if row["phase"] == "model_call"
     ]
-    assert len(calls) >= 3 and all(
-        call["request"]["model"] == "glm-5.3-flashx" for call in calls
-    )
+    assert len(calls) >= 3
+    expected_model = os.environ["AAS_LLM_MODEL"]
+    assert all(call["request"]["model"] == expected_model for call in calls)
     console = [
         m
         for record in (json.loads(line) for line in data.splitlines())

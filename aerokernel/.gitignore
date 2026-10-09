@@ -2,24 +2,16 @@
 __pycache__/
 *.egg-info/
 .pytest_cache/
+tests/.pytest_cache/
 .hypothesis/
 .coverage
+coverage.json
 .mypy_cache/
 .ruff_cache/
-.audit-agents/
-.test-temp/
-docs/audit/*.json
-
-.kernel-agents/
-coverage.json
-.kernel-agents/
-benchmarks/_glm/
 tests/.ruff_cache/
 
-.m2-work/
-.k3-work/
-benchmarks/run-m2-*.jsonl
+# Generated benchmark output
+benchmarks/*.jsonl
 
-.venv
-.t/
-.c/
+# Test scratch directories
+.test-temp/

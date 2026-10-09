@@ -1,7 +1,7 @@
 """Exercise actual per-stream service, lateness edges and engine-free replay.
 
 Run from the worktree: PYTHONPATH=src python scenarios/realtime-streams-demo.py
---out /tmp/aas-q/q9/stream-demo. The YAML's bootstrap inputs are replaced with
+--out /tmp/stream-demo. The YAML's bootstrap inputs are replaced with
 explicit host submissions for this live experiment.
 """
 

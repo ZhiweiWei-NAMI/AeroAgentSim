@@ -105,7 +105,7 @@ def server() -> Any:
 
 
 def provider(port: int, path: str = "/ok") -> OpenAIProvider:
-    return OpenAIProvider(f"http://127.0.0.1:{port}{path}", "glm-5.3-flashx")
+    return OpenAIProvider(f"http://127.0.0.1:{port}{path}", "test-model")
 
 
 def test_success_shape_and_usage(server: Any) -> None:
@@ -132,11 +132,12 @@ def test_from_config_profile_resolution(
         "AEROAGENTSIM_PROVIDER_CONFIG",
     ):
         monkeypatch.delenv(name, raising=False)
+    with pytest.raises(ValueError, match="AAS_LLM_MODEL"):
+        OpenAIProvider.from_config({})
+    monkeypatch.setenv("AAS_LLM_MODEL", "test-model")
     base = OpenAIProvider.from_config({})
     assert (base.base_url, base.model, base.api_key) == (
-        "http://127.0.0.1:8788/v1",
-        "glm-5.3-flashx",
-        None,
+        "http://127.0.0.1:8788/v1", "test-model", None
     )
     monkeypatch.setenv(
         "AAS_LLM_BASE_URL", f"http://127.0.0.1:{server.server_address[1]}"
@@ -234,7 +235,8 @@ def socket_closed_port() -> Any:
         yield sock.getsockname()[1]
 
 
-def test_provider_protocol_and_deadline_bounds_request() -> None:
+def test_provider_protocol_and_deadline_bounds_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AAS_LLM_MODEL", "test-model")
     assert isinstance(OpenAIProvider.from_config(), Provider)
     with pytest.raises(ProviderError) as tokens_error:
         OpenAIProvider("http://127.0.0.1:9/v1", "m").complete(
@@ -244,6 +246,7 @@ def test_provider_protocol_and_deadline_bounds_request() -> None:
 
 
 def test_no_env_leakage_between_calls(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AAS_LLM_MODEL", "test-model")
     monkeypatch.setenv("AAS_LLM_API_KEY", "sk-leak")
     assert OpenAIProvider.from_config().api_key == "sk-leak"
     monkeypatch.delenv("AAS_LLM_API_KEY")

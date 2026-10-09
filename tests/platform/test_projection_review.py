@@ -187,7 +187,7 @@ def test_future_finite_regulatory_fact_matches_live_and_replayed_kernel(
         )
 
     monkeypatch.setattr(EngineCatalog, "build", factory)
-    simulation = Simulation(load_scenario(document))
+    simulation = Simulation(load_scenario(document, base=Path("scenarios")))
     try:
         simulation.start()
         live = simulation.run_until(20_000_000)

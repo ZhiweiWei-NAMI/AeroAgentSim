@@ -1,4 +1,4 @@
-"""Literal GLM-authored cases plus resource, UTF-8 and integer boundary checks."""
+"""Literal wire-format cases plus resource, UTF-8 and integer boundary checks."""
 
 import json
 import sys

@@ -8,7 +8,7 @@ RUN find /etc/apt/sources.list.d -type f -exec sed -i "s|http://|https://|g" {} 
     && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt /opt/aeroagentsim/requirements.txt
 RUN python -m pip install --no-cache-dir -r /opt/aeroagentsim/requirements.txt
-LABEL aeroagentsim.job="p9" aeroagentsim.backend="sumo"
+LABEL aeroagentsim.job="release" aeroagentsim.backend="sumo"
 RUN mkdir -p /opt/aeroagentsim && netgenerate --grid --grid.number 3 \
     --grid.length 200 --default.lanenumber 2 --default.speed 13.89 \
     --tls.guess --tls.guess.threshold 0 --no-turnarounds \

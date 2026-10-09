@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from collections.abc import Callable
@@ -21,6 +22,8 @@ from aeroagentsim.scenario.paths import source_path
 
 @pytest.fixture(scope="module")
 def oracle(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    if not os.environ.get("AEROAGENTSIM_AEROGRAPH_ROOT"):
+        pytest.skip("native AeroGraph differential oracle requires its source checkout")
     directory = tmp_path_factory.mktemp("native-predicates")
     root = source_path("${AEROAGENTSIM_AEROGRAPH_ROOT}")
     for name in ("original_runtime.js", "expanded_runtime.js"):

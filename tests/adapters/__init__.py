@@ -1,1 +1,1 @@
-"""E1 adapter tests."""
+"""Native adapter tests."""

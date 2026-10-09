@@ -46,7 +46,6 @@ class OpenAIProvider:
 
     MAX_RESPONSE_BYTES = 4 * 1024 * 1024
     DEFAULT_BASE_URL = "http://127.0.0.1:8788/v1"
-    DEFAULT_MODEL = "glm-5.3-flashx"
 
     def __init__(self, base_url: str, model: str, api_key: str | None = None) -> None:
         parts = urlsplit(base_url)
@@ -87,9 +86,12 @@ class OpenAIProvider:
         if not isinstance(profile, str) or not profile.strip():
             raise ValueError("provider profile must be a nonempty string")
         if profile == "default":
+            model = os.environ.get("AAS_LLM_MODEL")
+            if not model or not model.strip():
+                raise ValueError("default provider profile requires AAS_LLM_MODEL")
             return cls(
                 os.environ.get("AAS_LLM_BASE_URL", cls.DEFAULT_BASE_URL),
-                os.environ.get("AAS_LLM_MODEL", cls.DEFAULT_MODEL),
+                model,
                 os.environ.get("AAS_LLM_API_KEY"),
             )
         if profile == "live-llm":

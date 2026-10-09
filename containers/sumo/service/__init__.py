@@ -1,1 +1,1 @@
-"""General native SUMO backend; no kernel or AeroBench runtime dependency."""
+"""General native SUMO backend; no kernel or external runtime dependency."""

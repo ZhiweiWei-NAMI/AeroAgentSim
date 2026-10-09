@@ -16,7 +16,7 @@ EXPECTED_ALWAYS_ON = "1"
 EXPECTED_UPDATE_RATE_HZ = 30.0
 TARGET_ALWAYS_ON = "0"
 TARGET_TRIGGERED = "true"
-TARGET_TRIGGER_TOPIC = "/aero-bench/camera/trigger"
+TARGET_TRIGGER_TOPIC = "/aeroagentsim/camera/trigger"
 
 
 def local_name(tag: str) -> str:

@@ -1,4 +1,4 @@
-# Source build adapted from AeroBench containers/px4-gazebo/Dockerfile.
+# Source build adapted from an earlier internal container definition.
 # See README.md for provenance.
 FROM px4io/px4-sitl-gazebo AS mavsdk-builder
 COPY apt-install.sh /usr/local/bin/aas-apt-install
@@ -171,7 +171,7 @@ RUN find /etc/apt/sources.list.d -type f -exec sed -i "s|http://|https://|g" {} 
       python3-venv \
     && python3 -m venv /opt/aero-python \
     && /opt/aero-python/bin/pip install --no-cache-dir -r /opt/aeroagentsim/build-inputs/requirements.txt \
-    && rm -rf /tmp/aas-wheels \
+    && rm -rf /tmp/python-wheels \
     && chmod 0755 /opt/mavsdk/mavsdk_server \
     && ln -sf /opt/mavsdk/mavsdk_server /opt/mavsdk/mavsdk-server \
     && /opt/mavsdk/mavsdk_server --help \
@@ -187,7 +187,7 @@ COPY --chown=65532:65532 service /opt/aeroagentsim/service
 WORKDIR /opt/aeroagentsim
 ENV AAS_PORT=9000
 USER 65532:65532
-LABEL aeroagentsim.job="p9" aeroagentsim.backend="px4-gazebo" \
+LABEL aeroagentsim.job="release" aeroagentsim.backend="px4-gazebo" \
       org.opencontainers.image.base.name="px4io/px4-sitl-gazebo"
 EXPOSE 9000/tcp
 HEALTHCHECK NONE

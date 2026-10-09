@@ -7,6 +7,6 @@ case "$image" in
     *) echo "Build tag must be aeroagentsim/px4-gazebo:standalone*" >&2; exit 2 ;;
 esac
 context=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec docker build --progress=plain --label aeroagentsim.job=p9 \
+exec docker build --progress=plain --label aeroagentsim.job=release \
     --build-arg HTTP_PROXY --build-arg HTTPS_PROXY --build-arg NO_PROXY \
     -t "$image" "$context"

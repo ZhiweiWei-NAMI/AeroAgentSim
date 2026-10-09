@@ -54,8 +54,10 @@ missing usage is an explicit failure.
 Two configuration layers exist:
 
 1. Scenario engines (`decision`, `langgraph`) read `AAS_LLM_BASE_URL`,
-   `AAS_LLM_MODEL`, `AAS_LLM_API_KEY` for the credential by default; an explicit scenario
-   setting takes precedence.
+   `AAS_LLM_MODEL` and `AAS_LLM_API_KEY` for the credential by default; an explicit scenario
+   setting takes precedence. The model must be provided explicitly — there is
+   no implicit default model; the base URL defaults to
+   `http://127.0.0.1:8788/v1`.
 2. The shipped demo's `live-llm` profile (`src/aeroagentsim/services/demo.py`)
    instead requires the environment variables `AEROAGENTSIM_LLM_BASE_URL`,
    `AEROAGENTSIM_LLM_MODEL` and `AEROAGENTSIM_LLM_API_KEY_ENV`, where the
@@ -64,7 +66,7 @@ Two configuration layers exist:
 
 ```bash
 export AEROAGENTSIM_LLM_BASE_URL=http://127.0.0.1:8788/v1
-export AEROAGENTSIM_LLM_MODEL=glm-5.3-flash
+export AEROAGENTSIM_LLM_MODEL=your-model
 export AEROAGENTSIM_LLM_API_KEY_ENV=MY_PROVIDER_KEY   # variable holding the key
 export MY_PROVIDER_KEY="replace-with-your-key"
 aeroagentsim demo traffic-accident --profile live-llm

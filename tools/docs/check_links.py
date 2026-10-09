@@ -1,8 +1,4 @@
-"""Check local Markdown links in researcher docs and their companion root pages.
-
-The root README is maintained separately. Release kernel links can resolve against
-a read-only sibling checkout until the aerokernel subtree is included.
-"""
+"""Check local Markdown links and headings in the release documentation."""
 
 from __future__ import annotations
 
@@ -13,7 +9,7 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-ROOT_PAGES = ("INSTALL.md", "ASSETS.md", "CONTRIBUTING.md", "CHANGELOG.md", "README_CN.md")
+ROOT_PAGES = ("README.md", "INSTALL.md", "ASSETS.md", "CONTRIBUTING.md", "CHANGELOG.md", "README_CN.md")
 LINK = re.compile(r"!?\[[^\]\n]*\]\(\s*(<[^>]+>|[^\s)]+)(?:\s+[^)]*)?\)")
 DEFINITION = re.compile(r"^\s{0,3}\[([^\]]+)\]:\s*(<[^>]+>|\S+)", re.MULTILINE)
 REFERENCE = re.compile(r"!?\[([^\]\n]+)\]\[([^\]\n]*)\]")
@@ -55,7 +51,6 @@ def anchors(path: Path) -> set[str]:
 def check(root: Path, files: list[Path]) -> int:
     failures = []
     links = 0
-    kernel_fallback = False
     for source in files:
         content = prose(source.read_text(encoding="utf-8"))
         definitions = {m[1].casefold(): m[2] for m in DEFINITION.finditer(content)}
@@ -77,12 +72,6 @@ def check(root: Path, files: list[Path]) -> int:
                 if url.path.startswith("/")
                 else (source.parent / unquote(url.path)) if url.path else source
             ).resolve()
-            kernel = root / "aerokernel"
-            if not path.exists() and path.is_relative_to(kernel):
-                alternate = root.parent / "aerokernel" / path.relative_to(kernel)
-                if alternate.exists():
-                    path = alternate
-                    kernel_fallback = True
             reason = ""
             if not path.exists():
                 reason = "missing target"
@@ -101,8 +90,6 @@ def check(root: Path, files: list[Path]) -> int:
         print(f"{len(failures)} broken links", file=sys.stderr)
         return 1
     print(f"Checked {links} local links in {len(files)} Markdown files: clean.")
-    if kernel_fallback:
-        print("Release kernel links checked against the sibling aerokernel checkout.")
     return 0
 
 
@@ -113,6 +100,7 @@ def main() -> int:
     root = args.root.resolve()
     files = sorted((root / "docs").rglob("*.md"))
     files += [root / name for name in ROOT_PAGES if (root / name).is_file()]
+    files += [root / "aerokernel/README.md", root / "aerokernel/docs/DESIGN.md"]
     return check(root, files)
 
 

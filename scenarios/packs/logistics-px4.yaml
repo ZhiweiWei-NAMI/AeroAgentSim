@@ -1236,7 +1236,7 @@ engines:
   flight:
     plugin: px4_gazebo
     config:
-      image: aeroagentsim/px4-gazebo:dev-p2b
+      image: aeroagentsim/px4-gazebo:dev
       host: 127.0.0.1
       port: 19001
       step_ns: 200000000

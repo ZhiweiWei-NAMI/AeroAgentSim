@@ -1,4 +1,4 @@
-"""K7 run-level provenance: lean default, strict validation, full explicit audit."""
+"""Run-level provenance: lean default, strict validation, full explicit audit."""
 
 from __future__ import annotations
 
@@ -18,7 +18,10 @@ SCENARIO = Path("scenarios/predicates-demo.yaml")
 
 
 def document() -> dict[str, Any]:
-    return copy.deepcopy(load_scenario(SCENARIO).document)
+    scenario = load_scenario(Path("scenarios/predicates-demo.yaml"))
+    result = copy.deepcopy(scenario.document)
+    result["registry"]["snapshot"] = str((scenario.base / result["registry"]["snapshot"]).resolve())
+    return result
 
 
 def header(path: Path) -> dict[str, Any]:

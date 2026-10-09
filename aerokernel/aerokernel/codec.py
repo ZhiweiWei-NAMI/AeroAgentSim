@@ -65,7 +65,7 @@ def _record_classes() -> dict[str, type[Any]]:
 
 # Complete declaration shapes issued by journals 1.1/1.2. Only these historical
 # shapes may omit additive declarations; arbitrary missing fields still fail.
-_M1_DECLARATION_FIELDS = {
+_HISTORICAL_DECLARATION_FIELDS = {
     "IngressPolicy": frozenset(
         {"initial_watermark_ns", "lateness", "timeout_s", "speed_ratio"}
     ),
@@ -119,7 +119,7 @@ def decode_record(value: Any) -> Any:
     cls = classes[value["$type"]]
     fields = value["fields"]
     expected = {f.name for f in dataclasses.fields(cls)}
-    historical = _M1_DECLARATION_FIELDS.get(value["$type"])
+    historical = _HISTORICAL_DECLARATION_FIELDS.get(value["$type"])
     if set(fields) != expected and (historical is None or set(fields) != historical):
         raise ValueError("RECORD_FIELDS: unexpected record fields")
     # Payloads are portable trees, not nested record encodings.

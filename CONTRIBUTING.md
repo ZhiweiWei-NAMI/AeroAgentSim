@@ -11,7 +11,7 @@ python -m pip install -e ./aerokernel -e '.[server,agents,dev]' -c constraints/d
 (cd frontend && npm ci)
 ```
 
-Use `../aerokernel` in a sibling development checkout. See [Install](docs/getting-started/install.md) for console builds and Chromium dependencies. Simulator containers and live model endpoints are optional.
+See [Install](docs/getting-started/install.md) for console builds and Chromium dependencies. Simulator containers and live model endpoints are optional.
 
 ## Checks
 
@@ -41,6 +41,6 @@ Live inference belongs in a decision plugin. Keep credentials in named environme
 
 Use typed Python and explicit data contracts. The kernel stays pure standard-library at runtime. Keep domain assumptions inside their plugins. Name units in configuration, use integer nanoseconds for runtime time and distinguish simulated time from wall time.
 
-Update the relevant page under [docs](docs/README.md) when changing public configuration, CLI or HTTP contracts. Label YAML fragments, link to runnable complete examples and avoid machine-specific paths. The link checker checks the docs tree and its companion root pages; it also resolves planned kernel links against a sibling checkout during development.
+Update the relevant page under [docs](docs/README.md) when changing public configuration, CLI or HTTP contracts. Label YAML fragments, link to runnable complete examples and avoid machine-specific paths. The link checker checks the docs tree and its companion root pages, including kernel links under `aerokernel/`.
 
 Submit a focused change with its purpose, user-visible effect, validation and practical limitations. Preserve concurrent work in shared checkouts.

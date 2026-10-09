@@ -31,8 +31,12 @@ def test_live_dispatch_sixty_seconds(
         "http://127.0.0.1:8788/v1/models", timeout=10
     ) as response:
         models = json.load(response)
-    assert "glm-5.3-flashx" in [item["id"] for item in models["models"]]
-    results: dict[str, Any] = {"model": "glm-5.3-flashx", "simulated_s": 60, "runs": {}}
+    assert os.environ["AAS_LLM_MODEL"] in [item["id"] for item in models["models"]]
+    results: dict[str, Any] = {
+        "model": os.environ["AAS_LLM_MODEL"],
+        "simulated_s": 60,
+        "runs": {},
+    }
     model_calls = 0
     original = OpenAIProvider.complete
 
@@ -138,7 +142,7 @@ def test_live_dispatch_sixty_seconds(
     }
     # Live-model artifacts go outside the source tree unless explicitly requested.
     output = Path(os.environ.get("AEROAGENTSIM_LLM_ARTIFACTS", tmp_path))
-    directory = output / f"glm-60s-{uuid.uuid4().hex[:8]}"
+    directory = output / f"live-60s-{uuid.uuid4().hex[:8]}"
     directory.parent.mkdir(parents=True, exist_ok=True)
     storage = RunStorage(directory)
     storage.prepare(live.scenario)

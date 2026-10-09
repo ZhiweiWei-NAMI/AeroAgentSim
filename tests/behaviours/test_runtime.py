@@ -648,9 +648,7 @@ def test_replay_reconstructs_instances_without_evaluation(
 def test_replay_equality_for_injection_availability(at_ns: int) -> None:
     doc = document(injected=True)
     doc["bindings"]["commands"][0]["at_ns"] = at_ns
-    with tempfile.TemporaryDirectory(
-        prefix="behaviour-replay-", dir="/tmp/aas-q/a"
-    ) as scratch:
+    with tempfile.TemporaryDirectory(prefix="behaviour-replay-") as scratch:
         session = RunSession(load_scenario(doc, base=BASE), Path(scratch) / "run")
         session.run()
         recorded = [project(record) for record in session.simulation.kernel.records]

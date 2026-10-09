@@ -1,7 +1,7 @@
 # Public Ubuntu 24.04 base.
 FROM ubuntu:24.04 AS build
 COPY apt-install.sh /usr/local/bin/aas-apt-install
-LABEL aeroagentsim.job="p9"
+LABEL aeroagentsim.job="release"
 # Bootstrap the public CA store over Ubuntu's signed APT metadata; all later
 # downloads use HTTPS with verification enabled.
 RUN apt-get -o Acquire::Retries=3 -o APT::Update::Error-Mode=any update \
@@ -36,6 +36,6 @@ ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /opt/aeroagentsim
 USER 65532:65532
 LABEL aeroagentsim.backend="ns3" aeroagentsim.protocol="aeroagentsim.ns3/v1" \
-    aeroagentsim.job="p9" org.opencontainers.image.base.name="ubuntu:24.04"
+    aeroagentsim.job="release" org.opencontainers.image.base.name="ubuntu:24.04"
 EXPOSE 9000
 ENTRYPOINT ["/usr/bin/python3", "-m", "service.rpc"]

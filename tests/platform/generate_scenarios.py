@@ -1,13 +1,11 @@
-"""Authored P1 scenarios, with explicit fleet facts and per-order machines."""
+"""Authored scenarios, with explicit fleet facts and per-order machines."""
 
-import hashlib
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from aeroagentsim.scenario.paths import source_path
 
 POS = "he.aircraft.position_enu_m"
 VEL = "aas.p1.velocity_enu_m_s"
@@ -325,11 +323,6 @@ base["engines"]["threshold"]["config"].update(
     parameters={"thresholdXM": 10.0},
     native_reference={
         "path": "${AEROAGENTSIM_AEROGRAPH_ROOT}/semantic-directory/src/expanded_runtime.js",
-        "sha256": hashlib.sha256(
-            source_path(
-                "${AEROAGENTSIM_AEROGRAPH_ROOT}/semantic-directory/src/expanded_runtime.js"
-            ).read_bytes()
-        ).hexdigest(),
     },
 )
 base["bindings"]["samples"] = [
@@ -451,17 +444,18 @@ for engine in base["engines"].values():
                             "type_id": "oo:UAV",
                         }
                     }
+public_registry = yaml.safe_load(Path("scenarios/p1-slice.yaml").read_text())["registry"]
+base["registry"] = deepcopy(public_registry)
 Path("scenarios/p1-slice.yaml").write_text(yaml.safe_dump(base, sort_keys=False))
 scale = deepcopy(base)
 scale["id"] = "p1-scale"
-scale["registry"]["compile"]["types"] = ["oo:UAV"]
-scale["registry"]["compile"]["fields"] = [POS]
-scale["registry"]["compile"]["relations"] = []
 scale["registry"]["types"] = []
 scale["registry"]["relations"] = []
 for inactive in ("samples", "relations", "obligations"):
     scale["bindings"].pop(inactive, None)
-scale["registry"]["fields"] = scale["registry"]["fields"][:2]
+scale["registry"]["fields"] = [
+    f for f in scale["registry"]["fields"] if f["id"] in (VEL, ENERGY)
+]
 scale["entities"] = [
     {
         "id": f"mover-{i:04d}",

@@ -2193,7 +2193,7 @@ engines:
   traffic:
     plugin: sumo
     config:
-      image: aeroagentsim/sumo:dev-p3a-5
+      image: aeroagentsim/sumo:dev
       host: 127.0.0.1
       port: 19002
       step_ns: 100000000

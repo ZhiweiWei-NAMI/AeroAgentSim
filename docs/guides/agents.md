@@ -27,8 +27,10 @@ the demo accident graph factory is
 accepts only a named `profile`. URLs, model settings and credential environment
 variable names come from operator configuration, never from submitted scenarios.
 The `default` profile uses `AAS_LLM_BASE_URL`, `AAS_LLM_MODEL` and
-`AAS_LLM_API_KEY`; defaults are `http://127.0.0.1:8788/v1` and
-`glm-5.3-flashx` with no required key. To configure named profiles, set
+`AAS_LLM_API_KEY`. The base URL defaults to `http://127.0.0.1:8788/v1`; the
+model must be set explicitly through `AAS_LLM_MODEL` or a named profile —
+there is no implicit default model. No API key is required by default. To
+configure named profiles, set
 `AEROAGENTSIM_PROVIDER_PROFILES` to a JSON mapping, or point
 `AEROAGENTSIM_PROVIDER_CONFIG` at a server-side JSON file with that mapping:
 
@@ -102,7 +104,7 @@ remain eligible. Each invocation records its resolved deadline for replay.
 ## Live-LLM demo invocation
 
 The shipped demo's `live-llm` profile swaps the scripted decisions for the
-LangGraph path. From the worktree root:
+LangGraph path. From the repository root:
 
 ```sh
 pip install -e ./aerokernel -e '.[agents]'   # agents extra: langgraph + openai

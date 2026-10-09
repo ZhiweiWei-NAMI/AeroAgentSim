@@ -14,10 +14,10 @@ function realChunk(): ArrayBuffer {
 
 function manifest() {
   return {
-    schema_version: 'aero-bench.osm2world-mesh-pack/v1', source: { asset_id: 'city-pack/source@1', size_bytes: 1 },
+    schema_version: 'aeroagentsim.osm2world-mesh-pack/v1', source: { asset_id: 'city-pack/source@1', size_bytes: 1 },
     generator: { revision: 'a'.repeat(40) },
     projection: { name: 'MetricMapProjection', axes: 'east-up-south', origin: { latitude_deg: 31, longitude_deg: 121 } },
-    coordinate_contract: { schema_version: 'aero-bench.osm2world-source-coordinates/v1', recipe: 'source-node-bounds-local-Mercator-then-declared-origin-translation',
+    coordinate_contract: { schema_version: 'aeroagentsim.osm2world-source-coordinates/v1', recipe: 'source-node-bounds-local-Mercator-then-declared-origin-translation',
       converter_origin: { latitude_deg: 31, longitude_deg: 121 }, stored_translation_xz_m: [0, 0], earth_circumference_m: 40075016.686, native_point_quantization_m: 0.001,
       storage: 'source-mesh-float32-converter-coordinates-then-declared-origin-translation' },
     extent: { west: 0, east: 1, south: 0, north: 1 }, original_mesh_count: 1, objects: [], textures: {},

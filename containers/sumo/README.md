@@ -4,12 +4,12 @@ Build SUMO 1.27.1/TraCI from the public Python base and version-pinned requireme
 
 ~~~sh
 containers/sumo/build.sh
-docker run -d --name aas-p9-sumo --label aeroagentsim.job=p9 \
+docker run -d --name aas-sumo --label aeroagentsim.job=release \
   --cpus 16 --memory 8g -p 127.0.0.1:19003:9000 aeroagentsim/sumo:standalone
 python \
-  containers/sumo/smoke.py --seconds 60 --repeats 2 --output /tmp/aas-p9/sumo-smoke
-docker stop aas-p9-sumo
-docker rm aas-p9-sumo
+  containers/sumo/smoke.py --seconds 60 --repeats 2 --output /tmp/sumo-smoke
+docker stop aas-sumo
+docker rm aas-sumo
 ~~~
 
 The generated 3×3 grid has two driving lanes per direction, sidewalks, walking
@@ -120,7 +120,7 @@ command receipt/evidence/audit verifier. Contract tests run without Docker:
 
 ~~~sh
 PYTHONDONTWRITEBYTECODE=1 python \
-  -m pytest -p no:cacheprovider --basetemp=/tmp/aas-p3a/pytest containers/sumo/tests
+  -m pytest -p no:cacheprovider containers/sumo/tests
 ~~~
 
 This backend profile is designed for a future aerokernel lockstep adapter.

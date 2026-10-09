@@ -1,12 +1,12 @@
 # Authored kernel examples
 
-Run the editable package with the workspace interpreter:
+Run the editable package after installing the editable package:
 
 ```sh
-.venv/bin/python examples/two_engine_toy.py
+python examples/two_engine_toy.py
 ```
 
-`two_engine_toy.py` preserves the DESIGN §12 M1 trace: fixed-step movement,
+`two_engine_toy.py` preserves the DESIGN §12 trace: fixed-step movement,
 DES order processing, and an ordinary reactive zone transition. Arrival and
 business acceptance have separate receipts. This authored model retains its
 ordinary transition schema for compatibility.

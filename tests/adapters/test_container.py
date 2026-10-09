@@ -1,4 +1,4 @@
-"""Unit tests for the E1 docker container lifecycle helper.
+"""Unit tests for the docker container lifecycle helper.
 
 These tests never talk to a real docker daemon: ``subprocess.run``, the
 ``socket`` module and ``time`` used by the module under test are replaced
@@ -42,9 +42,9 @@ def _load_container_module() -> Any:
 
 container: Any = _load_container_module()
 
-_PX4_IMAGE = "aeroagentsim/px4-gazebo:dev-p2b"
-_SUMO_IMAGE = "aeroagentsim/sumo:dev-p3a-5"
-_NS3_IMAGE = "aeroagentsim/ns3:dev-p4b"
+_PX4_IMAGE = "aeroagentsim/px4-gazebo:dev"
+_SUMO_IMAGE = "aeroagentsim/sumo:dev"
+_NS3_IMAGE = "aeroagentsim/ns3:dev"
 _ALL_ALLOWED_IMAGES = (_PX4_IMAGE, _SUMO_IMAGE, _NS3_IMAGE)
 
 _EXPECTED_RUN_HEAD = [
@@ -52,7 +52,7 @@ _EXPECTED_RUN_HEAD = [
     "run",
     "--detach",
     "--label",
-    "aeroagentsim.job=e1",
+    "aeroagentsim.job=default",
     "--cpus",
     "8",
     "--publish",
@@ -88,7 +88,7 @@ def _entry(
             "Image": _PX4_IMAGE,
             "Labels": dict(labels)
             if labels is not None
-            else {"aeroagentsim.job": "e1"},
+            else {"aeroagentsim.job": "default"},
         },
         "NetworkSettings": {"Ports": _ports_binding() if ports is None else ports},
     }
@@ -304,10 +304,10 @@ class TestConstruction:
     def test_container_names_are_unique(self) -> None:
         names = {container.DockerContainer(_PX4_IMAGE).name for _ in range(5)}
         assert len(names) == 5
-        assert all(name.startswith("aeroagentsim-e1-") for name in names)
+        assert all(name.startswith("aeroagentsim-") for name in names)
 
     def test_disallowed_images_are_rejected(self) -> None:
-        for image in ("ubuntu:latest", "aeroagentsim/px4-gazebo:dev-p2a-ipc2", ""):
+        for image in ("ubuntu:latest", "aeroagentsim/px4-gazebo:unallowed", ""):
             with pytest.raises(container.ImageNotAllowedError, match="allowlisted"):
                 container.DockerContainer(image)
 
@@ -334,14 +334,14 @@ class TestRunCommand:
         name_flag_at = run_cmd.index("--name")
         assert run_cmd[name_flag_at + 2] == _PX4_IMAGE
         name = run_cmd[name_flag_at + 1]
-        assert name.startswith("aeroagentsim-e1-")
-        assert len(name) > len("aeroagentsim-e1-")
+        assert name.startswith("aeroagentsim-")
+        assert len(name) > len("aeroagentsim-")
         assert fake.timeouts[0] == 60.0
 
     def test_environment_and_mounts_rendered_sorted(self) -> None:
         command = container._build_run_command(
             _NS3_IMAGE,
-            "aeroagentsim-e1-x",
+            "aeroagentsim-x",
             {"B_VAR": "2", "A_VAR": "1"},
             {"/srv/b": "/data/b", "/srv/a": "/data/a"},
         )
@@ -350,13 +350,13 @@ class TestRunCommand:
             "run",
             "--detach",
             "--label",
-            "aeroagentsim.job=e1",
+            "aeroagentsim.job=default",
             "--cpus",
             "8",
             "--publish",
             "127.0.0.1::9000",
             "--name",
-            "aeroagentsim-e1-x",
+            "aeroagentsim-x",
             "--env",
             "A_VAR=1",
             "--env",
@@ -547,7 +547,7 @@ class TestCleanupAndOwnership:
         sim.close()
 
     def test_close_refuses_foreign_label(self, make_docker: Any) -> None:
-        payload = json.dumps([_entry(labels={"aeroagentsim.job": "p2a"})])
+        payload = json.dumps([_entry(labels={"aeroagentsim.job": "wrong"})])
         fake = make_docker(inspect_payloads=[payload])
         sim = container.DockerContainer(_PX4_IMAGE)
         sim.start()

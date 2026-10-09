@@ -6,7 +6,7 @@ const commit = (index: number): FeedCommit => ({ commitIndex: index, at: { ns: '
 const page = (commits: FeedCommit[], next: number, status = 'running') => new Response(JSON.stringify({ commits, next, status, ...(['completed','stopped','faulted','interrupted'].includes(status) ? {finalCursor: next} : {}) }), { headers: { 'Content-Type': 'application/json' } });
 afterEach(() => { vi.unstubAllGlobals(); });
 describe('HTTP viewer transport', () => {
-  it('accepts the GLM-authored pinned contract fixture with a nonspatial record', () => {
+  it('accepts the authored contract fixture with a nonspatial record', () => {
     const scene={id:'authored-city',city:{kind:'traffic-city',url:'/v1/studio/demo-assets/scene.json'}};
     expect(validateHeader({...fixture.header,scene}).scene).toEqual(scene);
     expect(validateHeader(fixture.header).presentation).toHaveLength(1);

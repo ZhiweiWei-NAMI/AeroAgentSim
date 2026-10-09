@@ -1,7 +1,7 @@
-"""E1 Docker container lifecycle helper.
+"""Docker container lifecycle helper.
 
-This module owns the lifecycle of exactly one simulation container for the
-platform adapter milestone E1: it runs an allowlisted image detached with a
+This module owns the lifecycle of exactly one simulation container:
+it runs an allowlisted image detached with a
 fixed CPU budget and a dynamic host port forwarding to container port 9000,
 waits for readiness, exposes the discovered ``host:port`` endpoint, and
 removes the container again on exit or on startup failure.
@@ -11,7 +11,7 @@ lists (never a shell) and per-call timeouts. Readiness uses the Docker
 health status when the image defines a healthcheck, and otherwise inspects the native TCP listener through /proc without opening an RPC owner
 session. Cleanup removes only the
 container id this instance created, and only after a fresh ``docker
-inspect`` re-confirmed the ``aeroagentsim.job=e1`` label on it.
+inspect`` re-confirmed the ``aeroagentsim.job`` identity label on it.
 
 Errors are strict: startup failures raise :class:`ContainerStartupError`
 including the container log tail, and cleanup failures are never silently
@@ -40,15 +40,15 @@ __all__ = [
 #: Images this helper is allowed to run; anything else is rejected up front.
 _ALLOWED_IMAGES: frozenset[str] = frozenset(
     {
-        "aeroagentsim/px4-gazebo:dev-p2b",
-        "aeroagentsim/sumo:dev-p3a-5",
-        "aeroagentsim/ns3:dev-p4b",
+        "aeroagentsim/px4-gazebo:dev",
+        "aeroagentsim/sumo:dev",
+        "aeroagentsim/ns3:dev",
     }
 )
 
 _DOCKER_BINARY = "docker"
 _JOB_LABEL_KEY = "aeroagentsim.job"
-_JOB_LABEL_VALUE = "e1"
+_JOB_LABEL_VALUE = "default"
 _CPUS = "8"
 _CONTAINER_PORT = 9000
 _PUBLISH_TARGET = f"127.0.0.1::{_CONTAINER_PORT}"
@@ -70,7 +70,7 @@ class ContainerStartupError(ContainerError):
 
 
 class ImageNotAllowedError(ContainerError):
-    """Raised when an image outside the E1 allowlist is requested."""
+    """Raised when an image outside the allowlist is requested."""
 
 
 class _PortBinding(TypedDict, total=False):
@@ -127,7 +127,7 @@ def _build_run_command(
     environment: Mapping[str, str],
     mounts: Mapping[str, str],
 ) -> list[str]:
-    """Build the ``docker run`` argv for one detached E1 container."""
+    """Build the ``docker run`` argv for one detached container."""
     command = [
         _DOCKER_BINARY,
         "run",
@@ -300,7 +300,7 @@ def _verify_ownership(entry: _InspectEntry, container_id: str) -> None:
 
 
 class DockerContainer:
-    """Context-manager lifecycle helper for one allowlisted E1 container.
+    """Context-manager lifecycle helper for one allowlisted container.
 
     ``__enter__`` runs the image detached, discovers the mapped host port,
     and waits for readiness (docker health when available, otherwise a
@@ -311,7 +311,7 @@ class DockerContainer:
     attached.
 
     Example:
-        with DockerContainer("aeroagentsim/px4-gazebo:dev-p2b") as sim:
+        with DockerContainer("aeroagentsim/px4-gazebo:dev") as sim:
             host, port = sim.endpoint
     """
 
@@ -336,7 +336,7 @@ class DockerContainer:
             dict(environment) if environment is not None else {}
         )
         self._mounts: dict[str, str] = dict(mounts) if mounts is not None else {}
-        self._name = f"aeroagentsim-e1-{uuid.uuid4().hex[:12]}"
+        self._name = f"aeroagentsim-{uuid.uuid4().hex[:12]}"
         self._id: str | None = None
         self._endpoint: tuple[str, int] | None = None
         self._closed = False
@@ -410,7 +410,7 @@ class DockerContainer:
         """Force-remove the container; calling this repeatedly is a no-op.
 
         Removal happens only after a fresh inspect confirmed the container
-        id and the ``aeroagentsim.job=e1`` label. Failures raise
+        id and the ``aeroagentsim.job`` identity label. Failures raise
         :class:`ContainerError` and leave the container un-removed, so a
         retry can surface the same failure again instead of hiding it.
         """

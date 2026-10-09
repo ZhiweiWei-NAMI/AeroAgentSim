@@ -318,7 +318,7 @@ def main() -> None:
     parser.add_argument("--vehicles", type=int, default=200)
     parser.add_argument("--repeats", type=int, default=2)
     parser.add_argument("--config", help="absolute configuration path inside container")
-    parser.add_argument("--output", default="/tmp/aas-p3a/results")
+    parser.add_argument("--output", required=True)
     args = parser.parse_args()
     if (
         args.seconds <= 0

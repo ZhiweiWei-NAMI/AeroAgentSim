@@ -1,6 +1,6 @@
 """Accident decision compatibility graph; motion and task ownership stay external.
 
-Prompt provenance: READ-ONLY AeroBench traffic_accident/runtime.py at
+Prompt provenance: READ-ONLY earlier internal traffic_accident/runtime.py at
 1044–1049 (report), 1133–1136 (bid), 1207–1209 (award), 1262–1275
 (user observation prefix). Graph topology: 429–441. No legacy fallback is ported.
 """

@@ -1,4 +1,4 @@
-"""P1 contracts and failure cases against the actual kernel and source slice."""
+"""Platform contracts and failure cases against the actual kernel and source slice."""
 
 from __future__ import annotations
 

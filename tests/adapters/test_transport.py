@@ -1,4 +1,4 @@
-"""E1 transport unit tests: ``JsonLinesClient`` LF framing and fault semantics.
+"""Native-adapter transport unit tests: ``JsonLinesClient`` LF framing and fault semantics.
 
 Every case drives a real threaded one-shot TCP fake server, so socket framing,
 the absolute per-operation deadline and the connection-tainting rules are
@@ -66,7 +66,7 @@ class FakeServer(threading.Thread):
     """One-shot TCP server: accepts a single connection, runs the handler, exits."""
 
     def __init__(self, handler: Callable[[FakeServer, socket.socket], None]) -> None:
-        super().__init__(daemon=True, name="fake-e1-server")
+        super().__init__(daemon=True, name="fake-adapter-server")
         self.handler = handler
         self.received: list[bytes] = []
         self.error: BaseException | None = None

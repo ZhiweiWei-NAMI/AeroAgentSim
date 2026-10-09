@@ -1,10 +1,8 @@
 import {createRequire} from 'node:module';
 import {mkdirSync} from 'node:fs';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
 const require=createRequire(new URL('../../frontend/package.json',import.meta.url));
 const {chromium,expect}=require('@playwright/test');
-const browser=await chromium.launch({executablePath:join(homedir(),'.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell'),headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader','--use-angle=swiftshader']});
+const browser=await chromium.launch({executablePath:process.env.AEROAGENTSIM_CHROMIUM,headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader','--use-angle=swiftshader']});
 try {
 const page=await browser.newPage({baseURL:process.env.P1_API ?? 'http://127.0.0.1:8002',viewport:{width:1440,height:900}});
   const errors = [];

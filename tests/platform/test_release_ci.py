@@ -17,17 +17,17 @@ def test_public_release_gates_are_unconditional_and_publish_waits() -> None:
     for suite in (
         "tests/behaviours",
         "tests/observations",
-        "tests/platform/test_realtime.py",
+        "tests/platform",
     ):
         assert suite in commands
-    assert "--ignore=tests/behaviours/test_compat.py" in commands
-    assert "# RELEASE: kernel path" in commands and "kernel=./aerokernel" in commands
+    assert "../aerokernel" not in commands
     kernel = next(
         step for step in public["steps"] if step.get("name") == "Kernel test suite"
     )
-    assert 'cd "$kernel"' in kernel["run"] and "python -m pytest" in kernel["run"]
-    assert "$kernel[test]" in commands
-    assert "/mnt/data2" not in commands
+    assert kernel["working-directory"] == "platform/aerokernel"
+    assert "python -m pytest" in kernel["run"]
+    assert "./aerokernel[test]" in commands
+    assert "/mnt/" not in commands
     publish = yaml.safe_load((ROOT / ".github/workflows/publish.yml").read_text())[
         "jobs"
     ]

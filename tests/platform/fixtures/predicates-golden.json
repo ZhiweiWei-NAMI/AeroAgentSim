@@ -7,7 +7,7 @@
         "信息跨域视图"
       ],
       "sourceDomain": "human_urban",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/0",
       "ast": {
         "op": "and",
@@ -94,7 +94,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/2",
       "ast": {
         "op": "and",
@@ -175,7 +175,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/4",
       "ast": {
         "op": "and",
@@ -251,7 +251,7 @@
         "信息跨域视图"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/6",
       "ast": {
         "op": "and",
@@ -373,7 +373,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/8",
       "ast": {
         "op": "gte",
@@ -414,7 +414,7 @@
         "信息跨域视图"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/10",
       "ast": {
         "op": "and",
@@ -473,7 +473,7 @@
         "信息跨域视图"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/12",
       "ast": {
         "op": "and",
@@ -528,7 +528,7 @@
         "信息跨域视图"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/14",
       "ast": {
         "op": "and",
@@ -684,7 +684,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/16",
       "ast": {
         "op": "and",
@@ -767,7 +767,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/18",
       "ast": {
         "op": "lte",
@@ -844,7 +844,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/20",
       "ast": {
         "op": "and",
@@ -981,7 +981,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/22",
       "ast": {
         "op": "and",
@@ -1070,7 +1070,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/24",
       "ast": {
         "op": "and",
@@ -1151,7 +1151,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/26",
       "ast": {
         "op": "and",
@@ -1270,7 +1270,7 @@
         "网络与计算"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/28",
       "ast": {
         "op": "and",
@@ -1378,7 +1378,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/30",
       "ast": {
         "op": "and",
@@ -1448,7 +1448,7 @@
         "网络与计算"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/32",
       "ast": {
         "op": "and",
@@ -1530,7 +1530,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/34",
       "ast": {
         "op": "and",
@@ -1631,7 +1631,7 @@
         "信息跨域视图"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/36",
       "ast": {
         "op": "and",
@@ -1727,7 +1727,7 @@
         "信息跨域视图"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/38",
       "ast": {
         "op": "or",
@@ -1792,7 +1792,7 @@
         "信息跨域视图"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/40",
       "ast": {
         "op": "and",
@@ -1870,7 +1870,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/42",
       "ast": {
         "op": "and",
@@ -1952,7 +1952,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/44",
       "ast": {
         "op": "and",
@@ -2037,7 +2037,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/46",
       "ast": {
         "op": "and",
@@ -2120,7 +2120,7 @@
         "法规与运行约束"
       ],
       "sourceDomain": "digital_twin",
-      "source": "/mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json",
+      "source": "AeroGraph/research/original-graph/decoded.json",
       "pointer": "/model/X/48",
       "ast": {
         "op": "and",

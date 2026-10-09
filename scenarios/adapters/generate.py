@@ -1,4 +1,4 @@
-"""Regenerate explicitly authored E1 scenarios; no live ontology builds."""
+"""Regenerate explicitly authored adapter scenarios; no live ontology builds."""
 
 from pathlib import Path
 from typing import Any
@@ -28,7 +28,7 @@ def main() -> None:
         MemoryRegistry(()),
         {
             "relations": [],
-            "provenance": {"author": "E1 explicitly authored backend demonstrations"},
+            "provenance": {"author": "explicitly authored backend demonstrations"},
             "normalizations": [],
             "exclusions": [],
             "producer_hints": {},
@@ -51,7 +51,7 @@ def main() -> None:
     }
     # All telemetry IDs are authored examples; these are not substituted values.
     px4_config: dict[str, Any] = {
-        "image": "aeroagentsim/px4-gazebo:dev-p2b",
+        "image": "aeroagentsim/px4-gazebo:dev",
         "host": "127.0.0.1",
         "port": 19001,
         "step_ns": 200_000_000,
@@ -90,7 +90,7 @@ def main() -> None:
         "tls": {"state": string, "phase": {"type": "integer"}, "program": string},
     }
     sumo_config: dict[str, Any] = {
-        "image": "aeroagentsim/sumo:dev-p3a-5",
+        "image": "aeroagentsim/sumo:dev",
         "host": "127.0.0.1",
         "port": 19002,
         "step_ns": 100_000_000,
@@ -117,7 +117,7 @@ def main() -> None:
         },
     }
     ns3_config: dict[str, Any] = {
-        "image": "aeroagentsim/ns3:dev-p4b",
+        "image": "aeroagentsim/ns3:dev",
         "host": "127.0.0.1",
         "port": 19003,
         "step_ns": 200_000_000,

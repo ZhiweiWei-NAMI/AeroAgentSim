@@ -1,13 +1,8 @@
 format: aeroagentsim.scenario/v1
 id: p1-scale
+# Public profile: committed snapshot plus explicitly authored scenario contracts.
+# These overlays do not claim to reproduce the full AeroGraph catalog.
 registry:
-  compile:
-    root: ${AEROAGENTSIM_AEROGRAPH_ROOT}
-    types:
-    - oo:UAV
-    fields:
-    - he.aircraft.position_enu_m
-    relations: []
   types: []
   fields:
   - id: aas.p1.velocity_enu_m_s
@@ -122,6 +117,7 @@ registry:
     he.aircraft.position_enu_m:
       frame: enu
       transform_revision: p1-local-1
+  snapshot: packs/aerograph.snapshot.json
 entities:
 - id: mover-0000
   type: oo:UAV

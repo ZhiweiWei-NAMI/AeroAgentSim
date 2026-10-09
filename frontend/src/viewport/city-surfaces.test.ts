@@ -12,12 +12,12 @@ const EXTENT = { west: -100, east: 100, south: -100, north: 100 };
 
 function pack(): MeshPackManifest {
   return {
-    schema_version: 'aero-bench.osm2world-mesh-pack/v1',
+    schema_version: 'aeroagentsim.osm2world-mesh-pack/v1',
     source: { asset_id: 'city-pack/source@1', size_bytes: 1 },
     generator: { revision: 'b'.repeat(40) },
     projection: { name: 'MetricMapProjection', axes: 'east-up-south', origin: ORIGIN },
     coordinate_contract: {
-      schema_version: 'aero-bench.osm2world-source-coordinates/v1',
+      schema_version: 'aeroagentsim.osm2world-source-coordinates/v1',
       recipe: 'source-node-bounds-local-Mercator-then-declared-origin-translation',
       converter_origin: ORIGIN,
       stored_translation_xz_m: TRANSLATION,

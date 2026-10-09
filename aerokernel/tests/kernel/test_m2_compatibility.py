@@ -1,4 +1,4 @@
-"""Replay the actual M1 bytes retained before any M2 implementation changes."""
+"""Replay the historical journal bytes retained for compatibility."""
 
 from pathlib import Path
 

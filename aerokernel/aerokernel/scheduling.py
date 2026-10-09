@@ -42,7 +42,7 @@ def wave_intents(
             "grant exceeds pinned microstep bound", instant=instant
         )
     if phase not in {"reset", "advance", "react", "sample"}:
-        raise KernelError("INVOCATION_PHASE", "unknown M1 call phase")
+        raise KernelError("INVOCATION_PHASE", "unknown invocation phase")
     canonical = tuple(
         sorted(store.partitions, key=lambda p: (store.partitions[p].engine_id, p))
     )

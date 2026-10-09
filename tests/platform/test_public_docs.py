@@ -21,7 +21,7 @@ def test_public_instructions_are_portable_and_links_exist() -> None:
     extras = set(re.findall(r"^([a-z][a-z-]*)\s*=", optional, re.MULTILINE))
     for path in paths:
         text = path.read_text()
-        assert "/mnt/data2/" not in text and "/home/weizhiwei/" not in text, path
+        assert "/mnt/" not in text and "/home/" not in text, path
         for requested in re.findall(r"\.\[([a-z,-]+)\]", text):
             assert set(requested.split(",")) <= extras, (path, requested)
         for target in re.findall(r"\]\(([^)\s]+)\)", text):

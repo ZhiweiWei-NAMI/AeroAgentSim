@@ -1,4 +1,4 @@
-"""Independent, public-API M1 review counterexamples; no production edits."""
+"""Independent, public-API counterexamples."""
 
 from dataclasses import replace
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from typing import Any, cast
 
@@ -22,6 +23,8 @@ def test_native_expanded_positive_negative_missing_first_true(
     document: dict[str, Any],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    if not os.environ.get("AEROAGENTSIM_AEROGRAPH_ROOT"):
+        pytest.skip("native AeroGraph differential oracle requires its source checkout")
     scenario = load_scenario(document)
     config = scenario.engines["threshold"]["config"]
     descriptor = scenario.registry.field(config["field"])

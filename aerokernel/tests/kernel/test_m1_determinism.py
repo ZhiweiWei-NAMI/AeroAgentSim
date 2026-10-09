@@ -1,4 +1,4 @@
-"""M1 determinism: literal canonical RNG fixtures, order/hash-seed independence.
+"""Determinism: literal canonical RNG fixtures, order/hash-seed independence.
 
 Expected values are authored literals: the canonical seed byte string, its
 SHA-256, the derived integer seed, first stream outputs, and the full toy

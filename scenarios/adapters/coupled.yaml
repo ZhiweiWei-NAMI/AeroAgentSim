@@ -3294,7 +3294,7 @@ engines:
   flight:
     plugin: px4_gazebo
     config:
-      image: aeroagentsim/px4-gazebo:dev-p2b
+      image: aeroagentsim/px4-gazebo:dev
       host: 127.0.0.1
       port: 19001
       step_ns: 200000000
@@ -3329,7 +3329,7 @@ engines:
   traffic:
     plugin: sumo
     config:
-      image: aeroagentsim/sumo:dev-p3a-5
+      image: aeroagentsim/sumo:dev
       host: 127.0.0.1
       port: 19002
       step_ns: 100000000
@@ -3366,7 +3366,7 @@ engines:
   radio:
     plugin: ns3
     config:
-      image: aeroagentsim/ns3:dev-p4b
+      image: aeroagentsim/ns3:dev
       host: 127.0.0.1
       port: 19003
       step_ns: 200000000

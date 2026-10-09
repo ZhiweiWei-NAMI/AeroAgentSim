@@ -8,7 +8,7 @@ python -m pip install -e ./aerokernel -e '.[server]'
 aeroagentsim demo traffic-accident
 ```
 
-Use `../aerokernel` for a current sibling development checkout. See [Install](install.md) for Python setup and Chromium system dependencies. The demo prints and opens a local URL on a free port and imports an editable workspace. Neither AeroGraph nor a separate asset pack is required.
+See [Install](install.md) for Python setup and Chromium system dependencies. The demo prints and opens a local URL on a free port and imports an editable workspace. Neither AeroGraph nor a separate asset pack is required.
 
 ## Tour the console
 

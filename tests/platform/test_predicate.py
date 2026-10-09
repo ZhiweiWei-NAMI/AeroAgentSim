@@ -15,12 +15,14 @@ from aeroagentsim.engines.common import bootstrap_owned, policies
 from aeroagentsim.platform import Simulation
 from aeroagentsim.platform.plugins import EngineBuild, EngineCatalog
 from aeroagentsim.scenario import ScenarioError, load_scenario
-from aeroagentsim.scenario.paths import source_path
 from aeroagentsim.services.projector import project
 
 
 def demo() -> dict[str, Any]:
-    return copy.deepcopy(load_scenario(Path("scenarios/predicates-demo.yaml")).document)
+    scenario = load_scenario(Path("scenarios/predicates-demo.yaml"))
+    result = copy.deepcopy(scenario.document)
+    result["registry"]["snapshot"] = str((scenario.base / result["registry"]["snapshot"]).resolve())
+    return result
 
 
 def full_journal(path: Path) -> Simulation:
@@ -310,15 +312,7 @@ def test_committed_relation_assertion_closure_and_causes(
         relation_profiles={
             "demo.R": {"source": "observations", "clock": ["canonical", "canonical"]}
         },
-        native_references=[
-            {
-                "path": str(
-                    source_path(
-                        "${AEROAGENTSIM_AEROGRAPH_ROOT}/semantic-directory/src/expanded_runtime.js"
-                    )
-                ),
-            }
-        ],
+        native_references=[],
     )
     sample = document["bindings"]["samples"][0]
     sample.update(

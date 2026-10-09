@@ -14,7 +14,7 @@ npm run build
 cd ..
 ```
 
-In a current development checkout, replace `./aerokernel` with `../aerokernel`. Install both editable packages into the same environment. On Windows, activate with `.venv/Scripts/activate`.
+Install both editable packages into the same environment. On Windows, activate with `.venv/Scripts/activate`.
 
 ## Camera dependencies
 
@@ -30,6 +30,8 @@ cd frontend
 npx playwright install --with-deps chromium
 cd ..
 ```
+
+Current Playwright downloads require a supported operating system (Ubuntu 22.04 or newer on Ubuntu). On older distributions, supply a compatible Chromium installation instead.
 
 To use an existing installation, set `AEROAGENTSIM_CHROMIUM` to its executable path. A missing executable is an error. Building the console creates `frontend/dist`; the default demo command requires that directory.
 

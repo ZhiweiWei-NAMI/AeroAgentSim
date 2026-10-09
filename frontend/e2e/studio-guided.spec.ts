@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {mkdirSync} from 'node:fs';
-const screenshots=process.env.AEROAGENTSIM_SCREENSHOT_DIR ?? '/tmp/aas-q/e3f/screenshots';
+const screenshots=process.env.AEROAGENTSIM_SCREENSHOT_DIR ?? 'test-results/studio/screenshots';
 test('real demo draft renders all guided steps, compiles and starts a run',async({page})=>{
  mkdirSync(screenshots,{recursive:true});
  const pageErrors:string[]=[];page.on('pageerror',error=>pageErrors.push(String(error)));

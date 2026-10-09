@@ -7,3 +7,5 @@ OSM-derived data is credited to **© OpenStreetMap contributors, ODbL 1.0**. Rea
 `AEROAGENTSIM_TRAFFIC_ASSET_ROOT` optionally selects a separately supplied high-detail pack. Those meshes and textures are not distributed in this repository. Use only assets whose terms permit your intended research and redistribution, and retain their attribution. The public demo does not require access to the AeroGraph repository.
 
 See [Install](docs/getting-started/install.md), [Views](docs/concepts/views.md) and the [traffic walkthrough](docs/examples/traffic-accident.md).
+
+Optional mesh packs use format `aeroagentsim.osm2world-mesh-pack/v1` and coordinate format `aeroagentsim.osm2world-source-coordinates/v1`. When using a previously generated pack, update its format labels to these names; mesh data and coordinates are unchanged.

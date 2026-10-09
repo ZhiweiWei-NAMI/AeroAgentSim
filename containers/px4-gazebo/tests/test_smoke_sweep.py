@@ -1,4 +1,4 @@
-"""P2b sweep-client tests against the ACTUAL workspace smoke.py (absolute importlib).
+"""Sweep-client tests against the ACTUAL workspace smoke.py (absolute importlib).
 
 No real sockets: Client/ready_client are replaced by a scripted FakeClient and
 sys.argv is mocked; smoke.main() only writes a JSON file to a temp dir.
@@ -99,7 +99,7 @@ class FakeClient:
 
 def run_main(argv, fake):
     """Patch ready_client + sys.argv, run smoke.main(), return (status, output)."""
-    with tempfile.TemporaryDirectory(prefix="p2b-test-") as directory:
+    with tempfile.TemporaryDirectory(prefix="sweep-test-") as directory:
         out = Path(directory) / "out.json"
         full = ["smoke.py", "--port", "19000", "--output", str(out)] + list(argv)
 

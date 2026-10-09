@@ -1,13 +1,11 @@
 import {createRequire} from 'node:module';
-import {homedir} from 'node:os';
-import {join} from 'node:path';
 const require=createRequire(new URL('../../frontend/package.json',import.meta.url));
 const {chromium,expect}=require('@playwright/test');
 const api=process.env.P1_API ?? 'http://127.0.0.1:8002';
 const response=await fetch(`${api}/v1/runs`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({scenario_path:'scenarios/p1-spectrum.yaml'})});
 if(!response.ok)throw Error(await response.text());
 const run=await response.json();
-const browser=await chromium.launch({executablePath:join(homedir(),'.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell'),headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader','--use-angle=swiftshader']});
+const browser=await chromium.launch({executablePath:process.env.AEROAGENTSIM_CHROMIUM,headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader','--use-angle=swiftshader']});
 try {
 const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];
 page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});page.on('pageerror',error=>errors.push(error.message));

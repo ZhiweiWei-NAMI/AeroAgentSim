@@ -17,7 +17,7 @@ def pinned(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     path = directory / "snapshot.json"
     scenario.compiled.write_snapshot(path)
     document = copy.deepcopy(scenario.document)
-    document["registry"].pop("compile")
+    document["registry"].pop("compile", None)
     document["registry"]["snapshot"] = str(path)
     return document
 

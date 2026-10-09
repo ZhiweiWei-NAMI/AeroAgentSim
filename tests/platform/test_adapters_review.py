@@ -40,7 +40,7 @@ def test_h8_dynamic_scalar_subject_is_captured() -> None:
     cfg["machines"][0]["states"]["finished"]["on_enter"][0]["payload"] = {
         "subject": "new-receiver"
     }
-    simulation = Simulation(load_scenario(document))
+    simulation = Simulation(load_scenario(document, base=Path("scenarios")))
     try:
         simulation.start()
         view = simulation.run_until(100_000_000)
@@ -147,7 +147,7 @@ def test_records_preserve_native_clock_in_configured_stamp_slot(
         )
 
     monkeypatch.setattr(EngineCatalog, "build", factory)
-    simulation = Simulation(load_scenario(document))
+    simulation = Simulation(load_scenario(document, base=Path("scenarios")))
     try:
         simulation.start()
         view = simulation.run_until(30_000_000)

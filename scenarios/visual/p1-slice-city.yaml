@@ -3,28 +3,51 @@
 format: aeroagentsim.scenario/v1
 id: p1-slice
 registry:
-  compile:
-    root: ${AEROAGENTSIM_AEROGRAPH_ROOT}
-    types:
-    - oo:UAV
-    - oo:Order
-    - oo:MetricObservation
-    fields:
-    - he.aircraft.position_enu_m
-    - oo:shared.observationRecord.acquisitionTime
-    - oo:shared.observationRecord.availableTime
-    - oo:shared.observationRecord.observedSubjectRef
-    relations:
-    - oo:relation:observation-subject
   types:
   - id: aas:KinematicObservation
     parents:
     - oo:MetricObservation
     abstract: false
+  - id: oo:MetricObservation
+    parents:
+    - oo:ObservationRecord
+    abstract: false
   fields:
+  - id: oo:shared.observationRecord.acquisitionTime
+    type: oo:ObservationRecord
+    schema: &id001
+      type: record
+      members:
+        clockRef:
+          type: string
+        value:
+          type: number
+      required:
+      - clockRef
+      - value
+      extra: false
+    metadata:
+      role: observation
+      clock: canonical
+      unit: s
+  - id: oo:shared.observationRecord.availableTime
+    type: oo:ObservationRecord
+    schema: *id001
+    metadata:
+      role: observation
+      clock: canonical
+      unit: s
+  - id: oo:shared.observationRecord.observedSubjectRef
+    type: oo:ObservationRecord
+    schema:
+      type: ref
+      target_type: oo:ModelObject
+    metadata:
+      role: observation
+      clock: canonical
   - id: aas.p1.velocity_enu_m_s
     type: oo:UAV
-    schema: &id001
+    schema: &id002
       type: vector
       items:
         type: number
@@ -58,7 +81,7 @@ registry:
       clock: canonical
   - id: aas.p1.position_sample
     type: aas:KinematicObservation
-    schema: *id001
+    schema: *id002
     metadata:
       unit: m
       frame: enu
@@ -81,10 +104,10 @@ registry:
     schema:
       type: record
       members:
-        entity: &id002
+        entity: &id003
           type: string
-        machine: *id002
-        target: *id001
+        machine: *id003
+        target: *id002
         subject:
           type: ref
           target_type: oo:UAV
@@ -93,23 +116,23 @@ registry:
       - machine
       - target
       extra: false
-    result_schema: &id003
+    result_schema: &id004
       type: record
       members:
-        entity: *id002
-        position: *id001
-        reason: *id002
+        entity: *id003
+        position: *id002
+        reason: *id003
       required: []
       extra: false
-    feedback_schema: *id003
+    feedback_schema: *id004
     cancel_support: true
   - id: aas.motion.hold
     kind: command
-    schema: &id004
+    schema: &id005
       type: record
       members:
-        entity: *id002
-        machine: *id002
+        entity: *id003
+        machine: *id003
         subject:
           type: ref
           target_type: oo:UAV
@@ -117,23 +140,23 @@ registry:
       - entity
       - machine
       extra: false
-    result_schema: *id003
-    feedback_schema: *id003
+    result_schema: *id004
+    feedback_schema: *id004
     cancel_support: true
   - id: aas.motion.stop
     kind: command
-    schema: *id004
-    result_schema: *id003
-    feedback_schema: *id003
+    schema: *id005
+    result_schema: *id004
+    feedback_schema: *id004
     cancel_support: true
   - id: aas.motion.arrived
     kind: event
     schema:
       type: record
       members:
-        entity: *id002
-        machine: *id002
-        position: *id001
+        entity: *id003
+        machine: *id003
+        position: *id002
       required:
       - entity
       - machine
@@ -144,7 +167,7 @@ registry:
     schema:
       type: record
       members:
-        machine: *id002
+        machine: *id003
       required:
       - machine
       extra: false
@@ -153,10 +176,10 @@ registry:
     schema:
       type: record
       members:
-        entity: *id002
-        from_ns: &id005
+        entity: *id003
+        from_ns: &id006
           type: integer
-        to_ns: *id005
+        to_ns: *id006
       required:
       - entity
       - from_ns
@@ -181,6 +204,7 @@ registry:
     he.aircraft.position_enu_m:
       frame: enu
       transform_revision: p1-local-1
+  snapshot: ../packs/aerograph.snapshot.json
 entities:
 - id: uav-1
   type: oo:UAV

@@ -33,12 +33,12 @@ export const flowTest=base.extend({
   try{await use(page);expect(errors).toEqual([]);succeeded=true;}finally{
    const video=page.video();
    if(testInfo.status!=='passed'){
-    const debug=join(process.env.AEROAGENTSIM_DOCS_VIDEO_DIR??'/tmp/aas-q/e3e/videos',basename(testInfo.file,'.spec.ts'));mkdirSync(debug,{recursive:true});
+    const debug=join(process.env.AEROAGENTSIM_DOCS_VIDEO_DIR??'test-results/docs/videos',basename(testInfo.file,'.spec.ts'));mkdirSync(debug,{recursive:true});
     await page.screenshot({path:join(debug,'failure.png')});writeFileSync(join(debug,'failure.txt'),await page.locator('body').innerText());
    }
    await page.close();
    if(video&&clock.segments.length&&succeeded&&testInfo.status==='passed'){
-    const root=process.env.AEROAGENTSIM_DOCS_VIDEO_DIR??'/tmp/aas-q/e3e/videos';
+    const root=process.env.AEROAGENTSIM_DOCS_VIDEO_DIR??'test-results/docs/videos';
     const flow=basename(testInfo.file,'.spec.ts'),path=join(root,flow,'video.webm');mkdirSync(dirname(path),{recursive:true});
     await video.saveAs(path);
     const manifest=join(root,'recordings.json');const data=existsSync(manifest)?JSON.parse(readFileSync(manifest,'utf8')):{};

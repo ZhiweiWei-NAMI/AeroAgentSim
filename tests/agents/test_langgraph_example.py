@@ -120,7 +120,9 @@ def test_live_accident_graph_and_zero_model_call_replays(
         "mode": "live",
         "profile": "default",
     }
-    monkeypatch.setenv("AAS_LLM_MODEL", "glm-5.3-flash")
+    model = os.environ.get("AAS_LLM_MODEL")
+    if not model:
+        pytest.skip("live test requires an explicitly configured AAS_LLM_MODEL")
     cfg["budget"]["wall_timeout_s"] = 300
     cfg["budget"]["max_tokens"] = 24000
     calls = 0
@@ -169,7 +171,7 @@ def test_live_accident_graph_and_zero_model_call_replays(
             and not recovered.incomplete
         )
         metrics = {
-            "model": "glm-5.3-flash",
+            "model": model,
             "calls": calls,
             "graph_replay_calls": 0,
             "wal_replay_calls": 0,

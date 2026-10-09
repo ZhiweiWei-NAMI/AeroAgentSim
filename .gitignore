@@ -83,16 +83,9 @@ frontend/yarn-error.log*
 
 # --- Local tooling ---
 .clinerules
-=1.21.0
-# dev_plan/
 runs/
 tests/agents/runs/
 tests/agents/frontend-build/
-tests/agents/dsh-home/
-dsh-home/
 .pytest_tmp/
-glm-review/
-glm-cases/
-.glm/
 containers/*/standalone/**/*metrics*.json
 containers/*/standalone/*.jsonl.gz

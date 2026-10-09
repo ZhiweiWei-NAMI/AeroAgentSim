@@ -37,10 +37,10 @@ test('fixture run synchronizes graph, 3D, identity and microstep while live tail
   await expect(page.locator('.chain-node')).toContainText('done');
   await page.getByRole('button',{name:/vehicle → vehicle-1/}).click();
   await expect(page.getByTestId('inspector')).toContainText('[25,35,10]');
-  mkdirSync('/tmp/aas-q/e/screenshots',{recursive:true});
+  mkdirSync('test-results/console/screenshots',{recursive:true});
   await page.evaluate(()=>{window.scrollTo(0,0);document.querySelector('.dual-graph-pane')?.scrollTo(0,0);});
-  await page.screenshot({path:'/tmp/aas-q/e/screenshots/console-dual.png',fullPage:true});
-  await page.screenshot({path:'/tmp/aas-q/e/screenshots/console-dual.jpg',fullPage:true,type:'jpeg',quality:70});
+  await page.screenshot({path:'test-results/console/screenshots/console-dual.png',fullPage:true});
+  await page.screenshot({path:'test-results/console/screenshots/console-dual.jpg',fullPage:true,type:'jpeg',quality:70});
   expect(errors).toEqual([]);
 });
 
@@ -90,7 +90,7 @@ test('Studio edits one chain model and retains unsupported content through serve
   expect(saved.scenario.behaviours[0].future_extension).toEqual({keep:false,value:null});
   expect(saved.scenario.behaviours[0].chains.response.transitions[0].future_transition).toEqual({keep:true});
   await expect(page.getByRole('button',{name:'Run now'})).toBeDisabled();
-  await page.locator('.behaviour-editor').screenshot({path:'/tmp/aas-q/e/screenshots/console-authoring.jpg',type:'jpeg',quality:65});
+  await page.locator('.behaviour-editor').screenshot({path:'test-results/console/screenshots/console-authoring.jpg',type:'jpeg',quality:65});
   await page.getByRole('button',{name:'raw',exact:true}).click();
   await page.getByLabel('Behaviour package JSON').fill('{"id":');
   await expect(page.getByRole('button',{name:'Validate package on server'})).toBeDisabled();
