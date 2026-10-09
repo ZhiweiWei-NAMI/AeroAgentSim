@@ -97,6 +97,8 @@ def create_app(
 
     @app.post("/v1/runs", status_code=201)
     async def start(request: Request) -> dict[str, Any]:
+        run_id = f"run-{uuid.uuid4().hex}"
+        path = (root / run_id).resolve()
         try:
             body = await request.json()
             if not isinstance(body, dict):
@@ -128,13 +130,14 @@ def create_app(
                 scenario = await asyncio.to_thread(
                     load_scenario, document, base=document_base
                 )
+            from .artifacts import scope_capture_storage
+
+            scenario = scope_capture_storage(scenario, path)
             # Validate engine declarations/bindings before returning a created run.
             validation = Simulation(scenario)
             validation.close()
         except Exception as exc:
             raise HTTPException(422, str(exc)) from exc
-        run_id = f"run-{uuid.uuid4().hex}"
-        path = (root / run_id).resolve()
         if not path.is_relative_to(root):
             raise HTTPException(422, "run storage path escapes configured output root")
         storage = RunStorage(path)
@@ -269,6 +272,10 @@ def create_app(
     @app.post("/v1/runs/{run_id}/watermark")
     async def watermark(run_id: str, body: dict[str, Any]) -> dict[str, Any]:
         return await asyncio.to_thread(worker_input_call, run_id, "watermark", body)
+
+    from .artifacts import mount_artifacts
+
+    mount_artifacts(app, directory, worker_input_call)
 
     @app.post("/v1/runs/{run_id}/{operation}")
     def control(run_id: str, operation: str) -> dict[str, Any]:

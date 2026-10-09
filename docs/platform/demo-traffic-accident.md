@@ -254,3 +254,35 @@ The original city geodetic anchor/vertical datum, complete asset redistribution 
 Q6 operator semantics/exports, Q7 graph/store surface and Q9 loader/ingress API may change; their final revisions require pinning. Native energy/arrival/weather coupling differs from analytic defaults. Automatic dynamic sampled contexts, the new package/import composition, online decision runner, camera artifact contract and all proposed `traffic.*` descriptors are work to implement. The concrete new thresholds, deadlines, hard region/energy gates, speed/dwell evidence and minimum-ETA policy are explicit research-model changes; they do not reproduce historical timings by definition.
 
 D1 validation is source/contract review and Markdown/diff checks only. No runtime, ruff, mypy, pytest, frontend, LLM or Docker success is claimed. Two concurrent requested GLM writer invocations and both retries were launched with `workbuddy/glm-5.3-flash`, 131072 output budget, no effort, separate scratch ownership and project context; all exited 1 with WorkBuddy proxy transport failure before a model response or draft. Logs/configurations remain under `/tmp/aas-q/d1/`; no completed GLM session/result was available for integration. Only `docs/platform/RUNTIME.md` and this file are repository deliverables.
+
+### Job D implementation and validation (2026-10-08)
+
+Job D adds the generic capture metadata owner, persistent Playwright bridge, run-local hashed PNG storage, additive artifact/upload routes, exact committed-prefix scene route, replay MP4 recorder and journal-derived Markdown exporter. [observations.md](observations.md) specifies the typed contracts, ownership/config, E's canvas API and F's exact entry-point/package-data requirements. No frontend, worker, projector, shared packaging, domain pack or old demo source was changed. Generated runs, media and logs remain under `/tmp/aas-q/d/`.
+
+Scope differences and reasons:
+
+- The initial capture engine is an explicitly blocking render profile. It renders the requested committed cut while simulation time waits; online motion during camera latency requires an independently scheduled camera source. Upload admission uses the existing Q9 ingress and never implicitly closes a stream watermark. Generic upload verification emits a separate typed event; B's behaviour owner must validate incident/dwell/current-request evidence before edge/task acceptance. A renderer timeout has typed result `timeout` inside a failed kernel receipt because the kernel has no terminal timeout status.
+- The real-image gate uses a built small Three.js viewer with recorded kernel poses and hashed HTML/Three assets. It exercises exact cuts, camera changes, large integer times, actual WebGL pixels and storage; E/F must attach the same API to the final console. City visual parity, historical 72-view parity, five-role live recording and native SUMO/PX4 gates are not claimed by this isolated job.
+- Recorder/report entry points are offline CLIs. A background export-job HTTP API is deferred to composed service integration; the additive service hook here covers artifact storage/upload and live committed-prefix reads. Missing ffmpeg/encoder/render tools remain explicit failures. Installed ffmpeg lacks libx264, so media tests explicitly select `mpeg4`; there is no codec fallback. Optional DOCX/PDF needs installed pandoc/LaTeX, unavailable here and not executed.
+- F owns `pyproject.toml`: capture registration and `.mjs` package data are provided as exact metadata in observations.md, rather than editing F's file. No new npm dependency is needed.
+
+Validation used the worktree sources and prescribed Python 3.11 interpreter. Final observation gates pass **28 tests**, including real Chromium PNG, stale/forged requests, invalid typed requests, corrupt bytes/metadata, REST integrity/admission, zero-render replay, large source ns, partial/gapped indexes, actual browser-to-MP4 encoding and decoded frame counts. Affected non-Docker platform/adapter/agent/pack/authoring suites pass **400 tests**, with **4 Docker tests deselected**. The initial broad run lacked `AEROAGENTSIM_AEROGRAPH_ROOT`; it failed fixture setup. The corrected run reads AeroGraph inputs only and passes. Ruff and strict mypy pass for all changed Python files (17 source files); frontend checks were not run because frontend was untouched. No Docker gate was run.
+
+Exact successful commands (task-specific variables below only shorten the fixed paths):
+
+```bash
+task_d_python=/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python
+export PYTHONPATH=src
+export MYPYPATH=../aerokernel
+export AEROAGENTSIM_AEROGRAPH_ROOT=/mnt/data2/weizhiwei/AeroGraph
+export AEROAGENTSIM_FFMPEG=/usr/share/anaconda3/bin/ffmpeg
+export AEROAGENTSIM_CHROMIUM=/home/weizhiwei/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+TMPDIR=/tmp/aas-q/d/tmp "$task_d_python" -m pytest -q -p no:cacheprovider -m 'not docker' tests/observations --basetemp=/tmp/aas-q/d/pytest-observations-final3
+"$task_d_python" -m pytest -q -p no:cacheprovider -m 'not docker' tests/platform tests/adapters tests/agents tests/packs tests/authoring --basetemp=/tmp/aas-q/d/pytest-platform-env
+"$task_d_python" -m ruff check src/aeroagentsim/observations src/aeroagentsim/services/artifacts.py src/aeroagentsim/services/app.py tools/demos tests/observations
+MYPYPATH=src:../aerokernel:. "$task_d_python" -m mypy --strict --explicit-package-bases src/aeroagentsim/observations src/aeroagentsim/services/artifacts.py src/aeroagentsim/services/app.py tools/demos tests/observations
+```
+
+Mypy's additional source roots disambiguate the tools/tests namespace packages; kernel imports still resolve to the prescribed sibling checkout. Logs are `observations-final3.log` and `platform-tests-env.log` under `/tmp/aas-q/d/`.
+
+Two GLM writer sessions ran concurrently with separate report/recorder ownership and project context, using `workbuddy/glm-5.3-flash`, 131072 output budget and no effort. They produced reasoning/tool activity but no usable files before being stopped; their drafts are not claimed as completed. Two subsequent concurrent, read-only GLM audits completed with exit 0. Their actual outputs were reviewed: index continuity/closed-prefix and explicit decision-schema concerns are covered, while incorrect claims about the speed formula and already-checked artifact hashes were rejected. Session/config/output records remain under `/tmp/aas-q/d/dsh-home/`, `glm-report/`, `glm-recorder/`, `glm-check-record/` and `glm-check-report/`.

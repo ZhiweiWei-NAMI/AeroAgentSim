@@ -1,0 +1,41 @@
+<!doctype html><meta charset="utf-8"><title>Exact-cut Three.js test viewer</title>
+<script type="module">
+import * as THREE from '/three.js';
+const manifest = await (await fetch('/scene.json')).json();
+const commits = await (await fetch('/feed.json')).json();
+const integerText = value => typeof value === 'object' && value !== null && '$integer' in value ? value.$integer : String(value);
+const losslessInteger = value => BigInt(value) > BigInt(Number.MAX_SAFE_INTEGER) ? { $integer: String(value) } : Number(value);
+const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setClearColor(0x17324c);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const subject = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshBasicMaterial({ color: 0xe97524 }));
+scene.add(subject);
+window.aeroCapture = { async render({ request, label }) {
+  if (request.camera.test_delay_ms) await new Promise(resolve => setTimeout(resolve, request.camera.test_delay_ms));
+  if (request.run_id !== manifest.run_id || JSON.stringify(request.actor) !== JSON.stringify(manifest.actor)) throw Error('wrong actor/run');
+  if (request.asset_digest !== manifest.asset_digest) throw Error('wrong scene assets');
+  const cut = commits.find(c => c.commitIndex === request.source_cut.index);
+  if (!cut || cut.at.ns !== integerText(request.source_cut.instant[0]) || cut.at.microstep !== request.source_cut.instant[1]) throw Error('wrong cut');
+  const prefix = commits.filter(c => c.commitIndex <= cut.commitIndex);
+  const facts = prefix.flatMap(c => c.facts).filter(f => f.entity.id === request.actor.id && f.entity.generation === request.actor.generation && f.fieldId === 'pose');
+  const fact = facts.at(-1);
+  if (!fact) throw Error('missing recorded pose');
+  // No live clock/interpolation: a recorded ENU fact positions the scene.
+  subject.position.set(fact.value[0], fact.value[2], -fact.value[1]);
+  const preset = request.camera;
+  if (!preset.eye || !preset.target || typeof preset.fov !== 'number' || !preset.revision) throw Error('camera manifest incomplete');
+  const camera = new THREE.PerspectiveCamera(preset.fov, request.width / request.height, 0.1, 100);
+  camera.position.fromArray(preset.eye);
+  camera.lookAt(new THREE.Vector3().fromArray(preset.target));
+  renderer.setSize(request.width, request.height);
+  renderer.render(scene, camera);
+  await new Promise(resolve => requestAnimationFrame(resolve));
+  const canvas = document.createElement('canvas'); canvas.width = request.width; canvas.height = request.height;
+  const context = canvas.getContext('2d'); context.drawImage(renderer.domElement, 0, 0);
+  if (label) { context.fillStyle = '#fff'; context.font = '10px monospace'; context.fillText(label, 2, request.height - 4); }
+  return { request: { ...request, source_cut: { index: cut.commitIndex, instant: [losslessInteger(cut.at.ns), cut.at.microstep] },
+                      actor: manifest.actor, asset_digest: manifest.asset_digest }, png_data_url: canvas.toDataURL('image/png') };
+}};
+</script>
