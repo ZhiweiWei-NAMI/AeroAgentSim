@@ -346,6 +346,7 @@ def build_wave(
         candidate.state.intents[ref] = {
             **candidate.state.intents[ref],
             "status": "returned",
+            "operation_refs": tuple(local),
         }
         candidate.state.pending_intents.pop(partition)
     from .relations import validate_relations

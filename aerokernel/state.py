@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, overload
 
 from .engine import Batch, Partition
 from .errors import KernelError
-from .ids import EntityRef, FieldKey, FramePrefix, ItemRef
+from .ids import EntityRef, FieldKey, FramePrefix, ItemRef, LocalCause
 from .queues import TimerQueue, WorkQueue
 from .storage import AppendList, Overlay, RecordLog
 from .time import Cut, Instant, Interval, Stamp
@@ -583,6 +583,28 @@ class StateView:
             if not related and not control:
                 raise KernelError("READ_UNDECLARED", "unrelated action read")
         return state
+
+    def committed_operation(self, invocation: ItemRef, local: LocalCause) -> ItemRef:
+        """Resolve an own committed proposal from its original invocation.
+
+        LocalCause alone is invocation-local. Retain it with invocation_ref to
+        learn the actual publication reference later, without predicting IDs or
+        waiting for a message echo. Resolution grants no additional cause scope.
+        """
+        intent = self._store.intents.get(invocation)
+        if intent is None:
+            raise KernelError("CAUSE_UNKNOWN", "unknown invocation reference")
+        if self.partition is not None and intent["partition"] != self.partition:
+            raise KernelError("CAUSE_STATE_SCOPE", "another partition's invocation")
+        if intent["status"] != "returned":
+            raise KernelError("CAUSE_UNCOMMITTED", "invocation has not committed")
+        refs = intent["operation_refs"]
+        if local.index >= len(refs):
+            raise KernelError("CAUSE_LOCAL", "local operation does not exist")
+        ref: ItemRef = refs[local.index]
+        if ref.record_index > self.cut.index:
+            raise KernelError("CAUSE_FUTURE", "operation exceeds read cut")
+        return ref
 
     def sample_frames(
         self, context_id: str, known_at: Cut | None = None

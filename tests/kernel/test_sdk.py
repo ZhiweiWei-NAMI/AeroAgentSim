@@ -45,6 +45,62 @@ def test_public_sdk_facade():
     )
 
 
+def test_committed_operation_resolves_before_echo_with_ownership_and_cut_bounds():
+    from aerokernel.ids import LocalCause
+    from aerokernel.rpc import _projection, _view
+    from aerokernel.state import StateView
+    from aerokernel.values import ResourceBudget
+
+    class Evidence(ContextEngine):
+        def bootstrap(self, ctx):
+            self.invocation = ctx.view.invocation_ref
+            self.local = ctx.emit("event", 7, target="p")
+            self.before = ctx.view.cut
+            ctx.wake_at(1)
+
+        def on_inputs(self, ctx):
+            if any(d.kind == "timer" for d in ctx.dirty):
+                assert not ctx.inbox  # The event echo is still ten ns away.
+                self.origin = ctx.view.committed_operation(self.invocation, self.local)
+                remote = _view(_projection(ctx.view, self.partitions), ResourceBudget())
+                assert (
+                    remote.committed_operation(self.invocation, self.local)
+                    == self.origin
+                )
+                with pytest.raises(KernelError, match="CAUSE_LOCAL"):
+                    ctx.view.committed_operation(self.invocation, LocalCause(100))
+                ctx.inputs = [self.origin]
+                ctx.emit("event", 8, target="p")
+
+    engine = Evidence(
+        Partition("p", "e", emits=("event",), message_targets=("p",), message_lag_ns=10)
+    )
+    k = bind(engine, fields=False)
+    k.start()
+    k.run_until(1)
+    emissions = [
+        item
+        for record in k.records
+        for item in record["items"]
+        if item["kind"] == "operation" and "message" in item
+    ]
+    from aerokernel.codec import decode_record
+
+    assert decode_record(emissions[0]["message"]).origin == engine.origin
+    assert decode_record(emissions[1]["causes"]) == (engine.origin,)
+    with pytest.raises(KernelError, match="CAUSE_FUTURE"):
+        k.view(engine.before).committed_operation(engine.invocation, engine.local)
+    with pytest.raises(KernelError, match="CAUSE_STATE_SCOPE"):
+        StateView(k._store, partition="other").committed_operation(
+            engine.invocation, engine.local
+        )
+    rebuilt = replay(k.journal.bytes)
+    assert (
+        rebuilt.view().committed_operation(engine.invocation, engine.local)
+        == engine.origin
+    )
+
+
 REF = EntityRef("sdk", "e", "entity", 0, "T")
 POLICY = FactPolicy(
     lambda now: Stamp("canonical", now.ns, 1, "canonical"),
