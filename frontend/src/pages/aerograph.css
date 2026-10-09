@@ -61,7 +61,7 @@
 .aerograph-details-pre { max-height: 420px; overflow: auto; margin: 0; font-size: var(--csl-fs-sm); background: var(--csl-navy-900); color: #dbe6ee; border-radius: 6px; padding: var(--csl-sp-3); }
 
 .aerograph-tree-label {display:flex;justify-content:space-between;gap:8px;width:100%;font-size:12px;line-height:1.5}
-.aerograph-tree-label>span:first-child {white-space:normal;overflow-wrap:anywhere}
+.aerograph-tree-label>span:first-child {white-space:nowrap;overflow-wrap:normal}
 .aerograph-tree .ant-tree-node-content-wrapper {min-width:0;flex:1}
 .aerograph-tree {position:sticky;top:76px}
 .aerograph-tree-body {max-height:70vh}
@@ -78,4 +78,7 @@
 .aerograph-title h2 {font-size:23px;letter-spacing:-.4px}
 .aerograph-title .aerograph-cn {font-size:14px}
 .aerograph-title {gap:10px}
-@media(max-width:1300px){.aerograph-layout {grid-template-columns:250px minmax(0,1fr)}}
+@media(max-width:1300px){.aerograph-layout {grid-template-columns:300px minmax(0,1fr)}}
+
+/* Deep AeroGraph ancestry keeps readable labels at the recording width. */
+.aerograph-tree .ant-tree-indent-unit {width:16px}

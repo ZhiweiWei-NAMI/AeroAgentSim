@@ -32,6 +32,8 @@
     "src",
     "vite.config.ts",
     "e2e/traffic-console.spec.ts",
-    "playwright.console.config.ts"
+    "playwright.console.config.ts",
+    "e2e/flows",
+    "playwright.flows.config.ts"
   ]
 }

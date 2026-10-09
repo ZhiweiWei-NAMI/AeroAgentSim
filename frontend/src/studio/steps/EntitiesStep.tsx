@@ -25,6 +25,7 @@ const BG = 'background';
 
 interface FieldDefLike extends Record<string,unknown> { id: string; type?: string; schema?: Json; metadata?: Json }
 export interface EntitiesStepProps {
+  initialEntityId?: string;
   scenario: Row;
   onChange: (scenario: Row) => void;
   api: StudioApi;
@@ -102,10 +103,10 @@ function FactEditor({ value, schema, schemas, onWrite }: { value: Json; schema?:
 /** Readable root label per AeroGraph type family; unknown types keep their own ID as the group name. */
 const groupTitle = (typeId: string, types: Array<{ id: string; name?: string }>): string => typeLabel(typeId, types);
 
-export function EntitiesStep({ scenario, onChange, api, types: catalogTypes, fields: catalogFields, schemas: catalogSchemas }: EntitiesStepProps) {
+export function EntitiesStep({ scenario, onChange, api, initialEntityId, types: catalogTypes, fields: catalogFields, schemas: catalogSchemas }: EntitiesStepProps) {
   const [query, setQuery] = useState('');
   const [hideBackground, setHideBackground] = useState(false);
-  const [selected, setSelected] = useState<{ id: string; type: string } | null>(null);
+  const [selected, setSelected] = useState<{ id: string; type: string } | null>(()=>initialEntityId?(scenario.entities as Array<{id:string;type:string}>).find(entity=>entity.id===initialEntityId)??null:null);
   const [detail, setDetail] = useState<TypeDetail>();
   const [detailBusy, setDetailBusy] = useState(false);
   const [detailError, setDetailError] = useState('');

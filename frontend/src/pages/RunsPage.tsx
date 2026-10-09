@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Input, Select, Space, Table, Tag } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import type { EntityKey } from '../contracts/viewer-feed';
-import { HttpViewerFeed, RunsApi, type RunInfo } from '../feeds/http';
+import { awaitRunConfiguration, HttpViewerFeed, RunsApi, type RunInfo } from '../feeds/http';
 import { TemporalFeedStore as FeedStore } from '../feeds/temporal-store';
 import { displayTime } from './display-time';
 import { ConceptHelp } from '../console/ConceptHelp';
@@ -60,10 +60,10 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
       if (abort.signal.aborted) return;
       if (header.epoch === undefined || header.kernelRunId === undefined) {
         try {
-          const configuration = await api.request(`/v1/studio/runs/${encodeURIComponent(runId)}/configuration`, {signal:abort.signal}) as {service_run_id:string;kernel_run_id:string;epoch:string};
+          const configuration = await awaitRunConfiguration(api, runId, abort.signal) as {service_run_id:string;kernel_run_id:string;epoch:string};
           if (configuration.service_run_id !== runId || typeof configuration.epoch !== 'string' || typeof configuration.kernel_run_id !== 'string' || header.epoch!==undefined&&header.epoch!==configuration.epoch) throw Error('Run configuration identity disagrees with feed');
           header.epoch = configuration.epoch; header.kernelRunId = configuration.kernel_run_id;
-        } catch (problem) { if (!abort.signal.aborted) setError(`Run identity unavailable: ${String(problem)}`); }
+        } catch (problem) { throw Error(`Run identity unavailable: ${String(problem)}`); }
       }
       if (abort.signal.aborted) return;
       const store = new FeedStore(header), clock = new PlaybackClock(header.start.ns, header.end?.ns ?? header.start.ns);

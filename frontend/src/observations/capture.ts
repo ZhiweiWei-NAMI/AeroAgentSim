@@ -102,7 +102,8 @@ export async function renderCapture(api: RunsApi, assetManifestUrl: string, inpu
     const entity = store.entities.get(entityId(key)); if (!entity || entity.typeId !== actor.type_id) throw Error('Capture actor generation/type absent at source cut');
     store.select(key); header = await loadAssets(request.asset_digest, assetManifestUrl, header, abort.signal, blobs);
     const cameraManifest = object(request.camera);
-    const supported = new Set(['revision', 'preset', 'eye', 'target', 'fov', 'near', 'far', 'frame', 'anchor', 'snapshot']);
+    // Old camera descriptions may carry this annotation; it has no rendering or verification role.
+    const supported = new Set(['revision', 'preset', 'eye', 'target', 'fov', 'near', 'far', 'frame', 'anchor', 'snapshot', 'provenance']);
     if (Object.keys(cameraManifest).some(name => !supported.has(name)) || typeof cameraManifest.revision !== 'string' || !cameraManifest.revision) throw Error('Unsupported / incomplete capture camera manifest');
     if (typeof cameraManifest.fov !== 'number' || !(cameraManifest.fov > 0 && cameraManifest.fov < 180)) throw Error('Invalid capture camera fov');
     let eye: [number,number,number], target: [number,number,number];

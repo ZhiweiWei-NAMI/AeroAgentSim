@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import type { EntityKey } from '../contracts/viewer-feed';
 import type { TemporalFeedStore } from '../feeds/temporal-store';
-import { RunsApi } from '../feeds/http';
+import { awaitRunConfiguration, RunsApi } from '../feeds/http';
 import { stringifyLossless } from '../feeds/lossless-json';
 import { Details } from '../console/Details';
 import { RunShortcuts } from '../console/shortcuts';
@@ -71,7 +71,7 @@ export function RunOperations({api,runId,store,onSelect,onSeek,mode,interactive=
   const event=injection&&messages.find(row=>row.id===injection.emits);
   const definitions=mapping(store.header.runtimeRegistry)&&mapping(store.header.runtimeRegistry.schemas)?store.header.runtimeRegistry.schemas:{};
   useEffect(()=>{const declared=store.header.behaviour?.injectionPoints??store.header.behaviour?.injection_points;if(declared)setPoints(declared);
-    const abort=new AbortController();void api.request(`/v1/studio/runs/${encodeURIComponent(runId)}/configuration`,{signal:abort.signal}).then(value=>{
+    const abort=new AbortController();void awaitRunConfiguration(api, runId, abort.signal).then(value=>{
       if(!mapping(value)||!mapping(value.scenario))throw Error('Run configuration is malformed');
       if(!abort.signal.aborted){setPoints(injectionPointsFromScenario(value.scenario));if(value.scenario.id==='traffic-accident'){const timing=operatorTiming(value.scenario);operatorStep.current=timing.step;const until=mapping(value.scenario.run)?value.scenario.run.until_ns:undefined;const end=typeof until==='number'&&Number.isSafeInteger(until)?String(until):mapping(until)?until.$integer:undefined;if(typeof end!=='string'||!/^(0|[1-9]\d*)$/.test(end))throw Error('Operator run limit must be a declared exact nonnegative integer');operatorEnd.current=BigInt(end);const recorded=store.commits.at(-1);operatorNs.current=recorded&&BigInt(recorded.at.ns)>timing.initial?BigInt(recorded.at.ns):timing.initial;setHorizon(operatorNs.current.toString());setOperator(true);}}
     }).catch(problem=>{if(!abort.signal.aborted)setError(String(problem));});return()=>abort.abort();

@@ -9,17 +9,17 @@ import { readableLabel } from './inspection-format';
 import { displayTime } from './display-time';
 import './agent-console.css';
 
-const SCHEMA_ID = 'aas.agent.record';
-const PHASES = ['observation', 'prompt', 'response', 'validation', 'command', 'failure', 'finished', 'receipt'] as const;
+const RECORD_SCHEMAS = new Set(['aas.agent.record', 'aas.langgraph.record']);
+const PHASES = ['observation', 'prompt', 'response', 'model_call', 'output', 'validation', 'command', 'failure', 'finished', 'receipt'] as const;
 type PhaseName = typeof PHASES[number];
 
 interface ObservedField { name: string; value: string; entity?: string }
 interface ProposedCall { callId: string; schema: string; target: string; payload: unknown; summary: string; journalReceipts: Array<{ status: string; result: unknown }> }
 interface ActualReceipt { commandId: string; callId: string; status: string; result: unknown }
-interface AgentDecision {
+export interface AgentDecision {
   decisionId: string; simNs: string;
   phases: Array<{ phase: PhaseName; simNs: string; data: unknown }>;
-  fields: ObservedField[]; calls: ProposedCall[]; receipts: ActualReceipt[]; failed: boolean;
+  fields: ObservedField[]; calls: ProposedCall[]; receipts: ActualReceipt[]; outputs: Array<Record<string,unknown>>; failed: boolean;
 }
 
 const objectOf = (value: unknown): Record<string, unknown> => {
@@ -71,7 +71,7 @@ function actualReceipts(data: unknown): ActualReceipt[] {
   });
 }
 
-function ingestRecord(payload: unknown, atNs: string, decisions: Map<string, AgentDecision>, entities: Set<string>): void {
+export function ingestRecord(payload: unknown, atNs: string, decisions: Map<string, AgentDecision>, entities: Set<string>, schema = 'aas.agent.record'): void {
   const record = objectOf(payload);
   if (typeof record.decision_id !== 'string' || !record.decision_id) throw Error('Agent record lacks decision_id');
   if (typeof record.data_json !== 'string') throw Error(`Agent record ${record.decision_id} lacks data_json string`);
@@ -79,9 +79,14 @@ function ingestRecord(payload: unknown, atNs: string, decisions: Map<string, Age
   try { data = JSON.parse(record.data_json); } catch (problem) { throw Error(`data_json for ${record.decision_id} is not JSON: ${String(problem)}`); }
   const phase = typeof record.phase === 'string' && (PHASES as readonly string[]).includes(record.phase) ? record.phase as PhaseName : undefined;
   if (!phase) throw Error(`Agent record ${record.decision_id} has unknown phase ${JSON.stringify(record.phase)}`);
-  const decision = decisions.get(record.decision_id) ?? { decisionId: record.decision_id, simNs: atNs, phases: [], fields: [], calls: [], receipts: [], failed: false };
+  const decision = decisions.get(record.decision_id) ?? { decisionId: record.decision_id, simNs: atNs, phases: [], fields: [], calls: [], receipts: [], outputs: [], failed: false };
   decision.phases.push({ phase, simNs: atNs, data });
-  if (phase === 'observation') decision.fields = observedFields(data, entities);
+  if (phase === 'observation') decision.fields = observedFields(schema === 'aas.langgraph.record' ? objectOf(objectOf(data).initial).observation : data, entities);
+  if (phase === 'output') {
+    const output = objectOf(data);
+    if (!['event','command','fact'].includes(String(output.kind))) throw Error('Unknown LangGraph output kind');
+    decision.outputs.push(output);
+  }
   if (phase === 'command') decision.calls.push(...proposedCalls(data));
   if (phase === 'receipt') decision.receipts.push(...actualReceipts(data));
   if (phase === 'failure') decision.failed = true;
@@ -132,8 +137,8 @@ export default function AgentConsole() {
         for (const fact of commit.facts) entities.add(fact.entity.id);
         for (const edge of commit.edges) { entities.add(edge.source.id); entities.add(edge.target.id); }
         for (const message of commit.messages) {
-          if (message.schemaId !== SCHEMA_ID) continue;
-          try { ingestRecord(message.payload, message.at.ns, decisions, entities); }
+          if (!RECORD_SCHEMAS.has(message.schemaId)) continue;
+          try { ingestRecord(message.payload, message.at.ns, decisions, entities, message.schemaId); }
           catch (problem) { problems.push(String(problem instanceof Error ? problem.message : problem)); }
         }
         for (const decision of decisions.values())
@@ -158,7 +163,7 @@ export default function AgentConsole() {
     {list.length === 0 && !error && <PageState kind={status === 'loading' ? 'loading' : 'empty'} title={status === 'loading' ? 'Loading decisions' : 'No decisions recorded'} description="Agent observations and calls appear here when recorded in this journal." />}
     {list.map((decision, decisionIndex) => <section key={decision.decisionId} className="agent-decision-card">
       <h3>Decision {decisionIndex + 1} <Details title="Decision identity" buttonLabel="Identity"><pre>{decision.decisionId}</pre></Details> <Tag>{displayTime(decision.simNs, startNs.current)}</Tag>
-        {decision.phases.map((item, index) => <Tag key={index} color={item.phase === 'failure' ? 'red' : item.phase === 'finished' ? 'green' : 'blue'}>{item.phase} · {displayTime(item.simNs, startNs.current)}</Tag>)}</h3>
+        {decision.phases.map((item, index) => <Tag key={index} color={item.phase === 'failure' ? 'red' : item.phase === 'finished' ? 'green' : 'blue'}>{readableLabel(item.phase)} · {displayTime(item.simNs, startNs.current)}</Tag>)}</h3>
       {decision.failed && <Alert type="error" showIcon message="Agent reported failure for this decision" className="agent-console-alert" />}
       <p className="agent-record-caption"><b>Observation</b> — {decision.fields.length} field(s)</p>
       <ul className="agent-field-list">
@@ -170,12 +175,13 @@ export default function AgentConsole() {
         <Details title={`Proposed call ${call.callId}`} buttonLabel="Args payload"><Blob value={call.payload} /></Details>
         {call.journalReceipts.map((receipt, index) => <div key={index} className="agent-record-caption">Committed receipt: <Tag>{receipt.status}</Tag><Details title={`Committed receipt ${receipt.status}`} buttonLabel="result"><Blob value={receipt.result} /></Details></div>)}
       </div>)}
+      {decision.outputs.map((output,index)=><div key={index} className="agent-proposed-call"><b>Proposed {String(output.kind)}</b> <Tag>{readableLabel(String(output.schema ?? output.field))}</Tag><Details title="Recorded proposal" buttonLabel="Proposal details"><Blob value={output}/></Details></div>)}
       {decision.receipts.length > 0 && <div><b>Actual receipts</b>
         <ul className="agent-field-list">{decision.receipts.map((receipt, index) => <li key={index}><span>{readableLabel(receipt.status)}</span><Details title="Receipt identity" buttonLabel="Identity"><pre>{JSON.stringify({commandId:receipt.commandId,callId:receipt.callId},null,2)}</pre></Details>
           <Details title={`Receipt ${receipt.commandId}`} buttonLabel="result"><Blob value={receipt.result} /></Details></li>)}</ul></div>}
-      {(['observation', 'prompt', 'response', 'validation', 'finished', 'failure'] as const).map(phase => {
+      {(['observation', 'prompt', 'response', 'model_call', 'validation', 'finished', 'failure'] as const).map(phase => {
         const items = decision.phases.filter(item => item.phase === phase);
-        return items.length === 0 ? null : <Details key={phase} title={phase} buttonLabel={`${phase} (${items.length})`}>
+        return items.length === 0 ? null : <Details key={phase} title={readableLabel(phase)} buttonLabel={`${readableLabel(phase)} (${items.length})`}>
           {items.map((item, index) => <div key={index}><small>{displayTime(item.simNs, startNs.current)}</small><Blob value={item.data} /></div>)}
         </Details>;
       })}
