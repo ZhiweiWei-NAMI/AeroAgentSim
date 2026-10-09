@@ -51,8 +51,8 @@ jobs:
         working-directory: platform
         run: |
           python -m pytest tests/integrations/aerograph tests/adapters tests/packs \
-            tests/agents/test_provider.py tests/test_core/test_compatibility.py \
-            -m 'not docker and not llm and not legacy' -p no:cacheprovider \
+            tests/agents/test_provider.py tests/platform/test_public_api.py \
+            -m 'not docker and not llm' -p no:cacheprovider \
             --basetemp=/tmp/aas-ci/tests
       - name: CLI and packaging
         working-directory: platform
