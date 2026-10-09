@@ -6,6 +6,7 @@ import copy
 import json
 import math
 import re
+import shutil
 import tempfile
 import threading
 import uuid
@@ -18,7 +19,7 @@ from aeroagentsim.platform.simulation import Simulation
 from aeroagentsim.scenario import load_scenario
 from aeroagentsim.scenario.loader import UniqueLoader
 
-from .catalog import Catalog
+from .catalog import Catalog, SnapshotCatalog
 from .templates import (
     ENERGY,
     POS,
@@ -61,12 +62,36 @@ def _simple_polygon(points: list[list[float]]) -> bool:
 class WorkspaceStore:
     """Draft edits are reversible; validation compiles real registry and engine contracts."""
 
-    def __init__(self, root: Path, ontology_root: Path) -> None:
+    def __init__(self, root: Path, ontology_root: Path | None) -> None:
         self.root = root.resolve()
         self.root.mkdir(parents=True, exist_ok=True)
-        self.ontology_root = ontology_root.resolve()
-        self.catalog = Catalog(self.ontology_root)
+        self.ontology_root = (
+            ontology_root.resolve() if ontology_root is not None else None
+        )
+        self.catalog: Catalog
+        if self.ontology_root is None:
+            from .templates import demo_source
+
+            source = demo_source("traffic-accident")
+            self.catalog = SnapshotCatalog(
+                yaml.load((source / "scenario.yaml").read_bytes(), Loader=UniqueLoader),
+                base=source,
+            )
+        else:
+            self.catalog = Catalog(self.ontology_root)
         self.lock = threading.RLock()
+
+    def catalog_for(self, identifier: str | None = None) -> Catalog:
+        if self.ontology_root is not None:
+            return self.catalog
+        if identifier is None:
+            workspaces = self.list()
+            if len(workspaces) == 1:
+                identifier = workspaces[0]["id"]
+        if identifier is None:
+            return self.catalog
+        document = self.get(identifier)["scenario"]
+        return SnapshotCatalog(document, base=self._base(document, identifier))
 
     def directory(self, identifier: str) -> Path:
         if not re.fullmatch(r"studio-[a-f0-9]{32}", identifier):
@@ -90,12 +115,20 @@ class WorkspaceStore:
             raise ValueError("name: nonempty string required")
         identifier = "studio-" + uuid.uuid4().hex
         with self.lock:
+            document = starter(identifier, self.ontology_root or Path("."))
+            if self.ontology_root is None:
+                from .templates import demo_source
+
+                directory = self.directory(identifier)
+                directory.mkdir(exist_ok=True)
+                shutil.copyfile(
+                    demo_source("traffic-accident") / "registry.snapshot.json",
+                    directory / "registry.snapshot.json",
+                )
+                document["registry"].pop("compile")
+                document["registry"]["snapshot"] = "registry.snapshot.json"
             return self._write(
-                {
-                    "id": identifier,
-                    "name": name.strip(),
-                    "scenario": starter(identifier, self.ontology_root),
-                }
+                {"id": identifier, "name": name.strip(), "scenario": document}
             )
 
     def list(self) -> list[dict[str, Any]]:
@@ -143,6 +176,7 @@ class WorkspaceStore:
         *,
         console: bool = False,
         primitive: bool = False,
+        operator_injection: bool = True,
     ) -> dict[str, Any]:
         """Import the actual shipped draft and pinned source files, without implying validity."""
         from .templates import demo_source
@@ -189,17 +223,18 @@ class WorkspaceStore:
                         + str(exported["inline_errors"])
                     )
                 draft["scenario"]["behaviours"] = [exported["inline_package"]]
-                # The console operator chooses occurrence time; the file-run timer stays in the source template.
-                chain = draft["scenario"]["behaviours"][0]["chains"][
-                    "traffic.incident_report"
-                ]
-                chain["transitions"] = [
-                    row
-                    for row in chain["transitions"]
-                    if row["id"] not in {"schedule", "timer"}
-                ]
-                draft["scenario"]["ingress_streams"][0]["initial_watermark_ns"] = 0
-                draft["scenario"]["ingress_streams"][0]["timeout_s"] = 120.0
+                if operator_injection:
+                    # The console operator chooses occurrence time; the file-run timer stays in the source template.
+                    chain = draft["scenario"]["behaviours"][0]["chains"][
+                        "traffic.incident_report"
+                    ]
+                    chain["transitions"] = [
+                        row
+                        for row in chain["transitions"]
+                        if row["id"] not in {"schedule", "timer"}
+                    ]
+                    draft["scenario"]["ingress_streams"][0]["initial_watermark_ns"] = 0
+                    draft["scenario"]["ingress_streams"][0]["timeout_s"] = 120.0
             return self._write(draft)
 
     def _behaviour_package(self, identifier: str, index: int) -> dict[str, Any]:
@@ -547,13 +582,13 @@ class WorkspaceStore:
                         "placement.type: abstract types cannot be instantiated"
                     )
             else:
-                detail = self.catalog.type_detail(type_id)
+                detail = self.catalog_for(identifier).type_detail(type_id)
                 if detail["abstract"]:
                     raise ValueError(
                         "placement.type: abstract types cannot be instantiated; choose a concrete type or explicitly author a subtype"
                     )
-                selection = document["registry"]["compile"]
-                if type_id not in selection["types"]:
+                selection = document["registry"].get("compile")
+                if selection is not None and type_id not in selection["types"]:
                     selection["types"].append(type_id)
                 for field in facts:
                     if (

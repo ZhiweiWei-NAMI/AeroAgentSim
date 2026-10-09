@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from collections.abc import Callable
 from functools import lru_cache
@@ -83,12 +84,18 @@ def create_router(
         return checked(read)
 
     @router.get("/types")
-    def types(q: str = "") -> dict[str, Any]:
+    def types(q: str = "", workspace: str | None = None) -> dict[str, Any]:
         def read() -> dict[str, Any]:
-            result = store.catalog.search(q)
+            from .catalog import SnapshotCatalog
+
+            selected = store.catalog_for(workspace)
+            result = selected.search(q)
+            if isinstance(selected, SnapshotCatalog):
+                result["relations"] = selected.relations(q)
+                return result
             result["relations"] = [
                 {**record.data, "source": record.location()}
-                for rows in store.catalog.sources().relations.values()
+                for rows in selected.sources().relations.values()
                 for record in rows
                 if q.casefold() in str(record.data).casefold()
             ]
@@ -97,8 +104,8 @@ def create_router(
         return checked(read)
 
     @router.get("/types/{type_id:path}")
-    def type_detail(type_id: str) -> dict[str, Any]:
-        return checked(lambda: store.catalog.type_detail(type_id))
+    def type_detail(type_id: str, workspace: str | None = None) -> dict[str, Any]:
+        return checked(lambda: store.catalog_for(workspace).type_detail(type_id))
 
     @router.get("/workspaces")
     def workspaces() -> list[dict[str, Any]]:
@@ -318,7 +325,13 @@ def mount_studio(
     run_root: Path | None = None,
 ) -> WorkspaceStore:
     """Serve hook, with local source roots configurable by the integrator."""
-    ontology = configured_ontology() if ontology_root is None else ontology_root
+    ontology = (
+        ontology_root
+        if ontology_root is not None
+        else configured_ontology()
+        if os.environ.get("AEROAGENTSIM_AEROGRAPH_ROOT")
+        else None
+    )
     store = WorkspaceStore(root, ontology)
     app.include_router(create_router(store, extracts=extracts, run_root=run_root))
     app.state.studio = store

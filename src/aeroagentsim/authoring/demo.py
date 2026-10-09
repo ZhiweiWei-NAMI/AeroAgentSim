@@ -17,9 +17,11 @@ CITY_ASSET_ID = "traffic-city-assets/v1"
 def city_assets() -> tuple[Path, dict[str, dict[str, Any]]]:
     setting = os.environ.get("AEROAGENTSIM_TRAFFIC_ASSET_ROOT")
     if not setting:
-        raise FileNotFoundError(
-            "Set AEROAGENTSIM_TRAFFIC_ASSET_ROOT to the demo's original web/assets directory for city capture"
-        )
+        root = demo_source("traffic-accident") / "inputs/lite-city"
+        return root, {
+            name: {"asset_id": "traffic-lite-city/v1"}
+            for name in ("scene.json", "ATTRIBUTION.txt")
+        }
     root = Path(setting).resolve()
     inventory = json.loads(
         (demo_source("traffic-accident") / "inputs/city-manifest.json").read_bytes()
@@ -49,7 +51,7 @@ def capture_manifest() -> bytes:
     scene = json.loads(city_file("scene.json").read_bytes())
     required = {
         "scene.json",
-        *(row["url"].removeprefix("/assets/") for row in scene["buildings"]),
+        *(row["url"].removeprefix("/assets/") for row in scene["buildings"] if "url" in row),
     }
     for name in sorted(required):
         city_file(name)
@@ -85,6 +87,25 @@ def configure_console(
         "AEROAGENTSIM_CONSOLE_URL", "http://127.0.0.1:8002"
     ).rstrip("/")
     capture = document["engines"]["capture"]["config"]
+    lite = not os.environ.get("AEROAGENTSIM_TRAFFIC_ASSET_ROOT")
+    if lite:
+        # The standalone photo camera uses the same committed footprint data.
+        capture["renderer"]["asset_digest"] = "traffic-lite-city/v1"
+        for binding in document["presentation"]:
+            model = "car" if binding["typeId"] == "aas:TrafficRoadVehicle" else "uav" if binding["typeId"] == "aas:TrafficUAV" else None
+            if model is not None:
+                binding["visual"] = {"kind": "model", "asset": "procedural:" + model, "scale": 1.0}
+        document["engines"]["capture_bridge"]["config"]["asset_digest"] = "traffic-lite-city/v1"
+        return {
+            "capture_mode": "city", "city_available": True, "city_detail": "lite",
+            "catalog_notice": "Type catalog limited to this scenario's snapshot",
+            "scene": {
+                "id": "Traffic accident · lite city",
+                "city": {"kind": "traffic-city", "url": console + "/v1/studio/demo-assets/scene.json"},
+                "camera": {"position": [280, 220, 300], "target": [91.95, 0, 93.04]},
+                "attribution": "© OpenStreetMap contributors, ODbL 1.0 · procedural buildings and vehicles",
+            },
+        }
     capture["renderer"] = {
         "mode": "browser",
         "viewer_url": console

@@ -4,6 +4,7 @@ Start with [README](../README.md), [中文概览](../README_CN.md) and
 [installation](../INSTALL.md). New code uses `aeroagentsim.Simulation` on the
 independent aerokernel. The v1 SimPy API has been removed.
 
+- [Public-clone traffic demo](platform/demo-public-clone.md)
 - [Capability checklist and verification](platform/CAPABILITIES.md)
 - [v1 migration](MIGRATION-v1.md)
 - [Architecture and milestones](platform/PLAN.md)

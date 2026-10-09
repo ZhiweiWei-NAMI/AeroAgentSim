@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import threading
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -32,8 +33,10 @@ class TrafficCameraCapture(Capture):
             raise ValueError(
                 "traffic camera: explicit browser assets/deadline required"
             )
-        executable = Path(config["browser_executable"])
-        if not executable.is_file():
+        executable = (
+            Path(config["browser_executable"]) if config["browser_executable"] else None
+        )
+        if executable is not None and not executable.is_file():
             raise FileNotFoundError(
                 f"traffic camera: configured browser does not exist: {executable}"
             )
@@ -41,6 +44,17 @@ class TrafficCameraCapture(Capture):
         html = Path(__file__).with_name("camera.html").read_bytes()
         three = (modules / "three/build/three.module.js").read_bytes()
         assets = {"/": (html, "text/html"), "/three.js": (three, "text/javascript")}
+        from aeroagentsim.authoring.templates import demo_source
+
+        lite = demo_source("traffic-accident") / "inputs/lite-city/scene.json"
+        if lite.is_file():
+            assets["/city.json"] = (lite.read_bytes(), "application/json")
+        assets["/camera-config.json"] = (
+            json.dumps(
+                {"city": config["asset_digest"] == "traffic-lite-city/v1"}
+            ).encode(),
+            "application/json",
+        )
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
@@ -64,7 +78,7 @@ class TrafficCameraCapture(Capture):
             f"http://127.0.0.1:{self.server.server_port}/",
             node_modules=modules,
             timeout_s=config["timeout_s"],
-            browser_executable=Path(config["browser_executable"]),
+            browser_executable=executable,
         )
 
     def close(self) -> None:

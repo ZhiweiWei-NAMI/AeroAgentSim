@@ -1,5 +1,9 @@
 # Install AeroAgentSim
 
+For a public clone without AeroGraph or the optional mesh pack, start with the
+[traffic accident demo quickstart](docs/platform/demo-public-clone.md).
+The release uses the bundled `./aerokernel`; development currently uses `../aerokernel`.
+
 Use Python **3.10 or newer**; P8 used Python 3.11.12 from the kernel development
 interpreter. The kernel is an independent, pure-stdlib runtime distribution.
 The platform's mandatory dependencies are only `aerokernel` and `PyYAML`.
