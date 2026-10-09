@@ -1,9 +1,28 @@
 import { parseLosslessJson } from './lossless-json';
 import type { FeedCommit, RunHeader, ViewerFeed } from '../contracts/viewer-feed';
 
-export interface RunInfo { id: string; scenario: string; status: string; until_ns: string; error?: string }
-export interface CommitPage { commits: FeedCommit[]; next: number; status: string }
+export interface WaitingContext { stream_ids: string[]; at_ns: string }
+export interface RunInfo { id: string; scenario: string; status: string; until_ns: string; error?: string; waiting?: WaitingContext }
+export interface CommitPage { commits: FeedCommit[]; next: number; status: string; waiting?: WaitingContext }
 type ObjectValue = Record<string, unknown>;
+// Waiting on live operator watermark progress is a normal live-run state, not a failure.
+export function waitingContext(value: unknown): WaitingContext | undefined {
+  if (value === undefined) return undefined;
+  const waiting = object(value);
+  const ids = array(waiting.stream_ids);
+  ids.forEach(string);
+  if (!ids.length || ids.some(id => !(id as string).length)) throw Error('Input wait requires its actual streams');
+  string(waiting.at_ns);
+  if (!/^\d+$/.test(waiting.at_ns)) throw Error('Input wait requires its simulated boundary');
+  return { stream_ids: ids as string[], at_ns: waiting.at_ns };
+}
+export function isTerminalStatus(status: string): boolean {
+  return ['completed', 'stopped', 'faulted', 'interrupted', 'input_timeout'].includes(status);
+}
+function pageWaiting(page: ObjectValue): WaitingContext | undefined {
+  if (page.waiting === undefined && ['waiting_for_input', 'input_timeout'].includes(String(page.status))) throw Error('Input wait metadata is missing');
+  return waitingContext(page.waiting);
+}
 function object(value: unknown): ObjectValue {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('Feed contract: expected object');
   return value as ObjectValue;
@@ -132,7 +151,7 @@ export class RunsApi {
   }
   async runs(signal?: AbortSignal): Promise<RunInfo[]> {
     const rows = array(await this.request('/v1/runs', { signal }));
-    for (const item of rows) { const row = object(item); string(row.id); string(row.scenario); string(row.status); string(row.until_ns); }
+    for (const item of rows) { const row = object(item); string(row.id); string(row.scenario); string(row.status); string(row.until_ns); row.waiting = pageWaiting(row); }
     return rows as RunInfo[];
   }
   async start(input: { scenario_path: string } | { scenario: unknown }): Promise<RunInfo> {
@@ -149,7 +168,7 @@ export class RunsApi {
 
 export class HttpViewerFeed implements ViewerFeed {
   private readonly path: string;
-  constructor(private api: RunsApi, id: string, private mode: 'live' | 'replay' = 'replay', private status?: (status: string) => void, private transportError?: (error: string) => void) {
+  constructor(private api: RunsApi, id: string, private mode: 'live' | 'replay' = 'replay', private status?: (status: string, waiting?: WaitingContext) => void, private transportError?: (error: string) => void) {
     this.path = `/v1/runs/${encodeURIComponent(id)}`;
   }
   async header(): Promise<RunHeader> { return validateHeader(await this.api.request(`${this.path}/header`)); }
@@ -165,11 +184,11 @@ export class HttpViewerFeed implements ViewerFeed {
     while (!signal?.aborted) {
       const page = object(await this.api.request(`${this.path}/commits?from=${cursor}&limit=256`, { signal }));
       const commits = array(page.commits); counter(page.next); string(page.status);
-      this.status?.(page.status);
+      this.status?.(page.status, pageWaiting(page));
       commits.forEach(deliver);
       if (page.next !== cursor) throw Error('Feed pagination cursor disagrees with journal');
       if (commits.length === 0) {
-        if (['completed', 'stopped', 'faulted', 'interrupted'].includes(page.status)) {counter(page.finalCursor);if(page.finalCursor!==cursor)throw Error('Terminal cursor disagrees with journal');return;}
+        if (isTerminalStatus(page.status)) {counter(page.finalCursor);if(page.finalCursor!==cursor)throw Error('Terminal cursor disagrees with journal');return;}
         if(this.mode==='replay')return;
         break;
       }
@@ -200,7 +219,8 @@ export class HttpViewerFeed implements ViewerFeed {
               if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
             }
             if (event === 'commit') { deliver(JSON.parse(data.join('\n'))); retries = 0; }
-            if (event === 'end') { const end = object(JSON.parse(data.join('\n'))); string(end.status);counter(end.finalCursor);if(end.finalCursor!==cursor)throw Error('Stream ended before final cursor');this.status?.(end.status); ended = true; return; }
+            if (event === 'status') { const status = object(JSON.parse(data.join('\n'))); string(status.status); this.status?.(status.status, pageWaiting(status)); }
+            if (event === 'end') { const end = object(JSON.parse(data.join('\n'))); string(end.status);counter(end.finalCursor);if(end.finalCursor!==cursor)throw Error('Stream ended before final cursor');this.status?.(end.status, pageWaiting(end)); ended = true; return; }
           }
         }
       if (signal?.aborted || ended) return;

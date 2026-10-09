@@ -1,10 +1,34 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { RunsApi } from '../feeds/http';
 import { TemporalFeedStore } from '../feeds/temporal-store';
 import { emptyCommit, fixtureHeader } from './extension-fixture';
 import { ConsoleNotifications } from '../console/Notifications';
 import { RunOperations } from './RunOperations';
+
+it('pauses a waiting run by keyboard and recognizes resume back into the wait', async () => {
+  const api = new RunsApi('http://api');
+  let status = 'waiting_for_input';
+  const runs = vi.spyOn(api, 'runs').mockImplementation(async () => [{ id: 'waiting', scenario: 'external', status, until_ns: '100' }]);
+  const request = vi.spyOn(api, 'request').mockImplementation(async path => {
+    if (path.endsWith('/configuration')) return { scenario: { id: 'external', behaviours: [] } };
+    const action = path.split('/').at(-1);
+    if (action === 'pause') status = 'paused';
+    else if (action === 'resume') status = 'waiting_for_input';
+    else throw Error(`Unexpected API request: ${path}`);
+    return { requested: action, status };
+  });
+  try {
+    const store = new TemporalFeedStore(fixtureHeader);
+    store.ingest(emptyCommit(1)); store.seek('0', 1);
+    await act(async () => { render(<ConsoleNotifications><RunOperations api={api} runId="waiting" store={store} onSelect={() => {}} onSeek={() => {}} mode="live" /></ConsoleNotifications>); });
+    fireEvent.keyDown(document, { key: ' ' });
+    await waitFor(() => expect(screen.getByText(/Requested: pause/)).toHaveTextContent('effective status: paused'));
+    fireEvent.keyDown(document, { key: ' ' });
+    await waitFor(() => expect(screen.getByText(/Requested: resume/)).toHaveTextContent('effective status: waiting_for_input'));
+    expect(screen.getByText(/Requested: resume/)).not.toHaveTextContent('pending at safe boundary');
+  } finally { cleanup(); request.mockRestore(); runs.mockRestore(); }
+});
 
 it('advances an idle operator source from acknowledged watermarks, capped at the authored end', async () => {
   vi.useFakeTimers();

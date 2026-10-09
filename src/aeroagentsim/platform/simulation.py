@@ -4,10 +4,18 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
-from aerokernel import CommandRequest, IngressReceipt, Journal, Kernel, Stamp
+from aerokernel import (
+    CommandRequest,
+    IngressReceipt,
+    IngressWait,
+    Journal,
+    Kernel,
+    Stamp,
+)
 from aerokernel.engine import Engine, Partition
 from aerokernel.errors import KernelError
 from aerokernel.state import StateView
@@ -128,8 +136,10 @@ class Simulation:
     def start(self) -> StateView:
         return self.kernel.start()
 
-    def run_until(self, ns: int) -> StateView:
-        return self.kernel.run_until(ns)
+    def run_until(
+        self, ns: int, *, on_wait: Callable[[IngressWait | None], bool] | None = None
+    ) -> StateView:
+        return self.kernel.run_until(ns, on_wait=on_wait)
 
     def resolve_stream(
         self, stream_id: str | None, engine_id: str | None = None
@@ -293,9 +303,29 @@ class RunSession:
         with self._storage_lock:
             self.storage.index()
 
-    def _status(self, status: str, *, error: str | None = None) -> None:
+    def _status(
+        self,
+        status: str,
+        *,
+        error: str | None = None,
+        waiting: dict[str, object] | None = None,
+    ) -> None:
         with self._storage_lock:
-            self.storage.status(status, error=error)
+            self.storage.status(status, error=error, waiting=waiting)
+
+    def report_wait(self, wait: IngressWait | None) -> None:
+        """Publish actual input-wait metadata and its committed journal prefix."""
+        with self._storage_lock:
+            self.storage.index()
+            self.storage.status(
+                "running" if wait is None else "waiting_for_input",
+                waiting=None
+                if wait is None
+                else {
+                    "stream_ids": list(wait.stream_ids),
+                    "at_ns": str(wait.target_ns),
+                },
+            )
 
     def submit_live(
         self,
@@ -343,17 +373,30 @@ class RunSession:
         self._index()
         return view
 
-    def run_until(self, ns: int) -> StateView:
+    def run_until(
+        self, ns: int, *, on_wait: Callable[[IngressWait | None], bool] | None = None
+    ) -> StateView:
         if self.closed:
             raise RuntimeError("run session is closed")
         if not self.started:
             self.start()
         try:
-            view = self.simulation.run_until(ns)
-            self.now_ns = ns
+            view = self.simulation.run_until(ns, on_wait=on_wait)
+            self.now_ns = self.simulation.kernel.sealed_ns
             self._index()
             return view
         except Exception as exc:
+            if isinstance(exc, KernelError) and exc.code == "WATERMARK_TIMEOUT":
+                self.close()
+                self._status(
+                    "input_timeout",
+                    error=str(exc),
+                    waiting={
+                        "stream_ids": list(exc.context["stream_ids"]),
+                        "at_ns": str(exc.context["target_ns"]),
+                    },
+                )
+                raise
             self._fault(exc)
             raise
 

@@ -8,6 +8,7 @@ from multiprocessing.connection import Connection
 from pathlib import Path
 from typing import Any
 
+from aerokernel import IngressWait
 from aerokernel.errors import KernelError
 
 from aeroagentsim.platform.ingress import receipt_data, source_stamp, submission
@@ -30,8 +31,20 @@ def execute(
     wait = threading.Event()
     outcome = "completed"
     error: str | None = None
+    timed_out_wait: dict[str, Any] | None = None
     ingress_done = threading.Event()
     ingress_thread: threading.Thread | None = None
+    reported_wait: IngressWait | None = None
+
+    def on_wait(state: IngressWait | None) -> bool:
+        nonlocal reported_wait
+        if stopped.is_set() or paused.is_set():
+            return False
+        if state != reported_wait:
+            assert session is not None
+            session.report_wait(state)
+            reported_wait = state
+        return True
 
     def accept_ingress(active: RunSession, connection: Connection) -> None:
         while not ingress_done.is_set():
@@ -108,6 +121,7 @@ def execute(
         while session.now_ns < scenario.until_ns and not stopped.is_set():
             if paused.is_set():
                 storage.status("paused")
+                reported_wait = None
                 while paused.is_set() and not stopped.is_set():
                     wait.wait(0.02)
                 if stopped.is_set():
@@ -116,7 +130,8 @@ def execute(
                 # A resume changes only host pacing; physical integration is frozen.
                 session.started_wall = time.perf_counter() - session.now_ns / 1e9
             session.run_until(
-                min(session.now_ns + scenario.advance_ns, scenario.until_ns)
+                min(session.now_ns + scenario.advance_ns, scenario.until_ns),
+                on_wait=on_wait,
             )
             if scenario.pacing == "realtime":
                 deadline = session.started_wall + session.now_ns / 1e9
@@ -128,8 +143,17 @@ def execute(
                     wait.wait(min(0.02, max(0.0, deadline - time.perf_counter())))
         outcome = "stopped" if stopped.is_set() else "completed"
     except Exception as exc:  # noqa: BLE001 - persist the actual worker fault
-        outcome = "faulted"
-        error = storage.metadata().get("error") or f"{type(exc).__name__}: {exc}"
+        if isinstance(exc, KernelError) and exc.code == "WATERMARK_TIMEOUT":
+            outcome = "stopped" if stopped.is_set() else "input_timeout"
+            if outcome == "input_timeout":
+                timed_out_wait = {
+                    "stream_ids": list(exc.context["stream_ids"]),
+                    "at_ns": str(exc.context["target_ns"]),
+                }
+                error = str(exc)
+        else:
+            outcome = "faulted"
+            error = storage.metadata().get("error") or f"{type(exc).__name__}: {exc}"
     finally:
         ingress_done.set()
         if ingress_thread is not None:
@@ -143,7 +167,7 @@ def execute(
                 outcome = "faulted"
                 error = f"{error + '; ' if error else ''}cleanup: {type(exc).__name__}: {exc}"
         storage.index()
-        storage.status(outcome, error=error)
+        storage.status(outcome, error=error, waiting=timed_out_wait)
 
 
 def validate_injection(active: RunSession, body: Any) -> None:

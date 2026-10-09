@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 
-test('real traffic console: draft, compiler, operator accident, award, city photo and shared cut',async({page})=>{
+test('real traffic console: draft, compiler, operator accident, award, city photo and shared cut',async({page,baseURL})=>{
  mkdirSync('/tmp/aas-q/e3b/screenshots',{recursive:true});
- await page.goto('/?api=http://127.0.0.1:8002');
+ if (!baseURL) throw Error('Console e2e requires its configured API URL');
+ await page.goto(`/?api=${encodeURIComponent(baseURL)}`);
  await expect(page.getByTestId('home-page')).toBeVisible();
  await page.screenshot({path:'/tmp/aas-q/e3b/screenshots/home.png'});
  await page.getByTestId('nav-aerograph').click();await expect(page.getByTestId('aerograph-page')).toBeVisible();

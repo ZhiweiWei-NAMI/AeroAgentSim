@@ -25,7 +25,7 @@ from .storage import RunStorage
 from .subjects import projection_context
 from .worker import execute
 
-TERMINAL = {"completed", "stopped", "faulted", "interrupted"}
+TERMINAL = {"completed", "stopped", "faulted", "interrupted", "input_timeout"}
 
 
 def create_app(
@@ -162,6 +162,22 @@ def create_app(
         workers[run_id] = (process, paused, stopped)
         inputs[run_id] = (host_input, threading.Lock())
         worker_input.close()
+        # The console requests identity/injection configuration immediately after
+        # creation. A created directory is not an acknowledged worker startup:
+        # wait for its real, completely indexed WAL header before handing it out.
+        while not await asyncio.to_thread(storage.records, 0, 1):
+            if not process.is_alive():
+                metadata = storage.metadata()
+                if metadata["status"] in TERMINAL:
+                    return metadata
+                raise HTTPException(
+                    500,
+                    {
+                        "id": run_id,
+                        "error": "Worker exited before committing its WAL header",
+                    },
+                )
+            await asyncio.sleep(0.01)
         return storage.metadata()
 
     @app.get("/v1/runs")
@@ -198,6 +214,7 @@ def create_app(
             "commits": result,
             "next": result[-1]["commitIndex"] + 1 if result else max(1, from_index),
             "status": metadata["status"],
+            **({"waiting": metadata["waiting"]} if "waiting" in metadata else {}),
             **(
                 {"finalCursor": metadata["final_cursor"]}
                 if "final_cursor" in metadata
@@ -219,6 +236,7 @@ def create_app(
         async def tail() -> AsyncIterator[str]:
             nonlocal cursor
             subjects = projection_context(path, cursor)
+            last_status: tuple[str, str] | None = None
             while not await request.is_disconnected():
                 storage = RunStorage(path)
                 records = storage.records(cursor, 256)
@@ -228,10 +246,22 @@ def create_app(
                     yield f"id: {commit['commitIndex']}\nevent: commit\ndata: {json.dumps(commit, separators=(',', ':'))}\n\n"
                 metadata = storage.metadata()
                 status = metadata["status"]
+                state = {
+                    "status": status,
+                    **(
+                        {"waiting": metadata["waiting"]}
+                        if "waiting" in metadata
+                        else {}
+                    ),
+                }
+                state_key = (status, json.dumps(state, sort_keys=True))
+                if state_key != last_status:
+                    yield f"event: status\ndata: {json.dumps(state, separators=(',', ':'))}\n\n"
+                    last_status = state_key
                 if not records and status in TERMINAL:
                     final_cursor = metadata["final_cursor"]
                     if cursor >= final_cursor:
-                        yield f"event: end\ndata: {json.dumps({'status': status, 'finalCursor': final_cursor})}\n\n"
+                        yield f"event: end\ndata: {json.dumps({**state, 'finalCursor': final_cursor})}\n\n"
                         return
                 if not records:
                     yield ": waiting\n\n"

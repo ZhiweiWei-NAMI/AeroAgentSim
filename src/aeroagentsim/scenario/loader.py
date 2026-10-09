@@ -737,8 +737,12 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         lateness = text(spec["lateness"], path + ".lateness")
         if lateness not in {"reject", "delay"}:
             raise ScenarioError(path + ".lateness: expected reject or delay")
-        timeout = numeric(spec["timeout_s"], path + ".timeout_s")
-        if timeout <= 0:
+        timeout = (
+            numeric(spec["timeout_s"], path + ".timeout_s")
+            if "timeout_s" in spec
+            else None
+        )
+        if timeout is not None and timeout <= 0:
             raise ScenarioError(path + ".timeout_s: positive wait budget required")
         return mapping_id, IngressPolicy(
             integer(spec["initial_watermark_ns"], path + ".initial_watermark_ns"),
@@ -751,13 +755,16 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             else None,
         )
 
-    policy_keys = {"mapping_id", "initial_watermark_ns", "lateness", "timeout_s"}
+    policy_keys = {"mapping_id", "initial_watermark_ns", "lateness"}
     for index, authored in enumerate(
         seq(document.get("ingress_streams", []), "ingress_streams")
     ):
         path = f"ingress_streams[{index}]"
         spec = contract(
-            authored, path, policy_keys | {"id", "engine_ids"}, {"allowed_lateness_ns"}
+            authored,
+            path,
+            policy_keys | {"id", "engine_ids"},
+            {"allowed_lateness_ns", "timeout_s"},
         )
         stream_id = text(spec["id"], path + ".id")
         if stream_id in streams:
@@ -791,7 +798,7 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             item["ingress"],
             path,
             policy_keys,
-            {"stream_id", "allowed_lateness_ns"},
+            {"stream_id", "allowed_lateness_ns", "timeout_s"},
         )
         mapping_id, policy = stream_policy(spec, path)
         stream_id = text(spec.get("stream_id", engine_id), path + ".stream_id")

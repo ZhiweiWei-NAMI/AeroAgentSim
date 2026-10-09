@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -11,9 +12,33 @@ import pytest
 from aerokernel import BindingManifest, Kernel, MemoryRegistry
 from fastapi.testclient import TestClient
 
+from aeroagentsim.platform.simulation import RunSession
 from aeroagentsim.services import worker
 from aeroagentsim.services.app import create_app
 from aeroagentsim.services.storage import RunStorage
+
+
+def test_created_run_has_committed_configuration_despite_delayed_startup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, document: dict[str, Any]
+) -> None:
+    original = RunSession.start
+
+    def delayed_start(self: RunSession) -> Any:
+        time.sleep(0.1)
+        return original(self)
+
+    monkeypatch.setattr(RunSession, "start", delayed_start)
+    document["run"]["until_ns"] = 0
+    with TestClient(
+        create_app(tmp_path / "runs", studio_root=tmp_path / "studio")
+    ) as client:
+        created = client.post("/v1/runs", json=document)
+        assert created.status_code == 201, created.text
+        run_id = created.json()["id"]
+        configuration = client.get(f"/v1/studio/runs/{run_id}/configuration")
+        assert configuration.status_code == 200, configuration.text
+        assert configuration.json()["service_run_id"] == run_id
+        assert configuration.json()["kernel_run_id"] == created.json()["kernel_run_id"]
 
 
 def artifacts(path: Path) -> RunStorage:
@@ -86,9 +111,15 @@ def test_h5_worker_never_publishes_success_before_cleanup(
     statuses: list[str] = []
     original = RunStorage.status
 
-    def status(self: RunStorage, outcome: str, *, error: str | None = None) -> None:
+    def status(
+        self: RunStorage,
+        outcome: str,
+        *,
+        error: str | None = None,
+        waiting: dict[str, Any] | None = None,
+    ) -> None:
         statuses.append(outcome)
-        original(self, outcome, error=error)
+        original(self, outcome, error=error, waiting=waiting)
 
     class Session:
         now_ns = 0

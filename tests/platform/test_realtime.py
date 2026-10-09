@@ -147,6 +147,77 @@ def test_watermark_wait_accepts_concurrent_input(
         )
 
 
+def run_status(client: TestClient, run_id: str, expected: str) -> dict[str, Any]:
+    deadline = time.monotonic() + 3
+    while True:
+        row = next(row for row in client.get("/v1/runs").json() if row["id"] == run_id)
+        if row["status"] == expected:
+            return row  # type: ignore[no-any-return]
+        assert row["status"] != "faulted", row
+        assert time.monotonic() < deadline, row
+        time.sleep(0.01)
+
+
+def test_stop_while_waiting_reports_input_and_closes_replayable_prefix(
+    realtime: dict[str, Any], tmp_path: Path
+) -> None:
+    realtime["engines"]["sensor"]["ingress"]["timeout_s"] = 0.3
+    with TestClient(create_app(tmp_path / "runs")) as client:
+        run_id = client.post("/v1/runs", json=realtime).json()["id"]
+        waiting = run_status(client, run_id, "waiting_for_input")
+        assert waiting["waiting"] == {"stream_ids": ["sensor"], "at_ns": "100000000"}
+        page = client.get(f"/v1/runs/{run_id}/commits").json()
+        assert page["status"] == "waiting_for_input"
+        assert page["waiting"] == waiting["waiting"]
+        assert client.post(f"/v1/runs/{run_id}/stop").status_code == 200
+        stopped = run_status(client, run_id, "stopped")
+        assert "error" not in stopped and "waiting" not in stopped
+        restored = replay(tmp_path / "runs" / run_id / "journal.jsonl")
+        assert not restored.incomplete
+        assert restored.records[-1]["type"] == "run_stop"
+        assert not any(record["type"] == "fault" for record in restored.records)
+        assert stopped["final_cursor"] == restored.records[-1]["index"] + 1
+
+
+def test_pause_resume_during_input_wait_preserves_cut_and_accepts_progress(
+    realtime: dict[str, Any], tmp_path: Path
+) -> None:
+    realtime["engines"]["sensor"]["ingress"].pop("timeout_s")
+    with TestClient(create_app(tmp_path / "runs")) as client:
+        run_id = client.post("/v1/runs", json=realtime).json()["id"]
+        run_status(client, run_id, "waiting_for_input")
+        route = f"/v1/runs/{run_id}"
+        assert client.post(route + "/pause").status_code == 200
+        run_status(client, run_id, "paused")
+        cursor = client.get(route + "/commits").json()["next"]
+        time.sleep(0.06)
+        assert client.get(route + "/commits").json()["next"] == cursor
+        assert client.post(route + "/resume").status_code == 200
+        run_status(client, run_id, "waiting_for_input")
+        assert (
+            client.post(
+                route + "/watermark", json={"watermark_ns": 300000000}
+            ).status_code
+            == 200
+        )
+        run_status(client, run_id, "completed")
+
+
+def test_explicit_input_timeout_is_clear_terminal_status_without_fault(
+    realtime: dict[str, Any], tmp_path: Path
+) -> None:
+    realtime["engines"]["sensor"]["ingress"]["timeout_s"] = 0.08
+    with TestClient(create_app(tmp_path / "runs")) as client:
+        run_id = client.post("/v1/runs", json=realtime).json()["id"]
+        timed_out = run_status(client, run_id, "input_timeout")
+        assert "WATERMARK_TIMEOUT" in timed_out["error"]
+        assert timed_out["waiting"] == {"stream_ids": ["sensor"], "at_ns": "100000000"}
+        restored = replay(tmp_path / "runs" / run_id / "journal.jsonl")
+        assert not restored.incomplete
+        assert not any(record["type"] == "fault" for record in restored.records)
+        assert client.post(f"/v1/runs/{run_id}/stop").status_code == 409
+
+
 @pytest.mark.parametrize(
     "key,value",
     [
@@ -310,9 +381,9 @@ def test_missing_watermark_faults_instead_of_pacing_fallback(
     session.start()
     with pytest.raises(KernelError, match="WATERMARK_TIMEOUT"):
         session.run_until(100_000_000)
-    assert session.storage.metadata()["status"] == "faulted"
+    assert session.storage.metadata()["status"] == "input_timeout"
     assert session.closed
-    assert replay(directory / "journal.jsonl").incomplete
+    assert not replay(directory / "journal.jsonl").incomplete
 
 
 def test_engines_have_distinct_watermarks_and_source_mappings(
