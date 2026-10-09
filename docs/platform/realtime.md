@@ -1,13 +1,32 @@
-# Real-time ingress
+# Live ingress and per-stream watermarks
 
-A `real_time` engine can run through `Simulation`, `RunSession`, the CLI and the
-HTTP service. Declare its source clock mapping and ingress policy in the additive
-`aeroagentsim.scenario/v1` engine entry:
+Kernel v0.2 binds named input streams to engine domains. Each stream pins its
+clock mapping, late disposition, initial closed prefix, wait timeout and optional
+allowed lateness. Policies and mappings may differ between streams. One stream
+can bind several engines, and one engine can receive several streams.
 
 ```yaml
-clock_mappings:
-- {mapping_id: canonical, clock_id: canonical}
-- {mapping_id: sensor-ns, clock_id: sensor-clock, p: 1, q: 1, offset_ns: 0, rounding: exact}
+ingress_streams:
+- id: fast-source
+  mapping_id: fast-ns
+  engine_ids: [fast]
+  initial_watermark_ns: 0
+  lateness: reject
+  timeout_s: 10
+  allowed_lateness_ns: 20000000
+```
+
+`id`, `mapping_id`, `engine_ids`, `initial_watermark_ns`, `lateness` and
+`timeout_s` are required. Engine IDs must exist; the list must be nonempty and
+unique. `lateness` is `reject` or `delay`; `timeout_s` is a positive finite
+wall-clock wait budget. `allowed_lateness_ns`, when present, must be a nonnegative
+integer: null, booleans and negative values fail at the authored path. Omission
+means the kernel subtracts no allowance. Clock mappings are declared separately
+in `clock_mappings`, retaining the identity `canonical` mapping.
+
+The Q1 shorthand remains valid:
+
+```yaml
 engines:
   sensor:
     plugin: telemetry
@@ -17,156 +36,174 @@ engines:
       initial_watermark_ns: 0
       lateness: reject
       timeout_s: 10
+      # Optional: stream_id: shared-source
+      # Optional: allowed_lateness_ns: 20000000
 ```
 
-The engine's `ingress` object requires all four keys. Its `mapping_id` selects a
-pinned `clock_mappings` entry, including that entry's `clock_id`. Missing policy,
-unknown mapping, invalid values and conflicting policies identify
-`engines.<id>.ingress` in validation errors. Every engine with a `real_time`
-partition needs its own declaration, even when another engine already declares
-one. Input targets must belong to the selected engine.
+This compiles to an `IngressStream` named `sensor`, bound to that engine.
+An explicit `stream_id` selects another name. Declarations sharing that name
+must agree on mapping and policy; their bound engines are combined. A conflicting
+shorthand reports its path and the first declaration's path. Duplicate IDs in the
+top-level list fail instead of overwriting an authored declaration. Every
+`real_time` engine requires at least one binding. The normalized stream tuple is
+passed to `Kernel(ingress_streams=...)`.
 
-| Key | Meaning |
-| --- | --- |
-| `mapping_id` | Source-clock conversion used for this engine's submissions. |
-| `initial_watermark_ns` | Nonnegative closed-prefix watermark at run creation. |
-| `lateness` | Kernel vocabulary: `reject` or `delay`. |
-| `timeout_s` | Positive finite bound on a kernel watermark wait; expiration records `WATERMARK_TIMEOUT` and faults the run. |
+## Admission, progress and closure
 
-A watermark asserts that no further on-time input at or before that canonical
-nanosecond will arrive. It advances monotonically. A source timestamp alone
-cannot close a prefix. The producer must submit its inputs **before** advancing
-the watermark. `run_until(N)` waits until the watermark covers each prospective
-boundary, then processes due input and seals it. This also applies to DES or
-fixed-step engines sharing a run with a live policy.
+`Simulation.submit_live(engine_id, command, stamp, stream_id=...)` and the same
+`RunSession` method call kernel `admit_live` and return the kernel's immutable
+`IngressReceipt`. `engine_id` may be `None` when a stream is supplied; an engine
+argument also validates the target against that engine's partitions. The kernel
+checks the stream's recipient domain, schema, payload and pinned mapping before
+admission. Invalid requests fail without a decision record.
 
-The current kernel has **one run-wide policy and watermark**, so all declared
-engines must share `initial_watermark_ns`, `lateness` and `timeout_s`. Engines may
-use different pinned source mappings. A watermark call closes the prefix for
-all of them; an upstream aggregator must establish that closure across sources.
-Independent per-engine watermarks are a kernel gap, and are rejected as conflicting
-scenario policies. The kernel has no automatic allowed-lateness interval in ns;
-`timeout_s` bounds waiting, not source lateness. No platform timestamp or wall
-clock is substituted for a producer's closure assertion.
+Platform HTTP receipts use `aeroagentsim.ingress-receipt/v2`, retaining the Q1
+fields and adding `stream_id`: `disposition`, `journal_index`, `mapped_ns`,
+`command_id`, `boundary_ns`, `activation_ns`, `delay_ns` and `code`. They cite an
+acknowledged WAL decision. Admission does not establish engine acceptance or
+execution success; query the recorded action receipts for those outcomes.
 
-Source stamps use the exact rational conversion
-`offset_ns + (p/q) * (numerator/denominator)`. Supported rounding is `exact`,
-`floor`, `ceil`, or `nearest_ties_even`; the identity `canonical` mapping remains
-required alongside external mappings. Clock mismatch and nonintegral `exact`
-conversion fail explicitly.
+`reject` records `rejected` with `code: LATE_INGRESS` and null command/delivery
+coordinates. `delay` records a reservation at a legal future publication boundary
+and preserves the original stamp and request. Accepted arrivals after a partial
+commit can also have a later publication boundary; this preserves causality
+without changing the source occurrence time. Idempotency is scoped to
+`(stream_id, key)` and returns the original receipt/index for accepted, delayed
+and rejected decisions. Changed keyed content fails `IDEMPOTENCY_CONFLICT`.
+The platform no longer intercepts journal appends to construct receipts.
 
-An input is late when its mapped source time is at or before the watermark or
-seal. `reject` writes a rejection with code `LATE_INGRESS`, without a command ID.
-`delay` reserves at the next admissible boundary after the closed prefix and
-records the displacement. For example, source time `50000000` after closure at
-`100000000` is delayed to `100000001`. Requested command activation can move
-later as needed. The original stamp is retained; telemetry facts use that stamp
-as acquisition time.
+Two explicit source assertions are available on `Simulation` and `RunSession`:
 
-## Submit through the worker
+- `advance_source_progress(stamp, stream_id=...)` maps asserted progress `P` and
+  closes exactly `P - allowed_lateness_ns`. For `P = 70ms` and a `20ms` allowance,
+  the closed prefix is `50ms`; inputs in `(50ms, 70ms]` remain admissible.
+- `advance_watermark(ns, stream_id=...)` asserts an inclusive **canonical closed
+  prefix** directly. It subtracts nothing. Adapters calculating `P-L` themselves
+  use this API to avoid subtracting twice.
 
-`POST /v1/runs` creates the ordinary run. For a live run, use initial watermark 0
-and remove the example's authored `bindings.commands`. Then call
-`POST /v1/runs/{id}/ingress`:
+At or below a closed prefix, inputs are late. At or below the common sealed
+prefix, inputs are also late. Input timestamps never advance either assertion.
+Progress and closure cannot regress, including below bootstrap closure; the
+kernel rejects such assertions without clamping. Equal assertions are no-ops.
+`timeout_s` limits waiting in wall-clock seconds and is independent of the
+lateness bound in nanoseconds.
 
-```json
-{
-  "engine": "sensor",
-  "schema": "aas.telemetry.observe",
-  "target": "sensor",
-  "at_ns": 50000000,
-  "payload": {"value": 24.0},
-  "source_stamp": {
-    "clock_id": "sensor-clock",
-    "numerator": 50000000,
-    "denominator": 1,
-    "mapping_id": "sensor-ns"
-  },
-  "idempotency_key": "sensor-sample-1"
-}
-```
+For omitted stream IDs, submissions select the unique stream bound to the named
+engine, preferring a declared `default` stream. Watermark/progress calls select a
+declared `default` or the sole stream. Ambiguous or missing bindings require an
+explicit ID. Explicit IDs are passed unchanged: an engine-named stream has no
+implicit `default` alias. Existing single-engine Q1 calls and HTTP bodies that
+omit stream IDs continue to work.
 
-Nanoseconds and stamp coordinates require actual JSON integers; a schema of
-`number` requires a floating-point payload such as `24.0`. The optional key
-identifies the original request **and stamp**. An identical keyed duplicate
-returns the original receipt and does not create another reservation; different
-content produces `IDEMPOTENCY_CONFLICT`. Rejected inputs are recorded on each
-attempt because the kernel does not retain rejection keys.
+## Two-source example and CLI
 
-HTTP 200 returns `aeroagentsim.ingress-receipt/v1`, with `disposition`
-(`accepted`, `delayed`, `rejected`), `journal_index`, `mapped_ns`, `command_id`,
-`boundary_ns`, `activation_ns`, `delay_ns` and `code`. Rejected receipts have no
-command ID or reservation coordinates (`null`) and carry `LATE_INGRESS`.
-These are admission receipts; the target's execution receipts appear separately
-in committed records. Each admission receipt is derived from an acknowledged
-kernel WAL append, and duplicate receipts cite the original index.
+[realtime-streams.yaml](../../scenarios/realtime-streams.yaml) uses two generic
+`ingress-consumer` engines. They echo actual command payloads into typed execution
+results and have no shared state, lifecycle authority or routes. The streams use
+different mappings, dispositions and allowances. The slow clock maps ticks as
+`canonical_ns = 1000 + 2 * ticks`.
 
-After submitting the prefix, call `POST /v1/runs/{id}/watermark` with
-`{"watermark_ns": 100000000}`. It returns
-`aeroagentsim.watermark-receipt/v1` only after the worker advances the kernel
-watermark. Advance to `300000000` after the remaining inputs to finish this
-example. A concurrent worker input thread can admit commands and close prefixes
-while the coordinator waits. Viewer reads never choose watermarks or seals.
+This independence matters: the kernel conservatively propagates stream influence
+through declared reads, routes, lifecycle authority, engine groups and cohorts.
+Two `telemetry` engines with lifecycle authority and state writes share influence
+even when their entity types differ. Separate IDs alone cannot make them safe to
+advance independently.
 
-Invalid input returns HTTP 422 with the actual error code/message. An exited or
-terminal worker returns HTTP 409. If the connection closes before acknowledgment,
-inspect the journal to determine whether the input committed. Existing
-pause/resume/stop controls remain boundary controls: pause or stop requested
-during a watermark wait takes effect after that boundary settles, or the actual
-watermark timeout faults the run. Ingress remains available while paused.
-
-The SDK exposes the same path:
-
-```python
-from aerokernel import CommandRequest, Instant, Stamp
-from aeroagentsim.platform import RunSession
-
-# scenario has initial watermark 0 and no authored bootstrap commands
-with RunSession(scenario, directory) as session:
-    session.start()
-    receipt = session.submit_live(
-        "sensor",
-        CommandRequest("aas.telemetry.observe", "sensor", Instant(50_000_000),
-                       {"value": 24.0}, "sensor-sample-1"),
-        Stamp("sensor-clock", 50_000_000, 1, "sensor-ns"),
-    )
-    session.advance_watermark(100_000_000)
-    session.run_until(100_000_000)
-    session.advance_watermark(300_000_000)
-    session.run()
-```
-
-Use `Simulation.submit_live` and `Simulation.advance_watermark` for a run without
-artifact ownership. Direct `kernel.submit` is the existing offline command path;
-stamped live observations go through `submit_live` to enforce admission policy.
-
-## Example, pacing and replay
-
-[realtime-ingress.yaml](../../scenarios/realtime-ingress.yaml) uses the generic
-`telemetry` plugin and a small pinned registry snapshot compiled from the real
-AeroGraph observation descriptors. It models one stream value without domain
-vehicle assumptions. Its CLI form has an explicitly authored offline command
-(value `21.5` at `100000000 ns`) and an initial watermark covering its entire
-`300000000 ns` interval. Those are declared example inputs, not live measurements.
+The YAML labels its bootstrap commands as authored offline inputs and initially
+closes both streams through the run interval, so ordinary CLI execution needs no
+live source:
 
 ```sh
-aeroagentsim run scenarios/realtime-ingress.yaml --out /tmp/aas-q/q1/cli-runs
-aeroagentsim replay /tmp/aas-q/q1/cli-runs/<run-directory>
+aeroagentsim run scenarios/realtime-streams.yaml --out /tmp/aas-q/q9/cli-runs
+aeroagentsim replay /tmp/aas-q/q9/cli-runs/<run-directory>
 ```
 
-`run.pacing: realtime` delays the host's advance loop against elapsed wall time;
-`fast` runs it without those delays. Pacing supplies neither source timestamps
-nor watermark closure and cannot satisfy a `real_time` engine's ingress contract.
-The kernel also supports optional `IngressPolicy.speed_ratio`; this schema does
-not expose that separate kernel pacing option.
+The executable live experiment resets initial closures to zero and removes those
+bootstrap commands, then submits explicit inputs through `RunSession`:
 
-The journal header pins the full scenario (including each engine binding),
-resolved clock mappings and kernel policy. Accepted/delayed reservations,
-rejections, original stamps, watermark advances and seals are journaled. Offline
-`aeroagentsim replay` reconstructs this committed prefix without plugin factories,
-engine calls, source reads, RNG or live clock calls. Missing closure produces a
-real timeout/fault; replay preserves that prefix rather than synthesizing success.
+```sh
+PYTHONPATH=src python scenarios/realtime-streams-demo.py --out /tmp/aas-q/q9/live-demo
+aeroagentsim replay /tmp/aas-q/q9/live-demo
+```
 
-`tests/platform/test_realtime.py` covers both late dispositions, concurrent
-watermark waiting, idempotency, source/target validation, engine-path validation,
-HTTP worker admission and journal/state equivalence with live calls disabled.
+It observes fast execution at 50ms while slow remains pending with closure 0,
+admits an input at 50ms + 1ns inside the fast lateness tail, rejects an input at
+the closed 50ms endpoint, then closes both streams through 300ms. Offline replay
+reconstructs exactly the committed records with factory, engine and live-clock
+calls disabled. The script requires a new output directory.
+
+Early service occurs at a selected common boundary. `run_until` returns only
+after the common global seal, when all relevant streams and due work are settled.
+Committed views, action receipts and the HTTP commit feed expose partial progress
+while it waits. A fast island cannot skip arbitrarily beyond a blocked boundary.
+This is local coordination; distributed synchronization remains out of scope.
+
+The existing [realtime-ingress.yaml](../../scenarios/realtime-ingress.yaml)
+continues to exercise the telemetry shorthand and authored offline commands.
+`run.pacing: realtime` only delays host execution against wall time. It supplies
+neither source timestamps nor closure and cannot satisfy an ingress contract.
+
+## HTTP worker interface
+
+Start `aeroagentsim serve --out /tmp/aas-q/q9/http-runs --scenario-root .`.
+Create a live variant using the actual pinned scenario:
+
+```python
+import copy
+import json
+from pathlib import Path
+from aeroagentsim.scenario import load_scenario
+
+scenario = load_scenario(Path("scenarios/realtime-streams.yaml"))
+body = copy.deepcopy(scenario.document)
+body["registry"]["snapshot"] = str(scenario.base / body["registry"]["snapshot"])
+body["bindings"]["commands"] = []
+for stream in body["ingress_streams"]:
+    stream["initial_watermark_ns"] = 0
+Path("/tmp/aas-q/q9/live-streams.json").write_text(json.dumps(body))
+```
+
+POST this JSON to `/v1/runs`; use the returned run ID below. The `/ingress`
+body accepts `engine`, `stream_id`, or both (at least one is required):
+
+```http
+POST /v1/runs/<id>/ingress
+Content-Type: application/json
+
+{"stream_id":"fast-source","schema":"aas.stream.observe","target":"fast","at_ns":50000000,"payload":{"value":21.5},"idempotency_key":"fast-first","source_stamp":{"clock_id":"fast-clock","mapping_id":"fast-ns","numerator":50000000,"denominator":1}}
+```
+
+Assert fast source progress separately:
+
+```http
+POST /v1/runs/<id>/watermark
+Content-Type: application/json
+
+{"stream_id":"fast-source","source_stamp":{"clock_id":"fast-clock","mapping_id":"fast-ns","numerator":70000000,"denominator":1}}
+```
+
+The `aeroagentsim.watermark-receipt/v2` response includes
+`stream_id: fast-source` and `watermark_ns: 50000000`. GET
+`/v1/runs/<id>/commits` to observe the fast execution receipt while slow still
+blocks sealing. Submit a fresh keyed input at 50000001 to see `accepted`, and
+another at 50000000 to see `rejected`/`LATE_INGRESS`. A valid late rejection is HTTP
+200 with a typed receipt; invalid payloads, domains, mappings or assertions are
+HTTP 422. An exited/completed worker returns HTTP 409.
+
+Finish by POSTing `{"stream_id":"slow-source","watermark_ns":300000000}` and
+`{"stream_id":"fast-source","watermark_ns":300000000}` to `/watermark`.
+Alternatively, slow progress at 174999500 ticks maps to 350000000ns, retaining
+its 50ms tail and closing through 300ms. `/watermark` accepts exactly one of
+`watermark_ns` or `source_stamp`; supplying both or neither fails validation.
+
+`tests/platform/test_realtime_streams_example.py` exercises this shipped scenario
+through CLI and HTTP, including partial service, mapped progress, tail admission,
+rejected idempotency and exact offline reconstruction. `test_realtime.py` retains
+single-source reject/delay coverage and tests declaration/admission edge cases.
+
+Live declarations write journal 1.3 with complete streams, mappings and policy
+encodings pinned in the header, plus per-stream decisions and progress/closure
+records. Historical 1.1/1.2 journals replay under their original semantics; offline
+workloads without live declarations retain 1.2 bytes. Replay never constructs
+plugins or calls engines, sources, RNG or live clocks. Missing closure produces a
+recorded timeout/fault and an incomplete prefix, never synthetic success.

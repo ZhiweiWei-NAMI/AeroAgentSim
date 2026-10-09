@@ -11,7 +11,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from aerokernel import CommandRequest, Instant, Stamp
+from aerokernel import CommandRequest, IngressReceipt, Instant, Stamp
 from aerokernel.errors import KernelError
 from aerokernel.journal import replay
 from fastapi.testclient import TestClient
@@ -77,6 +77,8 @@ def test_live_policy_receipt_seal_and_offline_replay(
     with RunSession(load_scenario(realtime), directory) as session:
         session.start()
         receipt = session.submit_live("sensor", command(key="first"), stamp())
+        assert isinstance(receipt, IngressReceipt)
+        assert receipt.stream_id == "sensor"
         assert receipt.disposition == "accepted"
         assert receipt.boundary_ns == 50_000_000
         assert receipt.delay_ns == 0
@@ -90,7 +92,10 @@ def test_live_policy_receipt_seal_and_offline_replay(
         assert (
             session.simulation.kernel.action(receipt.command_id).status == "succeeded"
         )
-        late = session.submit_live("sensor", command(17.0), stamp())
+        late = session.submit_live("sensor", command(17.0, "late"), stamp())
+        before_duplicate = session.simulation.kernel.records
+        assert session.submit_live("sensor", command(17.0, "late"), stamp()) == late
+        assert session.simulation.kernel.records == before_duplicate
         assert late.disposition == ("rejected" if lateness == "reject" else "delayed")
         if lateness == "reject":
             assert late.command_id is None and late.code == "LATE_INGRESS"
@@ -109,7 +114,9 @@ def test_live_policy_receipt_seal_and_offline_replay(
             ]
             == lateness
         )
-        assert header["ingress_policy"] is not None
+        assert header["ingress_policy"] is None
+        assert header["minor"] == 3
+        assert header["ingress_streams"][0]["fields"]["id"] == "sensor"
 
 
 def test_watermark_wait_accepts_concurrent_input(
@@ -160,7 +167,14 @@ def test_missing_and_conflicting_policies(realtime: dict[str, Any]) -> None:
         Simulation(load_scenario(missing))
     realtime["engines"]["second"] = copy.deepcopy(realtime["engines"]["sensor"])
     realtime["engines"]["second"]["ingress"]["lateness"] = "delay"
-    with pytest.raises(ScenarioError, match=r"engines\.second\.ingress"):
+    scenario = load_scenario(realtime)
+    assert {stream.policy.lateness for stream in scenario.ingress_streams} == {
+        "reject",
+        "delay",
+    }
+    realtime["engines"]["sensor"]["ingress"]["stream_id"] = "shared"
+    realtime["engines"]["second"]["ingress"]["stream_id"] = "shared"
+    with pytest.raises(ScenarioError, match=r"engines\.second\.ingress.*inconsistent"):
         load_scenario(realtime)
 
 
@@ -296,7 +310,7 @@ def test_missing_watermark_faults_instead_of_pacing_fallback(
     assert replay(directory / "journal.jsonl").incomplete
 
 
-def test_engines_share_watermark_with_distinct_source_mappings(
+def test_engines_have_distinct_watermarks_and_source_mappings(
     realtime: dict[str, Any], tmp_path: Path
 ) -> None:
     realtime["entities"].append(
@@ -324,7 +338,8 @@ def test_engines_share_watermark_with_distinct_source_mappings(
             Stamp("canonical", 50_000_000, 1, "canonical"),
         )
         assert first.disposition == second_receipt.disposition == "accepted"
-        session.advance_watermark(300_000_000)
+        session.advance_watermark(300_000_000, stream_id="sensor")
+        session.advance_watermark(300_000_000, stream_id="sensor2")
         session.run()
         assert first.command_id is not None and second_receipt.command_id is not None
         assert session.simulation.kernel.action(first.command_id).status == "succeeded"
@@ -333,3 +348,63 @@ def test_engines_share_watermark_with_distinct_source_mappings(
             == "succeeded"
         )
         assert_replay(session, tmp_path / "run")
+
+
+@pytest.mark.parametrize("allowance", [0, 5])
+def test_mapped_source_progress_and_inclusive_lateness_tail(
+    realtime: dict[str, Any], tmp_path: Path, allowance: int
+) -> None:
+    realtime["engines"]["sensor"]["ingress"]["allowed_lateness_ns"] = allowance
+    realtime["clock_mappings"][1].update(offset_ns=7, p=2, q=3)
+    with RunSession(load_scenario(realtime), tmp_path / "mapped") as session:
+        session.start()
+        kernel = session.simulation.kernel
+        progress = Stamp("sensor-clock", 150, 1, "sensor-ns")  # P = 107ns
+        closed = 107 - allowance
+        session.advance_source_progress(progress)
+        assert kernel.ingress_watermarks == {"sensor": closed}
+        before = kernel.records
+        session.advance_source_progress(progress)
+        assert kernel.records == before
+        with pytest.raises(KernelError, match="INGRESS_WATERMARK"):
+            session.advance_source_progress(Stamp("sensor-clock", 147, 1, "sensor-ns"))
+        assert kernel.records == before
+
+        def attempt(ns: int) -> IngressReceipt:
+            return session.submit_live(
+                "sensor",
+                CommandRequest(
+                    "aas.telemetry.observe", "sensor", Instant(ns), {"value": 3.0}
+                ),
+                Stamp("sensor-clock", (ns - 7) * 3, 2, "sensor-ns"),
+            )
+
+        assert attempt(closed).disposition == "rejected"
+        assert attempt(closed + 1).disposition == "accepted"
+        if allowance:
+            assert attempt(107).disposition == "accepted"
+        session.advance_watermark(200)
+        assert kernel.ingress_watermarks["sensor"] == 200
+        before = kernel.records
+        # Explicit closure is not weakened by a later mapped progress assertion.
+        with pytest.raises(KernelError, match="INGRESS_WATERMARK"):
+            session.advance_source_progress(progress)
+        assert kernel.records == before
+        with pytest.raises(KernelError, match="CLOCK_MAPPING"):
+            session.advance_source_progress(Stamp("canonical", 300, 1, "canonical"))
+        assert kernel.records == before
+        session.run_until(200)
+        restored = replay(kernel.journal.bytes)
+        assert restored.records == kernel.records
+        assert restored.ingress_watermarks == kernel.ingress_watermarks
+
+
+@pytest.mark.parametrize("value", [None, True, False, -1, 1.5, "20"])
+def test_shorthand_allowed_lateness_requires_authored_integer(
+    realtime: dict[str, Any], value: Any
+) -> None:
+    realtime["engines"]["sensor"]["ingress"]["allowed_lateness_ns"] = value
+    with pytest.raises(
+        ScenarioError, match=r"engines\.sensor\.ingress\.allowed_lateness_ns"
+    ):
+        load_scenario(realtime)

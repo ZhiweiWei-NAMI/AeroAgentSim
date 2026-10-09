@@ -10,10 +10,10 @@ from typing import Any
 
 from aerokernel.errors import KernelError
 
-from aeroagentsim.platform.ingress import submission
+from aeroagentsim.platform.ingress import receipt_data, source_stamp, submission
 from aeroagentsim.platform.simulation import RunSession
 from aeroagentsim.scenario import Scenario
-from aeroagentsim.scenario.loader import contract, integer
+from aeroagentsim.scenario.loader import contract, integer, text
 
 from .storage import RunStorage
 
@@ -43,15 +43,44 @@ def execute(
                 return
             try:
                 if operation == "ingress":
-                    engine, command, stamp = submission(body)
-                    result = active.submit_live(engine, command, stamp).to_data()
+                    engine, command, stamp, stream_id = submission(body)
+                    result = receipt_data(
+                        active.submit_live(engine, command, stamp, stream_id=stream_id)
+                    )
                 elif operation == "watermark":
-                    spec = contract(body, "watermark", {"watermark_ns"})
-                    ns = integer(spec["watermark_ns"], "watermark.watermark_ns")
-                    active.advance_watermark(ns)
+                    spec = contract(
+                        body,
+                        "watermark",
+                        set(),
+                        {"watermark_ns", "source_stamp", "stream_id"},
+                    )
+                    if ("watermark_ns" in spec) == ("source_stamp" in spec):
+                        raise ValueError(
+                            "watermark: select exactly one of watermark_ns or source_stamp"
+                        )
+                    stream_id = active.simulation.resolve_stream(
+                        text(spec["stream_id"], "watermark.stream_id")
+                        if "stream_id" in spec
+                        else None
+                    )
+                    if "source_stamp" in spec:
+                        active.advance_source_progress(
+                            source_stamp(
+                                spec["source_stamp"], "watermark.source_stamp"
+                            ),
+                            stream_id=stream_id,
+                        )
+                    else:
+                        active.advance_watermark(
+                            integer(spec["watermark_ns"], "watermark.watermark_ns"),
+                            stream_id=stream_id,
+                        )
                     result = {
-                        "contract": "aeroagentsim.watermark-receipt/v1",
-                        "watermark_ns": ns,
+                        "contract": "aeroagentsim.watermark-receipt/v2",
+                        "stream_id": stream_id,
+                        "watermark_ns": active.simulation.kernel.ingress_watermarks[
+                            stream_id
+                        ],
                     }
                 else:
                     raise ValueError("Unknown worker input operation")
