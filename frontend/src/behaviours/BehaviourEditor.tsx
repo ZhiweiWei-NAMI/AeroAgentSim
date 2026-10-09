@@ -1,4 +1,5 @@
 import { Details } from '../console/Details';
+import type { ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { applicableFields, applicableRelations, arity, astKind, mapping, operators, patch, temporal, type AuthorType, type Draft, type Path } from './model';
 import { parseLosslessJson } from '../feeds/lossless-json';
@@ -7,19 +8,29 @@ import { ExpressionControl } from './ExpressionControl';
 import { TriggerForm as Trigger } from './TriggerForm';
 interface Props {
   value: Draft; onChange: (value: Draft) => void; types?: AuthorType[]; fields?: Draft[]; relations?:Draft[];
-  errors?: Array<{path:string;message:string}>; onValidate?:()=>void; onValidityChange?:(valid:boolean)=>void;
+  errors?: Array<{path:string;message:string}>; onValidate?:()=>void; onValidityChange?:(valid:boolean)=>void; initialTab?:string;
   capabilities?:string[]; events?:string[]; onImportYaml?:(yaml:string)=>Promise<void>; onExportYaml?:()=>Promise<string>;
 }
 const RelationCatalog=createContext<Draft[]>([]);
 const EditorValidity = createContext<(label:string,error:string)=>void>(()=>{});
+/** Standalone typed editors share the same invalid-buffer handling as package authoring. */
+export function AuthoringScope({children,onValidityChange}:{children:ReactNode;onValidityChange?:(valid:boolean)=>void}) {
+ const [invalid,setInvalid]=useState<Record<string,string>>({});
+ const report=useCallback((label:string,error:string)=>setInvalid(previous=>{if(previous[label]===error||!error&&!(label in previous))return previous;const next={...previous};if(error)next[label]=error;else delete next[label];return next;}),[]);
+ const valid=Object.keys(invalid).length===0;
+ useEffect(()=>{onValidityChange?.(valid);},[valid,onValidityChange]);
+ return <EditorValidity.Provider value={report}>{children}</EditorValidity.Provider>;
+}
+
 function Json({label,value,onChange}:{label:string;value:unknown;onChange:(value:unknown)=>void}) {
   const [text,setText]=useState(()=>JSON.stringify(value,null,2) ?? ''),[error,setError]=useState('');const sent=useRef(value); const report=useContext(EditorValidity);
   useEffect(()=>{report(label,error);return()=>report(label,'');},[report,label,error]);
   useEffect(()=>{if(value!==sent.current){setText(JSON.stringify(value,null,2) ?? '');setError('');sent.current=value;}},[value]);
   return <Details title={label}><label className="behaviour-json">{label}<textarea aria-label={label} rows={4} value={text} onChange={event=>{setText(event.target.value);try{const next=parseLosslessJson(event.target.value,true);sent.current=next;onChange(next);setError('');}catch(problem){setError(String(problem));}}}/>{error&&<span role="alert">{error}</span>}</label></Details>;
 }
-function Ast({node,onChange,path,roles,types,fields,depth=0}:{node:unknown;onChange:(node:unknown)=>void;path:string;roles:Draft;types:AuthorType[];fields:Draft[];depth?:number}) {
-  const relations=useContext(RelationCatalog);
+export function Ast({node,onChange,path,roles,types,fields,depth=0,relations:providedRelations}:{node:unknown;onChange:(node:unknown)=>void;path:string;roles:Draft;types:AuthorType[];fields:Draft[];depth?:number;relations?:Draft[]}) {
+  const contextRelations=useContext(RelationCatalog);
+  const relations=providedRelations ?? contextRelations;
   const kind=astKind(node), row=mapping(node)?node:{};
   const set=(key:string,next:unknown)=>onChange({...row,[key]:next});
   if(kind==='unsupported'||depth>32) return <div><p>Unsupported AST content retained at {path}; edit raw JSON. Server compiler determines support.</p><Json label={`${path} AST JSON`} value={node} onChange={onChange}/></div>;
@@ -42,13 +53,13 @@ function Ast({node,onChange,path,roles,types,fields,depth=0}:{node:unknown;onCha
       const op=event.target.value;if(op==='all'||op==='any'){onChange({...row,op,array:{literal:[]},var:'item',predicate:{literal:true}});return;}
       const old=Array.isArray(row.args)?row.args:[];set('op',op);onChange({...row,op,args:Array.from({length:arity[op]??(temporal.includes(op)?2:Math.max(1,old.length))},(_,i)=>old[i]??{literal:null})});
     }}>{operators.map(op=><option key={op}>{op}</option>)}</select></label>
-    {(row.op==='all'||row.op==='any')?<><label>Bound variable <input value={String(row.var??'')} onChange={event=>set('var',event.target.value)}/></label>{['array','predicate','applicabilityExpression'].filter(key=>key in row).map(key=><Ast key={key} node={row[key]} onChange={next=>set(key,next)} path={`${path}.${key}`} roles={roles} types={types} fields={fields} depth={depth+1}/>)}</>:Array.isArray(row.args)&&<>{row.args.map((child,index)=><Ast key={index} node={child} onChange={next=>set('args',(row.args as unknown[]).map((item,i)=>index===i?next:item))} path={`${path}.args[${index}]`} roles={roles} types={types} fields={fields} depth={depth+1}/>)}
+    {(row.op==='all'||row.op==='any')?<><label>Bound variable <input value={String(row.var??'')} onChange={event=>set('var',event.target.value)}/></label>{['array','predicate','applicabilityExpression'].filter(key=>key in row).map(key=><Ast key={key} node={row[key]} onChange={next=>set(key,next)} path={`${path}.${key}`} roles={roles} types={types} fields={fields} depth={depth+1} relations={relations}/>)}</>:Array.isArray(row.args)&&<>{row.args.map((child,index)=><Ast key={index} node={child} onChange={next=>set('args',(row.args as unknown[]).map((item,i)=>index===i?next:item))} path={`${path}.args[${index}]`} roles={roles} types={types} fields={fields} depth={depth+1} relations={relations}/>)}
       {!arity[String(row.op)]&&<button onClick={()=>set('args',[...(row.args as unknown[]),{literal:null}])}>Add operand</button>}</>}
-      {'asScope' in row&&<Ast node={row.asScope} onChange={next=>set('asScope',next)} path={`${path}.asScope`} roles={roles} types={types} fields={fields} depth={depth+1}/>}</>}
+      {'asScope' in row&&<Ast node={row.asScope} onChange={next=>set('asScope',next)} path={`${path}.asScope`} roles={roles} types={types} fields={fields} depth={depth+1} relations={relations}/>}</>}
     <Json label={`${path} complete node`} value={row} onChange={onChange}/>
   </fieldset>;
 }
-function Roles({value,onChange,types,label}:{value:unknown;onChange:(next:unknown)=>void;types:AuthorType[];label:string}) {
+export function Roles({value,onChange,types,label}:{value:unknown;onChange:(next:unknown)=>void;types:AuthorType[];label:string}) {
   const [role,setRole]=useState('');if(!mapping(value))return <Json label={label} value={value} onChange={onChange}/>;
   return <fieldset><legend>{label}</legend>{Object.entries(value).map(([key,type])=><label key={key}>{key}<input aria-label={`${label}.${key}`} list={`${label}-types`} value={typeof type==='string'?type:''} onChange={event=>onChange({...value,[key]:event.target.value})}/></label>)}
     <datalist id={`${label}-types`}>{types.map(type=><option key={type.id} value={type.id}>{type.abstract?'abstract · ':''}{type.parents.join(', ')}</option>)}</datalist>
@@ -80,8 +91,8 @@ function Declarations({section,value,onChange,types}:{section:string;value:unkno
     {section==='conflicts'&&<Roles value={row.roles} onChange={next=>onChange(value.map((item,i)=>i===index?{...row,roles:next}:item))} types={types} label={`conflicts ${index} roles`}/>}
     <ExpressionControl label={`${section} ${index} complete declaration`} value={row} onChange={next=>onChange(value.map((item,i)=>i===index?next:item))}/></fieldset>:<Json key={index} label={`${section} ${index} unsupported declaration`} value={row} onChange={next=>onChange(value.map((item,i)=>i===index?next:item))}/>)}<button onClick={()=>onChange([...value,{id:''}])}>Add {section} declaration</button></div>;
 }
-export function BehaviourEditor({value,onChange,types=[],fields=[],relations=[],errors=[],capabilities=[],events=[],onValidate,onImportYaml,onExportYaml,onValidityChange}:Props) {
-  const [tab,setTab]=useState('predicates'),[selected,setSelected]=useState(''),[newId,setNewId]=useState(''),[yaml,setYaml]=useState(''),[error,setError]=useState(''),[connect,setConnect]=useState(false),[from,setFrom]=useState<string>();
+export function BehaviourEditor({value,onChange,types=[],fields=[],relations=[],errors=[],capabilities=[],events=[],onValidate,onImportYaml,onExportYaml,onValidityChange,initialTab}:Props) {
+  const [tab,setTab]=useState(initialTab ?? 'predicates'),[selected,setSelected]=useState(''),[newId,setNewId]=useState(''),[yaml,setYaml]=useState(''),[error,setError]=useState(''),[connect,setConnect]=useState(false),[from,setFrom]=useState<string>();
   const [invalid,setInvalid]=useState<Record<string,string>>({});
   const report=useCallback((label:string,error:string)=>setInvalid(previous=>{if(previous[label]===error||(!error&&!(label in previous)))return previous;const next={...previous};if(error)next[label]=error;else delete next[label];return next;}),[]);
   const valid=Object.keys(invalid).length===0;useEffect(()=>{onValidityChange?.(valid);},[valid,onValidityChange]);

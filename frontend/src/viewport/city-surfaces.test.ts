@@ -6,7 +6,6 @@ import type { MeshPackManifest } from './mesh-pack';
 // Synthetic geographic fixture: coordinates are converted exactly the way the pack
 // contract does (local Mercator around converter_origin, quantized to 1 mm,
 // then the declared stored_translation is added).
-const PROVENANCE = 'a'.repeat(64);
 const ORIGIN = { latitude_deg: 31, longitude_deg: 121 };
 const TRANSLATION: [number, number] = [40, -25];
 const EXTENT = { west: -100, east: 100, south: -100, north: 100 };
@@ -14,8 +13,8 @@ const EXTENT = { west: -100, east: 100, south: -100, north: 100 };
 function pack(): MeshPackManifest {
   return {
     schema_version: 'aero-bench.osm2world-mesh-pack/v1',
-    source: { sha256: PROVENANCE, size_bytes: 1 },
-    generator: { runtime_sha256: PROVENANCE, patch_sha256: PROVENANCE, config_sha256: PROVENANCE, revision: 'b'.repeat(40) },
+    source: { asset_id: 'city-pack/source@1', size_bytes: 1 },
+    generator: { revision: 'b'.repeat(40) },
     projection: { name: 'MetricMapProjection', axes: 'east-up-south', origin: ORIGIN },
     coordinate_contract: {
       schema_version: 'aero-bench.osm2world-source-coordinates/v1',
@@ -25,7 +24,6 @@ function pack(): MeshPackManifest {
       earth_circumference_m: 40075016.686,
       native_point_quantization_m: 0.001,
       storage: 'source-mesh-float32-converter-coordinates-then-declared-origin-translation',
-      source_json_sha256: PROVENANCE, producer_sha256: PROVENANCE, projection_helper_sha256: PROVENANCE,
     },
     extent: EXTENT,
     original_mesh_count: 0,

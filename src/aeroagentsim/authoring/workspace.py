@@ -10,6 +10,7 @@ import re
 import tempfile
 import threading
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -80,6 +81,8 @@ class WorkspaceStore:
     def _write(self, draft: dict[str, Any]) -> dict[str, Any]:
         directory = self.directory(draft["id"])
         directory.mkdir(exist_ok=True)
+        now = datetime.now(timezone.utc).isoformat()
+        draft["updated_at"] = now
         payload = json.dumps(draft, ensure_ascii=False, allow_nan=False, indent=2)
         pending = directory / "draft.pending.json"
         pending.write_text(payload, encoding="utf-8")
@@ -95,22 +98,30 @@ class WorkspaceStore:
                 {
                     "id": identifier,
                     "name": name.strip(),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
                     "scenario": starter(identifier, self.ontology_root),
                 }
             )
 
     def list(self) -> list[dict[str, Any]]:
-        return [
+        drafts = [
             self.get(p.name)
             for p in sorted(self.root.glob("studio-*"))
             if (p / "draft.json").is_file()
         ]
+        return sorted(drafts, key=lambda draft: draft["updated_at"], reverse=True)
 
     def get(self, identifier: str) -> dict[str, Any]:
         path = self.directory(identifier) / "draft.json"
         if not path.is_file():
             raise FileNotFoundError("workspace: not found")
         draft: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+        # Older drafts have no edit metadata; the stored file's modification time
+        # is the actual last write, without inventing a creation date.
+        draft.setdefault(
+            "updated_at",
+            datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(),
+        )
         return draft
 
     def save(self, identifier: str, changes: dict[str, Any]) -> dict[str, Any]:

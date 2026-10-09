@@ -12,8 +12,8 @@ test('real traffic console: draft, compiler, operator accident, award, city phot
  await page.screenshot({path:'/tmp/aas-q/e3b/screenshots/runs.png'});
  await page.getByTestId('nav-home').click();await page.getByTestId('open-traffic-demo').click();
  await page.waitForURL(/\/studio\?template=traffic-accident/);
- await expect(page.getByRole('tab',{name:'Entities by AeroGraph type'})).toBeVisible({timeout:60_000});
- await page.getByRole('tab',{name:'Behaviours',exact:true}).click();
+ await expect(page.getByTestId('studio-step-entities')).toBeVisible({timeout:60_000});
+ await page.getByTestId('studio-step-rules').click();
  await expect(page.getByLabel('Package ID')).toHaveValue('traffic.accident');
  await page.getByRole('button',{name:'Validate',exact:true}).click();
  await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeEnabled({timeout:60_000});

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import time
 from pathlib import Path
 from typing import Any
@@ -198,3 +199,20 @@ def test_catalog_and_real_run_replay(tmp_path: Path) -> None:
         assert client.get(f"/v1/runs/{run_id}/header").status_code == 200
         commits = client.get(f"/v1/runs/{run_id}/commits").json()["commits"]
         assert commits and any(c["facts"] for c in commits)
+
+
+def test_workspace_recency_uses_persisted_edits(store: WorkspaceStore) -> None:
+    first = store.create("First experiment")
+    second = store.create("Second experiment")
+    edited = store.save(first["id"], {"name": "Renamed experiment"})
+    assert edited["created_at"] == first["created_at"]
+    assert edited["updated_at"] > second["updated_at"]
+    assert [item["id"] for item in store.list()] == [first["id"], second["id"]]
+    path = store.directory(second["id"]) / "draft.json"
+    legacy = {key: value for key, value in second.items() if key != "updated_at"}
+    path.write_text(json.dumps(legacy), encoding="utf-8")
+    from datetime import datetime, timezone
+
+    assert store.get(second["id"])["updated_at"] == datetime.fromtimestamp(
+        path.stat().st_mtime, timezone.utc
+    ).isoformat()

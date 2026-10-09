@@ -7,6 +7,9 @@ import { useLocation } from 'react-router-dom';
 import { PageHeader } from './PageState';
 import { CheckIcon, ExternalIcon, StudioIcon } from './icons';
 import './console.css';
+import { recentWorkspaces, workspaceUpdated } from '../studio/workspace-list';
+import { readableName } from '../studio/guided-model';
+import './home-gallery.css';
 
 /* HomePage — real gallery over StudioApi /v1/studio/workspaces and RunsApi /v1/runs.
  * Loading / error / empty states are truthful: no fake counts, no invented
@@ -23,18 +26,18 @@ interface RunsState { status: 'loading' | 'ready' | 'error'; runs: RunInfo[]; er
 function WorkspaceCard({ workspace, apiBase }: { workspace: Workspace; apiBase: string }) {
   const entityCount = Array.isArray(workspace.scenario?.entities) ? workspace.scenario.entities.length : undefined;
   const engines = workspace.scenario?.engines && typeof workspace.scenario.engines === 'object'
-    ? Object.keys(workspace.scenario.engines).join(', ') : undefined;
+    ? Object.keys(workspace.scenario.engines).map(readableName).join(', ') : undefined;
   return (
     <Link
-      className="console-card console-card-accent"
+      className="console-card console-card-accent home-workspace-card"
       to={`/studio?workspace=${encodeURIComponent(workspace.id)}&api=${encodeURIComponent(apiBase)}`}
       data-testid="workspace-card"
-      style={{ textDecoration: 'none', display: 'block', color: 'inherit' }}
     >
       <h3>{workspace.name}</h3>
       
       <div className="console-card-meta">
-        <span className="console-badge console-badge-workspace">stored workspace</span>
+        <span className="console-badge console-badge-workspace">Workspace</span>
+        <span>{workspaceUpdated(workspace)}</span>
         {entityCount !== undefined && <span>{entityCount} entities</span>}
         {engines && <span>engines: {engines}</span>}
         {workspace.validation?.valid === true && <span>validation: valid</span>}
@@ -54,6 +57,8 @@ export default function HomePage() {
   const api = useMemo(() => new StudioApi(apiBase), [apiBase]);
   const runsApi = useMemo(() => new RunsApi(apiBase), [apiBase]);
   const [workspaces, setWorkspaces] = useState<GalleryState>({ status: 'loading', list: [] });
+  const [showAll, setShowAll] = useState(false);
+  const gallery = recentWorkspaces(workspaces.list);
   const [runs, setRuns] = useState<RunsState>({ status: 'loading', runs: [] });
   const attempt = useRef(0);
 
@@ -111,10 +116,10 @@ export default function HomePage() {
         </section>
 
         <section aria-labelledby="gallery-heading">
-          <h2 className="console-section-title" id="gallery-heading">Workspaces</h2>
+          <h2 className="console-section-title" id="gallery-heading">Recent workspaces</h2>
           <div data-testid="scenario-gallery">
             {workspaces.status === 'loading' && (
-              <div className="console-loading">Loading workspaces from {apiBase}…</div>
+              <div className="console-loading">Loading workspaces…</div>
             )}
             {workspaces.status === 'error' && (
               <div className="console-error-card" role="alert">
@@ -129,12 +134,13 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="console-grid console-grid-cards">
-                {workspaces.list.map(workspace => (
+                {(showAll ? gallery : gallery.slice(0, 6)).map(workspace => (
                   <WorkspaceCard key={workspace.id} workspace={workspace} apiBase={apiBase} />
                 ))}
               </div>
             ))}
           </div>
+          {gallery.length > 6 && <button className="console-btn" onClick={() => setShowAll(!showAll)}>{showAll ? 'Show recent six' : `Show all ${gallery.length} workspaces`}</button>}
         </section>
 
         <section aria-labelledby="runs-heading">
@@ -170,7 +176,7 @@ export default function HomePage() {
               <h3>AeroGraph</h3>
               <p>
                 A typed entity graph shared by every plugin: entities, facilities,
-                airspaces and relations with explicit, per-field provenance.
+                airspaces and relations with explicit field ownership.
                 Browsable in Studio and available to Inspect views.
               </p>
             </div>

@@ -1,0 +1,9 @@
+.home-workspace-card {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+.home-workspace-card:hover {
+  color: inherit;
+  text-decoration: none;
+}

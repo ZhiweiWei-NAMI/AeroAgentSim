@@ -27,33 +27,35 @@ export function recordedCameraPose(value: unknown) {
 }
 export interface CaptureInput { request: ObjectData; service_run_id: string; label?: string }
 export interface CaptureResult { request: ObjectData; png_data_url: string }
-const sha = async (bytes: ArrayBuffer) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(value => value.toString(16).padStart(2, '0')).join('');
 
-async function verifyAssets(url: string, expected: unknown, header: RunHeader, signal: AbortSignal, blobs: string[]): Promise<RunHeader> {
+/** Asset sets are addressed by opaque plain IDs; bytes are fetched and loaded as-is. */
+export async function loadAssets(assetId: string, url: string, header: RunHeader, signal: AbortSignal, blobs: string[]): Promise<RunHeader> {
+  if (typeof assetId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/.test(assetId)) throw Error('Capture asset set id is invalid');
   const response = await fetch(url, { signal }); if (!response.ok) throw Error(`Capture asset manifest HTTP ${response.status}`);
-  const bytes = await response.arrayBuffer(); if (await sha(bytes) !== expected) throw Error('Capture asset manifest digest mismatch');
-  const manifest = object(parseLosslessJson(new TextDecoder().decode(bytes)));
+  const manifest = object(parseLosslessJson(new TextDecoder().decode(await response.arrayBuffer())));
   if (manifest.format !== 'aeroagentsim.capture-assets/v1' || manifest.environment !== 'viewer-default/v1' || !Array.isArray(manifest.files)) throw Error('Unsupported capture asset manifest / environment');
+  if(manifest.asset_id!==undefined && manifest.asset_id!==assetId) throw Error('Capture asset set ID does not match the request');
   const contents = new Map<string, ArrayBuffer>();
   const files = new Map<string, ObjectData>(), pinned = new Map<string, string>();
   await Promise.all(manifest.files.map(async value => {
-    const file = object(value); if (typeof file.url !== 'string' || typeof file.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(file.sha256)) throw Error('Invalid capture asset descriptor');
+    const file = object(value);
+    if (typeof file.url !== 'string' || !file.url || (file.asset_id!==undefined && (typeof file.asset_id!=='string' || !file.asset_id))) throw Error('Invalid capture asset descriptor');
     const address = new URL(file.url, new URL(url, location.href)).href;
     if (files.has(address)) throw Error('Duplicate capture asset URL'); files.set(address, file);
     const result = await fetch(address, { signal }); if (!result.ok) throw Error(`Capture asset HTTP ${result.status}: ${address}`);
-    const data = await result.arrayBuffer(); if (data.byteLength !== counter(file.byte_count) || await sha(data) !== file.sha256) throw Error(`Capture asset integrity failure: ${address}`);
+    const data = await result.arrayBuffer();
     contents.set(address, data); const blob = URL.createObjectURL(new Blob([data])); blobs.push(blob); pinned.set(address, blob);
   }));
   const required = header.presentation.flatMap(binding => binding.visual.kind === 'model' ? [binding.visual.asset] : []);
   if (header.scene?.city) required.push(header.scene.city.url);
   if (header.scene?.roads) required.push(header.scene.roads.url);
   if (header.scene?.hdri) required.push(header.scene.hdri);
-  for (const address of required) if (!address || !files.has(new URL(address, location.href).href)) throw Error(`Capture asset is absent from the verified manifest: ${address}`);
+  for (const address of required) if (!address || !files.has(new URL(address, location.href).href)) throw Error(`Capture asset is absent from the manifest: ${address}`);
   if(header.scene?.city?.kind==='traffic-city') {
     const address=new URL(header.scene.city.url,location.href).href;
     const city=object(parseLosslessJson(new TextDecoder().decode(contents.get(address)!)));
     if(!Array.isArray(city.buildings))throw Error('Traffic city buildings unavailable');
-    city.buildings=city.buildings.map(value=>{const building=object(value);if(typeof building.url!=='string')throw Error('Traffic building has no asset');const original=new URL(building.url.replace('/assets/',''),address).href;const blob=pinned.get(original);if(!blob)throw Error(`Unverified traffic building ${original}`);return {...building,url:blob};});
+    city.buildings=city.buildings.map(value=>{const building=object(value);if(typeof building.url!=='string')throw Error('Traffic building has no asset');const original=new URL(building.url.replace('/assets/',''),address).href;const blob=pinned.get(original);if(!blob)throw Error(`Unloaded traffic building ${original}`);return {...building,url:blob};});
     const blob=URL.createObjectURL(new Blob([JSON.stringify(city)],{type:'application/json'}));blobs.push(blob);pinned.set(address,blob);
   }
   const pin = (address: string) => pinned.get(new URL(address, location.href).href)!;
@@ -68,9 +70,11 @@ class ExactCaptureStore extends TemporalFeedStore {
   }
 }
 
-/** Captures are derived from recorded facts and verified assets; they never operate the run. */
+/** Captures are derived from recorded facts and loaded assets; they never operate the run. */
 export async function renderCapture(api: RunsApi, assetManifestUrl: string, input: CaptureInput, mount: HTMLElement): Promise<CaptureResult> {
-  const request = object(input.request), actor = object(request.actor), source = object(request.source_cut);
+  const request = object(input.request);
+  if(typeof request.asset_digest!=='string' || !request.asset_digest) throw Error('Capture request asset set ID is missing');
+  const actor = object(request.actor), source = object(request.source_cut);
   if (!Array.isArray(source.instant) || source.instant.length !== 2) throw Error('Capture source cut lacks ns/microstep');
   const index = counter(source.index), ns = integerText(source.instant[0]), microstep = counter(source.instant[1]);
   const width = counter(request.width), height = counter(request.height);
@@ -96,9 +100,9 @@ export async function renderCapture(api: RunsApi, assetManifestUrl: string, inpu
     if (!cut || cut.at.ns !== ns || cut.at.microstep !== microstep) throw Error('Capture cut disagrees with recorded journal instant');
     store.seek(ns, index); const key = { id: actor.id, generation: integerText(actor.generation) };
     const entity = store.entities.get(entityId(key)); if (!entity || entity.typeId !== actor.type_id) throw Error('Capture actor generation/type absent at source cut');
-    store.select(key); header = await verifyAssets(assetManifestUrl, request.asset_digest, header, abort.signal, blobs);
+    store.select(key); header = await loadAssets(request.asset_digest, assetManifestUrl, header, abort.signal, blobs);
     const cameraManifest = object(request.camera);
-    const supported = new Set(['revision', 'preset', 'eye', 'target', 'fov', 'near', 'far', 'frame', 'anchor', 'snapshot', 'provenance']);
+    const supported = new Set(['revision', 'preset', 'eye', 'target', 'fov', 'near', 'far', 'frame', 'anchor', 'snapshot']);
     if (Object.keys(cameraManifest).some(name => !supported.has(name)) || typeof cameraManifest.revision !== 'string' || !cameraManifest.revision) throw Error('Unsupported / incomplete capture camera manifest');
     if (typeof cameraManifest.fov !== 'number' || !(cameraManifest.fov > 0 && cameraManifest.fov < 180)) throw Error('Invalid capture camera fov');
     let eye: [number,number,number], target: [number,number,number];
