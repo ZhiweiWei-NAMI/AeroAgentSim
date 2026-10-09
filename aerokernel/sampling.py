@@ -173,11 +173,18 @@ def compile_samples(
 
 def ordinary_earliest(store: Store) -> Instant | None:
     """Earliest ordinary recipient heap, excluding deferred sample inputs."""
+    from .ingress import safe_partitions
+
     return min(
         (
             heap[0][0]
             for p, heap in store.work.heaps.items()
-            if heap and p not in store.sample_partitions
+            if heap
+            and p not in store.sample_partitions
+            and (
+                not store.ingress_dependencies
+                or p in safe_partitions(store, heap[0][0].ns)
+            )
         ),
         default=None,
     )
@@ -199,10 +206,20 @@ def sample_ready(store: Store, ns: int) -> tuple[str, ...]:
                 context=spec.context_id,
                 trigger=kind,
             )
+    from .ingress import safe_partitions
+
+    safe = (
+        set(safe_partitions(store, ns))
+        if store.ingress_dependencies
+        else set(store.partitions)
+    )
     due = {
         w.recipient
         for w in store.work
-        if w.eligible.ns <= ns and w.recipient in store.sample_partitions
+        if w.eligible.ns <= ns
+        and w.recipient in store.sample_partitions
+        and w.recipient in safe
+        and (not store.ingress_dependencies or store.frontiers[w.recipient][0].ns == ns)
     }
     if not due:
         return ()

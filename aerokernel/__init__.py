@@ -10,7 +10,7 @@ from .errors import (
     SynchronizationDeadlock,
 )
 from .ids import EntityRef, FieldKey, ItemRef, LocalCause
-from .ingress import IngressPolicy
+from .ingress import IngressPolicy, IngressReceipt, IngressStream
 from .journal import Journal, replay
 from .messages import (
     ActionState,
@@ -72,7 +72,7 @@ from .values import (
     typed_equal,
 )
 
-__version__ = "0.1.0.dev0"
+__version__ = "0.2.0.dev0"
 
 __all__ = [
     "ABSENT",
@@ -117,6 +117,8 @@ __all__ = [
     "Horizon",
     "Instant",
     "IngressPolicy",
+    "IngressReceipt",
+    "IngressStream",
     "Interval",
     "ItemRef",
     "Journal",

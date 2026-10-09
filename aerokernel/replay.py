@@ -52,8 +52,10 @@ def from_header(header: dict[str, Any]) -> Kernel:
         "resolved_bindings",
         "engine_versions",
     }
-    if header.get("minor") == 2:
+    if header.get("minor") in {2, 3}:
         required.update({"ingress_policy", "engine_profiles"})
+    if header.get("minor") == 3:
+        required.add("ingress_streams")
     if (
         set(header) != required
         or header["type"] != "header"
@@ -64,12 +66,12 @@ def from_header(header: dict[str, Any]) -> Kernel:
         or header["time_origin_ns"] != 0
         or type(header["time_origin_ns"]) is not int
         or header["major"] != 1
-        or header["minor"] not in {1, 2}
+        or header["minor"] not in {1, 2, 3}
         or header["index"] != 0
         or decode_record(header["instant"]) != Instant(0)
     ):
         raise KernelError("JOURNAL_HEADER", "unsupported or malformed header")
-    if header["minor"] == 2:
+    if header["minor"] in {2, 3}:
         import hashlib
 
         from .rpc_transport import (
@@ -135,8 +137,11 @@ def from_header(header: dict[str, Any]) -> Kernel:
         budget=ResourceBudget(**header["budget"]),
         configuration=header["configuration"],
         ingress_policy=decode_record(header["ingress_policy"])
-        if header["minor"] == 2
+        if header["minor"] in {2, 3}
         else None,
+        ingress_streams=decode_record(header["ingress_streams"])
+        if header["minor"] == 3
+        else (),
     )
     descriptors = decode_record(header["partitions"])
     if not isinstance(descriptors, tuple) or any(
@@ -198,7 +203,9 @@ def from_header(header: dict[str, Any]) -> Kernel:
 
     compile_samples(kernel._store, kernel._dependency_graph, kernel.mappings)
     kernel._store.max_microsteps = kernel.max_microsteps
-    if kernel.ingress_policy is not None:
+    if header["minor"] == 3:
+        kernel._initialize_ingress()
+    elif kernel.ingress_policy is not None:
         kernel._store.watermark_ns = kernel.ingress_policy.initial_watermark_ns
     kernel.header = header
     kernel._bound = kernel._started = kernel._read_only = True
@@ -260,18 +267,20 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
     elif kind in {"live_ingress", "live_ingress_rejection"}:
         from .ingress import reserve_live
 
-        if (
-            self.ingress_policy is None
-            or decode_record(record["policy"]) != self.ingress_policy
-        ):
+        legacy = self.header["minor"] < 3
+        stream_id = "default" if legacy else record["stream_id"]
+        policy = self._policy(stream_id)
+        if decode_record(record["policy"]) != policy:
             raise KernelError("JOURNAL_INGRESS", "live policy differs from the header")
         state, expected, _ = reserve_live(
             self._store,
             decode_record(record["original_request"]),
             decode_record(record["source_stamp"]),
-            self.ingress_policy,
+            policy,
             self.mappings,
             self.budget,
+            stream=self.ingress_streams.get(stream_id),
+            legacy=legacy,
         )
     elif kind == "wall_clock_hold":
         from .pause import validate_hold
@@ -324,6 +333,61 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
         )
         state.records.append(expected)
         state.cuts.append(Cut(record["index"], instant))
+    elif kind in {"watermark", "source_progress"} and self.header["minor"] == 3:
+        stream_id = record["stream_id"]
+        policy = self._policy(stream_id)
+        watermark = record["watermark_ns"]
+        state = self._store.clone()
+        fields = {"stream_id": stream_id, "watermark_ns": watermark}
+        if type(watermark) is not int or self._store.pending_intents:
+            raise KernelError("JOURNAL_WATERMARK", "invalid prefix advance")
+        current = state.watermarks[stream_id]
+        if kind == "source_progress":
+            from .time import Stamp
+
+            stamp = decode_record(record["source_stamp"])
+            stream = self.ingress_streams.get(stream_id)
+            if (
+                not isinstance(stamp, Stamp)
+                or stamp.mapping_id not in self.mappings
+                or (stream is not None and stamp.mapping_id != stream.mapping_id)
+            ):
+                raise KernelError(
+                    "JOURNAL_WATERMARK", "source progress mapping differs"
+                )
+            progress = self.mappings[stamp.mapping_id].map(stamp)
+            bound = (
+                0 if policy.allowed_lateness_ns is None else policy.allowed_lateness_ns
+            )
+            previous = state.source_progress.get(stream_id)
+            if (
+                watermark != progress - bound
+                or watermark < current
+                or (previous is not None and progress <= previous)
+            ):
+                raise KernelError(
+                    "JOURNAL_WATERMARK", "invalid source progress assertion"
+                )
+            fields.update({"source_stamp": encode(stamp), "progress_ns": progress})
+            state.source_progress[stream_id] = progress
+        elif watermark <= current:
+            raise KernelError("JOURNAL_WATERMARK", "nonincreasing closed prefix")
+        if instant != state.cut.instant:
+            raise KernelError(
+                "JOURNAL_WATERMARK", "closure cannot advance simulated time"
+            )
+        state.watermarks[stream_id] = watermark
+        if stream_id == "default" and self.ingress_policy is not None:
+            state.watermark_ns = watermark
+        expected = {
+            "type": kind,
+            "index": record["index"],
+            "instant": encode(instant),
+            "items": [],
+            **fields,
+        }
+        state.records.append(expected)
+        state.cuts.append(Cut(record["index"], instant))
     elif kind == "watermark":
         if (
             self.ingress_policy is None
@@ -346,6 +410,8 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
         state.cuts.append(Cut(record["index"], instant))
     elif kind == "seal":
         state = self._store.clone()
+        if self.header["minor"] == 3 and instant != state.cut.instant:
+            raise KernelError("JOURNAL_SEAL", "seal must cite the settled instant")
         if any(w.eligible.ns <= instant.ns for w in state.work) or any(
             i["status"] == "pending" for i in state.intents.values()
         ):
@@ -361,7 +427,11 @@ def replay_record(self: Kernel, record: dict[str, Any]) -> None:
             raise KernelError(
                 "JOURNAL_SEAL", "partition has not reached common boundary"
             )
-        if state.watermark_ns is not None and state.watermark_ns < instant.ns:
+        from .ingress import safe_partitions
+
+        if len(safe_partitions(state, instant.ns)) != len(state.partitions) or (
+            state.watermark_ns is not None and state.watermark_ns < instant.ns
+        ):
             raise KernelError("JOURNAL_WATERMARK", "seal exceeds the closed prefix")
         if record["physical_ns"] != instant.ns:
             raise KernelError("JOURNAL_SEAL", "seal time mismatch")

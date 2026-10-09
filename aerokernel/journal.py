@@ -1,4 +1,4 @@
-"""Versioned JSONL write-ahead journal and engine-free prefix replay."""
+"""JSONL WAL and engine-free 1.1/1.2/1.3 replay, including partial live cuts."""
 
 from __future__ import annotations
 

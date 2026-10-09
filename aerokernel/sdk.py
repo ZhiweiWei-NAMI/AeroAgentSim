@@ -6,11 +6,12 @@ import random
 from collections.abc import Callable, Mapping, MutableMapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from .engine import Batch, Horizon, Partition, RunContext
 from .errors import KernelError
 from .ids import EntityRef, ItemRef, LocalCause
+from .ingress import IngressReceipt
 from .messages import (
     CancelDecision,
     CommandRequest,
@@ -35,6 +36,40 @@ from .rng import RNGStreams
 from .state import ABSENT, Absent, Fact, StateView
 from .time import Cut, Instant, Interval, Stamp
 from .values import FrozenValue, Value, thaw
+
+if TYPE_CHECKING:
+    from .coordinator import Kernel
+
+
+class LiveIngress:
+    """Adapter handle for one pinned stream; stamps never imply source progress."""
+
+    def __init__(self, kernel: Kernel, stream_id: str = "default") -> None:
+        if stream_id not in kernel.ingress_watermarks:
+            raise KernelError("INGRESS_STREAM", "unknown adapter stream")
+        self.kernel = kernel
+        self.stream_id = stream_id
+
+    @property
+    def watermark_ns(self) -> int:
+        """Acknowledged closed prefix in canonical nanoseconds."""
+        return self.kernel.ingress_watermarks[self.stream_id]
+
+    def admit(self, request: CommandRequest, stamp: Stamp) -> IngressReceipt:
+        """Return the actual WAL-backed admission decision, including rejection."""
+        return self.kernel.admit_live(request, stamp, stream_id=self.stream_id)
+
+    def submit(self, request: CommandRequest, stamp: Stamp) -> str:
+        """Reserve a command or raise the kernel's typed LATE_INGRESS error."""
+        return self.kernel.submit_live(request, stamp, stream_id=self.stream_id)
+
+    def advance_watermark(self, ns: int) -> None:
+        """Assert a closed canonical prefix without subtracting lateness."""
+        self.kernel.advance_watermark(ns, stream_id=self.stream_id)
+
+    def advance_source_progress(self, stamp: Stamp) -> None:
+        """Assert actual source progress, retaining the declared lateness tail."""
+        self.kernel.advance_source_progress(stamp, stream_id=self.stream_id)
 
 
 class SimpleEngine:

@@ -63,9 +63,12 @@ def _record_classes() -> dict[str, type[Any]]:
     }
 
 
-# Complete declaration shapes issued by journal 1.1. Only these historical
+# Complete declaration shapes issued by journals 1.1/1.2. Only these historical
 # shapes may omit additive declarations; arbitrary missing fields still fail.
 _M1_DECLARATION_FIELDS = {
+    "IngressPolicy": frozenset(
+        {"initial_watermark_ns", "lateness", "timeout_s", "speed_ratio"}
+    ),
     "Timing": frozenset({"mode", "step_ns", "origin_ns", "latch"}),
     "Partition": frozenset(
         {

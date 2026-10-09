@@ -8,6 +8,7 @@ from .codec import encode
 from .engine import Batch
 from .errors import KernelError, MicrostepLimitExceeded
 from .ids import ItemRef
+from .ingress import safe_partitions
 from .messages import Delivery
 from .operations import Create, Remove
 from .state import StateView, Store, Work
@@ -18,6 +19,9 @@ from .transactions import Candidate
 def ready_partitions(store: Store, instant: Instant) -> tuple[str, ...]:
     """The unique lifecycle-prioritized, cohort-expanded reactive ready set."""
     ready = store.work.ready(instant) - set(store.sample_partitions)
+    if store.ingress_dependencies:
+        ready &= set(safe_partitions(store, instant.ns))
+        ready = {p for p in ready if store.frontiers[p][0].ns == instant.ns}
     controllers = {p for p in ready if store.partitions[p].lifecycle}
     for cohort in store.manifest.cohorts:
         if ready & set(cohort) and any(store.partitions[p].lifecycle for p in cohort):
@@ -56,9 +60,21 @@ def wave_intents(
         if instant != Instant(0) or store.records or selected != canonical:
             raise KernelError("RESET_ONCE", "reset must be one complete initial wave")
     elif phase == "advance":
+        expected = (
+            canonical
+            if not store.ingress_dependencies
+            else tuple(
+                p
+                for p in canonical
+                if p in safe_partitions(store, instant.ns)
+                and store.frontiers[p][0].ns < instant.ns
+            )
+        )
         if (
-            selected != canonical
-            or instant.microstep != 0
+            selected != expected
+            or not selected
+            or (not store.ingress_dependencies and instant.microstep != 0)
+            or instant < store.cut.instant
             or store.sealed_ns is None
             or instant.ns <= store.sealed_ns
             or store.run_target is None
@@ -67,7 +83,8 @@ def wave_intents(
             raise KernelError(
                 "ADVANCE_GRANT", "physical wave requires a strictly later common grant"
             )
-        for pid, p in store.partitions.items():
+        for pid in selected:
+            p = store.partitions[pid]
             if (
                 p.timing.mode in {"fixed_step", "lockstep"}
                 and not p.timing.exact_stop

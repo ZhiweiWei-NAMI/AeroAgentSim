@@ -15,7 +15,13 @@ from .control import boundary_control, publish_ingress, reserve
 from .engine import Batch, Engine, Partition, RunContext
 from .errors import KernelError, MicrostepLimitExceeded, SynchronizationDeadlock
 from .ids import ItemRef, message_id, validate_text
-from .ingress import IngressPolicy
+from .ingress import (
+    IngressPolicy,
+    IngressReceipt,
+    IngressStream,
+    receipt_for,
+    safe_partitions,
+)
 from .journal import Journal
 from .messages import Actions, ActionState, CancelRequestResult, CommandRequest
 from .operations import is_observable_output
@@ -42,6 +48,7 @@ class Kernel:
         budget: ResourceBudget | None = None,
         configuration: object = None,
         ingress_policy: IngressPolicy | None = None,
+        ingress_streams: tuple[IngressStream, ...] = (),
     ) -> None:
         if type(root_seed) is not int:
             raise KernelError("SEED", "root seed must be an integer")
@@ -49,6 +56,16 @@ class Kernel:
             raise KernelError("MICROSTEP_BUDGET", "positive global bound required")
         if ingress_policy is not None and not isinstance(ingress_policy, IngressPolicy):
             raise KernelError("INGRESS_POLICY", "typed ingress policy required")
+        if not isinstance(ingress_streams, tuple) or any(
+            not isinstance(stream, IngressStream) for stream in ingress_streams
+        ):
+            raise KernelError("INGRESS_STREAM", "typed stream tuple required")
+        streams_by_id = {stream.id: stream for stream in ingress_streams}
+        if len(streams_by_id) != len(ingress_streams) or (
+            ingress_policy is not None and "default" in streams_by_id
+        ):
+            raise KernelError("INGRESS_STREAM", "stream IDs must be unique")
+        self.ingress_streams = MappingProxyType(streams_by_id)
         self.ingress_policy = ingress_policy
         self._ingress_condition = threading.Condition(threading.RLock())
         self._pace_origin: float | None = None
@@ -116,8 +133,7 @@ class Kernel:
         )
         compile_samples(self._store, self._dependency_graph, self.mappings)
         self._store.max_microsteps = self.max_microsteps
-        if self.ingress_policy is not None:
-            self._store.watermark_ns = self.ingress_policy.initial_watermark_ns
+        self._initialize_ingress()
         streams = {
             p.id: RNGStreams(
                 self.root_seed, p.engine_id, p.id, p.rng_streams, self.budget
@@ -144,7 +160,7 @@ class Kernel:
             "type": "header",
             "format": "aerokernel.journal",
             "major": 1,
-            "minor": 2,
+            "minor": 3 if self._store.watermarks else 2,
             "index": 0,
             "instant": encode(Instant(0)),
             "time_origin_ns": 0,
@@ -161,6 +177,9 @@ class Kernel:
             "root_seed": self.root_seed,
             "configuration": thaw(self.configuration),
             "ingress_policy": encode(self.ingress_policy),
+            "ingress_streams": encode(
+                tuple(self.ingress_streams[k] for k in sorted(self.ingress_streams))
+            ),
             "engine_profiles": {
                 eid: engine.rpc_profile
                 for eid, engine in sorted(self._engines.items())
@@ -189,6 +208,8 @@ class Kernel:
                 for ref in sorted(manifest.entities, key=lambda r: (r.id, r.generation))
             ],
         }
+        if header["minor"] == 2:
+            del header["ingress_streams"]
         self.journal.append(header)
         self.header = header
         self._bound = True
@@ -197,7 +218,11 @@ class Kernel:
         for feature in p.features:
             if feature not in {"sampled", "relations", "rpc"}:
                 raise KernelError("PARTITION_FEATURE", "unknown active capability")
-        if p.timing.mode == "real_time" and self.ingress_policy is None:
+        if (
+            p.timing.mode == "real_time"
+            and self.ingress_policy is None
+            and not self.ingress_streams
+        ):
             raise KernelError(
                 "INGRESS_POLICY", "real_time requires a declared watermark policy"
             )
@@ -602,10 +627,7 @@ class Kernel:
             if not self._store.faulted:
                 self._fault(exc)
             raise
-        if (
-            self.ingress_policy is not None
-            and self.ingress_policy.speed_ratio is not None
-        ):
+        if any(self._policy(s).speed_ratio is not None for s in self._store.watermarks):
             import time
 
             self._pace_origin = time.monotonic()
@@ -619,85 +641,263 @@ class Kernel:
             self._publish(state, record)
         return mid
 
-    def advance_watermark(self, ns: int) -> None:
-        """Record closure of the declared ingress prefix and wake bounded waits."""
+    def _policy(self, stream_id: str) -> IngressPolicy:
+        if stream_id == "default" and self.ingress_policy is not None:
+            return self.ingress_policy
+        if stream_id not in self.ingress_streams:
+            raise KernelError(
+                "INGRESS_STREAM", "unknown ingress stream", stream_id=stream_id
+            )
+        return self.ingress_streams[stream_id].policy
+
+    def _initialize_ingress(self) -> None:
+        if self.ingress_policy is None and not self.ingress_streams:
+            return
+        store = self._store
+        engine_ids = {p.engine_id for p in store.partitions.values()}
+        dependencies: dict[str, set[str]] = {p: set() for p in store.partitions}
+        if self.ingress_policy is not None:
+            store.watermark_ns = self.ingress_policy.initial_watermark_ns
+            store.watermarks["default"] = store.watermark_ns
+            for names in dependencies.values():
+                names.add("default")
+        for stream in self.ingress_streams.values():
+            if stream.mapping_id not in self.mappings:
+                raise KernelError("CLOCK_MAPPING", "stream mapping is not pinned")
+            if set(stream.engine_ids) - engine_ids:
+                raise KernelError("INGRESS_BINDING", "stream names unknown engine")
+            store.watermarks[stream.id] = stream.policy.initial_watermark_ns
+            for pid, partition in store.partitions.items():
+                if partition.engine_id in stream.engine_ids:
+                    dependencies[pid].add(stream.id)
+        for pid, partition in store.partitions.items():
+            if partition.timing.mode == "real_time" and not dependencies[pid]:
+                raise KernelError(
+                    "INGRESS_BINDING", "real_time engine needs an ingress stream"
+                )
+        # A stream can affect downstream state and every member of an atomic
+        # cohort/engine. Union to a fixed point before any runtime calls.
+        graph = {p: set(v) for p, v in self._dependency_graph.items()}
+        for pid, partition in store.partitions.items():
+            graph[pid].update(
+                p
+                for p, other in store.partitions.items()
+                if other.engine_id == partition.engine_id
+            )
+        for source, producer in store.partitions.items():
+            produced = set(producer.produces)
+            produced_relations = set(
+                (*producer.relation_produces, *producer.obligation_produces)
+            )
+            for target, consumer in store.partitions.items():
+                if any(d.field in produced for d in consumer.consumes) or any(
+                    d.relation_id in produced_relations
+                    for d in consumer.relation_consumes
+                ):
+                    graph[source].add(target)
+                for destination in producer.message_targets:
+                    if destination == target or destination in consumer.subscribes:
+                        graph[source].add(target)
+                        if any(
+                            schema in consumer.commands
+                            and store.registry.message(schema).kind == "command"
+                            for schema in producer.emits
+                        ):
+                            # Command receipts return to the initiating partition.
+                            graph[target].add(source)
+                if producer.lifecycle and (
+                    consumer.produces
+                    or consumer.relation_produces
+                    or consumer.obligation_produces
+                    or consumer.lifecycle_reads
+                ):
+                    graph[source].add(target)
+        for spec in store.manifest.samples:
+            for upstream in spec.upstream:
+                graph[upstream].add(spec.partition)
+        for cohort in store.manifest.cohorts:
+            for pid in cohort:
+                graph[pid].update(cohort)
+        changed = True
+        while changed:
+            changed = False
+            for pid, targets in graph.items():
+                for target in targets:
+                    before = len(dependencies[target])
+                    dependencies[target].update(dependencies[pid])
+                    changed |= len(dependencies[target]) != before
+        store.ingress_dependencies = (
+            {p: tuple(sorted(v)) for p, v in dependencies.items()}
+            if store.watermarks
+            else {}
+        )
+
+    @property
+    def ingress_watermarks(self) -> Mapping[str, int]:
+        """Current acknowledged closed prefixes, copied for caller isolation."""
+        if not self._bound:
+            raise KernelError("RUN_STATE", "kernel is not bound")
+        with self._ingress_condition:
+            return MappingProxyType(dict(self._store.watermarks))
+
+    def advance_watermark(self, ns: int, *, stream_id: str = "default") -> None:
+        """Assert a CLOSED prefix; this API never subtracts lateness twice."""
         with self._ingress_condition:
             self._guard()
-            if (
-                self.ingress_policy is None
-                or type(ns) is not int
-                or self._store.watermark_ns is None
-                or ns < self._store.watermark_ns
-                or self._store.pending_intents
-            ):
-                raise KernelError(
-                    "INGRESS_WATERMARK", "invalid or undeclared prefix closure"
+            self._policy(stream_id)
+            current = self._store.watermarks[stream_id]
+            if type(ns) is not int or ns < current or self._store.pending_intents:
+                raise KernelError("INGRESS_WATERMARK", "invalid prefix closure")
+            if ns != current:
+                self._record_control(
+                    "watermark", {"stream_id": stream_id, "watermark_ns": ns}
                 )
-            if ns != self._store.watermark_ns:
-                self._record_control("watermark", {"watermark_ns": ns})
             self._ingress_condition.notify_all()
 
-    def submit_live(self, command: CommandRequest, stamp: Stamp) -> str:
-        """Reserve actual stamped ingress under the pinned reject/delay policy."""
+    def advance_source_progress(
+        self, stamp: Stamp, *, stream_id: str = "default"
+    ) -> None:
+        """Map an explicit source progress assertion and retain its lateness tail."""
+        with self._ingress_condition:
+            self._guard()
+            policy = self._policy(stream_id)
+            stream = self.ingress_streams.get(stream_id)
+            if (
+                not isinstance(stamp, Stamp)
+                or stamp.mapping_id not in self.mappings
+                or (stream is not None and stamp.mapping_id != stream.mapping_id)
+            ):
+                raise KernelError(
+                    "CLOCK_MAPPING", "source progress needs the pinned mapping"
+                )
+            progress = self.mappings[stamp.mapping_id].map(stamp)
+            bound = (
+                0 if policy.allowed_lateness_ns is None else policy.allowed_lateness_ns
+            )
+            closed = progress - bound
+            previous = self._store.source_progress.get(stream_id)
+            if closed < self._store.watermarks[stream_id] or (
+                previous is not None and progress < previous
+            ):
+                raise KernelError(
+                    "INGRESS_WATERMARK", "retrograde source progress/closure"
+                )
+            if self._store.pending_intents:
+                raise KernelError("INGRESS_STATE", "progress cannot overlap invocation")
+            if previous != progress:
+                self._record_control(
+                    "source_progress",
+                    {
+                        "stream_id": stream_id,
+                        "source_stamp": encode(stamp),
+                        "progress_ns": progress,
+                        "watermark_ns": closed,
+                    },
+                )
+            self._ingress_condition.notify_all()
+
+    def admit_live(
+        self, command: CommandRequest, stamp: Stamp, *, stream_id: str = "default"
+    ) -> IngressReceipt:
+        """Return a typed acknowledged admission, including rejected attempts."""
         from .ingress import reserve_live
 
         with self._ingress_condition:
             self._guard()
-            if self.ingress_policy is None:
-                raise KernelError(
-                    "INGRESS_POLICY", "live ingress needs a pinned policy"
-                )
+            policy = self._policy(stream_id)
             state, record, mid = reserve_live(
                 self._store,
                 command,
                 stamp,
-                self.ingress_policy,
+                policy,
                 self.mappings,
                 self.budget,
+                stream=self.ingress_streams.get(stream_id),
             )
             if record:
                 self._publish(state, record)
                 self._ingress_condition.notify_all()
-            if mid is None:
-                raise KernelError(
-                    "LATE_INGRESS", "input falls in a closed ingress prefix"
-                )
-            return mid
+                return receipt_for(record)
+            if command.idempotency_key is not None:
+                return self._store.ingress_dedup[(stream_id, command.idempotency_key)][
+                    1
+                ]
+            assert mid is not None
+            return self._store.ingress_receipts[mid]
 
-    def _wait_watermark(self, ns: int, deadline: float) -> None:
-        if self.ingress_policy is None:
+    def submit_live(
+        self, command: CommandRequest, stamp: Stamp, *, stream_id: str = "default"
+    ) -> str:
+        """Compatibility API: return command identity or raise LATE_INGRESS."""
+        receipt = self.admit_live(command, stamp, stream_id=stream_id)
+        if receipt.command_id is None:
+            raise KernelError(
+                "LATE_INGRESS",
+                "input falls in a closed ingress prefix",
+                receipt=receipt,
+            )
+        return receipt.command_id
+
+    def ingress_receipt(self, command_id: str) -> IngressReceipt:
+        """Look up the original admission without scanning or replaying a WAL."""
+        with self._ingress_condition:
+            if not self._bound:
+                raise KernelError("RUN_STATE", "kernel is not bound")
+            if command_id not in self._store.ingress_receipts:
+                raise KernelError("INGRESS_RECEIPT", "unknown live command identity")
+            return self._store.ingress_receipts[command_id]
+
+    def _wait_watermark(self, ns: int, deadlines: dict[str, float]) -> None:
+        if not self._store.watermarks:
             return
         import time
 
-        if self._store.watermark_ns is None:
-            raise KernelError("INGRESS_WATERMARK", "declared stream lost its watermark")
         selected_cut = self._store.cut
-        while self._store.watermark_ns < ns:
+        while len(safe_partitions(self._store, ns)) != len(self._store.partitions):
             self._guard()
-            remaining = deadline - time.monotonic()
+            blocked = {
+                s
+                for p in self._store.partitions
+                for s in self._store.ingress_dependencies.get(p, ())
+                if self._store.watermarks[s] < ns
+            }
+            remaining = min(deadlines[s] for s in blocked) - time.monotonic()
             if remaining <= 0:
                 raise KernelError(
                     "WATERMARK_TIMEOUT",
                     "declared closed-prefix wait timed out",
                     target_ns=ns,
-                    watermark_ns=self._store.watermark_ns,
-                    timeout_s=self.ingress_policy.timeout_s,
+                    watermarks=dict(self._store.watermarks),
                 )
             self._ingress_condition.wait(remaining)
             if self._store.cut != selected_cut:
                 return
 
-    def _pace_to(self, ns: int) -> None:
-        policy = self.ingress_policy
-        if policy is None or policy.speed_ratio is None:
+    def _pace_to(self, ns: int, selected: tuple[str, ...] | None = None) -> None:
+        names = (
+            set(self._store.watermarks)
+            if selected is None
+            else {
+                name
+                for p in selected
+                for name in self._store.ingress_dependencies.get(p, ())
+            }
+        )
+        ratios = [
+            self._policy(s).speed_ratio
+            for s in names
+            if self._policy(s).speed_ratio is not None
+        ]
+        if not ratios:
             return
+        ratio = min(r for r in ratios if r is not None)
         import time
 
         if self._pace_origin is None:
             raise KernelError(
                 "PACING_ORIGIN", "pacing requires a started wall-clock origin"
             )
-        deadline = self._pace_origin + ns / (1_000_000_000 * policy.speed_ratio)
+        deadline = self._pace_origin + ns / (1_000_000_000 * ratio)
         selected_cut = self._store.cut
         while True:
             self._guard()
@@ -798,7 +998,7 @@ class Kernel:
             result[pid] = h
         return result
 
-    def _settle(self, ns: int) -> None:
+    def _settle(self, ns: int, *, seal: bool = True) -> None:
         while True:
             now = self._store.cut.instant
             earliest = (
@@ -806,6 +1006,15 @@ class Kernel:
                 if self._store.sample_specs
                 else self._store.work.earliest()
             )
+            if not seal:
+                safe = set(safe_partitions(self._store, ns))
+                eligible = [
+                    w.eligible
+                    for w in self._store.work
+                    if w.recipient in safe
+                    and w.recipient not in self._store.sample_partitions
+                ]
+                earliest = min(eligible) if eligible else None
             due = earliest if earliest is not None and earliest.ns <= ns else None
             first_timer = self._store.timer_queue.earliest()
             timers = (
@@ -849,6 +1058,8 @@ class Kernel:
             if any(not self._store.partitions[p].reactive for p in chosen):
                 raise KernelError("REENTRY_UNSUPPORTED", "ready partition cannot react")
             self._wave(tuple(chosen), instant, "react")
+        if not seal:
+            return
         horizons = self._horizons()
         for p, h in horizons.items():
             if any(
@@ -904,7 +1115,7 @@ class Kernel:
         self._record_control("run_limit", {"limit_ns": ns})
         import time
 
-        wait_deadline: float | None = None
+        wait_deadlines: dict[str, float] | None = None
         try:
             while self._store.sealed_ns < ns:
                 horizons = self._horizons()
@@ -928,27 +1139,64 @@ class Kernel:
                 to = min(boundaries)
                 if to <= current:
                     raise SynchronizationDeadlock("no safe physical progress")
+                # Once a partial wave exists, catch up at that same boundary;
+                # the append-only global journal never moves time backwards.
+                to = max(to, self._store.cut.instant.ns)
                 pre_wait_cut = self._store.cut
-                if self.ingress_policy is not None:
-                    if wait_deadline is None:
-                        wait_deadline = time.monotonic() + self.ingress_policy.timeout_s
-                    self._wait_watermark(to, wait_deadline)
+                if self._store.watermarks:
+                    if wait_deadlines is None:
+                        wait_start = time.monotonic()
+                        wait_deadlines = {
+                            s: wait_start + self._policy(s).timeout_s
+                            for s in self._store.watermarks
+                        }
+                    safe = safe_partitions(self._store, to)
+                    selected = tuple(
+                        p for p in safe if self._store.frontiers[p][0].ns < to
+                    )
+                    if selected and len(safe) < len(self._store.partitions):
+                        self._pace_to(to, selected)
+                        if pre_wait_cut != self._store.cut:
+                            continue
+                        at = Instant(
+                            to,
+                            0
+                            if self._store.cut.instant.ns < to
+                            else self._store.cut.instant.microstep + 1,
+                        )
+                        self._wave(selected, at, "advance", horizons)
+                        candidate = self._candidate(at)
+                        record = boundary_control(candidate)
+                        self._publish(candidate.state, record)
+                        self._settle(to, seal=False)
+                        pre_wait_cut = self._store.cut
+                    self._wait_watermark(to, wait_deadlines)
                 if pre_wait_cut != self._store.cut:
                     continue
                 self._pace_to(to)
                 if pre_wait_cut != self._store.cut:
                     continue
-                self._wave(
-                    tuple(self._store.partitions), Instant(to), "advance", horizons
+                selected = tuple(
+                    p
+                    for p in self._store.partitions
+                    if self._store.frontiers[p][0].ns < to
                 )
+                if selected:
+                    at = Instant(
+                        to,
+                        0
+                        if self._store.cut.instant.ns < to
+                        else self._store.cut.instant.microstep + 1,
+                    )
+                    self._wave(selected, at, "advance", horizons)
                 if any(
                     d["boundary"] <= to for d in self._store.pending_ingress.values()
                 ) or (timer_due is not None and timer_due <= Instant(to)):
-                    candidate = self._candidate(Instant(to))
+                    candidate = self._candidate(self._store.cut.instant)
                     record = boundary_control(candidate)
                     self._publish(candidate.state, record)
                 self._settle(to)
-                wait_deadline = None
+                wait_deadlines = None
         except Exception as exc:
             if not self._store.faulted:
                 self._fault(exc)
@@ -968,8 +1216,12 @@ class Kernel:
         state.cuts.append(Cut(record["index"], state.cut.instant))
         if kind == "run_limit":
             state.run_target = fields["limit_ns"]
-        elif kind == "watermark":
-            state.watermark_ns = fields["watermark_ns"]
+        elif kind in {"watermark", "source_progress"}:
+            state.watermarks[fields["stream_id"]] = fields["watermark_ns"]
+            if fields["stream_id"] == "default" and self.ingress_policy is not None:
+                state.watermark_ns = fields["watermark_ns"]
+            if kind == "source_progress":
+                state.source_progress[fields["stream_id"]] = fields["progress_ns"]
         elif kind == "wall_clock_hold":
             state.pending_wall_clock_hold = (
                 record["index"] if fields["status"] == "requested" else None

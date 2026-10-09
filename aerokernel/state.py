@@ -20,6 +20,7 @@ from .values import FrozenValue
 
 if TYPE_CHECKING:
     from .binding import BindingManifest
+    from .ingress import IngressReceipt
     from .messages import Actions, ActionState, Dirty
     from .registry import MemoryRegistry
     from .relations import Edge, Obligation
@@ -291,6 +292,13 @@ class Store:
         self.timer_queue = TimerQueue()
         self.sealed_ns: int | None = None
         self.watermark_ns: int | None = None
+        self.watermarks: dict[str, int] = {}
+        self.source_progress: dict[str, int] = {}
+        self.ingress_dependencies: dict[str, tuple[str, ...]] = {}
+        self.ingress_receipts: Overlay[str, IngressReceipt] = Overlay()
+        self.ingress_dedup: Overlay[tuple[str, str], tuple[bytes, IngressReceipt]] = (
+            Overlay()
+        )
         self.run_target: int | None = None
         self.pending_wall_clock_hold: int | None = None
         self.faulted = False
@@ -328,6 +336,10 @@ class Store:
             "frontiers",
             "pending_intents",
             "native_cuts",
+            "watermarks",
+            "source_progress",
+            "ingress_receipts",
+            "ingress_dedup",
             "action_snapshots",
         ):
             value = getattr(self, name)

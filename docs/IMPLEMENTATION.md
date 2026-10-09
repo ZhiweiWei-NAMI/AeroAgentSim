@@ -1,6 +1,8 @@
-# aerokernel v0.1 implementation (K2-M2F)
+# aerokernel v0.2 implementation (K4)
 
-K2-M2 completes the remaining v0.1 contracts in [DESIGN.md](DESIGN.md), on top
+K4 adds local named ingress streams and allowed lateness as specified in
+[DESIGN §14](DESIGN.md#14-v02-additive-amendment-local-named-live-ingress-k4).
+The K2-M2 work below completes the remaining v0.1 contracts in [DESIGN.md](DESIGN.md), on top
 of K2-M1F. DESIGN remains normative; M2F adds the explicit paused-arrival/lease and abort contract in §6. Runtime dependencies
 are exclusively Python's standard library; the package targets Python >=3.10.
 The kernel contains no ontology taxonomy, vehicle assumptions, upstream imports,
@@ -18,13 +20,119 @@ simulated success, missing-value defaults, interpolation or measurement fallback
 | §6 Engines/RPC | Done | Serial intent/return execution plus versioned strict JSON-lines transport, declared projections, pinned digests/deadlines, acknowledgment checks, taint and bounded cleanup. |
 | §7 Registry | Done | Immutable normalized descriptors, inheritance, directional relation contracts, digest and portable schemas; source normalization stays external. |
 | §8 Notifications/sampling | Done | Dirty/value-only/lifecycle/action notifications and deadlines; declared sample triggers, settled cones, frame levels, one frame/time, and optional sampled entered profile. |
-| §9 Journal/replay/RNG | Done | Journal 1.2 with additive controls and metadata, actual 1.1 replay, complete atomic effects, budgets and scoped deterministic RNG. |
+| §9 Journal/replay/RNG | Done | Live journal 1.3, unchanged offline 1.2 bytes, actual 1.1/1.2 replay, complete atomic effects, budgets and scoped deterministic RNG. |
 | §10 Invariants/errors | Done | I1–I14 evidence below, including independent relation oracle, native boundary cases, RPC faults and sampled resolution. |
 | §11 API | Done | Existing exports, SDK and testing APIs preserved; additions listed below. |
 | §12 Worked trace | Done | Original M1 compatibility trace remains 12 transactions; an additional record/collection example exercises relations, minimum obligations and sampled entered events. |
 | §13 v0.1 scope | Done | All requested timing, relation, sampled, RPC and ordinary SCC contracts implemented. v0.2 crash-resume, distributed execution and rollback remain outside this scope. |
 
-## M2 contracts and API additions
+## K4 additive API and behavior
+
+* `IngressStream(id, policy, mapping_id, engine_ids)` pins each stream's policy,
+  clock and direct engine domain. `Kernel(ingress_streams=...)` compiles per-engine
+  influence, including field/relation/message dependencies, returning command receipts,
+  lifecycle notifications, explicit sampling cones, shared engines and cohorts. Real-time engines require bindings; unsupported mappings/targets fail
+  before admission. Existing `Kernel(ingress_policy=...)` is the shared `default`.
+* `IngressPolicy` appends `allowed_lateness_ns`. An explicitly asserted source
+  progress maps to canonical `P` and closes exactly `P-L`. Its open lateness tail
+  remains admissible; the inclusive closed prefix never reopens. Explicit
+  `advance_watermark` already takes a closed canonical prefix, subtracting nothing.
+  Input timestamps never update watermarks. Regression fails without clamping.
+* `admit_live(request, stamp, stream_id=...)` returns a typed acknowledged
+  `IngressReceipt`, including `LATE_INGRESS` rejection. Existing `submit_live`
+  returns a command ID or raises that typed error. Keyed live idempotency is
+  stream-scoped, including rejected attempts; the implicit default also preserves
+  old offline/live key conflicts. Named sequence/source domains are
+  retained through publication, and `ingress_receipt(id)` is an indexed lookup.
+  The SDK adds `LiveIngress(kernel, stream_id)` for adapter-bound calls.
+* Safe engines advance/react/sample at the selected common boundary while an
+  unrelated engine waits. Unsafe ingress stays reserved and unsafe dirty work
+  stays queued. Later catch-up uses a later microstep at the same physical time.
+  Global sealing waits for every relevant stream and due work; the next common
+  boundary still waits for that seal. This retains central barrier semantics.
+  Wall-clock waits have per-stream deadlines; early pacing uses its influence set.
+* Live declarations use journal 1.3 with stream-addressed decisions/watermarks
+  and source-progress provenance. Replay recomputes mappings, subtraction,
+  admission and safe selected waves without engines/waits. Old 1.2 decisions are
+  interpreted under their original policy shape. Offline runs retain 1.2 output
+  and all existing literal journal hashes. No old test was edited.
+
+[per_stream_ingress.py](../examples/per_stream_ingress.py) is a local two-engine
+example using authored integer observations: fast work at 10 is committed while
+slow remains at zero, then the common seal completes at 10.
+[Platform migration](platform-notes/K4.md) describes the changes for `wt-q1`;
+no platform or other repository files were modified.
+
+The new Hypothesis properties vary valid monotonic stream assertions and arbitrary
+input ordering, compare every recorded prefix to offline replay, check inclusive
+lateness tails, and audit invocation/seal closure against the watermark history.
+Additional tests cover independent ordinary/sample progress, late arrivals after
+partial commits, stream mappings/domains/idempotency, multi-stream engines,
+positive-lag influence, atomic cohorts, per-stream timeout/pacing, forged progress,
+and the immutable 1.2 live journal generated with the original package.
+
+Two concurrent DSH sessions used `workbuddy/glm-5.3-flash`, `maxTokens=131072`,
+without an effort parameter. The actual session cache/results were checked:
+`c651ee2b-f160-4a52-8285-2ab943032239` returned the migration draft;
+`a7334ed8-4803-43eb-b110-f7dedf2f9cc3` timed out (exit 124) after 360 seconds,
+with reviewed reasoning and no final review artifact. The primary agent corrected
+the draft's return type and proposed clamping and completed implementation/tests.
+Provenance and gate output are in `.kernel-agents/k4/`.
+
+## K4 delivery gates
+
+All final checks use the pinned workspace `.venv/bin/python` (3.11.12).
+Gate logs and exact measurements are retained under `.kernel-agents/k4/gates/`;
+`summary.json` includes the coverage and benchmark comparisons.
+
+| Gate | Final result |
+| --- | --- |
+| Complete standard suite | **620 passed**, 2 opt-in perf cases deselected; 168.21 s. |
+| Explicit opt-in perf suite | **2 passed**; all **622** collected cases were executed. |
+| Coverage, at least the prior 94.52% | **94.90%**, 5303/5588 statements; `coverage.json`. |
+| Ruff / format | Passed; 79 selected files formatted. |
+| `mypy --strict aerokernel` | Passed, 33 source modules; all also parse under Python 3.10 grammar. |
+| Examples | All 5 passed, including the independent-stream example. |
+| `kernel_bench`, 100 entities / 600 steps | Original/current paired medians **6.134 → 6.155 s**, **+0.35%**. |
+| `kernel_bench`, 1000 entities / 600 steps | **73.474 → 73.315 s**, **−0.22%**; peak RSS 386.90 → 386.05 MiB. |
+| Dense binding, 40 partitions / 780 edges | Paired medians **24.206 → 21.212 ms**. |
+| Deterministic offline bytes | Both workload journal hashes remain identical to the original package; existing literal toy hash tests pass unchanged. |
+
+Both workloads retain every fact version and seal all 60 simulated seconds:
+180,300 versions at 100 entities and 1,803,000 at 1000 entities. End-to-end wall
+time changes stay within the 5% regression limit. The first 100-entity observation
+was 6.738 → 7.317 s (+8.59%); it is retained in the evidence, not discarded.
+Three alternating original/current full-workload pairs then measured baseline
+6.080/6.483/6.134 s and current 6.155/6.292/6.111 s. Their paired median comparison
+above separates host timing variation from a stable implementation regression.
+The original package is an untouched workspace-local copy of HEAD `355acab`;
+its import path was checked from the benchmark directory.
+
+Final reproducible checks:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 \
+HYPOTHESIS_STORAGE_DIRECTORY="$PWD/.kernel-agents/k4/hypothesis" \
+COVERAGE_FILE="$PWD/.kernel-agents/k4/gates/.coverage" \
+.venv/bin/python -m pytest -c pyproject.toml \
+  --basetemp=.kernel-agents/k4/complete-tmp --cov=aerokernel \
+  --cov-report=term-missing --cov-fail-under=94.52
+.venv/bin/python -m pytest -c pyproject.toml -m perf \
+  --basetemp=.kernel-agents/k4/perf-tmp -q
+.venv/bin/python -m ruff check aerokernel tests/kernel examples benchmarks
+.venv/bin/python -m ruff format --check aerokernel tests/kernel examples benchmarks
+.venv/bin/python -m mypy --strict aerokernel
+.venv/bin/python -m examples.per_stream_ingress
+.venv/bin/python benchmarks/kernel_bench.py --entities 100 --check-targets
+.venv/bin/python benchmarks/kernel_bench.py --entities 1000 --check-targets
+```
+
+External simulator determinism and Python 3.10 runtime execution are not claimed.
+No commit, branch or reset was performed, and every created/modified artifact is
+inside this workspace. The platform, AeroGraph and AeroAgentSim trees were read
+only.
+
+## M2 contracts and API additions (historical)
 
 `Timing` appends `exact_stop` and `certified_hold`. A lockstep adapter declares an
 exact-stop contract, or a positive communication `step_ns`/`origin_ns` with certified

@@ -15,7 +15,11 @@ from .values import canonical_json, freeze, normalize
 
 
 def reserve(
-    store: Store, request: CommandRequest, budget: Any
+    store: Store,
+    request: CommandRequest,
+    budget: Any,
+    *,
+    ingress_source: str | None = None,
 ) -> tuple[Store, dict[str, Any], str]:
     """Reserve identity now, without publishing or invoking a future command."""
     content = canonical_json(encode(request), budget)
@@ -57,7 +61,10 @@ def reserve(
         boundary,
     )
     state = store.clone()
-    key = ("ingress", store.manifest.ingress_source)
+    key = (
+        "ingress",
+        store.manifest.ingress_source if ingress_source is None else ingress_source,
+    )
     sequence = state.sequences.get(key, 0)
     state.sequences[key] = sequence + 1
     mid = message_id(store.manifest.run_id, store.manifest.epoch, *key, sequence)
@@ -71,6 +78,8 @@ def reserve(
         "sequence": sequence,
         "origin": encode(origin),
     }
+    if ingress_source is not None:
+        data["source"] = ingress_source
     state.pending_ingress[mid] = data
     state.actions.pending(mid, request.target, *key, origin)
     if request.idempotency_key is not None:
@@ -95,7 +104,12 @@ def publish_ingress(
 ) -> str:
     """Enqueue + submitted status + receipt in one boundary transaction."""
     state = candidate.state
-    source = ("ingress", state.manifest.ingress_source)
+    source = (
+        "ingress",
+        state.manifest.ingress_source
+        if data is None
+        else data.get("source", state.manifest.ingress_source),
+    )
     if data is None:
         sequence = state.sequences.get(source, 0)
         state.sequences[source] = sequence + 1
@@ -142,6 +156,16 @@ def boundary_control(candidate: Candidate) -> dict[str, Any]:
     state = candidate.state
     for mid, data in sorted(dict(state.pending_ingress).items()):
         if data["boundary"] <= candidate.instant.ns:
+            if state.ingress_dependencies:
+                from .ingress import safe_partitions
+
+                target = (
+                    state.actions.action(data["command_id"]).target
+                    if data.get("cancel")
+                    else decode_record(data["request"]).target
+                )
+                if target not in safe_partitions(state, candidate.instant.ns):
+                    continue
             if data.get("cancel"):
                 origin = decode_record(data["origin"])
                 # The cancel message identity/sequence was already reserved.

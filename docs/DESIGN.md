@@ -1,6 +1,6 @@
-# aerokernel design specification, v0.1
+# aerokernel design specification, v0.2 (additive)
 
-This document is normative. **MUST** defines a conformance requirement; **SHOULD** permits a documented alternative. The target is an independent Python >=3.10 package, pure standard library at runtime, implementable in approximately 3–5k lines excluding adapters and tests. AeroAgentSim is the platform consuming it; AeroBench is an adapter migration source. The scope in section 13 takes precedence over features deferred to **v0.2+**.
+This document is normative. **MUST** defines a conformance requirement; **SHOULD** permits a documented alternative. The target is an independent Python >=3.10 package, pure standard library at runtime, implementable in approximately 3–5k lines excluding adapters and tests. AeroAgentSim is the platform consuming it; AeroBench is an adapter migration source. The v0.1 scope in section 13 remains; the local ingress amendment in section 14 takes precedence for v0.2.
 
 ## 1. Boundary and source authority
 
@@ -356,3 +356,179 @@ Severity: **Critical** can violate causality, authority, atomicity or replay; **
 | Run-limit subdivision was omitted from deterministic reexecution inputs. | Medium | Pin/record run-control boundaries; viewers read snapshots (§9, §11). |
 
 Review validation for this document: read-only source/schema/interpreter checks, concrete counterexample walkthroughs, independent returned reviews, and syntax/structure checks of the revised API sketch. No upstream build, runtime adapter experiment or implementation test is asserted by this audit.
+
+## 14. v0.2 additive amendment: local named live ingress (K4)
+
+This amendment is normative for kernel v0.2 and journal 1.3. It overrides the
+single shared live-watermark restriction in §§2, 5, 9 and 13. All other v0.1
+contracts remain. Coordination is local and single-process; distributed grants,
+clock remapping, rollback, native early-return negotiation and crash-resume are
+outside this amendment. Offline workloads without live declarations retain
+journal 1.2 output, including their existing deterministic byte fixtures.
+
+### 14.1 Stream declarations and influence bindings
+
+`IngressStream(id, policy, mapping_id, engine_ids)` MUST pin a unique nonempty
+stream ID, one registered clock mapping and a nonempty tuple of distinct engine
+IDs. `IngressPolicy` retains its existing positional fields and appends optional
+`allowed_lateness_ns: int | None`. The bound MUST be a nonnegative integer; bool
+is invalid. `lateness` selects `reject` or `delay`; `timeout_s` is a finite positive
+wall-clock wait budget, and optional `speed_ratio` is positive and finite.
+These policies belong to streams, not to one shared run-wide watermark.
+
+`Kernel(ingress_streams=(...))` MUST validate declarations before engine reset.
+Every real-time engine MUST have a stream binding. A stream can affect several
+engines, and an engine can receive several streams. A submission MUST target a
+partition in that stream's declared engine domain and use its pinned mapping.
+Clock identity and rational conversion are checked by the existing mapping
+contract. Stream declarations/mappings MUST remain immutable during the epoch.
+
+Direct ingress dependencies are the streams bound to each engine. The coordinator
+MUST propagate influence through declared field/relation reads, message routes
+and returning command receipts, lifecycle notifications to writers/readers,
+explicit sampled upstream cones, all partitions sharing an engine and atomic cohorts. The local
+implementation conservatively includes positive-lag dependencies and lifecycle
+controllers affecting writer/read domains in this union;
+it does not infer a weaker watermark bound from a lag. Thus the safe closure for
+partition `p` is `min(W[s] for s in influence[p])`, or unbounded when the declared
+influence set is empty. Independent engines do not share an ingress dependency
+merely because they occupy the same kernel. Hosts MUST declare all causal reads
+and routes; undeclared Python global state remains outside the contract.
+
+The existing `Kernel(ingress_policy=policy)` is an implicit `default` stream
+covering all partitions, preserving shared-stream behavior and accepting stamps
+from existing pinned mappings. Explicit named streams can coexist with this
+compatibility stream but MUST NOT also declare its `default` ID. Without an
+implicit policy, an explicit stream may itself be named `default`. There are no
+implicit aliases between different IDs.
+
+### 14.2 Inclusive closed prefixes and allowed lateness
+
+Each stream owns a monotonic canonical integer closed-prefix watermark `W[s]`,
+initially `policy.initial_watermark_ns`. Closure is inclusive: after closing `W`,
+inputs mapped at or before `W` are late. An already reserved input remains queued
+when a later assertion closes past its boundary; it MUST NOT be discarded.
+
+**Timestamps alone are not a watermark.** Neither submission nor observation
+implicitly advances any stream. `advance_watermark(ns, stream_id=...)` is a source
+assertion that the canonical prefix through `ns` is closed. It MUST reject
+regression, treat equality as a no-op, and subtract no lateness bound.
+
+`advance_source_progress(stamp, stream_id=...)` is a separate, explicit source
+assertion. Let `P` be the exact mapped progress and `L` the pinned allowance,
+with absent allowance meaning no subtraction. The derived closure is exactly
+`W = P - L`. Both `P` and the resulting closure MUST be monotonic. A derived
+closure below the initial/current watermark MUST be rejected, without clamping;
+an adapter starts asserting progress only once it can respect the bootstrap
+closure. Equal repeated progress is a no-op. Explicit closure can move farther
+than a prior progress assertion, but subsequent assertions must respect it.
+
+Inputs in the open tail `(P-L, P]` remain admissible after the progress assertion,
+subject to the committed-prefix rule below. The lower endpoint `P-L` is closed.
+This deliberately models a *progress assertion with a lateness tail*, rather
+than reopening a source-asserted closed watermark. A closed prefix cannot safely
+allow later changes to earlier irreversible engine results. An adapter that
+computes its own explicit `P-L` may call `advance_watermark` instead; the bound
+MUST be subtracted once. A bound of zero closes through `P` immediately.
+
+### 14.3 Admission, displacement and typed receipts
+
+`submit_live(request, stamp, stream_id="default")` preserves the old command-ID
+return and raises typed `KernelError("LATE_INGRESS", ...)` after an acknowledged
+rejection. `admit_live(...)` returns an immutable `IngressReceipt` for each
+acknowledged decision, including rejection, without translating it into execution
+success. Malformed clocks, schemas or routes fail preflight without a receipt or
+journal mutation. The SDK `LiveIngress(kernel, stream_id)` binds these calls to
+one stream and explicitly forwards progress/closure assertions.
+
+An input is late when `mapped_ns <= W[stream]` or it falls at/before the common
+sealed prefix. `reject` MUST record disposition `rejected`, code `LATE_INGRESS`,
+and no reservation ID/action/sequence. `delay` MUST preserve the original request
+and source stamp and reserve at the next admissible integer publication boundary:
+
+```
+B = max(mapped_ns, current_journal_instant.ns + 1,
+        W[stream] + 1 if late, requested_ingress_boundary if supplied)
+A = max(requested_activation.ns, B)
+```
+
+The activation microstep is preserved only when activation ns is unchanged;
+otherwise it is zero. Existing recipient lag, latching and actual dispatch remain
+separate recorded decisions. On-time arrivals behind an unsealed partial journal
+commit are still admissible with availability after the current journal instant;
+their source occurrence is preserved and `delay_ns = B - mapped_ns` is explicit.
+This does not claim retroactive influence on already committed engine results.
+Disposition `delayed` specifically denotes the late-input policy decision;
+`accepted` may have ordinary arrival/latching displacement.
+
+Receipts MUST include `stream_id`, `disposition`, `journal_index`, `mapped_ns`,
+`command_id`, `boundary_ns`, `activation_ns`, `delay_ns`, and `code`. Rejection has
+no command/boundary/activation/delay coordinates. Every decision refers to its
+actual acknowledged WAL index. `ingress_receipt(command_id)` returns the original
+accepted/delayed receipt without rescanning the WAL. Keyed live idempotency is
+scoped by `(stream_id, key)`: identical original request/stamp returns the original
+receipt/index, including rejection; changed original content fails conflict.
+The compatibility default preserves its old shared offline/live key-conflict
+behavior. Named streams use distinct source sequence domains, retained in reservation and
+published message records. A WAL failure exposes neither a receipt nor candidate
+state. Replay reconstructs receipts from decisions rather than synthesizing them.
+
+### 14.4 Partial local waves and common sealing
+
+At a selected common physical boundary `T`, the coordinator MUST authorize only
+partitions whose entire ingress influence is closed through `T`. A safe independent
+engine may advance and process its ordinary/sample work at `T` while another
+engine waits on its own streams. All partitions in one engine/cohort remain in
+the same influence domain. Same-time dirty work for unsafe recipients remains
+queued, and reservations for unsafe targets remain unpublished.
+
+The global append-only journal retains nondecreasing Instants. The first physical
+wave starts at `(T,0)`; after safe reactions, a waiting engine's physical catch-up
+at the same `T` uses a later microstep, before its own external-input reactions.
+No partition advances physically twice at `T`. Runtime and replay MUST validate
+that each advance wave is exactly the canonical set of safe partitions still
+behind `T`, and that reactions follow the recipient's physical catch-up.
+
+Global `seal(T)` MUST wait until every partition reaches `T`, every relevant
+stream closes through `T`, and all due ingress, timers, ordinary work and samples
+settle. It MUST never pass any affected engine's minimum watermark. `run_until`
+returns only at this common seal; views and acknowledged receipts can expose
+partial committed progress while it waits. The scheduler retains common event
+boundaries: it does not allow one independent island to skip ahead past a blocked
+selected boundary. This is local early service within a central barrier, not a
+distributed/asynchronous timeline or a per-engine native rollback facility.
+
+Each blocked stream retains its own absolute `timeout_s` deadline through wakeups
+and recomputation until common physical settlement. An already closed stream's
+shorter timeout MUST NOT shorten another stream's wait. Expiry records a fault;
+partial acknowledged work is retained and replay marks the run incomplete.
+Pacing of early safe service uses only its influencing streams; replay never
+waits or calls wall clocks/engines.
+
+### 14.5 Journal 1.3 and explicit historical compatibility
+
+Live v0.2 runs write `aerokernel.journal` major 1, minor 3. The exact header adds
+`ingress_streams` to the 1.2 header and retains `ingress_policy` for the default
+compatibility declaration. Complete policy encodings include the nullable
+`allowed_lateness_ns` field. Header reconstruction MUST validate mappings,
+engine domains, real-time coverage and propagated influence again.
+
+* `watermark` adds `stream_id`; `watermark_ns` is the explicit inclusive closure.
+* New `source_progress` records `stream_id`, original `source_stamp`, mapped
+  `progress_ns`, and derived `watermark_ns`. Replay MUST recompute the mapping and
+  subtraction and reject wrong mappings, nonmonotonic values or forged metadata.
+* `live_ingress` and `live_ingress_rejection` add `stream_id`; the pinned policy,
+  original input, mapped result, disposition and reservation/delay are reproduced
+  by the same admission calculation on replay. Named reservations retain source.
+* Existing intent/return/transaction/boundary/seal/fault records retain their
+  shapes. Selected subsets and later-microstep physical catch-up are legal only
+  under the 1.3 stream declarations and their computed safety constraints.
+
+Journal 1.2 and 1.1 MUST replay unchanged: retain their exact header shapes,
+single-stream watermark records, original policy field set, decision bytes and
+whole physical-wave rules. The only accepted old `IngressPolicy` encoding omits
+exactly the newly appended field; arbitrary missing fields remain invalid.
+1.2 live records retain their original idempotency/decision interpretation.
+New stream records under an old header and unsupported journal versions fail.
+Historical replay performs no lateness reinterpretation, inferred progress,
+wall-clock waits or engine execution.

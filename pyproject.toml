@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aerokernel"
-version = "0.1.0.dev0"
+version = "0.2.0.dev0"
 requires-python = ">=3.10"
 dependencies = []
 
