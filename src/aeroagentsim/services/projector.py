@@ -9,6 +9,7 @@ from typing import Any
 from aerokernel.codec import decode_record
 from aerokernel.compact import expand_record
 from aerokernel.ids import EntityRef
+from aerokernel.messages import Emit
 from aerokernel.operations import (
     AssertEdge,
     CancelEdge,
@@ -171,9 +172,7 @@ def project(
                     "source": message.source,
                     "at": instant(message.at),
                     "payload": lossless(thaw(message.payload)),
-                    "subjects": [
-                        entity(ref) for ref in dict.fromkeys(refs)
-                    ],
+                    "subjects": [entity(ref) for ref in dict.fromkeys(refs)],
                 }
                 if "proposal" in item:
                     proposal = decode_record(item["proposal"])
@@ -187,6 +186,22 @@ def project(
                         route["recipient"]
                     )
                 result["messages"].append(projected)
+                if "proposal" in item and isinstance(
+                    decode_record(item["proposal"]), Emit
+                ):
+                    extension = _behaviour_record(
+                        message.schema_id, thaw(message.payload)
+                    )
+                    if extension is not None:
+                        array, payload = extension
+                        result.setdefault(array, []).append(
+                            {
+                                **payload,
+                                "available": available,
+                                "version": version,
+                                "causes": item.get("causes", []),
+                            }
+                        )
         if item.get("kind") == "receipt":
             receipt = {"commandId": item["command_id"], "status": item["status"]}
             if "result" in item:
@@ -207,6 +222,24 @@ def project(
     if subjects is not None:
         subjects.end(record)
     return result
+
+
+def _behaviour_record(schema: str, payload: Any) -> tuple[str, dict[str, Any]] | None:
+    """Project recorded truth/state intervals; dispatch does not create a new version."""
+    from aeroagentsim.behaviours.records import LIFECYCLES, PREFIX
+
+    if schema == PREFIX + "predicate_evaluated":
+        array = "predicateTruth"
+    elif schema in {PREFIX + lifecycle for lifecycle in LIFECYCLES}:
+        array = "chainInstances"
+    else:
+        return None
+    result = lossless(payload)
+    result["roles"] = {
+        role: entity(EntityRef.from_data(ref["$ref"]))
+        for role, ref in payload["roles"].items()
+    }
+    return array, result
 
 
 def _message_subjects(payload: Any) -> list[EntityRef]:
@@ -304,12 +337,38 @@ def header(directory: Path) -> dict[str, Any]:
         "runtimeRegistry": lossless(registry.to_data()),
         "messages": lossless(registry.to_data()["messages"]),
     }
+    if "epoch" in metadata:
+        result["epoch"] = metadata["epoch"]
+    ir_path = directory / "behaviour.ir.json"
+    if ir_path.exists():
+        pinned = json.loads(ir_path.read_text())
+        result["behaviour"] = lossless(
+            {
+                "extensions": ["predicate-truth/v1", "chain-instance/v1"],
+                "evaluator": pinned["evaluator"],
+                "packages": [
+                    {
+                        "id": package["document"]["id"],
+                        "packageDigest": package["digest"],
+                        "irDigest": package["ir_digest"],
+                        "evaluator": package["evaluator"],
+                        "predicates": package["document"]["predicates"],
+                        "chains": package["document"]["chains"],
+                        "bindings": package["document"]["bindings"],
+                    }
+                    for package in pinned["packages"]
+                ],
+            }
+        )
     subject_spec = scenario["registry"]
     declared = dict(subject_spec.get("message_subjects", {}))
-    declared.update({
-        item["id"]: item["subjects"]
-        for item in subject_spec.get("messages", []) if "subjects" in item
-    })
+    declared.update(
+        {
+            item["id"]: item["subjects"]
+            for item in subject_spec.get("messages", [])
+            if "subjects" in item
+        }
+    )
     if declared:
         result["messageSubjects"] = declared
     if "origin" in scenario:
