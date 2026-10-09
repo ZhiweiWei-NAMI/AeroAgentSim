@@ -43,8 +43,8 @@ from aeroagentsim.integrations.aerograph import (
     read_snapshot,
 )
 
-from .subjects import declarations
 from .paths import source_path
+from .subjects import declarations
 
 FORMAT = "aeroagentsim.scenario/v1"
 
