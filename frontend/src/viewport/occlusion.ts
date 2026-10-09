@@ -27,7 +27,7 @@ export class StaticOcclusion {
     for (const root of objects) {
       root.updateWorldMatrix(true, true);
       root.traverseVisible(object => {
-        if (!(object instanceof T.Mesh)) return;
+        if (!(object instanceof T.Mesh) || object.userData.displayDecoration) return;
         const geometry = this.index(object);
         if (!geometry) return;
         const count = object instanceof T.InstancedMesh ? object.count : 1;

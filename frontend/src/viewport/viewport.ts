@@ -50,6 +50,7 @@ export class Viewport {
   private director = new CameraDirector();
   private authoredCamera = false;
   private manualQuality = false;
+  private dusk = false;
   private profile = new URLSearchParams(location.search).has('perf');
   private gpuTimer?: GpuTimer;
   private revision = 0;
@@ -85,8 +86,9 @@ export class Viewport {
     if(presentation?.camera){this.camera.position.fromArray(presentation.camera.position);this.controls.target.fromArray(presentation.camera.target);this.authoredCamera=true;}
     if(presentation){
       if(presentation.attribution)container.dataset.attribution=presentation.attribution;
-      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);this.occlusion.setObjects(this.staticRoot.children);this.lighting.grid.visible=false;if(object.name==='city')container.dataset.city='loaded';},this.status)
-        .catch(error=>{if(!this.disposed)this.status(String(error));});
+      if(presentation.city?.kind==='osm2world')container.dataset.attribution='© OpenStreetMap contributors · ODbL · Procedural display materials';
+      void loadSceneLayer(presentation,header,this.assets,this.abort.signal,object=>{this.revision++;this.staticRoot.add(object);this.staticRoot.updateMatrixWorld(true);this.occlusion.setObjects(this.staticRoot.children);this.lighting.grid.visible=false;this.applyCityDisplay(object);if(object.name==='city'){container.dataset.city='loaded';container.dataset.cityStyle=String(object.userData.displayStyle ?? 'source-model');container.dataset.landscape=JSON.stringify(object.userData.landscape ?? {});}},this.status)
+        .catch(error=>{if(!this.disposed){this.status(String(error));options.onError?.(error);}});
       if(presentation.hdri)void this.assets.hdri(presentation.hdri,this.renderer).then(environment=>{
         if(this.disposed){environment.dispose();return;}this.environment=environment;this.scene.environment=environment.texture;this.revision++;container.dataset.ibl='hdri';
       }).catch(error=>{if(!this.disposed){container.dataset.ibl='analytic-sky';this.status(`HDRI unavailable: ${String(error)} · analytic sky IBL active`);}});
@@ -101,6 +103,15 @@ export class Viewport {
     if(message.startsWith('Models loaded'))this.container.dataset.models='loaded';
     this.options.onStatus?.(combined);
   };
+  private applyCityDisplay(object: T.Object3D) {
+    object.traverse(node=>{if(node instanceof T.Mesh)for(const material of Array.isArray(node.material)?node.material:[node.material]){
+      const uniform=material.userData.displayDusk as {value:number}|undefined;if(uniform)uniform.value=this.dusk?1:0;
+    }});
+  }
+  setDusk(dusk: boolean) {
+    this.dusk=dusk;this.lighting.setDusk(dusk);this.applyCityDisplay(this.staticRoot);this.revision++;
+    this.container.dataset.lighting=dusk?'dusk-display':'day-display';
+  }
   setSelection(key?: EntityKey) { this.selected = key; this.revision++; }
   setCameraMode(mode: CameraMode) {
     this.revision++; this.mode = mode; this.controls.enabled = mode === 'orbit'; this.container.dataset.camera=mode;
@@ -185,7 +196,7 @@ export class Viewport {
       this.qualityTime+=deltaSeconds;this.qualityFrames++;
       if(this.qualityTime>5){
         const fps=this.qualityFrames/this.qualityTime;this.container.dataset.fps=fps.toFixed(1);
-        if(fps<28&&this.quality!=='low'&&!this.manualQuality)this.setQuality(this.quality==='high'?'med':'low');
+        if(fps<50&&this.quality!=='low'&&!this.manualQuality)this.setQuality(this.quality==='high'?'med':'low');
         this.options.onQuality?.(this.quality,fps);this.qualityTime=this.qualityFrames=0;
       }
     }

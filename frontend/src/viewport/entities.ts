@@ -2,6 +2,7 @@ import * as T from 'three';
 import type { EntityKey, PresentationBinding, RunHeader } from '../contracts/viewer-feed';
 import type { FeedStore } from './feed-store';
 import { resolveBinding, entityId } from './bindings';
+import { modelGlyph } from './model-glyph';
 import { Assets } from './assets';
 import type { StaticOcclusion } from './occlusion';
 import { worldOrientation, worldPosition } from './coordinates';
@@ -35,10 +36,10 @@ export class EntityLayer {
     this.trail.frustumCulled=false; this.root.add(this.trail);
   }
   private createBatch(binding: PresentationBinding, capacity: number) {
-    const geometry = new T.IcosahedronGeometry(0.85, 1);
-    const material = new T.MeshStandardMaterial({ color: binding.visual.color ?? '#39bdf0', roughness: 0.35, metalness: 0.2 });
+    const geometry = binding.visual.kind==='model'&&binding.orientationField?new T.ConeGeometry(0.65,1.8,4).rotateX(Math.PI/2):new T.IcosahedronGeometry(0.85, 1);
+    const material = new T.MeshStandardMaterial({ color: binding.visual.color ?? '#edf5fc', roughness: 0.4, metalness: 0.15, emissive: binding.visual.color ?? '#bcd5ef', emissiveIntensity: 0.22 });
     const marker = new T.InstancedMesh(geometry, material, capacity);
-    marker.castShadow = true; marker.frustumCulled = false; marker.count=0; this.root.add(marker);
+    marker.castShadow = false; marker.frustumCulled = false; marker.count=0; this.root.add(marker);
     const batch: Batch = { meshes: [marker], transforms: [new T.Matrix4()], capacity, keys: [], loaded: binding.visual.kind !== 'model' };
     this.batches.set(binding, batch);
     if (binding.visual.kind === 'model') {
@@ -56,6 +57,7 @@ export class EntityLayer {
           meshes.push(mesh);transforms.push(node.matrixWorld.clone());
         });
         if (!meshes.length) throw Error('Model has no renderable geometry');
+        const glyph=modelGlyph(model);batch.meshes[0].geometry.dispose();batch.meshes[0].geometry=glyph;
         batch.far={mesh:batch.meshes[0],keys:[]};
         batch.meshes=meshes;batch.transforms=transforms;batch.loaded=true;
         batch.outline=meshes.map(instance=>{const mesh=new T.Mesh(instance.geometry,instance.material);mesh.layers.set(10);mesh.matrixAutoUpdate=false;mesh.visible=false;this.root.add(mesh);return mesh;});
@@ -95,7 +97,9 @@ export class EntityLayer {
         const far=batch.far&&!isSelected&&(position.distanceTo(camera.position)>100||batch.keys.length>=48)?batch.far:undefined;
         if(far){
           if(far.keys.length>=far.mesh.instanceMatrix.count){const old=far.mesh;far.mesh=new T.InstancedMesh(old.geometry,old.material,old.instanceMatrix.count*2);far.mesh.frustumCulled=false;far.mesh.castShadow=old.castShadow;far.mesh.receiveShadow=old.receiveShadow;for(let i=0;i<far.keys.length;i++){old.getMatrixAt(i,this.matrix);far.mesh.setMatrixAt(i,this.matrix);}old.removeFromParent();old.dispose();this.root.add(far.mesh);}
-          this.dummy.scale.setScalar(0.65);this.dummy.updateMatrix();this.writeInstance(far.mesh,far.keys.length,this.dummy.matrix);far.keys.push(entity.key);far.mesh.count=far.keys.length;
+          // Distance glyphs have a minimum projected size; exact pose remains in the inspector.
+          if(orientation&&batch.assetBasis)this.dummy.quaternion.multiply(batch.assetBasis);
+          this.dummy.scale.setScalar(Math.max(0.8,position.distanceTo(camera.position)*0.009));this.dummy.updateMatrix();this.writeInstance(far.mesh,far.keys.length,this.dummy.matrix);far.keys.push(entity.key);far.mesh.count=far.keys.length;
         }else{
         if (batch.keys.length >= batch.capacity) {
           batch.capacity *= 2;
@@ -151,7 +155,7 @@ export class EntityLayer {
     for(const [id,label] of this.labels)if(!this.positions.has(id)||(this.labels.size>64&&label.hidden)){label.remove();this.labels.delete(id);}
     this.labelsMs = performance.now() - labelsStarted;
     const focus=selected?this.positions.get(entityId(selected)):undefined;
-    this.ring.visible=!!focus;if(focus)this.ring.position.copy(focus).add(new T.Vector3(0,-0.2,0));
+    this.ring.visible=!!focus;if(focus){this.ring.position.copy(focus).add(new T.Vector3(0,-0.2,0));this.ring.scale.setScalar(Math.max(1,focus.distanceTo(camera.position)*0.012));}
     const stamp=`${selected?entityId(selected):''}/${ns}/${renderOrigin.toArray()}/${showTrails}`;
     this.trail.visible=!!showTrails&&!!selected&&!!focus;
     if(this.trail.visible&&stamp!==this.lastTrail){
