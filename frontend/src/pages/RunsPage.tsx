@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Input, Select, Slider, Space, Table, Tag } from 'antd';
+import { Alert, Button, Input, Select, Space, Table, Tag } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import type { EntityKey, FeedCommit } from '../contracts/viewer-feed';
+import type { EntityKey } from '../contracts/viewer-feed';
 import { HttpViewerFeed, RunsApi, type RunInfo } from '../feeds/http';
 import { TemporalFeedStore as FeedStore } from '../feeds/temporal-store';
 import { seconds } from '../feeds/format';
@@ -10,7 +10,10 @@ import { DualRunViews } from '../behaviours/DualRunViews';
 import { RunOperations } from '../behaviours/RunOperations';
 import { ArtifactsPanel } from '../observations/ArtifactsPanel';
 import { CaptureConsole } from '../observations/CaptureConsole';
-import { EntityInspector } from '../viewport/EntityInspector';
+import { InspectionPanel } from './InspectionPanel';
+import { RunTimeline } from './RunTimeline';
+import { entityLabel } from './inspection-format';
+import './inspect.css';
 import { Details } from '../console/Details';
 import { PageHeader, PageState } from '../console/PageState';
 import { useConsoleNotice } from '../console/Notifications';
@@ -111,7 +114,6 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
     ]} />
   </div>;
   const store = session?.store, clock = session?.clock;
-  const current: FeedCommit | undefined = (()=>{if(!store||!clock)return undefined;let low=0,high=store.commits.length;while(low<high){const middle=(low+high)>>>1;if(BigInt(store.commits[middle].at.ns)<=BigInt(clock.ns))low=middle+1;else high=middle;}return store.commits[low-1];})();
   const seek = (index: number) => {
     if (!store || !clock || !store.commits[index]) return;
     follow.current = false; store.liveFollow = false; clock.pause(); clock.seek(store.commits[index].at.ns);cutRef.current=store.commits[index].commitIndex; setCut(store.commits[index].commitIndex);
@@ -119,26 +121,23 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
   };
   const select = (key: EntityKey) => { setSelected(key); if (store?.header.epoch !== undefined) store.select(key); };
   const seekJournal = (index: number) => { const offset = store?.commits.findIndex(commit => commit.commitIndex === index); if (offset === undefined || offset < 0) { setError(`Journal cut ${index} is not loaded`); return; } seek(offset); };
-  return <div className="viewer-demo">
+  return <div className="viewer-demo inspection-page">
     <header className="viewer-header"><div><h1>{location.pathname.startsWith('/inspect')?'Inspect simulation':'Live run console'}</h1><span>One timeline · AeroGraph + city</span></div>
-      <Space><Tag>{status}</Tag><Select aria-label="Feed mode" value={mode} options={[{ value: 'live', label: 'Live' }, { value: 'replay', label: 'Replay' }]} onChange={value => navigate(`/runs/${encodeURIComponent(runId)}?api=${encodeURIComponent(apiBase)}&mode=${value}`)} />
+      <Space><Tag>{status}</Tag><Select aria-label="Feed mode" value={mode} options={[{ value: 'live', label: 'Live' }, { value: 'replay', label: 'Replay' }]} onChange={value => navigate(`/${location.pathname.startsWith('/inspect')?'inspect':'runs'}/${encodeURIComponent(runId)}?api=${encodeURIComponent(apiBase)}&mode=${value}`)} />
       <Link to={`/agents/${encodeURIComponent(runId)}${suffix}${cut === undefined ? '' : `&cut=${cut}`}${selected ? `&entity=${encodeURIComponent(selected.id)}&generation=${selected.generation}` : ''}${store?.header.epoch ? `&epoch=${encodeURIComponent(store.header.epoch)}` : ''}`}>Agent decisions</Link>
       <a href="#run-operations">Run controls</a><Details title="Run details"><pre>{JSON.stringify({runId,header:store?.header,cursor:store?.viewCursor,selection:store?.selection},null,2)}</pre></Details></Space></header>
     {error && <Alert type="error" message={error} />}
     {!session&&!error&&<PageState kind="loading" title="Connecting to the run" description="Loading its recorded entities and timeline." />}
     {session && <><main className="viewer-main"><section className="viewer-stage">
-      <nav aria-label="Demo camera presets">{[{label:'Reporter',id:'vehicle.reporter'}, {label:'Edge overview',id:'edge.coordinator'}, {label:'Alpha',id:'uav.alpha'}, {label:'Bravo',id:'uav.bravo'}].map(preset=><button key={preset.label} onClick={()=>{const actor=[...session.store.entities.values()].find(row=>row.key.id===preset.id);if(!actor){setError(`Preset actor ${preset.id} is absent at this cut`);return;}select(actor.key);setCamera(preset.label==='Edge overview'?'orbit':'follow');}}>{preset.label}</button>)}</nav>
+      <nav aria-label="Demo camera presets"><span>Camera</span>{[{label:'Reporter',id:'vehicle.reporter'}, {label:'Edge overview',id:'edge.coordinator'}, {label:'Alpha',id:'uav.alpha'}, {label:'Bravo',id:'uav.bravo'}].filter(preset=>[...session.store.entities.values()].some(row=>row.key.id===preset.id)).map(preset=><button key={preset.label} onClick={()=>{const actor=[...session.store.entities.values()].find(row=>row.key.id===preset.id);if(!actor){setError(`Preset actor ${preset.id} is absent at this cut`);return;}select(actor.key);setCamera(preset.label==='Edge overview'?'orbit':'follow');}}>{preset.label}</button>)}</nav>
       <DualRunViews store={session.store} clock={session.clock} selected={selected} mode={camera} quality="med" trails={true} commitCut={cut}
         onSelect={select} onSeek={seekJournal} onTick={tick} onError={error => setError(String(error))} onQuality={() => {}} />
-      <div className="viewport-caption" title={`${clock?.ns} ns`}>{store?.entities.size} entities · {store?.header.presentation.length ? store.header.presentation.map(binding=>{const field=store.header.fields.find(field=>field.fieldId===binding.positionField);return `${field?.frame ?? binding.frame} ${field?.unit ?? ''}`.trim();}).join(', ') : 'no spatial binding'} · {clock && seconds(clock.ns,store?.header.start.ns)}</div></section>
-      <aside className="viewer-sidebar"><Select aria-label="Entity" showSearch optionFilterProp="label" style={{ width: '100%' }} value={selected && entityId(selected)} options={[...session.store.entities].map(([id, entity]) => ({ value: id, label: entity.key.id }))} onChange={id => { const key = session.store.entities.get(id)?.key; if (key) select(key); }} />
-        <p>{selected?.id ?? 'Select an entity in either view'}</p>
-        {selected&&<p className="console-muted">{session.store.entities.get(entityId(selected))?.typeId}</p>}
-        <Details title="Entity state and technical records" buttonLabel="Entity details"><EntityInspector store={session.store} selected={selected} /></Details></aside></main>
-      <footer className="viewer-timeline"><Button aria-label={clock!.playing ? 'Pause playback' : 'Play'} onClick={() => { setCut(undefined);cutRef.current=undefined; follow.current = false; store!.liveFollow = false; clock!.playing ? clock!.pause() : clock!.play(); tick(); }}>{clock!.playing ? 'Pause playback' : 'Play'}</Button>
-        {mode === 'live' && <Button onClick={() => { follow.current = true; store!.liveFollow = true; setCut(undefined);cutRef.current=undefined; clock!.seek(clock!.end); store!.seek(clock!.ns); tick(); }}>Follow live</Button>}
-        <Slider aria-label="Commit timeline" style={{ flex: 1 }} min={0} max={Math.max(0, store!.commits.length - 1)} value={cut === undefined ? Math.max(0, store!.commits.findIndex(commit => commit === current)) : store!.commits.findIndex(commit => commit.commitIndex === cut)} onChange={seek} />
-        <span title={`${clock!.ns} ns`}>{seconds(clock!.ns,store!.header.start.ns)}</span></footer>
+      </section>
+      <aside className="viewer-sidebar inspection-sidebar"><Select aria-label="Entity" showSearch optionFilterProp="label" className="inspection-entity-select" value={selected && entityId(selected)} options={[...session.store.entities].map(([id, entity]) => ({ value: id, label: entityLabel(entity) }))} onChange={id => { const key = session.store.entities.get(id)?.key; if (key) select(key); }} />
+        <InspectionPanel store={session.store} selected={selected} onSeek={seekJournal} /></aside></main>
+      <RunTimeline store={session.store} clock={session.clock} cut={cut} mode={mode} onSeek={seek}
+        onPlay={() => { setCut(undefined);cutRef.current=undefined;follow.current=false;session.store.liveFollow=false;session.clock.playing?session.clock.pause():session.clock.play();tick(); }}
+        onLive={() => {follow.current=true;session.store.liveFollow=true;setCut(undefined);cutRef.current=undefined;session.clock.seek(session.clock.end);session.store.seek(session.clock.ns);tick();}} onTick={tick} />
       <section id="run-operations" className="run-inspection-panels"><RunOperations api={api} runId={runId} store={session.store} commitCut={cut} onSelect={select} onSeek={seekJournal} mode={mode} interactive={interactive} />
         <ArtifactsPanel api={api} runId={runId} store={session.store} commitCut={cut} onSeek={seekJournal} /></section></>}
   </div>;

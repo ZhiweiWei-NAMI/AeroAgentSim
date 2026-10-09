@@ -5,11 +5,12 @@ import { I18nProvider } from './i18n/I18nProvider';
 import ConsoleShell from './console/ConsoleShell';
 import HomePage from './console/HomePage';
 import { ConsoleNotifications } from './console/Notifications';
-import { PageHeader, PageState } from './console/PageState';
+import { PageState } from './console/PageState';
 import { ShortcutsHelp } from './console/shortcuts';
 
 const RunsPage = lazy(() => import('./pages/RunsPage'));
 const AgentConsole = lazy(() => import('./pages/AgentConsole'));
+const AeroGraphPage = lazy(() => import('./pages/AeroGraphPage'));
 const ViewerDemoPage = lazy(() => import('./viewport/ViewerDemoPage'));
 const CityStudioPage = lazy(() => import('./studio/StudioPage'));
 
@@ -33,7 +34,7 @@ function RoutedContent() {
         : pathname === '/inspect' ? <RunsPage inspectList />
         : pathname.startsWith('/agents/') ? <AgentConsole />
         : pathname === '/viewer-demo' ? <ViewerDemoPage />
-        : pathname === '/aerograph' ? <div className="console-page" data-testid="aerograph-page"><PageHeader eyebrow="Explore" title="AeroGraph" description="Browse the shared entity types, fields, relations, predicates and events used by your scenarios." /><PageState kind="empty" title="The explorer is coming next" description="Type ancestry and field search are available now in Studio’s AeroGraph tab." action={<a className="console-btn" href={`/studio${search}`}>Browse types in Studio</a>} /></div>
+        : pathname === '/aerograph' ? <AeroGraphPage />
         : <Navigate to={`/${search}`} replace />)}
     </Suspense>
   </ConsoleShell>;

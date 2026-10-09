@@ -1,0 +1,10 @@
+.agent-console-page {max-width:1100px;margin:0 auto}
+.agent-decision-card {background:var(--csl-surface);border:1px solid var(--csl-border);border-radius:var(--csl-radius);padding:24px;margin:20px 0}
+.agent-decision-card h3 {display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 18px;font-size:17px;letter-spacing:-.2px}
+.agent-decision-card h3 .ant-tag {font-size:11px;font-weight:400}
+.agent-console-alert {margin-bottom:12px}
+.agent-field-list {margin:10px 0 16px;padding-left:20px;color:var(--csl-text-muted);font-size:13px}
+.agent-field-list li {padding:3px 0;overflow-wrap:anywhere}
+.agent-record-caption {margin:6px 0;color:var(--csl-text-muted);font-size:13px}
+.agent-proposed-call {padding:16px 0;border-top:1px solid var(--csl-border);margin-top:12px;line-height:1.7}
+.agent-record-blob {padding:14px;margin:6px 0;border-radius:6px;background:var(--csl-bg);font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
