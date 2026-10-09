@@ -56,6 +56,15 @@ class Polyline:
 def overlap(a: Pose, b: Pose, clearance: float = 0.55) -> bool:
     """Legacy 4.5 x 1.8 m separating-axis footprints in the ENU plane."""
     gap = finite(clearance, "occupancy clearance", 0)
+    # Each 4.5 x 1.8 m rectangle projects at most 2.25 + 0.9 m
+    # onto either world axis, at every heading. This conservative broad phase
+    # avoids SAT work for distant cars; the exact existing test handles contacts.
+    reach = 2 * (2.25 + 0.9) + gap
+    if (
+        abs(b.position[0] - a.position[0]) > reach
+        or abs(b.position[1] - a.position[1]) > reach
+    ):
+        return False
     af = (math.cos(a.heading), math.sin(a.heading))
     ar = (-af[1], af[0])
     bf = (math.cos(b.heading), math.sin(b.heading))
