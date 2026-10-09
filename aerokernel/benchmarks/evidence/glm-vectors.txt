@@ -1,0 +1,26 @@
+Done. Summary of the work and one environment blocker you need to know about:
+
+## Blocker: the assigned install path is not writable
+The repository tree `/mnt/data2/weizhiwei/aeroagentsim/aerokernel` is mounted **read-only at the filesystem level** in this session (`/dev/sdc on /mnt/data2/... ext4 (ro)`); only my cwd `benchmarks/_glm/vectors` is `rw`. A direct write to `tests/kernel/` was denied, and a plain shell probe there returned `Read-only file system` — sandbox escalation changes policy, not mount flags, so it cannot help. Nothing was written outside my cwd.
+
+- **Staged test file (byte-identical to what should be installed):**
+  `benchmarks/_glm/vectors/staged_tests/kernel/test_m1_determinism.py`
+- **Report log:** `benchmarks/_glm/vectors/reports/m1_determinism_report.md`
+- Install step for someone with write access: copy the staged file to `aerokernel/tests/kernel/test_m1_determinism.py` (it resolves the repo root by walking up to `examples/two_engine_toy.py`, so it works unmodified at the installed location).
+
+## What the test file covers (15 tests, all passing)
+- **Literal canonical seed fixture** — `DOMAIN_SEED_42 = b'["aerokernel.rng/v1",42,"toy","p","s"]'`, its literal sha256 hex, the derived integer seed, plus negative controls (newline suffix, different root seed / stream name). Production `canonical_json` is never in the expected path.
+- **Literal first stream outputs** — per-stream seeds and first `random()`/`getrandbits(64)` values for `RNGStreams(42,"toy","p",("a","b","c"))`, including declaration-order independence.
+- **Subprocess `PYTHONHASHSEED` 0/1/71** — child runs `.venv/bin/python -c` inline (no temp file) with `PYTHONPATH`/`PYTHONDONTWRITEBYTECODE=1`, hashing the full toy journal against the pinned literal `f814b5a4…37a462c`.
+- **Registration/cohort permutations** — 4 sampled registration orders plus all 24 permutations of the 4 toy engines (via a `Kernel.bind` wrapper) collapse to the single pinned journal digest; `BindingManifest` cohort declarations canonicalize to `(("a","b","c"),)`.
+
+## Run
+```
+PYTHONPATH=.../aerokernel PYTHONDONTWRITEBYTECODE=1 \
+  .venv/bin/python -m pytest -q -p no:cacheprovider staged_tests/kernel/test_m1_determinism.py
+# 15 passed in 2.59s
+```
+
+## Notes
+- Concurrent writers modified `examples/two_engine_toy.py` and kernel modules mid-session; I re-captured the journal digest after their edits (now 112923 bytes) so the fixture matches the **current** tree. Re-verify once all writers settle, since the digest is a pinned literal by design.
+- No production files were edited, no git/upstream operations, and other writers' changes were left untouched.

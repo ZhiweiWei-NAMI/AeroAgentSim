@@ -1,0 +1,48 @@
+........................................................................ [ 18%]
+........................................................................ [ 36%]
+........................................................................ [ 54%]
+........................................................................ [ 72%]
+........................................................................ [ 90%]
+.....................................                                    [100%]
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.11.12-final-0 _______________
+
+Name                              Stmts   Miss  Cover
+-----------------------------------------------------
+aerokernel/__init__.py               17      0   100%
+aerokernel/binding.py               232     19    92%
+aerokernel/codec.py                  43      2    95%
+aerokernel/compact.py                80      0   100%
+aerokernel/control.py               110      7    94%
+aerokernel/coordinator.py           593     42    93%
+aerokernel/engine.py                111      6    95%
+aerokernel/errors.py                 17      0   100%
+aerokernel/ids.py                    54      0   100%
+aerokernel/ingress.py                76      3    96%
+aerokernel/journal.py               174     17    90%
+aerokernel/messages.py              265      6    98%
+aerokernel/operations.py             92      0   100%
+aerokernel/profiles/__init__.py       0      0   100%
+aerokernel/profiles/sampled.py       94      2    98%
+aerokernel/queues.py                 81      0   100%
+aerokernel/registry.py              261      5    98%
+aerokernel/relation_sweep.py         59      0   100%
+aerokernel/relations.py             294     24    92%
+aerokernel/replay.py                199     18    91%
+aerokernel/rng.py                    28      0   100%
+aerokernel/rpc.py                   285     28    90%
+aerokernel/rpc_transport.py         163      4    98%
+aerokernel/sampling.py              155     20    87%
+aerokernel/scheduling.py            150     13    91%
+aerokernel/sdk.py                   231      1    99%
+aerokernel/state.py                 398     20    95%
+aerokernel/storage.py                97      0   100%
+aerokernel/testing.py                53      0   100%
+aerokernel/time.py                   90      0   100%
+aerokernel/transactions.py          426     48    89%
+aerokernel/values.py                145      1    99%
+-----------------------------------------------------
+TOTAL                              5073    286    94%
+Coverage JSON written to file benchmarks/evidence/m2-coverage.json
+Required test coverage of 90% reached. Total coverage: 94.36%
+397 passed, 2 deselected in 137.45s (0:02:17)

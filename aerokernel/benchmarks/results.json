@@ -1,0 +1,70 @@
+{
+  "measured_on": "2026-10-08",
+  "python": "3.11.12",
+  "method": "kernel_bench.py; file WAL; all 3 integer fields every 100 ms; complete history; wall includes bind/start/run/final checks; Linux peak RSS",
+  "before_source": "docs/reviews/M1-review.md (review runs overlapped; default in-memory Journal; 2 GiB virtual-address limit)",
+  "before": [
+    {
+      "entities": 100,
+      "settled_simulated_s": 60,
+      "wall_s": 187.56,
+      "rss_peak_mib": 1948.14,
+      "journal_bytes": 281186711,
+      "fact_versions": 180300,
+      "outcome": "complete"
+    },
+    {
+      "entities": 1000,
+      "settled_simulated_s": 5.9,
+      "wall_s": 181.74,
+      "rss_peak_mib": 1991.2,
+      "journal_bytes": 278472984,
+      "fact_versions": 180000,
+      "outcome": "MemoryError; partial"
+    }
+  ],
+  "after": [
+    {
+      "entities": 100,
+      "fields": 3,
+      "requested_steps": 600,
+      "target_simulated_s": 60.0,
+      "wall_s": 7.633754904381931,
+      "bootstrap_s": 0.08383747283369303,
+      "rss_peak_mib": 62.93359375,
+      "journal_bytes": 16715052,
+      "bytes_per_fact_version": 92.70688851913478,
+      "journal_lines": 1807,
+      "sealed_ns": 60000000000,
+      "fact_versions": 180300,
+      "failure": null,
+      "dense_binding": {
+        "partitions": 40,
+        "dag_edges": 780,
+        "bind_wall_s": 0.023830413818359375
+      },
+      "journal_sha256": "7334566688329b1f31e8526b7d1f9abf2474d8909b92f1c67f66d19ee07ccd37"
+    },
+    {
+      "entities": 1000,
+      "fields": 3,
+      "requested_steps": 600,
+      "target_simulated_s": 60.0,
+      "wall_s": 84.10233884770423,
+      "bootstrap_s": 1.0414942661300302,
+      "rss_peak_mib": 384.94140625,
+      "journal_bytes": 147345953,
+      "bytes_per_fact_version": 81.72265834719911,
+      "journal_lines": 1807,
+      "sealed_ns": 60000000000,
+      "fact_versions": 1803000,
+      "failure": null,
+      "dense_binding": {
+        "partitions": 40,
+        "dag_edges": 780,
+        "bind_wall_s": 0.024799359031021595
+      },
+      "journal_sha256": "d44fd722d38e77c9beab8d1a6f708b070c7899906b72e438bd17c3696fab0ebd"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "bootstrap_s": 1.2862302167341113,
+  "bytes_per_fact_version": 81.72280754298392,
+  "dense_binding": {
+    "bind_wall_s": 0.028478640131652355,
+    "dag_edges": 780,
+    "partitions": 40
+  },
+  "entities": 1000,
+  "fact_versions": 1803000,
+  "failure": null,
+  "fields": 3,
+  "journal_bytes": 147346222,
+  "journal_lines": 1807,
+  "journal_sha256": "ce0cee43791b566619aae9decd7e957e2428dfa554fa3a05edeba72fd4719f1c",
+  "requested_steps": 600,
+  "rss_peak_mib": 387.171875,
+  "sealed_ns": 60000000000,
+  "target_simulated_s": 60.0,
+  "wall_s": 84.84005097392946
+}

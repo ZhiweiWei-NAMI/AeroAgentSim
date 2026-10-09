@@ -1,0 +1,6 @@
+{
+  "entities": 1000,
+  "bootstrap_complete": false,
+  "wall_budget_s": 30,
+  "outcome": "TimeoutError during cause validation; no completed throughput claimed"
+}
