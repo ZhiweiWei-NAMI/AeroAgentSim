@@ -949,7 +949,7 @@ registry:
       provenance: docs/platform/demo-traffic-accident.md §3; Task B
       time_semantics: canonical computation; explicit half-open validity
       writer_contract: capture
-  - id: traffic.capture.png_sha256
+  - id: traffic.capture.asset_id
     type: aas:TrafficCapture
     schema: *id008
     metadata:
@@ -1103,7 +1103,7 @@ registry:
       provenance: docs/platform/demo-traffic-accident.md §3; Task B
       time_semantics: canonical computation; explicit half-open validity
       writer_contract: capture
-  - id: traffic.recording.sha256
+  - id: traffic.recording.asset_id
     type: aas:TrafficRecording
     schema: *id003
     metadata:
@@ -1631,7 +1631,7 @@ registry:
         capture:
           type: ref
           target_type: aas:TrafficCapture
-        png_sha256: *id010
+        asset_id: *id010
       required:
       - actor
       - request_id
@@ -1655,7 +1655,7 @@ registry:
         capture:
           type: ref
           target_type: aas:TrafficCapture
-        png_sha256: *id010
+        asset_id: *id010
       required:
       - actor
       - request_id
@@ -1679,7 +1679,7 @@ registry:
         capture:
           type: ref
           target_type: aas:TrafficCapture
-        png_sha256: *id010
+        asset_id: *id010
       required:
       - actor
       - request_id
@@ -1703,7 +1703,7 @@ registry:
         capture:
           type: ref
           target_type: aas:TrafficCapture
-        png_sha256: *id010
+        asset_id: *id010
       required:
       - actor
       - request_id
@@ -6727,7 +6727,7 @@ bindings:
     - traffic.capture.camera_digest
     - traffic.capture.asset_digest
     - traffic.capture.byte_count
-    - traffic.capture.png_sha256
+    - traffic.capture.asset_id
     - traffic.capture.storage_status
     - traffic.capture.renderer_mode
   lifecycle:
@@ -8022,7 +8022,6 @@ engines:
     config:
       packages:
       - path: behaviours.yaml
-        sha256: e8f4c0b050808dd8d149466cf0a25605d107e2758929812c1829a58bc639ee56
       capabilities:
         traffic.road.follow:
           schema: traffic.road.follow
@@ -8050,7 +8049,6 @@ engines:
     config:
       mode: stub
       fixture_path: scenarios/demos/traffic-accident/fixtures/decisions.json
-      fixture_sha256: b73df34b58bf0a16f326ce869d092b5c46caa3e26710fcb5a8747a4616170b6a
       task_id: incident-capture-01
       candidates:
         uav.alpha: uav_alpha
@@ -8076,7 +8074,7 @@ engines:
         camera_digest: traffic.capture.camera_digest
         asset_digest: traffic.capture.asset_digest
         byte_count: traffic.capture.byte_count
-        digest: traffic.capture.png_sha256
+        digest: traffic.capture.asset_id
         storage_status: traffic.capture.storage_status
         renderer_mode: traffic.capture.renderer_mode
       run_directory: '@run'
@@ -8129,7 +8127,6 @@ outputs:
   durability: flush
 behaviours:
 - path: behaviours.yaml
-  sha256: e8f4c0b050808dd8d149466cf0a25605d107e2758929812c1829a58bc639ee56
 ingress_streams:
 - id: operator
   engine_ids:

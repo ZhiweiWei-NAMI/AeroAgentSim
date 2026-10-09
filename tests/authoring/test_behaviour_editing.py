@@ -88,6 +88,7 @@ def test_real_console_demo_compiles_and_reports_an_authored_error(
         identifier, "traffic-accident", console=True, primitive=True
     )
     scenario = draft["scenario"]
+    scenario["registry"]["digest"] = "obsolete-pin"
     scenario["engines"]["capture"]["config"]["renderer"] = {
         "mode": "stub",
         "fixtures": {},
@@ -108,6 +109,7 @@ def test_real_console_demo_compiles_and_reports_an_authored_error(
     scenario = browser_numbers(scenario)
     store.save(identifier, {"scenario": scenario})
     saved = store.get(identifier)["scenario"]
+    assert "digest" not in saved["registry"]
     bridge = saved["engines"]["capture_bridge"]["config"]
     request_schema = next(
         item["schema"]

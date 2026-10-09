@@ -158,7 +158,9 @@ def assert_chain(path: Path, *, source: str) -> None:
     assert (
         math.dist(poses["uav.bravo"][:2], poses["vehicle.incident.a"][:2]) < footprint
     )
-    assert events["traffic.capture.accepted"][0]["png_sha256"] == record["digest"]
+    accepted = events["traffic.capture.accepted"][0]
+    assert accepted["asset_id"] == record["digest"]
+    assert "png_sha256" not in accepted
     assert RunStorage(path).metadata()["status"] == "completed"
 
 

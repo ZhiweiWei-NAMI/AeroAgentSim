@@ -30,7 +30,7 @@ contracts.
    The raw package, AST, transition and action editors retain unknown siblings.
    Invalid raw buffers block saving/validation; switching away abandons that
    unsaved invalid buffer. YAML import/export runs through the server, normalizes
-   formatting/comments and reports byte and semantic digests. Duplicate YAML
+   formatting/comments and exports the authored package and layout. Duplicate YAML
    keys are rejected. Graph layout metadata is separate from scenario semantics.
 ![Chain form and graph using one authoring fixture](img/console-authoring.jpg)
 
@@ -92,9 +92,10 @@ links. **Agent decisions** opens the same run, identity and selected prefix in
 AgentConsole. A cause/record seek moves the shared views. Transport failures stay
 visible when a live connection retries; they do not create empty successful data.
 
-**Artifacts / photos** lists actual D storage records and opens content-verified
-PNG bytes. The panel verifies SHA-256, response digest header and byte count.
-Publication is shown only when a configured capture writer's digest/request
+**Artifacts / photos** lists actual D storage records and opens stored
+PNG bytes. Captures carry plain asset IDs; the backend validates the PNG format
+and request correlation.
+Publication is shown only when a configured capture writer's asset/request
 fields match the stored request at this cut. Seek follows the recorded source
 cut. Storage, journal publication and chain/task acceptance are distinct.
 
@@ -124,21 +125,23 @@ scene prefix and actual WAL identity, checks actor generation/type and exact
 `source_cut.instant`, renders through the existing Three.js assets/entity/scene
 code, and returns `{request, png_data_url}`. It never operates a simulation.
 
-The manifest at `capture_assets` must have these content-pinned fields:
+The manifest at `capture_assets` lists plain asset IDs and source URLs:
 
 ```json
-{"format":"aeroagentsim.capture-assets/v1","environment":"viewer-default/v1",
- "files":[{"url":"/assets/vehicle.glb","sha256":"<64 hex>","byte_count":1234}]}
+{"format":"aeroagentsim.capture-assets/v1","asset_id":"traffic-city-assets/v1","environment":"viewer-default/v1",
+ "files":[{"url":"/assets/vehicle.glb","asset_id":"city/vehicle.glb"}]}
 ```
 
-The request's `asset_digest` is SHA-256 of the raw manifest bytes. All required
-model, city, road and HDRI URLs must be listed and verified; verified bytes are
-pinned as blob URLs before rendering. Camera supports `revision`, optional
+The compatibility field `asset_digest` carries the manifest's plain asset ID.
+All required model, city, road and HDRI URLs must be listed and available.
+The frontend session must adopt these descriptors and remove its content-hash
+checks; see [CHANGES-FOR-FRONTEND.md](../CHANGES-FOR-FRONTEND.md).
+Camera supports `revision`, optional
 `preset`, explicit `eye`, `target`, `fov`, `frame` (`enu` or `render-world`), and
 optional `near`/`far` (renderer profile defaults 0.15/16000). A nonspatial actor
 requires an explicit `anchor`; eye and target remain absolute coordinates in the
 specified frame. Unsupported cameras, missing pose/assets, mismatched identity
-or integrity failures reject capture. A recorder label is drawn into PNG pixels.
+reject capture. A recorder label is drawn into PNG pixels.
 The capture bridge has no model/city placeholder fallback.
 
 ## Integration boundaries
@@ -165,9 +168,9 @@ Build the frontend once (`cd frontend && npm run build`) and serve it through
 `AEROAGENTSIM_CONSOLE_URL` to this service's browser-visible origin. Set
 `AEROAGENTSIM_TRAFFIC_ASSET_ROOT` to the original accident demo's `web/assets`
 directory. The asset route exposes only files listed in the committed
-`inputs/city-manifest.json` and checks their bytes and SHA-256. Meshes remain
-external; they are not copied into this repository. A mismatched or missing
-source is an explicit error.
+`inputs/city-manifest.json` and requires them to exist inside the configured asset
+root. Meshes remain external; they are not copied into this repository. Missing
+files and paths outside that root are explicit errors.
 
 1. Open `/studio?api=<service-origin>` and click **Traffic accident (demo)**.
    This creates a separate draft and copies its real registry snapshot, behaviour
@@ -182,7 +185,7 @@ source is an explicit error.
    subject to real compiler admission. Package validation now runs in the full
    scenario's registry, writers and capability context; diagnostics retain the
    authored element path.
-3. Decision mode starts **scripted**, with a pinned fixture and no model calls.
+3. Decision mode starts **scripted**, with an explicit fixture and no model calls.
    **Configure live LangGraph** requires explicit provider URL, model and API-key
    environment variable. It installs a proposal graph with read grants for the
    actual actors/tasks and event grants for reports/bids. The behaviour runtime
@@ -208,14 +211,17 @@ source is an explicit error.
    actors and switch the existing city viewer's camera mode.
 6. Select a chain transition to freeze both panes at its journal cut. Use
    **Follow live** to resume following. Decision records and artifact source cuts
-   use the same temporal store. **Refresh stored artifacts**, then **Open verified
-   PNG**, verifies the stored PNG's digest and byte count.
+   use the same temporal store. **Refresh stored artifacts**, then open the stored
+   PNG by its asset ID.
+   The current frontend label/checks are pending the changes listed in
+   [CHANGES-FOR-FRONTEND.md](../CHANGES-FOR-FRONTEND.md).
 
 City capture uses the built console's `window.aeroCapture` bridge, the real city
 mesh/road layer and an `actor-nadir` preset derived from the committed UAV pose.
 The camera snapshot uses A2's flat `id/generation/field/position` pose rows and
-is checked against the exact requested journal cut; the capture manifest pins
-every city mesh. It never substitutes another renderer.
+is checked against the exact requested journal cut; the capture manifest lists
+every required city mesh by its source URL and plain ID. It never substitutes
+another renderer.
 The primitive renderer remains available only through the explicit template
 option `{"console":true,"capture_mode":"primitive-test"}` for tests.
 
@@ -223,7 +229,7 @@ The real-backend browser gate is
 `AEROAGENTSIM_TRAFFIC_ASSET_ROOT=<original-assets> npx playwright test --config
 playwright.console.config.ts` from `frontend/`, after building. It imports and
 validates the draft, runs it, injects an accident, waits for award/capture, opens
-the verified photo and seeks a shared cut. Screenshots and logs go to
+the stored photo and seeks a shared cut. Screenshots and logs go to
 `/tmp/aas-q/e2/`; this gate has no mocked run, ingress, feed or artifact endpoints.
 
 ## E2 verification status (2026-10-09)

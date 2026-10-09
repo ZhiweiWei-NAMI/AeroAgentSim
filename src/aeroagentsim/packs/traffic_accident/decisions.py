@@ -21,6 +21,7 @@ class Decisions(ContextEngine):
     def __init__(self, build: EngineBuild) -> None:
         self.build = build
         cfg = build.config
+        # Old scenarios may supply this annotation; fixture bytes are not pinned.
         if (
             set(cfg) - {"fixture_sha256"}
             != {

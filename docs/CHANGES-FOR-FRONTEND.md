@@ -37,3 +37,11 @@ Capture compatibility:
 HTTPS certificate checks and container label/ownership checks remain. PNG signature, chunk CRC/decompression and dimensions are image-format validation, not a sealed-artifact protocol. Archived artifacts with old hash-named files remain readable without hashing their content.
 
 Upstream Git revisions in `tools/sync_assets.py` (`PX4_REVISION`, `STYLE_REVISION`) and container dependency `*_COMMIT` arguments remain version selectors for compatible geometry/build APIs. They do not verify downloaded content or pin runs/snapshots. Versioned dependency requirements remain; wheel/archive content hashes are removed.
+
+## E3a/R5 merge follow-up
+
+- `GET /v1/studio/demo-capture-assets` returns the same manifest format with a plain top-level `asset_id` (`traffic-city-assets/v1`). Each file has `url` and `asset_id`; `sha256` and `byte_count` descriptors are removed. The capture request compatibility field `asset_digest` contains this asset-set ID, never a manifest hash. City assets are allowlisted, constrained to the configured root and required to exist; editing their content does not require repinning.
+- Traffic capture events (`traffic.capture.stored`, `traffic.capture.accepted`) now emit `asset_id` instead of `png_sha256`. The graph metadata field is `traffic.capture.asset_id` instead of `traffic.capture.png_sha256`; it contains the request-derived artifact ID. This supersedes the earlier `png_sha256` compatibility note above. Existing generic artifact `digest` fields remain opaque request-derived IDs.
+- The unused recording metadata slot is now `traffic.recording.asset_id` instead of `traffic.recording.sha256`; it no longer advertises a content hash.
+- Browser scenario normalization accepts and discards an old `registry.digest` annotation, using the actual snapshot schemas to restore numeric types.
+- The frontend session must update manifest loading, capture labels and traffic-field lookups; this backend follow-up does not edit frontend files. Recorded older journals remain readable without content-hash verification.

@@ -1,4 +1,4 @@
-"""Traffic intent -> real camera/storage receipts -> independently verified upload."""
+"""Traffic intent -> real camera/storage receipts -> correlated upload acceptance."""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ class TrafficCaptureBridge(ContextEngine):
                     for f in (
                         *self.cfg["pose_fields"].values(),
                         "traffic.capture.source_cut",
-                        "traffic.capture.png_sha256",
+                        "traffic.capture.asset_id",
                     )
                 ),
                 produces=("traffic.capture.incident",),
@@ -180,7 +180,7 @@ class TrafficCaptureBridge(ContextEngine):
                     {
                         **self._payload(job),
                         "capture": payload["record"],
-                        "png_sha256": payload["digest"],
+                        "asset_id": payload["digest"],
                         "reason": "edge received stored PNG bytes and source identity",
                     },
                     topic=ACCEPTED,
@@ -240,7 +240,7 @@ class TrafficCaptureBridge(ContextEngine):
                         {
                             **self._payload(job),
                             "capture": {"$ref": record_ref.to_data()},
-                            "png_sha256": job.record["digest"],
+                            "asset_id": job.record["digest"],
                             "reason": "actual headless Three.js PNG persisted",
                         },
                         topic=STORED,
