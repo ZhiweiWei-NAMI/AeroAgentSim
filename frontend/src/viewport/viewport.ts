@@ -109,7 +109,7 @@ export class Viewport {
     }});
   }
   setDusk(dusk: boolean) {
-    this.dusk=dusk;this.lighting.setDusk(dusk);this.applyCityDisplay(this.staticRoot);this.revision++;
+    this.dusk=dusk;this.lighting.setDusk(dusk);this.composer.setDusk(dusk);this.applyCityDisplay(this.staticRoot);this.revision++;
     this.container.dataset.lighting=dusk?'dusk-display':'day-display';
   }
   setSelection(key?: EntityKey) { this.selected = key; this.revision++; }
@@ -120,7 +120,7 @@ export class Viewport {
     if(manual)this.manualQuality=true;
     if (quality === this.quality) return;
     this.revision++; this.quality = quality; this.composer.dispose(); this.composer = pipeline(this.renderer, this.scene, this.camera, quality);
-    this.applyPreset(); this.resize(); this.qualityTime = this.qualityFrames = 0; this.options.onQuality?.(quality);
+    this.composer.setDusk(this.dusk);this.applyPreset(); this.resize(); this.qualityTime = this.qualityFrames = 0; this.options.onQuality?.(quality);
   }
   private applyPreset() {
     const preset = PRESETS[this.quality]; this.renderer.setPixelRatio(Math.min(devicePixelRatio, preset.ratio));

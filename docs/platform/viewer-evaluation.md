@@ -1,10 +1,132 @@
-# Viewer evaluation — V2 / V1 / Q7 + Q7b
+# Viewer evaluation — V3 / V2 / V1 / Q7 + Q7b
 
 
-V2 adds procedural city detail and retains the **60 fps matched hardware gate**:
-active zoom p50/p95 **16.7/16.8 ms**, recorded playback **16.7/16.7 ms** over
-three RTX 3090 Vulkan invocations. Fresh AeroBench reference: **33.4/66.7 ms**.
-V1/Q7/Q7b evidence below remains historical provenance.
+V3 brightens the default daytime city while preserving the existing quality tiers,
+dusk mode and factual inspector. Final hardware results and the paused headless
+capture limitation are recorded below. V2/V1/Q7/Q7b remain historical provenance.
+
+## V3 — bright daytime art direction
+
+The default **Day · display** palette now uses light limestone, warm concrete,
+white and cool stone for low/mid-rise buildings, and varied blue-green curtain
+walls for towers. The key sun is on the visible facade side at **46.5° elevation**;
+cool hemisphere fill, HDRI intensity **0.95** and ACES exposure **1.12** keep those
+faces readable. Tower windows use the existing physical environment-map path,
+roughness **0.12**, restrained metalness **0.28** and thin visible mullions, rather
+than the V2 dark glazing and painted sky modulation. Untagged roof finishes are
+lighter than walls. Original colour tags, geometry and factual inspector fields
+remain unchanged; the finish/type choices are disclosed display estimates.
+
+Warm jointed paving, darker asphalt, corrected UV axes for the source lane and
+crossing geometry, natural green lawns/crowns, AO radius **2 m** / intensity
+**0.65**, and a procedural blue sky/horizon with matching fog give the city clearer
+layers. Uncoloured entity glyphs receive a coral accent; authored colours and full
+model materials remain intact. Selection outline/ring, quality tiers and the
+original dusk facade/window parameters are retained. Dusk AO is restored when
+lighting or quality changes. No dependency, downloaded imagery or new runtime asset bytes
+were added. The existing CC0 HDRI's SHA-256 matches the recorded inventory;
+procedural finishes request no historical facade/terrain texture pixels.
+
+| V2 daytime before | V3 default daytime | Fresh matched AeroBench |
+|---|---|---|
+| ![V2 dark daytime](img/v3-viewer-before.png) | ![V3 bright daytime](img/q7-viewer-city.png) | ![Matched AeroBench](img/v3-aerobench-matched.png) |
+
+Camera position `[280,220,300]`, target `[30,25,-25]`, FOV 48°, render surface
+1440 × 900, DPR 1, med quality. Compared with the reference, V3 has brighter
+camera-facing masses, blue-green glass variation, light readable roof planes,
+more coherent paving/green regions, and a stronger blue horizon. This is an
+art-direction assessment from actual GPU renders, not a scientific beauty score.
+[Full day](/tmp/aas-q/v3/day-matched.png),
+[full dusk](/tmp/aas-q/v3/dusk-matched.png),
+[labelled UI and exact inspector](img/v3-day-ui.png),
+[full reference](/tmp/aas-q/v3/bench-reference/matched-aerobench-native-hardware.png).
+
+Three art iterations were rendered and inspected against AeroBench:
+[first palette/light pass](/tmp/aas-q/v3/iteration1-day-matched.png),
+[blue horizon/greener landscape](/tmp/aas-q/v3/iteration2-day-matched.png),
+[glazing and road-marking refinement](/tmp/aas-q/v3/iteration3-day-matched.png).
+Further captures in scratch investigated paused headless Vulkan composition.
+**Limitation:** a cold paused headless capture can be black until a repaint, while
+an explicit redraw gives the real city image. The UI capture explicitly redraws
+at med; matched captures use the harness's existing surface resize. Unproven
+GPU synchronization/readback changes were removed from production code. The
+V1 on-demand renderer remains intact; this pass does not claim to fix that capture
+issue or verify an onscreen browser.
+
+**Final hardware measurements.** Chromium 151.0.7922.34, renderer verified as
+`ANGLE (NVIDIA, Vulkan 1.3.242 (NVIDIA NVIDIA GeForce RTX 3090 (0x00002204)), NVIDIA)`.
+Three sequential invocations of the unchanged Q7 harness on the final source,
+with one browser at a time. The V2 column uses its historical hardware-r1 run.
+Nearest-rank pooled percentiles, milliseconds rounded
+to 0.1; raw values and per-frame diagnostics are retained in
+[summary](/tmp/aas-q/v3/hardware-summary.json) and
+[r1](/tmp/aas-q/v3/delivery-r1/measurements-hardware-p1-scale-city-100.json),
+[r2](/tmp/aas-q/v3/delivery-r2/measurements-hardware-p1-scale-city-100.json),
+[r3](/tmp/aas-q/v3/delivery-r3/measurements-hardware-p1-scale-city-100.json).
+
+| Matched active case | V2 p50/p95 | V3 p50/p95/p99 | Actual renders r1/r2/r3 | V3 CPU render p50/p95 | Calls p50 | Triangles p50 |
+|---|---|---|---|---|---|---|
+| 100 entities, wheel zoom | 16.7 / 16.8 | **16.7 / 16.8 / 16.8** | 358 / 360 / 357 | 4.8 / 6.3 | 101 | 786,707 |
+| 100 entities, recorded playback | 16.7 / 16.8 | **16.7 / 16.7 / 16.8** | 361 / 361 / 361 | 4.4 / 5.5 | 101 | 786,707 |
+| Fresh AeroBench native preview, 94 entities | — | 33.4 / 66.7 / 83.3 | 144 / — / — | 20.8 / 28.9 | 917 | 8,292,237 |
+
+Both V3 active cases meet **p50 ≤16.7 ms / p95 ≤33 ms** at the harness's
+0.1 ms reporting precision. Every sampled frame rendered; all three runs stayed
+at **med**, with no automatic quality reduction or software renderer. GPU elapsed
+query p50/p95: zoom **0.709/0.714 ms**, playback **0.711/0.716 ms**; queries are
+asynchronous and deduplicated. Paused samples had zero actual draws and are
+excluded from throughput claims. Shared device workloads were not isolated.
+All measured cases had zero page exceptions. AAS active cases had no console
+messages; screenshot captures emitted driver ReadPixels stall warnings.
+
+The reference was served from the existing read-only
+`/tmp/aas-q/q7/aerobench-copy` using its original trace/asset preview plugins,
+via a job-owned Vite config/cache. Its bundled traffic and planned visual flight
+at 80.75 s are a native reference, not the same factual entity feed. The missing
+public trace catalogue is disclosed in its UI. One missing favicon 404 and native
+PCFSoftShadowMap/FBX Z-up/KHR shader-extension warnings remain in the
+[reference log](/tmp/aas-q/v3/bench-reference/run.log); they were not suppressed.
+
+Reproduce the final AAS series from the worktree root (job runner sets
+`Q7_GL=hardware Q7_ANGLE=vulkan Q7_ACTIVE=1 Q7_CASES=p1-scale-city-100`,
+viewer port 18793, and invokes `node frontend/e2e/q7-measure.mjs` three times):
+
+```sh
+PYTHONPATH=src MYPYPATH=../aerokernel /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python /tmp/aas-q/v3/run-delivery.py
+```
+
+The fresh reference invocation was
+`Q7_GL=hardware Q7_ANGLE=vulkan Q7_CASES=bench Q7_OUT=/tmp/aas-q/v3/bench-reference Q7_BENCH_URL=http://127.0.0.1:18794 node frontend/e2e/q7-measure.mjs`.
+
+The replaced daytime thumbnail is **640 × 400 / 98,275 bytes**. Exactly three
+new PNGs were added: V2 before **640 × 400 / 120,182 bytes**, fresh AeroBench
+**640 × 400 / 82,298 bytes**, and labelled UI **800 × 500 / 100,528 bytes**.
+Each is below **150,000 bytes**. The before image is byte-for-byte the previous
+daytime thumbnail; new captures use Lanczos resizing and 96-colour quantization.
+Full-colour 1440 × 900 originals remain in scratch. Thumbnail processing used the
+already available system Pillow via `python3 /tmp/aas-q/v3/make-thumbnails.py`;
+the prescribed project Python was used for measurement runners and summaries.
+[Image inventory](/tmp/aas-q/v3/thumbnail-inventory.json).
+
+Commands from `frontend/`:
+
+- `npm run typecheck` — passed ([log](/tmp/aas-q/v3/typecheck-final.log)).
+- `npm test -- --no-cache` — **26 files / 125 tests passed** ([log](/tmp/aas-q/v3/tests-final.log)).
+- `npm run build -- --outDir /tmp/aas-q/v3/dist` — passed ([log](/tmp/aas-q/v3/build-final.log)).
+
+Browser verification covers high/low/med, dusk/day switching, unchanged exact
+`[0,0,0]`, `[10,0,0]`, `100000` inspector values, model selection, automatic quality
+reduction under deliberate CPU throttling, and absence of historical city texture
+requests. [Results](/tmp/aas-q/v3/browser-check.json). `git diff --check` passed.
+Ruff, strict mypy, backend pytest and Docker suites were not run: no Python files
+or backend execution paths changed. No commit/branch/reset/checkout was performed.
+
+Two actual concurrent WorkBuddy DSH sessions used `workbuddy/glm-5.3-flash`,
+maxTokens **131072**, without effort. The entity writer completed and its scoped
+change was reviewed; the read-only reviewer was stopped after prolonged reasoning
+before writing its requested report. Useful findings were checked directly, and
+unsupported reflection/exposure claims were rejected.
+[Disposition and session evidence](/tmp/aas-q/v3/glm-disposition.md).
 
 ## V2 — procedural city visual quality
 
@@ -38,13 +160,13 @@ The existing V1/Q7 geometry and original OSM bytes are still SHA-256 verified.
 remain the licence sources; D-assets is not resolved by this rendering change.
 
 Matched camera: position `[280,220,300]`, target `[30,25,-25]`, vertical FOV 48°,
-1440 × 900 surface, DPR 1. The three changed thumbnails are 640 × 400, 96-colour
+1440 × 900 surface, DPR 1. The three V2 thumbnails were 640 × 400, 96-colour
 PNG, respectively **78,183 / 120,182 / 101,515 bytes** (each below 150 KB).
 Unreduced captures retain full colour and resolution in scratch.
 
 | V1 before | V2 day | V2 dusk (display) |
 |---|---|---|
-| ![V1 matched city](img/v2-viewer-before.png) | ![V2 matched city](img/q7-viewer-city.png) | ![V2 dusk](img/v2-viewer-dusk.png) |
+| ![V1 matched city](img/v2-viewer-before.png) | ![V2 matched city](img/v3-viewer-before.png) | ![V2 dusk](img/v2-viewer-dusk.png) |
 
 [Full before](/tmp/aas-q/v2/before/matched-aas-100-hardware.png),
 [full day](/tmp/aas-q/v2/day-matched.png),
@@ -601,7 +723,7 @@ work. These differences must remain
 visible when interpreting triangle/call/frame-time numbers. No equal-physics or
 equal-visual-fidelity claim follows from this comparison.
 
-Historical comparison thumbnails (our thumbnail is updated by V2; original full Q7 captures remain in scratch):
+Historical comparison thumbnails (our thumbnail is updated by V3; original full Q7 captures remain in scratch):
 
 | Our viewer, 100 entities | AeroBench, 94 entities |
 |---|---|
