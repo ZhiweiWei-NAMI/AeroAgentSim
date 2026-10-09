@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import shutil
 from pathlib import Path
@@ -26,7 +27,31 @@ def snapshot_scene(
         if not (store.directory(identifier) / "draft.json").is_file():
             return
         draft = store.get(identifier)
-        if "scene" not in draft or draft["scenario"] != scenario.document:
+        from aeroagentsim.scenario import load_scenario
+
+        expected = load_scenario(
+            draft["scenario"], base=store._base(draft["scenario"], identifier)
+        ).document
+
+        def authored(document: dict[str, Any]) -> dict[str, Any]:
+            result = copy.deepcopy(document)
+            for engine in result["engines"].values():
+                if engine["plugin"] in {"capture", "traffic_camera_capture"}:
+                    engine["config"].pop("run_directory", None)
+                    engine["config"].get("renderer", {}).pop("service_run_id", None)
+            return result
+
+        if authored(expected) != authored(scenario.document):
+            raise ValueError(
+                "Scene cannot attach to a scenario that differs from its saved draft"
+            )
+        if draft.get("demo_console", {}).get("capture_mode") == "city":
+            (run / "console-scene.json").write_text(
+                json.dumps(draft["demo_console"]["scene"], allow_nan=False),
+                encoding="utf-8",
+            )
+            return
+        if "scene" not in draft:
             return
         (run / "studio-scene.json").write_text(
             json.dumps(draft["scene"], allow_nan=False), encoding="utf-8"
@@ -40,6 +65,8 @@ def snapshot_scene(
 
 
 def scene_header(run: Path, base_url: str) -> dict[str, Any]:
+    if (run / "console-scene.json").is_file():
+        return {"scene": json.loads((run / "console-scene.json").read_bytes())}
     if not (run / "studio-scene.json").is_file():
         return {}
     scene = json.loads((run / "studio-scene.json").read_text(encoding="utf-8"))

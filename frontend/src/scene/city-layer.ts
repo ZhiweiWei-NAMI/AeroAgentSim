@@ -1,3 +1,4 @@
+import { loadTrafficCity } from './traffic-city';
 import * as T from 'three';
 import type { RunHeader } from '../contracts/viewer-feed';
 import { Assets, disposeObject, loadCityPack } from '../viewport/assets';
@@ -17,7 +18,8 @@ export async function loadSceneLayer(presentation: ScenePresentation, header: Ru
     const city = presentation.city!;
     status('Loading city geometry…');
     let object: T.Object3D;
-    if (city.kind === 'osm2world') object = await loadCityPack(city.url, city.assetsBase ?? new URL('.', new URL(city.url, location.href)).href, header.origin, signal);
+    if (city.kind === 'traffic-city') object = await loadTrafficCity(city.url, assets, signal);
+    else if (city.kind === 'osm2world') object = await loadCityPack(city.url, city.assetsBase ?? new URL('.', new URL(city.url, location.href)).href, header.origin, signal);
     else if (city.kind === 'geojson') {
       if (!header.origin) throw Error('GeoJSON city requires RunHeader.origin');
       object = await loadOsmBuildings(city.url, header.origin, signal);

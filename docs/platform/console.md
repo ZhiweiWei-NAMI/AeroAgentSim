@@ -10,8 +10,7 @@ contracts.
 ## Configure, validate, run
 
 1. Open `/studio?api=<service-origin>`, create/open a workspace and configure the
-   registry, entities, relations, fields and writer bindings. **Import traffic
-   accident example** copies the actual shipped scenario and pinned files into
+   registry, entities, relations, fields and writer bindings. **Traffic accident (demo)** copies the actual shipped scenario and pinned files into
    this workspace. It replaces this draft; it does not change any running run.
 2. In **Behaviours**, add a package or open its pinned reference as an inline
    draft. Pinned dependencies are rebased to the same workspace files when moved
@@ -43,7 +42,7 @@ contracts.
    capability descriptors remain visibly unverified and require full server
    validation; native availability is not inferred from a plugin name.
 6. **Validate** checks the full scenario through the actual loader/runtime.
-   Package-only validation never unlocks **Run now**. Every model edit invalidates
+   Bound package validation uses the real scenario compiler; **Validate** unlocks **Run now**. Every model edit invalidates
    validation. Start the validated draft, then **Open run console**. Profile and
    writer changes create a new run; there is no runtime hot swap.
 
@@ -142,75 +141,130 @@ specified frame. Unsupported cameras, missing pose/assets, mismatched identity
 or integrity failures reject capture. A recorder label is drawn into PNG pixels.
 The capture bridge has no model/city placeholder fallback.
 
-## Integration boundaries and verification
+## Integration boundaries
 
-At this worktree's base, Job A is not integrated. The package validation seam is
-explicitly marked `compiler_available: false`, `valid: false`. After A lands,
-its `compile_package` is imported normally: successful shape compilation returns
-`package_valid: true` but still `valid: false` until full scenario validation.
-Shape compilation with `build=None` cannot establish registry/ownership/native
-compatibility. No other worktree is imported by production code.
+The real compiler is integrated. Package validation uses the bound scenario,
+including registry, owners, binding matches and native capability checks. There
+is no missing-compiler success or shape-only run admission. Float literals in
+schema enums, environmental profiles, facts and the capture bridge deadline
+are restored from their actual pinned schemas after browser serialization;
+integer clocks remain exact. The bridge deadline uses the declared render
+command schema, including when validation has not reached a render invocation.
 
-Current A wire differences handled here: `readCut.at` (not `instant`), optional
-sample acquisition fractions, portable large revisions, resolved package
-`document` wrappers, and always-present empty extension arrays. Empty arrays do
-not claim recorded behaviour evidence. Header injection points and epoch are
-not currently projected by A; the pinned-configuration endpoint supplies their
-actual sources. Missing epoch leaves older feeds inspectable but full identity
-unavailable. Explicitly requested missing generations never select another
-entity.
+A feed may omit unchanged predicate/chain arrays. Its `readCut.at` coordinate,
+sample acquisition fractions, exact revisions and resolved package `document`
+wrappers are preserved. Epoch and injection points are read from the actual
+pinned run configuration when absent from the header. Missing identities never
+select another entity or generation.
 
-A read-only smoke run against A's compiler at digest
-`c949859359a73c0eb97b6682d11f3d4defc30b3270f5657b6744c4d795c43e00`
-compiled the small typed queued-task rule with `package_valid: true` and
-`valid: false`, as intended. The actual shipped B accident package was rejected
-at `$` for unsupported top-level `feedback`, `requires_compiler_features` and
-`sampled_contexts`. These sections are retained unchanged in the draft. A/B must
-resolve this compiler contract before a real accident run can validate; this
-console does not remove research declarations to manufacture success.
+## Traffic accident console walkthrough (E2)
 
-The service currently has no general HTTP command-cancel endpoint. The console
-reports this and uses an authored cancellation injection point where configured;
-it does not synthesize cancelled receipts. Most installed engine factories do
-not yet advertise capability descriptors, so their compatibility needs actual
-full validation. The capture asset manifest above is an explicit new frontend
-bridge contract and must be supplied by the recorder deployment.
+Build the frontend once (`cd frontend && npm run build`) and serve it through
+`create_app(..., frontend=Path('frontend/dist'), studio_root=...)`. Set
+`AEROAGENTSIM_AEROGRAPH_ROOT` to the real source checkout and
+`AEROAGENTSIM_CONSOLE_URL` to this service's browser-visible origin. Set
+`AEROAGENTSIM_TRAFFIC_ASSET_ROOT` to the original accident demo's `web/assets`
+directory. The asset route exposes only files listed in the committed
+`inputs/city-manifest.json` and checks their bytes and SHA-256. Meshes remain
+external; they are not copied into this repository. A mismatched or missing
+source is an explicit error.
 
-Validation commands and measured results are recorded below. Docker/native SUMO/PX4 integrations and a real accident run await their
-owning jobs; fixture WebGL results do not establish those integrations.
+1. Open `/studio?api=<service-origin>` and click **Traffic accident (demo)**.
+   This creates a separate draft and copies its real registry snapshot, behaviour
+   package and decision fixtures. The behaviour package opens inline. The
+   **Entities by AeroGraph type** tab groups the actual draft and edits its typed
+   initial fields. Raw scenario/package YAML remains available.
+![Actual traffic demo draft validated through the real compiler](img/console-traffic-draft.png)
 
-## Commands and results
+2. Use **Behaviours** to edit predicate ASTs or chain states/transitions. Trigger
+   category, guard, action values/payloads and binding declarations have structured
+   controls over the same package. Unknown keys remain in raw content and are
+   subject to real compiler admission. Package validation now runs in the full
+   scenario's registry, writers and capability context; diagnostics retain the
+   authored element path.
+3. Decision mode starts **scripted**, with a pinned fixture and no model calls.
+   **Configure live LangGraph** requires explicit provider URL, model and API-key
+   environment variable. It installs a proposal graph with read grants for the
+   actual actors/tasks and event grants for reports/bids. The behaviour runtime
+   keeps award and state authority. Provider failures produce LangGraph records.
+   Profile edits invalidate validation and apply only to a new run. SUMO and PX4
+   retain their source profile's `configuration_contract_only` readiness; inspect
+   their converters, ownership and capability requirements before using native
+   engine configuration.
+4. Click **Validate**, then **Run now**. The console opens the new run in live
+   mode. Console drafts remove the file-run template's automatic accident timer;
+   choose **accident** in the injection form whenever the run is active. The form
+   uses the actual incident reference. The console advances its operator ingress
+   watermark one authored step at a time and admits commands at the next unclosed
+   canonical instant. Closing the page stops that source's progress; inspect the
+   recorded watermark/error before taking over an existing operator source.
+5. Inspect **Admission receipts** separately from **Execution receipts** and the
+   chain's state. Simulation pause/resume/stop controls act at runtime boundaries;
+   timeline playback is independent. The graph retains nonspatial objects and
+   offers type/directory filters, background-actor filtering and focus/context.
+   Runtime behaviour entities are shown in chain overlays by default; **Show
+   runtime entities** includes them in the topology.
+   **Reporter**, **Edge overview**, **Alpha** and **Bravo** select the actual role
+   actors and switch the existing city viewer's camera mode.
+6. Select a chain transition to freeze both panes at its journal cut. Use
+   **Follow live** to resume following. Decision records and artifact source cuts
+   use the same temporal store. **Refresh stored artifacts**, then **Open verified
+   PNG**, verifies the stored PNG's digest and byte count.
 
-Executed from this worktree root; all logs and Playwright outputs are in
-`/tmp/aas-q/e`. Shared `node_modules` was left untouched; Vitest cache was
-explicitly disabled because that directory is read-only.
+City capture uses the built console's `window.aeroCapture` bridge, the real city
+mesh/road layer and an `actor-nadir` preset derived from the committed UAV pose.
+The camera snapshot uses A2's flat `id/generation/field/position` pose rows and
+is checked against the exact requested journal cut; the capture manifest pins
+every city mesh. It never substitutes another renderer.
+The primitive renderer remains available only through the explicit template
+option `{"console":true,"capture_mode":"primitive-test"}` for tests.
 
-```bash
-PYTHONPATH=src MYPYPATH=../aerokernel /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python -m ruff check src/aeroagentsim/authoring/{api,workspace,templates}.py tests/authoring/test_behaviour_editing.py
-PYTHONPATH=src MYPYPATH=../aerokernel /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python -m ruff format --check src/aeroagentsim/authoring/{api,workspace,templates}.py tests/authoring/test_behaviour_editing.py
-PYTHONPATH=src MYPYPATH=../aerokernel /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python -m mypy --strict src/aeroagentsim/authoring/{api,workspace,templates}.py tests/authoring/test_behaviour_editing.py
-PYTHONPATH=src MYPYPATH=../aerokernel AEROAGENTSIM_AEROGRAPH_ROOT=/mnt/data2/weizhiwei/AeroGraph /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python -m pytest -q -p no:cacheprovider -m 'not docker' tests/platform tests/adapters tests/agents tests/packs tests/authoring --basetemp=/tmp/aas-q/e/pytest
-PYTHONPATH=src MYPYPATH=../aerokernel AEROAGENTSIM_AEROGRAPH_ROOT=/mnt/data2/weizhiwei/AeroGraph /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python -m pytest -q -p no:cacheprovider -m 'not docker' tests/authoring --basetemp=/tmp/aas-q/e/pytest-authoring-final
-npm --prefix frontend run typecheck
-npm --prefix frontend test -- --no-cache --maxWorkers 4 --minWorkers 1
-npm --prefix frontend run test:e2e -- console.spec.ts --output=/tmp/aas-q/e/playwright
-git diff --check
-```
+The real-backend browser gate is
+`AEROAGENTSIM_TRAFFIC_ASSET_ROOT=<original-assets> npx playwright test --config
+playwright.console.config.ts` from `frontend/`, after building. It imports and
+validates the draft, runs it, injects an accident, waits for award/capture, opens
+the verified photo and seeks a shared cut. Screenshots and logs go to
+`/tmp/aas-q/e2/`; this gate has no mocked run, ingress, feed or artifact endpoints.
 
-Ruff, format, strict mypy (4 files), TypeScript and diff checks pass. The broad
-Python run passed 449 tests with 4 Docker tests deselected; the final authoring
-run passed 60 tests after the additional import/dependency cases. Vitest passed
-105 tests in 27 files. Playwright passed 4 tests: shared identity/microstep/live
-prefix; actual WebGL PNG and identity rejection; one Studio model with linked
-compiler errors/invalid-buffer blocking; and 100-entity graph filters/focus.
+## E2 verification status (2026-10-09)
 
-Three concurrent GLM mechanical audits completed with artifacts for Q6 operator
-vocabulary, compiler differences and ingress/artifact wire cases. Their outputs
-were checked against source before integration. The initial larger GLM writing
-sessions produced no edits and were stopped; implementation was integrated by
-the primary agent. Audit logs/artifacts remain in the scratch directory.
+The real backend/browser gate reaches draft import, full compiler validation,
+run admission, typed accident injection and `traffic.award.committed`. Its latest
+run (`run-9af7533d0c684f3e8d63675e22055b89`) faults at
+48.066666667 s, microstep 2, with `CAUSE_DISPATCH_SCOPE`. Journal record 2159
+rejects the `behaviour` and `route_inputs` react intents at `2158:4` and `2158:7`.
+The faulting proposal is unpublished. The exact offending cause is not included
+in the fault record; investigating retained delivery/receipt causes is a
+hypothesis. The complete E2E remains **failed**, with automatic artifact opening
+and its final transition-seek step unverified in that run. Behaviour runtime
+correctness needs resolution before this gate can be marked green.
 
-No viewport rendering files, other worktrees or dependency installations were
-modified. No git commit was made. Docker/native integration, generic command
-cancel transport, real traffic execution and full A/B compile compatibility
-were not claimed or tested as successful.
+A separate read-only browser check of that recorded run selected the actual
+`dwell → dwelling` transition at cut 2157; graph and city both reported cut 2157.
+The following screenshot is the faulted run in replay, with actual city geometry
+loaded and Alpha selected before seeking the transition.
+
+![Actual city and AeroGraph replay of the faulted run](img/console-traffic-replay.jpg)
+
+Another read-only renderer check used the real registered request
+`incident-capture-01/episode-0` from `run-6f8359c326794b0b9fbb1689efe867f6`,
+cut 2230 at 50.066666667 s, microstep 2. It returned a 1024×768 browser PNG and
+passed the recorder's request metadata comparison. It did not upload the PNG or
+change the original failed execution receipt.
+
+![Read-only city renderer check of the actual registered request](img/console-city-renderer-check.png)
+
+The wiring fixes cover A2's flat pose snapshot, request IDs containing `/`,
+strict floating capture deadlines after browser JSON serialization, and kernel
+run identity read from pinned configuration. Runtime behaviour entities are
+optional topology nodes. Background filtering follows actual task/route
+references and relations, preserving context shared with foreground actors.
+The source scenario has 71 mobile actors plus 72 tasks and 71 routes; these
+nonspatial objects remain available when filters are cleared.
+
+Validation evidence: `npm run typecheck`, 143 tests from the final full Vitest
+run, two targeted graph tests after the context filter change, production build,
+65 Python tests (`tests/authoring` plus `tests/observations/test_artifact_service.py`),
+and ruff/strict mypy on the 12 touched Python files. Live provider calls and native
+SUMO/PX4 execution were not exercised. Full command lines, run journals, original
+screenshots and the failed Playwright report remain under `/tmp/aas-q/e2/`.

@@ -5,13 +5,15 @@ import { useI18n } from '../i18n/I18nProvider';
 import { StudioApi, type Workspace, type TypeRow, type TypeDetail } from './api';
 import { ScenePreview } from './ScenePreview';
 import { RegionMap } from './RegionMap';
+import { DemoSettings } from './DemoSettings';
+import { TrafficEntityTable } from './TrafficEntityTable';
 import { EngineConfigForm } from './EngineConfigForm';
 import { BehavioursPanel } from './BehavioursPanel';
 import { PluginOwnershipPanel, type EngineDescriptor } from './PluginOwnershipPanel';
 import { parseAuthoringJson } from '../feeds/lossless-json';
 import './studio.css';
 
-interface Catalog { extracts: Array<{id: string; name: string; bounds: number[]}>; engines: EngineDescriptor[] }
+interface Catalog { demo_profiles?:Record<string,Record<string,unknown>>; extracts: Array<{id: string; name: string; bounds: number[]}>; engines: EngineDescriptor[] }
 const customTypes: TypeRow[] = [
   { id: 'aas:StudioFacility', name: 'Studio facility / 设施', parents: ['oo:ModelObject'], abstract: false },
   { id: 'aas:StudioAirspace', name: 'Studio airspace / 空域', parents: ['oo:ModelObject'], abstract: false },
@@ -19,7 +21,7 @@ const customTypes: TypeRow[] = [
 export default function StudioPage() {
   const { locale, setLocale } = useI18n();
   const m = (en: string, zh: string) => locale === 'zh-CN' ? zh : en;
-  const base = new URLSearchParams(location.search).get('api') ?? 'http://127.0.0.1:8000';
+  const base = new URLSearchParams(location.search).get('api') ?? window.location.origin;
   const api = useMemo(() => new StudioApi(base), [base]);
   const [catalog, setCatalog] = useState<Catalog>(), [workspaces, setWorkspaces] = useState<Workspace[]>([]), [workspace, setWorkspace] = useState<Workspace>();
   const [name, setName] = useState('City experiment'), [document, setDocument] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false);
@@ -72,7 +74,7 @@ export default function StudioPage() {
     <Space wrap className="studio-workspaces"><Input aria-label="Workspace name" value={name} onChange={e => setName(e.target.value)} style={{width:210}} />
       <Button loading={busy} onClick={() => void action(async () => { const w = await api.request<Workspace>('/v1/studio/workspaces', {name}); apply(w); setWorkspaces(await api.request('/v1/studio/workspaces')); })}>{m('Create workspace', '创建工作区')}</Button>
       <Select aria-label="Workspace" placeholder={m('Open workspace', '打开工作区')} style={{width:230}} value={workspace?.id} options={workspaces.map(w => ({value:w.id,label:w.name}))} onChange={id => void action(async () => { apply(await api.request(`/v1/studio/workspaces/${id}`)); })} />
-      <Button disabled={!workspace || busy} onClick={()=>void action(async()=>{apply(await api.request<Workspace>(path('/templates/traffic-accident'),{}));})}>{m('Import traffic accident example','导入交通事故示例')}</Button>
+      <Button disabled={busy} onClick={()=>void action(async()=>{const w=await api.request<Workspace>('/v1/studio/workspaces',{name:'Traffic accident (demo)'});apply(await api.request<Workspace>(`/v1/studio/workspaces/${w.id}/templates/traffic-accident`,{console:true,capture_mode:'city'}));setWorkspaces(await api.request('/v1/studio/workspaces'));})}>{m('Traffic accident (demo)','交通事故（演示）')}</Button>
       <Button disabled={!workspace || busy} onClick={() => void action(async () => { await save(); setWorkspaces(await api.request('/v1/studio/workspaces')); })}>{m('Save workspace', '保存工作区')}</Button></Space>
     {workspace && <div className="studio-layout"><section className="studio-canvas-column">
       <Card title={m('Region & scene', '区域与场景')}><Space wrap><Select aria-label="Local extract" style={{width:170}} value={extract} options={catalog?.extracts.map(e => ({value:e.id,label:e.name}))} onChange={id => { setExtract(id); setBounds(catalog!.extracts.find(e => e.id === id)!.bounds); }} />
@@ -84,10 +86,12 @@ export default function StudioPage() {
         {workspace.scene && <><p className="studio-muted">{workspace.scene.attribution} · ENU {workspace.scene.origin.lat.toFixed(5)}, {workspace.scene.origin.lon.toFixed(5)}</p><Collapse items={[{key:'diagnostics',label:m(`Source diagnostics (${workspace.scene.diagnostics.length})`,`来源诊断 (${workspace.scene.diagnostics.length})`),children:<ul>{workspace.scene.diagnostics.map((d,i)=><li key={i}>{d}</li>)}</ul>}]} /></>}
         <Space style={{marginTop:12}}><Button disabled={!workspace.region || busy} onClick={() => void action(async()=>{await api.request(path('/network'),{}); setWorkspace(await api.request(path()));})}>{m('Generate SUMO network','生成 SUMO 路网')}</Button><a href={`${base}${path('/network.net.xml')}`} target="_blank" rel="noreferrer">{m('Network artifact','路网文件')}</a></Space>
       </Card>
-      <Card title={m('Validation & execution','验证与运行')}><Space wrap><Button disabled={busy} onClick={()=>void action(validate)}>{m('Validate','验证')}</Button><Button type="primary" disabled={busy || !behaviourValid || !validation?.valid || !!engineDraft.error || (!!editedEngine && !editingConfigValid)} onClick={()=>void action(async()=>{const run=await api.request<{id:string}>('/v1/runs',{scenario:parsed(),studio_workspace:workspace.id});setRunId(run.id);})}>{m('Run now','立即运行')}</Button>{runId && <Link to={`/runs/${encodeURIComponent(runId)}?api=${encodeURIComponent(base)}&mode=live`}>{m('Open run console','打开运行控制台')}</Link>}</Space>
+      {draft?.id==='traffic-accident'&&<Card><DemoSettings api={api} workspace={workspace} save={save} onApply={apply} profiles={catalog?.demo_profiles??{}}/></Card>}
+      <Card title={m('Validation & execution','验证与运行')}><Space wrap><Button disabled={busy} onClick={()=>void action(validate)}>{m('Validate','验证')}</Button><Button type="primary" disabled={busy || !behaviourValid || !validation?.valid || !!engineDraft.error || (!!editedEngine && !editingConfigValid)} onClick={()=>void action(async()=>{const run=await api.request<{id:string}>('/v1/runs',{scenario:parsed(),studio_workspace:workspace.id});setRunId(run.id);window.location.assign(`/runs/${encodeURIComponent(run.id)}?api=${encodeURIComponent(base)}&mode=live`);})}>{m('Run now','立即运行')}</Button>{runId && <Link to={`/runs/${encodeURIComponent(runId)}?api=${encodeURIComponent(base)}&mode=live`}>{m('Open run console','打开运行控制台')}</Link>}</Space>
         {validation && <Alert style={{marginTop:12}} type={validation.valid?'success':'error'} message={validation.valid?m('Scenario valid','场景有效'):m('Validation failed','验证失败')} description={validation.valid?<code>{validation.digest}</code>:validation.errors.join('\n')} />}</Card>
     </section><aside><Tabs items={[
-      {key:'behaviours',label:m('Behaviours','行为链'),children: draft ? <Card><BehavioursPanel api={api} workspace={workspace} scenario={draft} types={[...new Map([...types,...(draft.registry?.types ?? [])].map(row=>[row.id,row])).values()]} fields={[...new Map([...fields,...(draft.registry?.fields ?? [])].map(row=>[row.id,row])).values()]} relations={[...new Map([...relations,...(draft.registry?.relations ?? [])].map(row=>[row.id,row])).values()]} onChange={next => editDocument(JSON.stringify(next,null,2))} onApply={apply} save={save} onValidityChange={behaviourValidity} issues={validation?.issues} /></Card> : <Alert type="error" message="Correct the scenario JSON to edit behaviours" />},
+      {key:'entities',label:'Entities by AeroGraph type',children:draft&&<TrafficEntityTable registryFields={workspace.registry_catalog?.fields} schemas={workspace.registry_catalog?.schemas} scenario={draft} onChange={next=>editDocument(JSON.stringify(next,null,2))}/>},
+      {key:'behaviours',label:m('Behaviours','行为链'),children: draft ? <Card><BehavioursPanel api={api} workspace={workspace} scenario={draft} types={[...new Map([...types,...(workspace.registry_catalog?.types??[]),...(draft.registry?.types ?? [])].map(row=>[row.id,row])).values()]} fields={[...new Map([...fields,...(workspace.registry_catalog?.fields??[]),...(draft.registry?.fields ?? [])].map(row=>[row.id,row])).values()]} relations={[...new Map([...relations,...(draft.registry?.relations ?? [])].map(row=>[row.id,row])).values()]} onChange={next => editDocument(JSON.stringify(next,null,2))} onApply={apply} save={save} onValidityChange={behaviourValidity} issues={validation?.issues} /></Card> : <Alert type="error" message="Correct the scenario JSON to edit behaviours" />},
       {key:'place',label:m('Place','放置'),children:<Card><Space direction="vertical" style={{width:'100%'}}>
         <div className="studio-field">{m('Placement kind','放置类别')}<Select aria-label="Placement kind" value={kind} style={{width:'100%'}} options={['entity','facility','airspace'].map((value,i)=>({value,label:m(value,['实体','设施','空域'][i])}))} onChange={changeKind} /></div>
         <div className="studio-field">{m('Entity ID','实体 ID')}<Input aria-label="Entity ID" value={entityId} onChange={e=>setEntityId(e.target.value)} /></div>

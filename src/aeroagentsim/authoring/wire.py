@@ -9,7 +9,13 @@ and are rejected by the real loader when invalid.
 from __future__ import annotations
 
 import copy
+from pathlib import Path
 from typing import Any
+
+from aerokernel.values import thaw
+
+from aeroagentsim.integrations.aerograph import read_snapshot
+from aeroagentsim.scenario.paths import source_path
 
 from .catalog import Catalog
 
@@ -47,7 +53,9 @@ def _value(value: Any, schema: Any, definitions: dict[str, Any]) -> Any:
     return value
 
 
-def normalize_wire(document: dict[str, Any], catalog: Catalog) -> dict[str, Any]:
+def normalize_wire(
+    document: dict[str, Any], catalog: Catalog, *, base: Path | None = None
+) -> dict[str, Any]:
     result = copy.deepcopy(document)
     registry = result.get("registry", {})
     if not isinstance(registry, dict):
@@ -58,13 +66,42 @@ def normalize_wire(document: dict[str, Any], catalog: Catalog) -> dict[str, Any]
         if isinstance(f, dict) and "id" in f and "schema" in f
     }
     definitions: dict[str, Any] = {}
+    pinned = "snapshot" in registry
+    if pinned:
+        if base is None:
+            raise ValueError("Pinned registry normalization requires its document base")
+        compiled = read_snapshot(source_path(registry["snapshot"], base))
+        if compiled.digest != registry.get("digest"):
+            raise ValueError("Pinned registry digest mismatch during normalization")
+        definitions.update(compiled.registry.to_data()["schemas"])
+        for field in compiled.registry.fields:
+            fields.setdefault(field.id, thaw(field.schema))
+
+    def typed_schema(schema: Any) -> None:
+        if isinstance(schema, dict):
+            if isinstance(schema.get("enum"), list):
+                plain = {key: value for key, value in schema.items() if key != "enum"}
+                schema["enum"] = [
+                    _value(value, plain, definitions) for value in schema["enum"]
+                ]
+            for child in schema.values():
+                typed_schema(child)
+        elif isinstance(schema, list):
+            for child in schema:
+                typed_schema(child)
+
+    # Schema enum literals have the same declared numeric kinds as fact values.
+    for declaration in registry.get("fields", []) + registry.get("messages", []):
+        for key in ("schema", "result_schema", "feedback_schema"):
+            if key in declaration:
+                typed_schema(declaration[key])
     entities = result.get("entities", [])
     if not isinstance(entities, list):
         return result
     custom = {
         t["id"] for t in registry.get("types", []) if isinstance(t, dict) and "id" in t
     }
-    source_types = catalog.sources().types
+    source_types = {} if pinned else catalog.sources().types
     for entity in entities:
         if not isinstance(entity, dict):
             continue
@@ -103,6 +140,30 @@ def normalize_wire(document: dict[str, Any], catalog: Catalog) -> dict[str, Any]
                 engine.get("config"), dict
             ):
                 continue
+            if engine.get("plugin") == "traffic_capture_bridge":
+                config = engine["config"]
+                if "timeout_s" in config:
+                    # This configuration value is copied into the declared render
+                    # command. Restore its wire kind from that actual message schema.
+                    config["timeout_s"] = _value(
+                        {"timeout_s": config["timeout_s"]},
+                        messages[config["request_schema"]],
+                        definitions,
+                    )["timeout_s"]
+            if engine.get("plugin") == "environment":
+                for profiles in engine["config"].get("profiles", {}).values():
+                    for field, profile in profiles.items():
+                        if field in fields:
+                            for key in ("value", "base"):
+                                if key in profile:
+                                    profile[key] = _value(
+                                        profile[key], fields[field], definitions
+                                    )
+                            for gust in profile.get("gusts", []):
+                                if "value" in gust:
+                                    gust["value"] = _value(
+                                        gust["value"], fields[field], definitions
+                                    )
             for machine in engine["config"].get("machines", []):
                 for state in machine.get("states", {}).values():
                     for action in state.get("on_enter", []):

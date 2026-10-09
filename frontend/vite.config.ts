@@ -26,6 +26,7 @@ function jsWithJsx() {
 export default defineConfig(({ mode }) => {
 const env = loadEnv(mode, process.cwd(), '');
 return {
+  cacheDir: '.tmp/vite',
   define: {
     'process.env.REACT_APP_API_BASE_URL': JSON.stringify(env.REACT_APP_API_BASE_URL ?? '/api'),
     'process.env.REACT_APP_WS_BASE_URL': JSON.stringify(env.REACT_APP_WS_BASE_URL ?? ''),

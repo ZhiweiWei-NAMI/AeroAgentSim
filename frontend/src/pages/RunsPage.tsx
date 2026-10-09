@@ -28,6 +28,7 @@ export default function RunsPage() {
   const [runs, setRuns] = useState<RunInfo[]>([]), [error, setError] = useState<string>();
   const [scenarioPath, setScenarioPath] = useState('scenarios/p1-slice.yaml'), [body, setBody] = useState('');
   const [session, setSession] = useState<{ store: FeedStore; clock: PlaybackClock }>();
+  const [camera,setCamera]=useState<'orbit'|'follow'|'chase'>('orbit');
   const [selected, setSelected] = useState<EntityKey>(), [cut, setCut] = useState<number>();
   const cutRef = useRef<number>();
   const follow = useRef(mode === 'live');
@@ -48,10 +49,10 @@ export default function RunsPage() {
     const feed = new HttpViewerFeed(api, runId, mode, setStatus, setError);
     void feed.header().then(async header => {
       if (abort.signal.aborted) return;
-      if (header.epoch === undefined) {
+      if (header.epoch === undefined || header.kernelRunId === undefined) {
         try {
           const configuration = await api.request(`/v1/studio/runs/${encodeURIComponent(runId)}/configuration`, {signal:abort.signal}) as {service_run_id:string;kernel_run_id:string;epoch:string};
-          if (configuration.service_run_id !== runId || typeof configuration.epoch !== 'string') throw Error('Run configuration identity disagrees with feed');
+          if (configuration.service_run_id !== runId || typeof configuration.epoch !== 'string' || typeof configuration.kernel_run_id !== 'string' || header.epoch!==undefined&&header.epoch!==configuration.epoch) throw Error('Run configuration identity disagrees with feed');
           header.epoch = configuration.epoch; header.kernelRunId = configuration.kernel_run_id;
         } catch (problem) { if (!abort.signal.aborted) setError(`Run identity unavailable: ${String(problem)}`); }
       }
@@ -118,7 +119,8 @@ export default function RunsPage() {
       <a href="#run-operations">Run controls</a></Space></header>
     {error && <Alert type="error" message={error} />}
     {session && <><main className="viewer-main"><section className="viewer-stage">
-      <DualRunViews store={session.store} clock={session.clock} selected={selected} mode="orbit" quality="med" trails={true} commitCut={cut}
+      <nav aria-label="Demo camera presets">{[{label:'Reporter',id:'vehicle.reporter'}, {label:'Edge overview',id:'edge.coordinator'}, {label:'Alpha',id:'uav.alpha'}, {label:'Bravo',id:'uav.bravo'}].map(preset=><button key={preset.label} onClick={()=>{const actor=[...session.store.entities.values()].find(row=>row.key.id===preset.id);if(!actor){setError(`Preset actor ${preset.id} is absent at this cut`);return;}select(actor.key);setCamera(preset.label==='Edge overview'?'orbit':'follow');}}>{preset.label}</button>)}</nav>
+      <DualRunViews store={session.store} clock={session.clock} selected={selected} mode={camera} quality="med" trails={true} commitCut={cut}
         onSelect={select} onSeek={seekJournal} onTick={tick} onError={error => setError(String(error))} onQuality={() => {}} />
       <div className="viewport-caption" title={`${clock?.ns} ns`}>{store?.entities.size} entities · {store?.header.presentation.length ? store.header.presentation.map(binding=>{const field=store.header.fields.find(field=>field.fieldId===binding.positionField);return `${field?.frame ?? binding.frame} ${field?.unit ?? ''}`.trim();}).join(', ') : 'no spatial binding'} · {clock && seconds(clock.ns,store?.header.start.ns)}</div></section>
       <aside className="viewer-sidebar"><Select aria-label="Entity" showSearch optionFilterProp="label" style={{ width: '100%' }} value={selected && entityId(selected)} options={[...session.store.entities].map(([id, entity]) => ({ value: id, label: entity.key.id }))} onChange={id => { const key = session.store.entities.get(id)?.key; if (key) select(key); }} />
