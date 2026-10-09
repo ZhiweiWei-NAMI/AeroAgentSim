@@ -1,0 +1,4 @@
+.console-concept-help {display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:1px solid var(--csl-border-strong);border-radius:50%;background:var(--csl-surface);color:var(--csl-text-muted);font:600 13px var(--csl-font);cursor:pointer;flex:none;vertical-align:middle;margin-left:8px}
+.console-concept-help:hover {border-color:var(--csl-teal-500);color:var(--csl-teal-600)}
+.console-concept-copy {max-width:300px;line-height:1.6}.console-concept-copy p {margin:0 0 8px}
+.console-guide-text {white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.7 var(--csl-font);padding:24px;background:var(--csl-surface);border:1px solid var(--csl-border);border-radius:var(--csl-radius)}

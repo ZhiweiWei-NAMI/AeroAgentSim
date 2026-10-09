@@ -6,7 +6,8 @@ import { Details } from '../console/Details';
 import { PageHeader, PageState } from '../console/PageState';
 import { useI18n } from '../i18n/I18nProvider';
 import './aerograph.css';
-import { readableLabel } from './inspection-format';
+import { readableLabel, displayLabel } from './inspection-format';
+import { ConceptHelp } from '../console/ConceptHelp';
 
 /** Native catalog definitions joined with the selected workspace. */
 interface ExplorerPayload {
@@ -55,14 +56,33 @@ function fieldToken(id: string): string {
   return tail || id;
 }
 
-function schemaText(schema: Row | undefined): string {
+const SCHEMA_TYPE_NAMES: Record<string, string> = {
+  number: 'Number', integer: 'Integer', string: 'Text', boolean: 'Boolean',
+  array: 'List', object: 'Record',
+};
+
+function unitLabel(unit: unknown): string {
+  const symbol = typeof unit === 'string' ? unit : unit && typeof unit === 'object' ? (unit as Row).symbol : undefined;
+  if (typeof symbol !== 'string') return '—';
+  return symbol === 'member_units' || symbol === 'member_specific' ? 'Per field' : symbol === 'enum' ? 'Category' : symbol;
+}
+
+/** Friendly one-line summary of a value schema; the raw shape stays in Details. */
+function schemaSummary(schema: Row | undefined): string {
   if (!schema || typeof schema !== 'object') return '—';
-  const type = schema['type'];
+  const type = typeof schema['type'] === 'string' ? schema['type'] as string : undefined;
   const unit = (schema['unit'] as Row | undefined)?.['symbol'];
-  const nullable = schema['nullable'] === true ? ' · nullable' : '';
-  const record = typeof type === 'string' && (schema['members'] ?? schema['properties'])
-    ? ` record(${Object.keys((schema['members'] ?? schema['properties']) as Row).join(', ')})` : '';
-  return `${typeof type === 'string' ? type : 'complex'}${record}${unit ? ` · ${String(unit)}` : ''}${nullable}`;
+  const members = (schema['members'] ?? schema['properties']) as Row | undefined;
+  const parts: string[] = [];
+  if (members && Object.keys(members).length > 0) {
+    const size = Object.keys(members).length;
+    parts.push(`Record · ${size} field${size === 1 ? '' : 's'}`);
+  } else if (type === 'object') parts.push('Record');
+  else if (type === 'array') parts.push('List');
+  else parts.push(type ? SCHEMA_TYPE_NAMES[type] ?? readableLabel(type) : 'Complex');
+  if (typeof unit === 'string' && unit) parts.push(`${unit}`);
+  if (schema['nullable'] === true) parts.push('nullable');
+  return parts.join(' · ');
 }
 
 /** Ancestors of `id` within the type map, nearest first; unknown parents are skipped. */
@@ -93,14 +113,19 @@ function referencedTokens(value: unknown, out: Set<string>): Set<string> {
   return out;
 }
 
-function typeLabel(row: ExplorerPayload['types'][number] | undefined, id: string): string {
+/** English-primary label; CN-only metadata labels keep a readable English id label. */
+function englishLabel(row: {name:unknown} | undefined, id: string): string {
   const name = row?.name;
   if (name && typeof name === 'object') {
-    const en = (name as Row).en ?? (name as Row)['en-US'];
+    const record = name as Row;
+    const en = record.en ?? record['en-US'];
     if (typeof en === 'string') return en;
   }
-  if (typeof name === 'string' && !/[\u3400-\u9fff]/.test(name)) return name;
+  if (typeof name === 'string') return displayLabel(name,id);
   return readableLabel(id);
+}
+function localizedLabel(value: unknown, id: string, locale: string): string {
+  return locale.startsWith('zh') ? displayName(value,locale)||readableLabel(id) : englishLabel({name:value},id);
 }
 function relationEnds(row: Row): [string | undefined,string | undefined] {
   const source=row.sourceClass ?? row.source_type ?? row.source;
@@ -117,7 +142,7 @@ function TypeGraph({selected,types,relations,onSelect}: {selected:string;types:M
     const ids=new Set([selected,...ancestry(selected,types)]);
     for(const row of types.values()) if(row.parents.includes(selected)) ids.add(row.id);
     for(const row of visibleRelations) for(const id of relationEnds(row)) if(id) ids.add(id);
-    return [...ids].map((id,index)=>({id,label:typeLabel(types.get(id),id),x:index===0?320:110+(index-1)%3*210,y:index===0?44:126+Math.floor((index-1)/3)*72}));
+    return [...ids].map((id,index)=>({id,label:englishLabel(types.get(id),id),x:index===0?320:110+(index-1)%3*210,y:index===0?44:126+Math.floor((index-1)/3)*72}));
   },[selected,types,visibleRelations]);
   const positions=new Map(nodes.map(row=>[row.id,row]));
   const edges:Array<{source:string;target:string;label:string;ancestry:boolean}>=[];
@@ -172,6 +197,28 @@ export default function AeroGraphPage() {
 
   const types = payload?.types ?? [];
   const byId = useMemo(() => new Map(types.map(row => [row.id, row])), [types]);
+
+  // With a workspace selected, the tree defaults to the types that workspace
+  // actually uses (count > 0, plus the ancestors needed to keep the hierarchy
+  // readable). The toolbar toggle can reveal the rest of the catalog.
+  const hasWorkspaceTypes = Boolean(payload?.workspace);
+  const [includeCatalogPredicates,setIncludeCatalogPredicates]=useState(false);
+  const [showAllTypes, setShowAllTypes] = useState(false);
+  useEffect(() => { setShowAllTypes(false); }, [workspaceId]);
+  const workspaceTypes = useMemo(() => {
+    if (!hasWorkspaceTypes || showAllTypes) return types;
+    const used = new Set(types.filter(row => (row.count ?? 0) > 0).map(row => row.id));
+    for (const id of [...used]) for (const parent of ancestry(id, byId)) used.add(parent);
+    return types.filter(row => used.has(row.id));
+  }, [types, byId, hasWorkspaceTypes, showAllTypes]);
+  // Ancestors may sit outside the filtered list; keep them selectable.
+  const treeTypes = useMemo(() => {
+    const known = new Set(workspaceTypes.map(row => row.id));
+    const extra = types.filter(row => !known.has(row.id) && workspaceTypes.some(item => item.parents.includes(row.id)));
+    return [...workspaceTypes, ...extra];
+  }, [types, workspaceTypes]);
+
+  const displayTypes = treeTypes;
   const ancestors = useMemo(() => (selected ? ancestry(selected, byId) : []), [selected, byId]);
 
   // Declared native fields on the selected type or any ancestor (draft native types may fail /types/{id} policy).
@@ -184,53 +231,73 @@ export default function AeroGraphPage() {
     return source === selected || target === selected || (typeof source==='string'&&ancestors.includes(source)) || (typeof target==='string'&&ancestors.includes(target));
   }), [payload, selected,ancestors]);
 
+  // Behaviour predicates/chains authored in the selected workspace, plus native
+  // events; native predicate definitions are not workspace behaviour and stay out.
   const references = useMemo(() => {
     const result: Array<{ kind: 'Predicate' | 'Event' | 'Chain'; id: string; name: string; description: string; definition: Row }> = [];
-    const active = new Set<string>([selected ?? "", ...ancestors,...typeFields.map(row=>row.id),...typeRelations.map(row=>String(row.id))]);
+    const descendants = types.filter(row => selected && ancestry(row.id, byId).includes(selected)).map(row => row.id);
+    const active = new Set<string>([selected ?? "", ...descendants, ...ancestors,...typeFields.map(row=>row.id),...typeRelations.map(row=>String(row.id))]);
+    const workspacePredicateIds = new Set((payload?.predicates ?? []).filter(row => typeof row === 'object' && row !== null && ('package' in row && typeof (row as Row).package==='number' || (row as Row).origin==='workspace')).map(row => row.id));
     for (const [list, kind] of [[payload?.predicates ?? [], 'Predicate'], [payload?.chains ?? [], 'Chain'], [payload?.events ?? [], 'Event']] as const) {
       for (const item of list) {
+        if (kind === 'Predicate' && payload?.workspace && !includeCatalogPredicates && !workspacePredicateIds.has(item.id)) continue;
         const tokens = referencedTokens(item.definition, new Set());
         const entityTypes = (item.definition['entityTypeIds'] as unknown) ?? item.definition['entityTypeIds'];
         const typeMatch = Array.isArray(entityTypes) && entityTypes.some(entry => active.has(String(entry)));
         if (typeMatch || [...tokens].some(token => [...active].some(id => token === id))) {
-          result.push({ kind, id: item.id, name: displayName(item.name, locale), description: item.description ?? '', definition: item.definition });
+          result.push({ kind, id: item.id, name: localizedLabel(item.name, item.id, 'en-US'), description: item.description ?? '', definition: item.definition });
         }
       }
     }
     return result;
-  }, [payload, selected, ancestors, locale,typeFields,typeRelations]);
+  }, [payload, selected, ancestors, typeFields, typeRelations,includeCatalogPredicates,types,byId]);
 
   const entities = useMemo(() => (payload?.entities ?? []).filter(entity => entity.type === selected || ancestry(entity.type,byId).includes(selected ?? '')), [payload, selected]);
-  const workspaceTypes = payload?.workspaces ?? [];
+  const workspaceOptions = payload?.workspaces ?? [];
 
   const filteredTree = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    if (!needle) return types;
-    return types.filter(row =>
-      displayName(row.name, locale).toLowerCase().includes(needle) || row.id.toLowerCase().includes(needle));
-  }, [types, search, locale]);
+    if (!needle) return displayTypes;
+    return displayTypes.filter(row => {
+      const name = row.name;
+      const localized = typeof name === 'string' ? name
+        : name && typeof name === 'object' ? Object.values(name as Row).filter((v): v is string => typeof v === 'string').join(' ') : '';
+      return localized.toLowerCase().includes(needle) || englishLabel(row, row.id).toLowerCase().includes(needle) || row.id.toLowerCase().includes(needle);
+    });
+  }, [displayTypes, search]);
 
   const treeNodes=useMemo(()=>{
     const visible=new Set(filteredTree.map(row=>row.id));
     if(search) for(const id of [...visible]) for(const parent of ancestry(id,byId)) visible.add(parent);
     type Node={key:string;title:React.ReactNode;children?:Node[]};
     const children=new Map<string,ExplorerPayload['types']>();
-    for(const row of types) if(visible.has(row.id)){const parent=row.parents.find(id=>byId.has(id)&&visible.has(id))??'';children.set(parent,[...(children.get(parent)??[]),row]);}
-    const build=(parent:string,seen:Set<string>):Node[]=>(children.get(parent)??[]).filter(row=>!seen.has(row.id)).sort((a,b)=>typeLabel(a,a.id).localeCompare(typeLabel(b,b.id))).map(row=>({key:row.id,title:<span className="aerograph-tree-label"><span>{typeLabel(row,row.id)}</span><span className="aerograph-count">{row.count===null?'—':row.count}</span></span>,children:build(row.id,new Set([...seen,row.id]))}));
+    for(const row of displayTypes) if(visible.has(row.id)){const parent=row.parents.find(id=>byId.has(id)&&visible.has(id))??'';children.set(parent,[...(children.get(parent)??[]),row]);}
+    const build=(parent:string,seen:Set<string>):Node[]=>(children.get(parent)??[]).filter(row=>!seen.has(row.id)).sort((a,b)=>englishLabel(a,a.id).localeCompare(englishLabel(b,b.id))).map(row=>({key:row.id,title:<span className="aerograph-tree-label"><span>{englishLabel(row,row.id)}</span><span className="aerograph-count">{row.count===null?'—':row.count}</span></span>,children:build(row.id,new Set([...seen,row.id]))}));
     return build('',new Set());
-  },[types,filteredTree,byId,search]);
+  },[displayTypes,filteredTree,byId,search]);
 
   const selectedRow = selected ? byId.get(selected) : undefined;
-  const selectedName = selectedRow ? typeLabel(selectedRow,selectedRow.id) : '';
-  const selectedNameOther = selectedRow
-    ? displayName(selectedRow.name, 'zh-CN') : '';
+  const selectedName = selectedRow ? englishLabel(selectedRow,selectedRow.id) : '';
+  const selectedNameOther = selectedRow && selectedRow.name && typeof selectedRow.name==='string' && /[\u3400-\u9fff]/.test(selectedRow.name) && !selectedRow.name.split('/').some(part => /[a-z]/i.test(part) && !/[\u3400-\u9fff]/.test(part)) ? selectedRow.name : '';
 
   const columns = [
     {
       title: 'Field', dataIndex: 'name', key: 'name',
-      render: (_: unknown, row: ExplorerPayload['fields'][number]) => displayName(row.name, 'en-US') || readableLabel(fieldToken(row.id)),
+      render: (_: unknown, row: ExplorerPayload['fields'][number]) => englishLabel(row,fieldToken(row.id)),
     },
-    { title: 'Value type', key: 'schema', render: (_: unknown, row: ExplorerPayload['fields'][number]) => schemaText(row.schema) },
+    {
+      title: 'Value type', key: 'schema',
+      render: (_: unknown, row: ExplorerPayload['fields'][number]) => (
+        <span className="aerograph-schema-cell">
+          <span>{schemaSummary(row.schema)}</span>
+          {row.schema && typeof row.schema === 'object' && (
+            <Details title={englishLabel(row,fieldToken(row.id))} buttonLabel="Schema">
+              <pre className="aerograph-details-pre">{JSON.stringify(row.schema, null, 2)}</pre>
+            </Details>
+          )}
+        </span>
+      ),
+    },
     {
       title: 'Domain', key: 'domain',
       render: (_: unknown, row: ExplorerPayload['fields'][number]) => {
@@ -238,7 +305,7 @@ export default function AeroGraphPage() {
         return typeof value === 'string' && value ? readableLabel(value) : '—';
       },
     },
-    { title:'Unit',key:'unit',render:(_:unknown,row:ExplorerPayload['fields'][number])=>{const unit=row.metadata?.unit??row.schema?.unit;return typeof unit==='string'?unit:unit&&typeof unit==='object'&&typeof (unit as Row).symbol==='string'?String((unit as Row).symbol):'—';} },
+    { title:'Unit',key:'unit',render:(_:unknown,row:ExplorerPayload['fields'][number])=>unitLabel(row.metadata?.unit??row.schema?.unit) },
     {
       title: 'Plugin writer', key: 'writers',
       render: (_: unknown, row: ExplorerPayload['fields'][number]) => row.writers.length
@@ -268,13 +335,23 @@ export default function AeroGraphPage() {
           aria-label="Workspace"
           placeholder="All workspaces (native catalog)"
           value={workspaceId}
-          options={workspaceTypes.map(workspace => ({ value: workspace.id, label: workspace.name }))}
+          options={workspaceOptions.map(workspace => ({ value: workspace.id, label: workspace.name }))}
           onChange={(value?: string) => load(value)}
           loading={loading}
         />
         <span className="aerograph-meta">
-          {payload?.workspace ? payload.workspace.name : 'Native catalog only'} · {types.length} types · {typeFields.length} declared fields on selection
+          {payload?.workspace ? payload.workspace.name : 'No workspace selected (native catalog only)'} · {displayTypes.length} {hasWorkspaceTypes&&!showAllTypes?'workspace':'catalog'} types · {typeFields.length} declared fields on selection
         </span>
+        {hasWorkspaceTypes && (
+          <button
+            type="button" className="console-btn"
+            data-testid="aerograph-clear-type-filter"
+            onClick={() => setShowAllTypes(value => !value)}
+            aria-pressed={showAllTypes}
+          >
+            {showAllTypes ? 'Show workspace types' : 'Show all catalog types'}
+          </button>
+        )}
       </div>
       <div className="aerograph-layout">
         <div className="aerograph-tree">
@@ -287,7 +364,7 @@ export default function AeroGraphPage() {
             onChange={event => setSearch(event.target.value)}
           />
           <div className="aerograph-tree-body">
-            <div data-testid="aerograph-tree"><Tree showLine blockNode selectedKeys={selected?[selected]:[]} defaultExpandedKeys={ancestors} autoExpandParent treeData={treeNodes} onSelect={keys=>{if(keys[0])setSelected(String(keys[0]));}} /></div>
+            {!treeNodes.length&&<p className="aerograph-hint">{search?'No types match this search.':'This workspace has no entities yet. Show all catalog types to browse.'}</p>}<div data-testid="aerograph-tree"><Tree showLine blockNode selectedKeys={selected?[selected]:[]} defaultExpandedKeys={ancestors} autoExpandParent treeData={treeNodes} onSelect={keys=>{if(keys[0])setSelected(String(keys[0]));}} /></div>
           </div>
         </div>
         <div className="aerograph-main">
@@ -295,7 +372,7 @@ export default function AeroGraphPage() {
             {ancestors.length > 0 && <nav className="aerograph-crumbs" aria-label="Type ancestry">
               {[...ancestors].reverse().map(id => (
                 <span key={id}>
-                  <button onClick={() => setSelected(id)}>{typeLabel(byId.get(id),id)}</button>
+                  <button onClick={() => setSelected(id)}>{englishLabel(byId.get(id),id)}</button>
                   <span className="aerograph-crumb-sep"> › </span>
                 </span>
               ))}
@@ -344,9 +421,9 @@ export default function AeroGraphPage() {
                   return (
                     <li key={index}>
                       <span className="aerograph-ref-kind">{kind && <Tag>{readableLabel(kind)}</Tag>}</span>
-                      <span className="aerograph-ref-name">{readableLabel(String(name))}</span>
+                      <span className="aerograph-ref-name">{englishLabel({name:row['displayName']},String(row.id))}</span>
                       <span className="aerograph-ref-desc">
-                        {typeof source==='string'?typeLabel(byId.get(source),source):'Undeclared subject'} → {typeof target==='string'?typeLabel(byId.get(target),target):'Undeclared object'}
+                        {typeof source==='string'?englishLabel(byId.get(source),source):'Undeclared subject'} → {typeof target==='string'?englishLabel(byId.get(target),target):'Undeclared object'}
                       </span>
                     </li>
                   );
@@ -354,7 +431,7 @@ export default function AeroGraphPage() {
               </ul>}
           </div>
           <div className="aerograph-panel">
-            <h3>Predicates, events and chains</h3>
+            <h3>Predicates, events and chains<ConceptHelp topic="Workspace rules" description="Workspace predicates and chains show the rules authored for this scenario; the catalog also contains reusable modeling definitions." guide="behaviours.md"/></h3>{payload?.workspace&&<Checkbox checked={includeCatalogPredicates} onChange={event=>setIncludeCatalogPredicates(event.target.checked)}>Include catalog predicates</Checkbox>}
             {references.length === 0
               ? <p className="aerograph-hint">No predicate, event or chain definition references this type.</p>
               : <ul className="aerograph-references">

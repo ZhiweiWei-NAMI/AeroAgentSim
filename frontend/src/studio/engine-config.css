@@ -1,0 +1,47 @@
+/* EngineConfigForm — friendly labels with descriptor units, compact numeric grid, */
+/* inline clear/reset icons. Global chrome stays in guided.css/studio.css (owned elsewhere); */
+/* this file only adds the form's own layout and icon affordances. */
+.engine-config-form .studio-field label { font-weight: 500; }
+.engine-config-form .studio-field .studio-unit { color: var(--csl-text-muted, #64748b); font-weight: 400; }
+
+/* Compact grid for scalar (non-object) fields: 3 columns on wide cards, 2 on narrow. */
+.engine-config-form .studio-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+.engine-config-form .studio-field--object { grid-column: 1 / -1; }
+@media (max-width: 900px) {
+  .engine-config-form .studio-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Reset affordance: small icon inside the input, never a full-width button. */
+.studio-field-control { position: relative; display: flex; align-items: center; }
+.studio-field-control .ant-select,
+.studio-field-control .ant-input-number,
+.studio-field-control .ant-input { width: 100%; }
+.studio-field-control .ant-input-affix-wrapper { padding-right: 26px; }
+.studio-reset {
+  position: absolute;
+  right: 4px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--csl-text-muted, #64748b);
+  cursor: pointer;
+}
+.studio-reset:hover { color: var(--csl-text, #0f172a); background: var(--csl-surface-alt, #f1f5f9); }
+.studio-reset svg { width: 12px; height: 12px; display: block; }
+.studio-reset--affix { position: static; margin-left: 4px; flex: none; }
+.engine-config-form .studio-reset {margin-top:0;right:22px;width:20px;height:20px}
+.engine-config-form .studio-field-control .ant-input-number-input {padding-right:38px}
+.engine-config-form .studio-field-control>.ant-input {padding-right:38px}
+.engine-config-form .studio-field-control>.ant-select .ant-select-selection-item {padding-right:24px}
+@media (min-width:1280px) {.guided-domain-body .engine-config-form .studio-fields {grid-template-columns:repeat(2,minmax(0,1fr))}}

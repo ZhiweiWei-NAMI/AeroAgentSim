@@ -26,5 +26,5 @@ export function validationIssues(validation:Workspace['validation']):StudioIssue
  return validation.errors.map(message=>({path:'$',message}));
 }
 export function readableName(value:string):string {
- return value.replace(/^.*:/,'').replace(/^traffic[._-]/,'').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[._-]+/g,' ').replace(/\b\w/g,letter=>letter.toUpperCase());
+ return value.replace(/^.*:/,'').replace(/^traffic[._-]/,'').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[._-]+/g,' ').replace(/\b\w/g,letter=>letter.toUpperCase()).replace(/\bUav\b/g,'UAV').replace(/\bLlm\b/g,'LLM').replace(/\bPx4\b/g,'PX4');
 }

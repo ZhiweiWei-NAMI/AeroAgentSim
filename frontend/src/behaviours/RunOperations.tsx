@@ -6,7 +6,9 @@ import { stringifyLossless } from '../feeds/lossless-json';
 import { Details } from '../console/Details';
 import { RunShortcuts } from '../console/shortcuts';
 import { useConsoleNotice } from '../console/Notifications';
-import { seconds } from '../feeds/format';
+import { displayTime } from '../pages/display-time';
+import { ConceptHelp } from '../console/ConceptHelp';
+import { entityLabel, readableLabel } from '../pages/inspection-format';
 import { exactValue } from '../feeds/format';
 import { mapping, type Draft } from './model';
 import { TypedPayloadForm } from './TypedPayloadForm';
@@ -21,13 +23,13 @@ export function injectionPointsFromScenario(scenario:Draft):Draft[] {
   const owners=engines.filter(engine=>engine.plugin==='behaviour');
   const packages=scenario.behaviours??(owners.length===1&&mapping(owners[0].config)?owners[0].config.packages:undefined);
   if(packages===undefined)return [];
-  if(!Array.isArray(packages)||!packages.every(mapping))throw Error('Pinned behaviour packages unavailable');
+  if(!Array.isArray(packages)||!packages.every(mapping))throw Error('Behaviour packages unavailable');
   const points=packages.flatMap(item=>{
     const document=mapping(item.document)?item.document:item;
     if('path' in document)throw Error('Run configuration contains unresolved behaviour references');
     const declared=document.injection_points;
     if(declared===undefined)return [];
-    if(!Array.isArray(declared)||!declared.every(mapping))throw Error('Pinned injection points malformed');
+    if(!Array.isArray(declared)||!declared.every(mapping))throw Error('Injection points malformed');
     for(const point of declared)for(const key of ['id','stream_id','command','target','emits'])if(typeof point[key]!=='string'||!point[key])throw Error(`Injection point ${key} is required`);
     return declared;
   });
@@ -70,7 +72,7 @@ export function RunOperations({api,runId,store,onSelect,onSeek,mode,interactive=
   const definitions=mapping(store.header.runtimeRegistry)&&mapping(store.header.runtimeRegistry.schemas)?store.header.runtimeRegistry.schemas:{};
   useEffect(()=>{const declared=store.header.behaviour?.injectionPoints??store.header.behaviour?.injection_points;if(declared)setPoints(declared);
     const abort=new AbortController();void api.request(`/v1/studio/runs/${encodeURIComponent(runId)}/configuration`,{signal:abort.signal}).then(value=>{
-      if(!mapping(value)||!mapping(value.scenario))throw Error('Pinned run configuration is malformed');
+      if(!mapping(value)||!mapping(value.scenario))throw Error('Run configuration is malformed');
       if(!abort.signal.aborted){setPoints(injectionPointsFromScenario(value.scenario));if(value.scenario.id==='traffic-accident'){const timing=operatorTiming(value.scenario);operatorStep.current=timing.step;const until=mapping(value.scenario.run)?value.scenario.run.until_ns:undefined;const end=typeof until==='number'&&Number.isSafeInteger(until)?String(until):mapping(until)?until.$integer:undefined;if(typeof end!=='string'||!/^(0|[1-9]\d*)$/.test(end))throw Error('Operator run limit must be a declared exact nonnegative integer');operatorEnd.current=BigInt(end);const recorded=store.commits.at(-1);operatorNs.current=recorded&&BigInt(recorded.at.ns)>timing.initial?BigInt(recorded.at.ns):timing.initial;setHorizon(operatorNs.current.toString());setOperator(true);}}
     }).catch(problem=>{if(!abort.signal.aborted)setError(String(problem));});return()=>abort.abort();
   },[api,runId,store]);
@@ -98,24 +100,24 @@ export function RunOperations({api,runId,store,onSelect,onSeek,mode,interactive=
     const body=ingressBody(effective,injection?{injection_point:injection.id,payload}:payload);const receipt=await api.request(`/v1/runs/${encodeURIComponent(runId)}/ingress`,{method:'POST',headers:{'Content-Type':'application/json'},body:stringifyLossless(body)});setAdmissions(rows=>[...rows,receipt]);notify({kind:'info',message:'Admission receipt received. Execution is recorded separately.'});}catch(problem){setError(String(problem));notify({kind:'error',message:String(problem)});}finally{setBusy(false);}};
   const control=async(action:string)=>{setError('');try{const reply=await api.request(`/v1/runs/${encodeURIComponent(runId)}/${action}`,{method:'POST'});if(!mapping(reply))throw Error('Malformed run control receipt');setOperation(reply);setEffective(typeof reply.status==='string'?reply.status:undefined);notify({kind:'info',message:`Simulation ${action} requested.`});}catch(problem){setError(String(problem));notify({kind:'error',message:String(problem)});}};
   const toggle=async()=>{try{const run=(await api.runs()).find(row=>row.id===runId);if(!run)throw Error('Run status unavailable');if(run.status==='running')await control('pause');else if(run.status==='paused')await control('resume');else notify({kind:'info',message:`Run is ${run.status}; pause/resume is unavailable.`});}catch(problem){setError(String(problem));notify({kind:'error',message:String(problem)});}};
-  return <section aria-label="Run operations"><RunShortcuts enabled={interactive&&mode==='live'&&!busy&&store.commits.length>0} onToggle={()=>void serialized(toggle)} onInject={()=>{injectionRef.current?.scrollIntoView({block:'center'});injectionRef.current?.focus();}} /><h2>Operate / recorded decisions</h2><p>Occurrence, source acquisition, admission and execution are separate. Replay inspection sends no commands.</p>
+  return <section aria-label="Run operations"><RunShortcuts enabled={interactive&&mode==='live'&&!busy&&store.commits.length>0} onToggle={()=>void serialized(toggle)} onInject={()=>{injectionRef.current?.scrollIntoView({block:'center'});injectionRef.current?.focus();}} /><h2>Run operations<ConceptHelp topic="Run operations" description="Pause, resume or stop the runtime, and submit typed external events while it runs." guide="console.md"/></h2><p>{mode==='live'?'Submit an event, then check its admission and execution receipts below.':'Replay is read-only; switch to live mode to operate an active run.'}</p>
     <div>{['pause','resume','stop'].map(action=><button key={action} disabled={mode!=='live'} onClick={()=>void control(action)}>Simulation {action}</button>)}</div>
     {operation&&<p>Requested: {String(operation.requested)} · last observed effective status: {effective??'not received'}{effective!==({pause:'paused',resume:'running',stop:'stopped'} as Record<string,string>)[String(operation.requested)]?' · pending at safe boundary':''}</p>}
-    {operator&&mode==='live'&&<p>Console owns operator source progress · closed through {seconds(horizon)}. Commands occur at the next unclosed canonical instant; admission and execution remain separate.</p>}
-    <details open><summary>Inject event / issue typed command</summary><label>Injection point <select ref={injectionRef} aria-label="Injection point" value={point} onChange={event=>{const id=event.target.value,next=points.find(row=>row.id===id);setPoint(id);setPayload(id==='accident'?(recordedAccidentPayload(store)??{}):{});if(next)setFields({...fields,schema:String(next.command),target:String(next.target),stream_id:String(next.stream_id)});}}><option value="">Direct typed command</option>{points.map(row=><option key={String(row.id)} value={String(row.id)}>{String(row.id)} → {String(row.emits)}</option>)}</select></label>
+    {operator&&mode==='live'&&<Details title="Operator source progress" buttonLabel="Source timing"><p>Operator source progress is closed through {displayTime(horizon)}. Events enter at the next unclosed simulation instant.</p></Details>}
+    <details open><summary>Inject event / issue typed command</summary><label>Injection point <select ref={injectionRef} aria-label="Injection point" value={point} onChange={event=>{const id=event.target.value,next=points.find(row=>row.id===id);setPoint(id);setPayload(id==='accident'?(recordedAccidentPayload(store)??{}):{});if(next)setFields({...fields,schema:String(next.command),target:String(next.target),stream_id:String(next.stream_id)});}}><option value="">Direct typed command</option>{points.map(row=><option key={String(row.id)} value={String(row.id)}>{readableLabel(String(row.id))} → {readableLabel(String(row.emits))}</option>)}</select></label>
       {!points.length&&<p>No declared injection points available for this run.</p>}
-      <label>Command schema <select aria-label="Command schema" value={fields.schema} disabled={!!injection} onChange={event=>{setFields({...fields,schema:event.target.value});setPayload({});}}><option value="">Select registered command</option>{commands.map(row=><option key={String(row.id)} value={String(row.id)}>{String(row.id)}</option>)}</select></label>
-      <Details title="Ingress timing and transport">{Object.keys(fields).filter(key=>key!=='schema').map(key=><label key={key}>{key}<input aria-label={`Ingress ${key}`} value={fields[key]} onChange={event=>setFields({...fields,[key]:event.target.value})}/></label>)}</Details>
-      {point==='accident'&&mapping(payload)&&mapping(payload.incident)&&<p>Incident: {store.entities.size ? [...store.entities.values()].find(row=>row.typeId==='aas:TrafficIncident')?.key.id : 'awaiting incident entity'}</p>}
+      <label>Command schema <select aria-label="Command schema" value={fields.schema} disabled={!!injection} onChange={event=>{setFields({...fields,schema:event.target.value});setPayload({});}}><option value="">Select registered command</option>{commands.map(row=><option key={String(row.id)} value={String(row.id)}>{readableLabel(String(row.id))}</option>)}</select></label>
+      <Details title="Ingress timing and transport" buttonLabel="Timing & transport">{Object.keys(fields).filter(key=>key!=='schema').map(key=><label key={key}>{key}<input aria-label={`Ingress ${key}`} value={fields[key]} onChange={event=>setFields({...fields,[key]:event.target.value})}/></label>)}</Details>
+      {point==='accident'&&mapping(payload)&&mapping(payload.incident)&&<p>Incident: {[...store.entities.values()].filter(row=>row.typeId==='aas:TrafficIncident').map(entityLabel).join(', ')||'awaiting incident entity'}</p>}
       <TypedPayloadForm schema={injection?event?.schema:chosen?.schema} value={payload} onChange={setPayload} definitions={definitions} onValidityChange={setPayloadValid}/>
       <button disabled={busy||!payloadValid||mode!=='live'||point==='accident'&&(!mapping(payload)||!mapping(payload.incident))} onClick={()=>void serialized(submit)}>Submit typed ingress</button>
-      <p>Cancellation support: {chosen?.cancel_support===true?'declared by command schema':'not advertised'}. This service has no general HTTP cancel transport. Use an authored cancellation injection point and inspect its actual child receipts.</p>
+      <Details title="Cancellation" buttonLabel="Cancellation options"><p>{chosen?.cancel_support===true?'This command declares cancellation support.':'This command does not declare cancellation support.'} Send an authored cancellation event to cancel a child command; no general HTTP cancellation endpoint is available.</p></Details>
     </details>
     {error&&<p role="alert">{error}</p>}
     <details open={admissions.length>0}><summary>Admission receipts · {admissions.length}</summary>{admissions.map((receipt,index)=><article key={index}>Admission #{index+1}{mapping(receipt)&&typeof receipt.status==='string'&&` · ${receipt.status}`} <Details title="Admission receipt"><pre>{exactValue(receipt)}</pre></Details></article>)}</details>
     <details><summary>Execution receipts at this cut · {store.receipts.length}</summary>{store.receipts.map((receipt,index)=><article key={index}>Execution #{index+1} <Details title="Execution receipt"><pre>{exactValue(receipt)}</pre></Details></article>)}</details>
     <details><summary>Decision / LangGraph and typed event records at this cut</summary>{store.messages.map(message=>{
-      const commit=store.commits.find(row=>row.messages.some(item=>item.id===message.id));return <article key={message.id}><strong>{message.schemaId}</strong> · {seconds(message.at.ns)}
+      const commit=store.commits.find(row=>row.messages.some(item=>item.id===message.id));return <article key={message.id}><strong>{readableLabel(message.schemaId)}</strong> · {displayTime(message.at.ns)}
         {commit&&<button onClick={()=>onSeek(commit.commitIndex)}>Seek record moment</button>}{message.subjects?.map(key=><button key={`${key.id}/${key.generation}`} onClick={()=>onSelect(key)}>{key.id} · g{key.generation}</button>)}<Details title="Event record"><pre>{exactValue(message)}</pre></Details></article>;
     })}</details>
   </section>;

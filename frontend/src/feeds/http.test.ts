@@ -7,6 +7,8 @@ const page = (commits: FeedCommit[], next: number, status = 'running') => new Re
 afterEach(() => { vi.unstubAllGlobals(); });
 describe('HTTP viewer transport', () => {
   it('accepts the GLM-authored pinned contract fixture with a nonspatial record', () => {
+    const scene={id:'authored-city',city:{kind:'traffic-city',url:'/v1/studio/demo-assets/scene.json'}};
+    expect(validateHeader({...fixture.header,scene}).scene).toEqual(scene);
     expect(validateHeader(fixture.header).presentation).toHaveLength(1);
     expect(validateCommit(fixture.commit).at.ns).toBe('9223372036854775815');
   });

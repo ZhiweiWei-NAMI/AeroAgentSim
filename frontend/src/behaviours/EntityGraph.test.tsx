@@ -24,7 +24,7 @@ it('draws the active entity node-link graph with human labels, relations and sel
   // Real recorded relation between the task and vehicle, drawn once.
   expect(graph.querySelectorAll('.eg-edge')).toHaveLength(1);
   // Selecting a node or using the accessible select reports the exact recorded key.
-  fireEvent.click(within(graph).getAllByText('Task 1')[0].closest('.eg-node')!);
+  fireEvent.click(within(graph).getByRole('button', { name: /Task 1,.*generation 1/ }));
   expect(select).toHaveBeenCalledWith({ id: 'task-1', generation: 1 });
   // Selection prop syncs: after the parent re-renders with the clicked key, the graph reflects it.
   view.rerender(<EntityGraph store={store} selected={{ id: 'task-1', generation: 1 }} onSelect={select} />);

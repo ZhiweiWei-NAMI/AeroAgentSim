@@ -1,13 +1,15 @@
+import { ConceptHelp } from '../console/ConceptHelp';
 import { useMemo, useState } from 'react';
 import type { EntityKey } from '../contracts/viewer-feed';
 import type { TemporalFeedStore } from '../feeds/temporal-store';
-import { exactValue, seconds } from '../feeds/format';
+import { exactValue } from '../feeds/format';
 import { Details } from '../console/Details';
 import { EntityGraph } from './EntityGraph';
 import { FeedStore } from '../viewport/feed-store';
 import { entityId } from '../viewport/bindings';
 import './run-graph.css';
 import {mapping} from './model';
+import { displayTime } from '../pages/display-time';
 import { entityLabel, readableLabel } from '../pages/inspection-format';
 
 interface Props { store: TemporalFeedStore; selected?: EntityKey; onSelect: (key: EntityKey) => void; onSeek: (index: number) => void }
@@ -57,9 +59,9 @@ export function BehaviourRunGraph({ store, selected, onSelect, onSeek }: Props) 
   const chains = [...store.chainInstances.values()].filter(row => related(row.roles));
   const extensionPresent = store.hasPredicateRecords || store.hasChainRecords;
   const roleLinks = (roles: Record<string, EntityKey>) => Object.entries(roles).map(([role, key]) => <button key={role} onClick={() => onSelect(key)}>{readableLabel(role)} · {store.entities.get(entityId(key)) ? entityLabel(store.entities.get(entityId(key))!) : readableLabel(key.id)}</button>);
-  const interval = (from: { ns: string; microstep: number }, to?: { ns: string; microstep: number } | null) => `[${seconds(from.ns, startNs)}, ${to ? seconds(to.ns, startNs) : 'open'})`;
+  const interval = (from: { ns: string; microstep: number }, to?: { ns: string; microstep: number } | null) => `[${displayTime(from.ns, startNs)}, ${to ? displayTime(to.ns, startNs) : 'open'})`;
   return <section className="behaviour-run-graph" aria-label="Synchronized AeroGraph view" data-cut={store.viewCursor?.knownAt}>
-    <div className="run-graph-heading"><h2>Entity graph</h2><span>{display.entities.size} visible · {display.edges.size} relations</span></div>
+    <div className="run-graph-heading"><h2>Entity graph<ConceptHelp topic="Entity graph" description="The graph includes spatial and nonspatial entities, their relationships, predicates and running chain instances." guide="console.md"/></h2><span>{display.entities.size} visible · {display.edges.size} relations</span></div>
     <div className="behaviour-filters">
       <label>Directory <select aria-label="Graph directory" value={directory} onChange={event => setDirectory(event.target.value)}><option value="">All</option>{[...new Set(store.header.types.flatMap(row => row.directory ? [row.directory] : []))].sort().map(value => <option key={value}>{value}</option>)}</select></label>
       <label>Type <select aria-label="Graph type" value={type} onChange={event => setType(event.target.value)}><option value="">All</option>{store.header.types.map(row => <option key={row.typeId} value={row.typeId}>{row.displayName}</option>)}</select></label>
@@ -74,7 +76,7 @@ export function BehaviourRunGraph({ store, selected, onSelect, onSeek }: Props) 
           <strong>{readableLabel(row.predicateId)}</strong><span>{row.status === 'known' ? String(row.value) : `unknown · ${row.status}`}</span>
           <div className="role-links">{roleLinks(row.roles)}</div>
           <p>Interval {interval(row.validFrom, row.validTo)}</p>
-          <button data-testid="predicate-transition" data-transition-cut={row.readCut.index} disabled={!store.commits.some(commit => commit.commitIndex === row.readCut.index)} onClick={() => onSeek(row.readCut.index)}>Seek evaluation {seconds(row.readCut.at.ns, startNs)}</button>
+          <button data-testid="predicate-transition" data-transition-cut={row.readCut.index} disabled={!store.commits.some(commit => commit.commitIndex === row.readCut.index)} onClick={() => onSeek(row.readCut.index)}>Seek evaluation {displayTime(row.readCut.at.ns, startNs)}</button>
           {!!row.diagnostics.length && <><ul>{row.diagnostics.map((item,index)=>typeof item==='string'?<li key={index}>{item}</li>:mapping(item)&&typeof item.reason==='string'?<li key={index}>{item.reason}</li>:null)}</ul><Details title="Predicate diagnostics"><pre>{exactValue(row.diagnostics)}</pre></Details></>}
           <Details title={row.predicateId} buttonLabel="Intervals, clocks and causes">
             <pre>{exactValue(row)}</pre>
@@ -86,7 +88,7 @@ export function BehaviourRunGraph({ store, selected, onSelect, onSeek }: Props) 
           <div className="role-links">{roleLinks(row.roles)}</div>
           <Details title={row.templateId} buttonLabel="Variables / children / causes"><pre>{exactValue(row)}</pre></Details>
           <ol>{store.chainRecords(row.instanceId).filter(item => item.value.op !== 'close' && item.commit.commitIndex <= (store.viewCursor?.knownAt ?? -1)).map((item, ordinal) => <li key={`${item.commit.commitIndex}/${exactValue(item.value.revision)}/${ordinal}`}>
-            <button data-testid="chain-transition" data-transition-cut={item.commit.commitIndex} onClick={() => { const key = Object.values(item.value.roles)[0]; if (key) onSelect(key); onSeek(item.commit.commitIndex); }}>Seek {item.value.transitionId ?? item.value.lifecycle} → {item.value.state} · {seconds(item.commit.at.ns, startNs)}</button>
+            <button data-testid="chain-transition" data-transition-cut={item.commit.commitIndex} onClick={() => { const key = Object.values(item.value.roles)[0]; if (key) onSelect(key); onSeek(item.commit.commitIndex); }}>Seek {item.value.transitionId ?? item.value.lifecycle} → {item.value.state} · {displayTime(item.commit.at.ns, startNs)}</button>
           </li>)}</ol>
         </article>)}</div>
       </div>

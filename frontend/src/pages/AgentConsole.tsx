@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Tag } from 'antd';
 import { Link, useLocation } from 'react-router-dom';
 import { HttpViewerFeed, RunsApi } from '../feeds/http';
-import { exactValue, seconds } from '../feeds/format';
+import { exactValue } from '../feeds/format';
 import { PageHeader, PageState } from '../console/PageState';
 import { Details } from '../console/Details';
 import { readableLabel } from './inspection-format';
+import { displayTime } from './display-time';
 import './agent-console.css';
 
 const SCHEMA_ID = 'aas.agent.record';
@@ -156,8 +157,8 @@ export default function AgentConsole() {
     {problems.length > 10 && <p>{problems.length - 10} more record problems hidden.</p>}
     {list.length === 0 && !error && <PageState kind={status === 'loading' ? 'loading' : 'empty'} title={status === 'loading' ? 'Loading decisions' : 'No decisions recorded'} description="Agent observations and calls appear here when recorded in this journal." />}
     {list.map((decision, decisionIndex) => <section key={decision.decisionId} className="agent-decision-card">
-      <h3>Decision {decisionIndex + 1} <Details title="Decision identity" buttonLabel="Identity"><pre>{decision.decisionId}</pre></Details> <Tag>{seconds(decision.simNs, startNs.current)}</Tag>
-        {decision.phases.map((item, index) => <Tag key={index} color={item.phase === 'failure' ? 'red' : item.phase === 'finished' ? 'green' : 'blue'}>{item.phase} · {seconds(item.simNs, startNs.current)}</Tag>)}</h3>
+      <h3>Decision {decisionIndex + 1} <Details title="Decision identity" buttonLabel="Identity"><pre>{decision.decisionId}</pre></Details> <Tag>{displayTime(decision.simNs, startNs.current)}</Tag>
+        {decision.phases.map((item, index) => <Tag key={index} color={item.phase === 'failure' ? 'red' : item.phase === 'finished' ? 'green' : 'blue'}>{item.phase} · {displayTime(item.simNs, startNs.current)}</Tag>)}</h3>
       {decision.failed && <Alert type="error" showIcon message="Agent reported failure for this decision" className="agent-console-alert" />}
       <p className="agent-record-caption"><b>Observation</b> — {decision.fields.length} field(s)</p>
       <ul className="agent-field-list">
@@ -175,7 +176,7 @@ export default function AgentConsole() {
       {(['observation', 'prompt', 'response', 'validation', 'finished', 'failure'] as const).map(phase => {
         const items = decision.phases.filter(item => item.phase === phase);
         return items.length === 0 ? null : <Details key={phase} title={phase} buttonLabel={`${phase} (${items.length})`}>
-          {items.map((item, index) => <div key={index}><small>{seconds(item.simNs, startNs.current)}</small><Blob value={item.data} /></div>)}
+          {items.map((item, index) => <div key={index}><small>{displayTime(item.simNs, startNs.current)}</small><Blob value={item.data} /></div>)}
         </Details>;
       })}
     </section>)}

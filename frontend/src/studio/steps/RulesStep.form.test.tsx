@@ -1,0 +1,23 @@
+import {beforeAll,expect,it,vi} from 'vitest';
+import {fireEvent,render,screen} from '@testing-library/react';
+import {RulesStep} from './RulesStep';
+import {StudioApi} from '../api';
+vi.mock('../BehavioursPanel',()=>({BehavioursPanel:()=>null}));
+beforeAll(()=>{Object.defineProperty(window,'matchMedia',{writable:true,value:vi.fn(()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}}))});});
+it('authors a delay rule for every matching type from the form',()=>{
+ const scenario={entities:[],behaviours:[{id:'package',predicates:{ready:{roles:{actor:'oo:UAV'},profile:'committed_reactive/v1',expression:{literal:true}}},chains:{},bindings:[]}]};
+ const changed=vi.fn();
+ const workspace={id:'workspace',name:'Rules',scenario};
+ render(<RulesStep workspace={workspace} api={new StudioApi('/')} scenario={scenario} types={[{id:'oo:UAV',parents:[],abstract:false}]} fields={[]} relations={[]} save={async()=>workspace} onApply={()=>{}} onChange={changed}/>);
+ const choose=(label:string,option:string)=>{fireEvent.mouseDown(screen.getByRole('combobox',{name:label}));fireEvent.click(screen.getByTitle(option));};
+ fireEvent.change(screen.getByLabelText('Rule name'),{target:{value:'wait-for-weather'}});
+ choose('Rule predicate','Ready');choose('Rule entity actor','Every UAV');choose('Rule action kind','Delay, then complete');
+ const add=screen.getByRole('button',{name:'Add rule to draft'});
+ expect(add).toBeDisabled();
+ fireEvent.change(screen.getByLabelText('Rule delay duration'),{target:{value:'1000000000'}});
+ expect(add).toBeEnabled();fireEvent.click(add);
+ const authored=changed.mock.calls[0][0].behaviours[0];
+ expect(authored.bindings[0].match).toEqual({actor:{is_a:'oo:UAV'}});
+ expect(authored.chains['wait-for-weather'].transitions[1].on).toEqual({timer:'wait'});
+ expect(authored.chains['wait-for-weather'].transitions[0].actions).toEqual([{id:'wait',kind:'delay',duration_ns:1000000000}]);
+});

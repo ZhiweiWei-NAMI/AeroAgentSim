@@ -73,6 +73,7 @@
 .aerograph-references li {flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--csl-border)}
 .aerograph-ref-desc {flex-basis:100%;overflow-wrap:anywhere}
 .aerograph-panel .ant-table-cell {overflow-wrap:anywhere;font-size:12px}
+.aerograph-schema-cell {display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .aerograph-workspace {width:280px}
 .aerograph-title h2 {font-size:23px;letter-spacing:-.4px}
 .aerograph-title .aerograph-cn {font-size:14px}

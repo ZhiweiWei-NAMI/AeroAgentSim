@@ -17,7 +17,7 @@ function PayloadFields({schema,value,onChange,definitions={},path='Payload'}:Pro
   if(mapping(descriptor)&&descriptor.type==='record'&&mapping(descriptor.members)) {
     const row=mapping(value)?value:{};
     return <fieldset><legend>{path} · typed record</legend>{Object.entries(descriptor.members).map(([key,child])=><PayloadFields key={key} schema={child} value={row[key]} onChange={next=>onChange({...row,[key]:next})} definitions={definitions} path={`${path}.${key}`}/>)}
-      <Details title="Complete payload / extra members"><textarea aria-label={`${path} JSON`} value={raw} onChange={event=>{setRaw(event.target.value);try{const next=parseLosslessJson(event.target.value,true);if(!mapping(next))throw Error('Record payload must be an object');onChange(next);setError('');}catch(problem){setError(String(problem));}}}/>{error&&<p role="alert">{error}</p>}</Details></fieldset>;
+      <Details title="Complete payload / extra members" buttonLabel="Extra payload fields"><textarea aria-label={`${path} JSON`} value={raw} onChange={event=>{setRaw(event.target.value);try{const next=parseLosslessJson(event.target.value,true);if(!mapping(next))throw Error('Record payload must be an object');onChange(next);setError('');}catch(problem){setError(String(problem));}}}/>{error&&<p role="alert">{error}</p>}</Details></fieldset>;
   }
   if(mapping(descriptor)&&['string','boolean','number','integer'].includes(String(descriptor.type))) {
     const kind=String(descriptor.type);
@@ -29,5 +29,5 @@ function PayloadFields({schema,value,onChange,definitions={},path='Payload'}:Pro
       else setError(`Enter a typed ${kind}`);
     }}/>} {error&&<span role="alert">{error}</span>}</label>;
   }
-  return <Details title={`${path} JSON`}><label>{path} · {mapping(descriptor)?String(descriptor.type):'unsupported schema'} JSON<textarea aria-label={`${path} JSON`} rows={3} value={raw} onChange={event=>{setRaw(event.target.value);try{onChange(parseLosslessJson(event.target.value,true));setError('');}catch(problem){setError(String(problem));}}}/>{error&&<span role="alert">{error}</span>}</label></Details>;
+  return <Details title={`${path} JSON`} buttonLabel={`${path.split('.').at(-1)} details`}><label>{path} · {mapping(descriptor)?String(descriptor.type):'unsupported schema'} JSON<textarea aria-label={`${path} JSON`} rows={3} value={raw} onChange={event=>{setRaw(event.target.value);try{onChange(parseLosslessJson(event.target.value,true));setError('');}catch(problem){setError(String(problem));}}}/>{error&&<span role="alert">{error}</span>}</label></Details>;
 }
