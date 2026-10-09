@@ -424,3 +424,335 @@ ownership, project context, `workbuddy/glm-5.3-flash`, 131072 output budget and 
 effort. Their sessions/tool activity were inspected. Neither produced a usable
 verified implementation before being stopped; their drafts were replaced and are
 not claimed as completed contributions.
+
+## 13. A3 performance profile and kernel handoff
+
+**The live-operation targets are not met. Default timing remains 1 Hz.**
+The checked-out HEAD was `582b628`; its backend/demo sources match `d80790b`
+(the intervening diff contains viewer code and viewer documentation).
+No frontend or sibling kernel files were modified.
+
+The benchmark retains all 63 road vehicles and 8 UAVs. It changes only the two
+physical owners' declared step to `round(1e9 / Hz)` and runs a three-second
+prefix through the normal kernel, with a file-backed journal. These are measured
+prefix results, **not 90-second end-to-end performance claims**. They exclude
+RunSession feed indexing and have not reached the authored eight-second accident.
+
+| Physics/publication | Simulated seconds | Wall seconds | RTF | Journal MB (decimal) | Peak RSS MiB |
+|---|---:|---:|---:|---:|---:|
+| 1 Hz | 3 | 18.903 | 0.1587 | 23.456 | 163.0 |
+| 5 Hz | 3 | 64.011 | 0.04687 | 28.089 | 163.1 |
+| 15 Hz | 3 | 289.952 | 0.01035 | 50.294 | 197.7 |
+
+The 1/5 Hz harness includes loading, binding, bootstrap and close; the initial
+15 Hz harness times bootstrap/run/close after construction. This difference
+cannot affect the conclusion: the **first three seconds at 15 Hz already exceed
+both the entire 45-second wall-time allowance and the entire 25 MB journal
+allowance for the requested 90-second run**. Longer 5/15 Hz runs were not attempted.
+Engine-free replay of that three-second 15 Hz journal completed in **299.718 s**,
+CPU 299.700 s, peak RSS **517.8 MiB**, cut 506, `incomplete=false`.
+The replay and memory targets also fail on this prefix alone.
+
+The first cProfile run (1 Hz, three-second prefix, bootstrap included) measured
+33.996 seconds: `build_wave` 15.383 s, `normalize` 12.740 s,
+`cause_refs` 9.353 s, `RecordLog.item` 8.948 s, `_raw` 7.586 s,
+`Journal.append` 4.938 s. These cumulative times overlap and must not be summed.
+Platform callbacks included behaviour reactions 6.493 s and road advancement
+3.189 s. After indexing dirty causes and reusing live binding candidates within
+the immutable invocation cut, plus a conservative road collision broad phase,
+the comparison profile measured 28.735 s: behaviour 3.276 s, road 0.557 s.
+The subsequent type/entity candidate cache further avoids repeated ancestry scans.
+The unprofiled 15 Hz run spent **9.663 s total in engine reset/advance/react callbacks**,
+including behaviour 8.225 s and road 0.981 s; approximately 96.7% of its elapsed
+time is outside those callbacks. Faster engine mathematics alone cannot close
+this gap.
+
+The preserved A2 timer journal is 171,184,879 bytes / 4,069 lines in this
+executor (different record count from the owner's independent CLI run):
+
+| Recorded type/phase | Records | MB (decimal) |
+|---|---:|---:|
+| invocations/react | 976 | 64.064 |
+| transaction/react | 976 | 43.493 |
+| transaction/advance | 551 | 25.345 |
+| transaction/sample | 91 | 21.273 |
+| invocations/sample | 91 | 7.357 |
+| invocations/advance | 551 | 5.574 |
+
+Operation items account for 55.467 MB; intent items 40.464 MB; dispatch items
+21.553 MB; dirty-dispatch items 14.432 MB; transaction dirty items 11.066 MB.
+The codec repeatedly embeds full messages/notifications in dispatches and intent
+inboxes, full typed Cut/Instant/ItemRef trees, and sampled context/causes in
+proposals, published frames, events and later deliveries. The behaviour's record
+subscription also routes its recorded notifications back through the kernel;
+predicate record deliveries are currently used to adopt committed cause refs.
+Removing that evidence path without a replacement is not a safe optimization.
+
+The three-second 1 Hz journal is **byte-identical before and after all production
+changes**, SHA-256 `f349532c3482ae184f90646e9528b10675fb2de010aab305ee4580a30b2b3954`.
+No causes, evaluations, writes, actors or publication steps were removed. The
+kernel journal format and existing evaluator/engine versions remain unchanged.
+The full 90-second timer CLI run also preserves the A2 journal SHA-256
+`c5d53631aea2bce4ff53c61f612ed6c86dbd7f89a98abf9ab83cfb0ae0653240`
+and PNG SHA-256
+`5d04e0a9ffd8abb490c5500b0476e5113459373f8848fe73d3aca5aa8943bf98`.
+The HTTP-injected 90-second run also preserves both A2 hashes listed in §12:
+journal `b5882139…` and PNG `3dc27e56…`.
+
+### Required kernel changes (proposal, not implemented here)
+
+1. Version a new journal codec, with explicit header version/feature admission
+   and continued 1.x replay. Intern partition/context/entity/field/clock identities;
+   encode ItemRef as integer coordinates and Cut as a committed index reference.
+   Reference already-recorded messages/notifications from intent inboxes and
+   dispatches instead of reserializing their payloads. Keep all record indices,
+   item coordinates, delivery times, raw proposal causes and resolved causes.
+2. Encode sampled history causes as an **ordered frame-prefix reference plus
+   the exact remaining cause sequence**. Q6 currently appends every prior frame
+   to each new evaluation's causes. Preserve that full ordered sequence and its
+   duplicates on expansion; do not replace it with a different transitive cause
+   graph. Validate prefix/context/cut authority once, with indexed frame membership,
+   rather than reparsing old records and walking the whole frame tuple for each
+   historical cause. Cache small validated item metadata independently of the
+   eight-record decoded-payload LRU so old cause checks do not thrash that cache.
+3. Reference the header's pinned SampleSpec for unchanged bindings, sources,
+   clocks and parameters. Delta-encode unchanged sampled input against an actual
+   prior evaluation record; preserve missing/null/unknown and typed values exactly.
+   Deterministic table allocation and canonical expansion are part of the codec
+   contract. Replay and feed projection must expand these references without
+   evaluator/model calls; budget, scope, lag and corruption checks remain enforced.
+4. Provide a streaming replay API and file-backed committed RecordLog prefixes.
+   Current `journal.replay` reads all bytes, splits all lines and parses all trees
+   before replay; RecordLog retains every acknowledged encoded line in RAM.
+   Stream validation through the existing transaction semantics, and expose an
+   iterator over records so equality checks do not eagerly materialize
+   `Kernel.records`. This is needed for the memory/replay targets as well as size.
+
+`profile_runtime.py` provides independent engine timing, optional cProfile,
+streamed byte histograms and engine-free replay timing. Use the platform Python
+with `PYTHONPATH=src`, `AEROAGENTSIM_AEROGRAPH_ROOT` and `AEROAGENTSIM_CHROMIUM`
+set as in §12. Each `--out` must name a new directory:
+
+```bash
+"$task_a2_python" scenarios/demos/traffic-accident/profile_runtime.py \
+  --hz 15 --seconds 3 --out /tmp/aas-q/a/a3/reproduce-15
+"$task_a2_python" scenarios/demos/traffic-accident/profile_runtime.py \
+  --hz 1 --seconds 3 --profile --out /tmp/aas-q/a/a3/reproduce-profile
+"$task_a2_python" scenarios/demos/traffic-accident/profile_runtime.py \
+  --histogram /tmp/aas-q/a/a3/reproduce-15/journal.jsonl
+"$task_a2_python" scenarios/demos/traffic-accident/profile_runtime.py \
+  --replay /tmp/aas-q/a/a3/reproduce-15/journal.jsonl
+```
+
+Raw profiles, engine timings and byte histograms reside under
+`/tmp/aas-q/a/a3/`; they are not committed. Two concurrent GLM audit sessions used
+separate scratch ownership with the requested model/output budget; both actual
+sessions and outputs were inspected. The journal audit substituted unrelated
+logistics/agent runs, and its duplicate-byte attribution also failed review.
+Those measurements were discarded; the tables above were independently computed
+from the actual accident WAL. The runtime audit repeated source reads and was
+stopped under the loop budget; its partial source suggestions were checked against
+the measured hot paths. No GLM implementation or analyzer was integrated.
+
+### A3 validation
+
+The targeted runtime/road tests passed: **19 passed in 23.65 s**. Ruff passed;
+strict mypy reported no issues in the four touched Python files. The full agreed
+gate ran once: **624 passed, 6 deselected in 4369.56 s**. This includes the timer
+CLI full chain with zero-call replay and the live HTTP-injection full chain.
+Docker and LLM tests were excluded by the requested marker expression; frontend
+checks were not run because no frontend files changed. Commands from the
+worktree root (outputs retained under `/tmp/aas-q/a/a3/`):
+
+```bash
+task_a3_python=/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python
+task_a3_files=(
+  src/aeroagentsim/behaviours/bindings.py
+  src/aeroagentsim/engines/behaviour.py
+  src/aeroagentsim/packs/traffic_accident/geometry.py
+  scenarios/demos/traffic-accident/profile_runtime.py
+)
+PYTHONPATH=src "$task_a3_python" -m ruff check "${task_a3_files[@]}"
+PYTHONPATH=src MYPYPATH=src:../aerokernel:. "$task_a3_python" \
+  -m mypy --strict --explicit-package-bases "${task_a3_files[@]}"
+export PYTHONPATH=src
+export AEROAGENTSIM_AEROGRAPH_ROOT=/mnt/data2/weizhiwei/AeroGraph
+export AEROAGENTSIM_CHROMIUM=/home/weizhiwei/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome
+export AEROAGENTSIM_FFMPEG=/usr/share/anaconda3/bin/ffmpeg
+"$task_a3_python" -m pytest -q -p no:cacheprovider \
+  tests/behaviours/test_runtime.py tests/demos/traffic_accident/test_road.py \
+  -m 'not docker and not llm'
+TMPDIR=/tmp/aas-q/a/a3/tmp "$task_a3_python" -m pytest -q -p no:cacheprovider \
+  tests/platform tests/adapters tests/agents tests/packs tests/authoring \
+  tests/integrations tests/behaviours tests/demos tests/observations \
+  -m 'not docker and not llm' --basetemp=/tmp/aas-q/a/a3/full-gate --durations=5
+```
+
+## 14. A4 indexed dispatch and journal 2.0 migration
+
+Measured against platform `1af8965` and the installed, unchanged kernel
+`0e10c1f`. Q6b is **not merged into this worktree**: this measures A4's part,
+not the joint incremental-evaluator result. The shipped scenario remains 1 Hz;
+the benchmark explicitly selects 15 Hz for both physical owners and retains all
+63 road vehicles and 8 UAVs.
+
+Discovery now retains memberships per binding/conflict rule and invalidates joins
+through selector field/type, relation and lifecycle indexes. Instance dispatch
+indexes the current state's predicate dependencies by exact entity generation
+and field, relations, sampled-context identity, and event schema/role correlation.
+Timers and command receipts address their owning instance directly. Continuations
+and unpublished instances retain explicit wakeups. Candidate sorting, binding
+identities and cleanup policies are unchanged.
+
+Reactive guards execute once per immutable invocation cut. Reusing a result
+appends the same ordered fact/relation read evidence that another evaluation
+would have read. The committed `predicate_evaluated` subscription/adoption route
+remains intact, including sampled frames; it is not replaced with private truth.
+Unauthored lifecycle notifications remain delivered/journaled without allocating
+a mutable payload copy. No evaluation publications, diagnostics, causes, actors
+or physics/publication steps were dropped.
+
+### Individual A4 measurements
+
+Both runs use positional/DEFLATE, a single 30-second grant, and include loading,
+binding, bootstrap and close. Baseline sources were copied to A4 scratch before
+editing; the baseline uses this worktree's scenario paths and the installed K5.
+Values are measured, not extrapolated:
+
+| Full actor set, 15 Hz / 30 s | Before dispatch indexing | After |
+|---|---:|---:|
+| Behaviour reactions (1,358 calls) | 90.274 s | 6.852 s |
+| All reset/advance/react callbacks | 139.164 s | 52.997 s |
+| Q6 sampled callbacks | 37.773 s | 34.812 s |
+| Wall / CPU | 632.785 / 632.249 s | 552.488 / 552.402 s |
+| RTF | 0.04741 | 0.05430 |
+| Journal MB (decimal) | 52.936 | 52.936 |
+| Peak RSS MiB | 1,447.5 | 1,447.6 |
+
+Behaviour reaction time decreased **92.4% (13.2×)**. Other remaining callback
+costs include road advancement 10.276 s and the four sampled partitions 34.812 s.
+Even excluding every sampled callback leaves 18.185 s of callbacks, above the
+joint 15 s allowance; Q6b alone cannot be assumed to close that remaining gap.
+Approximately 499.5 s remains outside reset/advance/react callbacks. The joint
+15 s callback, 15 MB journal, 400 MB RSS and 30 s replay targets are **not met**
+by A4 alone. Replay of the 30-second journal was still running beyond 30 wall
+seconds and was interrupted; no completed replay cut or replay peak RSS was
+captured. K5's documented flat resolved historical causes/payload costs remain;
+A4 does not edit the kernel or the concurrent Q6 evaluator.
+
+The three-second 15 Hz prefix expands identically to the A3 1.x reference:
+**507 records equal**, after normalizing only the declared 2.0 header's codec
+and semantic-version fields. The final 30-second before/after journals are
+**byte-identical**, verified with `cmp`, all 8,423 lines, SHA-256
+`a024835a97e02df12f2bc9a9445176ecc8106aea416a87efa747f4a119466d0c`.
+This stronger same-codec result also preserves every expanded ordered cause.
+The redundant streaming 30-second comparison was stopped once byte equality
+was proven; it is not claimed as a completed expanded-record pass.
+The full shipped **90-second, 1 Hz timer chain** also expands identically to A3:
+all **4,069 records equal**, including facts, evaluations, diagnostics, transitions,
+frame publications and ordered causes, with only the declared codec header
+normalized. Consequently the §12 event timeline is unchanged. Its new-codec
+journal is 13,262,700 bytes; its PNG retains SHA-256
+`5d04e0a9ffd8abb490c5500b0476e5113459373f8848fe73d3aca5aa8943bf98`.
+This is not a 90-second/15 Hz performance measurement.
+The full HTTP-injected 90-second journal likewise expands identically to A3:
+**4,086 records equal**; its journal is 13,072,248 bytes and its PNG retains
+SHA-256 `3dc27e56a00f70389252f7503f342ca60d071c5d86726af07232c9edead92f9f`.
+
+### Readers and operation
+
+`Simulation` defaults to `Journal(codec="positional-deflate")`; an explicitly
+supplied Journal retains its selection. `RunSession` defaults to 2.0 and accepts
+`journal_codec="json"` for a legacy writer. Its manifest pins the actual codec,
+major/minor and codec identifier from the constructed kernel header. This is a
+declared wire-codec change; evaluator and behaviour versions remain unchanged.
+
+Storage reads seek directly to indexed byte ranges, use the kernel's validated
+header budget/codec, and expand positional frames and compact fact rows. Existing
+indexes require no rewrite. Projector/feed and subject reconstruction consume
+those semantic records through their existing projection hooks. Timeline, capture
+scene and LangGraph transcript readers now stream codec expansion; replay tests
+use `kernel.iter_records()` instead of materializing `kernel.records`. Timeline
+hashing also streams bytes. An actual A2-era 1.x run passed header/feed projection
+and indexed-page equality checks at records 1, 100 and 4,000.
+
+Both traffic-accident end-to-end tests carry the already-registered `slow` marker.
+For everyday checks use `-m 'not docker and not llm and not slow'`; the final
+gate retains `-m 'not docker and not llm'`, so it includes both full chains.
+Reproduce the benchmark with §12's environment:
+
+```bash
+"$task_a2_python" scenarios/demos/traffic-accident/profile_runtime.py \
+  --hz 15 --seconds 30 --codec positional-deflate --out /tmp/aas-q/a/a4/reproduce-30
+"$task_a2_python" scenarios/demos/traffic-accident/profile_runtime.py \
+  --replay /tmp/aas-q/a/a4/reproduce-30/journal.jsonl
+```
+
+Raw measurements/drafts remain in `/tmp/aas-q/a/a4/`. Two actual concurrent GLM
+writers used separate ownership with `workbuddy/glm-5.3-flash`, 131072 output
+budget and no effort. Their sandbox allowed scratch drafts rather than direct
+worktree edits. Both sessions and drafts were reviewed and stopped within the
+bounded task window. Storage budget-name shadowing, unnecessary codec annotations
+in integer offset indexes, and missing compact-row expansion were corrected
+during integration; their draft tests were replaced with targeted real-kernel
+tests. No unverified GLM test result is claimed.
+
+### A4 validation and exact gates
+
+Final targeted dispatch/projection tests: **24 passed in 20.81 s**.
+Codec/ingress/agent targets: **53 passed, 1 deselected in 59.78 s**.
+Ruff and strict mypy passed on the 15 changed Python files, plus the subsequently
+corrected service-review fixture file (16 files total).
+
+The full gate ran **once**: **626 passed, 2 failed, 6 deselected in 1410.11 s**.
+Both failures were `test_h6_restart_recovers_complete_wal_prefix` and
+`test_h4_sse_interleaving_cannot_lose_final_tail`: their synthetic WAL omitted its
+header/resource budgets and the new reader correctly rejected it. The fixture
+now uses an actual committed kernel WAL prefix. The corrected module passed
+**4/4 in 3.58 s**; the full suite was not rerun. The first fixture retest omitted
+the AeroGraph environment variable: the two corrected cases passed, while its
+other two cases had setup errors; the correctly configured retest passed all four.
+This is not presented as an uninterrupted green full-gate run.
+
+The full gate includes both `slow` end-to-end tests: timer CLI chain with zero
+evaluator/model/renderer calls on replay, and the live HTTP-injection chain.
+Their durations were 576.40 s and 179.52 s. Docker/LLM tests were excluded by the
+agreed expression; no frontend files changed, so frontend gates were not run.
+No kernel files were changed and no commit was created. Exact commands:
+
+```bash
+task_a4_python=/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python
+task_a4_files=(
+  src/aeroagentsim/behaviours/dispatch.py src/aeroagentsim/engines/behaviour.py
+  src/aeroagentsim/platform/simulation.py src/aeroagentsim/services/{storage,artifacts}.py
+  src/aeroagentsim/agents/langgraph.py
+  scenarios/demos/traffic-accident/{profile_runtime,timeline}.py
+  tests/platform/{test_journal_codec,test_realtime,test_realtime_streams_example}.py
+  tests/behaviours/test_dispatch.py tests/demos/traffic_accident/test_end_to_end.py
+  tests/agents/{test_decision,test_llm}.py
+)
+PYTHONPATH=src "$task_a4_python" -m ruff check "${task_a4_files[@]}"
+PYTHONPATH=src MYPYPATH=src:../aerokernel:. "$task_a4_python" \
+  -m mypy --strict --explicit-package-bases "${task_a4_files[@]}"
+PYTHONPATH=src "$task_a4_python" -m ruff check tests/platform/test_service_review.py
+PYTHONPATH=src MYPYPATH=src:../aerokernel:. "$task_a4_python" \
+  -m mypy --strict --explicit-package-bases tests/platform/test_service_review.py
+export PYTHONPATH=src
+export AEROAGENTSIM_AEROGRAPH_ROOT=/mnt/data2/weizhiwei/AeroGraph
+export AEROAGENTSIM_CHROMIUM=/home/weizhiwei/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome
+export AEROAGENTSIM_FFMPEG=/usr/share/anaconda3/bin/ffmpeg
+"$task_a4_python" -m pytest -q -p no:cacheprovider \
+  tests/behaviours/test_dispatch.py tests/behaviours/test_runtime.py \
+  tests/behaviours/test_receipts.py tests/behaviours/test_projection.py \
+  -m 'not docker and not llm'
+"$task_a4_python" -m pytest -q -p no:cacheprovider \
+  tests/platform/test_journal_codec.py tests/platform/test_realtime.py \
+  tests/platform/test_realtime_streams_example.py tests/agents/test_decision.py \
+  tests/agents/test_langgraph_example.py -m 'not docker and not llm'
+TMPDIR=/tmp/aas-q/a/a4/tmp "$task_a4_python" -m pytest -q -p no:cacheprovider \
+  tests/platform tests/adapters tests/agents tests/packs tests/authoring \
+  tests/integrations tests/behaviours tests/demos tests/observations \
+  -m 'not docker and not llm' --basetemp=/tmp/aas-q/a/a4/full-gate --durations=5
+"$task_a4_python" -m pytest -q -p no:cacheprovider \
+  tests/platform/test_service_review.py -m 'not docker and not llm'
+```

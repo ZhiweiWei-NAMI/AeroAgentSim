@@ -35,22 +35,32 @@ def tuples(
     registry: MemoryRegistry,
     roles: dict[str, str],
     match: dict[str, Any],
+    *,
+    live: tuple[EntityRef, ...] | None = None,
+    eligible: dict[
+        tuple[str, str | None, str | None], tuple[EntityRef, ...]
+    ] | None = None,
 ) -> list[tuple[dict[str, EntityRef], tuple[object, ...]]]:
     names = sorted(roles)
-    live = live_refs(ctx)
+    if live is None:
+        live = live_refs(ctx)
     choices = []
     for name in names:
         selector = match.get(name, {})
         candidates = []
-        for ref in live:
-            if (
-                not registry.is_a(ref.type_id, roles[name])
-                or "is_a" in selector
-                and not registry.is_a(ref.type_id, selector["is_a"])
-            ):
-                continue
-            if "entity" in selector and ref.id != selector["entity"]:
-                continue
+        key = (roles[name], selector.get("is_a"), selector.get("entity"))
+        pool = None if eligible is None else eligible.get(key)
+        if pool is None:
+            pool = tuple(
+                ref
+                for ref in live
+                if registry.is_a(ref.type_id, key[0])
+                and (key[1] is None or registry.is_a(ref.type_id, key[1]))
+                and (key[2] is None or ref.id == key[2])
+            )
+            if eligible is not None:
+                eligible[key] = pool
+        for ref in pool:
             if "field" in selector:
                 value = ctx.get(ref, selector["field"])
                 if isinstance(value, Absent):
