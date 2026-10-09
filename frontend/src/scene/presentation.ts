@@ -3,7 +3,7 @@ import type { RunHeader } from '../contracts/viewer-feed';
 /** Optional display metadata; never an engine state or inferred entity type. */
 export interface ScenePresentation {
   id?: string;
-  city?: { kind: 'osm2world' | 'glb' | 'geojson'; url: string; assetsBase?: string; offset?: [number, number, number] };
+  city?: { kind: 'osm2world' | 'glb' | 'geojson' | 'traffic-city'; url: string; assetsBase?: string; offset?: [number, number, number] };
   roads?: { url: string; offset?: [number, number, number] };
   trees?: Array<[number, number, number]>;
   hdri?: string;

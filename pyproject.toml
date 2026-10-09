@@ -23,12 +23,6 @@ server = [
     "starlette>=0.46,<1.8",
     "uvicorn>=0.30",
 ]
-legacy = [
-    "simpy>=4", "numpy", "pint", "python-dotenv", "requests", "pandas",
-    "matplotlib",
-    "openai", "tqdm", "fastapi>=0.115,<0.144", "tabulate", "pydantic>=2",
-    "uvicorn>=0.30",
-]
 dev = [
     "pytest", "hypothesis", "pytest-cov", "pytest-asyncio",
     # fastapi/starlette TestClient stack. Starlette >=1.7 prefers the httpx2
@@ -52,10 +46,9 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["aeroagentsim", "aeroagentsim.*", "airfogsim"]
+include = ["aeroagentsim", "aeroagentsim.*"]
 
 [project.scripts]
-airfogsim = "aeroagentsim.cli:main"
 aeroagentsim = "aeroagentsim.services.cli:main"
 
 # Editable local development: pip install -e ../aerokernel -e '.[server]'.
@@ -75,6 +68,7 @@ traffic_road_motion = "aeroagentsim.packs.traffic_accident.road_motion:build"
 traffic_route_inputs = "aeroagentsim.packs.traffic_accident.route_inputs:build"
 traffic_assessment = "aeroagentsim.packs.traffic_accident.traffic_assessment:build"
 traffic_decisions = "aeroagentsim.packs.traffic_accident.decisions:build"
+traffic_decision_failures = "aeroagentsim.packs.traffic_accident.decision_failures:build"
 traffic_capture_bridge = "aeroagentsim.packs.traffic_accident.capture:build"
 traffic_camera_capture = "aeroagentsim.packs.traffic_accident.camera:build"
 

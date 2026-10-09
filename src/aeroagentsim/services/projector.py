@@ -186,6 +186,8 @@ def project(
                         route["recipient"]
                     )
                 result["messages"].append(projected)
+                if "proposal" in item and message.schema_id == "aas.langgraph.record":
+                    result["messages"].extend(_graph_console_records(projected))
                 if "proposal" in item and isinstance(
                     decode_record(item["proposal"]), Emit
                 ):
@@ -222,6 +224,57 @@ def project(
     if subjects is not None:
         subjects.end(record)
     return result
+
+
+def _graph_console_records(message: dict[str, Any]) -> list[dict[str, Any]]:
+    """Present real graph WAL records to the existing agent console contract.
+
+    Originals remain in messages. These views carry their origin, and event
+    proposals are validation records, never invented commands or receipts.
+    """
+    payload = message["payload"]
+    data = json.loads(payload["data_json"])
+    phase = payload["phase"]
+    if phase == "observation":
+        entries = [
+            (
+                "observation",
+                {
+                    **data["initial"]["observation"],
+                    "model": data["model"],
+                    "pin": data["pin"],
+                },
+            )
+        ]
+    elif phase == "model_call":
+        entries = [
+            ("prompt", {"model_call": data["identity"], "request": data["request"]}),
+            ("response", data),
+        ]
+    elif phase == "output":
+        entries = [("validation", {"typed_proposal": data})]
+    else:
+        entries = [(phase, data)]
+    return [
+        {
+            **message,
+            "id": f"{message['id']}/console/{index}",
+            "schemaId": "aas.agent.record",
+            "payload": {
+                **payload,
+                "phase": view_phase,
+                "data_json": json.dumps(
+                    {
+                        **view_data,
+                        "source_schema": "aas.langgraph.record",
+                        "source_message_id": message["id"],
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+        }
+        for index, (view_phase, view_data) in enumerate(entries)
+    ]
 
 
 def _behaviour_record(schema: str, payload: Any) -> tuple[str, dict[str, Any]] | None:

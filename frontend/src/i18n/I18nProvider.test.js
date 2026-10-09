@@ -9,7 +9,7 @@ function LocaleProbe() {
   return (
     <div>
       <span data-testid="locale-value">{locale}</span>
-      <span>{t('navOverview')}</span>
+      <span>{t('viewerTitle')}</span>
       <button type="button" onClick={() => setLocale('zh-CN')}>
         switch-zh
       </button>
@@ -26,8 +26,8 @@ test('I18nProvider switches between english and chinese messages', () => {
     </I18nProvider>
   );
 
-  expect(screen.getByText('Overview')).toBeInTheDocument();
+  expect(screen.getByText('Journal viewer')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'switch-zh' }));
-  expect(screen.getByText('总览')).toBeInTheDocument();
+  expect(screen.getByText('提交回放')).toBeInTheDocument();
   expect(screen.getByTestId('locale-value')).toHaveTextContent('zh-CN');
 });

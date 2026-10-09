@@ -8022,7 +8022,7 @@ engines:
     config:
       packages:
       - path: behaviours.yaml
-        sha256: 1766b379cb3c7572b5f88b22d82e2fd3144a14e145182b71b3feb40c583e414b
+        sha256: e8f4c0b050808dd8d149466cf0a25605d107e2758929812c1829a58bc639ee56
       capabilities:
         traffic.road.follow:
           schema: traffic.road.follow
@@ -8129,7 +8129,7 @@ outputs:
   durability: flush
 behaviours:
 - path: behaviours.yaml
-  sha256: 1766b379cb3c7572b5f88b22d82e2fd3144a14e145182b71b3feb40c583e414b
+  sha256: e8f4c0b050808dd8d149466cf0a25605d107e2758929812c1829a58bc639ee56
 ingress_streams:
 - id: operator
   engine_ids:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import importlib
 import json
 from pathlib import Path
 from typing import Any
@@ -78,24 +77,75 @@ def test_duplicate_yaml_and_escape_preserve_previous_draft(
         store.export_behaviour(identifier, 0)
 
 
-def test_missing_compiler_is_visible_and_does_not_cache_missing_integration(
-    store: WorkspaceStore, monkeypatch: pytest.MonkeyPatch
+def test_real_console_demo_compiles_and_reports_an_authored_error(
+    tmp_path: Path,
 ) -> None:
-    identifier = store.create("test")["id"]
-    store.edit_behaviour(identifier, {"package": package()})
-    original = importlib.import_module
+    from aeroagentsim.authoring.inputs import configured_ontology
 
-    def missing(name: str) -> Any:
-        if name == "aeroagentsim.behaviours.compiler":
-            raise ModuleNotFoundError("missing", name="aeroagentsim.behaviours")
-        return original(name)
+    store = WorkspaceStore(tmp_path / "drafts", configured_ontology())
+    identifier = store.create("Traffic accident (demo)")["id"]
+    draft = store.import_demo(
+        identifier, "traffic-accident", console=True, primitive=True
+    )
+    scenario = draft["scenario"]
+    scenario["engines"]["capture"]["config"]["renderer"] = {
+        "mode": "stub",
+        "fixtures": {},
+    }
 
-    monkeypatch.setattr(importlib, "import_module", missing)
+    def browser_numbers(value: Any) -> Any:
+        if type(value) is float and value.is_integer():
+            return int(value)
+        if isinstance(value, list):
+            return [browser_numbers(item) for item in value]
+        if isinstance(value, dict):
+            return {
+                key: item if key == "behaviours" else browser_numbers(item)
+                for key, item in value.items()
+            }
+        return value
+
+    scenario = browser_numbers(scenario)
+    store.save(identifier, {"scenario": scenario})
+    saved = store.get(identifier)["scenario"]
+    bridge = saved["engines"]["capture_bridge"]["config"]
+    request_schema = next(
+        item["schema"]
+        for item in saved["registry"]["messages"]
+        if item["id"] == bridge["request_schema"]
+    )
+    from aerokernel.registry import MemoryRegistry
+
+    MemoryRegistry(()).validate(
+        request_schema["members"]["timeout_s"], bridge["timeout_s"]
+    )
+    assert store.validate_behaviour(identifier, 0)["valid"] is True
+    from aeroagentsim.authoring.demo import live_decisions
+
+    live = copy.deepcopy(scenario)
+    live_decisions(
+        live,
+        {
+            "base_url": "http://127.0.0.1:9/v1",
+            "model": "explicit-no-calls-test",
+            "api_key_env": "AAS_TEST_NO_KEY",
+        },
+    )
+    store.save(identifier, {"scenario": live})
+    checked = store.validate_behaviour(identifier, 0)
+    assert checked["valid"] is True, checked
+    store.save(identifier, {"scenario": scenario})
+    scenario["behaviours"][0]["chains"]["traffic.incident_report"]["trigger"] = {
+        "predicate": "missing",
+        "edge": "entered",
+    }
+    store.save(identifier, {"scenario": scenario})
     result = store.validate_behaviour(identifier, 0)
     assert result["valid"] is False
-    assert result["compiler_available"] is False
-    assert result["errors"][0]["path"] == "$"
-    assert "Job A" in result["errors"][0]["message"]
+    assert result["scope"] == "bound_scenario"
+    assert result["errors"][0]["path"].startswith(
+        "$.chains.traffic.incident_report.trigger"
+    )
 
 
 def test_rest_draft_export_and_read_actual_wal_identity(

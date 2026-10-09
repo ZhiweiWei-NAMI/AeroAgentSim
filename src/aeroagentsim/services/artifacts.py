@@ -41,7 +41,7 @@ def mount_artifacts(
 ) -> None:
     """Mount before the existing generic POST control route so uploads can match."""
 
-    @app.get("/v1/runs/{run_id}/capture-requests/{request_id}/scene")
+    @app.get("/v1/runs/{run_id}/capture-requests/{request_id:path}/scene")
     def capture_scene(run_id: str, request_id: str) -> dict[str, Any]:
         path = directory(run_id)
         try:
@@ -171,7 +171,7 @@ def mount_artifacts(
             owners = [
                 (name, engine["config"])
                 for name, engine in engines.items()
-                if engine["plugin"] == "capture"
+                if engine["plugin"] in {"capture", "traffic_camera_capture"}
                 and "storage_result_schema" in engine["config"]
             ]
             if len(owners) != 1:
@@ -226,11 +226,14 @@ def scope_capture_storage(scenario: Scenario, directory: Path) -> Scenario:
     remain the already compiled immutable objects. Direct RunSession callers
     supply their chosen run_directory explicitly.
     """
-    if not any(item["plugin"] == "capture" for item in scenario.engines.values()):
+    if not any(
+        item["plugin"] in {"capture", "traffic_camera_capture"}
+        for item in scenario.engines.values()
+    ):
         return scenario
     document = copy.deepcopy(scenario.document)
     for item in document["engines"].values():
-        if item["plugin"] == "capture":
+        if item["plugin"] in {"capture", "traffic_camera_capture"}:
             item["config"]["run_directory"] = str(directory.resolve())
             if item["config"].get("renderer", {}).get("mode") == "browser":
                 item["config"]["renderer"]["service_run_id"] = directory.name

@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from aeroagentsim.authoring.inputs import configured_ontology
 from aeroagentsim.authoring.replay import scene_header, snapshot_scene
 from aeroagentsim.authoring.workspace import WorkspaceStore
@@ -50,6 +52,7 @@ def test_changed_scenario_does_not_attach_a_different_draft_scene(
     store._write(draft)
     run = tmp_path / "run-other"
     run.mkdir()
-    snapshot_scene(store, scenario, run)
+    with pytest.raises(ValueError, match="differs from its saved draft"):
+        snapshot_scene(store, scenario, run)
     assert scene_header(run, "http://localhost") == {}
     assert not (run / "studio-scene.json").exists()

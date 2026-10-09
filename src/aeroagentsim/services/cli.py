@@ -20,6 +20,7 @@ def main() -> None:
     run = sub.add_parser("run")
     run.add_argument("scenario", type=Path)
     run.add_argument("--out", type=Path, default=Path("runs"))
+    run.add_argument("--engine-profile", type=Path)
     check = sub.add_parser("replay")
     check.add_argument("run", type=Path)
     metrics_command = sub.add_parser("metrics")
@@ -34,7 +35,13 @@ def main() -> None:
     if args.command == "run":
         start = time.perf_counter()
         directory = args.out / f"{args.scenario.stem}-{uuid.uuid4().hex[:12]}"
-        with RunSession(args.scenario, directory) as session:
+        from aeroagentsim.scenario import load_scenario
+        from aeroagentsim.scenario.profiles import apply_engine_profile
+
+        scenario = load_scenario(args.scenario)
+        if args.engine_profile is not None:
+            scenario = apply_engine_profile(scenario, args.engine_profile)
+        with RunSession(scenario, directory) as session:
             session.run()
             simulated = session.now_ns / 1e9
         elapsed = time.perf_counter() - start

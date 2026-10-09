@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import copy
-import importlib
 import json
 import math
 import re
+import tempfile
 import threading
 import uuid
 from pathlib import Path
@@ -127,12 +127,23 @@ class WorkspaceStore:
             if "scenario" in changes:
                 from .wire import normalize_wire
 
-                draft["scenario"] = normalize_wire(draft["scenario"], self.catalog)
+                draft["scenario"] = normalize_wire(
+                    draft["scenario"],
+                    self.catalog,
+                    base=self._base(draft["scenario"], identifier),
+                )
             draft.pop("validation", None)
             draft.pop("behaviour_validation", None)
             return self._write(draft)
 
-    def import_demo(self, identifier: str, name: str) -> dict[str, Any]:
+    def import_demo(
+        self,
+        identifier: str,
+        name: str,
+        *,
+        console: bool = False,
+        primitive: bool = False,
+    ) -> dict[str, Any]:
         """Import the actual shipped draft and pinned source files, without implying validity."""
         from .templates import demo_source
 
@@ -154,10 +165,41 @@ class WorkspaceStore:
                     raise ValueError("demo target escapes workspace")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(path.read_bytes())
+            if console:
+                from aeroagentsim.integrations.aerograph import read_snapshot
+
+                draft["registry_catalog"] = read_snapshot(
+                    self.directory(identifier) / document["registry"]["snapshot"]
+                ).registry.to_data()
+                from .demo import configure_console
+
+                draft["demo_console"] = configure_console(
+                    document, self.directory(identifier), primitive=primitive
+                )
             draft["scenario"] = document
             draft.pop("validation", None)
             draft.pop("behaviour_validation", None)
             draft.pop("behaviour_layout", None)
+            self._write(draft)
+            if console:
+                exported = self.export_behaviour(identifier, 0)
+                if exported["inline_package"] is None:
+                    raise ValueError(
+                        "Demo package could not be made editable: "
+                        + str(exported["inline_errors"])
+                    )
+                draft["scenario"]["behaviours"] = [exported["inline_package"]]
+                # The console operator chooses occurrence time; the file-run timer stays in the source template.
+                chain = draft["scenario"]["behaviours"][0]["chains"][
+                    "traffic.incident_report"
+                ]
+                chain["transitions"] = [
+                    row
+                    for row in chain["transitions"]
+                    if row["id"] not in {"schedule", "timer"}
+                ]
+                draft["scenario"]["ingress_streams"][0]["initial_watermark_ns"] = 0
+                draft["scenario"]["ingress_streams"][0]["timeout_s"] = 120.0
             return self._write(draft)
 
     def _behaviour_package(self, identifier: str, index: int) -> dict[str, Any]:
@@ -286,59 +328,16 @@ class WorkspaceStore:
         }
 
     def validate_behaviour(self, identifier: str, index: int) -> dict[str, Any]:
-        """Compiler seam: package checks are distinct from full bound-run validation."""
+        """Validate with the real compiler in the scenario's registry and writer context."""
         with self.lock:
-            package = self._behaviour_package(identifier, index)
-            draft = self.get(identifier)
-            source = f"workspace:{identifier}/behaviours/{index}"
-            result: dict[str, Any] = {
-                "valid": False,
-                "scope": "package_shape",
-                "errors": [],
+            self._behaviour_package(identifier, index)
+            result = self.validate(identifier)
+            return {
+                **result,
+                "scope": "bound_scenario",
+                "compiler_available": True,
+                "errors": result.get("issues", []),
             }
-            try:
-                compiler = importlib.import_module("aeroagentsim.behaviours.compiler")
-            except ModuleNotFoundError as exc:
-                if exc.name not in {
-                    "aeroagentsim.behaviours",
-                    "aeroagentsim.behaviours.compiler",
-                }:
-                    raise
-                result.update(
-                    compiler_available=False,
-                    errors=[
-                        {
-                            "source": source,
-                            "path": "$",
-                            "message": "Temporary compiler seam: Job A is not integrated. Install the behaviour compiler/runtime before full validation or running.",
-                        }
-                    ],
-                )
-            else:
-                result["compiler_available"] = True
-                try:
-                    self._check_behaviour_refs([package], identifier)
-                    ir = compiler.compile_package(package, source=source)
-                    result.update(package_valid=True, package_id=ir.package_id)
-                    # build=None deliberately does not check registry, owners or engine capabilities.
-                    result["errors"] = [
-                        {
-                            "source": source,
-                            "path": "$",
-                            "message": "Package shape compiled. Validate the full scenario to resolve registry, writers, bindings and native compatibility before running.",
-                        }
-                    ]
-                except (ValueError, TypeError, KeyError) as exc:
-                    result["errors"] = [
-                        {
-                            "source": getattr(exc, "source", source),
-                            "path": getattr(exc, "path", "$"),
-                            "message": str(exc),
-                        }
-                    ]
-            draft.setdefault("behaviour_validation", {})[str(index)] = result
-            self._write(draft)
-            return result
 
     def region(
         self, identifier: str, region: dict[str, Any], source: Path
@@ -444,12 +443,15 @@ class WorkspaceStore:
                 loaded = load_scenario(
                     draft["scenario"], base=self._base(draft["scenario"], identifier)
                 )
-                simulation = Simulation(loaded)
-                try:
-                    # Bootstrap catches lifecycle/initial authority failures before Run now.
-                    simulation.start()
-                finally:
-                    simulation.close()
+                with tempfile.TemporaryDirectory(
+                    prefix="validation-", dir=self.directory(identifier)
+                ) as scratch:
+                    simulation = Simulation(loaded, run_directory=Path(scratch))
+                    try:
+                        # Bootstrap checks real registry, owners, capabilities and compiler.
+                        simulation.start()
+                    finally:
+                        simulation.close()
                 result: dict[str, Any] = {
                     "valid": True,
                     "errors": [],

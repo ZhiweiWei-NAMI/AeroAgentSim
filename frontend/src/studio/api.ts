@@ -27,7 +27,7 @@ export interface CityScene {
   ground: { width_m: number; depth_m: number }; diagnostics: string[]; attribution: string;
 }
 export interface Workspace {
-  id: string; name: string; scenario: Scenario; scene?: CityScene;
+  id: string; name: string; scenario: Scenario; scene?: CityScene; registry_catalog?:{types:TypeRow[];fields:Array<Record<string,any>&{id:string}>;schemas:Record<string,any>};
   region?: { extract: string; bounds: number[]; alt: number; level_height_m: number };
   validation?: { valid: boolean; errors: string[]; digest?: string; issues?:Array<{source:string;path:string;message:string}> };
 }

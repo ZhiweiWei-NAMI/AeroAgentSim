@@ -756,3 +756,31 @@ TMPDIR=/tmp/aas-q/a/a4/tmp "$task_a4_python" -m pytest -q -p no:cacheprovider \
 "$task_a4_python" -m pytest -q -p no:cacheprovider \
   tests/platform/test_service_review.py -m 'not docker and not llm'
 ```
+
+## 15. LIVE decision profile
+
+Use `--engine-profile scenarios/demos/traffic-accident/profiles/live-llm.yaml`
+with the CLI in §12. This selects the journaled LangGraph plugin and the local
+`glm-5.3-flashx` model. The same example graph and manifest-pinned prompts produce
+report/route and parallel UAV bid proposals from committed observations.
+Eligibility, the noninterruptible medical lock, stop receipts and minimum-ETA
+award remain authored rules. An Alpha acceptance proposal cannot override its
+medical task. The optional model award explanation is omitted.
+
+Timeout, HTTP and output-validation failures emit `traffic.decision.failed`;
+reporting terminates `failed`, and bid collection terminates `no_candidate`.
+They never consume `fixtures/decisions.json` as a fallback. Decision transcripts
+are visible through the existing console feed projection. Both kernel replay and
+graph re-execution are offline; graph replay checks recorded model requests.
+For the command, budgets, projection contract and representative tests, see
+[langgraph.md](langgraph.md#flagship-live-decisions-r5).
+
+R5's completed LIVE verification used `glm-5.3-flashx`, including two journaled
+HTTP 429 attempts followed by a successful bounded retry. It reached the same
+capture-chain completion at 49.333333334 s and ran through the configured 90 s.
+The successful CLI artifact is
+`/tmp/aas-q/r5/live-bounded/scenario-48e37e46affc`; the marked live test verified
+both graph re-execution and full kernel replay with zero model calls. The stub
+counterexample separately forces Alpha's `accept=true` and observes only
+Bravo's rule-authored award on the committed scene. See the verification record
+in [langgraph.md](langgraph.md#r5-verification-record-2026-10-09).

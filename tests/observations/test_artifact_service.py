@@ -180,12 +180,14 @@ def test_exact_capture_prefix_is_readable_before_worker_index_refresh(
     run, _ = finished_run(root / "run-1")
     store = ArtifactStore(run)
     request = CaptureRequest.from_data(store.get("photo-1")["request"])
+    request = replace(request, request_id="photo-1/episode-0")
+    store.register(request)
     # Simulate the actual worker's interval between committed waves and _index().
     (run / "index.json").write_text("[]")
     index_before = (run / "index.json").read_bytes()
     journal_before = (run / "journal.jsonl").read_bytes()
     with TestClient(create_app(root)) as client:
-        response = client.get("/v1/runs/run-1/capture-requests/photo-1/scene")
+        response = client.get("/v1/runs/run-1/capture-requests/photo-1%2Fepisode-0/scene")
         assert response.status_code == 200, response.text
         scene = response.json()
         assert scene["source_cut"] == request.to_data()["source_cut"]

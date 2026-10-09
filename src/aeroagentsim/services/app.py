@@ -125,7 +125,10 @@ def create_app(
                         document, body["studio_workspace"]
                     )
                     document = await asyncio.to_thread(
-                        normalize_wire, document, app.state.studio.catalog
+                        normalize_wire,
+                        document,
+                        app.state.studio.catalog,
+                        base=document_base,
                     )
                 scenario = await asyncio.to_thread(
                     load_scenario, document, base=document_base
