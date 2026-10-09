@@ -21,6 +21,7 @@ from aeroagentsim.scenario import load_scenario
 
 from .projector import header, project
 from .storage import RunStorage
+from .subjects import projection_context
 from .worker import execute
 
 TERMINAL = {"completed", "stopped", "faulted", "interrupted"}
@@ -164,10 +165,12 @@ def create_app(
         from_index: int = Query(0, alias="from", ge=0),
         limit: int = Query(256, ge=1, le=4096),
     ) -> dict[str, Any]:
-        storage = RunStorage(directory(run_id))
+        path = directory(run_id)
+        storage = RunStorage(path)
         metadata = storage.metadata()
         records = storage.records(max(1, from_index), limit)
-        result = [project(record) for record in records]
+        subjects = projection_context(path, max(1, from_index))
+        result = [project(record, subjects=subjects) for record in records]
         return {
             "commits": result,
             "next": result[-1]["commitIndex"] + 1 if result else max(1, from_index),
@@ -192,11 +195,12 @@ def create_app(
 
         async def tail() -> AsyncIterator[str]:
             nonlocal cursor
+            subjects = projection_context(path, cursor)
             while not await request.is_disconnected():
                 storage = RunStorage(path)
                 records = storage.records(cursor, 256)
                 for record in records:
-                    commit = project(record)
+                    commit = project(record, subjects=subjects)
                     cursor = commit["commitIndex"] + 1
                     yield f"id: {commit['commitIndex']}\nevent: commit\ndata: {json.dumps(commit, separators=(',', ':'))}\n\n"
                 metadata = storage.metadata()

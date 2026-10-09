@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from aerokernel import Instant
+from aerokernel import Instant, MemoryRegistry
 from aerokernel.codec import encode
 from fastapi.testclient import TestClient
 
@@ -19,6 +19,11 @@ from aeroagentsim.services.storage import RunStorage
 
 def artifacts(path: Path) -> RunStorage:
     path.mkdir(parents=True)
+    # An empty journal fixture still retains the pinned projection inputs.
+    (path / "runtime.registry.json").write_text(
+        json.dumps(MemoryRegistry(()).to_data())
+    )
+    (path / "scenario.json").write_text(json.dumps({"registry": {"messages": []}}))
     rows = [
         {"index": index, "instant": encode(Instant(index)), "items": []}
         for index in range(4)

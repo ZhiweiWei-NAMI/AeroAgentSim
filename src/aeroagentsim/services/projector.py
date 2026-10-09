@@ -23,6 +23,7 @@ from aerokernel.time import Instant
 from aerokernel.values import thaw
 
 from .storage import RunStorage
+from .subjects import SubjectProjection
 
 
 def instant(at: Instant) -> dict[str, Any]:
@@ -61,9 +62,13 @@ def stamp(value: Any) -> dict[str, str]:
     }
 
 
-def project(record: dict[str, Any]) -> dict[str, Any]:
+def project(
+    record: dict[str, Any], *, subjects: SubjectProjection | None = None
+) -> dict[str, Any]:
     """Keep journal indices, including empty intent/control/seal records."""
     record = expand_record(record)
+    if subjects is not None:
+        subjects.begin(record)
     result: dict[str, Any] = {
         "commitIndex": record["index"],
         "at": instant(decode_record(record["instant"])),
@@ -156,6 +161,9 @@ def project(record: dict[str, Any]) -> dict[str, Any]:
             message = decode_record(item["message"])
             if message.kind in {"command", "event"}:
                 route = routes.get(message.id)
+                refs = _message_subjects(thaw(message.payload))
+                if subjects is not None:
+                    refs.extend(subjects.subjects(message))
                 projected = {
                     "id": message.id,
                     "kind": message.kind,
@@ -164,7 +172,7 @@ def project(record: dict[str, Any]) -> dict[str, Any]:
                     "at": instant(message.at),
                     "payload": lossless(thaw(message.payload)),
                     "subjects": [
-                        entity(ref) for ref in _message_subjects(thaw(message.payload))
+                        entity(ref) for ref in dict.fromkeys(refs)
                     ],
                 }
                 if "proposal" in item:
@@ -196,6 +204,8 @@ def project(record: dict[str, Any]) -> dict[str, Any]:
     for receipt in result["receipts"]:
         if "result" in receipt:
             receipt["result"] = lossless(receipt["result"])
+    if subjects is not None:
+        subjects.end(record)
     return result
 
 
@@ -277,6 +287,14 @@ def header(directory: Path) -> dict[str, Any]:
         "runtimeRegistry": lossless(registry.to_data()),
         "messages": lossless(registry.to_data()["messages"]),
     }
+    subject_spec = scenario["registry"]
+    declared = dict(subject_spec.get("message_subjects", {}))
+    declared.update({
+        item["id"]: item["subjects"]
+        for item in subject_spec.get("messages", []) if "subjects" in item
+    })
+    if declared:
+        result["messageSubjects"] = declared
     if "origin" in scenario:
         result["origin"] = scenario["origin"]
     entries = storage.entries

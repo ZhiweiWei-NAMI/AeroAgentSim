@@ -19,6 +19,14 @@ class Simulation:
     """Bind arbitrary registered types and plugins; the kernel owns mutable state."""
 
     def __init__(self, scenario: Scenario, *, journal: Journal | None = None) -> None:
+        try:
+            self._construct(scenario, journal=journal)
+        except StopIteration as exc:
+            raise ScenarioError(
+                "scenario.bind: unexpected exhausted iterator during Simulation construction"
+            ) from exc
+
+    def _construct(self, scenario: Scenario, *, journal: Journal | None) -> None:
         self.scenario = scenario
         catalog = EngineCatalog()
         partitions: dict[str, Partition] = {}
@@ -35,8 +43,17 @@ class Simulation:
             )
             try:
                 engine = catalog.build(item["plugin"], build)
+            except ScenarioError:
+                raise
+            except StopIteration as exc:
+                raise ScenarioError(
+                    f"engines.{engine_id}.config: plugin exhausted an iterator during construction"
+                ) from exc
             except (ValueError, KeyError, TypeError) as exc:
-                raise ScenarioError(f"engines.{engine_id}.config: {exc}") from exc
+                raise ScenarioError(
+                    f"engines.{engine_id}.config: {exc}",
+                    code=getattr(exc, "code", None),
+                ) from exc
             engines.append(engine)
             for partition in engine.partitions:
                 if partition.id in partitions:

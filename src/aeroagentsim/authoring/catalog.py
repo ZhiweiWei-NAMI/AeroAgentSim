@@ -9,7 +9,7 @@ from aerokernel.values import thaw
 
 from aeroagentsim.integrations.aerograph import Policy, Selection, compile_registry
 from aeroagentsim.integrations.aerograph.source import Sources
-from aeroagentsim.platform.plugins import BUILTINS, EngineCatalog
+from aeroagentsim.platform.plugins import EngineCatalog
 
 
 class Catalog:
@@ -83,23 +83,19 @@ class Catalog:
 def engines() -> list[dict[str, Any]]:
     """Report plugin availability without starting an external simulator."""
     catalog = EngineCatalog()
-    choices = (
-        "kinematic",
-        "px4_gazebo",
-        "sumo",
-        "ns3",
-        "workflow",
-        "decision",
-        "logistics",
-        "inspection",
-    )
-    return [
-        {
+    result = []
+    for name in catalog.names():
+        item: dict[str, Any] = {
             "id": name,
-            "available": name in BUILTINS or name in catalog.entries,
-            "description": "installed plugin"
-            if name in BUILTINS or name in catalog.entries
-            else "requires engine entry point installation",
+            "available": True,
+            "description": "installed plugin",
         }
-        for name in choices
-    ]
+        try:
+            schema = catalog.config_schema(name)
+        except Exception as exc:  # noqa: BLE001 - expose a broken plugin without hiding others
+            item.update(available=False, error=f"{type(exc).__name__}: {exc}")
+        else:
+            if schema is not None:
+                item["config_schema"] = schema
+        result.append(item)
+    return result
