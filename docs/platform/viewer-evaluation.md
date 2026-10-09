@@ -1,11 +1,122 @@
-# Viewer evaluation — V1 / Q7 + Q7b
+# Viewer evaluation — V2 / V1 / Q7 + Q7b
 
-V1 meets the matched hardware viewport target with **active** rendering: three
-RTX 3090 Vulkan repetitions give 16.7 / 16.8 / 16.8 ms during zoom and
-16.7 / 16.7 / 16.8 ms during recorded playback. The measured AeroBench reference
-is 33.5 / 66.7 / 83.3 ms. Paused cadence is reported separately from throughput.
-The retirement decision remains open for broader visual, authoring and UI scope.
-Q7/Q7b evidence below is retained as historical provenance.
+
+V2 adds procedural city detail and retains the **60 fps matched hardware gate**:
+active zoom p50/p95 **16.7/16.8 ms**, recorded playback **16.7/16.7 ms** over
+three RTX 3090 Vulkan invocations. Fresh AeroBench reference: **33.4/66.7 ms**.
+V1/Q7/Q7b evidence below remains historical provenance.
+
+## V2 — procedural city visual quality
+
+The common beige walls/pink roofs are replaced by per-building slate glazing,
+neutral masonry, floor bands and anti-aliased window grids. Original range IDs
+join OSM `building:levels`, building type, material/colour and roof tags; missing
+style tags use deterministic **display estimates**, without changing source tags,
+building geometry, entity state or exact inspector values. Flat roof triangles
+receive instanced equipment; roof seams and skylights are procedural shading.
+The original verified OSM source supplies park/grass/plaza/water polygons, including
+multipolygon holes. The matched Huangpu crop has **8 green regions**, **0 source
+`natural=tree` nodes** and **1,131 estimated landscaping trees**. Trees avoid source
+building footprints and estimated road corridors. Other explicitly tagged landuse,
+including water, is supported; missing polygons are never invented.
+
+Existing road, sidewalk and marking geometry receives procedural asphalt, paving,
+dash and crossing finishes. Vegetation uses two instanced meshes. Facade variation
+uses vertex attributes in the original building batches, rather than a draw call
+per building. The licensed day HDRI, analytic sky, neutral ground, warm sun, snapped
+500 m shadow coverage, atmospheric fog, ACES and AO give depth. The toolbar's
+**Day/Dusk · display** choice changes art direction and stable emissive windows.
+The visible status labels facades, landscaping, light, haze and screen-sized glyphs
+as display effects. Distance glyphs are coarse silhouettes derived from the actual
+bound model, with a minimum projected size; selected entities retain the full
+model, outline and a screen-sized selection ring.
+
+No dependency or external imagery was added. No historical city texture pixels
+are requested: a browser request audit checked every declared texture hash.
+The existing V1/Q7 geometry and original OSM bytes are still SHA-256 verified.
+[Asset policy](../../ASSETS.md) and [inventory](../../frontend/assets.manifest.json)
+remain the licence sources; D-assets is not resolved by this rendering change.
+
+Matched camera: position `[280,220,300]`, target `[30,25,-25]`, vertical FOV 48°,
+1440 × 900 surface, DPR 1. The three changed thumbnails are 640 × 400, 96-colour
+PNG, respectively **78,183 / 120,182 / 101,515 bytes** (each below 150 KB).
+Unreduced captures retain full colour and resolution in scratch.
+
+| V1 before | V2 day | V2 dusk (display) |
+|---|---|---|
+| ![V1 matched city](img/v2-viewer-before.png) | ![V2 matched city](img/q7-viewer-city.png) | ![V2 dusk](img/v2-viewer-dusk.png) |
+
+[Full before](/tmp/aas-q/v2/before/matched-aas-100-hardware.png),
+[full day](/tmp/aas-q/v2/day-matched.png),
+[full dusk](/tmp/aas-q/v2/dusk-matched.png),
+[labelled UI](/tmp/aas-q/v2/day-ui.png),
+[fresh AeroBench comparison](/tmp/aas-q/v2/hardware-r1/matched-aerobench-native-hardware.png).
+The existing AeroBench thumbnail in the historical comparison below is retained.
+The captures show the facade, roof, vegetation, ground and lighting differences;
+no independent perceptual scoring was collected.
+
+**Hardware frame-time table.** Chromium 151.0.7922.34; verified renderer:
+`ANGLE (NVIDIA, Vulkan 1.3.242 (NVIDIA NVIDIA GeForce RTX 3090 (0x00002204)), NVIDIA)`.
+Nearest-rank pooling; milliseconds rounded to 0.1. V1 before is one fresh invocation,
+V2 is three sequential invocations, AeroBench is one fresh reference invocation.
+All V2 measured cases retained **med** quality; the benchmark did not downgrade.
+
+| Matched active case | V1 before p50/p95 | V2 p50/p95/p99 | Actual renders r1/r2/r3 | V2 CPU render p50/p95 | Calls p50 | Triangles p50 |
+|---|---|---|---|---|---|---|
+| 100 entities, wheel zoom | 16.7 / 16.7 | **16.7 / 16.8 / 16.8** | 354 / 358 / 358 | 4.5 / 6.5 | 101 | 784,811 |
+| 100 entities, recorded playback | 16.7 / 16.7 | **16.7 / 16.7 / 16.8** | 360 / 361 / 360 | 4.4 / 5.8 | 101 | 784,811 |
+| AeroBench native preview, 94 entities | — | 33.4 / 66.7 / 66.8 | 143 / — / — | unavailable | 961 | 8,294,845 |
+
+GPU elapsed query p50/p95: zoom **0.699/0.705 ms**, playback **0.700/0.705 ms**;
+queries are asynchronous and deduplicated. Paused captures had **zero actual render
+samples** and are excluded from throughput claims. One browser ran at a time;
+shared host/device workloads were not isolated. All spatial renderers passed the
+NVIDIA guard; all measured cases had zero page errors. The native AeroBench
+positions/models and 80.75 s traffic/visual-flight cut remain different from our
+100-entity recorded feed; the comparison matches area/camera/surface, not physics.
+Only `/tmp/aas-q/q7/aerobench-copy` was served; the real AeroBench tree was untouched.
+[Raw samples and pooled summary](/tmp/aas-q/v2/hardware-summary.json).
+
+Low disables shadows/AO; med retains 2048 shadows, half-resolution Low AO and SMAA;
+high uses 4096 shadows, High AO and High SMAA. DPR caps remain 1 / 1.25 / 1.5.
+Automatic quality drops high→med→low below 50 fps over a five-second active window;
+a manual choice locks the requested tier until a new viewport. The browser check
+exercised all tiers, Day/Dusk, actual entity selection→exact inspector, and an
+automatic med→low transition under CDP CPU throttling. That stress check is separate
+from the frame table. [Browser checks](/tmp/aas-q/v2/browser-check.json).
+
+Reproduce using the retained licensed asset/feed paths, without npm installation:
+
+```bash
+# frontend/ in this worktree
+npm run typecheck
+npm test -- --no-cache
+npm run build -- --outDir /tmp/aas-q/v2/after-dist
+# Link assets/{city,environment,models,licenses} from the retained Q7 scratch build.
+npm run preview -- --host 127.0.0.1 --port 18783 --strictPort --outDir /tmp/aas-q/v2/after-dist
+# worktree root; each invocation creates one browser and closes it.
+Q7_GL=hardware Q7_ANGLE=vulkan Q7_ACTIVE=1 Q7_CASES=p1-scale-city-100 \
+ Q7_VIEWER_URL=http://127.0.0.1:18783 Q7_OUT=/tmp/aas-q/v2/hardware-r2 \
+ node frontend/e2e/q7-measure.mjs
+```
+
+**Gates:** typecheck passed; `npm test -- --no-cache` **26 files / 125 tests passed**;
+production build passed. [Typecheck](/tmp/aas-q/v2/typecheck-final.log),
+[tests](/tmp/aas-q/v2/tests-final.log), [build](/tmp/aas-q/v2/build-glyph.log).
+Python ruff/strict mypy and non-Docker Python suites were not applicable or rerun:
+no Python files or Python execution paths changed. No Docker or native simulation
+was run. Three thumbnail size checks and `git diff --check` passed. No git commit,
+branch, reset or checkout was performed.
+
+Two concurrent WorkBuddy DSH implementation sessions were stopped after extended
+planning, before code delivery. Two narrower concurrent sessions then completed
+with exit 0, each delivering five tests in its own assigned viewport test file.
+All four selected `workbuddy/glm-5.3-flash`, maxTokens **131072**, with no effort
+parameter. One writer fixed material typing found during concurrent typechecks; parent review
+removed a vacuous assertion and corrected synthetic-fixture wording. Final gates cover
+the integrated result. [Facade session](/tmp/aas-q/v2/glm-facade/tests-out.txt),
+[surface session](/tmp/aas-q/v2/glm-surfaces/tests-out.txt),
+[actual session records](/tmp/aas-q/v2/dsh-home/sessions).
 
 ## V1 — viewport performance follow-up
 
@@ -490,7 +601,7 @@ work. These differences must remain
 visible when interpreting triangle/call/frame-time numbers. No equal-physics or
 equal-visual-fidelity claim follows from this comparison.
 
-Small review thumbnails (full screenshots remain in scratch):
+Historical comparison thumbnails (our thumbnail is updated by V2; original full Q7 captures remain in scratch):
 
 | Our viewer, 100 entities | AeroBench, 94 entities |
 |---|---|

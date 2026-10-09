@@ -19,6 +19,7 @@ export function ViewportView(props: Props) {
     const value=new URLSearchParams(location.search).get('camera');return ['orbit','follow','chase','cinematic'].includes(value ?? '')?value as CameraMode:undefined;
   });
   const [quality,setQuality]=useState<Quality>(props.quality),[fps,setFps]=useState<number>(),[status,setStatus]=useState(''),[collapsed,setCollapsed]=useState(false);
+  const [dusk,setDusk]=useState(new URLSearchParams(location.search).get('lighting')==='dusk');
   useEffect(()=>{
     let frame=0,last=performance.now(),notify=last,lastSeek='',lastNotified='';
     try{
@@ -26,7 +27,7 @@ export function ViewportView(props: Props) {
         quality:props.quality,onSelect:key=>current.current.onSelect(key),onError:error=>current.current.onError(error),onStatus:setStatus,
         onQuality:(quality,fps)=>{setQuality(quality);setFps(fps);current.current.onQuality(quality,fps);},
       });
-      viewport.current.setCameraMode(mode ?? props.mode);viewport.current.setSelection(props.selected);
+      viewport.current.setDusk(dusk);viewport.current.setCameraMode(mode ?? props.mode);viewport.current.setSelection(props.selected);
       const animate=(now:number)=>{
         try{
           const p=current.current,delta=(now-last)/1000;last=now;
@@ -54,9 +55,10 @@ export function ViewportView(props: Props) {
       <select aria-label="View quality" value={quality} onChange={event=>{const q=event.target.value as Quality;setQuality(q);viewport.current?.setQuality(q,true);}}>
         <option value="low">Low</option><option value="med">Balanced</option><option value="high">High</option>
       </select><span>{fps===undefined?'WebGL2':`${fps.toFixed(0)} FPS`}</span>
+      <select aria-label="Display lighting" value={dusk?'dusk':'day'} onChange={event=>{const value=event.target.value==='dusk';setDusk(value);viewport.current?.setDusk(value);}}><option value="day">Day · display</option><option value="dusk">Dusk · display</option></select>
       <button aria-label="Toggle inspector" aria-expanded={!collapsed} onClick={()=>{const next=!collapsed;setCollapsed(next);root.current?.closest('.viewer-main')?.setAttribute('data-inspector-collapsed',String(next));}}>Inspector {collapsed?'＋':'−'}</button>
     </div>
-    <div className="scene-status" title={status}>{status}</div>
+    <div className="scene-status" title={status}>{status} · Facades, landscaping, light, haze & screen-sized glyphs are display effects</div>
     <div className="scene-attribution">{root.current?.dataset.attribution}</div>
     <div className="mission-overlay"><MissionTimeline store={props.store} selected={props.selected} />
       <div className="event-strip" aria-label="Recorded event markers">{duration>0n&&events.slice(-200).map(event=>
