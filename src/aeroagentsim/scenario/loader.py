@@ -43,11 +43,17 @@ from aeroagentsim.integrations.aerograph import (
     read_snapshot,
 )
 
+from .subjects import declarations
+
 FORMAT = "aeroagentsim.scenario/v1"
 
 
 class ScenarioError(ValueError):
     """A scenario path identifies the configuration requiring correction."""
+
+    def __init__(self, message: str, *, code: str | None = None) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 class UniqueLoader(yaml.SafeLoader):
@@ -169,7 +175,9 @@ def load_scenario(
     except ScenarioError:
         raise
     except (KeyError, TypeError, ValueError, OSError, yaml.YAMLError) as exc:
-        raise ScenarioError(f"scenario: {exc}") from exc
+        raise ScenarioError(
+            f"scenario: {exc}", code=getattr(exc, "code", None)
+        ) from exc
 
 
 def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
@@ -204,6 +212,7 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             "types",
             "fields",
             "messages",
+            "message_subjects",
             "relations",
             "field_metadata",
         },
@@ -259,9 +268,13 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             item,
             "registry.messages[]",
             {"id", "kind", "schema"},
-            {"result_schema", "feedback_schema", "cancel_support"},
+            {"result_schema", "feedback_schema", "cancel_support", "subjects"},
         )
-        messages.append(MessageDescriptor(**item))
+        messages.append(
+            MessageDescriptor(
+                **{key: value for key, value in item.items() if key != "subjects"}
+            )
+        )
     overrides = obj(registry_spec.get("field_metadata", {}), "registry.field_metadata")
     known_fields = {f.id for f in fields}
     if set(overrides) - known_fields:
@@ -349,6 +362,10 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         schemas=compiled.registry.to_data()["schemas"],
         relations=tuple(relations),
     )
+    try:
+        declarations(registry, document)
+    except (ValueError, KeyError, TypeError) as exc:
+        raise ScenarioError(str(exc), code=getattr(exc, "code", None)) from exc
     refs: list[EntityRef] = []
     initial: dict[str, dict[str, Any]] = {}
     for index, item in enumerate(seq(document["entities"], "entities")):
@@ -357,16 +374,27 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         type_id = text(item["type"], f"entities[{index}].type")
         if entity_id in initial:
             raise ScenarioError(f"entities[{index}].id: duplicate {entity_id!r}")
-        registry.is_a(type_id, type_id)
+        try:
+            registry.is_a(type_id, type_id)
+        except ValueError as exc:
+            raise ScenarioError(
+                f"entities.{entity_id}.type: {exc}", code=getattr(exc, "code", None)
+            ) from exc
         refs.append(EntityRef(run_id, "0", entity_id, 0, type_id))
         initial[entity_id] = obj(item["facts"], f"entities[{index}].facts")
         for field, value in initial[entity_id].items():
-            descriptor = registry.field(field)
-            if not registry.is_a(type_id, descriptor.declaring_type):
+            path = f"entities.{entity_id}.facts.{field}"
+            try:
+                descriptor = registry.field(field)
+                if not registry.is_a(type_id, descriptor.declaring_type):
+                    raise ScenarioError(f"{path}: field does not apply to {type_id}")
+                registry.validate(descriptor.schema, value)
+            except ScenarioError:
+                raise
+            except ValueError as exc:
                 raise ScenarioError(
-                    f"entities[{index}].facts.{field}: field does not apply to {type_id}"
-                )
-            registry.validate(descriptor.schema, value)
+                    f"{path}: {exc}", code=getattr(exc, "code", None)
+                ) from exc
     by_id = {ref.id: ref for ref in refs}
     bindings = obj(document["bindings"], "bindings")
     contract(

@@ -11,6 +11,7 @@ from typing import Any, cast
 
 from aerokernel import BindingManifest, EntityRef, MemoryRegistry
 from aerokernel.engine import Engine, Partition
+from aerokernel.values import normalize
 
 from aeroagentsim.models import MotionModel
 
@@ -84,19 +85,48 @@ class EngineCatalog:
     """Resolve installed plugins lazily; a factory returns any kernel Engine."""
 
     def __init__(self) -> None:
-        self.entries = {
-            entry.name: entry for entry in entry_points(group="aeroagentsim.engines")
-        }
-        if len(self.entries) != len(entry_points(group="aeroagentsim.engines")):
+        installed = entry_points(group="aeroagentsim.engines")
+        self.entries = {entry.name: entry for entry in installed}
+        if len(self.entries) != len(installed):
             raise ValueError("Duplicate aeroagentsim.engines entry point names")
 
-    def build(self, plugin: str, context: EngineBuild) -> Engine:
+    def names(self) -> tuple[str, ...]:
+        """Every installed engine and builtin, with entry points taking precedence."""
+        return tuple(sorted(set(BUILTINS) | set(self.entries)))
+
+    def factory(self, plugin: str) -> Factory:
+        """Import the declared factory without constructing an engine."""
         if plugin in self.entries:
             factory = cast(Factory, self.entries[plugin].load())
         elif plugin in BUILTINS:
             factory = cast(Factory, import_module(BUILTINS[plugin]).build)
         else:
+            raise ValueError(f"unknown plugin {plugin!r}; install its distribution")
+        if not callable(factory):
+            raise TypeError(f"plugin {plugin!r}: engine factory must be callable")
+        return factory
+
+    def config_schema(self, plugin: str) -> dict[str, Any] | None:
+        """Optional factory.config_schema is a portable object configuration descriptor.
+
+        It is data, never a factory invocation or a source of default values.
+        Studio handles only its supported form vocabulary; other shapes retain
+        their complete descriptor and use the raw configuration editor.
+        """
+        factory = self.factory(plugin)
+        if not hasattr(factory, "config_schema"):
+            return None
+        schema = factory.config_schema
+        if not isinstance(schema, dict):
+            raise TypeError(f"plugin {plugin!r}.config_schema: expected a mapping")
+        result = normalize(schema)
+        if not isinstance(result, dict) or result.get("type") != "object":
+            raise ValueError(f"plugin {plugin!r}.config_schema: expected object schema")
+        return cast(dict[str, Any], result)
+
+    def build(self, plugin: str, context: EngineBuild) -> Engine:
+        if plugin not in self.entries and plugin not in BUILTINS:
             raise ValueError(
                 f"engines.{context.id}.plugin: unknown plugin {plugin!r}; install its distribution"
             )
-        return factory(context)
+        return self.factory(plugin)(context)

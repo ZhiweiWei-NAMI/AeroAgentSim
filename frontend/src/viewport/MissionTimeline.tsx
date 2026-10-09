@@ -1,11 +1,11 @@
 import type { EntityKey } from '../contracts/viewer-feed';
 import type { FeedStore } from './feed-store';
-import { entityId } from './bindings';
+import { messagesForEntity } from './message-subjects';
 import { seconds } from '../feeds/format';
 
 /** Uses exact recorded subjects/receipts; never infers mission completion from position. */
 export function MissionTimeline({ store, selected }: { store: FeedStore; selected?: EntityKey }) {
-  const messages = selected ? store.messages.filter(message => message.subjects?.some(key => entityId(key) === entityId(selected))) : [];
+  const messages = messagesForEntity(store.messages, selected);
   const receipts = new Map(store.receipts.map(receipt => [receipt.commandId, receipt]));
   return <details className="mission-timeline" open={false}>
     <summary>{selected?.id ?? 'Select a unit'} <span> · {messages.length} recorded commands / events</span></summary>

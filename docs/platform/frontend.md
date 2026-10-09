@@ -103,7 +103,8 @@ compatibility while real P1 services publish full temporal data:
 | Retraction interval/reason | Shadows only the declared interval at its known prefix |
 | Edge `assert|close|cancel` and intervals | Each version carries the resulting interval; cancellation has no active interval |
 | Field `schema/metadata`, header `runtimeRegistry/messages` | Complete runtime descriptors, including command capability and result schemas |
-| Message `subjects` | Typed entity refs explicitly declared in message payloads, including command subject refs |
+| Message `subjects` | Typed `$ref` values and authored subject paths resolved to recorded entity generations |
+| Optional header `messageSubjects` | Pinned platform subject declarations by message schema ID; additive to viewer-feed/v1 |
 
 `registryDigest` hashes canonical `runtime.registry.json`, including authored
 local descriptors. The compiled source snapshot digest is retained separately
@@ -118,6 +119,36 @@ exact nanoseconds on hover, alongside source stamps and version identities.
 Scenario JSON submission preserves the user's decimal tokens instead of
 round-tripping them through JavaScript numbers; strict backend schema validation
 still rejects incompatible numeric kinds.
+
+String payload IDs need an explicit subject declaration. For a local scenario
+message descriptor, add `subjects` alongside `id`, `kind` and `schema`:
+
+```yaml
+subjects:
+  - path: [entity]
+    type_id: example:Job
+```
+
+The payload schema must declare that path as `string` or `ref`. `type_id` is a
+registered entity type; subtypes are accepted. Paths are lists of exact record
+member names and nonnegative array indices; `"*"` selects every array item.
+Nested example: `path: [jobs, "*", entity]`. Optional or nullable schema members
+may omit a subject; missing required values and unknown identities remain errors.
+
+For messages already in a pinned registry snapshot, declare the same bindings
+under `registry.message_subjects.<message-schema-id>` in the scenario. Inline
+`subjects` and this overlay cannot both define the same message. The declaration
+is a platform extension preserved in the scenario digest and run artifacts;
+kernel payload validation and the runtime registry remain unchanged.
+
+A string subject resolves to the live, WAL-recorded generation at its committed
+message cut. Delayed messages about an earlier generation can declare an integer
+`generation_path`, for example `[generation]`, alongside a scalar string `path`.
+Both members must then be present, and that generation must have been recorded.
+Typed `$ref` payloads retain their original identity. Subjects are deduplicated,
+and REST pages/SSE reconnects reconstruct lifecycle identity from the preceding
+journal prefix. Inspector and timeline filters use `(id, generation)` only;
+ordinary strings, source names, and coordinates never imply a subject.
 
 Real Runs pages use `feeds/temporal-store.ts`. It resolves facts and edges by
 physical validity and the selected journal knowledge prefix, including finite,

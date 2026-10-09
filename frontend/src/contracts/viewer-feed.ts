@@ -73,6 +73,8 @@ export interface RunHeader {
   end?: Instant;
   runtimeRegistry?: unknown;
   messages?: unknown[];
+  /** Authored platform bindings for string/ref payload paths, indexed by schema ID. */
+  messageSubjects?: Record<string, Array<{ path: Array<string | number>; type_id: string; generation_path?: Array<string | number> }>>;
 }
 
 /** One committed kernel transaction, projected for viewing. */
@@ -89,6 +91,7 @@ export interface FeedCommit {
   }>;
   retracted: Array<TemporalMetadata & { entity: EntityKey; fieldId: string; validFrom?: Instant; reason?: string }>;
   edges: Array<TemporalMetadata & { edgeId: string; relationId: string; source: EntityKey; target: EntityKey; op: "assert" | "close" | "cancel"; validFrom?: Instant | null }>;
+  /** Subjects come from typed $ref values or declared payload paths, never arbitrary strings. */
   messages: Array<{ id: string; kind: "command" | "event"; schemaId: string; source: string; target?: string; topic?: string; at: Instant; payload: unknown; subjects?: EntityKey[] }>;
   receipts: Array<{ commandId: string; status: string; result?: unknown }>;
 }

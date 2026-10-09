@@ -4,13 +4,14 @@ import type { FeedStore } from './feed-store';
 import { entityId } from './bindings';
 import { useI18n } from '../i18n/I18nProvider';
 import { exactValue, seconds } from '../feeds/format';
+import { messagesForEntity } from './message-subjects';
 
 export function EntityInspector({ store, selected }: { store: FeedStore; selected?: EntityKey }) {
   const { t } = useI18n();
   const entity = selected ? store.entities.get(entityId(selected)) : undefined;
   if (!entity) return <Empty description={t('viewerSelectEntity')} />;
   const related = [...store.edges.values()].filter(edge => entityId(edge.source) === entityId(entity.key) || entityId(edge.target) === entityId(entity.key));
-  const messages = store.messages.filter(message => message.subjects?.some(subject=>entityId(subject)===entityId(entity.key)));
+  const messages = messagesForEntity(store.messages, entity.key);
   const ids = new Set(messages.map(message => message.id));
   const receipts = store.receipts.filter(receipt => ids.has(receipt.commandId));
   const type = store.header.types.find(type => type.typeId === entity.typeId);

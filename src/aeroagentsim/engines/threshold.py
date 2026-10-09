@@ -14,6 +14,7 @@ from aerokernel.state import Fact
 from aerokernel.values import FrozenValue, thaw, typed_equal
 
 from aeroagentsim.platform.plugins import EngineBuild
+from aeroagentsim.scenario import ScenarioError
 
 
 class Threshold(ContextEngine):
@@ -35,9 +36,19 @@ class Threshold(ContextEngine):
         }
         if set(cfg) - allowed:
             raise ValueError("threshold.config: unknown keys")
-        self.spec = next(
-            s for s in build.manifest.samples if s.context_id == cfg["context"]
-        )
+        context = cfg["context"]
+        matches = [s for s in build.manifest.samples if s.context_id == context]
+        if len(matches) != 1:
+            raise ScenarioError(
+                f"engines.{build.id}.config.context: sampled context {context!r} "
+                f"requires exactly one bindings.samples entry; found {len(matches)}"
+            )
+        self.spec = matches[0]
+        if self.spec.partition != build.id:
+            raise ScenarioError(
+                f"engines.{build.id}.config.context: sampled context {context!r} "
+                f"is bound to engine {self.spec.partition!r}"
+            )
         reference = cfg["native_reference"]
         if (
             set(reference) != {"path", "sha256"}
