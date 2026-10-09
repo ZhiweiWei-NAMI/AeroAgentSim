@@ -16,10 +16,11 @@ ingress_streams:
   allowed_lateness_ns: 20000000
 ```
 
-`id`, `mapping_id`, `engine_ids`, `initial_watermark_ns`, `lateness` and
-`timeout_s` are required. Engine IDs must exist; the list must be nonempty and
+`id`, `mapping_id`, `engine_ids`, `initial_watermark_ns` and `lateness`
+are required. `timeout_s` is optional. Engine IDs must exist; the list must be nonempty and
 unique. `lateness` is `reject` or `delay`; `timeout_s` is a positive finite
-wall-clock wait budget. `allowed_lateness_ns`, when present, must be a nonnegative
+wall-clock wait budget when supplied; omission waits indefinitely. Explicit null
+is invalid in scenario YAML. `allowed_lateness_ns`, when present, must be a nonnegative
 integer: null, booleans and negative values fail at the authored path. Omission
 means the kernel subtracts no allowance. Clock mappings are declared separately
 in `clock_mappings`, retaining the identity `canonical` mapping.
@@ -144,6 +145,18 @@ continues to exercise the telemetry shorthand and authored offline commands.
 neither source timestamps nor closure and cannot satisfy an ingress contract.
 
 ## HTTP worker interface
+
+An open watermark is normal: run metadata, commit pages and SSE status events
+report `waiting_for_input` with `waiting.stream_ids` and `waiting.at_ns` (the
+simulated boundary requiring closure). Inspect/Runs offers an injection shortcut;
+injecting an event and advancing its stream's watermark remain separate actions.
+Console demo imports omit the operator timeout instead of imposing 120 seconds.
+An explicitly authored `timeout_s` ends as `input_timeout`, with a reason and a
+closed, replayable journal, rather than an execution fault. Stop interrupts a
+wait promptly and ends as `stopped`; the kernel records `run_stop` at the actual
+committed cut without manufacturing input or a seal. Pause yields at that same
+cut and reports `paused`. Resume continues the outstanding boundary and starts a
+fresh continuous wait budget; paused wall time does not consume it.
 
 Start `aeroagentsim serve --out /tmp/aas-q/q9/http-runs --scenario-root .`.
 Create a live variant using the actual pinned scenario:

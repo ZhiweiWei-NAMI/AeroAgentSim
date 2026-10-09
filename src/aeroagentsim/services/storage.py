@@ -80,16 +80,34 @@ class RunStorage:
     def metadata(self) -> dict[str, Any]:
         return json.loads((self.directory / "manifest.json").read_text())  # type: ignore[no-any-return]
 
-    def status(self, status: str, *, error: str | None = None) -> None:
+    def status(
+        self,
+        status: str,
+        *,
+        error: str | None = None,
+        waiting: dict[str, Any] | None = None,
+    ) -> None:
         result = self.metadata()
         result["status"] = status
-        if status in {"completed", "stopped", "faulted", "interrupted"}:
+        if waiting is None:
+            result.pop("waiting", None)
+        else:
+            result["waiting"] = waiting
+        if status in {
+            "completed",
+            "stopped",
+            "faulted",
+            "interrupted",
+            "input_timeout",
+        }:
             self.index()
             result["final_cursor"] = max(
                 1, self.entries[-1]["index"] + 1 if self.entries else 1
             )
         if error is not None:
             result["error"] = error
+        elif status not in {"faulted", "interrupted", "input_timeout"}:
+            result.pop("error", None)
         self._atomic("manifest.json", result)
 
     def index(self) -> None:

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Input, Select, Space, Table, Tag } from 'antd';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import type { EntityKey } from '../contracts/viewer-feed';
-import { HttpViewerFeed, RunsApi, type RunInfo } from '../feeds/http';
+import { HttpViewerFeed, RunsApi, type RunInfo, type WaitingContext } from '../feeds/http';
 import { TemporalFeedStore as FeedStore } from '../feeds/temporal-store';
 import { displayTime } from './display-time';
 import { ConceptHelp } from '../console/ConceptHelp';
@@ -14,6 +14,7 @@ import { CaptureConsole } from '../observations/CaptureConsole';
 import { InspectionPanel } from './InspectionPanel';
 import { RunTimeline } from './RunTimeline';
 import { readableLabel, entityLabel } from './inspection-format';
+import { WaitingBanner } from './WaitingBanner';
 import './inspect.css';
 import { Details } from '../console/Details';
 import { PageHeader, PageState } from '../console/PageState';
@@ -42,20 +43,23 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
   const cutRef = useRef<number>();
   const follow = useRef(mode === 'live');
   const [status, setStatus] = useState('loading');
+  const [waiting, setWaiting] = useState<WaitingContext>();
   const [, redraw] = useState(0);
   const tick = () => redraw(value => value + 1);
   const suffix = `?api=${encodeURIComponent(apiBase)}&mode=${mode}`;
   const refresh = () => { void api.runs().then(rows=>{setRuns(rows);setListLoaded(true);}).catch(error => setError(String(error))); };
   useEffect(() => {
     const abort = new AbortController();
-    void api.runs(abort.signal).then(rows=>{setRuns(rows);setListLoaded(true);}).catch(error => { if (!abort.signal.aborted) setError(String(error)); });
-    return () => abort.abort();
-  }, [api]);
+    const load=()=>{void api.runs(abort.signal).then(rows=>{if(!abort.signal.aborted){setRuns(rows);setListLoaded(true);}}).catch(error => { if (!abort.signal.aborted) setError(String(error)); });};
+    load();
+    const timer=!runId?setInterval(load,1000):undefined;
+    return () => {abort.abort();if(timer!==undefined)clearInterval(timer);};
+  }, [api,runId]);
   useEffect(() => {
     if (!runId) { setSession(undefined); return; }
     const abort = new AbortController();
-    setStatus('loading'); setError(undefined); setSession(undefined); setCut(undefined);cutRef.current=undefined; setSelected(undefined); follow.current = mode === 'live';
-    const feed = new HttpViewerFeed(api, runId, mode, setStatus, setError);
+    setStatus('loading'); setError(undefined); setSession(undefined); setCut(undefined);cutRef.current=undefined; setSelected(undefined); follow.current = mode === 'live'; setWaiting(undefined);
+    const feed = new HttpViewerFeed(api, runId, mode, (value, context) => { setStatus(value); setWaiting(['waiting_for_input', 'input_timeout'].includes(value) ? context : undefined); }, setError);
     void feed.header().then(async header => {
       if (abort.signal.aborted) return;
       if (header.epoch === undefined || header.kernelRunId === undefined) {
@@ -109,7 +113,7 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
     {!listLoaded&&!error&&<PageState kind="loading" title="Loading runs" />}{listLoaded&&!runs.length&&<PageState kind="empty" title="No runs yet" description="Open the traffic accident demo in Studio to validate and start your first run." />}
     <Table rowKey="id" dataSource={runs} columns={[
       { title: 'Scenario', render: (_, run) => <Link to={`/${inspectList?'inspect':'runs'}/${encodeURIComponent(run.id)}${suffix}`}>{readableLabel(run.scenario)}</Link> },
-      { title: 'Status', dataIndex: 'status' },
+      { title: 'Status', dataIndex: 'status', render: (status: string, run) => <div><span>{status}</span>{['waiting_for_input', 'input_timeout'].includes(status) && <WaitingBanner waiting={run.waiting} terminal={status === 'input_timeout'} injectionHref={`/runs/${encodeURIComponent(run.id)}?api=${encodeURIComponent(apiBase)}&mode=live#run-operations`} />}</div> },
       { title: 'Simulated limit', dataIndex: 'until_ns', render:(ns:string)=><span title={`${ns} ns`}>{displayTime(ns)}</span> },
       { title: 'Open', render: (_, run) => <Space><Link to={`/runs/${encodeURIComponent(run.id)}?api=${encodeURIComponent(apiBase)}&mode=live`}>Live</Link><Link to={`/runs/${encodeURIComponent(run.id)}?api=${encodeURIComponent(apiBase)}&mode=replay`}>Replay</Link></Space> },
     ]} />
@@ -128,6 +132,11 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
       <Link to={`/agents/${encodeURIComponent(runId)}${suffix}${cut === undefined ? '' : `&cut=${cut}`}${selected ? `&entity=${encodeURIComponent(selected.id)}&generation=${selected.generation}` : ''}${store?.header.epoch ? `&epoch=${encodeURIComponent(store.header.epoch)}` : ''}`}>Agent decisions</Link>
       <a href="#run-operations">Run controls</a><Details title="Run details"><pre>{JSON.stringify({runId,header:store?.header,cursor:store?.viewCursor,selection:store?.selection},null,2)}</pre></Details></Space></header>
     {error && <Alert type="error" message={error} />}
+    {session && <WaitingBanner waiting={waiting} terminal={status === 'input_timeout'} injectionHref="#run-operations" onInject={() => {
+      const controls=document.getElementById('run-operations');
+      controls?.scrollIntoView({behavior:'smooth'});
+      controls?.querySelector<HTMLElement>('[aria-label="Injection point"], [aria-label="Command schema"]')?.focus();
+    }} />}
     {!session&&!error&&<PageState kind="loading" title="Connecting to the run" description="Loading its recorded entities and timeline." />}
     {session && <><main className="viewer-main" data-testid="inspect-views" data-city-binding={session.store.header.scene?.city?.kind ?? 'absent'}><section className="viewer-stage">
       <nav aria-label="Demo camera presets"><span>Camera</span><ConceptHelp topic="Camera presets" description="A preset selects the named actor and follows its recorded pose; the graph selection changes with it." guide="console.md"/>{[{label:'Reporter',id:'vehicle.reporter'}, {label:'Edge overview',id:'edge.coordinator'}, {label:'Alpha',id:'uav.alpha'}, {label:'Bravo',id:'uav.bravo'}].filter(preset=>[...session.store.entities.values()].some(row=>row.key.id===preset.id)).map(preset=><button key={preset.label} onClick={()=>{const actor=[...session.store.entities.values()].find(row=>row.key.id===preset.id);if(!actor){setError(`Preset actor ${preset.id} is absent at this cut`);return;}select(actor.key);setCamera(preset.label==='Edge overview'?'orbit':'follow');}}>{preset.label}</button>)}</nav>

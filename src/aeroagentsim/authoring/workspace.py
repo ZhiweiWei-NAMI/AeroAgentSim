@@ -249,7 +249,9 @@ class WorkspaceStore:
                         if row["id"] not in {"schedule", "timer"}
                     ]
                     draft["scenario"]["ingress_streams"][0]["initial_watermark_ns"] = 0
-                    draft["scenario"]["ingress_streams"][0]["timeout_s"] = 120.0
+                    # Interactive operator input has no implicit deadline. Users can
+                    # explicitly author timeout_s on the imported scenario if needed.
+                    draft["scenario"]["ingress_streams"][0].pop("timeout_s", None)
             return self._write(draft)
 
     def _behaviour_package(self, identifier: str, index: int) -> dict[str, Any]:
