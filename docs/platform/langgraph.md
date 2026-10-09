@@ -253,3 +253,134 @@ scope replaced with a bounded independent review of the completed fixture/graph.
 Session IDs, artifacts and review disposition are in `/tmp/aas-q/r4/`; draft
 claims were not used as test evidence. No frontend checks or Docker runs were
 needed. `pip check` found no broken requirements.
+
+## Flagship LIVE decisions (R5)
+
+The traffic-accident scenario retains scripted decisions by default. Its explicit
+`profiles/live-llm.yaml` engine profile replaces `decisions` with the `langgraph`
+plugin and adds a failure bridge. Run from the repository root:
+
+```bash
+export PYTHONPATH=/tmp/aas-q/kernel-head:src
+export AEROAGENTSIM_AEROGRAPH_ROOT=/mnt/data2/weizhiwei/AeroGraph
+export AEROAGENTSIM_CHROMIUM=$HOME/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python \
+  -m aeroagentsim.services.cli run scenarios/demos/traffic-accident/scenario.yaml \
+  --engine-profile scenarios/demos/traffic-accident/profiles/live-llm.yaml \
+  --out /tmp/aas-q/r5/live-runs
+```
+
+The profile is applied before pinning `scenario.json`. The recorded model is
+`glm-5.3-flashx`, at `http://127.0.0.1:8788/v1`; each invocation has a 120-second
+wall budget, a 90-second absolute simulated deadline, and at most three bounded retries.
+These calls block wall time at a fixed simulated instant, not simulated motion.
+
+The **same** `scenarios.agents.accident_graph:build_graph` factory uses its
+`proposals` mode: detection calls the reporter; the rule-authored broadcast calls
+Alpha and Bravo concurrently and joins them in stable node order. The report,
+bid and award prompt constants remain shared with the original example and the
+manifest-pinned demo prompt files (legacy runtime lines 1044–1049, 1133–1136,
+1207–1209). Edge award explanation is optional and omitted in this profile;
+committed eligibility and minimum-ETA selection author the award.
+
+Granted observations supply actual ENU positions, stored energy in joules,
+current-task references, task phase/kind/interruptibility and capture altitude.
+ENU is converted to the legacy prompt's x/east, y/up, z/north coordinates.
+Energy is sent as joules; no invented battery percentage is supplied. Missing
+committed fields fail the decision. Reporter route selection names the authored
+bypass; road ownership and the committed safe-gap rule authorize actual travel.
+A syntactically valid Alpha `accept=true` remains an acceptance **proposal**. The
+medical lock and eligibility predicate prevent it from interrupting delivery or
+winning. The stub live-path test forces this case without changing prompts.
+
+`traffic_decision_failures` turns journaled failures into causal
+`traffic.decision.failed` events carrying the code and request id. Reporter
+failures end in `failed`; collecting bid failures end in `no_candidate`. No
+scripted response is substituted. All-or-nothing graph publication means a
+failed parallel bid session publishes no bid proposals.
+
+The feed retains original `aas.langgraph.record` messages and supplies explicit
+`aas.agent.record` views for the existing decision panel. Views carry their
+source schema/message id: observation is unwrapped, model calls become prompt
+and response views, and typed event outputs become validation views. They do
+not invent command receipts. The WAL remains the source of truth.
+
+Kernel replay needs no engine/model/renderer. `replay_graph(journal_bytes, id)`
+also re-executes each graph using its recorded requests/responses, checks the
+factory/version pin and result, and makes zero provider calls. See
+`tests/demos/traffic_accident/test_live_decisions.py`; its `llm` test runs the
+complete CLI chain and forbids both live and scripted providers during replay.
+`AAS_R5_LIVE_RUN` can point that test at an explicitly supplied completed live
+CLI artifact, avoiding a second full physical run during verification.
+
+The kernel's `number` schema is strict: `alt_target_m` must be the JSON
+floating-point value `70.0`. The original bid prompt remains unchanged; the
+observation states this output contract. Integer `70` is a journaled validation
+rejection, followed by the configured explicit retry, never silently converted.
+
+### R5 verification record (2026-10-09)
+
+Using the committed kernel copy at `/tmp/aas-q/kernel-head`, the complete LIVE
+CLI run `/tmp/aas-q/r5/live-bounded/scenario-48e37e46affc` reached 90 simulated
+seconds in 1266.00 wall seconds. Its two graph sessions made five model attempts
+with `glm-5.3-flashx`: three successful responses and two recorded HTTP 429
+failures before the reporter's bounded retry succeeded. Bravo's award committed
+at 15.066666667 s; capture acceptance was at 49.266666667 s and the capture chain
+completed at 49.333333334 s. The browser PNG is 256×192, 1933 bytes, with SHA-256
+`5d04e0a9ffd8abb490c5500b0476e5113459373f8848fe73d3aca5aa8943bf98`.
+
+The feed exposes 17 decision record views from the original graph WAL. The
+marked live test passed against this completed CLI artifact, forbidding live and
+scripted providers during both graph re-execution and full kernel replay:
+**zero model calls in each**. Full verification took 1323.17 wall seconds; the
+last committed kernel's physical WAL replay is expensive. Artifacts and exact
+commands are in `/tmp/aas-q/r5/live-verification.json`, `capture-proof.json`, and
+`gates.json`; large journals remain outside git. A prior integer-altitude response
+was explicitly rejected, and a separate quota-failed run took the authored
+reporter failure branch. Neither attempt used scripted answers.
+
+Final R5 gates were run once over the complete affected backend suites. With
+`PYTHONPATH=/tmp/aas-q/kernel-head:src`, the exact test command was:
+
+```bash
+/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python \
+  -m pytest -q -p no:cacheprovider -m 'not docker' tests/agents tests/demos
+```
+
+Result: **71 passed, 2 failed**, in 4266.73 s. All **70 non-llm** tests passed,
+including the six new stub/live-path tests and both complete scene runs. The old
+R4 live example (`glm-5.3-flash`) failed with upstream HTTP 429/quota code 14018;
+a single targeted recheck also failed for that reason. The R5 live test in the
+full gate referenced the earlier quota-failed artifact via `AAS_R5_LIVE_RUN` and
+correctly rejected its missing capture. Against the successful CLI artifact, its
+single-test recheck **passed** in 1305.95 s, with zero provider calls during both
+replays. The full suite was not repeated.
+
+Static commands used `python -m ruff check` and
+`python -m mypy --strict --follow-imports=silent` on exactly:
+
+- `scenarios/agents/accident_graph.py`
+- `src/aeroagentsim/packs/traffic_accident/decision_failures.py`
+- `src/aeroagentsim/platform/plugins.py`
+- `src/aeroagentsim/scenario/profiles.py`
+- `src/aeroagentsim/services/cli.py`
+- `src/aeroagentsim/services/projector.py`
+- `tests/demos/traffic_accident/test_live_decisions.py`
+
+Both passed on all seven files (`MYPYPATH=/tmp/aas-q/kernel-head`). A later header
+filter correction in the marked test was checked separately with ruff and strict
+mypy (`MYPYPATH=/tmp/aas-q/kernel-head:src`), both passing. Its final live command
+was:
+
+```bash
+AAS_R5_LIVE_RUN=/tmp/aas-q/r5/live-bounded/scenario-48e37e46affc \
+PYTHONPATH=/tmp/aas-q/kernel-head:src \
+/mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin/python \
+  -m pytest -q -p no:cacheprovider \
+  tests/demos/traffic_accident/test_live_decisions.py::test_live_flagship_cli_and_zero_call_replay
+```
+
+The full-gate environment also set `AEROAGENTSIM_AEROGRAPH_ROOT` to the read-only
+AeroGraph checkout, `AEROAGENTSIM_CHROMIUM` to the owner's headless-shell path,
+and `AEROAGENTSIM_FFMPEG=/usr/share/anaconda3/bin/ffmpeg`. Frontend checks and Docker
+were not run; this task changed no frontend files and used no Docker.

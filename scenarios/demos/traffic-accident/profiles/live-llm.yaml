@@ -1,0 +1,141 @@
+format: aeroagentsim.engine-profile/v1
+messages:
+- id: aas.langgraph.record
+  kind: event
+  schema:
+    type: record
+    members:
+      decision_id:
+        type: string
+      phase:
+        type: string
+      code:
+        type: string
+        nullable: true
+      data_json:
+        type: string
+    required:
+    - decision_id
+    - phase
+    - code
+    - data_json
+    extra: false
+- id: aas.agent.record
+  kind: event
+  schema:
+    type: record
+    members:
+      decision_id:
+        type: string
+      phase:
+        type: string
+      code:
+        type: string
+        nullable: true
+      data_json:
+        type: string
+    required:
+    - decision_id
+    - phase
+    - code
+    - data_json
+    extra: false
+engines:
+  decisions:
+    plugin: langgraph
+    config:
+      factory: scenarios.agents.accident_graph:build_graph
+      options:
+        mode: proposals
+        region_radius_m: 400.0
+        uav_speed_mps: 7.0
+        task_id: incident-capture-01
+        task_ref:
+          $ref:
+            run_id: traffic-accident
+            epoch: '0'
+            id: incident-capture-01
+            generation: 0
+            type_id: aas:TrafficTask
+        candidates:
+        - uav.alpha
+        - uav.bravo
+        candidate_refs:
+          uav.alpha:
+            $ref:
+              run_id: traffic-accident
+              epoch: '0'
+              id: uav.alpha
+              generation: 0
+              type_id: aas:TrafficUAV
+          uav.bravo:
+            $ref:
+              run_id: traffic-accident
+              epoch: '0'
+              id: uav.bravo
+              generation: 0
+              type_id: aas:TrafficUAV
+        reroute_candidates:
+        - route_id: adjacent_lane_bypass
+          departure: reroute_when_clear
+          requires: committed traffic.road.safe_gap; road_motion receipt
+      triggers:
+      - schema: traffic.incident.detected
+        topic: traffic.incident.detected
+      - schema: traffic.broadcast
+        topic: traffic.broadcast
+      grants:
+        fields:
+        - entity: vehicle.reporter
+          field: traffic.road.position_enu_m
+        - entity: incident.01
+          field: traffic.incident.position_enu_m
+        - entity: incident-capture-01
+          field: traffic.task.capture_altitude_m
+        - entity: uav.alpha
+          field: he.aircraft.position_enu_m
+        - entity: uav.alpha
+          field: traffic.uav.energy_j
+        - entity: uav.alpha
+          field: traffic.actor.current_task
+        - entity: uav.bravo
+          field: he.aircraft.position_enu_m
+        - entity: uav.bravo
+          field: traffic.uav.energy_j
+        - entity: uav.bravo
+          field: traffic.actor.current_task
+        - entity: medical-delivery-01
+          field: traffic.task.kind
+        - entity: medical-delivery-01
+          field: traffic.task.phase
+        - entity: medical-delivery-01
+          field: traffic.task.interruptible
+        - entity: district-patrol-02
+          field: traffic.task.kind
+        - entity: district-patrol-02
+          field: traffic.task.phase
+        - entity: district-patrol-02
+          field: traffic.task.interruptible
+        relations: []
+        events:
+        - schema: traffic.proposal.report
+          topic: traffic.proposal.report
+        - schema: traffic.proposal.bid
+          topic: traffic.proposal.bid
+        commands: []
+        facts: []
+      budget:
+        wall_timeout_s: 120.0
+        sim_deadline_ns: 90000000000
+        max_calls: 8
+        max_tokens: 16384
+        max_retries: 3
+        max_prompt_bytes: 64000
+        recursion_limit: 12
+      provider:
+        mode: live
+        base_url: http://127.0.0.1:8788/v1
+        model: glm-5.3-flashx
+  decision_failures:
+    plugin: traffic_decision_failures
+    config: {}
