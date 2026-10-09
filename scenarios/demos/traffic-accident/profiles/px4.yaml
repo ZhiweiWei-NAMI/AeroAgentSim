@@ -1,0 +1,49 @@
+format: traffic-accident-replacement-profile/v1
+id: px4
+readiness: configuration_contract_only
+remove_owners:
+- air_motion
+owners:
+  native_air:
+    plugin: px4_gazebo
+    fields:
+    - he.aircraft.position_enu_m
+    - traffic.uav.velocity_enu_mps
+    - traffic.uav.attitude_xyzw
+    - traffic.uav.battery_native
+configuration_required:
+- PX4 service URL/protocol capabilities
+- vehicle ID mapping and supported Gazebo model
+- explicit local/geodetic origin and vertical datum transform
+- pose source clock/mapping + warmup offset
+- boundary-observed velocity/battery canonical clock mapping
+- native command/result schemas and goto altitude datum
+- native planning-energy model or calibrated estimator with actual telemetry; never
+  convert % blindly
+capabilities:
+  native_air:
+  - arm
+  - takeoff
+  - goto
+  - hold
+  - land
+  - disarm
+unverified:
+- native cancellation/preemption not advertised
+- joule feasibility estimator absent
+- Gazebo camera image bridge
+- native physical wind injection
+switch_policy: new_run_and_epoch
+sampled_return_lag_ns: 66666667
+sampled_role_clocks:
+  pose:
+  - gazebo_sim
+  - configured_pose_mapping
+  velocity:
+  - canonical
+  - canonical
+  battery:
+  - canonical
+  - canonical
+native_action_mapping:
+  goto: goto_location

@@ -1,0 +1,44 @@
+format: traffic-accident-replacement-profile/v1
+id: kinematic
+readiness: domain_tested_pending_behaviour_integration
+owners:
+  road_motion:
+    plugin: traffic_road_motion
+    fields:
+    - traffic.road.position_enu_m
+    - traffic.road.velocity_enu_mps
+    - traffic.road.attitude_xyzw
+    - traffic.road.speed_mps
+    - traffic.road.route_id
+    - traffic.road.lane_id
+    - traffic.road.progress_m
+    - traffic.road.blocked_by
+    - traffic.road.safe_gap
+  air_motion:
+    plugin: kinematic
+    fields:
+    - he.aircraft.position_enu_m
+    - traffic.uav.velocity_enu_mps
+    - traffic.uav.energy_j
+remove_owners: []
+configuration_required: []
+capabilities:
+  road_motion:
+  - follow
+  - stop
+  - bypass
+  air_motion:
+  - move_to
+  - hold
+  - stop
+physical_model:
+  road: piecewise linear; swept occupancy; instantaneous stop
+  air: rest-to-rest ENU; bounded acceleration 4 m/s²; 64-leg polygonal orbits
+  energy: explicit 100000 J capacity; 40 W + 6 J/m + authored wind exposure; independent
+    of legacy battery percentages
+publication_ns: 66666667
+sampled_return_lag_ns: 66666667
+decision_mode: fixture_explicit
+latency_mode: offline_blocking
+weather_effect: energy_only
+switch_policy: new_run_and_epoch

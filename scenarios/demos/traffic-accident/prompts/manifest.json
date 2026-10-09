@@ -1,0 +1,24 @@
+{
+  "canonical_graph_sha256": "87a0dfc695527892bd5405a73242d9039d45e723d52b9055b0e90a45409b9941",
+  "runtime_sha256": "c6d930230e4f0f964ef05a2df7ecc57666f085c80ee6501c8f191210fe88f84b",
+  "prompts": {
+    "REPORT_PROMPT": {
+      "canonical_module": "scenarios.agents.accident_graph",
+      "symbol": "REPORT_PROMPT",
+      "sha256": "dd46715df260646652cb414272677400b2bd9d466fe173b4e9116a478e7021d0",
+      "source_lines": "runtime.py:1044-1049"
+    },
+    "BID_PROMPT": {
+      "canonical_module": "scenarios.agents.accident_graph",
+      "symbol": "BID_PROMPT",
+      "sha256": "c57a80bd807e0aa03c43529ca78f319bd1403fa120c6ed290d4addf98fb9dc69",
+      "source_lines": "runtime.py:1133-1136"
+    },
+    "AWARD_PROMPT": {
+      "canonical_module": "scenarios.agents.accident_graph",
+      "symbol": "AWARD_PROMPT",
+      "sha256": "5f8b783229a143122ec29a803e7e8949ad0df087466cae0747ecffb161dab63a",
+      "source_lines": "runtime.py:1207-1209"
+    }
+  }
+}

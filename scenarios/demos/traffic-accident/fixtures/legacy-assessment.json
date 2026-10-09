@@ -1,0 +1,41 @@
+{
+  "source": "results/run-20261008-030056/decisions.jsonl",
+  "sha256": "07a9a9b852ac45a4883d176ecbb880e97ed5899886c09330e1a039da3af14d52",
+  "kind": "actual historical rounded model-input distance/ETA; no historical energy budget",
+  "rows": [
+    {
+      "actor": "uav.alpha",
+      "reply_time_s": 24.333,
+      "observation_time_s": 21.667,
+      "position_enu_m": [
+        24.885685486740236,
+        -197.61492311513206,
+        145.0
+      ],
+      "incident_enu_m": [
+        91.9499764938994,
+        -93.03744113461998,
+        0.0
+      ],
+      "distance_3d_m": 145.1,
+      "eta_s": 18.1
+    },
+    {
+      "actor": "uav.bravo",
+      "reply_time_s": 28.667,
+      "observation_time_s": 21.667,
+      "position_enu_m": [
+        234.385715741799,
+        -247.3490096734186,
+        145.0
+      ],
+      "incident_enu_m": [
+        91.9499764938994,
+        -93.03744113461998,
+        0.0
+      ],
+      "distance_3d_m": 223.0,
+      "eta_s": 27.9
+    }
+  ]
+}

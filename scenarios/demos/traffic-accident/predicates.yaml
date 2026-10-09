@@ -1,0 +1,252 @@
+format: traffic-accident-predicates/v1
+evaluator:
+  version: aerograph-predicate/1
+  dialect: original
+  source_sha256: fd3c2ebf35824431a02f5086092543d68e45405ebfd12acc6e7bb5fbe703232d
+  native_references_ref: registry.snapshot.json#/details/provenance
+predicates:
+  traffic.p.detected:
+    profile: committed_reactive/v1
+    roles:
+      incident: aas:TrafficIncident
+      reporter: aas:TrafficRoadVehicle
+    expression:
+      op: and
+      args:
+      - op: eq
+        args:
+        - field: traffic.incident.active
+          role: incident
+          path: []
+        - literal: true
+      - op: gte
+        args:
+        - field: traffic.road.progress_m
+          role: reporter
+          path: []
+        - parameter: detect_progress_m
+    parameters:
+      detect_progress_m: 83.95
+  traffic.p.gap_clear:
+    profile: committed_reactive/v1
+    roles:
+      reporter: aas:TrafficRoadVehicle
+    expression:
+      op: eq
+      args:
+      - field: traffic.road.safe_gap
+        role: reporter
+        path: []
+      - literal: true
+    parameters: {}
+  traffic.p.road_conflict:
+    profile: committed_reactive/v1
+    roles:
+      vehicle: aas:TrafficRoadVehicle
+    expression:
+      op: gt
+      args:
+      - op: len
+        args:
+        - field: traffic.road.blocked_by
+          role: vehicle
+          path: []
+      - literal: 0
+    parameters: {}
+  traffic.p.medical_locked:
+    profile: committed_reactive/v1
+    roles:
+      task: aas:TrafficTask
+    expression:
+      op: and
+      args:
+      - op: eq
+        args:
+        - field: traffic.task.kind
+          role: task
+          path: []
+        - literal: medical_delivery
+      - op: eq
+        args:
+        - field: traffic.task.interruptible
+          role: task
+          path: []
+        - literal: false
+      - op: eq
+        args:
+        - field: traffic.task.phase
+          role: task
+          path: []
+        - literal: executing
+    parameters: {}
+  traffic.p.bid_eligible:
+    profile: committed_reactive/v1
+    roles:
+      bid: aas:TrafficBid
+      task: aas:TrafficTask
+      assessment: aas:TrafficAssessment
+      capture_task: aas:TrafficTask
+    expression:
+      op: and
+      args:
+      - op: eq
+        args:
+        - field: traffic.bid.decision_status
+          role: bid
+          path: []
+        - literal: succeeded
+      - op: eq
+        args:
+        - field: traffic.bid.recommendation
+          role: bid
+          path: []
+        - literal: accept
+      - op: eq
+        args:
+        - field: traffic.task.interruptible
+          role: task
+          path: []
+        - literal: true
+      - op: eq
+        args:
+        - field: traffic.assessment.in_region
+          role: assessment
+          path: []
+        - literal: true
+      - op: eq
+        args:
+        - field: traffic.assessment.feasible
+          role: assessment
+          path: []
+        - literal: true
+      - op: eq
+        args:
+        - field: traffic.task.phase
+          role: capture_task
+          path: []
+        - literal: inactive
+    parameters: {}
+  traffic.p.arrived:
+    profile: aerograph_sampled/v1
+    roles: &id001
+      pose: aas:TrafficUAV
+      velocity: aas:TrafficUAV
+      task: aas:TrafficTask
+    expression: &id002
+      op: and
+      args:
+      - op: lte
+        args:
+        - op: distance
+          args:
+          - field: he.aircraft.position_enu_m
+            role: pose
+            path: []
+          - field: traffic.task.target_enu_m
+            role: task
+            path: []
+        - parameter: arrival_radius_m
+      - op: lte
+        args:
+        - op: vector_norm
+          args:
+          - field: traffic.uav.velocity_enu_mps
+            role: velocity
+            path: []
+        - parameter: stopped_speed_mps
+    parameters: &id003
+      arrival_radius_m: 1.5
+      stopped_speed_mps: 0.5
+      dwell_ns: 3000000000
+      max_sample_gap_ns: 133333334
+  traffic.p.dwell_ready:
+    profile: aerograph_sampled/v1
+    roles: *id001
+    expression:
+      op: hold
+      args:
+      - *id002
+      - parameter: dwell_ns
+      - parameter: max_sample_gap_ns
+    parameters: *id003
+  traffic.p.capture_accepted:
+    profile: committed_reactive/v1
+    roles:
+      capture: aas:TrafficCapture
+      task: aas:TrafficTask
+    expression:
+      op: and
+      args:
+      - op: eq
+        args:
+        - field: traffic.capture.storage_status
+          role: capture
+          path: []
+        - literal: stored
+      - op: eq
+        args:
+        - field: traffic.task.phase
+          role: task
+          path: []
+        - literal: edge_accepted
+    parameters: {}
+    use: post-storage inspection; completion also requires correlated edge receipt
+  traffic.p.capture_active:
+    profile: committed_reactive/v1
+    roles:
+      task: aas:TrafficTask
+    expression:
+      op: eq
+      args:
+      - field: traffic.task.phase
+        role: task
+        path: []
+      - literal: assigned
+    parameters: {}
+  traffic.p.always:
+    profile: committed_reactive/v1
+    roles: {}
+    expression:
+      op: eq
+      args:
+      - literal: true
+      - literal: true
+    parameters: {}
+  traffic.p.interruptible:
+    profile: committed_reactive/v1
+    roles:
+      task: aas:TrafficTask
+    expression:
+      op: eq
+      args:
+      - field: traffic.task.interruptible
+        role: task
+        path: []
+      - literal: true
+    parameters: {}
+  traffic.p.award_busy:
+    profile: committed_reactive/v1
+    roles:
+      task: aas:TrafficTask
+    expression:
+      op: ne
+      args:
+      - field: traffic.task.phase
+        role: task
+        path: []
+      - literal: inactive
+    parameters: {}
+  traffic.p.road_clear:
+    profile: committed_reactive/v1
+    roles:
+      vehicle: aas:TrafficRoadVehicle
+    parameters: {}
+    expression:
+      op: eq
+      args:
+      - op: len
+        args:
+        - field: traffic.road.blocked_by
+          role: vehicle
+          path: []
+      - literal: 0

@@ -1,0 +1,46 @@
+format: traffic-accident-replacement-profile/v1
+id: sumo
+readiness: configuration_contract_only
+remove_owners:
+- road_motion
+owners:
+  native_road:
+    plugin: sumo
+    fields:
+    - traffic.native_road.position_xy_m
+    - traffic.native_road.angle_deg
+    - traffic.native_road.speed_mps
+    - traffic.native_road.lane_id
+  road_conversion:
+    plugin: required_enu_road_converter
+    fields:
+    - traffic.road.position_enu_m
+    - traffic.road.velocity_enu_mps
+    - traffic.road.attitude_xyzw
+    - traffic.road.speed_mps
+    - traffic.road.route_id
+    - traffic.road.lane_id
+    - traffic.road.progress_m
+    - traffic.road.blocked_by
+    - traffic.road.safe_gap
+configuration_required:
+- SUMO service URL/protocol capabilities
+- licence-attributed net.xml + original OSM source + digests
+- explicit demand.xml + route/native edge IDs + digests
+- native XY offset/rotation -> traffic.local/v1; vertical datum
+- actual staged-stop readback; actual reporter native reroute
+- complete occupancy source coverage; no XY masquerading as ENU
+capabilities:
+  native_road:
+  - set_speed
+  - reroute
+  - change_target
+  - lane_restriction
+  - add_vehicle
+  - remove_vehicle
+unverified:
+- source demand edge mapping absent
+- opposite-lane borrowed route capability
+- road_conversion not implemented by current SUMO adapter
+switch_policy: new_run_and_epoch
+sampled_return_lag_ns: 66666667
