@@ -176,6 +176,8 @@ def create_app(
     def run_header(run_id: str, request: Request) -> dict[str, Any]:
         path = directory(run_id)
         result = header(path)
+        if not os.environ.get("AEROAGENTSIM_AEROGRAPH_ROOT"):
+            result["catalogNotice"] = "Type catalog limited to this scenario's snapshot"
         if hasattr(app.state, "studio"):
             from aeroagentsim.authoring.replay import scene_header
 

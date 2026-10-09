@@ -45,3 +45,27 @@ Upstream Git revisions in `tools/sync_assets.py` (`PX4_REVISION`, `STYLE_REVISIO
 - The unused recording metadata slot is now `traffic.recording.asset_id` instead of `traffic.recording.sha256`; it no longer advertises a content hash.
 - Browser scenario normalization accepts and discards an old `registry.digest` annotation, using the actual snapshot schemas to restore numeric types.
 - The frontend session must update manifest loading, capture labels and traffic-field lookups; this backend follow-up does not edit frontend files. Recorded older journals remain readable without content-hash verification.
+
+## Public demo integration
+
+Existing feed and catalog fields keep their shapes. These additions support a
+public clone with no AeroGraph checkout:
+
+- `GET /v1/studio/types` and `/types/{id}` accept optional `workspace=<id>`.
+  Pass the selected workspace when more than one draft exists. With one draft,
+  the server selects its snapshot automatically. An empty catalog defaults to the
+  shipped accident scenario. With an AeroGraph source configured, browsing keeps
+  its previous behavior.
+- Snapshot type lists add `catalog_scope: "scenario-snapshot"` and
+  `catalog_notice`. The runtime header adds optional `catalogNotice` as display
+  metadata; the viewport displays it without changing `runtimeRegistry`.
+- Traffic city JSON may use `traffic-city-lite/v1`; the scene loader dispatches
+  to procedural buildings and roads. Actor model bindings may use
+  `procedural:car` or `procedural:uav`, without fetching GLBs.
+
+The CLI imports a demo workspace and opens `/studio?workspace=<id>`. No files in
+`studio/`, `console/`, or `pages/AgentConsole` were edited in this task.
+
+The CLI imports the timed demo (accident at 8 s, operator stream closed through
+the run horizon). The existing template-import endpoint keeps its interactive
+operator mode; that mode requires client-supplied ingress and watermarks.

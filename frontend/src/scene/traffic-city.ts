@@ -1,5 +1,6 @@
 import * as T from 'three';
 import { Assets, disposeObject } from '../viewport/assets';
+import { buildLiteCity, isLiteCityScene } from '../viewport/procedural-traffic';
 
 /**
  * Traffic demo city layer: the console serves the original aero-bench scene at
@@ -7,6 +8,10 @@ import { Assets, disposeObject } from '../viewport/assets';
  * GLB meshes plus run-space x/y/z; roads carry exact ground polygons, markings and
  * arrows. Everything renders flat in render XZ at the demo renderer's own layer
  * elevations — no geometry is invented and no height is extrapolated.
+ *
+ * When the public clone cannot ship those meshes, the same URL serves the lite
+ * bundle (traffic-city-lite/v1: real footprints + recorded heights only). That
+ * shape is detected and rendered procedurally in buildLiteCity — no GLB loads.
  */
 
 interface SceneBuilding { url: string; x: number; y: number; z: number; height: number }
@@ -99,6 +104,12 @@ export async function loadTrafficCity(url: string, assets: Assets, signal: Abort
   const group = new T.Group();
   group.name = 'traffic-city';
   try {
+    // Lite bundle (public clone, no GLBs): recorded footprints/heights only,
+    // rendered with existing procedural viewport materials.
+    if (isLiteCityScene(scene)) {
+      buildLiteCity(scene, group);
+      return group;
+    }
     if(!scene.roads||!Array.isArray(scene.buildings))throw Error('Traffic city requires roads and buildings');
     const roads = scene.roads;
     for (const [layer, elevation] of ROAD_LAYERS) {

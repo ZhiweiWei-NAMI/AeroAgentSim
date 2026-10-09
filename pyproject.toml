@@ -15,6 +15,7 @@ dependencies = ["aerokernel>=0.2.0.dev0,<0.3", "pyyaml>=6"]
 
 [project.optional-dependencies]
 langgraph = ["langgraph>=1.2.14,<2"]
+agents = ["langgraph>=1.2.14,<2", "openai>=1"]
 # CI-validated compatible range: Starlette >=1.8 removes the TestClient httpx
 # fallback (httpx2 becomes mandatory), so cap Starlette below 1.8 explicitly --
 # FastAPI's own metadata has no Starlette upper bound.

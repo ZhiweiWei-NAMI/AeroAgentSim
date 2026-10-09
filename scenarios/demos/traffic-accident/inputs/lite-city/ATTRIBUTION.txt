@@ -1,0 +1,15 @@
+traffic-city-lite/v1
+Generated from OpenStreetMap data.
+
+© OpenStreetMap contributors, ODbL 1.0
+https://www.openstreetmap.org/copyright
+https://opendatacommons.org/licenses/odbl/1-0/
+
+Building footprints were fetched from the public OSM API
+(way/<id>/full and relation/<id>/full). Raw API responses are committed
+verbatim under osm-source/ so regeneration needs no network.
+
+Regeneration command:
+  python tools/demos/generate_lite_city.py \
+      --scene <historical-export-scene.json> \
+      --out scenarios/demos/traffic-accident/inputs/lite-city

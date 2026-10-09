@@ -20,6 +20,9 @@ export function ViewportView(props: Props) {
   });
   const [quality,setQuality]=useState<Quality>(props.quality),[fps,setFps]=useState<number>(),[status,setStatus]=useState(''),[collapsed,setCollapsed]=useState(false);
   const [dusk,setDusk]=useState(new URLSearchParams(location.search).get('lighting')==='dusk');
+  // The lite demo serves a scenario-snapshot catalog; surface the header's own
+  // notice when present. No catalog inference is performed here.
+  const catalogNotice=(props.store.header as typeof props.store.header & {catalogNotice?:string}).catalogNotice;
   useEffect(()=>{
     let frame=0,last=performance.now(),notify=last,lastSeek='',lastNotified='';
     try{
@@ -59,6 +62,7 @@ export function ViewportView(props: Props) {
       <button aria-label="Toggle inspector" aria-expanded={!collapsed} onClick={()=>{const next=!collapsed;setCollapsed(next);root.current?.closest('.viewer-main')?.setAttribute('data-inspector-collapsed',String(next));}}>Inspector {collapsed?'＋':'−'}</button>
     </div>
     <div className="scene-status" title={status}>{status} · Facades, landscaping, light, haze & screen-sized glyphs are display effects</div>
+    {catalogNotice&&<div className="scene-attribution" style={{bottom:24}} data-testid="catalog-notice">{catalogNotice}</div>}
     <div className="scene-attribution">{root.current?.dataset.attribution}</div>
     <div className="mission-overlay"><MissionTimeline store={props.store} selected={props.selected} />
       <div className="event-strip" aria-label="Recorded event markers">{duration>0n&&events.slice(-200).map(event=>
