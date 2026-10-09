@@ -271,6 +271,18 @@ def _projection(view: StateView, owners: tuple[Partition, ...]) -> dict[str, Any
         "edges": encode(edge_rows),
         "obligations": encode(obligation_rows),
         "frames": encode(frames),
+        "committed_operations": encode(
+            tuple(
+                (ref, intent["partition"], intent["operation_refs"])
+                for ref, intent in store.intents.items()
+                if intent["partition"] in owned
+                and intent["status"] == "returned"
+                and (
+                    not intent["operation_refs"]
+                    or intent["operation_refs"][-1].record_index <= cap.index
+                )
+            )
+        ),
         "actions": encode(actions),
         "action_schemas": {
             a.command_id: snapshot.schemas[a.command_id]
@@ -304,6 +316,12 @@ def _view(data: Any, budget: ResourceBudget) -> StateView:
         actions.states[action.command_id] = action
     actions.schemas.update(data["action_schemas"])
     store = Store(registry, manifest, partitions, actions)
+    for ref, partition, refs in decode_record(data["committed_operations"]):
+        store.intents[ref] = {
+            "partition": partition,
+            "status": "returned",
+            "operation_refs": refs,
+        }
     store.cuts = AppendList(list(decode_record(data["cuts"])))
     store.action_snapshots[store.cut.index] = actions
     store.action_snapshot_indices.append(store.cut.index)
