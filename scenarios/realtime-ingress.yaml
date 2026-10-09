@@ -1,0 +1,64 @@
+format: aeroagentsim.scenario/v1
+id: realtime-ingress
+registry:
+  snapshot: realtime-registry.snapshot.json
+  digest: c9cc44b4399863cecbfa65f786d95defcf340c427d54b1e9d98580b5cda31be6
+  types:
+  - id: aas:TelemetryStream
+    parents: []
+    abstract: false
+  fields:
+  - id: aas.telemetry.value
+    type: aas:TelemetryStream
+    schema: {type: number}
+    metadata: {role: observation}
+  messages:
+  - id: aas.telemetry.observe
+    kind: command
+    schema:
+      type: record
+      members:
+        value: {type: number}
+      required: [value]
+      extra: false
+entities:
+- id: sensor-1
+  type: aas:TelemetryStream
+  facts: {}
+bindings:
+  lifecycle:
+  - controller: sensor
+    type: aas:TelemetryStream
+  rules:
+  - writer: sensor
+    type: aas:TelemetryStream
+    fields: [aas.telemetry.value]
+  # Authored offline input; this is not presented as a live sensor reading.
+  commands:
+  - schema: aas.telemetry.observe
+    target: sensor
+    at_ns: 100000000
+    payload: {value: 21.5}
+engines:
+  sensor:
+    plugin: telemetry
+    config:
+      entity: sensor-1
+      field: aas.telemetry.value
+      command: aas.telemetry.observe
+    ingress:
+      mapping_id: sensor-ns
+      # Offline example closes its entire input interval in advance.
+      # For live HTTP submissions set this to 0, then close prefixes explicitly.
+      initial_watermark_ns: 300000000
+      lateness: reject
+      timeout_s: 10
+clock_mappings:
+- {mapping_id: canonical, clock_id: canonical}
+- {mapping_id: sensor-ns, clock_id: sensor-clock, offset_ns: 0, p: 1, q: 1, rounding: exact}
+run:
+  pacing: fast
+  seed: 7
+  until_ns: 300000000
+  advance_ns: 100000000
+outputs: {durability: flush}

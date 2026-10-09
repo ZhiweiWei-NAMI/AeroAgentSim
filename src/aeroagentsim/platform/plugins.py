@@ -64,6 +64,7 @@ class EngineBuild:
 
 Factory = Callable[[EngineBuild], Engine]
 BUILTINS = {
+    "telemetry": "aeroagentsim.engines.telemetry",
     "decision": "aeroagentsim.agents.decision",
     "agent-assignment": "aeroagentsim.agents.dispatch",
     "kinematic": "aeroagentsim.engines.kinematic",
