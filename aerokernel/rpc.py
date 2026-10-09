@@ -280,7 +280,8 @@ def _projection(view: StateView, owners: tuple[Partition, ...]) -> dict[str, Any
                 and intent["status"] == "returned"
                 and (
                     not intent["operation_refs"]
-                    or intent["operation_refs"][-1].record_index <= cap.index
+                    or intent["operation_refs"][-1].record_index
+                    <= view.transaction_base_cut.index
                 )
             )
         ),

@@ -1,5 +1,21 @@
 # aerokernel implementation (K7: default lean provenance)
 
+Release review F1 serializes public control mutations with coordination, and
+resolves own committed operations against the transaction base cut independently
+of native observations, including RPC and full-mode cause validation. The unused
+AeroGraph audit package, its tests and documentation are removed. Determinism
+subprocesses use the active interpreter and run from external temporary paths.
+
+The requested full kernel run produced **562 passed, 2 perf skips, 1 failed**;
+the failure was an internal causal-cache fixture lacking the newly required
+transaction base cut. After supplying both cuts explicitly, that file passed
+**9 tests**. The full suite was not repeated. Ruff (after wrapping one docstring),
+format and strict mypy passed. Platform `tests/platform tests/behaviours` passed
+**262 tests in 237.29 s** against this worktree. Logs are under
+`/tmp/aas-q/f1/gates/`; the four finding regressions are in
+`test_review_mutations`, `test_review_publications`, `test_release_tooling`, and
+`test_m1_determinism`. No commits were made.
+
 K7 adds `Kernel(provenance="lean"|"full")`, defaulting to lean, on the smaller
 K5 implementation. [DESIGN §16](DESIGN.md#16-v03-amendment-lean-invocation-provenance-k7)
 defines invocation-level causes, retained operational authority, journal 1.4/2.1
@@ -718,8 +734,6 @@ Reproduce the final gates from this workspace:
 .venv/bin/python -m pytest -c pyproject.toml tests/kernel \
   --basetemp=tests/.pytest_delivery --cov=aerokernel \
   --cov-report=term --cov-fail-under=90
-.venv/bin/python -m pytest -c pyproject.toml tests/test_aerograph_audit.py \
-  --basetemp=tests/.pytest_audit_delivery -q
 .venv/bin/python -m pytest -c pyproject.toml -m perf \
   --basetemp=tests/.pytest_perf_delivery -q
 .venv/bin/python -m ruff check aerokernel tests/kernel examples benchmarks

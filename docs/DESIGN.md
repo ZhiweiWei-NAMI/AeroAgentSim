@@ -647,7 +647,11 @@ The live index MUST retain pending intents and compact operation mappings for
 each partition's latest returned invocation per phase (bootstrap, advance, react,
 sample), without returned inbox/read trees. `StateView.committed_operation`
 and RPC `committed_operations` MUST resolve those own committed local proposals
-with the existing ownership and read-cut checks. Engines MUST resolve a local
+with ownership and transaction-base-cut checks. Own committed publications
+MAY be resolved and cited before a global seal catches up; this MUST NOT widen
+native observation cuts or declared state/dispatch cause scope. RPC projections
+MUST include the same own-publication mappings independently of their read cut.
+Engines MUST resolve a local
 proposal during their next callback of that phase and retain its resulting
 ItemRef if needed later. Superseded mappings are absent (`CAUSE_UNKNOWN`);
 previously issued views retain their immutable mappings. Full mode retains all
@@ -703,3 +707,13 @@ engines, inputs and run-control schedule MUST produce identical bytes for that
 level and codec. Lean and full runs need not have identical journal bytes or
 audit causes. Lean mode requires none of K6's segmented cause sequences,
 cross-record payload references or payload-node storage.
+
+
+### Release clarification: concurrent control requests
+
+In-process public mutations MUST serialize guard checks, candidate construction
+and WAL publication under the coordinator's reentrant condition lock, including
+`bind`, `start`, `submit` and `cancel`. Watermark waits and pacing MAY release
+that lock so ingress/control requests can progress; after waking, coordination
+MUST recompute from the resulting committed cut. Control requests that add work
+MUST notify waiting coordination.

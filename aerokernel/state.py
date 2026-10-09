@@ -597,7 +597,9 @@ class StateView:
 
         LocalCause alone is invocation-local. Retain it with invocation_ref to
         learn the actual publication reference later, without predicting IDs or
-        waiting for a message echo. Resolution grants no additional cause scope.
+        waiting for a message echo. Resolution uses the transaction base cut,
+        not the lagged native read cut; it grants no additional state read or
+        cause scope.
         Lean retains only each partition's latest returned call per phase;
         resolve in the next same-phase callback and retain the resulting ItemRef.
         Full retains every returned invocation. Issued views keep their snapshots.
@@ -613,8 +615,8 @@ class StateView:
         if local.index >= len(refs):
             raise KernelError("CAUSE_LOCAL", "local operation does not exist")
         ref: ItemRef = refs[local.index]
-        if ref.record_index > self.cut.index:
-            raise KernelError("CAUSE_FUTURE", "operation exceeds read cut")
+        if ref.record_index > self.transaction_base_cut.index:
+            raise KernelError("CAUSE_FUTURE", "operation exceeds publication cut")
         return ref
 
     def sample_frames(
