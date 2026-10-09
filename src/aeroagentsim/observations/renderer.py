@@ -51,7 +51,7 @@ class BrowserRenderer:
     """One Node/Playwright browser process per bridge, reused across requests.
 
     The built viewer implements window.aeroCapture.render as documented in
-    docs/platform/observations.md. Failure kills the bridge; it never selects stub.
+    docs/guides/visualization.md. Failure kills the bridge; it never selects stub.
     """
 
     def __init__(
