@@ -19,6 +19,12 @@ export function integerText(value: unknown): string {
 }
 function counter(value: unknown): number { const text = integerText(value); if (BigInt(text) > BigInt(Number.MAX_SAFE_INTEGER)) throw Error('Capture counter exceeds supported journal index range'); return Number(text); }
 function vector(value: unknown): [number, number, number] { if (!Array.isArray(value) || value.length !== 3 || !value.every(item => typeof item === 'number' && Number.isFinite(item))) throw Error('Capture camera requires a finite 3-vector'); return value as [number, number, number]; }
+/** Traffic capture bridge records flat id/generation pose rows at its read cut. */
+export function recordedCameraPose(value: unknown) {
+  const pose = object(value);
+  if (typeof pose.id !== 'string' || typeof pose.field !== 'string') throw Error('Malformed snapshot pose');
+  return { key: {id:pose.id, generation:integerText(pose.generation)}, field:pose.field, position:vector(pose.position) };
+}
 export interface CaptureInput { request: ObjectData; service_run_id: string; label?: string }
 export interface CaptureResult { request: ObjectData; png_data_url: string }
 const sha = async (bytes: ArrayBuffer) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(value => value.toString(16).padStart(2, '0')).join('');
@@ -28,6 +34,7 @@ async function verifyAssets(url: string, expected: unknown, header: RunHeader, s
   const bytes = await response.arrayBuffer(); if (await sha(bytes) !== expected) throw Error('Capture asset manifest digest mismatch');
   const manifest = object(parseLosslessJson(new TextDecoder().decode(bytes)));
   if (manifest.format !== 'aeroagentsim.capture-assets/v1' || manifest.environment !== 'viewer-default/v1' || !Array.isArray(manifest.files)) throw Error('Unsupported capture asset manifest / environment');
+  const contents = new Map<string, ArrayBuffer>();
   const files = new Map<string, ObjectData>(), pinned = new Map<string, string>();
   await Promise.all(manifest.files.map(async value => {
     const file = object(value); if (typeof file.url !== 'string' || typeof file.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(file.sha256)) throw Error('Invalid capture asset descriptor');
@@ -35,13 +42,20 @@ async function verifyAssets(url: string, expected: unknown, header: RunHeader, s
     if (files.has(address)) throw Error('Duplicate capture asset URL'); files.set(address, file);
     const result = await fetch(address, { signal }); if (!result.ok) throw Error(`Capture asset HTTP ${result.status}: ${address}`);
     const data = await result.arrayBuffer(); if (data.byteLength !== counter(file.byte_count) || await sha(data) !== file.sha256) throw Error(`Capture asset integrity failure: ${address}`);
-    const blob = URL.createObjectURL(new Blob([data])); blobs.push(blob); pinned.set(address, blob);
+    contents.set(address, data); const blob = URL.createObjectURL(new Blob([data])); blobs.push(blob); pinned.set(address, blob);
   }));
   const required = header.presentation.flatMap(binding => binding.visual.kind === 'model' ? [binding.visual.asset] : []);
   if (header.scene?.city) required.push(header.scene.city.url);
   if (header.scene?.roads) required.push(header.scene.roads.url);
   if (header.scene?.hdri) required.push(header.scene.hdri);
   for (const address of required) if (!address || !files.has(new URL(address, location.href).href)) throw Error(`Capture asset is absent from the verified manifest: ${address}`);
+  if(header.scene?.city?.kind==='traffic-city') {
+    const address=new URL(header.scene.city.url,location.href).href;
+    const city=object(parseLosslessJson(new TextDecoder().decode(contents.get(address)!)));
+    if(!Array.isArray(city.buildings))throw Error('Traffic city buildings unavailable');
+    city.buildings=city.buildings.map(value=>{const building=object(value);if(typeof building.url!=='string')throw Error('Traffic building has no asset');const original=new URL(building.url.replace('/assets/',''),address).href;const blob=pinned.get(original);if(!blob)throw Error(`Unverified traffic building ${original}`);return {...building,url:blob};});
+    const blob=URL.createObjectURL(new Blob([JSON.stringify(city)],{type:'application/json'}));blobs.push(blob);pinned.set(address,blob);
+  }
   const pin = (address: string) => pinned.get(new URL(address, location.href).href)!;
   return { ...header, presentation: header.presentation.map(binding => binding.visual.asset ? { ...binding, visual: { ...binding.visual, asset: pin(binding.visual.asset) } } : binding),
     scene: header.scene && { ...header.scene, city: header.scene.city && { ...header.scene.city, url: pin(header.scene.city.url), assetsBase: header.scene.city.assetsBase ?? new URL('.', new URL(header.scene.city.url, location.href)).href }, roads: header.scene.roads && { ...header.scene.roads, url: pin(header.scene.roads.url) }, hdri: header.scene.hdri && pin(header.scene.hdri) } }; 
@@ -84,10 +98,19 @@ export async function renderCapture(api: RunsApi, assetManifestUrl: string, inpu
     const entity = store.entities.get(entityId(key)); if (!entity || entity.typeId !== actor.type_id) throw Error('Capture actor generation/type absent at source cut');
     store.select(key); header = await verifyAssets(assetManifestUrl, request.asset_digest, header, abort.signal, blobs);
     const cameraManifest = object(request.camera);
-    const supported = new Set(['revision', 'preset', 'eye', 'target', 'fov', 'near', 'far', 'frame', 'anchor']);
+    const supported = new Set(['revision', 'preset', 'eye', 'target', 'fov', 'near', 'far', 'frame', 'anchor', 'snapshot', 'provenance']);
     if (Object.keys(cameraManifest).some(name => !supported.has(name)) || typeof cameraManifest.revision !== 'string' || !cameraManifest.revision) throw Error('Unsupported / incomplete capture camera manifest');
     if (typeof cameraManifest.fov !== 'number' || !(cameraManifest.fov > 0 && cameraManifest.fov < 180)) throw Error('Invalid capture camera fov');
-    const eye = vector(cameraManifest.eye), target = vector(cameraManifest.target);
+    let eye: [number,number,number], target: [number,number,number];
+    if(cameraManifest.preset==='actor-nadir') {
+      if(cameraManifest.revision!=='traffic-city-nadir/v1'||cameraManifest.frame!=='enu')throw Error('Unsupported actor-nadir camera revision/frame');
+      const snapshot=object(cameraManifest.snapshot), snapshotCut=object(snapshot.cut);
+      if(counter(snapshotCut.index)!==index||!Array.isArray(snapshotCut.instant)||integerText(snapshotCut.instant[0])!==ns||counter(snapshotCut.instant[1])!==microstep||!Array.isArray(snapshot.entities))throw Error('Camera pose snapshot cut mismatch');
+      for(const value of snapshot.entities) {const pose=recordedCameraPose(value);const actual=store.sample(pose.key,pose.field);if(!actual||JSON.stringify(actual)!==JSON.stringify(pose.position))throw Error('Camera snapshot pose differs from committed facts');}
+      const binding=resolveBinding(header,entity.typeId);if(!binding)throw Error('Actor-nadir needs a spatial actor');
+      eye=vector(store.sample(key,binding.positionField));target=[eye[0],eye[1],0];
+      if(eye[2]<=0)throw Error('Actor-nadir camera must be above ground');
+    } else {eye=vector(cameraManifest.eye);target=vector(cameraManifest.target);}
     if (eye.every((value, i) => value === target[i])) throw Error('Capture eye and target coincide');
     if (!resolveBinding(header, entity.typeId)) vector(cameraManifest.anchor); // An explicit nonspatial camera anchor is required.
     for (const item of store.entities.values()) {
@@ -108,6 +131,7 @@ export async function renderCapture(api: RunsApi, assetManifestUrl: string, inpu
     if (typeof near !== 'number' || typeof far !== 'number' || !Number.isFinite(near) || !Number.isFinite(far) || near <= 0 || far <= near) throw Error('Invalid capture clip planes');
     const camera = new T.PerspectiveCamera(cameraManifest.fov, width / height, near, far);
     const cameraPosition = (value: [number, number, number]) => cameraManifest.frame === 'enu' ? worldPosition(value, 'enu') : cameraManifest.frame === undefined || cameraManifest.frame === 'render-world' ? new T.Vector3(...value) : (() => { throw Error('Unsupported capture camera frame'); })();
+    if(cameraManifest.preset==='actor-nadir')camera.up.set(0,0,-1);
     camera.position.copy(cameraPosition(eye)); camera.lookAt(cameraPosition(target));
     const overlay = document.createElement('div'); layer = new EntityLayer(header, assets, overlay, () => {}, error => failures.push(String(error)), status); scene.add(layer.root);
     layer.update(store, ns, camera, key, false); await Promise.resolve(); await Promise.resolve(); layer.update(store, ns, camera, key, false);

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from fastapi import APIRouter, FastAPI, HTTPException
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, Response
 
 from .catalog import engines
 from .inputs import configured_extracts, configured_ontology
@@ -64,7 +64,21 @@ def create_router(
                                 f"plugin {item['id']}.capability_descriptor: mapping required"
                             )
                         item["capability_descriptor"] = descriptor
-            return {"extracts": source_catalog(), "engines": items}
+            import yaml
+
+            from .templates import demo_source
+
+            profiles = {
+                path.stem: yaml.safe_load(path.read_bytes())
+                for path in (demo_source("traffic-accident") / "profiles").glob(
+                    "*.yaml"
+                )
+            }
+            return {
+                "extracts": source_catalog(),
+                "engines": items,
+                "demo_profiles": profiles,
+            }
 
         return checked(read)
 
@@ -105,8 +119,70 @@ def create_router(
         return checked(lambda: store.save(identifier, body))
 
     @router.post("/workspaces/{identifier}/templates/{name}")
-    def import_demo(identifier: str, name: str) -> dict[str, Any]:
-        return checked(lambda: store.import_demo(identifier, name))
+    def import_demo(identifier: str, name: str, body: dict[str, Any]) -> dict[str, Any]:
+        if set(body) - {"console", "capture_mode"} or body.get(
+            "capture_mode", "city"
+        ) not in {"city", "primitive-test"}:
+            raise HTTPException(
+                422, "demo: console and city/primitive-test capture_mode only"
+            )
+        return checked(
+            lambda: store.import_demo(
+                identifier,
+                name,
+                console=body.get("console") is True,
+                primitive=body.get("capture_mode") == "primitive-test",
+            )
+        )
+
+    @router.get("/demo-assets/{name:path}")
+    def demo_asset(name: str) -> FileResponse:
+        from .demo import city_file
+
+        return checked(lambda: FileResponse(city_file(name)))
+
+    @router.get("/demo-capture-assets")
+    def demo_capture_assets() -> Response:
+        from .demo import capture_manifest
+
+        return checked(
+            lambda: Response(capture_manifest(), media_type="application/json")
+        )
+
+    @router.post("/workspaces/{identifier}/decision-profile")
+    def decision_profile(identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        from .demo import live_decisions
+
+        def apply() -> dict[str, Any]:
+            draft = store.get(identifier)
+            if draft["scenario"]["id"] != "traffic-accident" or set(body) not in (
+                {"provider"},
+                {"mode"},
+            ):
+                raise ValueError(
+                    "Traffic live profile requires a saved demo and provider"
+                )
+            if body.get("mode") == "scripted":
+                import yaml
+
+                from .templates import demo_source
+
+                source = yaml.safe_load(
+                    (demo_source("traffic-accident") / "scenario.yaml").read_bytes()
+                )
+                draft["scenario"]["engines"]["decisions"] = source["engines"][
+                    "decisions"
+                ]
+                draft["scenario"]["engines"]["decisions"]["config"]["fixture_path"] = (
+                    str(store.directory(identifier) / "fixtures/decisions.json")
+                )
+            elif "provider" in body:
+                live_decisions(draft["scenario"], body["provider"])
+            else:
+                raise ValueError("Select scripted or an explicit live provider")
+            return store.save(identifier, {"scenario": draft["scenario"]})
+
+        return checked(apply)
 
     @router.post("/workspaces/{identifier}/behaviours")
     def edit_behaviour(identifier: str, body: dict[str, Any]) -> dict[str, Any]:

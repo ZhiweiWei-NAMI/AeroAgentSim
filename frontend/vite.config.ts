@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv, transformWithEsbuild } from 'vite';
+import { defineConfig, transformWithEsbuild } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // The existing sources keep the CRA-style convention of JSX inside .js files.
@@ -23,13 +23,9 @@ function jsWithJsx() {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => {
-const env = loadEnv(mode, process.cwd(), '');
+export default defineConfig(() => {
 return {
-  define: {
-    'process.env.REACT_APP_API_BASE_URL': JSON.stringify(env.REACT_APP_API_BASE_URL ?? '/api'),
-    'process.env.REACT_APP_WS_BASE_URL': JSON.stringify(env.REACT_APP_WS_BASE_URL ?? ''),
-  },
+  cacheDir: '.tmp/vite',
   optimizeDeps: { entries: ['index.html'], esbuildOptions: { loader: { '.js': 'jsx' as const } } },
   plugins: [
     jsWithJsx(),
@@ -42,14 +38,7 @@ return {
     port: 3000,
     strictPort: false,
     proxy: {
-      '/api': {
-        target: 'http://localhost:8002',
-        changeOrigin: true,
-      },
-      '/ws': {
-        target: 'ws://localhost:8002',
-        ws: true,
-      },
+      '/v1': { target: 'http://127.0.0.1:8002', changeOrigin: true },
     },
   },
   build: {
