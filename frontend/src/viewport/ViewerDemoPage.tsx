@@ -7,7 +7,7 @@ import { demoFeed } from './demo-feed';
 import { FeedStore } from './feed-store';
 import { PlaybackClock } from './clock';
 import { entityId } from './bindings';
-import { ViewportView } from './ViewportView';
+import { ViewerPresentation } from './ViewerPresentation';
 import { EntityInspector } from './EntityInspector';
 import type { Quality } from './pipeline';
 import type { CameraMode } from './viewport';
@@ -52,7 +52,7 @@ export default function ViewerDemoPage() {
     </header>
     <main className="viewer-main">
       <section className="viewer-stage">
-        <ViewportView store={store} clock={clock} selected={selected} mode={mode} quality={quality} trails={trails} commitCut={commitCut} onTick={tick} onSelect={setSelected}
+        <ViewerPresentation store={store} clock={clock} selected={selected} mode={mode} quality={quality} trails={trails} commitCut={commitCut} onTick={tick} onSelect={setSelected}
           onError={error => setError(String(error))} onQuality={(quality, fps) => { setQuality(quality); setFps(fps); }} />
         <div className="viewport-toolbar">
           <Select aria-label="Camera mode" value={mode} onChange={setMode} options={['orbit', 'follow', 'chase'].map(value => ({ value, label: t(`viewerCamera_${value}`) }))} />

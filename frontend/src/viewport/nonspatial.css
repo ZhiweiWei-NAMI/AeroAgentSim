@@ -1,0 +1,19 @@
+.ns-root { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 8px; color: #25445a; font: 12px system-ui; }
+.ns-controls { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; flex: 0 0 auto; }
+.ns-controls input, .ns-controls select { min-width: 0; max-width: 100%; padding: 5px; border: 1px solid #b0c6d5; background: #fff; color: #25445a; border-radius: 4px; }
+.ns-controls button, .ns-root td button, .ns-root th button, .ns-relation button { border: 1px solid #b0c6d5; border-radius: 4px; background: #fff; color: #205878; cursor: pointer; padding: 4px 6px; }
+.ns-controls button:disabled { opacity: .4; cursor: default; }
+.ns-controls span, .ns-note { color: #58768b; font-size: 11px; }
+.ns-canvas-wrap { position: relative; flex: 1; min-height: 140px; overflow: hidden; border: 1px solid #c5d5df; border-radius: 6px; background: #fff; }
+.ns-canvas-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.ns-relations { flex: 0 0 auto; max-height: 140px; overflow: auto; border: 1px solid #c5d5df; padding: 6px; background: #fff; }
+.ns-relation { margin-top: 8px; overflow-wrap: anywhere; }
+.ns-relation small { display: block; }
+.ns-ancestry { max-height: 48px; overflow: auto; font-size: 11px; }
+.ns-note { margin: 0; }
+.ns-table-wrap { flex: 1; min-height: 0; overflow: auto; background: white; border: 1px solid #c5d5df; }
+.ns-table-wrap table { border-collapse: collapse; width: 100%; font-size: 11px; }
+.ns-table-wrap th, .ns-table-wrap td { border-bottom: 1px solid #dbe6ed; padding: 8px; text-align: left; max-width: 250px; overflow-wrap: anywhere; }
+.ns-table-wrap thead { position: sticky; top: 0; background: #e3edf4; z-index: 1; }
+.ns-table-wrap tr[aria-selected="true"] { background: #fff0d7; }
+.ns-table-wrap code { white-space: pre-wrap; }

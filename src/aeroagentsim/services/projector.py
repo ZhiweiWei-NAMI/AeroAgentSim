@@ -250,6 +250,26 @@ def header(directory: Path) -> dict[str, Any]:
     )
     scenario = json.loads((directory / "scenario.json").read_text())
     types = {descriptor.id: descriptor for descriptor in registry.types}
+    # Browsing metadata comes from the run's pinned compilation, never today's
+    # mutable AeroGraph checkout. It has no bearing on kernel inheritance.
+    snapshot_path = directory / "registry.snapshot.json"
+    raw_types = (
+        json.loads(snapshot_path.read_text())["details"].get("raw_types", {})
+        if snapshot_path.exists()
+        else {}
+    )
+
+    def type_info(type_id: str) -> dict[str, Any]:
+        source = raw_types.get(type_id, {})
+        navigation = source.get("navigation")
+        result = {
+            "typeId": type_id,
+            "displayName": source.get("name", type_id),
+            "ancestors": ancestors(type_id),
+        }
+        if isinstance(navigation, dict) and isinstance(navigation.get("view"), str):
+            result["directory"] = navigation["view"]
+        return result
 
     def ancestors(type_id: str) -> list[str]:
         result: list[str] = []
@@ -265,10 +285,7 @@ def header(directory: Path) -> dict[str, Any]:
         "contract": "aeroagentsim.viewer-feed/v1",
         "runId": metadata["id"],
         "registryDigest": metadata["registry_digest"],
-        "types": [
-            {"typeId": t.id, "displayName": t.id, "ancestors": ancestors(t.id)}
-            for t in registry.types
-        ],
+        "types": [type_info(t.id) for t in registry.types],
         "fields": [
             {
                 "fieldId": f.id,
