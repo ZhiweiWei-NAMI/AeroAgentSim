@@ -11,6 +11,7 @@ from aerokernel.engine import Engine, Partition
 from aerokernel.errors import KernelError
 from aerokernel.state import StateView
 
+from aeroagentsim.models import MotionModel, motion_model
 from aeroagentsim.scenario import Scenario, ScenarioError, load_scenario
 from aeroagentsim.services.storage import RunStorage
 
@@ -27,6 +28,18 @@ class Simulation:
         partitions: dict[str, Partition] = {}
         engines: list[Engine] = []
         self.ingress_targets: dict[str, set[str]] = {}
+        # Allocate before factory order: planners and movers share object identity.
+        models: dict[str, MotionModel] = {}
+        for engine_id, item in sorted(scenario.engines.items()):
+            if item["plugin"] == "kinematic":
+                try:
+                    models[engine_id] = motion_model(
+                        item["config"], scenario.registry, scenario.manifest.entities
+                    )
+                except (ValueError, KeyError, TypeError) as exc:
+                    raise ScenarioError(
+                        f"engines.{engine_id}.config: kinematic: {exc}"
+                    ) from exc
         for engine_id, item in sorted(scenario.engines.items()):
             build = EngineBuild(
                 engine_id,
@@ -36,6 +49,7 @@ class Simulation:
                 scenario.manifest.entities,
                 scenario.initial,
                 partitions,
+                models,
             )
             try:
                 engine = catalog.build(item["plugin"], build)

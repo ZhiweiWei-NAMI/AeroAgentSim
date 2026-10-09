@@ -12,6 +12,8 @@ from typing import Any, cast
 from aerokernel import BindingManifest, EntityRef, MemoryRegistry
 from aerokernel.engine import Engine, Partition
 
+from aeroagentsim.models import MotionModel
+
 
 @dataclass(frozen=True)
 class EngineBuild:
@@ -22,6 +24,7 @@ class EngineBuild:
     entities: tuple[EntityRef, ...]
     initial: dict[str, dict[str, Any]]
     partitions: dict[str, Partition] = field(default_factory=dict)
+    models: dict[str, MotionModel] = field(default_factory=dict)
 
     def writers(self, ref: EntityRef) -> dict[str, str]:
         """Resolve authored instance selectors before factories declare partitions.
@@ -73,6 +76,7 @@ BUILTINS = {
     "threshold": "aeroagentsim.engines.threshold",
     "logistics": "aeroagentsim.packs.logistics",
     "inspection": "aeroagentsim.packs.inspection",
+    "environment": "aeroagentsim.engines.environment",
 }
 
 

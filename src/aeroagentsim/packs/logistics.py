@@ -22,11 +22,14 @@ from aerokernel.sdk import Command, ContextEngine, EngineContext
 from aerokernel.values import thaw
 
 from aeroagentsim.engines.common import bootstrap_owned, policies
+from aeroagentsim.models import Segment, motion_model, trajectory_seconds
 from aeroagentsim.platform.plugins import EngineBuild
 
 from .arrivals import arrival_times
 from .common import distance, finite, ns, read, vec
 from .geometry import segment_hits_box
+
+__all__ = ["Logistics", "build", "trajectory_seconds"]
 
 
 class AssignmentPolicy(Protocol):
@@ -38,11 +41,6 @@ class AssignmentPolicy(Protocol):
 def deterministic(order: str, eligible: tuple[str, ...]) -> tuple[str, ...]:
     """Stable carrier identity order, independent of dictionary insertion order."""
     return tuple(sorted(eligible))
-
-
-def trajectory_seconds(length: float, speed: float, accel: float) -> float:
-    ramp = min(speed / accel, math.sqrt(length / accel))
-    return 2 * ramp + max(0.0, (length - accel * ramp * ramp) / speed)
 
 
 @dataclass
@@ -118,17 +116,33 @@ class Logistics(ContextEngine):
         self.radius = finite(c["arrival_radius_m"], "arrival radius", 0)
         self.stopped = finite(c["stopped_speed_m_s"], "stopped threshold", 0)
         energy = c["energy"]
-        self.speed = finite(energy["speed_m_s"], "speed", 1e-12)
-        self.accel = finite(energy["accel_m_s2"], "acceleration", 1e-12)
-        self.idle = finite(energy["idle_w"], "idle power", 0)
-        self.per_m = finite(energy["per_m_j"], "energy per metre", 0)
+        mover = c["motion"]["target"]
+        if mover not in build.models:
+            # Native adapters supply their measured state; this explicitly
+            # authored calibration is a planning model, shared by this target.
+            build.models[mover] = motion_model(
+                {
+                    "max_speed_m_s": energy["speed_m_s"],
+                    "max_accel_m_s2": energy["accel_m_s2"],
+                    "step_ns": energy["motion_step_ns"],
+                    "energy": energy,
+                    **(
+                        {"consumption_model": c["consumption_model"]}
+                        if "consumption_model" in c
+                        else {}
+                    ),
+                },
+                build.registry,
+                build.entities,
+            )
+        self.model = build.models[mover]
+        self.consumption_model = self.model.consumption
         self.reserve = finite(energy["reserve_j"], "energy reserve", 0)
         self.energy_mode = energy["source"]
         if self.energy_mode not in {"joules", "battery_fraction"}:
             raise ValueError("energy source must be joules or battery_fraction")
         if self.energy_mode == "battery_fraction":
             finite(energy["capacity_j"], "declared battery capacity", 1e-12)
-        self.motion_step = ns(energy["motion_step_ns"], "motion step", 1)
         self.policy: AssignmentPolicy | None
         if c["policy"] == "external":
             self.policy = None
@@ -157,7 +171,12 @@ class Logistics(ContextEngine):
                 build.id,
                 build.id,
                 produces=self.produces,
-                consumes=tuple(Dependency(f) for f in c["consumes"]),
+                consumes=tuple(
+                    Dependency(f)
+                    for f in dict.fromkeys(
+                        tuple(c["consumes"]) + self.consumption_model.dependencies
+                    )
+                ),
                 commands=tuple(c["commands"].values()),
                 emits=(c["event_schema"], c["motion"]["schema"]),
                 subscribes=(c["decision_topic"],),
@@ -289,25 +308,29 @@ class Logistics(ContextEngine):
             >= locker_capacity
         ):
             return "locker_capacity"
-        durations = [
-            trajectory_seconds(distance(a, b), self.speed, self.accel)
+        segments = tuple(
+            self.model.segment(a, b)
             for a, b in ((start, pickup), (pickup, drop), (drop, pickup))
-        ]
-        rounded = sum(
-            max(
-                self.motion_step / 1e9,
-                math.ceil(d * 1e9 / self.motion_step) * self.motion_step / 1e9,
-            )
-            for d in durations
         )
+        rounded = sum(s.elapsed_s for s in segments)
         dwell = sum(
             ns(self._field(ctx, f, "dwell_ns"), "dwell", 1) / 1e9
             for f in (job.source, job.destination)
         )
-        length = distance(start, pickup) + 2 * distance(pickup, drop)
         cost = (
-            self.per_m * length
-            + self.idle * (rounded + dwell + 6 * self.tick / 1e9)
+            finite(
+                self.consumption_model.budget(
+                    ctx,
+                    carrier,
+                    segments
+                    + (
+                        Segment((0.0, 0.0, 0.0), dwell, 0.0),
+                        Segment((0.0, 0.0, 0.0), 6 * self.tick / 1e9, 0.0),
+                    ),
+                ),
+                "route consumption",
+                0,
+            )
             + self.reserve
         )
         if self._energy(ctx, carrier) < cost:
