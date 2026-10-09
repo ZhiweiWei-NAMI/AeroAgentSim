@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from collections import Counter
 from pathlib import Path
@@ -157,10 +156,7 @@ def census(root: Path) -> dict[str, Any]:
             op: {kind: original[kind][op] for kind in original}
             for op in sorted(set(counts["predicate"]) | set(counts["event"]))
         },
-        "sha256": {
-            p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in paths
-        },
+        "inputs": [p.relative_to(root).as_posix() for p in paths],
     }
 
 

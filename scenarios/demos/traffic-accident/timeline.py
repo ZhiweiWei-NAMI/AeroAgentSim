@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 from typing import Any, cast
@@ -91,7 +90,7 @@ def render(timer: Path, operator: Path) -> str:
         ),
         ("Sampled 3 s dwell → capture requested", "traffic.capture.requested", {}),
         ("Real PNG persisted", "traffic.capture.stored", {}),
-        ("Stored bytes verified; edge accepts", "traffic.capture.accepted", {}),
+        ("Upload received; edge accepts", "traffic.capture.accepted", {}),
         (
             "Receipt-backed capture chain completes",
             "aas.behaviour.completed",
@@ -110,18 +109,14 @@ def render(timer: Path, operator: Path) -> str:
     for label, path in (("Timer", timer), ("HTTP", operator)):
         package = json.loads((path / "behaviour.ir.json").read_text())["packages"][0]
         capture = ArtifactStore(path).get("incident-capture-01/episode-0")
-        digest = hashlib.sha256()
-        with (path / "journal.jsonl").open("rb") as stream:
-            for chunk in iter(lambda: stream.read(1 << 20), b""):
-                digest.update(chunk)
         output.extend(
             (
                 "",
                 (
-                    f"{label} run `{path.name}`: journal SHA-256 `{digest.hexdigest()}`; "
-                    f"PNG SHA-256 `{capture['digest']}`; camera cut `{capture['request']['source_cut']}`."
+                    f"{label} run `{path.name}`: "
+                    f"artifact `{capture['digest']}`; camera cut `{capture['request']['source_cut']}`."
                 ),
-                f"Pinned package `{package['digest']}`, IR `{package['ir_digest']}`.",
+                f"Package `{package['package_id']}`.",
             )
         )
     return "\n".join(output) + "\n"

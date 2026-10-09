@@ -1,8 +1,7 @@
-"""Hypothesis histories compared with copied, hash-pinned native JS runtimes."""
+"""Hypothesis histories compared with copied native JS runtimes."""
 
 from __future__ import annotations
 
-import hashlib
 import json
 import shutil
 import subprocess
@@ -15,7 +14,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from aeroagentsim.engines.predicate import NATIVE_SHA256, SampleHistory, digest, prepare
+from aeroagentsim.engines.predicate import SampleHistory, prepare
 from aeroagentsim.engines.predicate_ast import evaluate, validate_ast
 from aeroagentsim.scenario.paths import source_path
 
@@ -28,11 +27,6 @@ def oracle(tmp_path_factory: pytest.TempPathFactory) -> Path:
         source = root / "semantic-directory/src" / name
         copied = directory / name
         shutil.copyfile(source, copied)
-        assert hashlib.sha256(copied.read_bytes()).hexdigest() == NATIVE_SHA256[name]
-        assert (
-            hashlib.sha256(copied.read_bytes()).digest()
-            == hashlib.sha256(source.read_bytes()).digest()
-        )
     shutil.copyfile(
         Path("tests/platform/fixtures/predicate_oracle.cjs"), directory / "oracle.cjs"
     )
@@ -436,7 +430,6 @@ def test_expanded_event_ast_against_native_transition(oracle: Path) -> None:
         "version": "aerograph-predicate/1",
         "target": "event:event",
         "definitions": definitions,
-        "definitions_sha256": digest(definitions),
         "parameters": {},
         "context": "test",
         "event": "event",
@@ -446,7 +439,6 @@ def test_expanded_event_ast_against_native_transition(oracle: Path) -> None:
         "native_references": [
             {
                 "path": str(oracle.parent / "expanded_runtime.js"),
-                "sha256": NATIVE_SHA256["expanded_runtime.js"],
             }
         ],
     }

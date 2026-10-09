@@ -3,13 +3,12 @@
 
 City data is built separately with tools/build_map.py. No neighboring checkout
 is read. Conversion tooling installs only into --work-dir, never frontend's
-node_modules. Downloads retain upstream notices and hashes in the inventory.
+node_modules. Downloads retain upstream notices in the inventory.
 """
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import shutil
 import struct
@@ -100,12 +99,11 @@ def main() -> None:
         source: str,
         transform: str = "download",
     ) -> None:
-        data = path.read_bytes()
         records.append(
             {
                 "path": path.relative_to(dest).as_posix(),
-                "sha256": hashlib.sha256(data).hexdigest(),
-                "size": len(data),
+                "asset_id": source.rsplit("/", 1)[-1] + "/v1",
+                "size": path.stat().st_size,
                 "license": license,
                 "attribution": attribution,
                 "source": source,

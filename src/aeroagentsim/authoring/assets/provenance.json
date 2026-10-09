@@ -7,13 +7,11 @@
     "52519858",
     "10487419"
   ],
-  "sha256": "77d5a22001141b0c59abc2297c26dd03848b61fcf70d7e12665bd38310bdf2f2",
   "license": "ODbL-1.0",
   "attribution": "© OpenStreetMap contributors; https://www.openstreetmap.org/copyright",
   "source_snapshot": "2024-09-03T07:07:43Z",
   "full_source": {
     "file": "wujiaochang-source.osm.xml",
-    "sha256": "087f90f238e054156747059472fe35d74608a1bb0621fbbc01648754bff439f8",
     "size_bytes": 979135,
     "license": "ODbL-1.0",
     "purpose": "Original input corresponding to the existing precompiled SUMO test network; source availability, not a new Studio default."

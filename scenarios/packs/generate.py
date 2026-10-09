@@ -44,13 +44,12 @@ def field(
     return {"id": identity, "type": type_id, "schema": schema, "metadata": metadata}
 
 
-def base(identity: str, digest: str) -> dict[str, Any]:
+def base(identity: str) -> dict[str, Any]:
     return {
         "format": "aeroagentsim.scenario/v1",
         "id": identity,
         "registry": {
             "snapshot": "aerograph.snapshot.json",
-            "digest": digest,
             "types": [
                 {
                     "id": "aas:Custodian",
@@ -193,8 +192,8 @@ def motion(d: dict[str, Any], count: int) -> None:
     }
 
 
-def logistics(digest: str, count: int = 30, fleet: int = 5) -> dict[str, Any]:
-    d = base("logistics-small", digest)
+def logistics(count: int = 30, fleet: int = 5) -> dict[str, Any]:
+    d = base("logistics-small")
     motion(d, fleet)
     fields = {
         "position": POS,
@@ -468,8 +467,8 @@ def logistics(digest: str, count: int = 30, fleet: int = 5) -> dict[str, Any]:
     return d
 
 
-def inspection(digest: str) -> dict[str, Any]:
-    d = base("inspection-small", digest)
+def inspection() -> dict[str, Any]:
+    d = base("inspection-small")
     motion(d, 1)
     fields = {
         "position": POS,
@@ -643,8 +642,8 @@ def inspection(digest: str) -> dict[str, Any]:
     return d
 
 
-def px4(digest: str) -> dict[str, Any]:
-    d = logistics(digest, 1, 1)
+def px4() -> dict[str, Any]:
+    d = logistics(1, 1)
     d["id"] = "logistics-px4"
     native = yaml.safe_load((ROOT.parent / "adapters/px4-flight.yaml").read_text())
     d["engines"].pop("motion")
@@ -812,9 +811,9 @@ def main() -> None:
     )
     snapshot.write_snapshot(ROOT / "aerograph.snapshot.json")
     for name, document in (
-        ("logistics-small", logistics(snapshot.digest)),
-        ("inspection-small", inspection(snapshot.digest)),
-        ("logistics-px4", px4(snapshot.digest)),
+        ("logistics-small", logistics()),
+        ("inspection-small", inspection()),
+        ("logistics-px4", px4()),
     ):
         (ROOT / f"{name}.yaml").write_text(yaml.safe_dump(document, sort_keys=False))
 

@@ -2,7 +2,6 @@ format: aeroagentsim.scenario/v1
 id: realtime-streams
 registry:
   snapshot: realtime-registry.snapshot.json
-  digest: c9cc44b4399863cecbfa65f786d95defcf340c427d54b1e9d98580b5cda31be6
   messages:
   - id: aas.stream.observe
     kind: command

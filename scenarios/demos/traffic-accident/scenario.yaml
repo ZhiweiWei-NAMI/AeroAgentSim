@@ -2,7 +2,6 @@ format: aeroagentsim.scenario/v1
 id: traffic-accident
 registry:
   snapshot: registry.snapshot.json
-  digest: bb91a08d0c27531f3738b5e093c4af63f8b8763f486e0937aca36c109499a6c1
   types:
   - id: aas:TrafficRoadVehicle
     parents:
@@ -2091,7 +2090,7 @@ entities:
         0.0], [-463.9485, -233.2752, 0.0], [-451.9542, -266.6983, 0.0], [-439.7884, -297.9432, 0.0], [-419.8923, -353.181, 0.0], [-419.2708, -355.5636,
         0.0], [-419.3184, -357.4393, 0.0], [-420.0317, -358.8052, 0.0], [-421.4108, -359.6613, 0.0], [-443.2579, -367.3347, 0.0], [-452.2437,
         -370.37, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id027 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -2142,7 +2141,7 @@ entities:
         -451.2546, -373.415, 0.0], [-442.1942, -370.3511, 0.0], [-420.3539, -362.6834, 0.0], [-413.2177, -360.3988, 0.0], [-406.5648, -358.4616,
         0.0], [-405.1019, -357.4568, 0.0], [-404.4699, -355.5428, 0.0], [-404.6653, -352.7168, 0.0], [-405.6884, -348.9789, 0.0], [-413.3684,
         -326.5737, 0.0], [-414.9017, -324.3995, 0.0], [-416.927, -323.586, 0.0], [-418.9591, -322.7748, 0.0], [-420.5161, -320.6103, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id028 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -2220,7 +2219,7 @@ entities:
         280.5359, 0.0], [-69.9252, 264.6933, 0.0], [-95.7041, 249.2385, 0.0], [-104.5439, 243.8861, 0.0], [-239.2489, 161.6096, 0.0], [-245.4008,
         157.8505, 0.0], [-306.1526, 120.7649, 0.0], [-314.5921, 115.5655, 0.0], [-360.6668, 87.0239, 0.0], [-361.2627, 85.7112, 0.0], [-361.1815,
         84.8205, 0.0], [-360.4201, 84.3511, 0.0], [-358.9787, 84.303, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id029 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -2300,7 +2299,7 @@ entities:
         157.8505, 0.0], [-306.1526, 120.7649, 0.0], [-314.5921, 115.5655, 0.0], [-360.6668, 87.0239, 0.0], [-363.1001, 85.9343, 0.0], [-365.3154,
         85.8228, 0.0], [-367.3098, 86.6888, 0.0], [-369.0835, 88.5321, 0.0], [-379.5387, 103.1877, 0.0], [-382.4197, 107.2622, 0.0], [-389.7591,
         117.7047, 0.0], [-392.6327, 121.7978, 0.0], [-395.6182, 126.0433, 0.0], [-400.6169, 133.1395, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id030 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -2445,7 +2444,7 @@ entities:
         0.0], [-243.1618, -295.5982, 0.0], [-241.2572, -309.8295, 0.0], [-237.3886, -332.5352, 0.0], [-237.1365, -333.9406, 0.0], [-236.9297,
         -334.8976, 0.0], [-236.6717, -335.8428, 0.0], [-236.2677, -337.2152, 0.0], [-233.4584, -346.7955, 0.0], [-227.9847, -366.648, 0.0], [
         -226.6996, -371.5144, 0.0], [-218.2921, -404.8861, 0.0], [-218.2159, -405.1547, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id031 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -2523,7 +2522,7 @@ entities:
         100.3765, 0.0], [-195.4767, 81.8492, 0.0], [-167.541, 30.5292, 0.0], [-166.97, 27.5821, 0.0], [-167.6686, 23.1646, 0.0], [-169.6355, 17.2763,
         0.0], [-172.8707, 9.9175, 0.0], [-197.3135, -41.2112, 0.0], [-198.5629, -43.8552, 0.0], [-199.4324, -45.6595, 0.0], [-200.3731, -47.4259,
         0.0], [-201.8377, -49.9563, 0.0], [-212.0955, -67.3261, 0.0], [-214.6425, -71.6442, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id032 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -2580,7 +2579,7 @@ entities:
       [-154.9662, 39.6054, 0.0], [-157.7991, 34.9261, 0.0], [-160.9422, 29.8482, 0.0], [-165.4967, 22.5093, 0.0], [-169.97, 15.1266, 0.0], [-172.8707,
         9.9175, 0.0], [-197.3135, -41.2112, 0.0], [-198.5629, -43.8552, 0.0], [-199.4324, -45.6595, 0.0], [-200.3731, -47.4259, 0.0], [-201.8377,
         -49.9563, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id033 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -2650,7 +2649,7 @@ entities:
         180.8606, 0.0], [-430.7603, 182.3931, 0.0], [-428.766, 184.0041, 0.0], [-380.4753, 212.7267, 0.0], [-372.5565, 217.3227, 0.0], [-307.4212,
         253.8342, 0.0], [-305.1943, 254.6986, 0.0], [-303.1996, 254.6752, 0.0], [-301.4348, 253.7622, 0.0], [-299.8997, 251.9594, 0.0], [-274.1693,
         211.2357, 0.0], [-269.1663, 203.2282, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id034 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -2810,7 +2809,7 @@ entities:
         0.0], [66.0518, -414.3437, 0.0], [64.0558, -415.7714, 0.0], [55.2586, -420.3455, 0.0], [38.8368, -428.8709, 0.0], [10.9425, -446.625,
         0.0], [-11.6771, -468.5199, 0.0], [-14.3371, -472.1246, 0.0], [-15.6708, -476.5162, 0.0], [-15.6781, -481.6912, 0.0], [-14.3592, -487.6494,
         0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id035 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -2948,7 +2947,7 @@ entities:
         0.0], [35.6326, -341.1069, 0.0], [33.8284, -334.2238, 0.0], [30.7726, -322.5705, 0.0], [23.1981, -291.9538, 0.0], [18.4268, -276.7903,
         0.0], [15.1752, -260.2166, 0.0], [-2.4602, -193.9131, 0.0], [-2.7915, -191.3371, 0.0], [-2.2809, -189.2695, 0.0], [-2.1601, -189.1302,
         0.0], [-0.9284, -187.7091, 0.0], [1.2659, -186.6556, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id036 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3001,7 +3000,7 @@ entities:
         15.1752, -260.2166, 0.0], [-2.4602, -193.9131, 0.0], [-2.7915, -191.3371, 0.0], [-2.2809, -189.2695, 0.0], [-2.1601, -189.1302, 0.0],
       [-0.9284, -187.7091, 0.0], [1.2659, -186.6556, 0.0], [66.6955, -166.6438, 0.0], [79.7479, -162.6524, 0.0], [100.5144, -156.3174, 0.0], [
         103.9591, -154.7045, 0.0], [106.0872, -152.3733, 0.0], [106.8979, -149.3228, 0.0], [106.3913, -145.5528, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id037 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3065,7 +3064,7 @@ entities:
         0.0], [-71.1516, 107.4928, 0.0], [-56.641, 117.9482, 0.0], [-34.6039, 130.6321, 0.0], [-15.063, 140.6884, 0.0], [45.3098, 166.7269, 0.0],
       [48.0659, 167.5701, 0.0], [49.9666, 167.3565, 0.0], [51.0114, 166.085, 0.0], [51.2004, 163.7556, 0.0], [48.8823, 136.0181, 0.0], [51.7002,
         88.3057, 0.0], [52.5691, 87.1542, 0.0], [53.3913, 86.8021, 0.0], [54.1663, 87.2485, 0.0], [54.8942, 88.4936, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id038 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3087,7 +3086,7 @@ entities:
         0.0], [-102.8767, 241.1572, 0.0], [-94.0581, 246.492, 0.0], [-68.298, 261.9379, 0.0], [-41.0767, 277.7721, 0.0], [-32.6093, 282.5733,
         0.0], [10.4493, 306.6094, 0.0], [23.3084, 313.6034, 0.0], [48.6369, 327.0006, 0.0], [49.3233, 328.2662, 0.0], [49.3029, 329.1604, 0.0],
       [48.5753, 329.6806, 0.0], [47.1405, 329.8268, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id039 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3200,7 +3199,7 @@ entities:
         0.0], [280.5027, -261.0698, 0.0], [280.9224, -261.9762, 0.0], [281.3421, -262.8826, 0.0], [281.7618, -263.789, 0.0], [282.1815, -264.6954,
         0.0], [290.3859, -283.0902, 0.0], [307.763, -324.2474, 0.0], [327.3268, -361.1001, 0.0], [328.3063, -363.5435, 0.0], [328.362, -365.4372,
         0.0], [327.4914, -366.7784, 0.0], [325.6945, -367.5672, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id040 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3327,7 +3326,7 @@ entities:
       [286.4837, -275.7415, 0.0], [290.1985, -276.0186, 0.0], [295.5721, -275.5642, 0.0], [295.7729, -275.542, 0.0], [297.9649, -274.6914, 0.0],
       [298.959, -272.833, 0.0], [298.7527, -269.9648, 0.0], [297.3462, -266.0867, 0.0], [271.1117, -208.7815, 0.0], [267.3156, -199.772, 0.0],
       [259.645, -179.5252, 0.0], [259.5972, -179.4153, 0.0], [253.6163, -166.5717, 0.0], [253.4883, -166.2902, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id041 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3363,7 +3362,7 @@ entities:
         0.0], [71.2692, 14.8942, 0.0], [72.1503, 17.9763, 0.0], [71.6794, 21.767, 0.0], [67.9304, 35.3186, 0.0], [57.3731, 73.5649, 0.0], [57.0435,
         76.1619, 0.0], [57.657, 78.1541, 0.0], [57.966, 78.4294, 0.0], [59.2134, 79.5409, 0.0], [61.7125, 80.3223, 0.0], [121.7788, 90.0018, 0.0],
       [174.5462, 97.8869, 0.0], [176.1411, 97.7723, 0.0], [177.4025, 96.9038, 0.0], [178.3289, 95.2805, 0.0], [178.9204, 92.9025, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id042 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3416,7 +3415,7 @@ entities:
         0.0], [158.4271, 225.5439, 0.0], [158.7812, 224.6071, 0.0], [158.9717, 223.6391, 0.0], [159.1569, 222.67, 0.0], [159.3422, 221.701, 0.0],
       [160.155, 219.2764, 0.0], [161.4811, 217.8455, 0.0], [163.3192, 217.4065, 0.0], [165.6693, 217.9594, 0.0], [165.8562, 218.0358, 0.0], [
         167.7647, 219.1818, 0.0], [168.9809, 220.8083, 0.0], [169.5034, 222.9135, 0.0], [169.3321, 225.4976, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id043 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3456,7 +3455,7 @@ entities:
         332.0139, 0.0], [57.5046, 331.8375, 0.0], [61.3094, 332.9344, 0.0], [78.669, 340.143, 0.0], [96.9092, 346.5872, 0.0], [105.6348, 349.5998,
         0.0], [126.7847, 356.6433, 0.0], [139.1564, 360.9521, 0.0], [139.3449, 361.0245, 0.0], [152.8723, 366.1987, 0.0], [185.211, 379.0501,
         0.0], [186.0293, 380.2336, 0.0], [186.1056, 381.1248, 0.0], [185.4385, 381.7205, 0.0], [184.0279, 382.0209, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id044 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3506,7 +3505,7 @@ entities:
         0.0], [332.5249, -363.5719, 0.0], [334.3298, -365.7706, 0.0], [334.767, -366.3032, 0.0], [336.877, -367.7908, 0.0], [338.8549, -368.0346,
         0.0], [339.0538, -367.9987, 0.0], [342.5421, -367.2975, 0.0], [344.9166, -366.7348, 0.0], [347.2397, -365.9925, 0.0], [350.5766, -364.7556,
         0.0], [434.598, -332.9602, 0.0], [439.2235, -331.1739, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id045 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3625,7 +3624,7 @@ entities:
         0.0], [304.5863, -273.9416, 0.0], [308.1462, -272.6715, 0.0], [322.4094, -267.3907, 0.0], [350.6993, -253.8373, 0.0], [410.5052, -228.7405,
         0.0], [420.1495, -224.8097, 0.0], [488.2003, -197.6475, 0.0], [500.5255, -193.3922, 0.0], [501.3948, -192.2429, 0.0], [501.5119, -191.3562,
         0.0], [500.8727, -190.7305, 0.0], [499.4773, -190.3659, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id046 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3633,7 +3632,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id007
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id047 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3641,7 +3640,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id008
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id048 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3649,7 +3648,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id009
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id049 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3657,7 +3656,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id010
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id050 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3665,7 +3664,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id011
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id051 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3673,7 +3672,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id012
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id052 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3681,7 +3680,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id013
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id053 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3689,7 +3688,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id014
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id054 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3697,7 +3696,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id015
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id055 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3705,7 +3704,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id016
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id056 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3713,7 +3712,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id017
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id057 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3721,7 +3720,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id018
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id058 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3729,7 +3728,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id019
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id059 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3737,7 +3736,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id020
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id060 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3745,7 +3744,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id021
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id061 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3753,7 +3752,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id022
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id062 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3761,7 +3760,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id023
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id063 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3769,7 +3768,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id024
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id064 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3777,7 +3776,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id025
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id065 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3785,7 +3784,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id026
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id066 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3793,7 +3792,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id007
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id067 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3801,7 +3800,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id008
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id068 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3809,7 +3808,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id009
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id069 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3817,7 +3816,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id010
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id070 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3825,7 +3824,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id011
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id071 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3833,7 +3832,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id026
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id072 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3841,7 +3840,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id012
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id073 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3849,7 +3848,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id013
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id074 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3857,7 +3856,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id014
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id075 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3865,7 +3864,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id015
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id076 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3873,7 +3872,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id016
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id077 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3881,7 +3880,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id017
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id078 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3889,7 +3888,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id018
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id079 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3897,7 +3896,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id019
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id080 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3905,7 +3904,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id020
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id081 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3913,7 +3912,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id021
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id082 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3921,7 +3920,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id022
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id083 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3929,7 +3928,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id023
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id084 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3937,7 +3936,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id024
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id085 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3945,7 +3944,7 @@ entities:
   type: aas:TrafficRoute
   facts:
     traffic.route.points_enu_m: *source_id025
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id086 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3955,7 +3954,7 @@ entities:
     traffic.route.points_enu_m: &source_id088 [[72.4242, 7.033, 0.0], [72.6391, 6.2541, 0.0], [74.2074, -2.5305, 0.0], [75.1978, -8.1265, 0.0], [79.7634,
         -34.3137, 0.0], [82.9261, -50.9641, 0.0], [84.9346, -62.7383, 0.0], [90.4068, -84.8039, 0.0], [92.2965, -94.8863, 0.0], [93.6672, -104.9435,
         0.0], [96.3988, -120.6238, 0.0], [100.1065, -135.0616, 0.0], [103.3124, -146.423, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id087 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3966,7 +3965,7 @@ entities:
     traffic.route.points_enu_m: &source_id090 [[75.5086, 7.8845, 0.0], [75.7631, 6.9627, 0.0], [77.358, -1.9704, 0.0], [78.3495, -7.5728, 0.0], [82.9117,
         -33.7403, 0.0], [86.0756, -50.3965, 0.0], [88.069, -62.0833, 0.0], [93.5349, -84.1234, 0.0], [95.4564, -94.3752, 0.0], [96.83, -104.4527,
         0.0], [99.5296, -119.9502, 0.0], [103.1965, -134.229, 0.0], [106.3921, -145.5539, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id089 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -3992,7 +3991,7 @@ entities:
         -118.44373755823887, 0.0], [96.97717434810926, -119.48210920478117, 0.0], [96.97643104299826, -120.51586489159142, 0.0], [97.06567444250129,
         -121.52912640601245, 0.0], [97.17782061668031, -122.53609564517818, 0.0], [97.31427635645, -123.53623791975295, 0.0], [97.47851345195112,
         -124.52857371921026, 0.0], [97.6740035723857, -125.51212302398477, 0.0], [97.90421826601694, -126.48590530547226, 0.0]]
-    traffic.route.source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+    traffic.route.source_digest: traffic-scene-local/v1
     traffic.route.native_edges: &source_id091 []
     traffic.route.mode: polyline
     traffic.route.parameters: {}
@@ -6808,7 +6807,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
         points_enu_m: *source_id007
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 6.5
       - id: route.vehicle.002
         loop_policy: declared_discontinuity
@@ -6816,7 +6815,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
         points_enu_m: *source_id008
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.1
       - id: route.vehicle.003
         loop_policy: declared_discontinuity
@@ -6824,7 +6823,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
         points_enu_m: *source_id009
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.7
       - id: route.vehicle.004
         loop_policy: declared_discontinuity
@@ -6832,7 +6831,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
         points_enu_m: *source_id010
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.3
       - id: route.vehicle.005
         loop_policy: declared_discontinuity
@@ -6840,7 +6839,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
         points_enu_m: *source_id011
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.9
       - id: route.vehicle.006
         loop_policy: declared_discontinuity
@@ -6848,7 +6847,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
         points_enu_m: *source_id026
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 6.5
       - id: route.vehicle.007
         loop_policy: declared_discontinuity
@@ -6856,7 +6855,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
         points_enu_m: *source_id012
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.1
       - id: route.vehicle.008
         loop_policy: declared_discontinuity
@@ -6864,7 +6863,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
         points_enu_m: *source_id013
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.7
       - id: route.vehicle.009
         loop_policy: declared_discontinuity
@@ -6872,7 +6871,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
         points_enu_m: *source_id014
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.3
       - id: route.vehicle.010
         loop_policy: declared_discontinuity
@@ -6880,7 +6879,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
         points_enu_m: *source_id015
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.9
       - id: route.vehicle.011
         loop_policy: declared_discontinuity
@@ -6888,7 +6887,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
         points_enu_m: *source_id016
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 6.5
       - id: route.vehicle.012
         loop_policy: declared_discontinuity
@@ -6896,7 +6895,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
         points_enu_m: *source_id017
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.1
       - id: route.vehicle.013
         loop_policy: declared_discontinuity
@@ -6904,7 +6903,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
         points_enu_m: *source_id018
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.7
       - id: route.vehicle.014
         loop_policy: declared_discontinuity
@@ -6912,7 +6911,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
         points_enu_m: *source_id019
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.3
       - id: route.vehicle.015
         loop_policy: declared_discontinuity
@@ -6920,7 +6919,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
         points_enu_m: *source_id020
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.9
       - id: route.vehicle.016
         loop_policy: declared_discontinuity
@@ -6928,7 +6927,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
         points_enu_m: *source_id021
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 6.5
       - id: route.vehicle.017
         loop_policy: declared_discontinuity
@@ -6936,7 +6935,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
         points_enu_m: *source_id022
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.1
       - id: route.vehicle.018
         loop_policy: declared_discontinuity
@@ -6944,7 +6943,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
         points_enu_m: *source_id023
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.7
       - id: route.vehicle.019
         loop_policy: declared_discontinuity
@@ -6952,7 +6951,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
         points_enu_m: *source_id024
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.3
       - id: route.vehicle.020
         loop_policy: declared_discontinuity
@@ -6960,7 +6959,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
         points_enu_m: *source_id025
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.9
       - id: route.vehicle.021
         loop_policy: declared_discontinuity
@@ -6968,7 +6967,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
         points_enu_m: *source_id007
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 6.5
       - id: route.vehicle.022
         loop_policy: declared_discontinuity
@@ -6976,7 +6975,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
         points_enu_m: *source_id008
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.1
       - id: route.vehicle.023
         loop_policy: declared_discontinuity
@@ -6984,7 +6983,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
         points_enu_m: *source_id009
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.7
       - id: route.vehicle.024
         loop_policy: declared_discontinuity
@@ -6992,7 +6991,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
         points_enu_m: *source_id010
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.3
       - id: route.vehicle.025
         loop_policy: declared_discontinuity
@@ -7000,7 +6999,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
         points_enu_m: *source_id011
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.9
       - id: route.vehicle.027
         loop_policy: declared_discontinuity
@@ -7008,7 +7007,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
         points_enu_m: *source_id012
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 6.5
       - id: route.vehicle.028
         loop_policy: declared_discontinuity
@@ -7016,7 +7015,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
         points_enu_m: *source_id013
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.1
       - id: route.vehicle.029
         loop_policy: declared_discontinuity
@@ -7024,7 +7023,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
         points_enu_m: *source_id014
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.7
       - id: route.vehicle.030
         loop_policy: declared_discontinuity
@@ -7032,7 +7031,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
         points_enu_m: *source_id015
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.3
       - id: route.vehicle.031
         loop_policy: declared_discontinuity
@@ -7040,7 +7039,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
         points_enu_m: *source_id016
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.9
       - id: route.vehicle.032
         loop_policy: declared_discontinuity
@@ -7048,7 +7047,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
         points_enu_m: *source_id017
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 6.5
       - id: route.vehicle.033
         loop_policy: declared_discontinuity
@@ -7056,7 +7055,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
         points_enu_m: *source_id018
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.1
       - id: route.vehicle.034
         loop_policy: declared_discontinuity
@@ -7064,7 +7063,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
         points_enu_m: *source_id019
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.7
       - id: route.vehicle.035
         loop_policy: declared_discontinuity
@@ -7072,7 +7071,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
         points_enu_m: *source_id020
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.3
       - id: route.vehicle.036
         loop_policy: declared_discontinuity
@@ -7080,7 +7079,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
         points_enu_m: *source_id021
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.9
       - id: route.vehicle.037
         loop_policy: declared_discontinuity
@@ -7088,7 +7087,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
         points_enu_m: *source_id022
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 6.5
       - id: route.vehicle.038
         loop_policy: declared_discontinuity
@@ -7096,7 +7095,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
         points_enu_m: *source_id023
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.1
       - id: route.vehicle.039
         loop_policy: declared_discontinuity
@@ -7104,7 +7103,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
         points_enu_m: *source_id024
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.7
       - id: route.vehicle.040
         loop_policy: declared_discontinuity
@@ -7112,7 +7111,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
         points_enu_m: *source_id025
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.3
       - id: route.vehicle.026
         loop_policy: declared_discontinuity
@@ -7120,7 +7119,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
         points_enu_m: *source_id026
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.9
       - id: route.vehicle.041
         loop_policy: declared_discontinuity
@@ -7128,7 +7127,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
         points_enu_m: *source_id007
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 6.5
       - id: route.vehicle.042
         loop_policy: declared_discontinuity
@@ -7136,7 +7135,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
         points_enu_m: *source_id008
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.1
       - id: route.vehicle.043
         loop_policy: declared_discontinuity
@@ -7144,7 +7143,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
         points_enu_m: *source_id009
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.7
       - id: route.vehicle.044
         loop_policy: declared_discontinuity
@@ -7152,7 +7151,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
         points_enu_m: *source_id010
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.3
       - id: route.vehicle.045
         loop_policy: declared_discontinuity
@@ -7160,7 +7159,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
         points_enu_m: *source_id011
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.9
       - id: route.vehicle.046
         loop_policy: declared_discontinuity
@@ -7168,7 +7167,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
         points_enu_m: *source_id026
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 6.5
       - id: route.vehicle.047
         loop_policy: declared_discontinuity
@@ -7176,7 +7175,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
         points_enu_m: *source_id012
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.1
       - id: route.vehicle.048
         loop_policy: declared_discontinuity
@@ -7184,7 +7183,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
         points_enu_m: *source_id013
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.7
       - id: route.vehicle.049
         loop_policy: declared_discontinuity
@@ -7192,7 +7191,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
         points_enu_m: *source_id014
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.3
       - id: route.vehicle.050
         loop_policy: declared_discontinuity
@@ -7200,7 +7199,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
         points_enu_m: *source_id015
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.9
       - id: route.vehicle.051
         loop_policy: declared_discontinuity
@@ -7208,7 +7207,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
         points_enu_m: *source_id016
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 6.5
       - id: route.vehicle.052
         loop_policy: declared_discontinuity
@@ -7216,7 +7215,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
         points_enu_m: *source_id017
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.1
       - id: route.vehicle.053
         loop_policy: declared_discontinuity
@@ -7224,7 +7223,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 48.0
         points_enu_m: *source_id018
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.7
       - id: route.vehicle.054
         loop_policy: declared_discontinuity
@@ -7232,7 +7231,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 60.0
         points_enu_m: *source_id019
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.3
       - id: route.vehicle.055
         loop_policy: declared_discontinuity
@@ -7240,7 +7239,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 72.0
         points_enu_m: *source_id020
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.9
       - id: route.vehicle.056
         loop_policy: declared_discontinuity
@@ -7248,7 +7247,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 84.0
         points_enu_m: *source_id021
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 6.5
       - id: route.vehicle.057
         loop_policy: declared_discontinuity
@@ -7256,7 +7255,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 0.0
         points_enu_m: *source_id022
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.1
       - id: route.vehicle.058
         loop_policy: declared_discontinuity
@@ -7264,7 +7263,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 12.0
         points_enu_m: *source_id023
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 7.7
       - id: route.vehicle.059
         loop_policy: declared_discontinuity
@@ -7272,7 +7271,7 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 24.0
         points_enu_m: *source_id024
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.3
       - id: route.vehicle.060
         loop_policy: declared_discontinuity
@@ -7280,26 +7279,26 @@ engines:
         native_mapping_status: not_exported_in_source_scene
         offset_m: 36.0
         points_enu_m: *source_id025
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
         speed_mps: 8.9
       - id: lane.incident
         loop_policy: stop
         native_edges: *source_id087
         native_lane_id: --2682428834550472112#0_1
         points_enu_m: *source_id088
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
       - id: lane.adjacent
         loop_policy: stop
         native_edges: *source_id089
         native_lane_id: -2682428834550472112#0_1
         points_enu_m: *source_id090
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
       - id: adjacent_lane_bypass
         loop_policy: stop
         native_edges: *source_id091
         native_lane_id: ''
         points_enu_m: *source_id092
-        source_digest: ce10ac990ff87b298a4d236671b4eefe9e50b1f3c3fae9d6c80c73f84229f7cb
+        source_digest: traffic-scene-local/v1
       actors:
       - attitude_xyzw: *source_id093
         direction: 1
@@ -8086,7 +8085,7 @@ engines:
         browser_executable: /home/weizhiwei/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome
         node_modules: frontend/node_modules
         timeout_s: 20.0
-        asset_digest: 37911d569ebb721da8e243a55e98dca93f1528a65c21cc855d49ba121bc1b428
+        asset_digest: traffic-camera-assets/v1
   capture_bridge:
     plugin: traffic_capture_bridge
     config:
@@ -8098,7 +8097,7 @@ engines:
         revision: traffic-nadir/v1
         fov: 55.0
         provenance: simulation camera; primitive geometry; committed poses
-      asset_digest: 37911d569ebb721da8e243a55e98dca93f1528a65c21cc855d49ba121bc1b428
+      asset_digest: traffic-camera-assets/v1
       width: 256
       height: 192
       timeout_s: 20.0

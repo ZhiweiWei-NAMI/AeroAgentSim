@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 import math
 import re
 from dataclasses import dataclass
@@ -36,7 +35,7 @@ from aerokernel.relations import (
     RelationRule,
 )
 from aerokernel.sampling import SampleSpec
-from aerokernel.values import canonical_json, thaw
+from aerokernel.values import thaw
 
 from aeroagentsim.integrations.aerograph import (
     CompiledRegistry,
@@ -159,7 +158,6 @@ class Scenario:
     document: dict[str, Any]
     source: str
     base: Path
-    digest: str
     run_id: str
     compiled: CompiledRegistry
     registry: MemoryRegistry
@@ -298,10 +296,6 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         compiled = read_snapshot(
             source_path(text(registry_spec["snapshot"], "registry.snapshot"), base)
         )
-        if registry_spec.get("digest") != compiled.digest:
-            raise ScenarioError(
-                "registry.digest: snapshot digest must be explicitly pinned and match"
-            )
     else:
         spec = obj(registry_spec["compile"], "registry.compile")
         contract(
@@ -323,29 +317,6 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
             ),
             Policy(**obj(spec.get("policy", {}), "registry.compile.policy")),
         )
-    snapshot_digests: dict[Path, str] = {}
-    if "snapshot" in registry_spec:
-        snapshot_digests[source_path(registry_spec["snapshot"], base).resolve()] = (
-            compiled.digest
-        )
-    for engine_id in behaviour_engines:
-        for package in document["engines"][engine_id]["config"]["packages"]:
-            requirements = package["document"].get("registry", {})
-            if "snapshot" not in requirements:
-                continue
-            package_source = Path(package["source"])
-            package_base = package_source.parent if package_source.is_file() else base
-            required_snapshot = source_path(
-                requirements["snapshot"], package_base
-            ).resolve()
-            if required_snapshot not in snapshot_digests:
-                snapshot_digests[required_snapshot] = read_snapshot(
-                    required_snapshot
-                ).digest
-            if snapshot_digests[required_snapshot] != compiled.digest:
-                raise ScenarioError(
-                    f"{package['source']}: $.registry.snapshot: package requires a different pinned registry snapshot"
-                )
     types = list(compiled.registry.types)
     fields = list(compiled.registry.fields)
     messages = list(compiled.registry.messages)
@@ -718,7 +689,6 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
     outputs = contract(document["outputs"], "outputs", {"durability"})
     if outputs["durability"] not in {"flush", "fsync"}:
         raise ScenarioError("outputs.durability: expected flush or fsync")
-    digest = hashlib.sha256(canonical_json(document)).hexdigest()
     clock_mappings = None
     if "clock_mappings" in document:
         authored_mappings = []
@@ -844,7 +814,7 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         stream_paths.setdefault(stream_id, path)
         ingress[engine_id] = EngineIngress(mapping_id, policy, stream_id)
     # AST admission belongs to scenario load, before a kernel or external engine
-    # starts. This does not alter the registry compiler or its snapshot digest.
+    # starts. This does not alter the registry compiler or its snapshot.
     for engine_id, item in engines.items():
         if item["plugin"] == "predicate":
             from aeroagentsim.engines.predicate import prepare
@@ -874,13 +844,6 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
                         expected_config["definitions"][config["target"]][
                             "expression"
                         ] = expected
-                        from aeroagentsim.engines.predicate import (
-                            digest as predicate_digest,
-                        )
-
-                        expected_config["definitions_sha256"] = predicate_digest(
-                            expected_config["definitions"]
-                        )
                         expected = prepare(expected_config)
                     if (
                         config["event"] != adapter["event"]
@@ -889,7 +852,7 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
                         != definition.get("parameters", {})
                     ):
                         raise ScenarioError(
-                            f"{path}: expression, event and parameters must match the pinned Q6 sampled partition"
+                            f"{path}: expression, event and parameters must match the Q6 sampled partition"
                         )
                     if set(sample_spec.bindings) != set(definition["roles"]):
                         raise ScenarioError(
@@ -899,7 +862,6 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         document,
         source,
         base,
-        digest,
         run_id,
         compiled,
         registry,

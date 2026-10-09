@@ -2,7 +2,6 @@ format: aeroagentsim.scenario/v1
 id: e1-sumo-grid
 registry:
   snapshot: authored-registry.json
-  digest: d0519bdbbb0dde27d8488ee5c0408c87fe6a550f4353b330e2bba344cd64c75a
   types:
   - id: e1:RoadVehicle
     parents: []

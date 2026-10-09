@@ -6,7 +6,6 @@ preserves OSM topology at crop boundaries rather than inventing clipped ways.
 
 from __future__ import annotations
 
-import hashlib
 import math
 import re
 import subprocess
@@ -441,14 +440,12 @@ def generate_sumo(
                     raise ValueError("SUMO: invalid lane shape")
                 for value in pair:
                     _number(value, "SUMO lane coordinate")
-        digest = hashlib.sha256(pending.read_bytes()).hexdigest()
         pending.replace(output)
         location = network.find("location")
         return {
             "status": "generated",
             "edge_count": len(edges),
             "lane_count": len(lanes),
-            "sha256": digest,
             "command": command,
             "location": None if location is None else dict(location.attrib),
             "stderr": process.stderr[-4000:],

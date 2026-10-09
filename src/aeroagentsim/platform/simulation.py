@@ -120,8 +120,6 @@ class Simulation:
             journal=journal,
             ingress_streams=scenario.ingress_streams,
             configuration={
-                "scenario_digest": scenario.digest,
-                "registry_snapshot_digest": scenario.compiled.digest,
                 "scenario": scenario.document,
             },
         )
@@ -254,9 +252,7 @@ class RunSession:
                 {
                     **metadata,
                     "epoch": self.scenario.manifest.epoch,
-                    "behaviour_digests": [
-                        {"package": p["digest"], "ir": p["ir_digest"]} for p in packages
-                    ],
+                    "behaviour_packages": [p["package_id"] for p in packages],
                 },
             )
             (directory / "behaviour.ir.json").write_bytes(

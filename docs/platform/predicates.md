@@ -121,7 +121,7 @@ PYTHONPATH=src /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin
 
 ## Plugin binding and execution
 
-The `aeroagentsim.engines` entry point is `predicate = aeroagentsim.engines.predicate:build`; source development also resolves it through the built-in catalog. Configuration pins `version: aerograph-predicate/1`, a canonical definition closure in `definitions`, its `definitions_sha256` (kernel canonical JSON including its newline), the selected canonical `target` key, `context`, explicit `parameters`, `temporal_unit: s` or `ns`, native evaluator file hashes, a typed event schema/topic, and `transition: entered`, `exited` or `level`. Only the two native runtime hashes above are accepted by this engine version. Extending to another native revision requires a new reviewed evaluator revision and differential tests.
+The `aeroagentsim.engines` entry point is `predicate = aeroagentsim.engines.predicate:build`; source development also resolves it through the built-in catalog. Configuration declares `version: aerograph-predicate/1`, a canonical definition closure in `definitions`, the selected `target` key, `context`, explicit `parameters`, `temporal_unit: s` or `ns`, a typed event schema/topic, and `transition: entered`, `exited` or `level`. The supported AST dialect is validated at load. Definition and native source hashes are no longer required or checked.
 
 A matching `bindings.samples` entry pins role → full entity reference, role → source partition, role → native clock/mapping pair, parameters, triggers and the complete upstream cone. Canonical owner aliases describe producers; they never select an instance implicitly. `field_roles` and `relation_roles` explicitly bind source leaves whose original aliases are absent or require a selected instance profile. Relation inputs additionally require `relation_profiles: {relation-id: {source: writer-partition, clock: [clock-id, mapping-id]}}`, independent of the producer of the endpoint's fields. Directed endpoint types are checked against registry descriptors. Declared lifecycle reads verify the selected generations are alive; removal yields required input rather than a false relation. Original compact AST admits no field path, time, variable or relation leaf; those leaves are accepted only by the expanded dialect. `sequence` is admitted only inside temporal scope.
 
@@ -157,15 +157,7 @@ PYTHONPATH=src /mnt/data2/weizhiwei/aeroagentsim/AeroAgentSim-platform/.venv/bin
   run scenarios/predicates-demo.yaml --out /tmp/aas-q/q6/demo-runs
 ```
 
-No compiler change is needed: the AST closure is an additive engine configuration, already included in scenario/run provenance. The existing snapshot bytes and declared digests stay unchanged:
-
-| Snapshot | Declared digest | File SHA-256 |
-|---|---|---|
-| `scenarios/packs/aerograph.snapshot.json` | `2e8374426ca802e45aa2eeed7dbea6a8cbbfcf788a0e90eea369562e7066fd01` | `ee0a65bc7a4cb05a2a43703d610fbeab5fa56cc11dc7e67dea26186c02569ea1` |
-| `scenarios/realtime-registry.snapshot.json` | `c9cc44b4399863cecbfa65f786d95defcf340c427d54b1e9d98580b5cda31be6` | `34ca922cb61c19c066f575a61aa53d06da58f1180d5d958fd3169eac7ff1cdd1` |
-
-The regression test asserts these pre-change byte hashes; the existing integration compiler tests continue to check digest round trips and selection-order stability.
-
+The AST closure is additive engine configuration recorded with the scenario. Snapshot round trips and selection-order stability remain tested; snapshot byte hashes are no longer pinned.
 
 ## Validation record (2026-10-08)
 

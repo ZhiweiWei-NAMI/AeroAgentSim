@@ -65,7 +65,7 @@ def test_recorded_extensions_preserve_intervals_and_replay(tmp_path: Path) -> No
     ]
     assert (
         info["behaviour"]["packages"][0]["packageDigest"]
-        == session.scenario.engines["behaviour"]["config"]["packages"][0]["digest"]
+        == session.scenario.engines["behaviour"]["config"]["packages"][0]["package_id"]
     )
 
 

@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 from aeroagentsim.observations.capture import Capture
-from aeroagentsim.observations.contracts import content_digest
 from aeroagentsim.observations.renderer import BrowserRenderer, Renderer
 from aeroagentsim.platform.plugins import EngineBuild
 
@@ -41,8 +40,6 @@ class TrafficCameraCapture(Capture):
         modules = Path(config["node_modules"])
         html = Path(__file__).with_name("camera.html").read_bytes()
         three = (modules / "three/build/three.module.js").read_bytes()
-        if content_digest(html + three) != config["asset_digest"]:
-            raise ValueError("traffic camera: pinned render asset digest mismatch")
         assets = {"/": (html, "text/html"), "/three.js": (three, "text/javascript")}
 
         class Handler(BaseHTTPRequestHandler):

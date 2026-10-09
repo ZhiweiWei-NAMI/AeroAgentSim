@@ -317,7 +317,9 @@ def header(directory: Path) -> dict[str, Any]:
     result: dict[str, Any] = {
         "contract": "aeroagentsim.viewer-feed/v1",
         "runId": metadata["id"],
-        "registryDigest": metadata["registry_digest"],
+        "registryDigest": metadata["registry_id"]
+        if "registry_id" in metadata
+        else metadata["registry_digest"],
         "types": [type_info(t.id) for t in registry.types],
         "fields": [
             {
@@ -349,8 +351,12 @@ def header(directory: Path) -> dict[str, Any]:
                 "packages": [
                     {
                         "id": package["document"]["id"],
-                        "packageDigest": package["digest"],
-                        "irDigest": package["ir_digest"],
+                        "packageDigest": package["package_id"]
+                        if "package_id" in package
+                        else package["digest"],
+                        "irDigest": package["package_id"]
+                        if "package_id" in package
+                        else package["ir_digest"],
                         "evaluator": package["evaluator"],
                         "predicates": package["document"]["predicates"],
                         "chains": package["document"]["chains"],

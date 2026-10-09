@@ -15,7 +15,7 @@ from aeroagentsim.platform.plugins import EngineBuild
 from aeroagentsim.scenario.loader import contract, text
 
 from .artifacts import ArtifactStore
-from .contracts import CaptureReceipt, CaptureRequest, content_digest
+from .contracts import CaptureReceipt, CaptureRequest, artifact_id
 from .renderer import BrowserRenderer, Renderer, StubRenderer
 
 # Semantic keys are mapped onto explicitly selected registry fields by config.
@@ -183,7 +183,7 @@ class Capture(ContextEngine):
         return EntityRef(
             self.build.manifest.run_id,
             self.build.manifest.epoch,
-            self.prefix + content_digest(request_id.encode()),
+            self.prefix + artifact_id(request_id),
             0,
             self.record_type,
         )
@@ -313,7 +313,7 @@ class Capture(ContextEngine):
                     self._validate_source(ctx, request)
                     if record["digest"] != spec["digest"]:
                         raise ValueError(
-                            "upload digest differs from actual stored bytes"
+                            "upload artifact ID differs from stored request"
                         )
                     if request.request_id in self.accepted:
                         raise ValueError(

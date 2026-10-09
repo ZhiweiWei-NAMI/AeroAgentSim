@@ -14,7 +14,7 @@ import pytest
 from aerokernel import CommandRequest, Instant
 from aerokernel.values import canonical_json
 
-from aeroagentsim.observations.contracts import CaptureRequest, content_digest
+from aeroagentsim.observations.contracts import CaptureRequest
 from aeroagentsim.observations.renderer import RenderedFrame
 from aeroagentsim.services.storage import RunStorage
 from tests.observations.test_browser import (
@@ -81,9 +81,9 @@ class RecorderFixture:
         pass
 
 
-def source_hashes(path: Path) -> dict[str, str]:
+def source_bytes(path: Path) -> dict[str, bytes]:
     return {
-        str(file.relative_to(path)): content_digest(file.read_bytes())
+        str(file.relative_to(path)): file.read_bytes()
         for file in path.rglob("*")
         if file.is_file()
     }
@@ -93,7 +93,7 @@ def test_report_actual_receipts_photo_numbers_and_no_render(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     run, _ = finished_run(tmp_path / "run")
-    before = source_hashes(run)
+    before = source_bytes(run)
     # Export reads stored data even when provider and renderer methods cannot run.
     monkeypatch.setattr(
         FixtureRenderer, "render", lambda *a, **k: pytest.fail("report rendered")
@@ -109,12 +109,12 @@ def test_report_actual_receipts_photo_numbers_and_no_render(
         report.parent / "photos" / (artifact["digest"] + ".png")
     ).read_bytes() == png()
     assert str(artifact["byte_count"]) in text
-    assert source_hashes(run) == before
+    assert source_bytes(run) == before
     with pytest.raises(ValueError, match="outside"):
         export_report(run, run / "report")
     blob = run / "artifacts" / "blobs" / (artifact["digest"] + ".png")
     blob.write_bytes(b"bad")
-    with pytest.raises(ValueError, match="SHA-256"):
+    with pytest.raises(ValueError, match="PNG"):
         export_report(run, tmp_path / "corrupt-report")
 
 
@@ -130,7 +130,7 @@ def test_recorder_cuts_speed_failure_manifest_and_immutable_run(tmp_path: Path) 
         normal[0]
         == [cut for cut in source if cut.instant.ns == source[0].instant.ns][-1]
     )
-    before = source_hashes(run)
+    before = source_bytes(run)
     renderer = RecorderFixture()
     manifest = record_views(
         run,
@@ -144,7 +144,7 @@ def test_recorder_cuts_speed_failure_manifest_and_immutable_run(tmp_path: Path) 
     assert manifest["views"][0]["status"] == "failed"
     assert "ffmpeg unavailable" in manifest["views"][0]["reason"]
     assert renderer.requests == []
-    assert source_hashes(run) == before
+    assert source_bytes(run) == before
     with pytest.raises(ValueError, match="outside"):
         record_views(
             run,
@@ -176,7 +176,7 @@ def test_real_ffmpeg_decodes_actual_frame_count(tmp_path: Path) -> None:
         )
     run, view = finished_run(tmp_path / "run")
     renderer = RecorderFixture()
-    before = source_hashes(run)
+    before = source_bytes(run)
     manifest = record_views(
         run,
         tmp_path / "video",
@@ -196,7 +196,8 @@ def test_real_ffmpeg_decodes_actual_frame_count(tmp_path: Path) -> None:
         for label in renderer.labels
     )
     target = tmp_path / "video" / result["file"]
-    assert content_digest(target.read_bytes()) == result["digest"]
+    assert target.stat().st_size == result["byte_count"]
+    assert "digest" not in result
     decoded = subprocess.run(
         [
             ffmpeg,
@@ -214,7 +215,7 @@ def test_real_ffmpeg_decodes_actual_frame_count(tmp_path: Path) -> None:
         capture_output=True,
     )
     assert len(decoded.stdout) == result["frame_count"] * 16 * 16 * 3
-    assert source_hashes(run) == before
+    assert source_bytes(run) == before
 
 
 @pytest.mark.browser

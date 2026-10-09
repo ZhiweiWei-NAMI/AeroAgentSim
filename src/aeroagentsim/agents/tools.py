@@ -226,6 +226,7 @@ class ToolGrant:
 
     @property
     def name(self) -> str:
+        # Internal bounded grant key; never a source/content integrity claim.
         return (
             "command_"
             + hashlib.sha256((self.schema + ":" + self.target).encode()).hexdigest()[

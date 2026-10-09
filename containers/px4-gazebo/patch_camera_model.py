@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import hashlib
 import math
 import sys
 from pathlib import Path
 from xml.etree import ElementTree
 
-
-SOURCE_SHA256 = "405f2f9d973b6b75379a418865ee18b3d27f936322d85e17beced04bdd09ef6e"
 EXPECTED_WIDTH = 1280
 EXPECTED_HEIGHT = 960
 EXPECTED_HORIZONTAL_FOV = 1.74
@@ -33,19 +30,10 @@ def child(parent: ElementTree.Element, name: str) -> ElementTree.Element:
     raise SystemExit(f"camera model is missing <{name}>")
 
 
-def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
 def main() -> None:
     if len(sys.argv) != 2:
         raise SystemExit("usage: patch_camera_model.py MODEL_SDF")
     path = Path(sys.argv[1])
-    observed = digest(path)
-    if observed != SOURCE_SHA256:
-        raise SystemExit(
-            f"unexpected mono_cam source digest: expected {SOURCE_SHA256}, got {observed}"
-        )
     try:
         root = ElementTree.fromstring(path.read_text(encoding="utf-8"))
     except (OSError, ElementTree.ParseError, UnicodeError) as exc:
@@ -53,7 +41,8 @@ def main() -> None:
     sensors = [
         element
         for element in root.iter()
-        if local_name(element.tag) == "sensor" and element.attrib.get("type") == "camera"
+        if local_name(element.tag) == "sensor"
+        and element.attrib.get("type") == "camera"
     ]
     if len(sensors) != 1:
         raise SystemExit(f"expected exactly one camera sensor, got {len(sensors)}")
@@ -64,9 +53,11 @@ def main() -> None:
     fov = child(camera, "horizontal_fov")
     always_on = child(sensors[0], "always_on")
     update_rate = child(sensors[0], "update_rate")
-    triggered = child(camera, "triggered") if any(
-        local_name(item.tag) == "triggered" for item in camera
-    ) else None
+    triggered = (
+        child(camera, "triggered")
+        if any(local_name(item.tag) == "triggered" for item in camera)
+        else None
+    )
     if int((width.text or "").strip()) != EXPECTED_WIDTH:
         raise SystemExit("unexpected source camera width")
     if int((height.text or "").strip()) != EXPECTED_HEIGHT:
@@ -108,7 +99,7 @@ def main() -> None:
         raise SystemExit("unexpected source camera visualize setting")
     visualize.text = "false"
     ElementTree.ElementTree(root).write(path, encoding="utf-8", xml_declaration=True)
-    print(digest(path))
+    print(path)
 
 
 if __name__ == "__main__":

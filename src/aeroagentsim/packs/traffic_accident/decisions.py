@@ -1,8 +1,7 @@
-"""Content-pinned stub decisions; typed proposals, never task or motion authority."""
+"""Explicit stub decisions; typed proposals, never task or motion authority."""
 
 from __future__ import annotations
 
-import hashlib
 import json
 from typing import Any, cast
 
@@ -23,10 +22,9 @@ class Decisions(ContextEngine):
         self.build = build
         cfg = build.config
         if (
-            set(cfg)
+            set(cfg) - {"fixture_sha256"}
             != {
                 "fixture_path",
-                "fixture_sha256",
                 "task_id",
                 "candidates",
                 "latency_ns",
@@ -38,8 +36,6 @@ class Decisions(ContextEngine):
                 "traffic decisions: select explicit stub fixture, candidates and latencies"
             )
         raw = source_path(cfg["fixture_path"]).read_bytes()
-        if hashlib.sha256(raw).hexdigest() != cfg["fixture_sha256"]:
-            raise ValueError("traffic decisions: fixture digest mismatch")
         self.fixture = json.loads(raw)
         if self.fixture["mode"] != "scripted":
             raise ValueError(

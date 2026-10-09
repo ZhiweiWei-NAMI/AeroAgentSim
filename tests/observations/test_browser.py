@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 from aerokernel import CommandRequest, Instant
 
-from aeroagentsim.observations.contracts import CaptureRequest, content_digest
+from aeroagentsim.observations.contracts import CaptureRequest
 from aeroagentsim.observations.png import validate_png
 from aeroagentsim.observations.renderer import BrowserRenderer
 from aeroagentsim.services.projector import project
@@ -41,7 +41,7 @@ def browser_scene(tmp_path: Path) -> Iterator[tuple[str, Path, CaptureRequest]]:
     (build / "index.html").write_bytes(html.read_bytes())
     three = modules / "three/build/three.module.js"
     (build / "three.js").write_bytes(three.read_bytes())
-    asset_digest = content_digest(html.read_bytes() + three.read_bytes())
+    asset_digest = "fixture-viewer/v1"
     request = replace(
         request,
         width=128,

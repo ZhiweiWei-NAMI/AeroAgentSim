@@ -66,10 +66,7 @@ class AdapterRun:
                 root_seed=scenario.seed,
                 journal=journal,
                 mappings=scenario.clock_mappings,
-                configuration={
-                    "scenario": scenario.document,
-                    "digest": scenario.digest,
-                },
+                configuration={"scenario": scenario.document},
             )
             self.kernel.bind(scenario.registry, scenario.manifest, tuple(self.engines))
         except BaseException:

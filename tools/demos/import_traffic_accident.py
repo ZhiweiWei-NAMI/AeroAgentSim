@@ -9,17 +9,12 @@ database (ODbL); meshes/textures are inventoried and never copied.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import math
 from pathlib import Path
 from typing import Any
 
 from aeroagentsim.packs.traffic_accident.geometry import Polyline, Pose, blockers
-
-
-def digest(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
 
 
 def write_json(path: Path, data: Any) -> None:
@@ -86,7 +81,7 @@ def import_demo(source: Path, output: Path) -> dict[str, Any]:
     if type(uavs) is not int or uavs < 0:
         raise ValueError("background_uavs must be a nonnegative integer")
     road_routes = []
-    scene_digest = digest(raw[paths[1]])
+    scene_id = "traffic-scene-local/v1"
     for route in scene["routes"]:
         road_routes.append(
             {
@@ -96,7 +91,7 @@ def import_demo(source: Path, output: Path) -> dict[str, Any]:
                 "offset_m": route["offset_m"],
                 "native_edges": [],
                 "native_mapping_status": "not_exported_in_source_scene",
-                "source_digest": scene_digest,
+                "source_id": scene_id,
                 "loop_policy": "declared_discontinuity",
             }
         )
@@ -134,7 +129,7 @@ def import_demo(source: Path, output: Path) -> dict[str, Any]:
                 "points_enu_m": points,
                 "native_edges": [],
                 "native_lane_id": native,
-                "source_digest": scene_digest,
+                "source_id": scene_id,
                 "loop_policy": "stop",
             }
         )
@@ -299,19 +294,20 @@ def import_demo(source: Path, output: Path) -> dict[str, Any]:
     inventory = []
     for path in sorted((source / "web/assets").rglob("*")):
         if path.is_file():
-            data = path.read_bytes()
             inventory.append(
                 {
                     "path": path.relative_to(source).as_posix(),
-                    "sha256": digest(data),
-                    "bytes": len(data),
+                    "asset_id": "traffic-accident-asset/"
+                    + path.relative_to(source).as_posix()
+                    + "/v1",
+                    "bytes": path.stat().st_size,
                     "distribution": "reference_only",
                     "licence_status": "undecided",
                 }
             )
     result = {
         "format": "traffic-accident-inputs/v1",
-        "source_digests": {n: digest(b) for n, b in raw.items()},
+        "source_ids": {n: f"traffic-accident-input/{Path(n).name}/v1" for n in raw},
         "frame": {
             "id": "traffic.local/v1",
             "transform": "E=X,N=-Z,U=Y",
@@ -367,7 +363,7 @@ def import_demo(source: Path, output: Path) -> dict[str, Any]:
     write_json(
         output / "city-manifest.json",
         {
-            "scene_sha256": scene_digest,
+            "scene_id": scene_id,
             "bounds_renderer_xz": scene["bounds"],
             "building_count": len(scene["buildings"]),
             "building_placements": [

@@ -50,7 +50,7 @@ def main() -> None:
         "landed": string,
     }
     # All telemetry IDs are authored examples; these are not substituted values.
-    px4_config = {
+    px4_config: dict[str, Any] = {
         "image": "aeroagentsim/px4-gazebo:dev-p2b",
         "host": "127.0.0.1",
         "port": 19001,
@@ -89,7 +89,7 @@ def main() -> None:
         },
         "tls": {"state": string, "phase": {"type": "integer"}, "program": string},
     }
-    sumo_config = {
+    sumo_config: dict[str, Any] = {
         "image": "aeroagentsim/sumo:dev-p3a-5",
         "host": "127.0.0.1",
         "port": 19002,
@@ -116,7 +116,7 @@ def main() -> None:
             }
         },
     }
-    ns3_config = {
+    ns3_config: dict[str, Any] = {
         "image": "aeroagentsim/ns3:dev-p4b",
         "host": "127.0.0.1",
         "port": 19003,
@@ -138,6 +138,14 @@ def main() -> None:
         ("sumo-grid", ("sumo",), 60 * SECOND),
         ("coupled", ("px4_gazebo", "sumo", "ns3"), 30 * SECOND),
     ):
+        types: list[dict[str, Any]]
+        fields: list[dict[str, Any]]
+        messages: list[dict[str, Any]]
+        entities: list[dict[str, Any]]
+        rules: list[dict[str, Any]]
+        lifecycle: list[dict[str, Any]]
+        engines: dict[str, Any]
+        mappings: list[dict[str, Any]]
         types, fields, messages, entities, rules, lifecycle, engines, mappings = (
             [],
             [],
@@ -263,7 +271,6 @@ def main() -> None:
             "id": "e1-" + name,
             "registry": {
                 "snapshot": "authored-registry.json",
-                "digest": snapshot.digest,
                 "types": types,
                 "fields": fields,
                 "messages": messages,

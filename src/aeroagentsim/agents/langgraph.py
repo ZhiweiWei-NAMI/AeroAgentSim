@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import inspect
 import json
 import math
 from collections.abc import Callable
@@ -58,10 +56,8 @@ def factory_info(path: str) -> tuple[Callable[..., Any], dict[str, str]]:
     factory = getattr(module, parts[1])
     if not callable(factory):
         raise TypeError("graph factory must be callable")
-    source = inspect.getsource(module).encode()
     return factory, {
         "factory": path,
-        "source_sha256": hashlib.sha256(source).hexdigest(),
         "langgraph_version": version("langgraph"),
     }
 
@@ -461,11 +457,7 @@ def replay_graph(data: bytes, decision: str) -> dict[str, Any]:
     """Re-execute a graph with matched requests and ZERO I/O; preserve failures."""
     rows = journal_decisions(data)[decision]
     invocation = next(row["data"] for row in rows if row["phase"] == "observation")
-    factory, pin = factory_info(invocation["pin"]["factory"])
-    if pin != invocation["pin"]:
-        raise ProviderError(
-            "REPLAY_MISMATCH", "graph source or LangGraph version changed"
-        )
+    factory, _metadata = factory_info(invocation["pin"]["factory"])
     expected = next(
         (row["data"]["result"] for row in rows if row["phase"] == "finished"), None
     )

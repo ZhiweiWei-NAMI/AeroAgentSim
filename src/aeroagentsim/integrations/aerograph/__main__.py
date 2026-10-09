@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from aerokernel.errors import KernelError
 from aerokernel.values import thaw
@@ -29,68 +28,9 @@ def csv(value: str | None) -> tuple[str, ...] | None:
     )
 
 
-def report(compiled: CompiledRegistry) -> str:
-    lines = [
-        "# AeroGraph registry compilation",
-        "",
-        f"Digest: `{compiled.digest}`",
-        f"Kernel digest: `{compiled.registry.digest}`",
-        "",
-        "| Statistic | Count |",
-        "| --- | ---: |",
-    ]
-    lines.extend(f"| {k} | {v} |" for k, v in compiled.statistics.items())
-    review = compiled.details.get("review")
-    if isinstance(review, Mapping) and "admitted_by_status" in review:
-        lines.extend(
-            [
-                "",
-                "## Admitted definition review status",
-                "",
-                "Admitted types, fields and relations counted by declared source",
-                "review status. Unreviewed means the definition is **not** source",
-                "reviewed (`proposed` or no declared review status); admission",
-                "preserves that state and grants no authority.",
-                "",
-            ]
-        )
-        counts = cast("dict[str, int]", review["admitted_by_status"])
-        for status in ("reviewed", "proposed", "undeclared"):
-            lines.append(f"- `{status}`: {counts.get(status, 0)}")
-        lines.append(
-            f"- admitted definitions without source review: "
-            f"{review['admitted_unreviewed']}"
-        )
-    lines.extend(
-        [
-            "",
-            "## Source provenance",
-            "",
-            json.dumps(
-                thaw(compiled.provenance["git"]), ensure_ascii=False, sort_keys=True
-            ),
-            "",
-            "## Research disposition",
-            "",
-            "Admission preserves source review; producer hints grant no runtime authority.",
-            "",
-            "## Exclusions",
-            "",
-        ]
-    )
-    lines.extend(f"- `{x['id']}`: {x['reason']}" for x in compiled.exclusions)
-    lines.extend(["", "## Normalizations", ""])
-    lines.extend(
-        f"- `{x['id']}`: {x['rule']} at `{x['file']}#{x['pointer']}`"
-        for x in compiled.normalizations
-    )
-    return "\n".join(lines) + "\n"
-
-
 def inspect_type(compiled: CompiledRegistry, id: str) -> dict[str, Any]:
     return {
         "type": id,
-        "digest": compiled.digest,
         "fields": [
             {
                 "id": f.id,
@@ -144,7 +84,6 @@ def main(argv: list[str] | None = None) -> int:
         "--exclude", help="comma-separated intentionally excluded IDs"
     )
     compile_cmd.add_argument("--out", required=True, type=Path)
-    compile_cmd.add_argument("--report", type=Path)
     inspect_cmd = commands.add_parser(
         "inspect", help="list effective fields and relations from a snapshot"
     )
@@ -167,11 +106,9 @@ def main(argv: list[str] | None = None) -> int:
                 ),
             )
             compiled.write_snapshot(args.out)
-            if args.report is not None:
-                args.report.write_text(report(compiled), encoding="utf-8")
             print(
                 json.dumps(
-                    {"digest": compiled.digest, **dict(compiled.statistics)},
+                    dict(compiled.statistics),
                     sort_keys=True,
                 )
             )

@@ -2,12 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
-
-from aerokernel.values import canonical_json
 
 FORMAT = "aeroagentsim.behaviour-package/v1"
 IR_FORMAT = "aeroagentsim.behaviour-ir/v1"
@@ -22,19 +18,13 @@ class CompileError(ValueError):
 @dataclass(frozen=True)
 class PackageIR:
     document: dict[str, Any]
-    digest: str
+    package_id: str
     source: str
     dependencies: dict[str, tuple[tuple[str, str], ...]]
 
     def to_data(self) -> dict[str, Any]:
         evaluator = {
             "version": "aerograph-predicate/1",
-            "sources": {
-                name: hashlib.sha256(
-                    (Path(__file__).parents[1] / "engines" / name).read_bytes()
-                ).hexdigest()
-                for name in ("predicate.py", "predicate_ast.py")
-            },
         }
         semantic = {
             "format": IR_FORMAT,
@@ -47,7 +37,6 @@ class PackageIR:
         }
         return {
             **semantic,
-            "digest": self.digest,
-            "ir_digest": hashlib.sha256(canonical_json(semantic)).hexdigest(),
+            "package_id": self.package_id,
             "source": self.source,
         }

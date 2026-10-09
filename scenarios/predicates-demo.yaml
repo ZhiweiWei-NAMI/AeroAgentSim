@@ -122,11 +122,9 @@ engines:
             status: preserved_source_definition
             sourceReferences:
             - path: /mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json
-              sha256: de89b3b29f0a718f6a45b995caca2bbe78302ea37d8a9a705d521623ffcea3c1
               commit: 04374d3e2a7b83e8a33d5a727103f48197de50d2
               pointer: /model/TC/0/528
             - path: /mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json
-              sha256: de89b3b29f0a718f6a45b995caca2bbe78302ea37d8a9a705d521623ffcea3c1
               commit: 04374d3e2a7b83e8a33d5a727103f48197de50d2
               pointer: /model/TC/4/528
             nativeMetadata:
@@ -198,11 +196,9 @@ engines:
               kind: preserved_original_ast
               sourceReferences:
               - path: /mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json
-                sha256: de89b3b29f0a718f6a45b995caca2bbe78302ea37d8a9a705d521623ffcea3c1
                 commit: 04374d3e2a7b83e8a33d5a727103f48197de50d2
                 pointer: /model/TC/0/528
               - path: /mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json
-                sha256: de89b3b29f0a718f6a45b995caca2bbe78302ea37d8a9a705d521623ffcea3c1
                 commit: 04374d3e2a7b83e8a33d5a727103f48197de50d2
                 pointer: /model/TC/4/528
               sourceFieldIds:
@@ -211,14 +207,11 @@ engines:
             status: preserved_source_definition
             sourceReferences:
             - path: /mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json
-              sha256: de89b3b29f0a718f6a45b995caca2bbe78302ea37d8a9a705d521623ffcea3c1
               commit: 04374d3e2a7b83e8a33d5a727103f48197de50d2
               pointer: /model/TC/0/528
             - path: /mnt/data2/weizhiwei/AeroGraph/research/original-graph/decoded.json
-              sha256: de89b3b29f0a718f6a45b995caca2bbe78302ea37d8a9a705d521623ffcea3c1
               commit: 04374d3e2a7b83e8a33d5a727103f48197de50d2
               pointer: /model/TC/4/528
-      definitions_sha256: e20fed572f7de2c5cea43f9c09575985ce5ec7bfff5e1e32ab3efd742c2e4b87
       target: predicate:hu.predicate.actor_stationary
       context: stationary
       parameters:
@@ -229,7 +222,6 @@ engines:
       transition: entered
       native_references:
       - path: ${AEROAGENTSIM_AEROGRAPH_ROOT}/semantic-directory/src/original_runtime.js
-        sha256: 6e1f60e885208b333fb20d69d24b7c49e9a14aec7c8578917b0b1d30dc2a10e6
 run:
   pacing: fast
   seed: 7

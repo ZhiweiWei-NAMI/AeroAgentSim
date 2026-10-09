@@ -3,15 +3,12 @@ id: traffic.accident
 revision: 2
 registry:
   snapshot: registry.snapshot.json
-  digest_ref: scenario.registry_digest
 evaluator:
   version: aerograph-predicate/1
   dialect: original
-  source_sha256: fd3c2ebf35824431a02f5086092543d68e45405ebfd12acc6e7bb5fbe703232d
   native_references_ref: registry.snapshot.json#/details/provenance
   native_references:
   - path: ${AEROAGENTSIM_AEROGRAPH_ROOT}/semantic-directory/src/original_runtime.js
-    sha256: 6e1f60e885208b333fb20d69d24b7c49e9a14aec7c8578917b0b1d30dc2a10e6
 budgets:
   max_transitions_per_instance_per_ns: 64
   max_instances: 10000
@@ -2094,7 +2091,7 @@ feedback:
   return_lag_ns: 66666667
   partition: behaviour
   reason: All incoming behaviour messages have declared 66666667 ns availability lag;
-    physical integration/publication is explicitly 1 Hz in this verification profile.
+    physical integration/publication is explicitly 1 Hz in this profile.
 sampled_contexts:
 - id: capture.alpha
   roles:

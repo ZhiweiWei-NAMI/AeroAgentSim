@@ -172,7 +172,7 @@ class TrafficCaptureBridge(ContextEngine):
                     or payload["digest"] != job.record["digest"]
                 ):
                     raise ValueError(
-                        "traffic capture: upload verification identity/cut/digest mismatch"
+                        "traffic capture: upload request/actor/cut/artifact identity mismatch"
                     )
                 job.accepted = True
                 ctx.emit(
@@ -181,7 +181,7 @@ class TrafficCaptureBridge(ContextEngine):
                         **self._payload(job),
                         "capture": payload["record"],
                         "png_sha256": payload["digest"],
-                        "reason": "edge verified stored PNG bytes and source identity",
+                        "reason": "edge received stored PNG bytes and source identity",
                     },
                     topic=ACCEPTED,
                 )

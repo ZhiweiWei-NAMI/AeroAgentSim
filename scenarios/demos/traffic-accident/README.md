@@ -1,6 +1,6 @@
 # Traffic accident: authored domain scenario
 
-The integrated scene uses the shared behaviour runtime, real physical owners and explicit authored stub decisions. The default verification profile declares 1 Hz physics/publication and a 66,666,667 ns shared message lag. The original 15 Hz domain comparison remains a separate test profile. Actual headless Chromium renders committed poses with primitive geometry; this is simulation-camera output, not the licensed city viewer or native imagery.
+The integrated scene uses the shared behaviour runtime, real physical owners and explicit authored stub decisions. The default profile declares 1 Hz physics/publication and a 66,666,667 ns shared message lag. The original 15 Hz domain comparison remains a separate test profile. Actual headless Chromium renders committed poses with primitive geometry; this is simulation-camera output, not the licensed city viewer or native imagery.
 
 ```bash
 PYTHONPATH=src AEROAGENTSIM_AEROGRAPH_ROOT=/mnt/data2/weizhiwei/AeroGraph \
@@ -84,8 +84,7 @@ PYTHONPATH=src AEROAGENTSIM_Q6_AST=/absolute/pinned/predicate_ast.py \
   -m pytest -q -p no:cacheprovider -m 'not docker' tests/demos
 ```
 
-The environment path is only needed before Q6 is integrated; tests verify its exact
-source hash. Without Q6, its tests explicitly skip rather than use a copied evaluator.
+The environment path is only needed before Q6 is integrated. Without Q6, its tests explicitly skip rather than use a copied evaluator.
 Domain tests select the real physical plugins at the original 15 Hz and an explicitly test-authored target
 producer, remove all behaviour fields/relations and feed actual typed commands. They
 compare two road/air journals byte-for-byte, test swept blockage, compute shared-model

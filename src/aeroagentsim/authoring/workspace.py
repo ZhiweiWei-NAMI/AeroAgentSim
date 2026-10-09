@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 import importlib
 import json
 import math
@@ -174,16 +173,14 @@ class WorkspaceStore:
         if not isinstance(package, dict):
             raise TypeError("behaviours: package mapping required")
         if "path" in package:
-            if set(package) != {"path", "sha256"} or not isinstance(
+            if set(package) - {"path", "sha256"} or not isinstance(
                 package["path"], str
             ):
-                raise ValueError("behaviours: pinned path/sha256 reference required")
+                raise ValueError("behaviours: path reference required")
             path = (self.directory(identifier) / package["path"]).resolve()
             if not path.is_relative_to(self.directory(identifier)):
                 raise ValueError("behaviours.path: must stay inside workspace")
             data = path.read_bytes()
-            if hashlib.sha256(data).hexdigest() != package["sha256"]:
-                raise ValueError("behaviours.sha256: package hash mismatch")
             package = yaml.load(data, Loader=UniqueLoader)
             if not isinstance(package, dict):
                 raise TypeError("behaviours: YAML mapping required")
@@ -239,9 +236,7 @@ class WorkspaceStore:
             return self._write(draft)
 
     def export_behaviour(self, identifier: str, index: int) -> dict[str, Any]:
-        """Draft export is available even for unsupported content; hashes identify real bytes."""
-        from aerokernel.values import canonical_json
-
+        """Draft export is available even for unsupported content."""
         package = self._behaviour_package(identifier, index)
         text = yaml.safe_dump(package, allow_unicode=True, sort_keys=True)
         draft = self.get(identifier)
@@ -285,8 +280,6 @@ class WorkspaceStore:
             "inline_package": inline,
             "inline_errors": inline_errors,
             "yaml": text,
-            "sha256": hashlib.sha256(text.encode()).hexdigest(),
-            "semantic_digest": hashlib.sha256(canonical_json(package)).hexdigest(),
             "layout": self.get(identifier)
             .get("behaviour_layout", {})
             .get(str(index), {}),
@@ -294,18 +287,13 @@ class WorkspaceStore:
 
     def validate_behaviour(self, identifier: str, index: int) -> dict[str, Any]:
         """Compiler seam: package checks are distinct from full bound-run validation."""
-        from aerokernel.values import canonical_json
-
         with self.lock:
             package = self._behaviour_package(identifier, index)
-            input_digest = hashlib.sha256(canonical_json(package)).hexdigest()
             draft = self.get(identifier)
-            cached = draft.get("behaviour_validation", {}).get(str(index))
             source = f"workspace:{identifier}/behaviours/{index}"
             result: dict[str, Any] = {
                 "valid": False,
                 "scope": "package_shape",
-                "input_digest": input_digest,
                 "errors": [],
             }
             try:
@@ -328,24 +316,10 @@ class WorkspaceStore:
                 )
             else:
                 result["compiler_available"] = True
-                if compiler.__file__ is None:
-                    raise TypeError(
-                        "behaviour compiler lacks a file-backed version identity"
-                    )
-                compiler_path = Path(compiler.__file__)
-                compiler_digest = hashlib.sha256(compiler_path.read_bytes()).hexdigest()
-                result["compiler_digest"] = compiler_digest
-                if (
-                    isinstance(cached, dict)
-                    and not package.get("imports")
-                    and cached.get("input_digest") == input_digest
-                    and cached.get("compiler_digest") == compiler_digest
-                ):
-                    return dict(cached)
                 try:
                     self._check_behaviour_refs([package], identifier)
                     ir = compiler.compile_package(package, source=source)
-                    result.update(package_valid=True, compiled_digest=ir.digest)
+                    result.update(package_valid=True, package_id=ir.package_id)
                     # build=None deliberately does not check registry, owners or engine capabilities.
                     result["errors"] = [
                         {
@@ -410,10 +384,6 @@ class WorkspaceStore:
                 if path in active:
                     raise ValueError("behaviours.imports: cyclic package references")
                 data = path.read_bytes()
-                if hashlib.sha256(data).hexdigest() != spec.get("sha256"):
-                    raise ValueError(
-                        "behaviours.sha256: referenced package hash mismatch"
-                    )
                 active.add(path)
                 document = yaml.load(data, Loader=UniqueLoader)
                 base = path.parent
@@ -483,7 +453,7 @@ class WorkspaceStore:
                 result: dict[str, Any] = {
                     "valid": True,
                     "errors": [],
-                    "digest": loaded.digest,
+                    "scenario_id": loaded.run_id,
                 }
             except Exception as exc:  # noqa: BLE001 - validation returns the real diagnostic
                 authored: BaseException = exc

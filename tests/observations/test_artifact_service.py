@@ -17,7 +17,7 @@ from aeroagentsim.services.artifacts import mount_artifacts
 from tests.observations.test_capture import FixtureRenderer, png, setup_capture
 
 
-def test_rest_list_get_download_hash_and_readonly(tmp_path: Path) -> None:
+def test_rest_list_get_download_and_readonly(tmp_path: Path) -> None:
     root = tmp_path / "runs"
     run = root / "run-1"
     run.mkdir(parents=True)
@@ -33,10 +33,10 @@ def test_rest_list_get_download_hash_and_readonly(tmp_path: Path) -> None:
         detail = client.get(base + "/" + record["digest"]).json()
         response = client.get(detail["download"])
         assert response.content == png()
-        assert response.headers["x-content-sha256"] == record["digest"]
+        assert "x-content-sha256" not in response.headers
         assert int(response.headers["content-length"]) == len(png())
         assert client.get(base + "/" + "b" * 64).status_code == 404
-        assert client.get(base + "/not-a-hash").status_code == 409
+        assert client.get(base + "/not-a-hash").status_code == 404
         assert client.get("/v1/runs/unknown/artifacts").status_code == 404
         assert (
             client.post("/v1/runs/run-1/capture-artifacts", json={}).status_code == 409
@@ -49,7 +49,7 @@ def test_rest_list_get_download_hash_and_readonly(tmp_path: Path) -> None:
     kernel.close()
 
 
-def test_upload_integrity_actor_cut_conflict_and_worker_event(tmp_path: Path) -> None:
+def test_upload_actor_cut_conflict_and_worker_event(tmp_path: Path) -> None:
     run = tmp_path / "run-1"
     run.mkdir()
     (run / "manifest.json").write_text(json.dumps({"status": "running"}))
@@ -86,12 +86,12 @@ def test_upload_integrity_actor_cut_conflict_and_worker_event(tmp_path: Path) ->
         return {"status": "submitted", "command_id": "test-admission-only"}
 
     mount_artifacts(app, directory, worker)
-    from aeroagentsim.observations.contracts import content_digest
+    from aeroagentsim.observations.contracts import artifact_id
 
     body = {
         "request": request.to_data(),
         "png_base64": base64.b64encode(png()).decode(),
-        "digest": content_digest(png()),
+        "digest": artifact_id(request.request_id),
         "byte_count": len(png()),
         "at_ns": 1,
         "source_stamp": {
@@ -103,7 +103,6 @@ def test_upload_integrity_actor_cut_conflict_and_worker_event(tmp_path: Path) ->
     }
     with TestClient(app) as client:
         url = "/v1/runs/run-1/capture-artifacts"
-        assert client.post(url, json={**body, "digest": "0" * 64}).status_code == 422
         wrong = replace(request, actor=replace(request.actor, id="wrong"))
         assert (
             client.post(url, json={**body, "request": wrong.to_data()}).status_code
@@ -115,7 +114,9 @@ def test_upload_integrity_actor_cut_conflict_and_worker_event(tmp_path: Path) ->
             == 422
         )
         assert calls == []
-        result = client.post(url, json=body)
+        result = client.post(
+            url, json={**body, "digest": "obsolete-pin", "byte_count": 1}
+        )
         assert result.status_code == 202, result.text
         assert result.json()["admission"]["status"] == "submitted"
         assert "accepted" not in result.json()
@@ -127,7 +128,7 @@ def test_upload_integrity_actor_cut_conflict_and_worker_event(tmp_path: Path) ->
         conflict = {
             **body,
             "png_base64": base64.b64encode(changed).decode(),
-            "digest": content_digest(changed),
+            "digest": body["digest"],
             "byte_count": len(changed),
         }
         assert client.post(url, json=conflict).status_code == 422
@@ -147,7 +148,7 @@ def test_worker_reject_retains_storage_without_acceptance(tmp_path: Path) -> Non
     assert store.list() == []
 
 
-def test_service_output_scope_pins_scenario_without_mutating_input(
+def test_service_output_scope_without_mutating_input(
     tmp_path: Path,
 ) -> None:
     from aeroagentsim.scenario import load_scenario
@@ -163,7 +164,7 @@ def test_service_output_scope_pins_scenario_without_mutating_input(
         (tmp_path / "service-run").resolve()
     )
     assert original.engines["capture"]["config"]["run_directory"] == "authored-location"
-    assert scoped.digest != original.digest
+    assert scoped.document != original.document
     assert scoped.registry is original.registry
     assert scoped.manifest is original.manifest
     assert not (tmp_path / "service-run").exists()

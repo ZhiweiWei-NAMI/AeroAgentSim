@@ -1,4 +1,4 @@
-"""Export a verifiable Markdown report from an immutable recorded run prefix."""
+"""Export a Markdown report from an immutable recorded run prefix."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any
 
 from aeroagentsim.observations.artifacts import ArtifactStore
-from aeroagentsim.observations.contracts import content_digest
 from aeroagentsim.services.projector import project
 from aeroagentsim.services.storage import RunStorage
 from aeroagentsim.services.subjects import projection_context
@@ -54,11 +53,10 @@ def export_report(
     if cursor != manifest["final_cursor"]:
         raise ValueError("run index does not cover the manifest final cursor")
     output.mkdir(parents=True, exist_ok=True)
-    journal_hash = content_digest((run / "journal.jsonl").read_bytes())
     lines = [
         "# Traffic accident run report",
         "",
-        "All values below come from the pinned manifest, journal/feed projection and verified stored artifacts.",
+        "All values below come from the recorded manifest, journal/feed projection and stored artifacts.",
         "No simulation, model or camera is called during export.",
         "",
         "## Recorded run",
@@ -71,7 +69,6 @@ def export_report(
     )
     lines.extend(
         [
-            f"| journal_sha256 | `{journal_hash}` |",
             "",
             "## Timeline",
             "",
@@ -182,9 +179,7 @@ def export_report(
     lines.extend(
         [
             "",
-            "## Photos and artifact evidence",
-            "",
-            "Stored bytes alone do not establish upload/edge/task acceptance; use the receipts and typed events above.",
+            "## Photos and stored artifacts",
             "",
         ]
     )
@@ -225,9 +220,9 @@ def export_report(
             json.dumps(dict(created), sort_keys=True, indent=2),
             "```",
             "",
-            "The table lists the last **published** value/retraction of each slot with its validity and evidence cut. It is not an interpolated final-state measurement.",
+            "The table lists the last **published** value/retraction of each slot with its validity and commit cut. It is not an interpolated final-state measurement.",
             "",
-            "| Entity / generation | Field | Last published evidence |",
+            "| Entity / generation | Field | Last published fact |",
             "| --- | --- | --- |",
         ]
     )

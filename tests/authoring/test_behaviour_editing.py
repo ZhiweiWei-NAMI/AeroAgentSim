@@ -51,7 +51,8 @@ def test_unknown_content_semantic_roundtrip_and_separate_layout(
     first = store.export_behaviour(identifier, 0)
     store.edit_behaviour(identifier, {"index": 0, "yaml": first["yaml"]})
     second = store.export_behaviour(identifier, 0)
-    assert first["semantic_digest"] == second["semantic_digest"]
+    assert first["package"] == second["package"]
+    assert "semantic_digest" not in first and "sha256" not in first
     assert second["package"] == authored
     assert second["layout"] == first["layout"]
     assert "behaviour_layout" not in result["scenario"]
@@ -71,7 +72,7 @@ def test_duplicate_yaml_and_escape_preserve_previous_draft(
     assert store.get(identifier) == before
     store.edit_behaviour(
         identifier,
-        {"index": 0, "package": {"path": "../outside.yaml", "sha256": "0" * 64}},
+        {"index": 0, "package": {"path": "../outside.yaml"}},
     )
     with pytest.raises(ValueError, match="inside workspace"):
         store.export_behaviour(identifier, 0)
@@ -153,23 +154,21 @@ def test_import_real_demo_and_pin_nested_references(store: WorkspaceStore) -> No
     store._check_behaviour_refs([spec], identifier)
     package_path = store.directory(identifier) / spec["path"]
     package_path.write_text(package_path.read_text() + "\n# changed bytes\n")
-    with pytest.raises(ValueError, match="hash mismatch"):
-        store._check_behaviour_refs([spec], identifier)
+    # Referenced packages are read as-is; stale byte pins are not verified.
+    store._check_behaviour_refs([spec], identifier)
     with pytest.raises(ValueError, match="inside workspace"):
         store._check_behaviour_refs(
-            [{"imports": [{"path": "../../outside.yaml", "sha256": "0" * 64}]}],
+            [{"imports": [{"path": "../../outside.yaml"}]}],
             identifier,
         )
 
 
-def test_pinned_package_inline_edit_rebases_actual_dependency_sources(
+def test_nested_package_inline_edit_rebases_actual_dependency_sources(
     store: WorkspaceStore,
 ) -> None:
-    import hashlib
-
     import yaml
 
-    identifier = store.create("pinned source relocation")["id"]
+    identifier = store.create("nested source relocation")["id"]
     root = store.directory(identifier)
     (root / "packages").mkdir()
     child = package()
@@ -177,19 +176,12 @@ def test_pinned_package_inline_edit_rebases_actual_dependency_sources(
     child_bytes = yaml.safe_dump(child).encode()
     (root / "packages/child.yaml").write_bytes(child_bytes)
     parent = package()
-    parent["imports"] = [
-        {"path": "child.yaml", "sha256": hashlib.sha256(child_bytes).hexdigest()}
-    ]
+    parent["imports"] = [{"path": "child.yaml"}]
     parent_bytes = yaml.safe_dump(parent).encode()
     (root / "packages/parent.yaml").write_bytes(parent_bytes)
     store.edit_behaviour(
         identifier,
-        {
-            "package": {
-                "path": "packages/parent.yaml",
-                "sha256": hashlib.sha256(parent_bytes).hexdigest(),
-            }
-        },
+        {"package": {"path": "packages/parent.yaml"}},
     )
     exported = store.export_behaviour(identifier, 0)
     assert exported["package"] == parent

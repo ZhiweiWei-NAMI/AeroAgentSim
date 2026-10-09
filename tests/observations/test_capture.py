@@ -1,4 +1,4 @@
-"""Real kernel receipts, integrity failures and zero-render artifact replay."""
+"""Real kernel receipts, capture failures and zero-render artifact replay."""
 
 from __future__ import annotations
 
@@ -321,7 +321,7 @@ def test_artifact_conflicts_corruption_and_wrong_actor(tmp_path: Path) -> None:
         )
     blob = tmp_path / "artifacts" / "blobs" / (record["digest"] + ".png")
     blob.write_bytes(b"corrupt")
-    with pytest.raises(ValueError, match="SHA-256"):
+    with pytest.raises(ValueError, match="PNG"):
         replay_capture(store, request.request_id)
     kernel.close()
 
@@ -392,4 +392,29 @@ def test_semantically_invalid_typed_request_returns_failure_without_fault(
     )
     kernel.run_until(2)
     assert kernel.view().action(valid).status == "succeeded"
+    kernel.close()
+
+
+def test_legacy_artifact_filenames_are_read_without_content_pins(
+    tmp_path: Path,
+) -> None:
+    """An old capture record still resolves by its recorded request identity."""
+    from aeroagentsim.observations.contracts import artifact_id
+
+    kernel, capture, request = setup_capture(tmp_path, FixtureRenderer(png()))
+    capture.store.register(request)
+    record = capture.store.put(request, png(), renderer_mode="stub")
+    key = artifact_id(request.request_id)
+    assert record["digest"] == key
+    root = tmp_path / "artifacts"
+    (root / "requests" / (key + ".json")).rename(
+        root / "requests" / ("a" * 64 + ".json")
+    )
+    (root / "blobs" / (key + ".png")).rename(root / "blobs" / ("e" * 64 + ".png"))
+    record["digest"] = "e" * 64
+    record["camera_digest"] = "b" * 64
+    current = root / "records" / (key + ".json")
+    current.unlink()
+    (root / "records" / ("c" * 64 + ".json")).write_text(json.dumps(record))
+    assert capture.store.get(request.request_id) == record
     kernel.close()

@@ -2,12 +2,12 @@
 """Real backend RPC measurement and full-trajectory same-seed comparison."""
 
 import argparse
-import hashlib
 import json
 import socket
 import statistics
 import time
 from pathlib import Path
+from typing import Any
 
 PROTOCOL = "aeroagentsim.sumo/v1"
 MAX_FRAME = 8 * 1024 * 1024
@@ -15,13 +15,15 @@ TIMEOUTS = {"hello": 10, "reset": 180, "advance": 30, "command": 30, "close": 20
 
 
 class Client:
-    def __init__(self, host, port):
+    def __init__(self, host: str, port: int) -> None:
         self.sock = socket.create_connection((host, port), timeout=10)
         self.file = self.sock.makefile("rb")
         self.ident = 0
         self.valid = True
 
-    def call(self, op, payload=None):
+    def call(
+        self, op: str, payload: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], float]:
         self.ident += 1
         req = {
             "protocol": PROTOCOL,
@@ -40,7 +42,7 @@ class Client:
         elapsed = time.perf_counter() - started
         if not data.endswith(b"\n") or len(data) > MAX_FRAME:
             raise RuntimeError("EOF/incomplete/oversized response")
-        response = json.loads(data)
+        response: dict[str, Any] = json.loads(data)
         for key in ("protocol", "major", "minor", "id"):
             if type(response[key]) is not type(req[key]) or response[key] != req[key]:
                 raise RuntimeError(f"response identity mismatch: {key}")
@@ -51,7 +53,7 @@ class Client:
         self.valid = True
         return response["result"], elapsed
 
-    def close(self):
+    def close(self) -> None:
         try:
             if self.valid:
                 self.call("close")
@@ -60,7 +62,7 @@ class Client:
             self.sock.close()
 
 
-def canonical(value):
+def canonical(value: object) -> bytes:
     return (
         json.dumps(
             value,
@@ -73,12 +75,18 @@ def canonical(value):
     ).encode()
 
 
-def percentile(values, fraction):
+def percentile(values: list[float], fraction: float) -> float:
     ordered = sorted(values)
     return ordered[min(len(ordered) - 1, int((len(ordered) - 1) * fraction))]
 
 
-def issue(client, command_id, action, params, records):
+def issue(
+    client: Client,
+    command_id: str,
+    action: str,
+    params: dict[str, Any],
+    records: dict[str, dict[str, Any]],
+) -> None:
     result, _ = client.call(
         "command", {"command_id": command_id, "action": action, "params": params}
     )
@@ -87,12 +95,11 @@ def issue(client, command_id, action, params, records):
     records[command_id] = {"action": action, "params": params, "acceptance": result}
 
 
-def run(args, repeat, output):
+def run(args: argparse.Namespace, repeat: int, output: Path) -> dict[str, Any]:
     client = Client(args.host, args.port)
-    records = {}
+    records: dict[str, dict[str, Any]] = {}
     expected_updates = {}
     trajectory_path = output / f"trajectory-{args.step_ms}ms-{repeat}.jsonl"
-    digest = hashlib.sha256()
     latencies = []
     event_counts = {
         key: 0
@@ -107,7 +114,10 @@ def run(args, repeat, output):
     }
     try:
         hello, hello_s = client.call("hello")
-        payload = {"seed": 7, "step_length_ns": args.native_step_ms * 1_000_000}
+        payload: dict[str, Any] = {
+            "seed": 7,
+            "step_length_ns": args.native_step_ms * 1_000_000,
+        }
         if args.config:
             payload["config_file"] = args.config
         else:
@@ -129,7 +139,7 @@ def run(args, repeat, output):
         issued = False
         initial_v0 = None
         removed_seen = False
-        departed_ids = {"vehicle": set(), "person": set()}
+        departed_ids: dict[str, set[str]] = {"vehicle": set(), "person": set()}
         started = time.perf_counter()
         with trajectory_path.open("wb") as stream:
             while target < maximum:
@@ -233,9 +243,7 @@ def run(args, repeat, output):
                 if any(e["id"] == "added" for e in sample["removed"]):
                     removed_seen = True
                     assert not any(e["id"] == "added" for e in sample["arrived"])
-                raw = canonical(sample)
-                digest.update(raw)
-                stream.write(raw)
+                stream.write(canonical(sample))
         wall_s = time.perf_counter() - started
         if not args.config:
             required = {
@@ -262,6 +270,7 @@ def run(args, repeat, output):
             assert len(departed_ids["vehicle"]) >= 0.9 * args.vehicles
             # Routing must actually differ, not merely acknowledge reroute.
             observation = expected_updates["reroute"]["observation"]
+            assert initial_v0 is not None
             assert observation["route"] != initial_v0["route"], observation
         return {
             "repeat": repeat,
@@ -281,7 +290,6 @@ def run(args, repeat, output):
             "active_peak": active_peak,
             "event_counts": event_counts,
             "final_pending_vehicle_ids": sample["pending_vehicle_ids"],
-            "trajectory_sha256": digest.hexdigest(),
             "trajectory": str(trajectory_path),
             "commands": records,
             "hello": hello,
@@ -290,7 +298,7 @@ def run(args, repeat, output):
         client.close()
 
 
-def same_bytes(left, right):
+def same_bytes(left: str | Path, right: str | Path) -> bool:
     with Path(left).open("rb") as a, Path(right).open("rb") as b:
         while True:
             chunk = a.read(1024 * 1024)
@@ -300,7 +308,7 @@ def same_bytes(left, right):
                 return True
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=19003)
@@ -322,19 +330,15 @@ def main():
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     results = [run(args, i + 1, output) for i in range(args.repeats)]
-    deterministic = len({r["trajectory_sha256"] for r in results}) == 1
-    byte_equal = all(
+    deterministic = all(
         same_bytes(results[0]["trajectory"], r["trajectory"]) for r in results[1:]
     )
-    deterministic = deterministic and byte_equal
     report = {
         "runs": results,
         "full_trajectory_bitwise_equal": deterministic,
-        "byte_compare_equal": byte_equal,
+        "byte_compare_equal": deterministic,
         "comparison": "all advance results, entities/events/TLS/command updates; no wall timings",
     }
-    report_path = output / f"report-{args.step_ms}ms.json"
-    report_path.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
     if not deterministic:
         raise AssertionError("same-seed full trajectories differ")

@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import hashlib
 import sys
 from pathlib import Path
 from xml.etree import ElementTree
 
-
-SOURCE_SHA256 = "e807dca3406f7cd5cb3d545898601c3ec17e0e5242e25cf467a69df1812cf436"
 COLLISION_NAMES = frozenset(
     {
         "base_link_collision_0",
@@ -31,8 +28,6 @@ def main() -> int:
         raise SystemExit("usage: inject_contact_sensors.py MODEL_SDF")
     path = Path(sys.argv[1])
     source = path.read_bytes()
-    if hashlib.sha256(source).hexdigest() != SOURCE_SHA256:
-        raise RuntimeError("upstream x500_base model.sdf digest is not pinned")
 
     root = ElementTree.fromstring(source)
     observed: set[str] = set()

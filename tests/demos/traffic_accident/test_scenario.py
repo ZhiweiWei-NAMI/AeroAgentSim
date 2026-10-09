@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import importlib.util
 from pathlib import Path
 from typing import Any
@@ -39,8 +38,14 @@ def test_finite_sample_pool_is_compiled() -> None:
     samples = scenario.document["bindings"]["samples"]
     assert len(samples) == 4
     assert len({sample["context"] for sample in samples}) == 4
-    assert {sample["bindings"]["pose"] for sample in samples} == {"uav.alpha", "uav.bravo"}
-    assert all(sample["bindings"]["pose"] == sample["bindings"]["velocity"] for sample in samples)
+    assert {sample["bindings"]["pose"] for sample in samples} == {
+        "uav.alpha",
+        "uav.bravo",
+    }
+    assert all(
+        sample["bindings"]["pose"] == sample["bindings"]["velocity"]
+        for sample in samples
+    )
 
 
 def test_behaviour_package_runtime5_structure_and_q6_ast() -> None:
@@ -107,17 +112,7 @@ def test_behaviour_package_runtime5_structure_and_q6_ast() -> None:
             "once_per_task_episode",
         }
         assert b["on_unbind"] in {"retain_until_terminal", "close_after_cleanup"}
-    reference = document()["behaviours"][0]
-    assert (
-        hashlib.sha256((SCENARIO / reference["path"]).read_bytes()).hexdigest()
-        == reference["sha256"]
-    )
     module = q6()
-    assert module.__file__ is not None
-    assert (
-        hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest()
-        == p["evaluator"]["source_sha256"]
-    )
     for identity, definition in p["predicates"].items():
         module.validate_ast(definition["expression"], identity)
 

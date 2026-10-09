@@ -1,6 +1,6 @@
 format: traffic-accident-replacement-profile/v1
 id: kinematic
-readiness: explicit_stub_verification_profile
+readiness: explicit_stub_profile
 owners:
   road_motion:
     plugin: traffic_road_motion
