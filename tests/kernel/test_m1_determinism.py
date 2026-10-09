@@ -13,6 +13,7 @@ import hashlib
 import itertools
 import os
 import subprocess
+import sys
 import unittest.mock
 from pathlib import Path
 
@@ -32,7 +33,7 @@ def _find_repo() -> Path:
 
 
 REPO = _find_repo()
-PYTHON = REPO / ".venv" / "bin" / "python"
+PYTHON = sys.executable
 
 # Literal canonical fixture: sha256(canonical_json([domain, 42, "toy", "p", "s"])[:-1]).
 DOMAIN_SEED_42 = b'["aerokernel.rng/v1",42,"toy","p","s"]'
@@ -111,15 +112,21 @@ def test_derived_seeds_are_pairwise_distinct() -> None:
 
 
 @pytest.mark.parametrize("hash_seed", ["0", "1", "71"])
-def test_toy_journal_sha256_is_hash_seed_independent(hash_seed: str) -> None:
-    """Full toy journal is byte-identical across PYTHONHASHSEED children."""
+def test_toy_journal_sha256_is_hash_seed_independent(
+    tmp_path: Path, hash_seed: str
+) -> None:
+    """Full toy journal is byte-identical across PYTHONHASHSEED children.
+
+    The child runs from pytest's tmp_path outside the repository with an
+    explicit repository PYTHONPATH, proving interpreter/journal portability.
+    """
     env = dict(os.environ)
     env["PYTHONHASHSEED"] = hash_seed
     env["PYTHONPATH"] = str(REPO)
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     completed = subprocess.run(
-        [str(PYTHON), "-c", CHILD_JOURNAL_SHA],
-        cwd=str(REPO),
+        [PYTHON, "-c", CHILD_JOURNAL_SHA],
+        cwd=str(tmp_path),
         env=env,
         capture_output=True,
         text=True,

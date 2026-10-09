@@ -190,10 +190,19 @@ def test_successful_cause_validation_cache_cannot_cross_invocation_read_cuts():
     k, refs = fact_kernel()
     version = k.view().field((refs[0], "x"), Instant(0)).version
     candidate = k._candidate(Instant(0, 10))
-    intent = {"partition": "p", "read_cut": encode(k.view().cut), "authorized": []}
+    intent = {
+        "partition": "p",
+        "read_cut": encode(k.view().cut),
+        "transaction_base_cut": encode(k.view().cut),
+        "authorized": [],
+    }
     assert candidate.cause_refs((version, version), [], intent) == (version, version)
     assert candidate.cause_refs((version,), [], intent) == (version,)
-    older = {**intent, "read_cut": encode(Cut(0, Instant(0)))}
+    older = {
+        **intent,
+        "read_cut": encode(Cut(0, Instant(0))),
+        "transaction_base_cut": encode(Cut(0, Instant(0))),
+    }
     with pytest.raises(KernelError, match="CAUSE_FUTURE"):
         candidate.cause_refs((version,), [], older)
 
@@ -210,7 +219,11 @@ def test_warm_record_cache_does_not_grant_other_partitions_state_scope_or_lag():
     candidate = Candidate(
         state, Instant(0, 10), state.cut.index + 1, k.mappings, k.budget
     )
-    common = {"read_cut": encode(state.cut), "authorized": []}
+    common = {
+        "read_cut": encode(state.cut),
+        "transaction_base_cut": encode(state.cut),
+        "authorized": [],
+    }
     assert candidate.cause_refs((version,), [], {**common, "partition": "p"}) == (
         version,
     )

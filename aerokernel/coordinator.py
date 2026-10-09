@@ -102,143 +102,154 @@ class Kernel:
         self, registry: Registry, manifest: BindingManifest, engines: tuple[Engine, ...]
     ) -> None:
         """Pin normalized contracts and validate all selected authorities once."""
-        if self._bound:
-            raise KernelError("BIND_ONCE", "kernel is already bound")
-        registry = MemoryRegistry.from_data(registry.to_data())
-        partitions: dict[str, Partition] = {}
-        for engine in engines:
-            if not engine.partitions:
-                raise KernelError(
-                    "ENGINE_PARTITIONS", "engine needs declared partitions"
-                )
-            eid = engine.partitions[0].engine_id
-            validate_text(eid)
-            if eid in self._engines:
-                raise KernelError("ENGINE_DUPLICATE", "engine IDs must be unique")
-            version = getattr(engine, "version", None)
-            if not isinstance(version, str):
-                raise KernelError("ENGINE_VERSION", "engine must pin a version string")
-            validate_text(version)
-            self._engines[eid] = engine
-            for p in engine.partitions:
-                validate_text(p.id)
-                if p.id in partitions or p.engine_id != eid:
+        with self._ingress_condition:
+            if self._bound:
+                raise KernelError("BIND_ONCE", "kernel is already bound")
+            registry = MemoryRegistry.from_data(registry.to_data())
+            partitions: dict[str, Partition] = {}
+            for engine in engines:
+                if not engine.partitions:
                     raise KernelError(
-                        "PARTITION_ID",
-                        "globally unique partition/consistent engine required",
+                        "ENGINE_PARTITIONS", "engine needs declared partitions"
                     )
-                self._validate_partition(p, registry)
-                partitions[p.id] = p
-                self._by_partition[p.id] = engine
-        manifest = type(manifest).from_data(manifest.to_data())
-        manifest.validate(registry, partitions)
-        self._check_cycles(partitions, registry, manifest)
-        self._store = Store(
-            registry, manifest, partitions, Actions(registry, self.budget)
-        )
-        self._store.provenance = self.provenance
-        self._store.actions.provenance = self.provenance
-        self._store.records.provenance = self.provenance
-        self.journal.provenance = self.provenance
-        compile_samples(self._store, self._dependency_graph, self.mappings)
-        self._store.max_microsteps = self.max_microsteps
-        self._initialize_ingress()
-        streams = {
-            p.id: RNGStreams(
-                self.root_seed, p.engine_id, p.id, p.rng_streams, self.budget
+                eid = engine.partitions[0].engine_id
+                validate_text(eid)
+                if eid in self._engines:
+                    raise KernelError("ENGINE_DUPLICATE", "engine IDs must be unique")
+                version = getattr(engine, "version", None)
+                if not isinstance(version, str):
+                    raise KernelError(
+                        "ENGINE_VERSION", "engine must pin a version string"
+                    )
+                validate_text(version)
+                self._engines[eid] = engine
+                for p in engine.partitions:
+                    validate_text(p.id)
+                    if p.id in partitions or p.engine_id != eid:
+                        raise KernelError(
+                            "PARTITION_ID",
+                            "globally unique partition/consistent engine required",
+                        )
+                    self._validate_partition(p, registry)
+                    partitions[p.id] = p
+                    self._by_partition[p.id] = engine
+            manifest = type(manifest).from_data(manifest.to_data())
+            manifest.validate(registry, partitions)
+            self._check_cycles(partitions, registry, manifest)
+            self._store = Store(
+                registry, manifest, partitions, Actions(registry, self.budget)
             )
-            for p in partitions.values()
-        }
-        self.context = RunContext(
-            self.root_seed,
-            manifest.run_id,
-            manifest.epoch,
-            MappingProxyType(streams),
-            self.configuration,
-        )
-        import hashlib
+            self._store.provenance = self.provenance
+            self._store.actions.provenance = self.provenance
+            self._store.records.provenance = self.provenance
+            self.journal.provenance = self.provenance
+            compile_samples(self._store, self._dependency_graph, self.mappings)
+            self._store.max_microsteps = self.max_microsteps
+            self._initialize_ingress()
+            streams = {
+                p.id: RNGStreams(
+                    self.root_seed, p.engine_id, p.id, p.rng_streams, self.budget
+                )
+                for p in partitions.values()
+            }
+            self.context = RunContext(
+                self.root_seed,
+                manifest.run_id,
+                manifest.epoch,
+                MappingProxyType(streams),
+                self.configuration,
+            )
+            import hashlib
 
-        manifest_digest = hashlib.sha256(
-            canonical_json(manifest.to_data(), self.budget)[:-1]
-        ).hexdigest()
-        for engine in self._engines.values():
-            bind_contract = getattr(engine, "_bind_contract", None)
-            if bind_contract is not None:
-                bind_contract(registry.digest, manifest_digest, self.budget)
-        header = {
-            "type": "header",
-            "format": "aerokernel.journal",
-            "major": 1,
-            "minor": 3 if self._store.watermarks else 2,
-            "index": 0,
-            "instant": encode(Instant(0)),
-            "time_origin_ns": 0,
-            "run_id": manifest.run_id,
-            "epoch": manifest.epoch,
-            "registry": registry.to_data(),
-            "registry_digest": registry.digest,
-            "manifest": manifest.to_data(),
-            "partitions": [encode(partitions[p]) for p in sorted(partitions)],
-            "mappings": encode(tuple(self.mappings[k] for k in sorted(self.mappings))),
-            "budget": asdict(self.budget),
-            "max_microsteps": self.max_microsteps,
-            "durability": self.journal.durability,
-            "root_seed": self.root_seed,
-            "configuration": thaw(self.configuration),
-            "ingress_policy": encode(self.ingress_policy),
-            "ingress_streams": encode(
-                tuple(self.ingress_streams[k] for k in sorted(self.ingress_streams))
-            ),
-            "engine_profiles": {
-                eid: engine.rpc_profile
-                for eid, engine in sorted(self._engines.items())
-                if hasattr(engine, "rpc_profile")
-            },
-            "serializer": {
-                "implementation": platform.python_implementation(),
-                "python": platform.python_version(),
-                "encoder": "stdlib-json/v1",
-            },
-            "rng": {
-                "implementation": "random.Random/MT19937",
-                "python": platform.python_version(),
-                "seeds": {p: streams[p].seeds for p in sorted(streams)},
-            },
-            "engine_versions": {
-                eid: self._engines[eid].version for eid in sorted(self._engines)
-            },
-            "resolved_bindings": [
-                {
-                    "ref": encode(ref),
-                    "controller": manifest.controller(ref, registry, partitions),
-                    "cleanup_participants": list(manifest.participants(ref, registry)),
-                    "writers": manifest.resolve(ref, registry, partitions),
-                }
-                for ref in sorted(manifest.entities, key=lambda r: (r.id, r.generation))
-            ],
-        }
-        if header["minor"] == 2:
-            del header["ingress_streams"]
-        if self.journal.codec == "positional-deflate":
-            from .journal_codec import CODEC
+            manifest_digest = hashlib.sha256(
+                canonical_json(manifest.to_data(), self.budget)[:-1]
+            ).hexdigest()
+            for engine in self._engines.values():
+                bind_contract = getattr(engine, "_bind_contract", None)
+                if bind_contract is not None:
+                    bind_contract(registry.digest, manifest_digest, self.budget)
+            header = {
+                "type": "header",
+                "format": "aerokernel.journal",
+                "major": 1,
+                "minor": 3 if self._store.watermarks else 2,
+                "index": 0,
+                "instant": encode(Instant(0)),
+                "time_origin_ns": 0,
+                "run_id": manifest.run_id,
+                "epoch": manifest.epoch,
+                "registry": registry.to_data(),
+                "registry_digest": registry.digest,
+                "manifest": manifest.to_data(),
+                "partitions": [encode(partitions[p]) for p in sorted(partitions)],
+                "mappings": encode(
+                    tuple(self.mappings[k] for k in sorted(self.mappings))
+                ),
+                "budget": asdict(self.budget),
+                "max_microsteps": self.max_microsteps,
+                "durability": self.journal.durability,
+                "root_seed": self.root_seed,
+                "configuration": thaw(self.configuration),
+                "ingress_policy": encode(self.ingress_policy),
+                "ingress_streams": encode(
+                    tuple(self.ingress_streams[k] for k in sorted(self.ingress_streams))
+                ),
+                "engine_profiles": {
+                    eid: engine.rpc_profile
+                    for eid, engine in sorted(self._engines.items())
+                    if hasattr(engine, "rpc_profile")
+                },
+                "serializer": {
+                    "implementation": platform.python_implementation(),
+                    "python": platform.python_version(),
+                    "encoder": "stdlib-json/v1",
+                },
+                "rng": {
+                    "implementation": "random.Random/MT19937",
+                    "python": platform.python_version(),
+                    "seeds": {p: streams[p].seeds for p in sorted(streams)},
+                },
+                "engine_versions": {
+                    eid: self._engines[eid].version for eid in sorted(self._engines)
+                },
+                "resolved_bindings": [
+                    {
+                        "ref": encode(ref),
+                        "controller": manifest.controller(ref, registry, partitions),
+                        "cleanup_participants": list(
+                            manifest.participants(ref, registry)
+                        ),
+                        "writers": manifest.resolve(ref, registry, partitions),
+                    }
+                    for ref in sorted(
+                        manifest.entities, key=lambda r: (r.id, r.generation)
+                    )
+                ],
+            }
+            if header["minor"] == 2:
+                del header["ingress_streams"]
+            if self.journal.codec == "positional-deflate":
+                from .journal_codec import CODEC
 
-            header["semantic_version"] = header["minor"]
-            header["major"], header["minor"] = 2, 0
-            header["codec"] = CODEC
-            self._store.allow_frame_prefix = True
-        if self.provenance == "lean":
-            header["policy_version"] = header.get("semantic_version", header["minor"])
-            header["provenance"] = "lean"
-            if header["major"] == 2:
-                from .journal_codec import LEAN_CODEC
+                header["semantic_version"] = header["minor"]
+                header["major"], header["minor"] = 2, 0
+                header["codec"] = CODEC
+                self._store.allow_frame_prefix = True
+            if self.provenance == "lean":
+                header["policy_version"] = header.get(
+                    "semantic_version", header["minor"]
+                )
+                header["provenance"] = "lean"
+                if header["major"] == 2:
+                    from .journal_codec import LEAN_CODEC
 
-                header["minor"], header["semantic_version"] = 1, 4
-                header["codec"] = LEAN_CODEC
-            else:
-                header["minor"] = 4
-        self.journal.append(header)
-        self.header = header
-        self._bound = True
+                    header["minor"], header["semantic_version"] = 1, 4
+                    header["codec"] = LEAN_CODEC
+                else:
+                    header["minor"] = 4
+            self.journal.append(header)
+            self.header = header
+            self._bound = True
 
     def _validate_partition(self, p: Partition, registry: MemoryRegistry) -> None:
         for feature in p.features:
@@ -664,30 +675,35 @@ class Kernel:
 
     def start(self) -> StateView:
         """Reset once, atomically bootstrap, settle all t=0 work and seal it."""
-        self._guard(False)
-        if self._started:
-            raise KernelError("START_ONCE", "run already started")
-        self._started = True
-        try:
-            self._wave(tuple(self._store.partitions), Instant(0), "reset")
-            self._settle(0)
-        except Exception as exc:
-            if not self._store.faulted:
-                self._fault(exc)
-            raise
-        if any(self._policy(s).speed_ratio is not None for s in self._store.watermarks):
-            import time
+        with self._ingress_condition:
+            self._guard(False)
+            if self._started:
+                raise KernelError("START_ONCE", "run already started")
+            self._started = True
+            try:
+                self._wave(tuple(self._store.partitions), Instant(0), "reset")
+                self._settle(0)
+            except Exception as exc:
+                if not self._store.faulted:
+                    self._fault(exc)
+                raise
+            if any(
+                self._policy(s).speed_ratio is not None for s in self._store.watermarks
+            ):
+                import time
 
-            self._pace_origin = time.monotonic()
-        return self.view()
+                self._pace_origin = time.monotonic()
+            return self.view()
 
     def submit(self, command: CommandRequest) -> str:
         """Reserve later ingress; keyed duplicates retain identity."""
-        self._guard()
-        state, record, mid = reserve(self._store, command, self.budget)
-        if record:
-            self._publish(state, record)
-        return mid
+        with self._ingress_condition:
+            self._guard()
+            state, record, mid = reserve(self._store, command, self.budget)
+            if record:
+                self._publish(state, record)
+                self._ingress_condition.notify_all()
+            return mid
 
     def _policy(self, stream_id: str) -> IngressPolicy:
         if stream_id == "default" and self.ingress_policy is not None:
@@ -973,65 +989,69 @@ class Kernel:
 
     def cancel(self, command_id: str) -> CancelRequestResult:
         """Reserve cancellation or record an explicit rejection."""
-        self._guard()
-        state = self._store.clone()
-        action = state.actions.action(command_id)
-        source = state.manifest.control_source
-        allowed = (
-            action.source_kind == "ingress" and source == action.source
-        ) or source in state.manifest.cancel_sources
-        message = state.messages.get(command_id)
-        support = (
-            message is not None
-            and state.registry.message(message.schema_id).cancel_support
-        )
-        reason = (
-            "unauthorized"
-            if not allowed
-            else "status"
-            if action.status not in {"accepted", "executing"}
-            else "unsupported"
-            if not support
-            else None
-        )
-        index = state.cut.index + 1
-        ref = ItemRef(index, 0)
-        mid = None
-        if reason is None:
-            assert state.sealed_ns is not None
-            seq_key = ("ingress", source)
-            seq = state.sequences.get(seq_key, 0)
-            state.sequences[seq_key] = seq + 1
-            mid = message_id(state.manifest.run_id, state.manifest.epoch, *seq_key, seq)
-            data = {
-                "kind": "cancel_reservation",
-                "cancel": True,
+        with self._ingress_condition:
+            self._guard()
+            state = self._store.clone()
+            action = state.actions.action(command_id)
+            source = state.manifest.control_source
+            allowed = (
+                action.source_kind == "ingress" and source == action.source
+            ) or source in state.manifest.cancel_sources
+            message = state.messages.get(command_id)
+            support = (
+                message is not None
+                and state.registry.message(message.schema_id).cancel_support
+            )
+            reason = (
+                "unauthorized"
+                if not allowed
+                else "status"
+                if action.status not in {"accepted", "executing"}
+                else "unsupported"
+                if not support
+                else None
+            )
+            index = state.cut.index + 1
+            ref = ItemRef(index, 0)
+            mid = None
+            if reason is None:
+                assert state.sealed_ns is not None
+                seq_key = ("ingress", source)
+                seq = state.sequences.get(seq_key, 0)
+                state.sequences[seq_key] = seq + 1
+                mid = message_id(
+                    state.manifest.run_id, state.manifest.epoch, *seq_key, seq
+                )
+                data = {
+                    "kind": "cancel_reservation",
+                    "cancel": True,
+                    "command_id": command_id,
+                    "message_id": mid,
+                    "sequence": seq,
+                    "boundary": state.sealed_ns + 1,
+                    "origin": encode(ref),
+                }
+                state.pending_ingress[mid] = data
+            else:
+                data = {
+                    "kind": "cancel_rejection",
+                    "command_id": command_id,
+                    "reason": reason,
+                }
+            record = {
+                "type": "cancel",
+                "index": index,
+                "instant": encode(state.cut.instant),
                 "command_id": command_id,
-                "message_id": mid,
-                "sequence": seq,
-                "boundary": state.sealed_ns + 1,
-                "origin": encode(ref),
+                "items": [data],
             }
-            state.pending_ingress[mid] = data
-        else:
-            data = {
-                "kind": "cancel_rejection",
-                "command_id": command_id,
-                "reason": reason,
-            }
-        record = {
-            "type": "cancel",
-            "index": index,
-            "instant": encode(state.cut.instant),
-            "command_id": command_id,
-            "items": [data],
-        }
-        state.records.append(record)
-        state.cuts.append(Cut(index, state.cut.instant))
-        self._publish(state, record)
-        return CancelRequestResult(
-            mid is not None, mid, ref if reason is not None else None
-        )
+            state.records.append(record)
+            state.cuts.append(Cut(index, state.cut.instant))
+            self._publish(state, record)
+            self._ingress_condition.notify_all()
+            return CancelRequestResult(
+                mid is not None, mid, ref if reason is not None else None
+            )
 
     def _horizons(self) -> dict[str, Any]:
         result = {}
@@ -1342,9 +1362,9 @@ class Kernel:
 
     def close(self) -> None:
         """Close engines idempotently and report cleanup errors."""
-        if self._closed:
-            return
         with self._ingress_condition:
+            if self._closed:
+                return
             if (
                 self._bound
                 and self._store.sealed_ns is not None

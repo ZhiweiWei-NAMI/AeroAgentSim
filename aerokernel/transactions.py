@@ -208,7 +208,13 @@ class Candidate:
                     continue
                 if cause in authorized:
                     cause_at(self.before, cause)
-                elif cause.record_index <= read.index:
+                elif cause.record_index <= read.index or (
+                    cause.record_index
+                    <= decode_record(intent["transaction_base_cut"]).index
+                    and (own := cause_at(self.before, cause)).get("kind")
+                    in {"operation", "bootstrap_create"}
+                    and own["partition"] == partition
+                ):
                     existing = cause_at(self.before, cause)
                     kind = existing.get("kind")
                     if kind in {
