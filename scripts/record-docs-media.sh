@@ -108,7 +108,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-PYTHONPATH=src "$PYTHON" -m uvicorn tools.docs.recording_server:app --host 127.0.0.1 --port "$PORT" >"$WORK_DIR/api.log" 2>&1 &
+PYTHONPATH=aerokernel:src "$PYTHON" -m uvicorn tools.docs.recording_server:app --host 127.0.0.1 --port "$PORT" >"$WORK_DIR/api.log" 2>&1 &
 SERVER_PID=$!
 "$PYTHON" - "$AEROAGENTSIM_CONSOLE_URL" <<'PY'
 import sys,time,urllib.request,urllib.error
@@ -125,7 +125,7 @@ PY
 PREPARE_ARGS=()
 [ -z "$REPLAY_SOURCE" ] || PREPARE_ARGS+=(--replay-source "$REPLAY_SOURCE")
 if [ -z "$REUSE_CONTEXT" ]; then
-PYTHONPATH=src "$PYTHON" tools/docs/prepare_recording.py --base-url "$AEROAGENTSIM_CONSOLE_URL" --output "$AEROAGENTSIM_DOCS_CONTEXT" "${PREPARE_ARGS[@]}"
+PYTHONPATH=aerokernel:src "$PYTHON" tools/docs/prepare_recording.py --base-url "$AEROAGENTSIM_CONSOLE_URL" --output "$AEROAGENTSIM_DOCS_CONTEXT" "${PREPARE_ARGS[@]}"
 else
  [ "$REUSE_CONTEXT" = "$AEROAGENTSIM_DOCS_CONTEXT" ] || cp "$REUSE_CONTEXT" "$AEROAGENTSIM_DOCS_CONTEXT"
 fi

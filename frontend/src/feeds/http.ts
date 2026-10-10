@@ -1,8 +1,9 @@
 import { parseLosslessJson } from './lossless-json';
+import { validateBusinessEvents, validateKpiValues } from '../newcomers/validation';
 import type { FeedCommit, RunHeader, ViewerFeed } from '../contracts/viewer-feed';
 
 export interface WaitingContext { stream_ids: string[]; at_ns: string }
-export interface RunInfo { id: string; scenario: string; status: string; until_ns: string; error?: string; waiting?: WaitingContext }
+export interface RunInfo { id: string; scenario: string; status: string; until_ns: string; error?: string; waiting?: WaitingContext; template_id?:string; template_title?:string; knobs?:Record<string,string|number|boolean>; algorithms?:Record<string,string>; kpis?:import('../newcomers/api').KpiValues }
 export interface CommitPage { commits: FeedCommit[]; next: number; status: string; waiting?: WaitingContext }
 type ObjectValue = Record<string, unknown>;
 // Waiting on live operator watermark progress is a normal live-run state, not a failure.
@@ -139,6 +140,8 @@ export function validateCommit(value: unknown): FeedCommit {
     if (row.transitionId !== undefined && row.transitionId !== null) string(row.transitionId);
     extensionTemporal(row);
   }
+  if(commit.events !== undefined)commit.events=validateBusinessEvents(commit.events);
+  if(commit.kpis !== undefined)commit.kpis=validateKpiValues(commit.kpis);
   return commit as unknown as FeedCommit;
 }
 
@@ -151,7 +154,7 @@ export class RunsApi {
   }
   async runs(signal?: AbortSignal): Promise<RunInfo[]> {
     const rows = array(await this.request('/v1/runs', { signal }));
-    for (const item of rows) { const row = object(item); string(row.id); string(row.scenario); string(row.status); string(row.until_ns); row.waiting = pageWaiting(row); }
+    for (const item of rows) { const row = object(item); string(row.id); string(row.scenario); string(row.status); string(row.until_ns); row.waiting = pageWaiting(row); if(row.kpis!==undefined)row.kpis=validateKpiValues(row.kpis); }
     return rows as RunInfo[];
   }
   async start(input: { scenario_path: string } | { scenario: unknown }): Promise<RunInfo> {

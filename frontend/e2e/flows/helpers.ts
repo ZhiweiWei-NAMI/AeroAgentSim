@@ -1,6 +1,7 @@
 import {test as base,expect,type Locator,type Page} from '@playwright/test';
 import {readFileSync,writeFileSync,existsSync,mkdirSync} from 'node:fs';
 import {join,basename,dirname} from 'node:path';
+import {installUxApiFixtures} from '../ux-fixtures';
 import {parseAuthoringJson,stringifyLossless} from '../../src/feeds/lossless-json';
 
 interface RecordingContext {baseURL:string;workspaceId:string;runId:string;events:Record<string,{cut:number;ns:string}>;finalCut:number}
@@ -12,7 +13,11 @@ export function recordingContext():RecordingContext {
  return JSON.parse(readFileSync(file,'utf8'));
 }
 export const flowTest=base.extend({
- page:async({page},use,testInfo)=>{
+ page:async({page,baseURL},use,testInfo)=>{
+  if(!baseURL)throw Error('Recording requires a backend URL');
+  const templates=await page.request.get(baseURL+'/v1/templates');
+  if(templates.status()===404){if(process.env.AEROAGENTSIM_UX_API_FIXTURES!=='1')throw Error('Recording needs the templates API. For a labelled fixture preview only, set AEROAGENTSIM_UX_API_FIXTURES=1.');await installUxApiFixtures(page,baseURL);await page.addInitScript(()=>{const install=()=>{const note=document.createElement('div');note.textContent='API fixture preview · accident run uses the real backend';Object.assign(note.style,{position:'fixed',top:'4px',right:'20px',background:'#fff7df',padding:'5px 10px',color:'#604500',font:'11px system-ui',zIndex:'2147483647'});document.body.append(note);};document.readyState==='loading'?document.addEventListener('DOMContentLoaded',install):install();});}else if(!templates.ok())throw Error('Template API: '+templates.status());
+  await page.addInitScript(()=>localStorage.setItem('aas:welcome-dismissed','1'));
   const clock={start:Date.now(),segments:[] as Segment[]};recordings.set(page,clock);
   await page.addInitScript(()=>{
    const install=()=>{
@@ -97,11 +102,11 @@ export async function step(page:Page,id:string){
  await click(page.getByTestId('studio-step-'+id));await expect(page.getByTestId('studio-panel-'+id)).toBeVisible();
  await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));await hold(page,500);
 }
-export async function openReplay(page:Page,runId=recordingContext().runId){
- await page.goto('/inspect/'+runId+'?mode=replay');
+export async function openReplay(page:Page,runId=recordingContext().runId,view:'simple'|'expert'='expert'){
+ await page.goto('/inspect/'+runId+'?mode=replay&view='+view);
  await expect(page.getByTestId('dual-run-views')).toBeVisible({timeout:90_000});
  await expect(page.getByTestId('viewport')).toHaveAttribute('data-city','loaded',{timeout:90_000});
- await expect(page.locator('.viewer-timeline').getByRole('slider')).not.toHaveAttribute('aria-valuemax','0',{timeout:90_000});
+ await expect(page.locator(view==='simple'?'.simple-timeline':'.viewer-timeline').getByRole('slider')).not.toHaveAttribute('aria-valuemax','0',{timeout:90_000});
  await page.evaluate(()=>window.scrollTo(0,0));await hold(page,400);
 }
 export async function validate(page:Page){
@@ -113,3 +118,7 @@ export async function assertSynchronized(page:Page){
  await expect(page.getByRole('region',{name:'Synchronized AeroGraph view'})).toHaveAttribute('data-cut',cut!);
  await expect(page.getByTestId('synchronized-city')).toHaveAttribute('data-cut',cut!);
 }
+
+export async function openControls(page:Page){await click(page.getByRole('button',{name:'Run controls',exact:true}));await expect(page.getByRole('dialog',{name:'External events & run controls'})).toBeVisible();}
+export async function closeControls(page:Page){await click(page.getByRole('dialog',{name:'External events & run controls'}).getByRole('button',{name:'Close',exact:true}));}
+export async function openPhotos(page:Page){await click(page.getByRole('button',{name:'Photos',exact:true}));await expect(page.getByRole('dialog',{name:'Photos · details'})).toBeVisible();}

@@ -1,8 +1,19 @@
 import type { Workspace } from './api';
+import type { AlgorithmSlot } from '../newcomers/api';
+
+/** Shared algorithm plug-in contract (`aeroagentsim.algorithms`): one slot each, additive. */
+export const algorithmSlots:AlgorithmSlot[]=['allocation','path_planning','conflict_resolution','charging'];
+/** Built-in algorithm ids the shared contract expects per slot; actual availability comes only from the /v1/algorithms catalog. */
+export const builtinAlgorithms:Record<AlgorithmSlot,string[]>={
+ allocation:['nearest','auction','hungarian','llm'],
+ path_planning:['straight','corridor_astar'],
+ conflict_resolution:['altitude_layers','hold_and_go'],
+ charging:['threshold_return'],
+};
 export const studioSteps = [
  {id:'scene',label:'Scene',description:'Choose a region and place actors in the scene.'},
  {id:'entities',label:'Entities',description:'Browse typed entities, their initial fields and relationships.'},
- {id:'plugins',label:'Domain plugins',description:'Choose domain engines and assign one writer per field.'},
+ {id:'plugins',label:'Domain plugins',description:'Choose the engines that control movement, traffic, communication and weather.'},
  {id:'predicates',label:'Predicates',description:'Define the conditions that drive your scenario.'},
  {id:'rules',label:'Event chains & rules',description:'Connect predicate transitions to actions and external events.'},
  {id:'agents',label:'Agents',description:'Configure recorded decisions or a live LangGraph model.'},

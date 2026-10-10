@@ -38,7 +38,7 @@ return {
     port: 3000,
     strictPort: false,
     proxy: {
-      '/v1': { target: 'http://127.0.0.1:8002', changeOrigin: true },
+      '/v1': { target: process.env.AEROAGENTSIM_DEV_API ?? 'http://127.0.0.1:8002', changeOrigin: true },
     },
   },
   build: {

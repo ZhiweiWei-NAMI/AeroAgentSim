@@ -10,6 +10,7 @@ import '../scene/presentation';
 interface Props {
   store: FeedStore & { liveFollow?: boolean }; clock: PlaybackClock; selected?: EntityKey; mode: CameraMode; quality: Quality; trails: boolean;
   commitCut?: number;
+  simple?: boolean; focus?: {position:[number,number,number];revision:number};
   onSelect: (key: EntityKey) => void; onTick: () => void; onError: (error: unknown) => void;
   onQuality: (quality: Quality, fps?: number) => void;
 }
@@ -55,11 +56,12 @@ export function ViewportView(props: Props) {
   useEffect(()=>{viewport.current?.setSelection(props.selected);},[props.selected]);
   useEffect(()=>{viewport.current?.setCameraMode(mode ?? props.mode);},[props.mode,mode]);
   useEffect(()=>{viewport.current?.setQuality(props.quality);},[props.quality]);
+  useEffect(()=>{if(props.focus){setMode(undefined);viewport.current?.focusPosition(props.focus.position);}},[props.focus]);
   const events=useMemo(()=>props.store.commits.flatMap(commit=>commit.messages.filter(message=>message.kind==='event'&&(!props.selected||message.subjects?.some(key=>key.id===props.selected!.id&&key.generation===props.selected!.generation)))),[props.store,props.store.commits.length,props.selected]);
   const duration=BigInt(props.clock.end)-BigInt(props.store.header.start.ns);
   return <>
     <div className="viewport-canvas" data-testid="viewport" ref={root} aria-label="Simulation viewport" />
-    <div className="director-toolbar">
+    {!props.simple&&<div className="director-toolbar">
       <select aria-label="View camera" value={mode ?? props.mode} onChange={event=>setMode(event.target.value as CameraMode)}>
         <option value="orbit">Orbit</option><option value="follow">Follow unit</option><option value="chase">Chase</option><option value="cinematic">Event director</option>
       </select>
@@ -68,14 +70,14 @@ export function ViewportView(props: Props) {
       </select><span>{fps===undefined?'WebGL2':`${fps.toFixed(0)} FPS`}</span>
       <select aria-label="Display lighting" value={dusk?'dusk':'day'} onChange={event=>{const value=event.target.value==='dusk';setDusk(value);viewport.current?.setDusk(value);}}><option value="day">Day · display</option><option value="dusk">Dusk · display</option></select>
       <button aria-label="Toggle inspector" aria-expanded={!collapsed} onClick={()=>{const next=!collapsed;setCollapsed(next);root.current?.closest('.viewer-main')?.setAttribute('data-inspector-collapsed',String(next));}}>Inspector {collapsed?'＋':'−'}</button>
-    </div>
-    <div className="scene-status" title={status}>{status} · Facades, landscaping, light, haze & screen-sized glyphs are display effects</div>
-    {catalogNotice&&<div className="scene-attribution" style={{bottom:24}} data-testid="catalog-notice">{catalogNotice}</div>}
+    </div>}
+    {!props.simple&&<div className="scene-status" title={status}>{status} · Facades, landscaping, light, haze & screen-sized glyphs are display effects</div>}
+    {!props.simple&&catalogNotice&&<div className="scene-attribution" style={{bottom:24}} data-testid="catalog-notice">{catalogNotice}</div>}
     <div className="scene-attribution">{root.current?.dataset.attribution}</div>
-    <div className="mission-overlay"><MissionTimeline store={props.store} selected={props.selected} />
+    {!props.simple&&<div className="mission-overlay"><MissionTimeline store={props.store} selected={props.selected} />
       <div className="event-strip" aria-label="Recorded event markers">{duration>0n&&events.slice(-200).map(event=>
         <button key={event.id} title={`${event.schemaId} · ${event.at.ns} ns`} style={{left:`${Number((BigInt(event.at.ns)-BigInt(props.store.header.start.ns))*10000n/duration)/100}%`}}
           onClick={()=>{props.clock.pause();props.clock.seek(event.at.ns);props.onTick();}} aria-label={`Seek ${event.schemaId}`} />)}</div>
-    </div>
+    </div>}
   </>;
 }

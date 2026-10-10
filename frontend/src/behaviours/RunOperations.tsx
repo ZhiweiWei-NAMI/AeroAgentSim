@@ -14,7 +14,7 @@ import { mapping, type Draft } from './model';
 import { TypedPayloadForm } from './TypedPayloadForm';
 import { actualTargetSummary, emptyTransport, newIdempotencyKey, receiptSummary, schemaDefaults, transportForPoint } from './injection-defaults';
 import './run-operations.css';
-interface Props { api:RunsApi;runId:string;store:TemporalFeedStore;selected?:EntityKey;commitCut?:number;onSelect:(key:EntityKey)=>void;onSeek:(index:number)=>void;mode:'live'|'replay';interactive?:boolean }
+interface Props { api:RunsApi;runId:string;store:TemporalFeedStore;selected?:EntityKey;commitCut?:number;onSelect:(key:EntityKey)=>void;onSeek:(index:number)=>void;mode:'live'|'replay';interactive?:boolean;onInjections?:(available:boolean)=>void;onRequestInject?:()=>void }
 export function advertisedMessages(store:TemporalFeedStore):Draft[] {
   const registry=store.header.runtimeRegistry;const rows=store.header.messages??(mapping(registry)?registry.messages:undefined);
   if(rows===undefined)return [];
@@ -61,7 +61,7 @@ export function recordedAccidentPayload(store:TemporalFeedStore):Draft|undefined
   if(!incident)return undefined;
   return {incident:{$ref:{run_id:store.header.kernelRunId,epoch:store.header.epoch,id:incident.key.id,generation:{$integer:String(incident.key.generation)},type_id:incident.typeId}}};
 }
-export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,interactive=true}:Props) {
+export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,interactive=true,onInjections,onRequestInject}:Props) {
   const notify=useConsoleNotice();
   const cardRef=useRef<HTMLDivElement>(null),injectionRef=useRef<HTMLSelectElement>(null),pointInitialized=useRef(false);
   const [fields,setFields]=useState(emptyTransport()),[payload,setPayload]=useState<unknown>({}),[point,setPoint]=useState(''),[points,setPoints]=useState<Draft[]>([]),[error,setError]=useState(''),[admissions,setAdmissions]=useState<unknown[]>([]),[busy,setBusy]=useState(false),[operation,setOperation]=useState<Draft>(),[effective,setEffective]=useState<string>();
@@ -93,7 +93,8 @@ export function RunOperations({api,runId,store,selected,onSelect,onSeek,mode,int
     const defaults=schemaDefaults(event?.schema,definitions);
     setPayload(mapping(defaults)?{...defaults,...(point==='accident'?recordedAccidentPayload(store):{})}:point==='accident'?(recordedAccidentPayload(store)??{}):{});
   },[point,event?.schema]);
-  const friendly=()=>{cardRef.current?.scrollIntoView({block:'center'});cardRef.current?.querySelector<HTMLButtonElement>('[data-injection-submit]')?.focus();};
+  useEffect(()=>{onInjections?.(points.length>0);},[points,onInjections]);
+  const friendly=()=>{onRequestInject?.();requestAnimationFrame(()=>{cardRef.current?.scrollIntoView({block:'center'});cardRef.current?.querySelector<HTMLButtonElement>('[data-injection-submit]')?.focus();});};
   useEffect(()=>{const declared=store.header.behaviour?.injectionPoints??store.header.behaviour?.injection_points;if(declared)setPoints(declared);
     const abort=new AbortController();void awaitRunConfiguration(api, runId, abort.signal).then(value=>{
       if(!mapping(value)||!mapping(value.scenario))throw Error('Run configuration is malformed');

@@ -141,7 +141,7 @@ export function DomainPluginsStep({ scenario, onChange, engines, onValidityChang
       <span>{readableName(String(entry.row?.entity ?? entry.row?.type ?? 'Unspecified'))}{entry.row?.ids ? <code className="guided-ownership-ids"> / {String(entry.row.ids)}</code> : null}</span> },
     { title: 'Fields', key: 'fields', render: (_: unknown, entry: { row: Row }) =>
       <span>{entry.row?.field ? readableName(entry.row.field) : Array.isArray(entry.row?.fields) ? entry.row.fields.map(readableName).join(', ') : 'Unspecified'}</span> },
-    { title: 'Writer', key: 'writer', render: (_: unknown, entry: { section: 'exact' | 'rules'; index: number; row: Row }) =>
+    { title: 'Who controls this value', key: 'writer', render: (_: unknown, entry: { section: 'exact' | 'rules'; index: number; row: Row }) =>
       <Select
         size="small"
         aria-label={`Writer ${entry.section} ${entry.index}`}
@@ -202,9 +202,9 @@ export function DomainPluginsStep({ scenario, onChange, engines, onValidityChang
     />
 
     <section className="guided-ownership" aria-label="Field writers and replacement profiles">
-      <h4>Field writers / replacement profiles</h4>
+      <h4>Who controls each value</h4>
       <p className="guided-ownership-note">
-        Each field has one writer. Profile changes apply to a new run after validation.
+        Each value has one controller. Changed settings apply to the next run.
       </p>
       <Table
         size="small"

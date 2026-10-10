@@ -1,3 +1,4 @@
+import { Dropdown } from 'antd';
 import React, { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
@@ -82,7 +83,7 @@ export default function ConsoleShell({ children, actions, activeRun }: ConsoleSh
         </nav>
         <div className="console-sidebar-foot">
           <div>Open-source research console</div>
-          <div>for shared-runtime agent simulation</div>
+          <div>Explore, experiment, compare</div>
         </div>
       </aside>
       <div className="console-main">
@@ -98,18 +99,19 @@ export default function ConsoleShell({ children, actions, activeRun }: ConsoleSh
             ))}
           </nav>
           {actions}
-          <button type="button" className="console-help-btn" onClick={help} aria-label="Keyboard shortcuts">
+          <Dropdown menu={{items:[{key:'welcome',label:<Link to={`${destination("/")}${apiSuffix?'&':'?'}welcome=1`} onClick={()=>document.dispatchEvent(new CustomEvent('aas:welcome-help'))}>Getting started</Link>},{key:'shortcuts',label:'Keyboard shortcuts',onClick:help},{key:'guide',label:<Link to={`/docs/platform/console.md${apiSuffix}`}>Read the guide</Link>}]}} trigger={['click']}>
+          <button type="button" className="console-help-btn" aria-label="Help">
             <HelpIcon size={14} />
-            Shortcuts
+            Help
             <kbd>?</kbd>
-          </button>
+          </button></Dropdown>
         </header>
         <main className="console-content">{children}</main>
         <footer className="console-footer">
           <span>AeroAgentSim — open-source research console</span>
           <a href="https://github.com/ZhiweiWei-NAMI/AeroAgentSim" target="_blank" rel="noreferrer">Source</a>
           <a href="https://github.com/ZhiweiWei-NAMI/AeroAgentSim/tree/main/docs" target="_blank" rel="noreferrer">Docs</a>
-          <span>Single-writer domain plugins · versioned runs</span>
+          <span>Change one setting. Explore the difference.</span>
         </footer>
       </div>
     </div>

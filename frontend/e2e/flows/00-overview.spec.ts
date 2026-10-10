@@ -2,7 +2,7 @@ import {flowTest as test,expect,api,click,hold,openWorkspace,segment,step,assert
 
 test('Home → guided Studio → real run → synchronized Inspect',async({page})=>{
  await page.goto('/');await expect(page.getByTestId('home-page')).toBeVisible();
- await segment(page,async()=>{await hold(page,2300);await click(page.getByTestId('open-traffic-demo'));},'Configure, run and inspect one shared simulation');
+ await segment(page,async()=>{await hold(page,2300);await click(page.getByTestId('studio-template-traffic-accident'));},'Configure, run and inspect one shared simulation');
  await expect(page.getByTestId('studio-panel-scene')).toBeVisible({timeout:90_000});
  await expect(page.getByText('Loading city geometry…',{exact:true})).toBeHidden({timeout:90_000});
  await segment(page,async()=>{
@@ -16,7 +16,8 @@ test('Home → guided Studio → real run → synchronized Inspect',async({page}
  await api(page,'/v1/runs/'+run+'/stop',{});
  // The simulation story records this full lifecycle; the hero uses the completed
  // recorded run for inspection so loading/waiting never becomes demo footage.
- await openReplay(page);
+ await openReplay(page,undefined,'simple');
+ await segment(page,async()=>{await hold(page,1800);await click(page.getByRole('tab',{name:'Results',exact:true}));await click(page.getByTestId('expert-toggle'));},'Start with a clear view; explore details when you need them');
  await segment(page,async()=>{
   await hold(page,2300);await click(page.getByRole('button',{name:'Bravo',exact:true}));
   await expect(page.locator('.inspection-sidebar')).toContainText('UAV Bravo');
