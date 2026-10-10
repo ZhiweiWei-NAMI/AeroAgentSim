@@ -64,6 +64,9 @@ Terminal statuses are `completed`, `stopped`, `faulted`, `interrupted`,
 | `/v1/templates/{id}` | GET | Fetch one template; 404 for an unknown id. |
 | `/v1/templates/{id}/runs` | POST (201) | Body `{"knobs": {...}, "workspace": true?}`. Apply declared defaults and overrides, validate, and launch. Returns `{run_id, workspace_id?}`. Omit `workspace` to launch directly. |
 | `/v1/templates/{id}/workspace` | POST (201) | Body `{"knobs": {...}}`. Create an editable Studio draft with copied template inputs. Returns `{workspace_id}`; fetch it through `/v1/studio/workspaces/{workspace_id}`. |
+| `/v1/templates/{id}/thumbnail` | GET | Declared packaged PNG. List/detail also expose additive `thumbnail_url` when a thumbnail is declared. Missing assets return 404; paths are scoped to their template directory. |
+| `/v1/templates/{id}/experiments` | POST (201) | Launch a validated full-factorial experiment: `{vary: {knob: [values]}, seeds?: 3, jobs?: 1, horizon_s?: seconds, knobs?: {base overrides}}`. Returns experiment identity, progress, run outcomes and table. |
+| `/v1/experiments/{id}` | GET | Persistent experiment progress and aggregate table (`aeroagentsim.experiment/v1`). Each table row has `config_id`, applied `knobs`, and `metrics` with `{mean, std, n, unit, label, best}`. |
 | `/v1/runs/{id}/kpis` | GET | `{contract: "aeroagentsim.kpi/v1", final, series}` computed from the committed journal prefix, including partial live runs. Each metric is `{value, unit, label}`. The response also carries `run_id`. |
 | `/v1/runs/compare?ids=a,b,c` | GET | Align 2–20 distinct runs. Returns `{contract: "aeroagentsim.run-comparison/v1", runs, kpis, differences}`. `kpis` rows carry `{name, unit, label, values: {run_id: value}}`; `differences.knobs` and `.algorithms` carry `{name, values, present}`. |
 
@@ -155,3 +158,5 @@ When `--frontend` points at a built console, the server serves the SPA at `/`,
 `/runs`, `/inspect`, `/aerograph`, `/agents` and `/studio`. The console sends
 JSON for submissions and controls; configure its origin using
 `AEROAGENTSIM_CONSOLE_URL` when it is hosted outside localhost.
+
+See [experiments](../guides/experiments.md) for matched seeds, sample statistics, report files and restart behavior.

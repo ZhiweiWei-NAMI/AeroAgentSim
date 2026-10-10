@@ -277,8 +277,29 @@ class NarrativeProjector:
 
         for key, value in LOWALT_DEFAULTS.items():
             declarations[key] = dict(value)
+        from ..packs.lowalt.overlay import EVENT_NARRATIVES as LOWALT_PACK
         from ..packs.traffic_accident.narratives import EVENT_NARRATIVES
 
+        # Pack declarations are authoritative statements of what the pack's
+        # engines emit; they pin the defaults truthfully (defaults stay for
+        # schemas no pack declares).
+        for key, value in LOWALT_PACK.items():
+            own = declarations.get(key, {})
+            # Task events carry the pack's per-kind category map; render the
+            # category from the actual task kind instead of a flat default.
+            per_kind = value.get("category_by_kind")
+            declarations[key] = {
+                "template": value["text"],
+                "category": "mixed" if per_kind else value["category"],
+                "severity": value["severity"],
+                "entities": value.get("entities", [n for n in own.get("entities", [])]),
+                **(
+                    {"position": value["position"]}
+                    if "position" in value
+                    else ({"position": own["position"]} if "position" in own else {})
+                ),
+            }
+            del own
         for key, value in EVENT_NARRATIVES.items():
             declarations[key] = dict(value)
 
@@ -291,10 +312,10 @@ class NarrativeProjector:
             raise ValueError("behaviour.ir.json: packages must be a list")
         for package in packages:
             document = package.get("document", {}) if isinstance(package, dict) else {}
-            own = document.get("event_narratives")
-            if own:
-                validate_declarations(own)
-                _merge(package_declarations, own)
+            declared = document.get("event_narratives")
+            if declared:
+                validate_declarations(declared)
+                _merge(package_declarations, declared)
 
         declarations.update(package_declarations)
         scenario = read("scenario.json")
@@ -329,11 +350,27 @@ class NarrativeProjector:
         return {
             "seen": sorted(self._seen),
             "task_kinds": dict(self._task_kinds),
-            "positions": {
-                "|".join(map(str, key)): list(value)
-                for key, value in self._positions.items()
-            },
+            "positions": [
+                [*key, list(value)] for key, value in self._positions.items()
+            ],
         }
+
+    def restore_cursor(self, cursor: dict[str, Any]) -> None:
+        """Restore state produced by :meth:`cursor`; complements from_directory."""
+        if not isinstance(cursor, dict):
+            raise ValueError("narrative cursor: mapping required")
+        self._task_kinds = {
+            str(task): str(kind) for task, kind in cursor["task_kinds"].items()
+        }
+        self._seen.clear()
+        self._positions.clear()
+        self._by_id.clear()
+        for message_id in cursor["seen"]:
+            self._seen.add(str(message_id))
+        for run_id, epoch, entity_id, generation, value in cursor["positions"]:
+            restored = (run_id, epoch, entity_id, int(generation))
+            self._positions[restored] = tuple(float(v) for v in value)
+            self._key_hint(restored, entity_id)
 
     @classmethod
     def projection_context(
@@ -341,14 +378,7 @@ class NarrativeProjector:
     ) -> NarrativeProjector:
         """Restore a projector instance from a stored cursor context."""
         projector = cls.from_directory(path)
-        projector._task_kinds = dict(cursor.get("task_kinds", {}))
-        for message_id in cursor.get("seen", []):
-            projector._seen.add(message_id)
-        for key, value in cursor.get("positions", {}).items():
-            run_id, epoch, entity_id, generation = key.split("|")
-            key = (run_id, epoch, entity_id, int(generation))
-            projector._positions[key] = tuple(value)
-            projector._key_hint(key, entity_id)
+        projector.restore_cursor(cursor)
         return projector
 
     # -- record consumption ------------------------------------------------

@@ -50,6 +50,21 @@ mode uses the shipped declared decision fixture; live mode requires a named
 operator provider profile and the agents extra. `aeroagentsim demo
 traffic-accident` remains supported with its existing profile flags.
 
+## aeroagentsim experiment
+
+```console
+aeroagentsim experiment parcel-delivery --vary allocator=nearest,auction --seeds 3 --jobs 2
+```
+
+Runs a full factorial headless experiment. Repeat `--vary knob=a,b` for more
+axes; `--seeds` is the number of matched deterministic seeds (0 through N−1),
+`--jobs` bounds worker processes, and `--horizon` sets simulated seconds.
+`--out` defaults to `runs`; `--templates-root` selects an operator registry.
+Normal run directories remain visible in Runs/Compare. Reports live under
+`<out>/.experiments/<id>/experiment.md` and `experiment.csv` and contain
+journal-based mean, sample standard deviation, sample count and best-value
+flags. See [experiments](../guides/experiments.md).
+
 ## aeroagentsim replay
 
 ```console

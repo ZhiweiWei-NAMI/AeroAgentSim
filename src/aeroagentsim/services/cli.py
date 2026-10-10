@@ -156,6 +156,51 @@ def run_template_command(
     uvicorn.run(app, host="127.0.0.1", port=port)
 
 
+def experiment_command(
+    template_id: str,
+    *,
+    varies: list[str],
+    seeds: int,
+    jobs: int,
+    horizon: float | None,
+    out: Path,
+    templates_root: Path | None = None,
+) -> None:
+    from aeroagentsim.authoring.templates import TemplateRegistry
+    from aeroagentsim.services.experiments import ExperimentManager, parse_vary
+
+    vary = parse_vary(varies)
+    manager = ExperimentManager(out.resolve(), TemplateRegistry(templates_root))
+    report = manager.create(
+        template_id,
+        vary=vary,
+        seeds=seeds,
+        jobs=jobs,
+        horizon_s=horizon,
+    )
+    try:
+        final = manager.wait(report["id"])
+    finally:
+        manager.close()
+    print(
+        json.dumps(
+            {
+                "experiment": final["id"],
+                "status": final["status"],
+                "runs": f"{final['completed']}/{final['total']} completed"
+                + (f", {final['failed']} failed" if final["failed"] else ""),
+                "path": str(out.resolve() / ".experiments" / final["id"]),
+                "error": final["error"],
+                "table": final["table"],
+            },
+            indent=2,
+        ),
+        flush=True,
+    )
+    if final["status"] != "completed":
+        raise ValueError(f"Experiment {final['status']}: {final['error']}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="aeroagentsim")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -203,6 +248,32 @@ def main() -> None:
         "--port", type=int, default=0, help="Interactive API port (0 picks a free port)"
     )
     run_template.add_argument("--templates-root", type=Path)
+    experiment = sub.add_parser(
+        "experiment", help="Run a full-factorial template experiment"
+    )
+    experiment.add_argument("template")
+    experiment.add_argument(
+        "--vary",
+        dest="varies",
+        action="append",
+        default=[],
+        metavar="KNOB=VALUE,VALUE",
+        help="Experiment axis: knob values to sweep (repeatable)",
+    )
+    experiment.add_argument(
+        "--seeds", type=int, default=3, help="Matched seeds 0..seeds-1 per cell"
+    )
+    experiment.add_argument(
+        "--jobs", type=int, default=1, help="Parallel worker processes"
+    )
+    experiment.add_argument(
+        "--horizon",
+        type=float,
+        default=None,
+        help="Simulated horizon in seconds (default: template duration)",
+    )
+    experiment.add_argument("--out", type=Path, default=Path("runs"))
+    experiment.add_argument("--templates-root", type=Path)
     args = parser.parse_args()
     if args.command == "templates":
         try:
@@ -216,6 +287,25 @@ def main() -> None:
                 sets=args.sets,
                 headless=args.headless,
                 port=args.port,
+                out=args.out,
+                templates_root=args.templates_root,
+            )
+        except (
+            ValueError,
+            TypeError,
+            KeyError,
+            FileNotFoundError,
+            RuntimeError,
+        ) as exc:
+            parser.error(str(exc))
+    elif args.command == "experiment":
+        try:
+            experiment_command(
+                args.template,
+                varies=args.varies,
+                seeds=args.seeds,
+                jobs=args.jobs,
+                horizon=args.horizon,
                 out=args.out,
                 templates_root=args.templates_root,
             )

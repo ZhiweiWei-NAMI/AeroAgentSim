@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import copy
 import json
 import math
-import threading
-from collections import OrderedDict
 from pathlib import Path
 from typing import Any, cast
 
@@ -25,8 +22,13 @@ METRICS = {
     "tasks_assigned": ("count", "Tasks assigned"),
     "tasks_completed": ("count", "Tasks completed"),
     "tasks_failed": ("count", "Tasks failed"),
+    "completion_rate": ("ratio", "Completed tasks / created tasks"),
     "mean_task_latency_s": ("s", "Mean task latency"),
     "p95_task_latency_s": ("s", "95th percentile task latency"),
+    "on_time_rate": (
+        "ratio",
+        "On-time rate over deliveries with a committed deadline",
+    ),
     "energy_used_kj": ("kJ", "Energy used"),
     "distance_flown_km": ("km", "Distance flown"),
     "separation_conflicts": ("count", "Separation conflicts"),
@@ -86,6 +88,16 @@ class KPIProjector:
         self.position_observed = False
         self.capture_incidents: dict[str, str] = {}
         self.actor_incidents: dict[str, str] = {}
+        # On-time measurement uses only deadlines committed in the journal
+        # (e.g. logistics transition events carrying deadline_ns). Tasks whose
+        # deadline was never committed stay unmeasured instead of being inferred.
+        self.deadlines: dict[str, int] = {}
+        self.delivered: dict[str, tuple[int, bool | None]] = {}
+        self.unmeasured_deliveries: set[str] = set()
+        # Classification caches: registry/type answers never change per run, so
+        # they are resolved once per (type, field) instead of per fact write.
+        self._aircraft_types: dict[str, bool] = {}
+        self._position_fields: dict[tuple[str, str], bool] = {}
 
     @classmethod
     def from_directory(cls, path: Path) -> KPIProjector:
@@ -95,30 +107,127 @@ class KPIProjector:
         scenario = json.loads((path / "scenario.json").read_text())
         return cls(registry, scenario.get("presentation", []))
 
+    def cursor(self) -> dict[str, Any]:
+        """Plain-JSON checkpoint of every counter, baseline and dedup state."""
+        return {
+            "version": 1,
+            "counts": dict(self.counts),
+            "created": dict(self.created),
+            "assigned": sorted(self.assigned),
+            "completed": sorted(self.completed),
+            "failed": sorted(self.failed),
+            "latencies": list(self.latencies),
+            "messages": sorted(self.messages),
+            "energy": [
+                [entity, generation, field, value]
+                for (entity, generation, field), value in self.energy.items()
+            ],
+            "positions": [
+                [entity, generation, field, list(value)]
+                for (entity, generation, field), value in self.positions.items()
+            ],
+            "energy_used": self.energy_used,
+            "distance": self.distance,
+            "energy_observed": self.energy_observed,
+            "position_observed": self.position_observed,
+            "capture_incidents": dict(self.capture_incidents),
+            "actor_incidents": dict(self.actor_incidents),
+            "deadlines": dict(self.deadlines),
+            "delivered": {
+                order: [at_ns, on_time]
+                for order, (at_ns, on_time) in self.delivered.items()
+            },
+            "unmeasured_deliveries": sorted(self.unmeasured_deliveries),
+        }
+
+    def restore_cursor(self, cursor: dict[str, Any]) -> None:
+        """Restore state produced by :meth:`cursor`; unknown versions raise."""
+        if not isinstance(cursor, dict) or cursor.get("version") != 1:
+            raise ValueError("KPI cursor: unsupported checkpoint version")
+        self.counts = {name: int(cursor["counts"][name]) for name in self.counts}
+        self.created = {str(k): int(v) for k, v in cursor["created"].items()}
+        self.assigned = set(cursor["assigned"])
+        self.completed = set(cursor["completed"])
+        self.failed = set(cursor["failed"])
+        self.latencies = [float(v) for v in cursor["latencies"]]
+        self.messages = set(cursor["messages"])
+        self.energy = {}
+        self.positions = {}
+        for entity, generation, field, value in cursor["energy"]:
+            self.energy[(entity, int(generation), field)] = float(value)
+        for entity, generation, field, value in cursor["positions"]:
+            self.positions[(entity, int(generation), field)] = tuple(
+                float(v) for v in value
+            )
+        self.energy_used = float(cursor["energy_used"])
+        self.distance = float(cursor["distance"])
+        for name in ("energy_observed", "position_observed"):
+            if type(cursor[name]) is not bool:
+                raise ValueError(f"KPI cursor: {name} must be a boolean")
+        self.energy_observed = cursor["energy_observed"]
+        self.position_observed = cursor["position_observed"]
+        self.capture_incidents = {
+            str(k): str(v) for k, v in cursor["capture_incidents"].items()
+        }
+        self.actor_incidents = {
+            str(k): str(v) for k, v in cursor["actor_incidents"].items()
+        }
+        self.deadlines = {str(k): int(v) for k, v in cursor["deadlines"].items()}
+        self.delivered = {
+            str(order): (int(at_ns), on_time)
+            for order, (at_ns, on_time) in cursor["delivered"].items()
+        }
+        self.unmeasured_deliveries = set(cursor["unmeasured_deliveries"])
+
+    @classmethod
+    def from_cursor(
+        cls,
+        registry: MemoryRegistry,
+        cursor: dict[str, Any],
+        presentation: list[dict[str, Any]] | None = None,
+    ) -> KPIProjector:
+        """Rebuild a projector from a registry plus a :meth:`cursor` snapshot."""
+        projector = cls(registry, presentation)
+        projector.restore_cursor(cursor)
+        return projector
+
     def _aircraft(self, ref: EntityRef) -> bool:
-        return any(
-            self.registry.is_a(ref.type_id, name)
-            for name in ("oo:Aircraft", "oo:UAV")
-            if any(t.id == name for t in self.registry.types)
-        )
+        # Registry/type answers are run-invariant: classify each type once.
+        cached = self._aircraft_types.get(ref.type_id)
+        if cached is None:
+            names = tuple(
+                name
+                for name in ("oo:Aircraft", "oo:UAV")
+                if any(t.id == name for t in self.registry.types)
+            )
+            cached = any(self.registry.is_a(ref.type_id, name) for name in names)
+            self._aircraft_types[ref.type_id] = cached
+        return cached
 
     def _position_field(self, ref: EntityRef, field: str) -> bool:
+        key = (ref.type_id, field)
+        cached = self._position_fields.get(key)
+        if cached is not None:
+            return cached
         matches = [
             value
             for kind, value in self.position_bindings.items()
             if self.registry.is_a(ref.type_id, kind)
         ]
         if matches:
-            return bool(field == matches[0])
-        descriptor = self.fields[field]
-        return (
-            descriptor.schema.get("type") == "vector"
-            and descriptor.schema.get("length") == 3
-            and symbol(descriptor.metadata.get("unit")) == "m"
-            and symbol(descriptor.metadata.get("frame")) == "enu"
-            and descriptor.metadata.get("role") != "config"
-            and "position" in field.lower()
-        )
+            result = bool(field == matches[0])
+        else:
+            descriptor = self.fields[field]
+            result = (
+                descriptor.schema.get("type") == "vector"
+                and descriptor.schema.get("length") == 3
+                and symbol(descriptor.metadata.get("unit")) == "m"
+                and symbol(descriptor.metadata.get("frame")) == "enu"
+                and descriptor.metadata.get("role") != "config"
+                and "position" in field.lower()
+            )
+        self._position_fields[key] = result
+        return result
 
     def _fact(self, op: FactWrite) -> None:
         ref, field = op.key
@@ -208,6 +317,28 @@ class KPIProjector:
                 "lowalt.weather.hold": "weather_holds",
             }[schema]
             self.counts[name] += 1
+        elif schema in ("lowalt.weather.release", "weather.release"):
+            pass  # Holds were already counted; a release is not a second metric.
+        elif schema == "packs.logistics.transition":
+            # Deadline data committed by the logistics engine; never inferred.
+            order = payload.get("order")
+            state = payload.get("state")
+            if not isinstance(order, str) or not order:
+                raise ValueError("KPI logistics transition: order id required")
+            if isinstance(payload.get("deadline_ns"), int):
+                self.deadlines.setdefault(order, payload["deadline_ns"])
+            if state == "delivered":
+                if order in self.deadlines:
+                    if order not in self.delivered:
+                        self.delivered[order] = (
+                            at_ns,
+                            at_ns <= self.deadlines[order],
+                        )
+                elif order not in self.delivered:
+                    # Delivered without a committed deadline: remains unmeasured
+                    # rather than inferred or counted late.
+                    self.delivered[order] = (at_ns, None)
+                    self.unmeasured_deliveries.add(order)
         elif schema == "traffic.report.sent":
             incident = identity(payload["incident"])
             self._created("traffic:" + incident, at_ns)
@@ -267,6 +398,11 @@ class KPIProjector:
 
     def snapshot(self) -> dict[str, Any]:
         values: dict[str, Any] = dict(self.counts)
+        values["completion_rate"] = (
+            self.counts["tasks_completed"] / self.counts["tasks_created"]
+            if self.counts["tasks_created"]
+            else None
+        )
         values["energy_used_kj"] = (
             self.energy_used / 1000 if self.energy_observed else None
         )
@@ -285,6 +421,15 @@ class KPIProjector:
             )
         else:
             values["p95_task_latency_s"] = None
+        # On-time rate counts only observed completions that carried a committed
+        # deadline; deliveries without one are excluded from the denominator and
+        # reported alongside as unmeasured, not late.
+        values["on_time_rate"] = (
+            sum(1 for _, on_time in self.delivered.values() if on_time)
+            / (len(self.delivered) - len(self.unmeasured_deliveries))
+            if len(self.delivered) > len(self.unmeasured_deliveries)
+            else None
+        )
         return {
             name: {"value": values[name], "unit": unit, "label": label}
             for name, (unit, label) in METRICS.items()
@@ -305,47 +450,8 @@ def projection_context(path: Path, cursor: int) -> KPIProjector:
     return projector
 
 
-_LOCK = threading.RLock()
-_CACHE: OrderedDict[
-    Path, tuple[KPIProjector, list[dict[str, Any]], int, tuple[int, int]]
-] = OrderedDict()
-
-
 def project_run(path: Path, *, include_series: bool = True) -> dict[str, Any]:
-    path = path.resolve()
-    with _LOCK:
-        info = (path / "runtime.registry.json").stat()
-        identity_key = (info.st_ino, info.st_mtime_ns)
-        storage = RunStorage(path)
-        cached = _CACHE.get(path)
-        series: list[dict[str, Any]]
-        if (
-            cached is None
-            or cached[3] != identity_key
-            or (storage.entries and cached[2] > storage.entries[-1]["index"] + 1)
-        ):
-            projector, series, cursor = KPIProjector.from_directory(path), [], 1
-        else:
-            projector, series, cursor, _ = cached
-        while True:
-            records = storage.records(cursor, 1024)
-            if not records:
-                break
-            for record in records:
-                kpis = projector.consume(record)
-                at = decode_record(record["instant"])
-                series.append(
-                    {"commitIndex": record["index"], "at_ns": str(at.ns), "kpis": kpis}
-                )
-            cursor = records[-1]["index"] + 1
-        _CACHE[path] = (projector, series, cursor, identity_key)
-        _CACHE.move_to_end(path)
-        while len(_CACHE) > 32:
-            _CACHE.popitem(last=False)
-        return copy.deepcopy(
-            {
-                "contract": "aeroagentsim.kpi/v1",
-                "final": projector.snapshot(),
-                "series": series if include_series else [],
-            }
-        )
+    """Read committed KPIs through the same persistent index used by the feed."""
+    from .feed_index import kpi_result
+
+    return kpi_result(path, include_series=include_series)
