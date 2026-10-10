@@ -31,7 +31,8 @@ describe('active airspace zones from committed facts', () => {
     const involved=new Set(['vehicle.005:0']);
     expect(labelInterest(background,undefined,involved)).toBe(false);
     expect(labelInterest(background,background.key,involved)).toBe(true);
-    expect(labelInterest(background,undefined,involved,true)).toBe(true);
+    // Even a routine task does not earn a label; an actual alert does.
+    expect(labelInterest(background,undefined,involved,true)).toBe(false);
     expect(labelInterest(background,undefined,involved,false,involved)).toBe(true);
     expect(humanizeId('uav.bravo','UAV')).toBe('UAV Bravo');
   });
@@ -93,6 +94,17 @@ describe('simple-mode label interest', () => {
     expect(labelInterest(drone)).toBe(false);
     const done = entity('task-2', 0, 'lowalt:Task', { 'lowalt.task_state': 'completed' });
     expect(done.fields.get('lowalt.task_state')!.value).toBe('completed');
+  });
+  it('leaves background road vehicles unlabelled unless selected or alerting', () => {
+    const background = entity('vehicle.013', 0, 'aas:TrafficRoadVehicle', { 'traffic.actor.role': 'background' });
+    const key: EntityKey = { id: 'vehicle.013', generation: 0 };
+    // Routine motion and even route tasks stay unlabelled in the default view.
+    expect(labelInterest(background)).toBe(false);
+    expect(labelInterest(background, undefined, undefined, true)).toBe(false);
+    expect(labelInterest(background, undefined, new Set(['vehicle.013:0']))).toBe(false);
+    // Selected or actually alerting: labelled.
+    expect(labelInterest(background, key)).toBe(true);
+    expect(labelInterest(background, undefined, undefined, false, new Set(['vehicle.013:0']))).toBe(true);
   });
   it('collects recent event subjects within the window and drops commands and stale events', () => {
     const messages = [

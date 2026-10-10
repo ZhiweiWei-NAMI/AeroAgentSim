@@ -107,7 +107,8 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
   useEffect(() => {
     if (!selected && session) {
       const entities = [...session.store.entities.values()];
-      const entity = requestedEntity ? entities.find(entity => entity.key.id === requestedEntity && (!requestedGeneration || String(entity.key.generation) === requestedGeneration)) : entities.find(entity => resolveBinding(session.store.header, entity.typeId)) ?? entities[0];
+      let entity = requestedEntity ? entities.find(entity => entity.key.id === requestedEntity && (!requestedGeneration || String(entity.key.generation) === requestedGeneration)) : entities.find(entity => resolveBinding(session.store.header, entity.typeId));
+      if (!entity && !requestedEntity) entity = entities[0];
       if (entity) { setSelected(entity.key); if (session.store.header.epoch !== undefined) session.store.select(entity.key); }
     }
   });
