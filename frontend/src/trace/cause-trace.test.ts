@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { TraceModel } from './cause-trace';
-import { changesFor, describeExpression, explain, momentsFor } from './cause-trace';
+import { changesFor, describeExpression, explain, momentsFor, showValue } from './cause-trace';
 import { car, incident, traceStore as store } from './trace-fixture';
 
 describe('cause trace', () => {
+  it('shows the precision needed to understand a strict battery threshold', () => {
+    expect(showValue(store(), 0.849659614252597)).toBe('0.8496596');
+  });
   it('explains an event as trigger, chain step, before/after writes and follow-ups', () => {
     const model = explain(store(), { kind: 'event', text: 'Car stopped' }) as TraceModel;
     expect(model.focus).toBe('step');

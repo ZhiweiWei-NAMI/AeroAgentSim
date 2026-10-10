@@ -19,9 +19,19 @@ BASE = Path(__file__).resolve().parents[2] / "scenarios/templates/parcel-deliver
 
 def test_parcel_120s_conflicts_geofence_and_replay(tmp_path: Path) -> None:
     document = yaml.safe_load((BASE / "scenario.yaml").read_text())
-    # Generated drones start together: force a real separation violation.
-    document["generators"]["fleet"]["starts"] = [[-240.0, -220.0, 50.0]]
-    document["engines"]["airspace"]["config"]["separation_horizontal_m"] = 40.0
+    # One airborne pair at the authored plaza forces a representative conflict.
+    # Grounded aircraft sharing a pad are intentionally outside this rule.
+    fleet = document["generators"]["fleet"]
+    fleet["count"] = 2
+    plaza = fleet["starts"][0]
+    altitude = document["engines"]["tasks"]["config"]["cruise_altitudes"]["parcel"]
+    fleet["starts"] = [
+        [plaza[0], plaza[1], altitude],
+        [plaza[0] + 1.0, plaza[1], altitude],
+    ]
+    document["behaviours"][0]["predicates"]["closer_than_safety_distance"][
+        "parameters"
+    ]["horizontal_m"] = 40.0
     document["engines"]["tasks"]["config"]["batch_window_s"] = 0.0
     scenario = load_scenario(document, base=BASE)
     journal = tmp_path / "journal.jsonl"
@@ -42,7 +52,10 @@ def test_parcel_120s_conflicts_geofence_and_replay(tmp_path: Path) -> None:
             for m in messages
         )
         refs = tuple(r for r in scenario.manifest.entities if r.type_id == "lowalt:UAV")
-        # Check committed motion, including complete segments between samples.
+        # Check the authored Huangpu geofence and complete motion segments.
+        zone = next(
+            e["facts"] for e in document["entities"] if e["id"] == "central-no-fly"
+        )
         previous = {
             r.id: tuple(scenario.initial[r.id]["lowalt.position"]) for r in refs
         }
@@ -53,8 +66,8 @@ def test_parcel_120s_conflicts_geofence_and_replay(tmp_path: Path) -> None:
                     assert not segment_hits_box(
                         previous[identity],
                         tuple(fact["value"]),
-                        (-55, -55, 0),
-                        (55, 55, 120),
+                        tuple(zone["lowalt.zone_lower"]),
+                        tuple(zone["lowalt.zone_upper"]),
                     )
                     previous[identity] = tuple(fact["value"])
         end = sim.kernel.view()

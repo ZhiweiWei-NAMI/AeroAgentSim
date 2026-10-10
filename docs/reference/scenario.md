@@ -168,3 +168,13 @@ See [visualization](../guides/visualization.md#shared-huangpu-city).
 
 For lowalt entities, authored `vehicle_class` must agree with the authoritative
 `facts.lowalt.vehicle_class`; metadata cannot change the vehicle physics class.
+
+## Low-altitude operational rules
+
+Lowalt templates declare `lowalt.rules` inline in `behaviours`, composed with
+other packages under one behaviour engine. Template JSON pointers edit the
+package's battery reserve, horizontal separation and per-class wind predicate
+parameters. See [editing the rules](../guides/lowalt-rules.md) for their event
+chains, committed detection fields and ownership. The battery recall flag
+`lowalt.returning_to_charge` prevents new task assignments until the real
+charging command finishes.

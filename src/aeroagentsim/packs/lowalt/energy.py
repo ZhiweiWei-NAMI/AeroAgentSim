@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from typing import Any, cast
 
 from aerokernel import Dependency, Partition
-from aerokernel.sdk import ContextEngine, EngineContext
+from aerokernel.sdk import Command, ContextEngine, EngineContext
 from aerokernel.values import thaw
 
 from aeroagentsim.algorithms import load_algorithm
@@ -15,7 +16,7 @@ from aeroagentsim.engines.common import bootstrap_owned, policies
 from aeroagentsim.packs.common import distance, finite, ns, read, vec
 from aeroagentsim.platform.plugins import EngineBuild
 
-from .core import SNAPSHOT_FIELDS, refs, snapshot
+from .core import SNAPSHOT_FIELDS, SnapshotIndex, refs, snapshot
 
 PRODUCES = (
     "lowalt.soc",
@@ -24,8 +25,8 @@ PRODUCES = (
     "lowalt.distance_m",
     "lowalt.motion_energy_j",
 )
+RETURN_COMMAND = "lowalt.energy.return_to_pad"
 EVENTS = (
-    "lowalt.energy.low",
     "lowalt.energy.charging_started",
     "lowalt.energy.charging_finished",
     "lowalt.control",
@@ -37,6 +38,7 @@ EVENTS = (
 class LowaltEnergy(ContextEngine):
     def __init__(self, build: EngineBuild) -> None:
         self.build, self.cfg = build, build.config
+        self.snapshot_index = SnapshotIndex(build)
         self.tick = ns(self.cfg["tick_ns"], "energy tick", 1)
         self.coefficients = {
             k: finite(self.cfg[k], k, 0)
@@ -48,12 +50,9 @@ class LowaltEnergy(ContextEngine):
                 "headwind_w_per_mps",
             )
         }
-        self.threshold = finite(self.cfg["low_threshold"], "low threshold", 0)
         self.target = finite(self.cfg["charging_target_soc"], "charging target", 0)
-        if not self.threshold < self.target <= 1:
-            raise ValueError(
-                "charging requires low_threshold < charging_target_soc <= 1"
-            )
+        if not 0 < self.target <= 1:
+            raise ValueError("charging requires 0 < charging_target_soc <= 1")
         self.radius = finite(self.cfg["charge_radius_m"], "charge radius", 0)
         self.charger = cast(
             Charging,
@@ -68,6 +67,9 @@ class LowaltEnergy(ContextEngine):
         self.previous_ns = 0
         self.swap_ends: dict[str, int] = {}
         self.returns: dict[str, str] = {}
+        # The reserve rule (a behaviour chain) asks for a return; the command
+        # stays open until the aircraft has finished charging.
+        self.waiting: dict[str, Command[dict[str, Any]]] = {}
         consumed = tuple(
             dict.fromkeys(
                 SNAPSHOT_FIELDS + PRODUCES + ("lowalt.capacity_j", "lowalt.velocity")
@@ -80,6 +82,7 @@ class LowaltEnergy(ContextEngine):
                 produces=PRODUCES,
                 consumes=tuple(Dependency(f) for f in consumed),
                 emits=EVENTS,
+                commands=(RETURN_COMMAND,),
                 message_targets=("lowalt.events",),
                 lifecycle=True,
             ),
@@ -111,14 +114,8 @@ class LowaltEnergy(ContextEngine):
         if elapsed <= 0:
             raise ValueError("energy samples must advance simulated time")
         self.previous_ns = ctx.now.ns
-        state = snapshot(ctx, self.build)
+        state = snapshot(ctx, self.build, index=self.snapshot_index)
         pads = {p.id: p for p in state.pads}
-        requested = {
-            proposal.vehicle: proposal.pad for proposal in self.charger.charge(state)
-        }
-        for identity, pad_id in requested.items():
-            if identity not in self.previous or pad_id not in pads:
-                raise ValueError("charging proposal must select a real vehicle and pad")
         for ref in self.fleet:
             position = vec(read(ctx, ref, "lowalt.position"))
             velocity = vec(read(ctx, ref, "lowalt.velocity"))
@@ -128,17 +125,6 @@ class LowaltEnergy(ContextEngine):
             soc = finite(read(ctx, ref, "lowalt.soc"), "soc", 0)
             capacity = finite(read(ctx, ref, "lowalt.capacity_j"), "capacity", 1e-9)
             charging = read(ctx, ref, "lowalt.charging")
-            if ref.id in requested and ref.id not in self.returns:
-                requested_pad = pads[requested[ref.id]]
-                self.returns[ref.id] = requested_pad.id
-                self._emit(
-                    ctx,
-                    "lowalt.control",
-                    vehicle=ref.id,
-                    action="return_to_pad",
-                    target=list(requested_pad.position),
-                    reason="charging algorithm",
-                )
             pad = pads[self.returns[ref.id]] if ref.id in self.returns else None
             at_pad = (
                 pad is not None
@@ -201,12 +187,6 @@ class LowaltEnergy(ContextEngine):
                 # Connection starts at this observed arrival, after the travel
                 # drain. Only subsequent intervals receive pad energy.
                 charging = True
-            if (
-                next_soc <= self.threshold < soc
-                or ctx.now.ns == self.tick
-                and soc <= self.threshold
-            ):
-                self._emit(ctx, "lowalt.energy.low", vehicle=ref.id, soc=next_soc)
             if charging and next_soc >= self.target:
                 assert pad is not None
                 charging = False
@@ -225,6 +205,11 @@ class LowaltEnergy(ContextEngine):
                     reason="charging finished",
                 )
                 self.returns.pop(ref.id)
+                waiting = self.waiting.pop(ref.id, None)
+                if waiting is not None:
+                    ctx.succeed(
+                        waiting, {"vehicle": ref.id, "pad": pad.id, "soc": next_soc}
+                    )
             ctx.set(ref, "lowalt.soc", next_soc)
             ctx.set(ref, "lowalt.motion_energy_j", next_soc * capacity)
             ctx.set(ref, "lowalt.charging", charging)
@@ -241,7 +226,51 @@ class LowaltEnergy(ContextEngine):
                 + moved,
             )
 
+    def _return_to_pad(
+        self, ctx: EngineContext, command: Command[dict[str, Any]]
+    ) -> None:
+        """Run the charging algorithm for one aircraft the reserve rule flagged."""
+        identity = command.payload["vehicle"]
+        if identity not in self.previous or identity in self.returns:
+            ctx.reject(
+                command, {"vehicle": identity, "reason": "no free aircraft to recall"}
+            )
+            return
+        state = snapshot(ctx, self.build, index=self.snapshot_index)
+        flagged = replace(
+            state, vehicles=tuple(v for v in state.vehicles if v.id == identity)
+        )
+        pads = {p.id: p for p in state.pads}
+        proposals = self.charger.charge(flagged)
+        if not proposals:
+            ctx.reject(
+                command, {"vehicle": identity, "reason": "no charging pad proposed"}
+            )
+            return
+        proposal = proposals[0]
+        if proposal.vehicle != identity or proposal.pad not in pads:
+            raise ValueError("charging proposal must select a real vehicle and pad")
+        pad = pads[proposal.pad]
+        ctx.accept(command)
+        ctx.execute(command)
+        self.returns[identity] = pad.id
+        self.waiting[identity] = command
+        self._emit(
+            ctx,
+            "lowalt.control",
+            vehicle=identity,
+            action="return_to_pad",
+            target=list(pad.position),
+            reason="charging algorithm",
+        )
+
     def on_inputs(self, ctx: EngineContext) -> None:
+        for delivery in ctx.inbox:
+            if delivery.message.kind == "command":
+                self._return_to_pad(
+                    ctx,
+                    ctx.remember(delivery, lambda value: cast(dict[str, Any], value)),
+                )
         if any(
             d.kind == "timer" and thaw(d.payload) == {"lowalt_energy": "tick"}
             for d in ctx.dirty

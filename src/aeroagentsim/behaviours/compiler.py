@@ -103,7 +103,15 @@ class Compiler:
         def contains_expression(child: Any) -> bool:
             if isinstance(child, dict):
                 return bool(
-                    {"$role", "$variable", "$trigger", "$now_ns", "$microstep", "field"}
+                    {
+                        "$role",
+                        "$id",
+                        "$variable",
+                        "$trigger",
+                        "$now_ns",
+                        "$microstep",
+                        "field",
+                    }
                     & child.keys()
                 ) or any(contains_expression(item) for item in child.values())
             return isinstance(child, list) and any(
@@ -143,6 +151,15 @@ class Compiler:
                     )
                 ):
                     self.fail(path, "role incompatible with target type")
+                return
+            if "$id" in value:
+                # The role entity's identifier as text, for payloads that
+                # address entities by id rather than by reference.
+                self.shape(value, path, {"$id"})
+                if value["$id"] not in self.roles:
+                    self.fail(path, "unknown role")
+                if schema and schema["type"] != "string":
+                    self.fail(path, "role id expression requires string schema")
                 return
             if "$variable" in value:
                 self.shape(value, path, {"$variable"})

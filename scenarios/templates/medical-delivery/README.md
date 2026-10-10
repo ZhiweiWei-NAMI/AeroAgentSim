@@ -50,3 +50,11 @@ heights and roads by `tools/templates/place.py`. Roof pads use their actual roof
 height; inter-site flights depart/arrive vertically and cruise above the 105 m
 roof ceiling. Names and business metadata are pinned with each run. See
 [the shared placement guide](../../../docs/examples/city-day.md#huangpu-placements-la3).
+
+Routine arrivals stop at 180 s. Urgent supplies arrive at 8, 90 and 150 s;
+late routine deliveries have time to resume after preemption. Edit battery,
+separation and wind policy in [the shared rules](../../../docs/guides/lowalt-rules.md).
+
+The measured default completes 11 of 18 created orders by 300 s. Priority
+preemption works, but route and separation interruptions leave a backlog;
+uncompleted orders are not reported task failures.

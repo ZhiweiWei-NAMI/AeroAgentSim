@@ -9,36 +9,50 @@ from itertools import product
 from typing import Any, cast
 
 from aerokernel import Dependency, Partition
-from aerokernel.sdk import ContextEngine, EngineContext
+from aerokernel.sdk import Command, ContextEngine, EngineContext
+from aerokernel.state import Fact
 from aerokernel.values import thaw
 
 from aeroagentsim.algorithms import load_algorithm
-from aeroagentsim.algorithms.protocols import Conflict, ConflictResolution, Point
+from aeroagentsim.algorithms.protocols import (
+    Conflict,
+    ConflictResolution,
+    Point,
+    Snapshot,
+)
 from aeroagentsim.engines.common import bootstrap_owned, policies
 from aeroagentsim.packs.common import finite, ns, read, vec
 from aeroagentsim.packs.geometry import segment_hits_box
 from aeroagentsim.platform.plugins import EngineBuild
 
-from .core import SNAPSHOT_FIELDS, refs, snapshot
+from .core import SNAPSHOT_FIELDS, SnapshotIndex, refs, snapshot
 
 PRODUCES = (
     "lowalt.membership",
     "lowalt.conflicts",
-    "lowalt.weather_held",
+    "lowalt.wind_mps",
+    "lowalt.breached_zones",
+    "lowalt.conflict_partner",
+    "lowalt.conflict_gap_m",
+    "lowalt.zone_id",
     "lowalt.zone_active",
     "lowalt.zone_lower",
     "lowalt.zone_upper",
 )
 EVENTS = (
-    "lowalt.airspace.conflict",
-    "lowalt.airspace.conflict_resolved",
-    "lowalt.airspace.geofence_entered",
     "lowalt.airspace.zone_activated",
     "lowalt.airspace.zone_deactivated",
-    "lowalt.weather.hold",
-    "lowalt.weather.release",
     "lowalt.control",
 )
+RESOLVE_COMMAND = "lowalt.airspace.resolve_conflict"
+CONTROL_COMMAND = "lowalt.airspace.flight_control"
+# Facts this engine publishes for the shared rules; absent from authored
+# entities, they start at their "nothing detected" value.
+DETECTION_DEFAULTS: dict[str, Any] = {
+    "lowalt.breached_zones": [],
+    "lowalt.conflict_partner": "",
+    "lowalt.conflict_gap_m": [0.0, 0.0],
+}
 
 
 def separation_conflicts(
@@ -70,6 +84,7 @@ def separation_conflicts(
 class LowaltAirspace(ContextEngine):
     def __init__(self, build: EngineBuild) -> None:
         self.build, self.cfg = build, build.config
+        self.snapshot_index = SnapshotIndex(build)
         self.tick = ns(self.cfg["tick_ns"], "airspace tick", 1)
         self.horizontal = finite(
             self.cfg["separation_horizontal_m"], "horizontal separation", 1e-9
@@ -77,9 +92,6 @@ class LowaltAirspace(ContextEngine):
         self.vertical = finite(
             self.cfg["separation_vertical_m"], "vertical separation", 1e-9
         )
-        self.wind_limits = {
-            k: finite(v, "wind limit", 0) for k, v in self.cfg["wind_limits"].items()
-        }
         self.resolver = cast(
             ConflictResolution,
             load_algorithm(
@@ -89,6 +101,7 @@ class LowaltAirspace(ContextEngine):
             ),
         )
         self.fleet = refs(build, "lowalt:UAV")
+        self.by_fleet = {r.id for r in self.fleet}
         self.zones = {r.id: r for r in refs(build, "lowalt:AirspaceZone")}
         self.activation_events = self.cfg["activation_events"]
         for item in self.activation_events:
@@ -101,9 +114,13 @@ class LowaltAirspace(ContextEngine):
             if build.registry.message(item["schema"]).kind != "event":
                 raise ValueError("zone activation source must be a registered event")
         self.override: dict[str, bool] = {}
-        self.conflicts: set[tuple[str, str]] = set()
-        self.actions: dict[tuple[str, str], str] = {}
+        # Pairs currently inside the safety distance, and the resolve commands
+        # that stay open until their pair separates again.
+        self.conflicts: dict[tuple[str, str], Conflict] = {}
+        self.pending: dict[tuple[str, str], tuple[Command[dict[str, Any]], str]] = {}
         self.previous: dict[str, Point] = {}
+        self.resolution_ns: int | None = None
+        self.resolution_actions: set[str] = set()
         self.external = {
             item["id"]: item for item in self.cfg.get("external_vehicles", ())
         }
@@ -131,7 +148,7 @@ class LowaltAirspace(ContextEngine):
                 build.id,
                 produces=PRODUCES,
                 consumes=tuple(Dependency(f) for f in consumed),
-                commands=("lowalt.airspace.activate",),
+                commands=("lowalt.airspace.activate", RESOLVE_COMMAND, CONTROL_COMMAND),
                 emits=EVENTS
                 + tuple(
                     sorted(
@@ -162,13 +179,11 @@ class LowaltAirspace(ContextEngine):
         initial = copy.deepcopy(self.build.initial)
         for ref in self.fleet:
             self.previous[ref.id] = vec(initial[ref.id]["lowalt.position"])
-            vehicle_class = initial[ref.id]["lowalt.vehicle_class"]
-            if vehicle_class not in self.wind_limits:
-                raise ValueError(
-                    f"missing wind limit for vehicle class {vehicle_class}"
-                )
+            for field, default in DETECTION_DEFAULTS.items():
+                initial[ref.id].setdefault(field, copy.deepcopy(default))
         for ref in self.zones.values():
             facts = initial[ref.id]
+            facts["lowalt.zone_id"] = ref.id
             start = ns(facts["lowalt.zone_start_ns"], "zone start")
             end = ns(facts["lowalt.zone_end_ns"], "zone end", 1)
             if end <= start:
@@ -212,7 +227,11 @@ class LowaltAirspace(ContextEngine):
                     ctx.set(
                         ref,
                         "lowalt.zone_lower",
-                        [center[0] - extent[0] / 2, center[1] - extent[1] / 2, center[2]],
+                        [
+                            center[0] - extent[0] / 2,
+                            center[1] - extent[1] / 2,
+                            center[2],
+                        ],
                     )
                     ctx.set(
                         ref,
@@ -247,10 +266,114 @@ class LowaltAirspace(ContextEngine):
 
     def _poll(self, ctx: EngineContext, overrides: dict[str, tuple[bool, str]]) -> None:
         active = self._zones(ctx, overrides)
-        state = snapshot(ctx, self.build)
+        state = snapshot(ctx, self.build, index=self.snapshot_index)
         state = replace(
             state, zones=tuple(replace(z, active=active[z.id]) for z in state.zones)
         )
+        positions = self._positions(ctx, state)
+        wind_speed = math.sqrt(sum(x * x for x in state.wind))
+        exemptions = self.cfg.get("zone_exemptions", {})
+        for ref in self.fleet:
+            point = positions[ref.id]
+            members = sorted(
+                z.id
+                for z in state.zones
+                if z.active
+                and ref.id not in exemptions.get(z.id, ())
+                and all(a <= p <= b for a, p, b in zip(z.lower, point, z.upper))
+            )
+            if members != read(ctx, ref, "lowalt.membership"):
+                ctx.set(ref, "lowalt.membership", members)
+            # No-fly and restricted zones the aircraft is in, or crossed since
+            # the last sample. The geofence rule reads this committed list.
+            breached = sorted(
+                z.id
+                for z in state.zones
+                if z.active
+                and ref.id not in exemptions.get(z.id, ())
+                and z.kind in {"no_fly", "restricted"}
+                and (
+                    z.id in members
+                    or segment_hits_box(self.previous[ref.id], point, z.lower, z.upper)
+                )
+            )
+            if breached != read(ctx, ref, "lowalt.breached_zones"):
+                ctx.set(ref, "lowalt.breached_zones", breached)
+            self.previous[ref.id] = point
+            observed_wind = ctx.view.field((ref, "lowalt.wind_mps"), ctx.now)
+            if not isinstance(observed_wind, Fact) or wind_speed != observed_wind.value:
+                ctx.set(ref, "lowalt.wind_mps", wind_speed)
+        landed = self._landed(ctx, positions)
+        conflicts = tuple(
+            c
+            for c in separation_conflicts(positions, self.horizontal, self.vertical)
+            if not (c.a in landed and c.b in landed)
+        )
+        pairs = {(c.a, c.b): c for c in conflicts}
+        self.conflicts = pairs
+        for pair in sorted(self.pending.keys() - pairs.keys()):
+            command, action = self.pending.pop(pair)
+            ctx.succeed(command, {"a": pair[0], "b": pair[1], "action": action})
+        # Each pair is reported once, by its first aircraft (an external
+        # responder never reports; its partner does).
+        leads: dict[str, Conflict] = {}
+        for conflict in conflicts:
+            lead = conflict.a if conflict.a in self.by_fleet else conflict.b
+            if lead in self.by_fleet:
+                leads.setdefault(lead, conflict)
+        for ref in self.fleet:
+            members = sorted(
+                b if a == ref.id else a for a, b in pairs if ref.id in {a, b}
+            )
+            if members != read(ctx, ref, "lowalt.conflicts"):
+                ctx.set(ref, "lowalt.conflicts", members)
+            lead_conflict = leads.get(ref.id)
+            partner = (
+                ""
+                if lead_conflict is None
+                else lead_conflict.b
+                if lead_conflict.a == ref.id
+                else lead_conflict.a
+            )
+            gap = (
+                [0.0, 0.0]
+                if lead_conflict is None
+                else [lead_conflict.horizontal_m, lead_conflict.vertical_m]
+            )
+            if partner != read(ctx, ref, "lowalt.conflict_partner"):
+                ctx.set(ref, "lowalt.conflict_partner", partner)
+            if gap != read(ctx, ref, "lowalt.conflict_gap_m"):
+                ctx.set(ref, "lowalt.conflict_gap_m", gap)
+
+    def _landed(self, ctx: EngineContext, positions: dict[str, Point]) -> set[str]:
+        """Stationary aircraft on a site apron are not an airborne pair.
+
+        A hold at cruise altitude is still airborne. Roof/ground height must
+        agree with a committed landing site, not merely a zero velocity.
+        External responders have no lowalt landing state and remain monitored.
+        """
+        sites = [
+            vec(read(ctx, r, "lowalt.site_position"))
+            for r in self.snapshot_index.select("lowalt:Site")
+        ]
+        radius = finite(
+            self.cfg.get("landed_apron_radius_m", 40.0), "landing apron radius", 0
+        )
+        return {
+            ref.id
+            for ref in self.fleet
+            if all(abs(v) <= 1e-6 for v in vec(read(ctx, ref, "lowalt.velocity")))
+            and any(
+                abs(positions[ref.id][2] - site[2]) <= 0.5
+                and math.hypot(
+                    positions[ref.id][0] - site[0], positions[ref.id][1] - site[1]
+                )
+                <= radius
+                for site in sites
+            )
+        }
+
+    def _positions(self, ctx: EngineContext, state: Snapshot) -> dict[str, Point]:
         # External responders retain their own sole motion/battery owners. These
         # vehicles are monitored but never enter the lowalt allocation pool.
         positions = {v.id: v.position for v in state.vehicles}
@@ -260,147 +383,104 @@ class LowaltAirspace(ContextEngine):
                 for identity, item in self.external.items()
             }
         )
-        wind_speed = math.sqrt(sum(x * x for x in state.wind))
-        for ref in self.fleet:
-            point = positions[ref.id]
-            exemptions = self.cfg.get("zone_exemptions", {})
-            members = sorted(
-                z.id
-                for z in state.zones
-                if z.active
-                and ref.id not in exemptions.get(z.id, ())
-                and all(a <= p <= b for a, p, b in zip(z.lower, point, z.upper))
+        return positions
+
+    def _resolve(self, ctx: EngineContext, command: Command[dict[str, Any]]) -> None:
+        """Ask the conflict-resolution slot to separate one reported pair."""
+        pair = (
+            min(command.payload["a"], command.payload["b"]),
+            max(command.payload["a"], command.payload["b"]),
+        )
+        conflict = self.conflicts.get(pair)
+        if pair in self.pending:
+            # Never orphan the original receipt by replacing an executing pair.
+            ctx.reject(
+                command, {"a": pair[0], "b": pair[1], "action": "already resolving"}
             )
-            before = read(ctx, ref, "lowalt.membership")
-            if members != before:
-                ctx.set(ref, "lowalt.membership", members)
-            for zone in state.zones:
-                if (
-                    zone.active
-                    and ref.id not in exemptions.get(zone.id, ())
-                    and zone.kind in {"no_fly", "restricted"}
-                    and zone.id not in before
-                    and segment_hits_box(
-                        self.previous[ref.id], point, zone.lower, zone.upper
-                    )
-                ):
-                    self._emit(
-                        ctx,
-                        "lowalt.airspace.geofence_entered",
-                        {"vehicle": ref.id, "zone": zone.id},
-                    )
-            self.previous[ref.id] = point
-            held = wind_speed > self.wind_limits[read(ctx, ref, "lowalt.vehicle_class")]
-            if held != read(ctx, ref, "lowalt.weather_held"):
-                ctx.set(ref, "lowalt.weather_held", held)
-                self._emit(
-                    ctx,
-                    "lowalt.weather.hold" if held else "lowalt.weather.release",
-                    {
-                        "vehicle": ref.id,
-                        "reason": "wind exceeds vehicle limit"
-                        if held
-                        else "wind within vehicle limit",
-                        "wind_mps": wind_speed,
-                    },
+            return
+        ctx.accept(command)
+        ctx.execute(command)
+        if conflict is None:
+            ctx.succeed(
+                command, {"a": pair[0], "b": pair[1], "action": "observed separation"}
+            )
+            return
+        state = snapshot(ctx, self.build, index=self.snapshot_index)
+        positions = self._positions(ctx, state)
+        state = replace(
+            state,
+            monitored_positions=tuple((i, positions[i]) for i in self.external),
+        )
+        controlled = (
+            ()
+            if conflict.a in self.external and conflict.b in self.external
+            else tuple(self.conflicts.values())
+        )
+        actions = self.resolution_actions if self.resolution_ns == ctx.now.ns else set()
+        resolutions = (
+            ()
+            if self.resolution_ns == ctx.now.ns
+            else self.resolver.resolve(state, controlled)
+        )
+        self.resolution_ns = ctx.now.ns
+        self.resolution_actions = actions
+        for resolution in resolutions:
+            if resolution.vehicle not in positions:
+                raise ValueError("conflict resolution selected an unknown vehicle")
+            payload: dict[str, Any] = {
+                "vehicle": resolution.vehicle,
+                "action": resolution.action,
+                "reason": "separation conflict",
+            }
+            if resolution.action == "altitude" and resolution.altitude_m is not None:
+                p = positions[resolution.vehicle]
+                payload["target"] = [
+                    p[0],
+                    p[1],
+                    finite(resolution.altitude_m, "resolution altitude"),
+                ]
+            elif resolution.action == "hold":
+                payload["until_ns"] = ctx.now.ns + math.ceil(
+                    finite(resolution.hold_s, "resolution hold", 1e-9) * 1e9
                 )
-                self._emit(
-                    ctx,
-                    "lowalt.control",
-                    {
-                        "vehicle": ref.id,
-                        "action": "hold" if held else "release",
-                        "reason": "weather",
-                    },
-                )
-        conflicts = separation_conflicts(positions, self.horizontal, self.vertical)
-        pairs = {(c.a, c.b) for c in conflicts}
-        new = tuple(c for c in conflicts if (c.a, c.b) not in self.conflicts)
-        for conflict in new:
-            self._emit(
-                ctx,
-                "lowalt.airspace.conflict",
-                {
-                    "a": conflict.a,
-                    "b": conflict.b,
-                    "horizontal_m": conflict.horizontal_m,
-                    "vertical_m": conflict.vertical_m,
-                },
-            )
-        for a, b in sorted(self.conflicts - pairs):
-            self._emit(
-                ctx,
-                "lowalt.airspace.conflict_resolved",
-                {
-                    "a": a,
-                    "b": b,
-                    "action": self.actions.pop((a, b), "observed separation"),
-                },
-            )
-        for ref in self.fleet:
-            members = sorted(
-                b if a == ref.id else a for a, b in pairs if ref.id in {a, b}
-            )
-            if members != read(ctx, ref, "lowalt.conflicts"):
-                ctx.set(ref, "lowalt.conflicts", members)
-        if new:
-            monitored = tuple(
-                (identity, positions[identity]) for identity in self.external
-            )
-            controlled_conflicts = tuple(
-                c
-                for c in conflicts
-                if c.a not in self.external or c.b not in self.external
-            )
-            resolutions = self.resolver.resolve(
-                replace(state, monitored_positions=monitored), controlled_conflicts
-            )
-            action_by_vehicle = {}
-            for resolution in resolutions:
-                if resolution.vehicle not in positions:
-                    raise ValueError("conflict resolution selected an unknown vehicle")
-                action_by_vehicle[resolution.vehicle] = resolution.action
-                payload: dict[str, Any] = {
-                    "vehicle": resolution.vehicle,
-                    "action": resolution.action,
-                    "reason": "separation conflict",
-                }
-                if (
-                    resolution.action == "altitude"
-                    and resolution.altitude_m is not None
-                ):
-                    p = positions[resolution.vehicle]
-                    payload["target"] = [
-                        p[0],
-                        p[1],
-                        finite(resolution.altitude_m, "resolution altitude"),
-                    ]
-                elif resolution.action == "hold":
-                    payload["until_ns"] = ctx.now.ns + math.ceil(
-                        finite(resolution.hold_s, "resolution hold", 1e-9) * 1e9
-                    )
-                else:
-                    raise ValueError("conflict resolver must propose altitude or hold")
-                if resolution.vehicle in self.external:
-                    # The traffic behaviour owns its responding UAV commands;
-                    # move lowalt aircraft around that protected responder.
-                    # Resolver proposals for external aircraft are not executed.
-                    continue
-                self._emit(ctx, "lowalt.control", payload)
-            for conflict in new:
-                self.actions[(conflict.a, conflict.b)] = (
-                    ", ".join(
-                        sorted(
-                            {
-                                action_by_vehicle[i]
-                                for i in (conflict.a, conflict.b)
-                                if i in action_by_vehicle
-                            }
-                        )
-                    )
-                    or "observed separation"
-                )
-        self.conflicts = pairs
+            else:
+                raise ValueError("conflict resolver must propose altitude or hold")
+            actions.add(resolution.action)
+            if resolution.vehicle in self.external:
+                # The traffic behaviour owns its responding UAV commands;
+                # move lowalt aircraft around that protected responder.
+                # Resolver proposals for external aircraft are not executed.
+                continue
+            self._emit(ctx, "lowalt.control", payload)
+        self.pending[pair] = (
+            command,
+            ", ".join(sorted(actions)) or "observed separation",
+        )
+
+    def _flight_control(
+        self, ctx: EngineContext, command: Command[dict[str, Any]]
+    ) -> None:
+        """Hold, release or re-route an aircraft on behalf of a rule chain."""
+        data = command.payload
+        if data["vehicle"] not in self.by_fleet or data["action"] not in {
+            "hold",
+            "release",
+            "reroute",
+        }:
+            ctx.reject(command, {"vehicle": data["vehicle"], "action": data["action"]})
+            return
+        ctx.accept(command)
+        ctx.execute(command)
+        self._emit(
+            ctx,
+            "lowalt.control",
+            {
+                "vehicle": data["vehicle"],
+                "action": data["action"],
+                "reason": data["reason"],
+            },
+        )
+        ctx.succeed(command, {"vehicle": data["vehicle"], "action": data["action"]})
 
     def on_inputs(self, ctx: EngineContext) -> None:
         overrides: dict[str, tuple[bool, str]] = {}
@@ -411,6 +491,12 @@ class LowaltAirspace(ContextEngine):
                 command = ctx.remember(
                     delivery, lambda value: cast(dict[str, Any], value)
                 )
+                if delivery.message.schema_id == RESOLVE_COMMAND:
+                    self._resolve(ctx, command)
+                    continue
+                if delivery.message.schema_id == CONTROL_COMMAND:
+                    self._flight_control(ctx, command)
+                    continue
                 identity = data["zone"]
                 if identity not in self.zones or not read(
                     ctx, self.zones[identity], "lowalt.zone_dynamic"

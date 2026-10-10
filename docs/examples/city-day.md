@@ -24,11 +24,11 @@ one shared `lowalt.wind` field owned by the environment engine.
 | `road_motion` (traffic_road_motion) | Road vehicles | `traffic.road.position_enu_m`, `traffic.road.velocity_enu_mps`, `traffic.road.speed_mps`, lane/route/blocked fields |
 | `route_inputs` (traffic_route_inputs) | Authored routes | `traffic.route.*` |
 | `tasks` (lowalt_tasks) | Task state, assignments, work routes | `lowalt.task_*`, task site/vehicle state |
-| `airspace` (lowalt_airspace) | Geofences, separation, wind holds | `lowalt.zone_active`, incident-zone bounds, `lowalt.membership`, `lowalt.conflicts`, `lowalt.weather_held` |
+| `airspace` (lowalt_airspace) | Geofences, separation and wind detection | `lowalt.zone_active`, incident-zone bounds, `lowalt.membership`, `lowalt.conflicts`, `lowalt.breached_zones`, `lowalt.conflict_partner`, `lowalt.conflict_gap_m`, `lowalt.wind_mps` |
 | `energy` (lowalt_energy) | Battery and charging | `lowalt.soc`, `lowalt.charging`, `lowalt.energy_used_j`, `lowalt.distance_m`, `lowalt.motion_energy_j` |
 | `environment` | Weather | `lowalt.wind` |
 | `traffic_assessment` | Feasibility/eligibility inputs for responders | `traffic.assessment.*` |
-| `behaviour` | Accident chain state, bids, reports | `traffic.task.*`, `traffic.incident.*`, `traffic.bid.*`, `traffic.report.*` |
+| `behaviour` | Accident and lowalt rule chain state, bids, reports | `traffic.task.*`, `traffic.incident.*`, `traffic.bid.*`, `traffic.report.*`, `lowalt.weather_held`, `lowalt.returning_to_charge`, `lowalt.wind_limit_mps` |
 | `capture` (traffic_camera_capture) | Camera capture artifacts | `traffic.capture.request_id/asset_digest/...` |
 | `capture_bridge` | Upload acceptance | `traffic.capture.incident`; joins capture-to-actor/incident relations |
 | `decisions` (traffic_decisions) | Explicit scripted proposals | proposes only; runtime rules authorize |
@@ -93,16 +93,18 @@ City defaults use `hold_and_go` so congested pickup points make progress; the st
 
 The city camera reuses the traffic capture owner and binds storage to the actual RunSession directory. It honors an explicit Chromium override, discovers an installed Playwright headless shell, or uses Playwright's standard browser installation. No image fixture substitutes for a failed render.
 
-## Measured default run
+## Measured default run (LA4)
 
-With AeroGraph unset, the Huangpu 300 s headless city run took 131.53 s:
-RTF 2.28, peak RSS 239.6 MiB, journal 27.59 MiB, and one real accepted PNG capture.
-These are CLI wall-time/RSS measurements, excluding replay. All five individual
-templates also exceed real time (RTF 36–73); parcel delivery reaches RTF 16.95.
-The city includes 63 road vehicles,
-eight traffic UAVs and six lowalt aircraft. Its larger shared traffic/behaviour
-workload and journal are the likely source of the difference; no CPU profile
-was collected.
+On this 96-CPU machine with AeroGraph unset, the 300 s city run took 150.23 s
+including load, execution and journal close: RTF 1.997. Load averages at start
+were 36.78 / 37.83 / 39.23. This narrowly misses the 2× target. KPI projection
+and replay are excluded from that wall time. The journal contains one real
+accepted capture, two wind holds, 16 separation alerts and 14 completed tasks.
+
+The delivery quality target is also unfinished: default parcel completes
+13/20 orders, medical 11/18. Late arrivals are bounded, and landed-pair alerts
+are removed, but route interruptions and repeated separation manoeuvres still
+limit completion. Tuning stopped after three attempts, per the loop budget.
 
 ## Huangpu placements (LA3)
 
@@ -144,3 +146,6 @@ The standalone 300 s fabric pytest, including the real live-ingress capture and
 full official replay, peaked at 418.4 MiB RSS (previously about 3.3 GiB). The
 large diagnostic tuple was the avoidable allocation; this is separate from the
 240 MiB headless run measurement above.
+
+The four operational rules are editable predicates and event chains; see
+[the rules guide](../guides/lowalt-rules.md).

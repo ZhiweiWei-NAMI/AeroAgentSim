@@ -117,7 +117,7 @@ class SnapshotCatalog(Catalog):
     def relations(self, query: str = "") -> list[dict[str, Any]]:
         return [
             row
-            for row in self._registry.to_data()["relations"]
+            for row in self._registry.to_data().get("relations", [])
             if query.casefold() in str(row).casefold()
         ]
 

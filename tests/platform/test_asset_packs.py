@@ -98,6 +98,7 @@ def test_city_feed_advertises_quality_and_installed_packs(tmp_path: Path, monkey
     # This test checks the feed contract, not parcel physics.
     document.update(entities=[], engines={}, bindings={"exact": [], "lifecycle": []})
     document.pop("generators")
+    document.pop("behaviours")
     base = Path("scenarios/templates/parcel-delivery")
     root = tmp_path / "runs"
     run_id = "run-" + "a" * 32

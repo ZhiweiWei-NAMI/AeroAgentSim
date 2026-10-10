@@ -13,8 +13,8 @@ BASE = Path(__file__).resolve().parents[2] / "scenarios/templates/parcel-deliver
 def test_zone_schedule_injection_weather_and_conflict_resolution() -> None:
     document = parcel_document(fleet_size=2)
     document["generators"]["fleet"]["starts"] = [
-        [-240.0, -220.0, 50.0],
-        [-239.0, -220.0, 50.0],
+        [-240.0, -220.0, 80.0],
+        [-239.0, -220.0, 80.0],
     ]
     group = document["engines"]["tasks"]["config"]["generators"][0]
     group["arrivals"]["start_ns"] = 100_000_000_000

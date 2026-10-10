@@ -8,6 +8,7 @@ from typing import Any
 from aeroagentsim.packs.common import finite, ns, vec
 
 from .overlay import overlay
+from .rules import apply_rules, configure_detection
 
 SECOND = 1_000_000_000
 SLOTS = ("allocation", "path_planning", "conflict_resolution", "charging")
@@ -26,6 +27,7 @@ def expand(document: dict[str, Any]) -> None:
     marked by their authored prefix and recreated on load, including replay of
     a pinned scenario. No hidden defaults or external geometry is consulted.
     """
+    configure_detection(document)
     if "algorithms" in document:
         algorithms = document["algorithms"]
         if not isinstance(algorithms, dict) or set(algorithms) - set(SLOTS):
@@ -137,7 +139,7 @@ def expand(document: dict[str, Any]) -> None:
 
 
 def parcel_document(
-    fleet_size: int = 6,
+    fleet_size: int = 8,
     order_rate: float = 0.08,
     allocator: str = "nearest",
     path_planner: str = "corridor_astar",
@@ -284,7 +286,7 @@ def parcel_document(
     bindings["lifecycle"].append(
         {"controller": "environment", "type": "lowalt:Environment"}
     )
-    return {
+    return apply_rules({
         "format": "aeroagentsim.scenario/v1",
         "id": "parcel-delivery",
         "registry": {"snapshot": "registry.snapshot.json", **overlay()},
@@ -368,7 +370,6 @@ def parcel_document(
                     "speed_w_per_mps": 2.0,
                     "payload_w_per_kg": 8.0,
                     "headwind_w_per_mps": 5.0,
-                    "low_threshold": 0.2,
                     "charge_radius_m": 2.0,
                     "charging_target_soc": 0.9,
                 },
@@ -392,6 +393,7 @@ def parcel_document(
                                 "mode": "poisson",
                                 "rate_per_s": order_rate,
                                 "start_ns": 0,
+                                "end_ns": 180 * SECOND,
                             },
                         }
                     ],
@@ -434,4 +436,4 @@ def parcel_document(
                 "visual": {"kind": "marker", "color": "#ffc658", "scale": 3.0},
             },
         ],
-    }
+    })

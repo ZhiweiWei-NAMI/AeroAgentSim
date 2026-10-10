@@ -130,6 +130,9 @@ const isInstant = (value: unknown): value is { ns: unknown; microstep: unknown }
 export function showValue(store: TemporalFeedStore, value: unknown, max = 60): string {
   const raw = isObject(value) && typeof value.$number === 'string' ? Number(value.$number) : value;
   if (isInstant(raw)) { const ns = isObject(raw.ns) ? raw.ns.$integer : raw.ns; return `at ${displayTime(String(ns), store.header.start.ns)}`; }
+  // Keep enough precision to explain strict thresholds (e.g. 0.8496596 <
+  // 0.85); the compact state panel's two decimals can hide the difference.
+  if (typeof raw === 'number' && Number.isFinite(raw)) return new Intl.NumberFormat('en-US', { maximumSignificantDigits: 7 }).format(raw);
   const plain = stateValue(raw);
   const result = plain ?? exactValue(value);
   return result.length > max ? `${result.slice(0, max - 1)}…` : result;
@@ -205,13 +208,13 @@ function producedMessages(step: StepRec, definition: TransitionDef | undefined, 
 
 function describeAction(store: TemporalFeedStore, step: StepRec, action: ActionDef): string {
   const roles = rolesOf(step.rec);
-  const who = (ref?: { $role?: string }) => ref?.$role && roles[ref.$role] ? keyLabel(store, roles[ref.$role]) : 'an entity';
+  const who = (ref?: { $role?: string; $id?: string }) => { const role = ref?.$role ?? ref?.$id; return role && roles[role] ? keyLabel(store, roles[role]) : 'an entity'; };
   switch (action.kind) {
     case 'set': return `Update state: ${who(action.entity)} · ${fieldWords(action.field ?? '')}`;
     case 'emit': return `Announce "${readableLabel(action.schema ?? action.id)}"`;
     case 'command': {
       const payload = isObject(action.payload) ? action.payload : {};
-      const actor = (isObject(payload.actor) ? payload.actor : isObject(payload.entity) ? payload.entity : undefined) as { $role?: string } | undefined;
+      const actor = (isObject(payload.actor) ? payload.actor : isObject(payload.entity) ? payload.entity : isObject(payload.vehicle) ? payload.vehicle : undefined) as { $role?: string; $id?: string } | undefined;
       return `Ask ${who(actor)} to "${readableLabel(action.capability ?? action.schema ?? action.id)}"`;
     }
     case 'delay': return `Start a timer "${action.id}" (${Number(action.duration_ns ?? 0) / 1e9} s)`;

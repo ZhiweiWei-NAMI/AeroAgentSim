@@ -12,7 +12,7 @@ from .common import finite, ns
 def arrival_times(
     config: dict[str, Any], count: int, rng: random.Random
 ) -> tuple[int, ...]:
-    """Each authored order is released exactly once, never before its timestamp."""
+    """Generate seeded release times; slots beyond an explicit end are not orders."""
     if config["mode"] == "scheduled":
         if set(config) != {"mode", "times_ns"} or len(config["times_ns"]) != count:
             raise ValueError("arrivals: supply one scheduled time per order")
@@ -22,7 +22,8 @@ def arrival_times(
         return times
     allowed = {"mode", "rate_per_s", "start_ns"}
     if config["mode"] != "poisson" or not allowed <= set(config) <= allowed | {
-        "burst_size"
+        "burst_size",
+        "end_ns",
     }:
         raise ValueError("arrivals: select scheduled or poisson parameters")
     rate = finite(config["rate_per_s"], "arrival rate", 0)
@@ -33,11 +34,16 @@ def arrival_times(
     # the first burst is released 2 s after start so a run never opens empty.
     burst = ns(config.get("burst_size", 1), "burst size", 1)
     current = ns(config["start_ns"], "arrival start")
+    end = ns(config["end_ns"], "arrival end", 1) if "end_ns" in config else None
+    if end is not None and end <= current:
+        raise ValueError("arrival end must follow start")
     result: list[int] = []
     while len(result) < count:
         if burst > 1 and not result:
             current += 2_000_000_000  # the first burst opens the run
         else:
             current += max(1, math.ceil(rng.expovariate(rate / burst) * 1e9))
+        if end is not None and current > end:
+            break
         result.extend([current] * min(burst, count - len(result)))
     return tuple(result)

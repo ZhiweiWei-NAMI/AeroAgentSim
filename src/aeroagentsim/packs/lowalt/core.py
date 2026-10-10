@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from types import MappingProxyType
+
 from aerokernel import EntityRef
 from aerokernel.sdk import EngineContext
 
@@ -19,7 +23,47 @@ def refs(build: EngineBuild, type_id: str) -> tuple[EntityRef, ...]:
     )
 
 
-def snapshot(ctx: EngineContext, build: EngineBuild) -> Snapshot:
+@dataclass(frozen=True)
+class SnapshotIndex:
+    """Immutable authored type groups scoped to one EngineBuild, never facts.
+
+    Lowalt snapshots have always used build.entities, not the live lifecycle
+    population. Index that same fixed tuple, preserving subtype and ID order;
+    a new build/registry must construct its own index.
+    """
+
+    build: EngineBuild
+    groups: Mapping[str, tuple[EntityRef, ...]] = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "groups",
+            MappingProxyType(
+                {
+                    kind: refs(self.build, kind)
+                    for kind in (
+                        "lowalt:UAV",
+                        "lowalt:Site",
+                        "lowalt:Task",
+                        "lowalt:AirspaceZone",
+                        "lowalt:ChargingPad",
+                        "lowalt:Environment",
+                    )
+                }
+            ),
+        )
+
+    def select(self, type_id: str) -> tuple[EntityRef, ...]:
+        return self.groups[type_id]
+
+
+def snapshot(
+    ctx: EngineContext, build: EngineBuild, *, index: SnapshotIndex | None = None
+) -> Snapshot:
+    if index is not None and index.build is not build:
+        raise ValueError("snapshot index belongs to a different engine build")
+    select = index.select if index is not None else lambda kind: refs(build, kind)
     vehicles = tuple(
         Vehicle(
             r.id,
@@ -31,11 +75,10 @@ def snapshot(ctx: EngineContext, build: EngineBuild) -> Snapshot:
             and not read(ctx, r, "lowalt.weather_held")
             and all(abs(v) <= 1e-6 for v in vec(read(ctx, r, "lowalt.velocity"))),
         )
-        for r in refs(build, "lowalt:UAV")
+        for r in select("lowalt:UAV")
     )
     sites = {
-        r.id: vec(read(ctx, r, "lowalt.site_position"))
-        for r in refs(build, "lowalt:Site")
+        r.id: vec(read(ctx, r, "lowalt.site_position")) for r in select("lowalt:Site")
     }
     tasks = tuple(
         Task(
@@ -46,7 +89,7 @@ def snapshot(ctx: EngineContext, build: EngineBuild) -> Snapshot:
             sites[read(ctx, r, "lowalt.task_destination")],
             finite(read(ctx, r, "lowalt.task_payload_kg"), "task payload", 0),
         )
-        for r in refs(build, "lowalt:Task")
+        for r in select("lowalt:Task")
         if read(ctx, r, "lowalt.task_state") == "queued"
     )
     zones = tuple(
@@ -57,7 +100,7 @@ def snapshot(ctx: EngineContext, build: EngineBuild) -> Snapshot:
             vec(read(ctx, r, "lowalt.zone_upper")),
             read(ctx, r, "lowalt.zone_active"),
         )
-        for r in refs(build, "lowalt:AirspaceZone")
+        for r in select("lowalt:AirspaceZone")
     )
     pads = tuple(
         Pad(
@@ -65,9 +108,9 @@ def snapshot(ctx: EngineContext, build: EngineBuild) -> Snapshot:
             sites[r.id],
             finite(read(ctx, r, "lowalt.pad_power_w"), "pad power", 0),
         )
-        for r in refs(build, "lowalt:ChargingPad")
+        for r in select("lowalt:ChargingPad")
     )
-    environments = refs(build, "lowalt:Environment")
+    environments = select("lowalt:Environment")
     if len(environments) != 1:
         raise ValueError("lowalt requires one committed wind environment")
     wind = vec(read(ctx, environments[0], "lowalt.wind"))
