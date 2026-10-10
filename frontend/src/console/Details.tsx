@@ -52,6 +52,7 @@ export function Details({ title = 'Details', buttonLabel = 'Details', children }
       </Button>
       <Drawer
         title={`${title} · details`}
+        aria-label={`${title} · details`}
         open={open}
         onClose={close}
         width={560}

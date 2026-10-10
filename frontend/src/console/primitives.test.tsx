@@ -10,6 +10,7 @@ it('loads details on demand and retains an unfinished buffer across closing',asy
  render(<Details title="Run details"><textarea aria-label="Raw buffer" defaultValue="kernel-run-payload" /></Details>);
  expect(screen.queryByLabelText('Raw buffer')).toBeNull();
  const trigger=screen.getByTestId('details-trigger');fireEvent.click(trigger);
+ expect(screen.getByRole('dialog',{name:'Run details · details'})).toBeInTheDocument();
  fireEvent.change(screen.getByLabelText('Raw buffer'),{target:{value:'{unfinished'}});
  fireEvent.click(screen.getByRole('button',{name:'Close'}));await waitFor(()=>expect(trigger).toHaveFocus());
  fireEvent.click(trigger);expect(screen.getByLabelText('Raw buffer')).toHaveValue('{unfinished');

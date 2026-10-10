@@ -116,6 +116,13 @@ export class Viewport {
   setCameraMode(mode: CameraMode) {
     this.revision++; this.mode = mode; this.controls.enabled = mode === 'orbit'; this.container.dataset.camera=mode;
   }
+  /** Event coordinates are ENU; camera positions are local east/up/south. */
+  focusPosition(position: [number,number,number]) {
+    const target=new T.Vector3(position[0],position[2],-position[1]).sub(this.origin);
+    this.setCameraMode('orbit');this.controls.target.copy(target);
+    this.camera.position.copy(target).add(new T.Vector3(65,50,65));
+    this.camera.lookAt(target);this.authoredCamera=true;this.revision++;
+  }
   setQuality(quality: Quality, manual = false) {
     if(manual)this.manualQuality=true;
     if (quality === this.quality) return;

@@ -1,4 +1,4 @@
-import {flowTest as test,expect,openReplay,click,choose,hold,segment,assertSynchronized} from './helpers';
+import {flowTest as test,expect,openReplay,click,choose,hold,segment,assertSynchronized,openPhotos} from './helpers';
 
 test('Replay cameras, shared event markers, graph selection and the real captured photo',async({page})=>{
  await openReplay(page);
@@ -13,6 +13,7 @@ test('Replay cameras, shared event markers, graph selection and the real capture
   await click(page.getByRole('button',{name:'Alpha',exact:true}));
   const bravo=page.locator('.eg-node[aria-label^="UAV Bravo,"]');await click(bravo.locator('.eg-node-dot'));await expect(bravo).toHaveAttribute('aria-pressed','true');await expect(page.locator('.inspection-sidebar')).toContainText('UAV Bravo');await assertSynchronized(page);await hold(page,1300);
  },'Explore the same event in the graph and city views');
+ await openPhotos(page);
  await page.getByRole('button',{name:'Open photo',exact:true}).first().scrollIntoViewIfNeeded();
  await segment(page,async()=>{await click(page.getByRole('button',{name:'Open photo',exact:true}).first());},'Open the photo taken by the city camera');
  await expect(page.getByAltText('Stored capture photo')).toBeVisible({timeout:30_000});

@@ -1,3 +1,4 @@
+import type { BusinessEvent, KpiValues } from '../newcomers/api';
 /**
  * Viewer feed contract (v1) between AeroAgentSim services and the frontend.
  *
@@ -123,6 +124,9 @@ export interface FeedCommit {
   receipts: Array<{ commandId: string; status: string; result?: unknown }>;
   predicateTruth?: PredicateTruth[];
   chainInstances?: ChainInstance[];
+  /** Public business summaries projected from this committed transaction. */
+  events?: BusinessEvent[];
+  kpis?: KpiValues;
 }
 
 /**

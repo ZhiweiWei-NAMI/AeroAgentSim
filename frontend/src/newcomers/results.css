@@ -1,0 +1,237 @@
+/*
+ * Newcomer results styling — event feed, KPI panel, run comparison.
+ * Namespaced under `.newc-` so console and viewport styles are never touched.
+ * All colors/sizes reuse the console tokens declared in console.css.
+ */
+
+/* ---------------- event feed ---------------- */
+
+.newc-feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--csl-sp-3);
+}
+
+.newc-feed-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--csl-sp-2);
+}
+
+.newc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--csl-sp-1);
+  padding: 3px var(--csl-sp-3);
+  font-size: var(--csl-fs-xs);
+  font-family: var(--csl-font);
+  color: var(--csl-text-muted);
+  background: var(--csl-surface);
+  border: 1px solid var(--csl-border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.newc-chip:hover { border-color: var(--csl-teal-500); color: var(--csl-text); }
+
+.newc-chip[aria-pressed='true'] {
+  color: var(--csl-teal-600);
+  background: var(--csl-teal-050);
+  border-color: var(--csl-teal-500);
+  font-weight: 600;
+}
+
+.newc-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--csl-sp-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.newc-event {
+  display: flex;
+  gap: var(--csl-sp-3);
+  width: 100%;
+  padding: var(--csl-sp-3) var(--csl-sp-4);
+  text-align: left;
+  font-family: var(--csl-font);
+  font-size: var(--csl-fs-sm);
+  color: var(--csl-text);
+  background: var(--csl-surface);
+  border: 1px solid var(--csl-border);
+  border-left: 3px solid var(--csl-border-strong);
+  border-radius: var(--csl-radius-sm);
+  cursor: pointer;
+}
+
+.newc-event:hover { border-color: var(--csl-teal-500); box-shadow: var(--csl-shadow); }
+.newc-event:focus-visible { outline: 2px solid var(--csl-teal-500); outline-offset: 1px; }
+.newc-event[aria-pressed='true'] { border-color: var(--csl-teal-500); background: var(--csl-teal-050); }
+
+.newc-event-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--csl-radius-sm);
+  background: var(--csl-surface-alt);
+}
+
+.newc-event-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.newc-event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--csl-sp-2);
+  align-items: center;
+  font-size: var(--csl-fs-xs);
+  color: var(--csl-text-faint);
+}
+
+.newc-event-time { font-family: var(--csl-mono); }
+
+.newc-severity {
+  padding: 0 var(--csl-sp-2);
+  border: 1px solid var(--csl-border-strong);
+  border-radius: 999px;
+  font-size: var(--csl-fs-xs);
+  color: var(--csl-text-muted);
+  background: var(--csl-surface-alt);
+}
+
+/* Severity stays readable without color: always the word, weight scales with it. */
+.newc-severity-warning,
+.newc-severity-critical { font-weight: 700; color: var(--csl-danger); border-color: var(--csl-danger); }
+
+.newc-event-text { color: var(--csl-text); overflow-wrap: anywhere; }
+
+.newc-event.is-selected { border-color: var(--csl-teal-500); background: var(--csl-teal-050); }
+
+.newc-feed-empty {
+  padding: var(--csl-sp-5);
+  text-align: center;
+  color: var(--csl-text-muted);
+  font-size: var(--csl-fs-sm);
+  background: var(--csl-surface-alt);
+  border: 1px dashed var(--csl-border-strong);
+  border-radius: var(--csl-radius);
+}
+
+/* ---------------- KPI panel ---------------- */
+
+.newc-kpis { display: flex; flex-direction: column; gap: var(--csl-sp-3); }
+
+.newc-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--csl-sp-3);
+}
+
+.newc-kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--csl-sp-1);
+  padding: var(--csl-sp-3) var(--csl-sp-4);
+  background: var(--csl-surface);
+  border: 1px solid var(--csl-border);
+  border-radius: var(--csl-radius);
+  box-shadow: var(--csl-shadow);
+}
+
+.newc-kpi-label { font-size: var(--csl-fs-xs); color: var(--csl-text-muted); }
+.newc-kpi-value { font-size: var(--csl-fs-xl); font-weight: 600; color: var(--csl-text); }
+.newc-kpi-value .newc-kpi-unit { font-size: var(--csl-fs-sm); font-weight: 400; color: var(--csl-text-faint); margin-left: 2px; }
+.newc-kpi-value.is-null { color: var(--csl-text-faint); font-weight: 400; }
+.newc-kpi-spark { width: 100%; height: 28px; color: var(--csl-teal-500); }
+
+/* ---------------- run comparison ---------------- */
+
+.newc-compare { display: flex; flex-direction: column; gap: var(--csl-sp-4); }
+
+.newc-compare-header { display: flex; align-items: center; justify-content: space-between; gap: var(--csl-sp-3); flex-wrap: wrap; }
+.newc-compare-title { font-size: var(--csl-fs-lg); font-weight: 600; color: var(--csl-text); margin: 0; }
+
+.newc-compare-actions { display: flex; gap: var(--csl-sp-2); }
+.newc-button {
+  padding: 6px var(--csl-sp-4);
+  font-size: var(--csl-fs-sm);
+  font-family: var(--csl-font);
+  color: var(--csl-teal-600);
+  background: var(--csl-surface);
+  border: 1px solid var(--csl-teal-500);
+  border-radius: var(--csl-radius-sm);
+  cursor: pointer;
+}
+.newc-button:hover { background: var(--csl-teal-050); }
+
+.newc-compare-grid {
+  display: grid;
+  gap: var(--csl-sp-3);
+  /* 2–4 columns depending on run count; collapses on narrow viewports. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 720px) {
+  .newc-compare-grid.n-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .newc-compare-grid.n-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .newc-compare-grid.n-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 719px) {
+  .newc-compare-grid { grid-template-columns: 1fr; }
+}
+
+.newc-compare-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--csl-sp-2);
+  padding: var(--csl-sp-4);
+  background: var(--csl-surface);
+  border: 1px solid var(--csl-border);
+  border-radius: var(--csl-radius);
+  box-shadow: var(--csl-shadow);
+  min-width: 0;
+}
+
+.newc-compare-col h3 {
+  margin: 0;
+  font-size: var(--csl-fs-md);
+  color: var(--csl-text);
+  overflow-wrap: anywhere;
+}
+.newc-compare-col .newc-compare-template { font-size: var(--csl-fs-xs); color: var(--csl-text-faint); }
+
+.newc-compare-table { width: 100%; border-collapse: collapse; font-size: var(--csl-fs-sm); }
+.newc-compare-table caption {
+  caption-side: top;
+  text-align: left;
+  font-size: var(--csl-fs-xs);
+  color: var(--csl-text-muted);
+  padding-bottom: var(--csl-sp-1);
+}
+.newc-compare-table th, .newc-compare-table td {
+  padding: 4px var(--csl-sp-1);
+  text-align: left;
+  border-bottom: 1px solid var(--csl-border);
+  vertical-align: middle;
+}
+.newc-compare-table th { font-weight: 500; color: var(--csl-text-muted); font-size: var(--csl-fs-xs); }
+.newc-compare-table td.newc-kpi-cell { font-family: var(--csl-mono); white-space: nowrap; }
+.newc-compare-table td.is-best { color: var(--csl-teal-600); font-weight: 700; }
+.newc-compare-table .newc-bar { display: block; width: 100%; height: 5px; margin-top: 2px; color: var(--csl-teal-400); }
+.newc-compare-table td.is-best .newc-bar { color: var(--csl-teal-600); }
+
+.newc-compare-section h4 {
+  margin: var(--csl-sp-2) 0 var(--csl-sp-1);
+  font-size: var(--csl-fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--csl-text-faint);
+}
+.newc-diff-list { margin: 0; padding: 0; list-style: none; font-size: var(--csl-fs-xs); color: var(--csl-text-muted); }
+.newc-diff-list li { display: flex; justify-content: space-between; gap: var(--csl-sp-2); padding: 2px 0; }
+.newc-diff-list .newc-diff-value { font-family: var(--csl-mono); color: var(--csl-text); }
+
+.newc-feed-empty .console-btn{margin-top:14px}

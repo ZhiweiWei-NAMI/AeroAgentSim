@@ -1,4 +1,5 @@
-import {flowTest as test,expect,api,click,hold,openWorkspace,segment,step,assertSynchronized} from './helpers';
+import {flowTest as test,expect,api,click,hold,openWorkspace,segment,step,assertSynchronized,openControls,closeControls,openPhotos} from './helpers';
+import {waitForTrafficJunction} from '../ux-fixtures';
 
 test('Validate → live simulation → operator accident → award and city photo',async({page})=>{
  test.setTimeout(600_000);
@@ -12,11 +13,14 @@ test('Validate → live simulation → operator accident → award and city phot
  try{
   await expect(page.getByTestId('dual-run-views')).toBeVisible({timeout:90_000});
   await expect(page.getByTestId('viewport')).toHaveAttribute('data-city','loaded',{timeout:90_000});
+  await waitForTrafficJunction(page);
+  await openControls(page);
   await expect(page.getByRole('button',{name:'Submit typed ingress',exact:true})).toBeEnabled({timeout:60_000});
   await segment(page,async()=>{
    await click(page.getByRole('button',{name:'Submit typed ingress',exact:true}));
    await expect(page.getByText('Admission receipts · 1',{exact:true})).toBeVisible({timeout:30_000});await hold(page,1200);
   },'Inject an accident with one click');
+  await closeControls(page);await click(page.getByTestId('expert-toggle'));
   await page.getByRole('button',{name:'Alpha',exact:true}).click();
   await page.getByTestId('dual-run-views').scrollIntoViewIfNeeded();
   await segment(page,async()=>{
@@ -43,6 +47,7 @@ test('Validate → live simulation → operator accident → award and city phot
    if(photos.length){expect(photos[0].renderer_mode).toBe('browser');expect(photos[0].request.camera.preset).toBe('actor-nadir');}
    return photos.length;
   },{timeout:300_000,intervals:[1000]}).toBeGreaterThan(0);
+  await openPhotos(page);
   await page.getByRole('button',{name:'Refresh stored artifacts',exact:true}).click();
   await expect(page.getByRole('button',{name:'Open photo',exact:true}).first()).toBeVisible({timeout:30_000});
   await segment(page,async()=>{await click(page.getByRole('button',{name:'Open photo',exact:true}).first());},'Open the photo taken by the city camera');
