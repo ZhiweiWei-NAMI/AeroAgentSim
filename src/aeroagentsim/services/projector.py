@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from aerokernel.codec import decode_record
 from aerokernel.compact import expand_record
@@ -25,6 +25,9 @@ from aerokernel.values import thaw
 
 from .storage import RunStorage
 from .subjects import SubjectProjection
+
+if TYPE_CHECKING:
+    from .kpis import KPIProjector
 
 
 def instant(at: Instant) -> dict[str, Any]:
@@ -64,7 +67,10 @@ def stamp(value: Any) -> dict[str, str]:
 
 
 def project(
-    record: dict[str, Any], *, subjects: SubjectProjection | None = None
+    record: dict[str, Any],
+    *,
+    subjects: SubjectProjection | None = None,
+    kpis: KPIProjector | None = None,
 ) -> dict[str, Any]:
     """Keep journal indices, including empty intent/control/seal records."""
     record = expand_record(record)
@@ -81,6 +87,8 @@ def project(
         "messages": [],
         "receipts": [],
     }
+    if kpis is not None:
+        result["kpis"] = kpis.consume(record)
     created: set[tuple[str, int]] = set()
     routes = {
         item["message"]: item

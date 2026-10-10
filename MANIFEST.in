@@ -1,3 +1,5 @@
 include setup.py
 recursive-include scenarios/demos/traffic-accident *
+recursive-include scenarios/templates *
 global-exclude *.py[cod]
+global-exclude __pycache__

@@ -4,14 +4,156 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import resource
 import time
 import uuid
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
+import yaml
 from aerokernel.journal import replay
 
 from aeroagentsim.platform.simulation import RunSession
+from aeroagentsim.scenario.loader import UniqueLoader
+
+if TYPE_CHECKING:
+    from aeroagentsim.authoring.templates import TemplateRegistry
+
+
+def _registry(templates_root: Path | None) -> "TemplateRegistry":
+    from aeroagentsim.authoring.templates import TemplateRegistry
+
+    return TemplateRegistry(templates_root)
+
+
+def template_list(
+    templates_root: Path | None = None,
+) -> list[dict[str, Any]]:
+    return _registry(templates_root).list()
+
+
+def _parse_scalar(text: str) -> object:
+    """Typed knob values via UniqueLoader (YAML 1.2 booleans, strict)."""
+    try:
+        value = yaml.load(text, Loader=UniqueLoader)
+    except yaml.YAMLError as exc:
+        raise ValueError(f"--set value {text!r}: invalid scalar ({exc})") from exc
+    if isinstance(value, (dict, list)):
+        raise ValueError(f"--set value {text!r}: scalar required")
+    return value
+
+
+def _knobs(sets: list[str]) -> dict[str, object]:
+    knobs: dict[str, object] = {}
+    for item in sets:
+        key, separator, raw = item.partition("=")
+        if not separator or not key:
+            raise ValueError(f"--set {item!r}: KEY=VALUE required")
+        if key in knobs:
+            raise ValueError(f"--set {key!r}: duplicate knob")
+        knobs[key] = _parse_scalar(raw)
+    return knobs
+
+
+def _final_kpis(directory: Path) -> dict[str, object]:
+    from aeroagentsim.services.kpis import project_run
+
+    final: dict[str, dict[str, Any]] = project_run(directory, include_series=False)[
+        "final"
+    ]
+    return {name: row["value"] for name, row in final.items()}
+
+
+def run_template_command(
+    template_id: str,
+    *,
+    sets: list[str],
+    headless: bool,
+    port: int,
+    out: Path,
+    templates_root: Path | None = None,
+) -> None:
+    from aeroagentsim.scenario import load_scenario
+    from aeroagentsim.services.template_execution import execution_document
+
+    registry = _registry(templates_root)
+    knobs = _knobs(sets)
+    prepared = registry.apply(template_id, knobs)
+    if headless:
+        document = execution_document(template_id, prepared.document, prepared.base)
+        directory = out.resolve() / f"{template_id}-{uuid.uuid4().hex[:12]}"
+        with RunSession(
+            load_scenario(document, base=prepared.base), directory
+        ) as session:
+            session.storage._atomic(
+                "manifest.json",
+                {
+                    **session.storage.metadata(),
+                    "template": {
+                        "id": template_id,
+                        "title": prepared.metadata["title"],
+                        "knobs": prepared.knobs,
+                    },
+                },
+            )
+            session.run()
+        metadata = json.loads((directory / "manifest.json").read_text())
+        print(
+            json.dumps(
+                {
+                    "run_id": metadata["id"],
+                    "run": str(directory),
+                    "status": metadata["status"],
+                    "kpis": _final_kpis(directory),
+                },
+                indent=2,
+            ),
+            flush=True,
+        )
+        return
+    # Interactive: serve the Studio workspace with the template imported.
+    repository = Path(__file__).resolve().parents[3]
+    frontend = repository / "frontend/dist"
+    if not (frontend / "index.html").is_file():
+        raise FileNotFoundError(
+            "Frontend build missing for interactive template sessions. "
+            "Run: cd frontend && npm ci && npm run build, or pass --headless."
+        )
+    if port == 0:
+        import socket
+
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+    console = f"http://127.0.0.1:{port}"
+    os.environ["AEROAGENTSIM_CONSOLE_URL"] = console
+    from .app import create_app
+
+    root = out.resolve()
+    app = create_app(
+        root / "runs",
+        frontend=frontend,
+        studio_root=root / "workspaces",
+        templates_root=templates_root,
+    )
+    store = app.state.studio
+    draft = store.import_template(template_id, knobs, registry=registry)
+    draft["scenario"] = execution_document(
+        template_id, draft["scenario"], store._base(draft["scenario"], draft["id"])
+    )
+    store._write(draft)
+    url = console + "/studio?workspace=" + draft["id"]
+    print(
+        json.dumps({"url": url, "workspace": draft["id"], "template": template_id}),
+        flush=True,
+    )
+    import webbrowser
+
+    webbrowser.open(url)
+    import uvicorn
+
+    uvicorn.run(app, host="127.0.0.1", port=port)
 
 
 def main() -> None:
@@ -43,8 +185,49 @@ def main() -> None:
     demo.add_argument("--port", type=int, default=0)
     demo.add_argument("--out", type=Path, default=Path("runs/demo"))
     demo.add_argument("--provenance", choices=["lean", "full"])
+    templates = sub.add_parser("templates", help="List scenario templates")
+    templates.add_argument("--templates-root", type=Path)
+    run_template = sub.add_parser("run-template", help="Run or open a template")
+    run_template.add_argument("template")
+    run_template.add_argument(
+        "--set",
+        dest="sets",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Override a template knob (repeatable)",
+    )
+    run_template.add_argument("--headless", action="store_true")
+    run_template.add_argument("--out", type=Path, default=Path("runs/templates"))
+    run_template.add_argument(
+        "--port", type=int, default=0, help="Interactive API port (0 picks a free port)"
+    )
+    run_template.add_argument("--templates-root", type=Path)
     args = parser.parse_args()
-    if args.command == "demo":
+    if args.command == "templates":
+        try:
+            print(json.dumps(template_list(args.templates_root), indent=2))
+        except (ValueError, FileNotFoundError, OSError) as exc:
+            parser.error(str(exc))
+    elif args.command == "run-template":
+        try:
+            run_template_command(
+                args.template,
+                sets=args.sets,
+                headless=args.headless,
+                port=args.port,
+                out=args.out,
+                templates_root=args.templates_root,
+            )
+        except (
+            ValueError,
+            TypeError,
+            KeyError,
+            FileNotFoundError,
+            RuntimeError,
+        ) as exc:
+            parser.error(str(exc))
+    elif args.command == "demo":
         from .demo import run_demo
 
         try:

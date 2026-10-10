@@ -52,11 +52,47 @@ and these arrays:
 | `receipts` | `{commandId, status, result?}`. |
 | `predicateTruth?` | Behaviour extension (below). |
 | `chainInstances?` | Behaviour extension (below). |
+| `kpis` | Cumulative measured KPI map `{name: {value, unit, label}}` at this committed cut. |
+| `events` | Business narratives `{at_ns, category, severity, text, entities: [ids], position?: [e,n,u]}` generated from committed event emissions. |
 
 Lossless numbers: integers or floats at or above 2⁵³ in magnitude travel as
 `{"$integer": "..."}` / `{"$number": "..."}` tags (optionally wrapped in
 `{"$record": {...}}`) instead of losing precision; clients validate and unwrap
 them.
+
+## KPIs and business narratives
+
+`kpis` is the additive `aeroagentsim.kpi/v1` projection. It includes task
+creation/completion counts, mean and p95 task latency in seconds, energy used
+in kJ, distance flown in km, separation conflicts, geofence violations and
+weather holds. Lifecycle counts consume `lowalt.task.*` emissions. Conflicts,
+geofences and weather consume the common `lowalt.airspace.*` and
+`lowalt.weather.*` schemas. Energy and distance are derived from committed
+physical facts and their pinned units, rather than engine objects.
+
+A missing energy/position measurement or a latency with no completed tasks
+remains `null`. No events of a counted kind in the committed prefix means a
+count of zero. Traffic accident reporting, award and accepted capture upload
+map to the response-task lifecycle. KPI snapshots at arbitrary paging/SSE
+cursors include the earlier journal prefix, so reconnecting does not reset
+metrics. `/v1/runs/{id}/kpis` exposes final values for the available prefix and
+their time series; `/v1/runs` includes the same summary.
+
+`events` is the additive `aeroagentsim.event-feed/v1` projection. It narrates
+committed business emissions once, retaining entity ids from declared
+payload fields. This is independent of the typed `messages[].subjects`
+contract. Category and severity come from narrative declarations. A camera
+position is included only when the event or recorded entity state supplies
+one. Internal kernel messages without a business declaration remain in the
+raw message feed.
+
+Packs and behaviour packages can supply schema declarations; scenarios pin
+overrides in an `event_narratives` mapping. Each declaration supplies `template`, `category`,
+`severity` and entity-field bindings. Task narratives retain the kind from
+creation so later assignment/completion events use the same category.
+Template placeholders must name real payload fields; malformed declared
+business events are errors, not invented success messages. See
+[templates](../guides/templates.md) for an authoring example.
 
 ## Behaviour extensions
 

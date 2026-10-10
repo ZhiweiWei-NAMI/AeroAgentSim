@@ -276,11 +276,23 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         "provenance",
         "algorithms",
         "generators",
+        "event_narratives",
     }
     if extra := set(document) - allowed:
         raise ScenarioError(f"scenario: unknown keys {sorted(extra)}")
     if document.get("format") != FORMAT:
         raise ScenarioError(f"format: expected {FORMAT}")
+    if "algorithms" in document:
+        algorithms = obj(document["algorithms"], "algorithms")
+        slots = {"allocation", "path_planning", "conflict_resolution", "charging"}
+        if set(algorithms) - slots:
+            raise ScenarioError("algorithms: unknown algorithm slot")
+        for slot, algorithm in algorithms.items():
+            text(algorithm, f"algorithms.{slot}")
+    if "event_narratives" in document:
+        from aeroagentsim.services.narratives import validate_declarations
+
+        validate_declarations(document["event_narratives"])
     run_id = text(document["id"], "id")
     registry_spec = obj(document["registry"], "registry")
     contract(

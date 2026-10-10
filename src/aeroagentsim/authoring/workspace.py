@@ -276,6 +276,57 @@ class WorkspaceStore:
                     draft["scenario"]["ingress_streams"][0].pop("timeout_s", None)
             return self._write(draft)
 
+    def import_template(
+        self,
+        template_id: str,
+        knobs: dict[str, Any],
+        *,
+        registry: Any,
+    ) -> dict[str, Any]:
+        """Copy public template inputs into an editable, independently based draft."""
+        prepared = registry.apply(template_id, knobs)
+        source = prepared.base.resolve()
+        files = [path for path in source.rglob("*") if path.is_file()]
+        for path in files:
+            if not path.resolve().is_relative_to(source):
+                raise ValueError("template resource symlink escapes source scope")
+        with self.lock:
+            draft = self.create(prepared.metadata["title"])
+            directory = self.directory(draft["id"])
+            for path in files:
+                if "__pycache__" in path.parts:
+                    continue
+                target = directory / path.relative_to(source)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, target)
+            document = copy.deepcopy(prepared.document)
+            snapshot = document["registry"].get("snapshot")
+            if snapshot is not None and Path(snapshot).is_absolute():
+                document["registry"]["snapshot"] = str(
+                    Path(snapshot).resolve().relative_to(source)
+                )
+            decisions = document.get("engines", {}).get("decisions")
+            if decisions is not None and decisions["plugin"] == "traffic_decisions":
+                decisions["config"]["fixture_path"] = str(
+                    directory / "fixtures/decisions.json"
+                )
+            draft["scenario"] = document
+            draft["template"] = {
+                "id": template_id,
+                "knobs": prepared.knobs,
+            }
+            self._base(document, draft["id"])
+            self._write(draft)
+            if document.get("behaviours"):
+                exported = self.export_behaviour(draft["id"], 0)
+                if exported["inline_package"] is None:
+                    raise ValueError(
+                        "Template behaviour could not be made editable: "
+                        + str(exported["inline_errors"])
+                    )
+                draft["scenario"]["behaviours"][0] = exported["inline_package"]
+            return self._write(draft)
+
     def _behaviour_package(self, identifier: str, index: int) -> dict[str, Any]:
         draft = self.get(identifier)
         entries = draft["scenario"].get("behaviours", [])

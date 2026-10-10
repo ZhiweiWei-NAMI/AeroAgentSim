@@ -1,10 +1,20 @@
-"""Explicit, editable point-mass and passive-workflow authoring templates."""
+"""Explicit, editable point-mass and passive-workflow authoring templates.
+
+This module also hosts the scenario-template registry (design §1): typed,
+user-tunable knobs applied as pure JSON-pointer or named structural hooks.
+"""
 
 from __future__ import annotations
 
+import copy
+import dataclasses
 import importlib.resources
 from pathlib import Path
 from typing import Any
+
+import yaml
+
+from aeroagentsim.scenario.loader import UniqueLoader
 
 POS = "aas.studio.position_enu_m"
 VEL = "aas.studio.velocity_enu_m_s"
@@ -221,3 +231,318 @@ def demo_source(name: str) -> Path:
     if (source / "scenario.yaml").is_file():
         return source
     raise FileNotFoundError("traffic-accident template inputs are not installed")
+
+
+@dataclasses.dataclass(frozen=True)
+class PreparedTemplate:
+    document: dict[str, Any]
+    base: Path
+    knobs: dict[str, Any]
+    metadata: dict[str, Any]
+
+
+def _knob_value(knob: dict[str, Any], value: Any) -> None:
+    import math
+
+    kind, name = knob["type"], knob["id"]
+    valid = {
+        "integer": type(value) is int,
+        "number": type(value) in (int, float),
+        "boolean": type(value) is bool,
+        "choice": any(
+            type(value) is type(option) and value == option
+            for option in knob.get("options", [])
+        ),
+    }[kind]
+    if not valid:
+        raise ValueError(
+            f"knob {name}: expected {kind}"
+            + (f" from {knob['options']}" if kind == "choice" else "")
+        )
+    if kind in {"integer", "number"}:
+        if not math.isfinite(value):
+            raise ValueError(f"knob {name}: finite number required")
+        if "min" in knob and value < knob["min"]:
+            raise ValueError(f"knob {name}: must be at least {knob['min']}")
+        if "max" in knob and value > knob["max"]:
+            raise ValueError(f"knob {name}: must be at most {knob['max']}")
+
+
+def _pointer(document: dict[str, Any], pointer: str, value: Any) -> None:
+    import re
+
+    if not pointer.startswith("/") or re.search(r"~(?![01])", pointer):
+        raise ValueError(f"knob pointer {pointer!r}: invalid JSON pointer")
+    parts = [
+        part.replace("~1", "/").replace("~0", "~") for part in pointer[1:].split("/")
+    ]
+    target: Any = document
+    for index, part in enumerate(parts):
+        if isinstance(target, list):
+            if not part.isdigit() or int(part) >= len(target):
+                raise ValueError(f"knob pointer {pointer}: array index does not exist")
+            key: Any = int(part)
+        elif isinstance(target, dict) and part in target:
+            key = part
+        else:
+            raise ValueError(f"knob pointer {pointer}: member {part!r} does not exist")
+        if index == len(parts) - 1:
+            target[key] = copy.deepcopy(value)
+        else:
+            target = target[key]
+
+
+def _accident_time(document: dict[str, Any], base: Path, value: Any) -> None:
+    packages = document["behaviours"]
+    package = packages[0]
+    if "path" in package:
+        package = yaml.load((base / package["path"]).read_bytes(), Loader=UniqueLoader)
+    elif "document" in package:
+        package = package["document"]
+    package = copy.deepcopy(package)
+    transitions = package["chains"]["traffic.incident_report"]["transitions"]
+    action = next(
+        action
+        for transition in transitions
+        if transition["id"] == "schedule"
+        for action in transition["actions"]
+        if action["id"] == "accident-time"
+    )
+    duration_ns = round(value * 1e9)
+    if duration_ns >= document["run"]["until_ns"]:
+        raise ValueError(
+            "knob accident_time_s: accident must occur before the run horizon"
+        )
+    action["duration_ns"] = duration_ns
+    document["behaviours"] = [package, *packages[1:]]
+
+
+def _decision_mode(document: dict[str, Any], base: Path, value: Any) -> None:
+    if value == "live":
+        from .demo import live_decisions
+
+        live_decisions(document, {"profile": "live-llm"})
+    else:
+        document["engines"]["decisions"]["config"]["fixture_path"] = str(
+            base / "fixtures/decisions.json"
+        )
+
+
+def _physics_hz(document: dict[str, Any], base: Path, value: Any) -> None:
+    step_ns = round(1e9 / value)
+    document["engines"]["road_motion"]["config"]["step_ns"] = step_ns
+    document["engines"]["air_motion"]["config"]["step_ns"] = step_ns
+    document["run"]["advance_ns"] = step_ns
+
+
+class TemplateRegistry:
+    """Operator-owned template manifests and explicitly registered pure knob hooks."""
+
+    def __init__(self, root: Path | None = None) -> None:
+        from collections.abc import Callable
+
+        if root is None:
+            installed = importlib.resources.files("aeroagentsim") / "template_data"
+            source = Path(__file__).resolve().parents[3] / "scenarios/templates"
+            root = Path(str(installed)) if installed.is_dir() else source
+        self.root = root.resolve()
+        self.hooks: dict[str, Callable[[dict[str, Any], Path, Any], None]] = {
+            "traffic.accident_time": _accident_time,
+            "traffic.decision_mode": _decision_mode,
+            "traffic.physics_hz": _physics_hz,
+        }
+        self._templates: dict[str, tuple[dict[str, Any], Path]] = {}
+        if not self.root.is_dir():
+            raise FileNotFoundError(f"Template registry directory missing: {self.root}")
+        for manifest in sorted(self.root.glob("*/template.yaml")):
+            data = yaml.load(manifest.read_bytes(), Loader=UniqueLoader)
+            self._validate(data, manifest.parent.name)
+            if data["id"] in self._templates:
+                raise ValueError(f"Duplicate template id: {data['id']}")
+            self._templates[data["id"]] = (data, manifest.parent)
+
+    @staticmethod
+    def _validate(data: Any, identifier: str) -> None:
+        import math
+        import re
+
+        required = {
+            "format",
+            "id",
+            "title",
+            "summary",
+            "category",
+            "difficulty",
+            "duration_s",
+            "scenario",
+            "observe",
+            "try",
+            "knobs",
+            "kpis",
+        }
+        if (
+            not isinstance(data, dict)
+            or required - data.keys()
+            or data.keys() - required - {"thumbnail"}
+        ):
+            raise ValueError(
+                f"template {identifier}: required manifest fields or unsupported keys"
+            )
+        if (
+            data["format"] != "aeroagentsim.template/v1"
+            or data["id"] != identifier
+            or not re.fullmatch(r"[a-z0-9][a-z0-9-]*", identifier)
+        ):
+            raise ValueError(f"template {identifier}: invalid format/id")
+        for key in ("title", "summary", "scenario", "thumbnail"):
+            if key in data and (
+                not isinstance(data[key], str) or not data[key].strip()
+            ):
+                raise ValueError(
+                    f"template {identifier}.{key}: nonempty string required"
+                )
+        if data["category"] not in {
+            "logistics",
+            "emergency",
+            "inspection",
+            "agriculture",
+            "mobility",
+            "security",
+            "mixed",
+        } or data["difficulty"] not in {"beginner", "intermediate", "advanced"}:
+            raise ValueError(f"template {identifier}: invalid category/difficulty")
+        duration = data["duration_s"]
+        if (
+            type(duration) not in (int, float)
+            or not math.isfinite(duration)
+            or duration <= 0
+        ):
+            raise ValueError(
+                f"template {identifier}.duration_s: positive finite seconds required"
+            )
+        for key in ("observe", "try", "kpis"):
+            if not isinstance(data[key], list) or any(
+                not isinstance(item, str) or not item for item in data[key]
+            ):
+                raise ValueError(
+                    f"template {identifier}.{key}: list of strings required"
+                )
+            if key != "kpis" and not 2 <= len(data[key]) <= 4:
+                raise ValueError(f"template {identifier}.{key}: provide 2–4 bullets")
+        if not isinstance(data["knobs"], list):
+            raise ValueError(f"template {identifier}.knobs: list required")
+        known: set[str] = set()
+        for knob in data["knobs"]:
+            if (
+                not isinstance(knob, dict)
+                or {"id", "label", "type", "default"} - knob.keys()
+                or knob.keys()
+                - {
+                    "id",
+                    "label",
+                    "type",
+                    "default",
+                    "min",
+                    "max",
+                    "options",
+                    "pointer",
+                    "apply",
+                    "description",
+                }
+            ):
+                raise ValueError(f"template {identifier}: malformed knob declaration")
+            if (
+                not isinstance(knob["id"], str)
+                or not knob["id"]
+                or knob["id"] in known
+                or not isinstance(knob["label"], str)
+                or not knob["label"]
+            ):
+                raise ValueError(
+                    f"template {identifier}: invalid/duplicate knob id or label"
+                )
+            known.add(knob["id"])
+            if knob["type"] not in {"integer", "number", "choice", "boolean"} or (
+                "pointer" in knob
+            ) == ("apply" in knob):
+                raise ValueError(
+                    f"knob {knob['id']}: select a valid type and exactly one pointer/apply"
+                )
+            binding = knob.get("pointer", knob.get("apply"))
+            if not isinstance(binding, str) or not binding:
+                raise ValueError(f"knob {knob['id']}: nonempty pointer/apply required")
+            if knob["type"] == "choice" and (
+                not isinstance(knob.get("options"), list) or not knob["options"]
+            ):
+                raise ValueError(f"knob {knob['id']}: choices require options")
+            for bound in ("min", "max"):
+                if bound in knob and (
+                    type(knob[bound]) not in (int, float)
+                    or not math.isfinite(knob[bound])
+                ):
+                    raise ValueError(f"knob {knob['id']}: finite {bound} required")
+            _knob_value(knob, knob["default"])
+
+    def register_apply_hook(self, name: str, hook: Any) -> None:
+        if not isinstance(name, str) or not name or not callable(hook):
+            raise ValueError("apply hook requires a name and callable")
+        if name in self.hooks:
+            raise ValueError(f"apply hook {name}: already registered")
+        self.hooks[name] = hook
+
+    def list(self) -> list[dict[str, Any]]:
+        return [
+            copy.deepcopy(self._templates[name][0]) for name in sorted(self._templates)
+        ]
+
+    def get(self, identifier: str) -> dict[str, Any]:
+        return copy.deepcopy(self._templates[identifier][0])
+
+    def apply(
+        self, identifier: str, knobs: dict[str, Any] | None = None
+    ) -> PreparedTemplate:
+        from aeroagentsim.scenario import load_scenario
+
+        metadata, directory = self._templates[identifier]
+        if knobs is not None and not isinstance(knobs, dict):
+            raise ValueError("knobs: mapping required")
+        overrides = {} if knobs is None else knobs
+        declared = {knob["id"]: knob for knob in metadata["knobs"]}
+        if extra := overrides.keys() - declared.keys():
+            raise ValueError(f"Unknown knobs: {', '.join(sorted(extra))}")
+        relative = Path(metadata["scenario"])
+        if relative.is_absolute():
+            raise ValueError("template scenario path must be relative")
+        source = (directory / relative).resolve()
+        # The legacy authoritative demo is deliberately shared by the new manifest.
+        if (
+            identifier == "traffic-accident"
+            and metadata["scenario"] == "../../demos/traffic-accident/scenario.yaml"
+        ):
+            source = demo_source(identifier) / "scenario.yaml"
+        elif not source.is_relative_to(self.root.parent):
+            raise ValueError("template scenario escapes configured registry scope")
+        document = yaml.load(source.read_bytes(), Loader=UniqueLoader)
+        if not isinstance(document, dict):
+            raise ValueError("template scenario must be a mapping")
+        values = {
+            name: copy.deepcopy(
+                overrides[name] if name in overrides else knob["default"]
+            )
+            for name, knob in declared.items()
+        }
+        for name, knob in declared.items():
+            _knob_value(knob, values[name])
+            if "pointer" in knob:
+                _pointer(document, knob["pointer"], values[name])
+            else:
+                hook = self.hooks.get(knob["apply"])
+                if hook is None:
+                    raise ValueError(
+                        f"knob {name}: unregistered apply hook {knob['apply']}"
+                    )
+                hook(document, source.parent, values[name])
+        load_scenario(document, base=source.parent)
+        return PreparedTemplate(
+            document, source.parent, values, copy.deepcopy(metadata)
+        )

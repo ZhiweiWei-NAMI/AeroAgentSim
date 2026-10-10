@@ -28,8 +28,11 @@ def expand(document: dict[str, Any]) -> None:
     """
     if "algorithms" in document:
         algorithms = document["algorithms"]
-        if not isinstance(algorithms, dict) or set(algorithms) != set(SLOTS):
-            raise ValueError("algorithms: declare all four low-altitude slots")
+        if not isinstance(algorithms, dict) or set(algorithms) - set(SLOTS):
+            raise ValueError(f"algorithms: slots must be among {', '.join(SLOTS)}")
+        # Unset slots take the documented defaults, written back so the pinned
+        # scenario (and its journal) records every slot explicitly.
+        algorithms = document["algorithms"] = {**DEFAULT_ALGORITHMS, **algorithms}
         if any(type(v) is not str or not v for v in algorithms.values()):
             raise ValueError("algorithms: nonempty plugin names required")
         for engine in document["engines"].values():

@@ -13,6 +13,7 @@ from setuptools import setup
 from setuptools.command.build_py import build_py as _build_py
 
 DEMO = Path("scenarios") / "demos" / "traffic-accident"
+TEMPLATES = Path("scenarios") / "templates"
 
 
 class build_py(_build_py):
@@ -30,6 +31,20 @@ class build_py(_build_py):
                 self.mkpath(str(target))
             else:
                 self.copy_file(str(path), str(target), preserve_mode=0)
+        templates = Path(self.build_lib) / "aeroagentsim" / "template_data"
+        if TEMPLATES.is_dir():
+            for template in sorted(TEMPLATES.iterdir()):
+                if not template.is_dir() or template.name.startswith("."):
+                    continue
+                for path in sorted(template.rglob("*")):
+                    if "__pycache__" in path.parts:
+                        continue
+                    target = templates / template.name / path.relative_to(template)
+                    if path.is_dir():
+                        self.mkpath(str(target))
+                    else:
+                        self.mkpath(str(target.parent))
+                        self.copy_file(str(path), str(target), preserve_mode=0)
 
 
 setup(cmdclass={"build_py": build_py})

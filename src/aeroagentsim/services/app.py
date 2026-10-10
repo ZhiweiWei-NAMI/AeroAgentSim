@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from aeroagentsim.platform.simulation import Simulation
-from aeroagentsim.scenario import load_scenario
+from aeroagentsim.scenario import Scenario, load_scenario
 
 from .projector import header, project
 from .security import LOCAL_ORIGIN, RequestBoundary
@@ -35,11 +35,15 @@ def create_app(
     scenario_root: Path | None = None,
     frontend: Path | None = None,
     studio_root: Path | None = None,
+    templates_root: Path | None = None,
 ) -> FastAPI:
     """Scenario paths are scoped to scenario_root; no arbitrary host-file API."""
     root = root.resolve()
     scenario_root = Path.cwd() if scenario_root is None else scenario_root.resolve()
     root.mkdir(parents=True, exist_ok=True)
+    from aeroagentsim.authoring.templates import TemplateRegistry
+
+    templates = TemplateRegistry(templates_root)
     # Linux local worker: fork preserves the compiled immutable registry without
     # pickling MappingProxyType or re-reading a concurrently changing source tree.
     context = multiprocessing.get_context("fork")
@@ -96,8 +100,6 @@ def create_app(
 
     @app.post("/v1/runs", status_code=201)
     async def start(request: Request) -> dict[str, Any]:
-        run_id = f"run-{uuid.uuid4().hex}"
-        path = (root / run_id).resolve()
         try:
             body = await request.json()
             if not isinstance(body, dict):
@@ -132,24 +134,38 @@ def create_app(
                 scenario = await asyncio.to_thread(
                     load_scenario, document, base=document_base
                 )
-            from .artifacts import scope_capture_storage
+        except Exception as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return await launch(scenario, workspace_id=body.get("studio_workspace"))
 
+    async def launch(
+        scenario: Scenario,
+        *,
+        workspace_id: str | None = None,
+        template: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        run_id = f"run-{uuid.uuid4().hex}"
+        path = (root / run_id).resolve()
+        from .artifacts import scope_capture_storage
+
+        try:
             scenario = scope_capture_storage(scenario, path)
-            # Validate engine declarations/bindings before returning a created run.
-            validation = Simulation(scenario, run_directory=path)
+            validation = await asyncio.to_thread(
+                Simulation, scenario, run_directory=path
+            )
             validation.close()
         except Exception as exc:
             raise HTTPException(422, str(exc)) from exc
-        if not path.is_relative_to(root):
-            raise HTTPException(422, "run storage path escapes configured output root")
         storage = RunStorage(path)
         storage.prepare(scenario)
-        if hasattr(app.state, "studio") and "studio_workspace" in body:
+        if template is not None:
+            metadata = storage.metadata()
+            metadata["template"] = template
+            storage._atomic("manifest.json", metadata)
+        if workspace_id is not None and hasattr(app.state, "studio"):
             from aeroagentsim.authoring.replay import snapshot_scene
 
-            snapshot_scene(
-                app.state.studio, scenario, path, body.get("studio_workspace")
-            )
+            snapshot_scene(app.state.studio, scenario, path, workspace_id)
         paused, stopped = context.Event(), context.Event()
         host_input, worker_input = context.Pipe()
         process = context.Process(
@@ -179,13 +195,145 @@ def create_app(
             await asyncio.sleep(0.01)
         return storage.metadata()
 
+    def run_summary(path: Path) -> dict[str, Any]:
+        from .kpis import project_run
+
+        metadata = RunStorage(path).metadata()
+        document = json.loads((path / "scenario.json").read_text())
+        template = metadata.get("template")
+        return {
+            **metadata,
+            "title": template["title"] if template else document["id"],
+            "knobs": template["knobs"] if template else {},
+            "algorithms": document.get("algorithms", {}),
+            "kpis": project_run(path, include_series=False)["final"],
+            **(
+                {"template_id": template["id"], "template_title": template["title"]}
+                if template
+                else {}
+            ),
+        }
+
     @app.get("/v1/runs")
     def runs() -> list[dict[str, Any]]:
         return [
-            RunStorage(path).metadata()
+            run_summary(path)
             for path in sorted(root.iterdir())
             if (path / "manifest.json").exists()
         ]
+
+    @app.get("/v1/runs/compare")
+    def compare(ids: str = Query(...)) -> dict[str, Any]:
+        from .comparison import compare_runs
+
+        identifiers = ids.split(",")
+        if not 2 <= len(identifiers) <= 20 or len(set(identifiers)) != len(identifiers):
+            raise HTTPException(
+                422, "Provide 2–20 distinct run ids separated by commas"
+            )
+        rows = [run_summary(directory(run_id)) for run_id in identifiers]
+        try:
+            return compare_runs(rows)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    @app.get("/v1/runs/{run_id}/kpis")
+    def run_kpis(run_id: str) -> dict[str, Any]:
+        from .kpis import project_run
+
+        return {**project_run(directory(run_id)), "run_id": run_id}
+
+    @app.get("/v1/templates")
+    def template_list() -> list[dict[str, Any]]:
+        return templates.list()
+
+    @app.get("/v1/templates/{template_id}")
+    def template_detail(template_id: str) -> dict[str, Any]:
+        try:
+            return templates.get(template_id)
+        except KeyError as exc:
+            raise HTTPException(404, "Unknown template") from exc
+
+    async def template_input(template_id: str, request: Request) -> Any:
+        template_detail(template_id)
+        try:
+            body = await request.json()
+            if not isinstance(body, dict) or set(body) - {"knobs", "workspace"}:
+                raise ValueError("Body must contain knobs and optional workspace only")
+            if "workspace" in body and type(body["workspace"]) is not bool:
+                raise ValueError("workspace must be boolean")
+            knobs = body.get("knobs", {})
+            if not isinstance(knobs, dict):
+                raise ValueError("knobs must be a JSON object")
+            return body, await asyncio.to_thread(templates.apply, template_id, knobs)
+        except (ValueError, TypeError, OSError, KeyError, RuntimeError) as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    def template_workspace(template_id: str, knobs: dict[str, Any]) -> dict[str, Any]:
+        if not hasattr(app.state, "studio"):
+            from aeroagentsim.authoring.api import mount_studio
+
+            mount_studio(app, root / "workspaces", run_root=root)
+        return dict(
+            app.state.studio.import_template(template_id, knobs, registry=templates)
+        )
+
+    @app.post("/v1/templates/{template_id}/workspace", status_code=201)
+    async def create_template_workspace(
+        template_id: str, request: Request
+    ) -> dict[str, Any]:
+        _, prepared = await template_input(template_id, request)
+        try:
+            draft = await asyncio.to_thread(
+                template_workspace, template_id, prepared.knobs
+            )
+            return {"workspace_id": draft["id"]}
+        except (ValueError, TypeError, OSError, KeyError, RuntimeError) as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    @app.post("/v1/templates/{template_id}/runs", status_code=201)
+    async def run_template(template_id: str, request: Request) -> dict[str, Any]:
+        from .template_execution import execution_document
+
+        body, prepared = await template_input(template_id, request)
+        workspace_id = None
+        try:
+            if body.get("workspace", False):
+                draft = await asyncio.to_thread(
+                    template_workspace, template_id, prepared.knobs
+                )
+                workspace_id = draft["id"]
+                base = app.state.studio._base(draft["scenario"], workspace_id)
+                document = await asyncio.to_thread(
+                    execution_document, template_id, draft["scenario"], base
+                )
+                scenario = await asyncio.to_thread(
+                    load_scenario,
+                    document,
+                    base=base,
+                )
+            else:
+                document = await asyncio.to_thread(
+                    execution_document, template_id, prepared.document, prepared.base
+                )
+                scenario = await asyncio.to_thread(
+                    load_scenario, document, base=prepared.base
+                )
+        except (ValueError, TypeError, OSError, KeyError, RuntimeError) as exc:
+            raise HTTPException(422, str(exc)) from exc
+        metadata = await launch(
+            scenario,
+            workspace_id=workspace_id,
+            template={
+                "id": template_id,
+                "title": templates.get(template_id)["title"],
+                "knobs": prepared.knobs,
+            },
+        )
+        return {
+            "run_id": metadata["id"],
+            **({"workspace_id": workspace_id} if workspace_id is not None else {}),
+        }
 
     @app.get("/v1/runs/{run_id}/header")
     def run_header(run_id: str, request: Request) -> dict[str, Any]:
@@ -209,8 +357,21 @@ def create_app(
         storage = RunStorage(path)
         metadata = storage.metadata()
         records = storage.records(max(1, from_index), limit)
-        subjects = projection_context(path, max(1, from_index))
-        result = [project(record, subjects=subjects) for record in records]
+        result = []
+        if records:
+            subjects = projection_context(path, max(1, from_index))
+            from .kpis import projection_context as kpi_context
+            from .narratives import projection_context as narrative_context
+
+            kpis = kpi_context(path, max(1, from_index))
+            narratives = narrative_context(path, max(1, from_index))
+            result = [
+                {
+                    **project(record, subjects=subjects, kpis=kpis),
+                    "events": narratives.consume(record),
+                }
+                for record in records
+            ]
         return {
             "commits": result,
             "next": result[-1]["commitIndex"] + 1 if result else max(1, from_index),
@@ -236,13 +397,21 @@ def create_app(
 
         async def tail() -> AsyncIterator[str]:
             nonlocal cursor
+            from .kpis import projection_context as kpi_context
+            from .narratives import projection_context as narrative_context
+
             subjects = projection_context(path, cursor)
+            kpis = kpi_context(path, cursor)
+            narratives = narrative_context(path, cursor)
             last_status: tuple[str, str] | None = None
             while not await request.is_disconnected():
                 storage = RunStorage(path)
                 records = storage.records(cursor, 256)
                 for record in records:
-                    commit = project(record, subjects=subjects)
+                    commit = {
+                        **project(record, subjects=subjects, kpis=kpis),
+                        "events": narratives.consume(record),
+                    }
                     cursor = commit["commitIndex"] + 1
                     yield f"id: {commit['commitIndex']}\nevent: commit\ndata: {json.dumps(commit, separators=(',', ':'))}\n\n"
                 metadata = storage.metadata()
