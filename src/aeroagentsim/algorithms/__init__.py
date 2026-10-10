@@ -13,7 +13,13 @@ BUILTINS = {
         "hungarian": "Hungarian",
         "llm": "LLMAllocation",
     },
-    "path_planning": {"straight": "Straight", "corridor_astar": "CorridorAstar"},
+    "path_planning": {
+        "straight": "Straight",
+        "corridor_astar": "CorridorAstar",
+        "coverage": "Coverage",
+        "survey": "SurveyRoute",
+        "patrol": "PatrolRoute",
+    },
     "conflict_resolution": {
         "altitude_layers": "AltitudeLayers",
         "hold_and_go": "HoldAndGo",
@@ -42,7 +48,13 @@ def load_algorithm(slot: str, name: str, config: dict[str, Any] | None = None) -
         module, identity = name.split(":", 1)
         factory = getattr(import_module(module), identity)
     elif name in BUILTINS[slot]:
-        module = ".llm" if name == "llm" else ".builtins"
+        module = (
+            ".routes"
+            if name in {"coverage", "survey", "patrol"}
+            else ".llm"
+            if name == "llm"
+            else ".builtins"
+        )
         factory = getattr(import_module(module, __name__), BUILTINS[slot][name])
     else:
         raise ValueError(f"unknown {slot} algorithm {name!r}")

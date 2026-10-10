@@ -70,6 +70,7 @@ class EngineBuild:
 
 Factory = Callable[[EngineBuild], Engine]
 BUILTINS = {
+    "lowalt_city_capture": "aeroagentsim.packs.lowalt.city_capture",
     "lowalt_tasks": "aeroagentsim.packs.lowalt.tasks",
     "lowalt_airspace": "aeroagentsim.packs.lowalt.airspace",
     "lowalt_energy": "aeroagentsim.packs.lowalt.energy",

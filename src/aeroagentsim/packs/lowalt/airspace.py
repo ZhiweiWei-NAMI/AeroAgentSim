@@ -26,6 +26,8 @@ PRODUCES = (
     "lowalt.conflicts",
     "lowalt.weather_held",
     "lowalt.zone_active",
+    "lowalt.zone_lower",
+    "lowalt.zone_upper",
 )
 EVENTS = (
     "lowalt.airspace.conflict",
@@ -102,6 +104,10 @@ class LowaltAirspace(ContextEngine):
         self.conflicts: set[tuple[str, str]] = set()
         self.actions: dict[tuple[str, str], str] = {}
         self.previous: dict[str, Point] = {}
+        self.external = {
+            item["id"]: item for item in self.cfg.get("external_vehicles", ())
+        }
+        self.by_id = {r.id: r for r in build.entities}
         consumed = tuple(
             dict.fromkeys(
                 SNAPSHOT_FIELDS
@@ -111,6 +117,11 @@ class LowaltAirspace(ContextEngine):
                     "lowalt.zone_start_ns",
                     "lowalt.zone_end_ns",
                     "lowalt.zone_dynamic",
+                    *[item["position_field"] for item in self.external.values()],
+                    *[
+                        item["field"]
+                        for item in self.cfg.get("dynamic_zone_centers", {}).values()
+                    ],
                 )
             )
         )
@@ -121,13 +132,27 @@ class LowaltAirspace(ContextEngine):
                 produces=PRODUCES,
                 consumes=tuple(Dependency(f) for f in consumed),
                 commands=("lowalt.airspace.activate",),
-                emits=EVENTS,
+                emits=EVENTS
+                + tuple(
+                    sorted(
+                        {
+                            item["motion"][key]
+                            for item in self.external.values()
+                            for key in ("move_to", "hold")
+                        }
+                    )
+                ),
                 subscribes=tuple(
                     sorted(
                         {"lowalt.events"} | {i["topic"] for i in self.activation_events}
                     )
                 ),
-                message_targets=("lowalt.events",),
+                message_targets=("lowalt.events",)
+                + tuple(
+                    sorted(
+                        {item["motion"]["target"] for item in self.external.values()}
+                    )
+                ),
                 lifecycle=True,
             ),
             policies=policies(PRODUCES),
@@ -154,7 +179,10 @@ class LowaltAirspace(ContextEngine):
             )
             if any(a >= b for a, b in zip(lower, upper)):
                 raise ValueError("zone lower bounds must precede upper bounds")
-            facts["lowalt.zone_active"] = start <= ctx.now.ns < end
+            facts["lowalt.zone_active"] = (
+                ref.id not in self.cfg.get("event_only_zones", ())
+                and start <= ctx.now.ns < end
+            )
             for boundary in (start, end):
                 if boundary > ctx.now.ns:
                     ctx.wake_at(boundary, {"lowalt_airspace": "boundary"})
@@ -175,13 +203,34 @@ class LowaltAirspace(ContextEngine):
                 if not read(ctx, ref, "lowalt.zone_dynamic"):
                     raise ValueError("event activation requires a dynamic zone")
                 self.override[identity] = value
+                if value and identity in self.cfg.get("dynamic_zone_centers", {}):
+                    authored = self.cfg["dynamic_zone_centers"][identity]
+                    center = vec(
+                        read(ctx, self.by_id[authored["entity"]], authored["field"])
+                    )
+                    extent = vec(authored["dimensions_m"])
+                    ctx.set(
+                        ref,
+                        "lowalt.zone_lower",
+                        [center[0] - extent[0] / 2, center[1] - extent[1] / 2, center[2]],
+                    )
+                    ctx.set(
+                        ref,
+                        "lowalt.zone_upper",
+                        [
+                            center[0] + extent[0] / 2,
+                            center[1] + extent[1] / 2,
+                            center[2] + extent[2],
+                        ],
+                    )
             else:
                 start = read(ctx, ref, "lowalt.zone_start_ns")
                 end = read(ctx, ref, "lowalt.zone_end_ns")
                 value = (
                     self.override[identity]
                     if identity in self.override and ctx.now.ns < end
-                    else start <= ctx.now.ns < end
+                    else identity not in self.cfg.get("event_only_zones", ())
+                    and start <= ctx.now.ns < end
                 )
                 reason = "active interval"
             active[identity] = value
@@ -202,14 +251,24 @@ class LowaltAirspace(ContextEngine):
         state = replace(
             state, zones=tuple(replace(z, active=active[z.id]) for z in state.zones)
         )
+        # External responders retain their own sole motion/battery owners. These
+        # vehicles are monitored but never enter the lowalt allocation pool.
         positions = {v.id: v.position for v in state.vehicles}
+        positions.update(
+            {
+                identity: vec(read(ctx, self.by_id[identity], item["position_field"]))
+                for identity, item in self.external.items()
+            }
+        )
         wind_speed = math.sqrt(sum(x * x for x in state.wind))
         for ref in self.fleet:
             point = positions[ref.id]
+            exemptions = self.cfg.get("zone_exemptions", {})
             members = sorted(
                 z.id
                 for z in state.zones
                 if z.active
+                and ref.id not in exemptions.get(z.id, ())
                 and all(a <= p <= b for a, p, b in zip(z.lower, point, z.upper))
             )
             before = read(ctx, ref, "lowalt.membership")
@@ -218,6 +277,7 @@ class LowaltAirspace(ContextEngine):
             for zone in state.zones:
                 if (
                     zone.active
+                    and ref.id not in exemptions.get(zone.id, ())
                     and zone.kind in {"no_fly", "restricted"}
                     and zone.id not in before
                     and segment_hits_box(
@@ -284,7 +344,17 @@ class LowaltAirspace(ContextEngine):
             if members != read(ctx, ref, "lowalt.conflicts"):
                 ctx.set(ref, "lowalt.conflicts", members)
         if new:
-            resolutions = self.resolver.resolve(state, conflicts)
+            monitored = tuple(
+                (identity, positions[identity]) for identity in self.external
+            )
+            controlled_conflicts = tuple(
+                c
+                for c in conflicts
+                if c.a not in self.external or c.b not in self.external
+            )
+            resolutions = self.resolver.resolve(
+                replace(state, monitored_positions=monitored), controlled_conflicts
+            )
             action_by_vehicle = {}
             for resolution in resolutions:
                 if resolution.vehicle not in positions:
@@ -311,6 +381,11 @@ class LowaltAirspace(ContextEngine):
                     )
                 else:
                     raise ValueError("conflict resolver must propose altitude or hold")
+                if resolution.vehicle in self.external:
+                    # The traffic behaviour owns its responding UAV commands;
+                    # move lowalt aircraft around that protected responder.
+                    # Resolver proposals for external aircraft are not executed.
+                    continue
                 self._emit(ctx, "lowalt.control", payload)
             for conflict in new:
                 self.actions[(conflict.a, conflict.b)] = (

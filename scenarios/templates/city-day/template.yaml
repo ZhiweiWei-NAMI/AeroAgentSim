@@ -1,0 +1,51 @@
+format: aeroagentsim.template/v1
+id: city-day
+title: One day in a shared city
+summary: Deliveries, inspections, passenger flights and road incident responders share
+  the same city and react to each other.
+category: mixed
+difficulty: intermediate
+duration_s: 300
+scenario: scenario.yaml
+observe:
+- A road accident closes nearby airspace and changes delivery routes.
+- Medical requests interrupt parcels, while a wind front pauses surveys.
+- Aircraft from different businesses separate before continuing.
+- Operator decisions divert flights and add urgent orders.
+try:
+- Add parcel drones to compare urgent delivery time.
+- Compare nearest and auction allocation.
+- Change the wind front speed to pause different vehicle classes.
+knobs:
+- id: fleet_size
+  label: Number of parcel drones
+  type: integer
+  default: 3
+  min: 1
+  max: 12
+  pointer: /generators/fleet/count
+- id: allocator
+  label: Task allocation algorithm
+  type: choice
+  default: nearest
+  options:
+  - nearest
+  - auction
+  - hungarian
+  - llm
+  pointer: /algorithms/allocation
+- id: wind_speed
+  label: Wind front speed (m/s)
+  type: number
+  default: 9
+  min: 0
+  max: 15
+  pointer: /engines/environment/config/profiles/weather/lowalt.wind/gusts/0/value/0
+kpis:
+- tasks_completed
+- mean_task_latency_s
+- medical_mean_task_latency_s
+- energy_used_kj
+- separation_conflicts
+- geofence_violations
+- weather_holds

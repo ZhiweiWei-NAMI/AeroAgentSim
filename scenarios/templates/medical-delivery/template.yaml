@@ -1,0 +1,48 @@
+format: aeroagentsim.template/v1
+id: medical-delivery
+title: Urgent medical delivery
+summary: Drones pause routine deliveries to carry urgent supplies from a hospital
+  to a clinic.
+category: emergency
+difficulty: beginner
+duration_s: 300
+scenario: scenario.yaml
+observe:
+- An urgent request pauses a parcel delivery, then the parcel resumes.
+- Watch how quickly supplies reach the clinic.
+try:
+- Add drones to reduce the wait for urgent supplies.
+- Compare nearest and auction allocation.
+knobs:
+- id: fleet_size
+  label: Number of aircraft
+  type: integer
+  default: 2
+  min: 1
+  max: 12
+  pointer: /generators/fleet/count
+- id: wind_speed
+  label: Normal wind speed (m/s)
+  type: number
+  default: 2.0
+  min: 0
+  max: 15
+  pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0
+- id: allocator
+  label: Task allocation algorithm
+  type: choice
+  default: nearest
+  options:
+  - nearest
+  - auction
+  - hungarian
+  - llm
+  pointer: /algorithms/allocation
+kpis:
+- tasks_completed
+- mean_task_latency_s
+- energy_used_kj
+- weather_holds
+- separation_conflicts
+- medical_mean_task_latency_s
+- medical_p95_task_latency_s

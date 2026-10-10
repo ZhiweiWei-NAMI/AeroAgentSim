@@ -1,0 +1,46 @@
+format: aeroagentsim.template/v1
+id: crop-spraying
+title: Crop spraying
+summary: A drone treats a field in rows, swaps batteries at the edge and pauses when
+  wind is too strong.
+category: agriculture
+difficulty: beginner
+duration_s: 400
+scenario: scenario.yaml
+observe:
+- The drone follows alternating rows across the field.
+- Battery swaps happen at the field edge.
+- Spraying pauses during the wind front.
+try:
+- Change row spacing to compare flight distance.
+- Change the wind speed to test the spraying limit.
+knobs:
+- id: fleet_size
+  label: Number of aircraft
+  type: integer
+  default: 1
+  min: 1
+  max: 12
+  pointer: /generators/fleet/count
+- id: wind_speed
+  label: Normal wind speed (m/s)
+  type: number
+  default: 2.0
+  min: 0
+  max: 15
+  pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0
+- id: row_spacing
+  label: Spacing between spraying rows (m)
+  type: number
+  default: 30
+  min: 10
+  max: 80
+  pointer: /engines/tasks/config/work_routes/spraying/config/spacing_m
+kpis:
+- tasks_completed
+- mean_task_latency_s
+- energy_used_kj
+- weather_holds
+- separation_conflicts
+- spraying_distance_m
+- battery_swaps

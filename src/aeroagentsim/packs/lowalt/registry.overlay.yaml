@@ -156,6 +156,22 @@ fields:
     time_semantics: canonical computation; half-open validity
     frame: enu
     transform_revision: lowalt.district/v1
+- id: lowalt.site_open
+  type: lowalt:Site
+  schema: *id005
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
+- id: lowalt.site_capacity
+  type: lowalt:Site
+  schema: &id006
+    type: integer
+    minimum: 0
+  metadata:
+    role: observation
+    unit: '1'
+    time_semantics: canonical computation; half-open validity
 - id: lowalt.pad_power_w
   type: lowalt:ChargingPad
   schema: *id002
@@ -205,9 +221,7 @@ fields:
     transform_revision: lowalt.district/v1
 - id: lowalt.zone_start_ns
   type: lowalt:AirspaceZone
-  schema: &id006
-    type: integer
-    minimum: 0
+  schema: *id006
   metadata:
     role: observation
     unit: ns
@@ -362,6 +376,168 @@ messages:
     - task
     - vehicle
     - latency_s
+    extra: false
+- id: lowalt.task.preempted
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      urgent_task: *id003
+    required:
+    - task
+    - vehicle
+    - urgent_task
+    extra: false
+- id: lowalt.task.resumed
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+    required:
+    - task
+    - vehicle
+    extra: false
+- id: lowalt.task.replanned
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      reason: *id003
+      zone: *id003
+    required:
+    - task
+    - vehicle
+    - reason
+    extra: false
+- id: lowalt.inspection.observed
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      position: *id001
+      distance_m: *id002
+    required:
+    - task
+    - vehicle
+    - position
+    - distance_m
+    extra: false
+- id: lowalt.spraying.applied
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      position: *id001
+      distance_m: *id002
+    required:
+    - task
+    - vehicle
+    - position
+    - distance_m
+    extra: false
+- id: lowalt.patrol.visited
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      position: *id001
+    required:
+    - task
+    - vehicle
+    - position
+    extra: false
+- id: lowalt.site.closed
+  kind: event
+  schema:
+    type: record
+    members:
+      site: *id003
+    required:
+    - site
+    extra: false
+- id: lowalt.operator.close_vertiport
+  kind: event
+  schema:
+    type: record
+    members:
+      site: *id003
+    required:
+    - site
+    extra: false
+- id: lowalt.operator.add_urgent_order
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      origin: *id003
+      destination: *id003
+    required:
+    - task
+    - origin
+    - destination
+    extra: false
+- id: lowalt.operator.investigate
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      origin: *id003
+      destination: *id003
+    required:
+    - task
+    - origin
+    - destination
+    extra: false
+- id: lowalt.energy.swap_started
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      pad: *id003
+    required:
+    - vehicle
+    - pad
+    extra: false
+- id: lowalt.energy.swap_finished
+  kind: event
+  schema:
+    type: record
+    members:
+      vehicle: *id003
+      pad: *id003
+      soc: *id002
+    required:
+    - vehicle
+    - pad
+    - soc
+    extra: false
+- id: lowalt.mobility.pad_wait
+  kind: event
+  schema:
+    type: record
+    members:
+      task: *id003
+      vehicle: *id003
+      site: *id003
+    required:
+    - task
+    - vehicle
+    - site
     extra: false
 - id: lowalt.task.failed
   kind: event

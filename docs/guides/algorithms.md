@@ -104,8 +104,9 @@ PYTHONPATH=aerokernel:src python -m aeroagentsim.services.cli run \
 Its five knobs have JSON pointers in `template.yaml`. The fleet generator
 expands explicit prototypes; task generators release the declared finite task
 pool using scheduled or seeded Poisson arrival times and sample distinct site
-endpoints. All eight task kinds share the transport lifecycle; specialised
-inspection/spraying/passenger actions can be added by scenario behaviours.
+endpoints. All eight task kinds share the transport lifecycle. The everyday templates add
+measured inspection observations, field treatment, patrol visits, medical
+preemption/resumption and passenger pad reservations through the task owner.
 Energy uses observed displacement, speed, payload and directional headwind;
 charging starts only at a selected pad with observed zero speed. Battery energy
 has one writer. Airspace detects separation with a spatial hash and executes
@@ -117,3 +118,20 @@ zone's activation. Wind limits are per vehicle class, with hold/release events.
 Business event metadata is declared in
 `aeroagentsim.packs.lowalt.EVENT_NARRATIVES` (`text`, `category`, `severity`, with
 `category_by_kind` for tasks). The API/KPI/feed work is supplied separately.
+
+The `coverage`, `survey` and `patrol` path built-ins accept explicit field bounds
+or waypoint lists. Select them under the task engine's `work_routes` per kind;
+travel to pickup and emergency return to a pad use corridor routing. Work
+waypoints survive weather holds and swaps; a return trip first rejoins the
+interrupted route without emitting a treatment observation.
+
+`Vehicle.task_kinds` restricts eligibility in all allocation built-ins, including
+the LangGraph adapter. An empty tuple is the explicit unrestricted protocol
+default. `Snapshot.monitored_positions` supplies positions from aircraft whose
+motion belongs to another pack; resolvers leave those protected aircraft under
+their own command owner and propose separation for the controlled fleet.
+
+An airspace config may declare `event_only_zones` and `dynamic_zone_centers`
+(entity, field, dimensions_m (width, depth, height above the incident)). The airspace owner then owns that zone's bounds
+as well as activation; use an instance binding override for these two fields.
+`city-day` derives its incident zone from the road incident's committed position.

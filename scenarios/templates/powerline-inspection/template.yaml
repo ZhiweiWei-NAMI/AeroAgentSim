@@ -1,0 +1,37 @@
+format: aeroagentsim.template/v1
+id: powerline-inspection
+title: Power line inspection
+summary: A drone follows a power line and records survey observations while waiting
+  out strong wind.
+category: inspection
+difficulty: beginner
+duration_s: 300
+scenario: scenario.yaml
+observe:
+- Survey observations appear at measured positions along the line.
+- Strong wind pauses flight, then the survey continues.
+try:
+- Change the wind speed to see when the drone must wait.
+- Add a second inspection drone.
+knobs:
+- id: fleet_size
+  label: Number of aircraft
+  type: integer
+  default: 1
+  min: 1
+  max: 12
+  pointer: /generators/fleet/count
+- id: wind_speed
+  label: Normal wind speed (m/s)
+  type: number
+  default: 2.0
+  min: 0
+  max: 15
+  pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0
+kpis:
+- tasks_completed
+- mean_task_latency_s
+- energy_used_kj
+- weather_holds
+- separation_conflicts
+- inspection_observations

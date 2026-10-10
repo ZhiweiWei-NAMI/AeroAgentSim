@@ -1,0 +1,36 @@
+format: aeroagentsim.template/v1
+id: security-patrol
+title: Security patrol
+summary: A drone patrols a district and responds when an operator reports an incident.
+category: security
+difficulty: beginner
+duration_s: 300
+scenario: scenario.yaml
+observe:
+- The drone visits each patrol point.
+- An operator incident creates a higher-priority investigation.
+try:
+- Add patrol drones to reduce the investigation wait.
+- Change the wind speed.
+knobs:
+- id: fleet_size
+  label: Number of aircraft
+  type: integer
+  default: 1
+  min: 1
+  max: 12
+  pointer: /generators/fleet/count
+- id: wind_speed
+  label: Normal wind speed (m/s)
+  type: number
+  default: 2.0
+  min: 0
+  max: 15
+  pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0
+kpis:
+- tasks_completed
+- mean_task_latency_s
+- energy_used_kj
+- weather_holds
+- separation_conflicts
+- patrol_visits

@@ -29,6 +29,8 @@ EVENTS = (
     "lowalt.energy.charging_started",
     "lowalt.energy.charging_finished",
     "lowalt.control",
+    "lowalt.energy.swap_started",
+    "lowalt.energy.swap_finished",
 )
 
 
@@ -64,6 +66,7 @@ class LowaltEnergy(ContextEngine):
         self.fleet = refs(build, "lowalt:UAV")
         self.previous: dict[str, tuple[float, float, float]] = {}
         self.previous_ns = 0
+        self.swap_ends: dict[str, int] = {}
         self.returns: dict[str, str] = {}
         consumed = tuple(
             dict.fromkeys(
@@ -148,7 +151,21 @@ class LowaltEnergy(ContextEngine):
             if charging:
                 assert pad is not None
                 drain = 0.0
-                next_soc = min(self.target, soc + pad.power_w * elapsed / capacity)
+                if pad.id in self.cfg.get("swap_pads", ()):
+                    drain = 0.0
+                    ready = ctx.now.ns >= self.swap_ends[ref.id]
+                    next_soc = self.target if ready else soc
+                    if ready:
+                        self._emit(
+                            ctx,
+                            "lowalt.energy.swap_finished",
+                            vehicle=ref.id,
+                            pad=pad.id,
+                            soc=next_soc,
+                        )
+                        self.swap_ends.pop(ref.id)
+                else:
+                    next_soc = min(self.target, soc + pad.power_w * elapsed / capacity)
             else:
                 headwind = (
                     max(0.0, -sum(w * v for w, v in zip(state.wind, velocity)) / speed)
@@ -174,6 +191,13 @@ class LowaltEnergy(ContextEngine):
                     pad=pad.id,
                     soc=next_soc,
                 )
+                if pad.id in self.cfg.get("swap_pads", ()):
+                    self.swap_ends[ref.id] = ctx.now.ns + ns(
+                        self.cfg["swap_duration_ns"], "swap duration", 1
+                    )
+                    self._emit(
+                        ctx, "lowalt.energy.swap_started", vehicle=ref.id, pad=pad.id
+                    )
                 # Connection starts at this observed arrival, after the travel
                 # drain. Only subsequent intervals receive pad energy.
                 charging = True
