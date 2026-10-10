@@ -359,6 +359,11 @@ class LowaltTasks(ContextEngine):
             flight.hold_until_ns = ctx.now.ns
             flight.replan = True
             return
+        if action == "reroute":
+            # The geofence rule: plan again, around active zones, from here.
+            flight.replan = True
+            self._brake(ctx, flight)
+            return
         if action in {"return_to_pad", "altitude"}:
             if flight.purpose == "task":
                 if flight.work_active:

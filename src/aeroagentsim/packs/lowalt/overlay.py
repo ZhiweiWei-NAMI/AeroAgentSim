@@ -34,6 +34,7 @@ STRING = {"type": "string"}
 BOOL = {"type": "boolean"}
 VECTOR = {"type": "vector", "length": 3, "items": NUMBER}
 INT = {"type": "integer", "minimum": 0}
+PAIR = {"type": "vector", "length": 2, "items": NUMBER}
 STRINGS = {"type": "array", "items": STRING}
 
 
@@ -235,7 +236,12 @@ def overlay() -> dict[str, Any]:
     ):
         add(name, "UAV", NUMBER, unit)
     add("vehicle_class", "UAV", STRING)
-    for name in ("membership", "conflicts"):
+    # Detections the airspace engine publishes for the shared rules package.
+    add("wind_mps", "UAV", NUMBER, "m/s")
+    add("wind_limit_mps", "UAV", NUMBER, "m/s")
+    add("conflict_partner", "UAV", STRING)
+    add("conflict_gap_m", "UAV", PAIR, "m")
+    for name in ("membership", "conflicts", "breached_zones"):
         add(name, "UAV", STRINGS)
     for name in ("weather_held", "charging"):
         add(name, "UAV", BOOL)
@@ -398,4 +404,31 @@ def overlay() -> dict[str, Any]:
             "cancel_support": False,
         }
     )
+    # Commands the rules package (aeroagentsim.behaviour-package/v1 chains) sends.
+    for name, arguments, result_members in (
+        (
+            "energy.return_to_pad",
+            {"vehicle": STRING, "reason": STRING},
+            {"vehicle": STRING, "pad": STRING, "soc": NUMBER, "reason": STRING},
+        ),
+        (
+            "airspace.resolve_conflict",
+            {"a": STRING, "b": STRING},
+            {"a": STRING, "b": STRING, "action": STRING},
+        ),
+        (
+            "airspace.flight_control",
+            {"vehicle": STRING, "action": STRING, "reason": STRING},
+            {"vehicle": STRING, "action": STRING},
+        ),
+    ):
+        messages.append(
+            {
+                "id": "lowalt." + name,
+                "kind": "command",
+                "schema": record(arguments),
+                "result_schema": record(result_members, tuple(result_members)),
+                "cancel_support": False,
+            }
+        )
     return {"types": types, "fields": fields, "messages": messages}

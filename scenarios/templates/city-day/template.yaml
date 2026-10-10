@@ -42,6 +42,20 @@ knobs:
   min: 0
   max: 15
   pointer: /engines/environment/config/profiles/weather/lowalt.wind/gusts/0/value/0
+- id: battery_reserve
+  label: Battery reserve (%)
+  type: number
+  default: 20
+  min: 10
+  max: 85
+  pointer: /behaviours/0/predicates/battery_below_reserve/parameters/reserve_percent
+- id: safety_distance
+  label: Safety distance (m)
+  type: number
+  default: 20
+  min: 5
+  max: 60
+  pointer: /engines/airspace/config/separation_horizontal_m
 kpis:
 - tasks_completed
 - mean_task_latency_s

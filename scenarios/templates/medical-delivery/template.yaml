@@ -39,6 +39,27 @@ knobs:
   - hungarian
   - llm
   pointer: /algorithms/allocation
+- id: battery_reserve
+  label: Battery reserve (%)
+  type: number
+  default: 20
+  min: 10
+  max: 85
+  pointer: /behaviours/0/predicates/battery_below_reserve/parameters/reserve_percent
+- id: safety_distance
+  label: Safety distance (m)
+  type: number
+  default: 20
+  min: 5
+  max: 60
+  pointer: /engines/airspace/config/separation_horizontal_m
+- id: wind_limit
+  label: Wind limit (m/s)
+  type: number
+  default: 12
+  min: 2
+  max: 20
+  pointer: /generators/fleet/facts/lowalt.wind_limit_mps
 kpis:
 - tasks_completed
 - mean_task_latency_s

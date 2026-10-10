@@ -6,7 +6,10 @@ import copy
 from pathlib import Path
 from typing import Any
 
+from .rules import apply_rules, declare_package, set_reserve
 from .template import SECOND, parcel_document
+
+WIND_LIMITS = {"parcel": 12.0, "inspection": 6.0, "spraying": 5.0, "passenger": 15.0}
 
 
 def _site(
@@ -95,7 +98,7 @@ def _base(identity: str, vehicle_class: str, fleet_size: int = 2) -> dict[str, A
                     rule["fields"] + ["lowalt.site_open", "lowalt.site_capacity"]
                 )
             )
-    doc["engines"]["airspace"]["config"]["wind_limits"] = {vehicle_class: 12.0}
+    doc["generators"]["fleet"]["facts"]["lowalt.wind_limit_mps"] = 12.0
     _site(doc, "home", [-240.0, -100.0, 60.0], "Vertiport")
     _site(doc, "home-pad", [-240.0, -100.0, 60.0], "ChargingPad")
     return doc
@@ -146,12 +149,7 @@ def _operators(
             for name, schema in points.items()
         ],
     }
-    if "behaviour" not in doc["engines"]:
-        doc["engines"]["behaviour"] = {
-            "plugin": "behaviour",
-            "config": {"produces": [], "capabilities": {}, "packages": []},
-        }
-    doc["engines"]["behaviour"]["config"]["packages"].append(package)
+    declare_package(doc, package)
     if "ingress_streams" not in doc:
         doc["ingress_streams"] = [
             {
@@ -207,7 +205,7 @@ def inspection_document() -> dict[str, Any]:
         }
     }
     doc["engines"]["motion"]["config"]["max_speed_m_s"] = 8.0
-    doc["engines"]["airspace"]["config"]["wind_limits"] = {"inspection": 6.0}
+    doc["generators"]["fleet"]["facts"]["lowalt.wind_limit_mps"] = 6.0
     _gust(doc, 35, 75, 9.0)
     _zone(
         doc,
@@ -248,10 +246,9 @@ def spraying_document() -> dict[str, Any]:
         swap_pads=["home-pad"],
         swap_duration_ns=10 * SECOND,
         charging_target_soc=0.9,
-        low_threshold=0.45,
     )
-    cfg["algorithm_config"]["charging"]["threshold"] = 0.45
-    doc["engines"]["airspace"]["config"]["wind_limits"] = {"spraying": 5.0}
+    set_reserve(doc, 45.0)
+    doc["generators"]["fleet"]["facts"]["lowalt.wind_limit_mps"] = 5.0
     _gust(doc, 90, 125, 8.0)
     return doc
 
@@ -472,15 +469,10 @@ def city_document(destination: Path) -> dict[str, Any]:
                 "lowalt.payload_capacity_kg": 150.0
                 if vehicle_class == "passenger"
                 else 3.0,
+                "lowalt.wind_limit_mps": WIND_LIMITS[vehicle_class],
             }
         )
         doc["entities"].append({"id": identity, "type": "lowalt:UAV", "facts": facts})
-    doc["engines"]["airspace"]["config"]["wind_limits"] = {
-        "parcel": 12.0,
-        "inspection": 6.0,
-        "spraying": 5.0,
-        "passenger": 15.0,
-    }
     doc["engines"]["motion"]["config"]["max_speed_m_s"] = 10.0
     _gust(doc, 65, 105, 9.0)
     _zone(
@@ -501,6 +493,9 @@ def city_document(destination: Path) -> dict[str, Any]:
         "lowalt.zone_active"
     ] = False
     merge_traffic(doc, destination)
+    # The composed behaviour engine now holds the traffic package; add the
+    # shared rules next to it (the operator package is appended below).
+    apply_rules(doc)
     doc["bindings"]["rules"].append(
         {
             "writer": "airspace",

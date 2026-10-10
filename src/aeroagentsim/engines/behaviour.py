@@ -238,6 +238,13 @@ class Behaviour(ContextEngine):
                 )
                 for transition in chain["transitions"]:
                     for a in transition["actions"]:
+                        # Payload/value expressions may read committed fields.
+                        consumes.update(
+                            f
+                            for _, f in expression_reads(
+                                [a.get("payload"), a.get("value")]
+                            )
+                        )
                         if a["kind"] == "emit":
                             emits.add(a["schema"])
                             targets.add(a["topic"])
@@ -342,6 +349,8 @@ class Behaviour(ContextEngine):
             return ctx.now.microstep
         if "$role" in value:
             return {"$ref": instance.roles[value["$role"]].to_data()}
+        if "$id" in value:
+            return instance.roles[value["$id"]].id
         if "$variable" in value:
             return instance.variables[value["$variable"]]
         if "$trigger" in value:
