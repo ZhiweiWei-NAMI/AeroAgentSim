@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { loadOsmBuildings } from '../scene/source-geometry';
@@ -6,67 +6,114 @@ import { Assets, disposeObject } from '../viewport/assets';
 import { loadTrafficCity } from '../scene/traffic-city';
 import type { Workspace } from './api';
 
+type LayerName = 'ground' | 'buildings' | 'roads' | 'entities' | 'airspace';
+const LAYER_NAMES: LayerName[] = ['ground', 'buildings', 'roads', 'entities', 'airspace'];
+
+interface Context {
+  scene: THREE.Scene; abort: AbortController; groups: Record<LayerName, THREE.Group>;
+  buildingsRequested: boolean; loadBuildings: () => void;
+}
+
+/** Remove and dispose every child of a layer group while keeping the group itself in the scene. */
+function clearGroup(group: THREE.Group) { for (const child of [...group.children]) disposeObject(child); }
+
+/**
+ * The renderer, camera and downloaded city live for one scene identity. Layer checkboxes only
+ * flip `group.visible`; cheap groups (roads, entities, airspace) rebuild when their content changes.
+ */
 export function ScenePreview({ workspace, api, layers }: { workspace: Workspace; api: string; layers: string[] }) {
   const root = useRef<HTMLDivElement>(null);
+  const ctx = useRef<Context>();
+  const latest = useRef({ workspace, layers }); latest.current = { workspace, layers };
   const [error, setError] = useState(''), [loading, setLoading] = useState(false);
+  const city = workspace.demo_console?.scene;
+  const sceneKey = JSON.stringify([workspace.id, api, city?.city?.kind ?? null, city?.city?.url ?? null, city?.camera ?? null,
+    workspace.scene?.ground ?? null, workspace.scene?.origin ?? null]);
+  const roadsKey = JSON.stringify(workspace.scene?.roads ?? null);
+  const entitiesKey = JSON.stringify([workspace.scenario.entities, workspace.scenario.presentation ?? null]);
+  const layerKey = useMemo(() => LAYER_NAMES.map(name => layers.includes(name) ? 1 : 0).join(''), [layers]);
+
   useEffect(() => {
     if (!root.current) return;
-    const host = root.current, abort = new AbortController();
-    let assets: Assets | undefined;
-    let renderer: THREE.WebGLRenderer | undefined, controls: OrbitControls | undefined, frame = 0;
-    const scene = new THREE.Scene(); scene.background = new THREE.Color('#edf2f6'); setError('');
+    const host = root.current, abort = new AbortController(), { workspace: ws } = latest.current;
+    const scene = new THREE.Scene(); scene.background = new THREE.Color('#edf2f6'); setError(''); setLoading(false);
+    let assets: Assets | undefined, renderer: THREE.WebGLRenderer | undefined, controls: OrbitControls | undefined, observer: ResizeObserver | undefined, frame = 0;
+    const cleanup = () => { abort.abort(); cancelAnimationFrame(frame); observer?.disconnect(); controls?.dispose(); disposeObject(scene); assets?.dispose(); renderer?.dispose(); renderer?.domElement.remove(); ctx.current = undefined; };
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); host.append(renderer.domElement);
-      const width = workspace.scene?.ground.width_m ?? 200, depth = workspace.scene?.ground.depth_m ?? 200;
+      const width = ws.scene?.ground.width_m ?? 200, depth = ws.scene?.ground.depth_m ?? 200;
       const extent = Math.max(width, depth, 100);
       const camera = new THREE.PerspectiveCamera(45, 1, 0.1, extent * 20);
       camera.position.set(extent * 0.65, extent * 0.8, extent * 0.65);
       controls = new OrbitControls(camera, renderer.domElement); controls.target.set(0, 0, 0); controls.update();
-      const city = workspace.demo_console?.scene;
-      if (city?.camera) { camera.position.set(...city.camera.position); controls.target.set(...city.camera.target); controls.update(); }
-      if (city?.city && layers.includes('buildings')) {
-        if (city.city.kind !== 'traffic-city') throw Error('Studio city preview requires a traffic-city descriptor');
-        assets = new Assets(renderer); setLoading(true);
-        void loadTrafficCity(city.city.url, assets, abort.signal).then(group => { if (abort.signal.aborted) disposeObject(group); else { scene.add(group); setLoading(false); } }).catch(problem => { if (!abort.signal.aborted) { setError(String(problem)); setLoading(false); } });
-      }
+      const cityScene = ws.demo_console?.scene;
+      if (cityScene?.camera) { camera.position.set(...cityScene.camera.position); controls.target.set(...cityScene.camera.target); controls.update(); }
       scene.add(new THREE.HemisphereLight(0xffffff, 0x65705b, 2));
       const sun = new THREE.DirectionalLight(0xffffff, 2.5); sun.position.set(100, 200, 80); scene.add(sun);
-      if (layers.includes('ground')) {
-        const ground = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), new THREE.MeshStandardMaterial({ color: '#dbe2d3', side: THREE.DoubleSide }));
-        ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; scene.add(ground);
-        scene.add(new THREE.GridHelper(extent, 20, '#9da9ab', '#c6d0d1'));
-      }
-      if (workspace.scene && layers.includes('buildings')) {
-        void loadOsmBuildings(`${api}/v1/studio/workspaces/${workspace.id}/buildings.geojson`, workspace.scene.origin, abort.signal).then(group => {
-          if (abort.signal.aborted) disposeObject(group); else scene.add(group);
-        }).catch(e => { if (!abort.signal.aborted) setError(String(e)); });
-      }
-      if (layers.includes('roads')) workspace.scene?.roads.forEach(road => {
-        const geometry = new THREE.BufferGeometry().setFromPoints(road.points.map(([e, n, u]) => new THREE.Vector3(e, u + 0.08, -n)));
-        scene.add(new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: '#6b737c' })));
-      });
-      workspace.scenario.entities.forEach((entity: any) => {
-        const binding = workspace.scenario.presentation?.find((p: any) => p.typeId === entity.type);
-        const pos = binding && entity.facts[binding.positionField];
-        if (!Array.isArray(pos) || pos.length !== 3) return; // Non-spatial entities have no geometry.
-        const facility = entity.type === 'aas:StudioFacility';
-        const marker = new THREE.Mesh(facility ? new THREE.BoxGeometry(8, 4, 8) : new THREE.OctahedronGeometry(2), new THREE.MeshStandardMaterial({ color: facility ? '#45a565' : '#1677ff' }));
-        marker.position.set(pos[0], pos[2] + (facility ? 2 : 0), -pos[1]); if (layers.includes('entities')) scene.add(marker); else disposeObject(marker);
-        const airspace = entity.facts['aas.studio.airspace'];
-        if (airspace && layers.includes('airspace')) {
-          for (const altitude of [airspace.floor_m, airspace.ceiling_m]) {
-            const geo = new THREE.BufferGeometry().setFromPoints(airspace.polygon.map(([e, n]: number[]) => new THREE.Vector3(e, altitude, -n)));
-            scene.add(new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color: '#e99c36' })));
+      const groups = Object.fromEntries(LAYER_NAMES.map(name => { const group = new THREE.Group(); group.name = `layer-${name}`; scene.add(group); return [name, group]; })) as Record<LayerName, THREE.Group>;
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), new THREE.MeshStandardMaterial({ color: '#dbe2d3', side: THREE.DoubleSide }));
+      ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; groups.ground.add(ground, new THREE.GridHelper(extent, 20, '#9da9ab', '#c6d0d1'));
+      const context: Context = { scene, abort, groups, buildingsRequested: false, loadBuildings: () => {
+        if (context.buildingsRequested) return; context.buildingsRequested = true;
+        if (cityScene?.city) {
+          if (cityScene.city.kind !== 'traffic-city') { setError('Studio city preview requires a traffic-city descriptor'); }
+          else {
+            assets = new Assets(renderer!); setLoading(true);
+            void loadTrafficCity(cityScene.city.url, assets, abort.signal).then(group => { if (abort.signal.aborted) disposeObject(group); else { groups.buildings.add(group); setLoading(false); } })
+              .catch(problem => { if (!abort.signal.aborted) { setError(String(problem)); setLoading(false); } });
           }
         }
-      });
+        if (ws.scene) {
+          void loadOsmBuildings(`${api}/v1/studio/workspaces/${ws.id}/buildings.geojson`, ws.scene.origin, abort.signal).then(group => {
+            if (abort.signal.aborted) disposeObject(group); else groups.buildings.add(group);
+          }).catch(e => { if (!abort.signal.aborted) setError(String(e)); });
+        }
+      } };
+      ctx.current = context;
       const resize = () => { const w = host.clientWidth, h = host.clientHeight; renderer!.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
-      const observer = new ResizeObserver(resize); observer.observe(host); resize();
+      observer = new ResizeObserver(resize); observer.observe(host); resize();
       const animate = () => { if (abort.signal.aborted) return; controls!.update(); renderer!.render(scene, camera); frame = requestAnimationFrame(animate); }; animate();
-      return () => { abort.abort(); cancelAnimationFrame(frame); observer.disconnect(); controls?.dispose(); disposeObject(scene); assets?.dispose(); renderer?.dispose(); renderer?.domElement.remove(); };
     } catch (e) { setError(String(e)); }
-    return () => { abort.abort(); cancelAnimationFrame(frame); controls?.dispose(); disposeObject(scene); assets?.dispose(); renderer?.dispose(); renderer?.domElement.remove(); };
-  }, [workspace, api, layers]);
+    return cleanup;
+  }, [sceneKey]);
+
+  // Visibility only: no disposal, no network, camera untouched. The first time buildings are shown they load once.
+  useEffect(() => {
+    const current = ctx.current; if (!current) return;
+    LAYER_NAMES.forEach((name, index) => { current.groups[name].visible = layerKey[index] === '1'; });
+    if (layerKey[1] === '1') current.loadBuildings();
+  }, [sceneKey, layerKey]);
+
+  useEffect(() => {
+    const current = ctx.current; if (!current) return;
+    clearGroup(current.groups.roads);
+    latest.current.workspace.scene?.roads.forEach(road => {
+      const geometry = new THREE.BufferGeometry().setFromPoints(road.points.map(([e, n, u]) => new THREE.Vector3(e, u + 0.08, -n)));
+      current.groups.roads.add(new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: '#6b737c' })));
+    });
+  }, [sceneKey, roadsKey]);
+
+  useEffect(() => {
+    const current = ctx.current; if (!current) return;
+    clearGroup(current.groups.entities); clearGroup(current.groups.airspace);
+    const scenario = latest.current.workspace.scenario;
+    scenario.entities.forEach((entity: any) => {
+      const binding = scenario.presentation?.find((p: any) => p.typeId === entity.type);
+      const pos = binding && entity.facts[binding.positionField];
+      if (!Array.isArray(pos) || pos.length !== 3) return; // Non-spatial entities have no geometry.
+      const facility = entity.type === 'aas:StudioFacility';
+      const marker = new THREE.Mesh(facility ? new THREE.BoxGeometry(8, 4, 8) : new THREE.OctahedronGeometry(2), new THREE.MeshStandardMaterial({ color: facility ? '#45a565' : '#1677ff' }));
+      marker.position.set(pos[0], pos[2] + (facility ? 2 : 0), -pos[1]); current.groups.entities.add(marker);
+      const airspace = entity.facts['aas.studio.airspace'];
+      if (airspace) {
+        for (const altitude of [airspace.floor_m, airspace.ceiling_m]) {
+          const geo = new THREE.BufferGeometry().setFromPoints(airspace.polygon.map(([e, n]: number[]) => new THREE.Vector3(e, altitude, -n)));
+          current.groups.airspace.add(new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color: '#e99c36' })));
+        }
+      }
+    });
+  }, [sceneKey, entitiesKey]);
+
   return <div className="studio-preview" ref={root} aria-label="Scene preview">{loading && <div className="studio-preview-status" role="status">Loading city geometry…</div>}{error && <div className="studio-preview-error" role="alert">{error}</div>}</div>;
 }
