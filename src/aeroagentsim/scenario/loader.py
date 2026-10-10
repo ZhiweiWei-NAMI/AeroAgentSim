@@ -200,6 +200,10 @@ def load_scenario(
 def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
     document = copy.deepcopy(document)
     _finite(document, "scenario")
+    if "algorithms" in document or "generators" in document:
+        from aeroagentsim.packs.lowalt.template import expand
+
+        expand(document)
     behaviour_engines = [
         name
         for name, item in document.get("engines", {}).items()
@@ -270,6 +274,8 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         "ingress_streams",
         "behaviours",
         "provenance",
+        "algorithms",
+        "generators",
     }
     if extra := set(document) - allowed:
         raise ScenarioError(f"scenario: unknown keys {sorted(extra)}")

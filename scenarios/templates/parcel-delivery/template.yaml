@@ -1,0 +1,23 @@
+format: aeroagentsim.template/v1
+id: parcel-delivery
+title: Urban parcel delivery
+summary: Drones carry parcels from two vertiports to customers across a small district.
+category: logistics
+difficulty: beginner
+duration_s: 300
+scenario: scenario.yaml
+observe:
+  - Orders appear over time and are assigned to available drones.
+  - Drones route around the protected central square.
+  - Watch separation alerts and battery use as the fleet works.
+try:
+  - Switch the allocator and compare delivery times.
+  - Add drones or increase orders to make the district busier.
+  - Increase wind speed to see flights pause.
+knobs:
+  - {id: fleet_size, label: Number of drones, type: integer, default: 6, min: 1, max: 40, pointer: /generators/fleet/count}
+  - {id: order_rate, label: Orders per second, type: number, default: 0.08, min: 0.005, max: 1, pointer: /engines/tasks/config/generators/0/arrivals/rate_per_s}
+  - {id: allocator, label: Task allocation algorithm, type: choice, default: nearest, options: [nearest, auction, hungarian, llm], pointer: /algorithms/allocation}
+  - {id: path_planner, label: Route planning algorithm, type: choice, default: corridor_astar, options: [straight, corridor_astar], pointer: /algorithms/path_planning}
+  - {id: wind_speed, label: Wind speed in metres per second, type: number, default: 2, min: 0, max: 20, pointer: /engines/environment/config/profiles/weather/lowalt.wind/value/0}
+kpis: [tasks_completed, mean_task_latency_s, energy_used_kj, separation_conflicts, geofence_violations]
