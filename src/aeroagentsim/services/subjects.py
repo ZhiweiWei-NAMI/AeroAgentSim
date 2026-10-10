@@ -34,7 +34,7 @@ class SubjectProjection:
 
     def begin(self, record: dict[str, Any]) -> None:
         for item in record["items"]:
-            if "proposal" in item:
+            if item.get("proposal", {}).get("$type") == "Create":
                 operation = decode_record(item["proposal"])
                 if isinstance(operation, Create):
                     ref = operation.ref
@@ -43,7 +43,7 @@ class SubjectProjection:
 
     def end(self, record: dict[str, Any]) -> None:
         for item in record["items"]:
-            if "proposal" in item:
+            if item.get("proposal", {}).get("$type") == "Remove":
                 operation = decode_record(item["proposal"])
                 if (
                     isinstance(operation, Remove)
@@ -55,6 +55,18 @@ class SubjectProjection:
         record = expand_record(record)
         self.begin(record)
         self.end(record)
+
+    def cursor(self) -> dict[str, Any]:
+        return {
+            "current": [ref.to_data() for ref in self.current.values()],
+            "known": [ref.to_data() for ref in self.known.values()],
+        }
+
+    def restore_cursor(self, state: dict[str, Any]) -> None:
+        current = [EntityRef.from_data(value) for value in state["current"]]
+        known = [EntityRef.from_data(value) for value in state["known"]]
+        self.current = {ref.id: ref for ref in current}
+        self.known = {(ref.id, ref.generation): ref for ref in known}
 
     def subjects(self, message: Message) -> list[EntityRef]:
         result = []

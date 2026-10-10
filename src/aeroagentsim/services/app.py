@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+import math
 import multiprocessing
 import os
 import threading
@@ -15,15 +17,14 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from aeroagentsim.platform.simulation import Simulation
 from aeroagentsim.scenario import Scenario, load_scenario
 
-from .projector import header, project
+from .projector import header
 from .security import LOCAL_ORIGIN, RequestBoundary
 from .storage import RunStorage
-from .subjects import projection_context
 from .worker import execute
 
 TERMINAL = {"completed", "stopped", "faulted", "interrupted", "input_timeout"}
@@ -44,11 +45,15 @@ def create_app(
     from aeroagentsim.authoring.templates import TemplateRegistry
 
     templates = TemplateRegistry(templates_root)
+    from .experiments import ExperimentManager
+
+    experiments = ExperimentManager(root, templates)
     # Linux local worker: fork preserves the compiled immutable registry without
     # pickling MappingProxyType or re-reading a concurrently changing source tree.
     context = multiprocessing.get_context("fork")
     workers: dict[str, tuple[Any, Any, Any]] = {}
     inputs: dict[str, tuple[Any, threading.Lock]] = {}
+    index_tasks: list[asyncio.Task[None]] = []
     for path in root.iterdir():
         if (path / "manifest.json").exists():
             storage = RunStorage(path)
@@ -78,6 +83,9 @@ def create_app(
                 )
         for connection, input_lock in inputs.values():
             connection.close()
+        await asyncio.to_thread(experiments.close)
+        if index_tasks:
+            await asyncio.gather(*index_tasks)
 
     app = FastAPI(title="AeroAgentSim", lifespan=lifespan)
     console_origin = os.environ.get("AEROAGENTSIM_CONSOLE_URL")
@@ -138,6 +146,21 @@ def create_app(
             raise HTTPException(422, str(exc)) from exc
         return await launch(scenario, workspace_id=body.get("studio_workspace"))
 
+    async def warm_feed(path: Path, process: Any) -> None:
+        from .feed_index import update
+
+        try:
+            while process.is_alive():
+                await asyncio.to_thread(update, path)
+                await asyncio.sleep(0.25)
+            await asyncio.to_thread(update, path)
+        except Exception:
+            # The derived cache never changes worker success or source data.
+            # A foreground projection request exposes this same error to callers.
+            logging.getLogger(__name__).exception(
+                "Viewer index failed for %s", path.name
+            )
+
     async def launch(
         scenario: Scenario,
         *,
@@ -176,6 +199,8 @@ def create_app(
         process.start()
         workers[run_id] = (process, paused, stopped)
         inputs[run_id] = (host_input, threading.Lock())
+        if template is not None:
+            index_tasks.append(asyncio.create_task(warm_feed(path, process)))
         worker_input.close()
         # The console requests identity/injection configuration immediately after
         # creation. A created directory is not an acknowledged worker startup:
@@ -196,7 +221,7 @@ def create_app(
         return storage.metadata()
 
     def run_summary(path: Path) -> dict[str, Any]:
-        from .kpis import project_run
+        from .feed_index import kpi_result as project_run
 
         metadata = RunStorage(path).metadata()
         document = json.loads((path / "scenario.json").read_text())
@@ -239,20 +264,36 @@ def create_app(
 
     @app.get("/v1/runs/{run_id}/kpis")
     def run_kpis(run_id: str) -> dict[str, Any]:
-        from .kpis import project_run
+        from .feed_index import kpi_result as project_run
 
         return {**project_run(directory(run_id)), "run_id": run_id}
 
     @app.get("/v1/templates")
     def template_list() -> list[dict[str, Any]]:
-        return templates.list()
+        return [template_detail(item["id"]) for item in templates.list()]
 
     @app.get("/v1/templates/{template_id}")
     def template_detail(template_id: str) -> dict[str, Any]:
         try:
-            return templates.get(template_id)
+            metadata = templates.get(template_id)
+            if "thumbnail" in metadata:
+                metadata["thumbnail_url"] = f"/v1/templates/{template_id}/thumbnail"
+            return metadata
         except KeyError as exc:
             raise HTTPException(404, "Unknown template") from exc
+
+    @app.get("/v1/templates/{template_id}/thumbnail")
+    def template_thumbnail(template_id: str) -> FileResponse:
+        metadata = template_detail(template_id)
+        if "thumbnail" not in metadata:
+            raise HTTPException(404, "Template has no thumbnail")
+        directory = (templates.root / template_id).resolve()
+        image = (directory / metadata["thumbnail"]).resolve()
+        if not image.is_relative_to(directory):
+            raise HTTPException(422, "thumbnail must be inside its template directory")
+        if not image.is_file():
+            raise HTTPException(404, "Declared template thumbnail is missing")
+        return FileResponse(image, media_type="image/png")
 
     async def template_input(template_id: str, request: Request) -> Any:
         template_detail(template_id)
@@ -335,6 +376,55 @@ def create_app(
             **({"workspace_id": workspace_id} if workspace_id is not None else {}),
         }
 
+    @app.post("/v1/templates/{template_id}/experiments", status_code=201)
+    async def create_experiment(template_id: str, request: Request) -> dict[str, Any]:
+        template_detail(template_id)
+        try:
+            body = await request.json()
+            allowed = {"vary", "seeds", "jobs", "horizon_s", "horizon", "knobs"}
+            if not isinstance(body, dict) or set(body) - allowed:
+                raise ValueError(
+                    "Experiment body accepts vary, seeds, jobs, horizon_s and knobs"
+                )
+            if "horizon" in body and "horizon_s" in body:
+                raise ValueError("Provide one horizon value")
+            for key in ("seeds", "jobs"):
+                if key in body and (type(body[key]) is not int or body[key] < 1):
+                    raise ValueError(f"{key}: positive integer required")
+            if "knobs" in body and not isinstance(body["knobs"], dict):
+                raise ValueError("knobs: JSON object required")
+            horizon = body.get("horizon_s", body.get("horizon"))
+            if ("horizon" in body or "horizon_s" in body) and horizon is None:
+                raise ValueError("horizon_s: positive finite seconds required")
+            if horizon is not None and (
+                type(horizon) not in (int, float)
+                or not math.isfinite(horizon)
+                or horizon <= 0
+            ):
+                raise ValueError("horizon_s: positive finite seconds required")
+            return dict(
+                await asyncio.to_thread(
+                    experiments.create,
+                    template_id,
+                    vary=body.get("vary", {}),
+                    seeds=body.get("seeds", 3),
+                    jobs=body.get("jobs", 1),
+                    horizon_s=horizon,
+                    knobs=body.get("knobs"),
+                )
+            )
+        except (ValueError, TypeError, KeyError, OSError, RuntimeError) as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    @app.get("/v1/experiments/{experiment_id}")
+    def get_experiment(experiment_id: str) -> dict[str, Any]:
+        if Path(experiment_id).name != experiment_id or experiment_id in {".", ".."}:
+            raise HTTPException(404, "Unknown experiment")
+        try:
+            return dict(experiments.get(experiment_id))
+        except (KeyError, FileNotFoundError) as exc:
+            raise HTTPException(404, "Unknown experiment") from exc
+
     @app.get("/v1/runs/{run_id}/header")
     def run_header(run_id: str, request: Request) -> dict[str, Any]:
         path = directory(run_id)
@@ -356,22 +446,9 @@ def create_app(
         path = directory(run_id)
         storage = RunStorage(path)
         metadata = storage.metadata()
-        records = storage.records(max(1, from_index), limit)
-        result = []
-        if records:
-            subjects = projection_context(path, max(1, from_index))
-            from .kpis import projection_context as kpi_context
-            from .narratives import projection_context as narrative_context
+        from .feed_index import page
 
-            kpis = kpi_context(path, max(1, from_index))
-            narratives = narrative_context(path, max(1, from_index))
-            result = [
-                {
-                    **project(record, subjects=subjects, kpis=kpis),
-                    "events": narratives.consume(record),
-                }
-                for record in records
-            ]
+        result = page(path, max(1, from_index), limit)
         return {
             "commits": result,
             "next": result[-1]["commitIndex"] + 1 if result else max(1, from_index),
@@ -397,21 +474,13 @@ def create_app(
 
         async def tail() -> AsyncIterator[str]:
             nonlocal cursor
-            from .kpis import projection_context as kpi_context
-            from .narratives import projection_context as narrative_context
+            from .feed_index import page
 
-            subjects = projection_context(path, cursor)
-            kpis = kpi_context(path, cursor)
-            narratives = narrative_context(path, cursor)
             last_status: tuple[str, str] | None = None
             while not await request.is_disconnected():
                 storage = RunStorage(path)
-                records = storage.records(cursor, 256)
-                for record in records:
-                    commit = {
-                        **project(record, subjects=subjects, kpis=kpis),
-                        "events": narratives.consume(record),
-                    }
+                records = await asyncio.to_thread(page, path, cursor, 256)
+                for commit in records:
                     cursor = commit["commitIndex"] + 1
                     yield f"id: {commit['commitIndex']}\nevent: commit\ndata: {json.dumps(commit, separators=(',', ':'))}\n\n"
                 metadata = storage.metadata()
@@ -516,7 +585,6 @@ def create_app(
         )
 
     if frontend is not None:
-        from fastapi.responses import FileResponse
         from fastapi.staticfiles import StaticFiles
 
         if not (frontend / "index.html").exists():

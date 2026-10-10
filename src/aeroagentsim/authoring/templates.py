@@ -533,6 +533,8 @@ class TemplateRegistry:
         }
         for name, knob in declared.items():
             _knob_value(knob, values[name])
+            if knob["type"] == "number":
+                values[name] = float(values[name])
             if "pointer" in knob:
                 _pointer(document, knob["pointer"], values[name])
             else:

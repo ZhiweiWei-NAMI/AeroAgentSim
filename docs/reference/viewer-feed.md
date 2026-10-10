@@ -124,3 +124,12 @@ hints are presentation-only fields. The console also applies local, cosmetic
 label rules (for example humanizing `traffic.road.speed_mps`) on top of the
 feed; these affect display names only — retained identities, values and
 temporal metadata always come from the recorded feed unchanged.
+
+## Persistent projection index
+
+REST commit paging and SSE reconnects use `viewer-index.sqlite3` beside each
+run. This rebuildable index stores projected cuts and one transactionally
+consistent checkpoint for lifecycle subjects, KPIs and narratives. A seek
+reads indexed cuts directly; newly committed records extend the retained
+prefix. Changes to pinned declarations or projection code invalidate the
+cache. Journal and registry data remain authoritative.

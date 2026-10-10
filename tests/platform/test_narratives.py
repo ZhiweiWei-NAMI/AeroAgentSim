@@ -14,6 +14,7 @@ from aerokernel.operations import Create, FactWrite, Remove
 from aerokernel.registry import FieldDescriptor, MemoryRegistry, TypeDescriptor
 from aerokernel.time import Instant, Interval, Stamp
 
+from aeroagentsim.packs.lowalt.overlay import EVENT_NARRATIVES as LOWALT_NARRATIVES
 from aeroagentsim.packs.traffic_accident.narratives import EVENT_NARRATIVES
 from aeroagentsim.services.narratives import (
     NarrativeProjector,
@@ -142,24 +143,32 @@ def test_lowalt_task_category_mapping(tmp_path) -> None:
     row = event[0]
     assert row["category"] == "emergency"
     assert row["severity"] == "info"
-    assert row["text"] == "task-7 task created"
+    assert row["text"] == LOWALT_NARRATIVES["lowalt.task.created"]["text"].format(
+        task="task-7"
+    )
     assert row["entities"] == ["task-7"]
     assert "position" not in row  # no stored position yet
 
 
 def test_missing_required_placeholder_raises(tmp_path) -> None:
-    projector = NarrativeProjector.from_directory(tmp_scenario(tmp_path))
+    scenario = tmp_scenario(
+        tmp_path,
+        event_narratives={
+            "custom.event": {
+                "template": "{entity} did {detail}",
+                "category": "mixed",
+                "severity": "info",
+            }
+        },
+    )
+    projector = NarrativeProjector.from_directory(scenario)
     with pytest.raises(ValueError, match="missing placeholder"):
         projector.consume(
             record_with(
                 emit_item(
                     message(
-                        "lowalt.task.completed",
-                        {
-                            "task": "task-1",
-                            "vehicle": "veh-1",
-                            # latency_s absent -> ValueError, never fabricated
-                        },
+                        "custom.event",
+                        {"entity": "e-1"},
                     )
                 )
             )
@@ -186,7 +195,11 @@ def test_assigned_started_completed_with_position(tmp_path) -> None:
             ),
         )
     )
-    assert [e["text"] for e in events] == ["veh-1 assigned to task-1 using nearest"]
+    assert [e["text"] for e in events] == [
+        LOWALT_NARRATIVES["lowalt.task.assigned"]["text"].format(
+            task="task-1", vehicle="veh-1"
+        )
+    ]
     assert events[0]["position"] == [10.0, 20.0, 5.0]
     assert events[0]["entities"] == ["task-1", "veh-1"]
 
@@ -207,7 +220,11 @@ def test_completed_template(tmp_path) -> None:
             )
         )
     )
-    assert events[0]["text"] == "veh-2 completed task-2 in 12.5 seconds"
+    assert events[0]["text"] == (
+        LOWALT_NARRATIVES["lowalt.task.completed"]["text"].format(
+            task="task-2", vehicle="veh-2", latency_s=12.5
+        )
+    )
 
 
 def test_optional_entity_links_omitted_when_absent(tmp_path) -> None:
@@ -218,7 +235,11 @@ def test_optional_entity_links_omitted_when_absent(tmp_path) -> None:
         )
     )
     assert events[0]["entities"] == []
-    assert events[0]["text"] == "Weather hold: crosswind 12 m/s"
+    assert events[0]["text"] == (
+        LOWALT_NARRATIVES["lowalt.weather.hold"]["text"].format(
+            reason="crosswind 12 m/s"
+        )
+    )
     assert events[0]["category"] == "weather"
 
 
