@@ -315,6 +315,16 @@ class WorkspaceStore:
                 "id": template_id,
                 "knobs": prepared.knobs,
             }
+            if document.get("city") == "huangpu":
+                # Templates that declare the shared city get the same scene
+                # descriptor as the traffic demo, so Studio previews the city.
+                from .demo import city_presentation
+
+                draft["demo_console"] = {
+                    "capture_mode": "city",
+                    "city_available": True,
+                    "scene": city_presentation(),
+                }
             self._base(document, draft["id"])
             self._write(draft)
             if document.get("behaviours"):

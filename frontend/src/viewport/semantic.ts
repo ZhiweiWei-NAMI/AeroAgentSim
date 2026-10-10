@@ -257,10 +257,13 @@ export function recentlyInvolved(messages: FeedCommit['messages'], lookback: num
 /** Who should show a label in the SIMPLE default (not show-all) mode. */
 export function labelInterest(entity: EntityState, selected?: EntityKey, involved?: Set<string>, hasActiveTask?: boolean, alerts?:Set<string>): boolean {
   if (selected && selected.id === entity.key.id && String(selected.generation) === String(entity.key.generation)) return true;
-  if(hasActiveTask)return true;
   // Authored background traffic emits routine motion/occupancy updates every
-  // tick. Keep it on hover unless it participates in an actual alert.
+  // tick and each routine actor carries a looped task that never finishes, so
+  // a dense city run would label every road vehicle. Keep them unlabelled in
+  // the default view unless selected, hovering (handled by the caller) or
+  // part of an actual alert; only non-background actors earn task/event labels.
   if(entity.fields.get('traffic.actor.role')?.value==='background')return alerts?.has(`${entity.key.id}:${entity.key.generation}`)===true;
+  if(hasActiveTask)return true;
   if (involved?.has(`${entity.key.id}:${entity.key.generation}`)) return true;
   return !!hasActiveTask;
 }

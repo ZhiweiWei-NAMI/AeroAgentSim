@@ -151,6 +151,52 @@ def test_template_endpoints_workspace_kpis_comparison(
         assert client.get("/v1/runs/missing/kpis").status_code == 404
 
 
+def test_template_workspace_without_city_has_no_demo_scene(
+    template_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AEROAGENTSIM_AEROGRAPH_ROOT", raising=False)
+    with TestClient(
+        create_app(tmp_path / "runs", templates_root=template_root),
+        base_url="http://localhost",
+    ) as client:
+        response = client.post("/v1/templates/experiment/workspace", json={})
+        assert response.status_code == 201, response.text
+        draft = client.get(
+            f"/v1/studio/workspaces/{response.json()['workspace_id']}"
+        ).json()
+        assert "city" not in draft["scenario"]
+        assert "demo_console" not in draft
+
+
+def test_template_workspace_with_city_carries_shared_scene(
+    template_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    metadata = yaml.safe_load((template_root / "experiment/template.yaml").read_text())
+    metadata["city"] = "huangpu"
+    (template_root / "experiment/template.yaml").write_text(yaml.safe_dump(metadata))
+    document = yaml.safe_load(
+        (template_root / "experiment/scenario.yaml").read_text()
+    )
+    document["city"] = "huangpu"
+    (template_root / "experiment/scenario.yaml").write_text(yaml.safe_dump(document))
+    monkeypatch.delenv("AEROAGENTSIM_AEROGRAPH_ROOT", raising=False)
+    with TestClient(
+        create_app(tmp_path / "runs", templates_root=template_root),
+        base_url="http://localhost",
+    ) as client:
+        response = client.post("/v1/templates/experiment/workspace", json={})
+        assert response.status_code == 201, response.text
+        draft = client.get(
+            f"/v1/studio/workspaces/{response.json()['workspace_id']}"
+        ).json()
+        assert draft["scenario"]["city"] == "huangpu"
+        assert draft["demo_console"]["capture_mode"] == "city"
+        scene = draft["demo_console"]["scene"]
+        assert scene["city"]["kind"] == "traffic-city"
+        assert scene["city"]["url"].endswith("/v1/studio/demo-assets/scene.json")
+        assert scene["camera"]["position"] == [280, 220, 300]
+
+
 def test_template_invalid_knobs_and_security(
     template_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
