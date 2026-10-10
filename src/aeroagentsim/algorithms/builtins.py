@@ -30,18 +30,70 @@ def eligible(task: Task, vehicle: Vehicle) -> bool:
     )
 
 
+def trip_metres(vehicle: Vehicle, task: Task) -> float:
+    """Straight-line vehicle -> origin -> destination distance."""
+    return distance(vehicle.position, task.origin) + distance(
+        task.origin, task.destination
+    )
+
+
+def completion_s(vehicle: Vehicle, task: Task) -> float:
+    """Estimated seconds until delivery: remaining leg, then pickup and drop."""
+    speed = max(vehicle.speed_m_s, 1e-6)
+    return vehicle.busy_s + trip_metres(vehicle, task) / speed
+
+
+def soc_after(vehicle: Vehicle, task: Task, snapshot: Snapshot) -> float | None:
+    """State of charge after the trip plus the return to the nearest pad.
+
+    None when the battery capacity is unknown, so no energy claim can be made.
+    """
+    if vehicle.capacity_j <= 0:
+        return None
+    back = min(
+        (distance(task.destination, p.position) for p in snapshot.pads), default=0.0
+    )
+    used = (trip_metres(vehicle, task) + back) * vehicle.energy_per_m_j
+    return vehicle.soc - used / vehicle.capacity_j
+
+
+def feasible(
+    task: Task, vehicle: Vehicle, snapshot: Snapshot, reserve_soc: float
+) -> bool:
+    """Eligible, and the battery still holds the reserve after trip and return."""
+    if not eligible(task, vehicle):
+        return False
+    left = soc_after(vehicle, task, snapshot)
+    return left is None or left >= reserve_soc
+
+
+def _reserve(config: dict[str, Any], name: str) -> float:
+    reserve = finite(config.pop("reserve_soc", 0.2), "reserve_soc", 0)
+    if reserve >= 1:
+        raise ValueError(f"{name} reserve_soc must be below one")
+    if config:
+        raise ValueError(f"{name} accepts only reserve_soc (and energy_weight)")
+    return reserve
+
+
 class Nearest:
-    description = "Assign high-priority tasks to the closest available drone."
+    description = (
+        "Greedy baseline: highest priority first, each task takes the closest "
+        "free drone that can finish the trip with its battery reserve intact."
+    )
 
     def __init__(self, **config: Any) -> None:
-        if config:
-            raise ValueError("nearest accepts no configuration")
+        self.reserve_soc = _reserve(dict(config), "nearest")
 
     def allocate(self, snapshot: Snapshot) -> tuple[Assignment, ...]:
         remaining = {v.id: v for v in snapshot.vehicles}
         result = []
         for task in sorted(snapshot.tasks, key=lambda t: (-t.priority, t.id)):
-            vehicles = [v for v in remaining.values() if eligible(task, v)]
+            vehicles = [
+                v
+                for v in remaining.values()
+                if feasible(task, v, snapshot, self.reserve_soc)
+            ]
             if vehicles:
                 best = min(
                     vehicles, key=lambda v: (distance(v.position, task.origin), v.id)
@@ -52,27 +104,41 @@ class Nearest:
 
 
 class Auction:
-    description = "Accept the lowest energy-adjusted fleet bid for each task."
+    description = (
+        "Drones bid their estimated completion time, inflated when the trip "
+        "would drain the battery; each round awards the lowest bid."
+    )
 
     def __init__(self, **config: Any) -> None:
-        if config:
-            raise ValueError("auction accepts no configuration")
+        config = dict(config)
+        self.energy_weight = finite(
+            config.pop("energy_weight", 1.0), "energy_weight", 0
+        )
+        self.reserve_soc = _reserve(config, "auction")
+
+    def bid(self, snapshot: Snapshot, task: Task, vehicle: Vehicle) -> float:
+        left = soc_after(vehicle, task, snapshot)
+        if left is None:
+            left = vehicle.soc
+        # A fully charged drone bids its pure completion time; a drone that
+        # would end near the reserve asks up to (1 + energy_weight) times more.
+        scarcity = min(1.0, max(0.0, 1.0 - left))
+        return completion_s(vehicle, task) * (1.0 + self.energy_weight * scarcity)
 
     def allocate(self, snapshot: Snapshot) -> tuple[Assignment, ...]:
-        # Each free vehicle bids on every feasible task; an accepted bid removes
-        # both parties from the next auction round. Priority dominates the bid.
         tasks = {t.id: t for t in snapshot.tasks}
         vehicles = {v.id: v for v in snapshot.vehicles}
         result = []
         while tasks and vehicles:
             bids = [
-                (-t.priority, distance(v.position, t.origin) / v.soc, t.id, v.id)
+                (-t.priority, self.bid(snapshot, t, v), t.id, v.id)
                 for t in tasks.values()
                 for v in vehicles.values()
-                if eligible(t, v)
+                if feasible(t, v, snapshot, self.reserve_soc)
             ]
             if not bids:
                 break
+            # Priority dominates; within it the lowest bid wins the round.
             _, _, task, vehicle = min(bids)
             result.append(Assignment(task, vehicle))
             tasks.pop(task)
@@ -128,11 +194,13 @@ def hungarian(cost: list[list[float]]) -> tuple[int, ...]:
 
 
 class Hungarian:
-    description = "Minimize total pickup distance across feasible assignments."
+    description = (
+        "Minimise the total estimated completion time of the whole batch "
+        "(globally optimal pairing of free drones and pending orders)."
+    )
 
     def __init__(self, **config: Any) -> None:
-        if config:
-            raise ValueError("hungarian accepts no configuration")
+        self.reserve_soc = _reserve(dict(config), "hungarian")
 
     def allocate(self, snapshot: Snapshot) -> tuple[Assignment, ...]:
         tasks = sorted(snapshot.tasks, key=lambda t: (-t.priority, t.id))
@@ -141,18 +209,27 @@ class Hungarian:
         )
         if not tasks or not vehicles:
             return ()
+        ok = {
+            (v.id, t.id): feasible(t, v, snapshot, self.reserve_soc)
+            for v in vehicles
+            for t in tasks
+        }
         # Explicit unassigned columns permit infeasible or surplus vehicles.
         largest = (
-            max(distance(v.position, t.origin) for v in vehicles for t in tasks) + 1
+            max(
+                (completion_s(v, t) for v in vehicles for t in tasks if ok[v.id, t.id]),
+                default=0.0,
+            )
+            + 1
         )
         priority = max(t.priority for t in tasks)
         dummy = largest * (len(tasks) + 1) * (priority + 2)
         blocked = dummy * (len(vehicles) + 1)
         cost = [
             [
-                distance(v.position, t.origin)
+                completion_s(v, t)
                 + (priority - t.priority) * largest * (len(vehicles) + 1)
-                if eligible(t, v)
+                if ok[v.id, t.id]
                 else blocked
                 for t in tasks
             ]
@@ -163,7 +240,7 @@ class Hungarian:
         return tuple(
             Assignment(tasks[j].id, v.id)
             for v, j in zip(vehicles, columns)
-            if j < len(tasks) and eligible(tasks[j], v)
+            if j < len(tasks) and ok[v.id, tasks[j].id]
         )
 
 

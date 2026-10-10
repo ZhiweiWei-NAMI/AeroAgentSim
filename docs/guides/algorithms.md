@@ -18,14 +18,84 @@ Vehicles include SOC, payload, payload capacity and availability; tasks include
 kind, priority, endpoints and payload. Zones carry kind, bounds and active state.
 Missing committed inputs remain errors naming the source field.
 
-Builtins are `nearest` (priority-first nearest pickup), `auction` (lowest
-energy-adjusted fleet bid), `hungarian` (global feasible pickup-distance
-assignment), `straight`, `corridor_astar`, `altitude_layers`, `hold_and_go`, and
+Builtins are `nearest`, `auction`, `hungarian` (allocation, see below),
+`straight`, `corridor_astar`, `altitude_layers`, `hold_and_go`, and
 `threshold_return`. `corridor_astar` uses A* on a visibility graph of expanded
 obstacle corners and corridor midpoints, checking complete 3D segments against
 active no-fly boxes. `straight` proposes a direct route; the task engine still
 checks no-fly clearance before executing each segment. Restricted zones and
 altitude bands are monitored membership volumes, not automatic flight bans.
+
+## Comparing allocators
+
+The task engine does not allocate each order the instant it appears. With
+`batch_window_s` (task engine config, default `0` = immediately; the parcel and
+medical templates use `10`), orders accumulate and the allocator is called once
+per window with every pending task and every free drone in the snapshot, so a
+global method can see trade-offs a one-at-a-time rule cannot. `vehicle_model`
+(`speed_m_s`, `energy_per_m_j`) tells the engine what cruise speed and energy
+rate to hand to allocators. A burst arrival mode (`arrivals.burst_size`, orders
+released together at the same average `rate_per_s`) creates the simultaneous
+demand where the choice matters.
+
+All three built-ins share one cost model (`algorithms/builtins.py`):
+
+1. Estimated completion time = `busy_s` (remaining time on the current leg) +
+   (vehicle to pickup + pickup to drop-off distance) / `speed_m_s`.
+2. A pair is feasible only if the state of charge after the trip *and the flight
+   back to the nearest pad* stays at or above `reserve_soc` (default 0.2);
+   infeasible pairs are never proposed. Unknown battery capacity skips this check.
+3. Higher priority always wins over lower cost.
+
+- `nearest` is the greedy baseline: highest priority first, each order takes the
+  closest feasible drone by pickup distance.
+- `auction`: every drone bids its completion time, inflated by up to
+  `1 + energy_weight` (default 1) as the trip leaves it with less charge; each
+  round awards the lowest bid among the top-priority tasks.
+- `hungarian` minimises the total completion time of the whole batch.
+
+Drones are eligible from where they are (they stay where their last delivery
+ended, not only at a pad), but a drone still flying a task is not offered: the
+engine has no per-drone task queue, so `busy_s` is `0` for built-in dispatch and
+is available to custom allocators and future queued dispatch.
+
+Measured with `experiment <template> --vary allocator=nearest,auction,hungarian
+--seeds 3` (300 s, 6 and 4 drones, mean over seeds 0-2, plus or minus one standard deviation):
+
+| Template | Allocator | Completed | Mean latency (s) | p95 latency (s) | Energy (kJ) |
+| --- | --- | --- | --- | --- | --- |
+| parcel-delivery | nearest | 13.3 ± 4.7 | 103.0 ± 14.4 | 188.9 ± 52.7 | 328 ± 29 |
+| parcel-delivery | auction | 10.7 ± 2.1 | 96.0 ± 22.4 | 169.1 ± 49.5 | 299 ± 31 |
+| parcel-delivery | hungarian | 10.7 ± 1.5 | 92.8 ± 18.2 | 155.1 ± 41.0 | 297 ± 29 |
+| medical-delivery | nearest | 12.3 ± 2.1 | 100.1 ± 9.3 | 167.6 ± 32.6 | 252 ± 13 |
+| medical-delivery | auction | 12.7 ± 1.5 | 86.7 ± 6.4 | 142.8 ± 11.0 | 236 ± 11 |
+| medical-delivery | hungarian | 12.7 ± 1.5 | 89.1 ± 2.3 | 149.0 ± 6.3 | 235 ± 12 |
+
+Why they differ, in two sentences: when a burst of orders meets several free
+drones, `nearest` hands each order (in arrival order) the closest drone, which
+can leave a later order with only a distant one. `auction` and `hungarian`
+choose drones by the whole trip time and, for `hungarian`, over the whole batch,
+so long pickups are avoided and drones fly less. With three seeds the
+differences between `auction` and `hungarian` are inside the noise; the gap to
+`nearest` shows in mean and p95 latency and in energy on both templates. In
+parcel-delivery the smarter methods finish slightly fewer orders in 300 s while
+the fleet is saturated, and mean latency only counts finished orders. Run more seeds (`--seeds 10`) before drawing
+conclusions of your own.
+
+## Writing your own allocator
+
+Allocators receive a read-only `Snapshot` (`vehicles`, `tasks`, `pads`, ...) and
+return `Assignment(task, vehicle)` proposals; the engine re-checks every
+proposal and rejects busy, ineligible or low-battery pairs. `Vehicle` carries
+`position`, `soc`, `payload_capacity_kg`, `available`, `task_kinds`, and the
+cost-model inputs `speed_m_s`, `energy_per_m_j`, `capacity_j`, `busy_s` (all
+defaulted, so older code and hand-made snapshots keep working). Reuse
+`completion_s`, `soc_after` and `feasible` from `aeroagentsim.algorithms.builtins`.
+Select a class anywhere on the Python path with `allocation: my_module:MyClass`
+(or set the Task allocation knob to it); keyword options go under
+`engine.config.algorithm_config.allocation`. The class must be pure and
+deterministic: no clocks, no global state, a seeded `random.Random` if it needs
+randomness.
 
 Factories receive keyword configuration from `engine.config.algorithm_config`
 per slot. Available options: `corridor_astar` accepts `grid_m` (district scale)

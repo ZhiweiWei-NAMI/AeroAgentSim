@@ -50,10 +50,10 @@ Field ownership follows the shared kernel contract:
 | Traffic UAV pose, velocity and energy | `air_motion` |
 | Road position, velocity and occupancy | `road_motion` |
 | Lowalt task state, payload, site configuration/open state; static zone geometry | `tasks` |
-| Incident zone geometry/activation, membership, conflicts and wind holds | `airspace` |
+| Incident zone geometry/activation, membership, conflict distances and measured wind | `airspace` |
 | Lowalt SOC, charging, consumed energy, distance and available motion energy | `energy` |
 | Shared `lowalt.wind` | `environment` |
-| Traffic incident/task/bid/report state and operator event admission | `behaviour` |
+| Traffic incident/task/bid/report state, operator event admission, `lowalt.weather_held`, `lowalt.returning_to_charge`, `lowalt.wind_limit_mps` | `behaviour` |
 | Traffic route inputs | `route_inputs` |
 | Bid feasibility measurements | `traffic_assessment` |
 | Real PNG artifacts and capture metadata | `capture` |
@@ -75,3 +75,6 @@ roof ceiling. Names and business metadata are pinned with each run. See
 The green field is an explicitly authored demonstration polygon beyond the
 northern dense core, not source OSM cropland. Spraying rows are 5 m above its
 ground plane; the standalone swap pad is at the field edge.
+
+The four operational rules are editable predicates and event chains; see
+[the rules guide](../../../docs/guides/lowalt-rules.md).

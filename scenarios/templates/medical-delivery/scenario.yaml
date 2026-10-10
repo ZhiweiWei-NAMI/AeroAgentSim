@@ -359,6 +359,22 @@ registry:
       role: observation
       unit: '1'
       time_semantics: canonical computation; half-open validity
+  - id: lowalt.returning_to_charge
+    type: lowalt:UAV
+    schema:
+      type: boolean
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: canonical computation; half-open validity
+  - id: lowalt.zone_id
+    type: lowalt:AirspaceZone
+    schema:
+      type: string
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: canonical computation; half-open validity
   messages:
   - id: lowalt.task.created
     kind: event
@@ -954,6 +970,70 @@ entities:
     lowalt.site_capacity: 1
   label: Customer
   business: emergency
+- id: depot-east
+  type: lowalt:Vertiport
+  facts:
+    lowalt.site_position: &id011
+    - 328.337
+    - -136.882
+    - 12.0
+    lowalt.site_open: true
+    lowalt.site_capacity: 1
+  label: Vertiport East Roof
+  business: emergency
+- id: east-pad
+  type: lowalt:ChargingPad
+  facts:
+    lowalt.site_position: *id011
+    lowalt.site_open: true
+    lowalt.site_capacity: 1
+    lowalt.pad_power_w: 5000.0
+  label: East pad
+  business: emergency
+- id: customer-2
+  type: lowalt:Customer
+  facts:
+    lowalt.site_position:
+    - 38.77
+    - 21.041
+    - 105.0
+    lowalt.site_open: true
+    lowalt.site_capacity: 1
+  label: Customer rooftop 2
+  business: emergency
+- id: customer-3
+  type: lowalt:Customer
+  facts:
+    lowalt.site_position:
+    - 247.588
+    - 73.959
+    - 75.0
+    lowalt.site_open: true
+    lowalt.site_capacity: 1
+  label: Customer rooftop 3
+  business: emergency
+- id: customer-4
+  type: lowalt:Customer
+  facts:
+    lowalt.site_position:
+    - 93.756
+    - 104.218
+    - 12.0
+    lowalt.site_open: true
+    lowalt.site_capacity: 1
+  label: Customer rooftop 4
+  business: emergency
+- id: customer-5
+  type: lowalt:Customer
+  facts:
+    lowalt.site_position:
+    - 10.252
+    - 89.188
+    - 105.0
+    lowalt.site_open: true
+    lowalt.site_capacity: 1
+  label: Customer rooftop 5
+  business: emergency
 - id: routine-1
   type: lowalt:Task
   facts:
@@ -1018,6 +1098,331 @@ entities:
     lowalt.task_vehicle: ''
     lowalt.task_payload_kg: 1.0
   label: Parcel mission 5
+  business: logistics
+- id: routine-6
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 6
+  business: logistics
+- id: routine-7
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 7
+  business: logistics
+- id: routine-8
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 8
+  business: logistics
+- id: routine-9
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 9
+  business: logistics
+- id: routine-10
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 10
+  business: logistics
+- id: routine-11
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 11
+  business: logistics
+- id: routine-12
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 12
+  business: logistics
+- id: routine-13
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 13
+  business: logistics
+- id: routine-14
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 14
+  business: logistics
+- id: routine-15
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 15
+  business: logistics
+- id: routine-16
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 16
+  business: logistics
+- id: routine-17
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 17
+  business: logistics
+- id: routine-18
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 18
+  business: logistics
+- id: routine-19
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 19
+  business: logistics
+- id: routine-20
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 20
+  business: logistics
+- id: routine-21
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 21
+  business: logistics
+- id: routine-22
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 22
+  business: logistics
+- id: routine-23
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 23
+  business: logistics
+- id: routine-24
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 24
+  business: logistics
+- id: routine-25
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 25
+  business: logistics
+- id: routine-26
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 26
+  business: logistics
+- id: routine-27
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 27
+  business: logistics
+- id: routine-28
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 28
+  business: logistics
+- id: routine-29
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 29
+  business: logistics
+- id: routine-30
+  type: lowalt:Task
+  facts:
+    lowalt.task_state: unreleased
+    lowalt.task_kind: parcel
+    lowalt.task_priority: 1
+    lowalt.task_origin: home
+    lowalt.task_destination: customer
+    lowalt.task_created_ns: 0
+    lowalt.task_vehicle: ''
+    lowalt.task_payload_kg: 1.0
+  label: Parcel mission 30
   business: logistics
 - id: urgent-1
   type: lowalt:Task
@@ -1123,6 +1528,7 @@ bindings:
     type: lowalt:AirspaceZone
     fields:
     - lowalt.zone_active
+    - lowalt.zone_id
   - writer: environment
     type: lowalt:Environment
     fields:
@@ -1132,6 +1538,7 @@ bindings:
     fields:
     - lowalt.weather_held
     - lowalt.wind_limit_mps
+    - lowalt.returning_to_charge
   lifecycle:
   - controller: tasks
     type: lowalt:UAV
@@ -1151,11 +1558,12 @@ algorithms:
   charging: threshold_return
 generators:
   fleet:
-    count: 2
+    count: 4
     prefix: drone-
     type: lowalt:UAV
     starts:
     - *id010
+    - *id011
     spacing_m: 1.0
     facts:
       lowalt.velocity:
@@ -1175,6 +1583,7 @@ generators:
       lowalt.energy_used_j: 0.0
       lowalt.distance_m: 0.0
       lowalt.wind_limit_mps: 12.0
+      lowalt.returning_to_charge: false
     label: Drone P{index}
     business: logistics
     vehicle_class: parcel
@@ -1267,7 +1676,7 @@ engines:
         charging:
           threshold: 1.0
       arrival_radius_m: 0.5
-      dispatch_min_soc: 0.05
+      dispatch_min_soc: 0.2
       charging_resume_soc: 0.9
       generators:
       - kind: parcel
@@ -1277,20 +1686,48 @@ engines:
         - routine-3
         - routine-4
         - routine-5
+        - routine-6
+        - routine-7
+        - routine-8
+        - routine-9
+        - routine-10
+        - routine-11
+        - routine-12
+        - routine-13
+        - routine-14
+        - routine-15
+        - routine-16
+        - routine-17
+        - routine-18
+        - routine-19
+        - routine-20
+        - routine-21
+        - routine-22
+        - routine-23
+        - routine-24
+        - routine-25
+        - routine-26
+        - routine-27
+        - routine-28
+        - routine-29
+        - routine-30
         origins:
         - home
+        - depot-east
         destinations:
         - customer
+        - customer-2
+        - customer-3
+        - customer-4
+        - customer-5
         priority: 1
         payload_kg: 1.0
         arrivals:
-          mode: scheduled
-          times_ns:
-          - 0
-          - 0
-          - 90000000000
-          - 150000000000
-          - 210000000000
+          mode: poisson
+          rate_per_s: 0.06
+          start_ns: 0
+          burst_size: 3
+          end_ns: 180000000000
       - kind: medical
         tasks:
         - urgent-1
@@ -1306,8 +1743,8 @@ engines:
           mode: scheduled
           times_ns:
           - 8000000000
-          - 110000000000
-          - 200000000000
+          - 90000000000
+          - 150000000000
       work_routes: {}
       vehicle_kinds:
         parcel:
@@ -1322,6 +1759,10 @@ engines:
       medical_preemption: true
       cruise_altitudes:
         parcel: 125.0
+      batch_window_s: 10.0
+      vehicle_model:
+        speed_m_s: 20.0
+        energy_per_m_j: 12.0
   environment:
     plugin: environment
     config:
@@ -1375,7 +1816,7 @@ presentation:
 behaviours:
 - format: aeroagentsim.behaviour-package/v1
   id: lowalt.rules
-  revision: 1
+  revision: 5
   registry:
     snapshot: registry.snapshot.json
   evaluator:
@@ -1407,39 +1848,166 @@ behaviours:
       profile: committed_reactive/v1
       roles:
         uav: lowalt:UAV
+        zone: lowalt:AirspaceZone
       expression:
-        op: gt
+        op: contains
         args:
-        - op: len
-          args:
-          - field: lowalt.breached_zones
-            role: uav
-            path: []
-        - literal: 0
+        - field: lowalt.breached_zones
+          role: uav
+          path: []
+        - field: lowalt.zone_id
+          role: zone
+          path: []
     closer_than_safety_distance:
       profile: committed_reactive/v1
       roles:
         uav: lowalt:UAV
+      parameters:
+        horizontal_m: 20.0
       expression:
-        op: ne
+        op: and
         args:
-        - field: lowalt.conflict_partner
-          role: uav
-          path: []
-        - literal: ''
+        - op: ne
+          args:
+          - field: lowalt.conflict_partner
+            role: uav
+            path: []
+          - literal: ''
+        - op: lt
+          args:
+          - field: lowalt.conflict_gap_m
+            role: uav
+            path:
+            - 0
+          - parameter: horizontal_m
     wind_above_limit:
       profile: committed_reactive/v1
       roles:
         uav: lowalt:UAV
+      parameters:
+        parcel_limit_mps: 12.0
+        medical_limit_mps: 12.0
+        inspection_limit_mps: 6.0
+        survey_limit_mps: 6.0
+        spraying_limit_mps: 5.0
+        passenger_limit_mps: 15.0
+        patrol_limit_mps: 12.0
+        incident_response_limit_mps: 14.0
       expression:
-        op: gt
+        op: or
         args:
-        - field: lowalt.wind_mps
-          role: uav
-          path: []
-        - field: lowalt.wind_limit_mps
-          role: uav
-          path: []
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: parcel
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: parcel_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: medical
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: medical_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: inspection
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: inspection_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: survey
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: survey_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: spraying
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: spraying_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: passenger
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: passenger_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: patrol
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: patrol_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: incident_response
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: incident_response_limit_mps
   chains:
     battery_reserve:
       roles:
@@ -1469,6 +2037,12 @@ behaviours:
         to: returning
         priority: 0
         actions:
+        - id: recalling
+          kind: set
+          entity:
+            $role: uav
+          field: lowalt.returning_to_charge
+          value: true
         - id: battery-low
           kind: emit
           schema: lowalt.energy.low
@@ -1494,18 +2068,30 @@ behaviours:
           status: succeeded
         to: monitoring
         priority: 0
-        actions: []
+        actions:
+        - id: ready
+          kind: set
+          entity:
+            $role: uav
+          field: lowalt.returning_to_charge
+          value: false
       - id: recall-failed
         from: returning
         'on':
           receipt: recall
-          status: &id011
+          status: &id012
           - failed
           - rejected
           - canceled
         to: waiting
         priority: 0
-        actions: []
+        actions:
+        - id: recall-rejected
+          kind: set
+          entity:
+            $role: uav
+          field: lowalt.returning_to_charge
+          value: false
       - id: recharged
         from: waiting
         'on':
@@ -1517,6 +2103,7 @@ behaviours:
     no_fly_zone:
       roles:
         uav: lowalt:UAV
+        zone: lowalt:AirspaceZone
       trigger:
         instance: activated
       preconditions: []
@@ -1549,10 +2136,7 @@ behaviours:
             vehicle:
               $id: uav
             zone:
-              field: lowalt.breached_zones
-              role: uav
-              path:
-              - 0
+              $id: zone
         - id: reroute
           kind: command
           capability: lowalt.airspace.flight_control
@@ -1650,7 +2234,7 @@ behaviours:
         from: resolving
         'on':
           receipt: resolve
-          status: *id011
+          status: *id012
         to: monitoring
         priority: 0
         actions: []
@@ -1677,7 +2261,7 @@ behaviours:
         from: flying
         'on':
           predicate: wind_above_limit
-          edge: entered
+          edge: while
         to: held
         priority: 0
         actions:
@@ -1755,6 +2339,12 @@ behaviours:
     match:
       uav:
         is_a: lowalt:UAV
+      zone:
+        is_a: lowalt:AirspaceZone
+        field: lowalt.zone_kind
+        in:
+        - no_fly
+        - restricted
     variables: {}
     multiplicity: once_per_entity
     on_unbind: retain_until_terminal

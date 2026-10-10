@@ -1,0 +1,65 @@
+{
+  "sedan": {
+    "label": "Sedan", "kind": "road_vehicle",
+    "source": "city-runtime/Car_6-preview.glb", "path": "models/vehicles/Car_6-preview.glb",
+    "size_m": [4.5, 1.8, 1.5], "forward": "+z", "up": "+y"
+  },
+  "taxi": {
+    "label": "Taxi", "kind": "road_vehicle",
+    "source": "city-runtime/Taxi_1-day-preview.glb", "path": "models/vehicles/Taxi_1-day-preview.glb",
+    "size_m": [4.7, 1.85, 1.65], "forward": "+z", "up": "+y"
+  },
+  "police": {
+    "label": "Police car", "kind": "road_vehicle",
+    "source": "city-runtime/Police_1-day-preview.glb", "path": "models/vehicles/Police_1-day-preview.glb",
+    "size_m": [4.8, 1.9, 1.7], "forward": "+z", "up": "+y"
+  },
+  "bicycle": {
+    "label": "Bicycle", "kind": "bicycle",
+    "source": "city-runtime/Bicycle_Man_34-bike-only.glb", "path": "models/vehicles/Bicycle_Man_34-bike-only.glb",
+    "size_m": [1.75, 0.7, 1.05], "forward": "+z", "up": "+y"
+  },
+  "pedestrian": {
+    "label": "Pedestrian", "kind": "pedestrian", "skinned": true,
+    "source": "city-runtime/casual27_m_highpoly_walk.glb", "path": "models/pedestrian/casual27_m_highpoly_walk.glb",
+    "size_m": [0.6, 0.5, 1.75], "forward": "+z", "up": "+y"
+  },
+  "x500": {
+    "label": "Holybro X500 (display size)", "kind": "uav",
+    "source": "city-runtime/holybro-x500-textured-preview.glb", "path": "models/uav/holybro-x500-textured-preview.glb",
+    "lod_source": "city-runtime/holybro-x500-lod1.glb", "lod": "models/uav/holybro-x500-lod1.glb",
+    "size_m": [1.0, 1.0, 0.52], "forward": "+z", "up": "+y"
+  },
+  "quadcopter-40": {
+    "label": "Camera quadcopter (display size)", "kind": "uav",
+    "source": "city-runtime/quadcopter-40-preview.glb", "path": "models/uav/quadcopter-40-preview.glb",
+    "lod_source": "city-runtime/quadcopter-40-lod1.glb", "lod": "models/uav/quadcopter-40-lod1.glb",
+    "size_m": [1.3, 1.07, 0.44], "forward": "+z", "up": "+y"
+  },
+  "air-taxi": {
+    "label": "Passenger air taxi (quadcopter-40 mesh at display size)", "kind": "uav",
+    "source": "city-runtime/quadcopter-40-preview.glb", "path": "models/uav/quadcopter-40-preview.glb",
+    "lod_source": "city-runtime/quadcopter-40-lod1.glb", "lod": "models/uav/quadcopter-40-lod1.glb",
+    "size_m": [4.2, 3.47, 1.42], "forward": "+z", "up": "+y"
+  },
+  "bus-stop": {
+    "label": "Bus stop", "kind": "furniture",
+    "source": "incoming/furniture/glb/bus_stop_4.glb", "path": "models/furniture/bus_stop_4.glb",
+    "size_m": [2.234, 4.0, 2.996], "forward": "+z", "up": "+y"
+  },
+  "street-light": {
+    "label": "Street light", "kind": "furniture",
+    "source": "incoming/furniture/glb/street_light_8.glb", "path": "models/furniture/street_light_8.glb",
+    "size_m": [0.298, 3.373, 6.0], "forward": "+z", "up": "+y"
+  },
+  "traffic-light": {
+    "label": "Traffic light", "kind": "furniture",
+    "source": "incoming/furniture/glb/traffic_light_4.glb", "path": "models/furniture/traffic_light_4.glb",
+    "size_m": [1.241, 3.949, 5.701], "forward": "+z", "up": "+y"
+  },
+  "wall-billboard": {
+    "label": "Wall billboard", "kind": "furniture",
+    "source": "incoming/furniture/glb/wall_billboard_2.glb", "path": "models/furniture/wall_billboard_2.glb",
+    "size_m": [0.1, 0.991, 0.583], "forward": "+z", "up": "+y"
+  }
+}

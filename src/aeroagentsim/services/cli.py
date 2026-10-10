@@ -219,6 +219,11 @@ def main() -> None:
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8002)
     serve.add_argument("--frontend", type=Path)
+    serve.add_argument(
+        "--studio-root",
+        type=Path,
+        help="Studio workspace storage (default: <out>/.workspaces)",
+    )
     demo = sub.add_parser("demo", help="Run or open a shipped demonstration")
     demo.add_argument("name", choices=["traffic-accident"])
     demo.add_argument(
@@ -405,9 +410,19 @@ def main() -> None:
             from .app import create_app
         except ImportError as exc:
             parser.error(f"serve requires aeroagentsim[server]: {exc}")
+        # The console's own origin feeds city URLs and the in-simulation camera.
+        if "AEROAGENTSIM_CONSOLE_URL" not in os.environ:
+            host = "127.0.0.1" if args.host in {"0.0.0.0", "::"} else args.host
+            os.environ["AEROAGENTSIM_CONSOLE_URL"] = f"http://{host}:{args.port}"
+        studio_root = args.studio_root or Path(
+            os.environ.get("AEROAGENTSIM_STUDIO_ROOT") or args.out / ".workspaces"
+        )
         uvicorn.run(
             create_app(
-                args.out, scenario_root=args.scenario_root, frontend=args.frontend
+                args.out,
+                scenario_root=args.scenario_root,
+                frontend=args.frontend,
+                studio_root=studio_root,
             ),
             host=args.host,
             port=args.port,

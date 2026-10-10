@@ -14,13 +14,18 @@ from aerokernel.sdk import ContextEngine, EngineContext
 from aerokernel.values import thaw
 
 from aeroagentsim.algorithms import load_algorithm
-from aeroagentsim.algorithms.protocols import Allocation, Assignment, PathPlanning
+from aeroagentsim.algorithms.protocols import (
+    Allocation,
+    Assignment,
+    PathPlanning,
+    Snapshot,
+)
 from aeroagentsim.engines.common import bootstrap_owned, policies
 from aeroagentsim.packs.arrivals import arrival_times
 from aeroagentsim.packs.common import distance, finite, ns, read, vec
 from aeroagentsim.platform.plugins import EngineBuild
 
-from .core import SNAPSHOT_FIELDS, refs, snapshot
+from .core import SNAPSHOT_FIELDS, SnapshotIndex, refs, snapshot
 from .overlay import TASK_KINDS
 
 TASK_FIELDS = (
@@ -53,7 +58,7 @@ CONSTANT_FIELDS = (
 @dataclass
 class Job:
     ref: EntityRef
-    release_ns: int
+    release_ns: int | None
     vehicle: str | None = None
     phase: str = "unreleased"
     created_ns: int = 0
@@ -81,11 +86,15 @@ class Flight:
     saved_goal: tuple[float, float, float] | None = None
     paused_route: tuple[tuple[float, float, float], ...] | None = None
     transit_resume: bool = False
+    cruise_altitude_m: float | None = None
+    avoidance_resume_goal: tuple[float, float, float] | None = None
+    avoidance_resume_purpose: str = "task"
 
 
 class LowaltTasks(ContextEngine):
     def __init__(self, build: EngineBuild) -> None:
         self.build, self.cfg = build, build.config
+        self.snapshot_index = SnapshotIndex(build)
         self.tick = ns(self.cfg["tick_ns"], "task tick", 1)
         self.algorithms = self.cfg["algorithms"]
         configs = self.cfg.get("algorithm_config", {})
@@ -122,8 +131,19 @@ class LowaltTasks(ContextEngine):
         self.moves: dict[str, Flight] = {}
         self.llm_pending = False
         self.llm_tasks: tuple[str, ...] = ()
+        # Allocation batching: pending orders accumulate for batch_window_s and
+        # the allocator then sees all of them (and all free drones) at once.
+        window = finite(self.cfg.get("batch_window_s", 0.0), "batch window", 0)
+        self.batch_ns = round(window * 1e9)
+        self.last_batch_slot = -1
+        # Cost-model constants handed to allocators (speed, energy per metre).
+        self.vehicle_model = self.cfg.get("vehicle_model", {})
         self.motion = self.cfg["motion"]
         self.radius = finite(self.cfg["arrival_radius_m"], "arrival radius", 0)
+        # Reuse only the committed base snapshot within ONE engine callback.
+        # Lazy reads preserve the causal scope of earlier receipts/releases.
+        self.snapshot_ctx: EngineContext | None = None
+        self.snapshot_state: Snapshot | None = None
         produced = TASK_FIELDS + CONSTANT_FIELDS + ("lowalt.payload_kg",)
         super().__init__(
             Partition(
@@ -135,6 +155,7 @@ class LowaltTasks(ContextEngine):
                     for f in dict.fromkeys(
                         SNAPSHOT_FIELDS
                         + (
+                            "lowalt.returning_to_charge",
                             "lowalt.velocity",
                             "lowalt.task_created_ns",
                             "lowalt.task_payload_kg",
@@ -193,7 +214,10 @@ class LowaltTasks(ContextEngine):
                 raise ValueError(f"unsupported task kind {kind}")
             pool = [self.by_id[identity] for identity in group["tasks"]]
             releases = arrival_times(group["arrivals"], len(pool), ctx.rng("arrivals"))
-            for ref, release in zip(pool, releases):
+            for index, ref in enumerate(pool):
+                # Authored slots beyond an explicit arrival cutoff never become
+                # orders. None is a missing arrival, not an invented timestamp.
+                release = releases[index] if index < len(releases) else None
                 if ref.id in self.jobs:
                     raise ValueError("task belongs to two generators")
                 origin = ctx.rng("sites").choice(group["origins"])
@@ -218,7 +242,9 @@ class LowaltTasks(ContextEngine):
         if set(self.jobs) != {r.id for r in refs(self.build, "lowalt:Task")}:
             raise ValueError("every authored task must belong to a generator")
         bootstrap_owned(ctx, replace(self.build, initial=initial))
-        for release in sorted({j.release_ns for j in self.jobs.values()}):
+        for release in sorted(
+            {j.release_ns for j in self.jobs.values() if j.release_ns is not None}
+        ):
             if release == ctx.now.ns:
                 ctx.ops.append(
                     ScheduleTimer(
@@ -257,11 +283,17 @@ class LowaltTasks(ContextEngine):
         flight.pending, flight.status = True, None
         self.pending.append(flight)
 
+    def _snapshot(self, ctx: EngineContext) -> Snapshot:
+        if self.snapshot_ctx is not ctx or self.snapshot_state is None:
+            self.snapshot_ctx = ctx
+            self.snapshot_state = snapshot(ctx, self.build, index=self.snapshot_index)
+        return self.snapshot_state
+
     def _route(
         self, ctx: EngineContext, flight: Flight, goal: tuple[float, float, float]
     ) -> None:
         start = vec(read(ctx, flight.vehicle, "lowalt.position"))
-        state = snapshot(ctx, self.build)
+        state = self._snapshot(ctx)
         exemptions = self.cfg.get("zone_exemptions", {})
         state = replace(
             state,
@@ -281,8 +313,12 @@ class LowaltTasks(ContextEngine):
             if kind in self.work_planners and not flight.work_active:
                 planner = self.work_planners[kind]
                 flight.work_active = True
-        cruise = self.cfg.get("cruise_altitudes", {}).get(
-            read(ctx, flight.vehicle, "lowalt.vehicle_class")
+        cruise = (
+            flight.cruise_altitude_m
+            if flight.cruise_altitude_m is not None
+            else self.cfg.get("cruise_altitudes", {}).get(
+                read(ctx, flight.vehicle, "lowalt.vehicle_class")
+            )
         )
         if (
             planner in self.work_planners.values()
@@ -310,6 +346,9 @@ class LowaltTasks(ContextEngine):
     def _assign(self, ctx: EngineContext, assignments: tuple[Assignment, ...]) -> None:
         used_tasks: set[str] = set()
         used_vehicles: set[str] = set()
+        vehicles = (
+            {v.id: v for v in self._snapshot(ctx).vehicles} if assignments else {}
+        )
         for proposal in assignments:
             if proposal.task in used_tasks or proposal.vehicle in used_vehicles:
                 raise ValueError("allocator duplicated task or vehicle")
@@ -324,11 +363,7 @@ class LowaltTasks(ContextEngine):
                 or flight.command_id is not None
             ):
                 raise ValueError("allocation proposal selects busy task or vehicle")
-            state = next(
-                v
-                for v in snapshot(ctx, self.build).vehicles
-                if v.id == proposal.vehicle
-            )
+            state = vehicles[proposal.vehicle]
             payload = finite(
                 read(ctx, job.ref, "lowalt.task_payload_kg"), "task payload", 0
             )
@@ -365,6 +400,11 @@ class LowaltTasks(ContextEngine):
             self._brake(ctx, flight)
             return
         if action in {"return_to_pad", "altitude"}:
+            if action == "altitude" and flight.purpose == "charge":
+                # Avoidance must resume the physical charging trip, not mark
+                # the aircraft idle and leave the reserve recall open forever.
+                flight.avoidance_resume_purpose = "charge"
+                flight.avoidance_resume_goal = flight.goal
             if flight.purpose == "task":
                 if flight.work_active:
                     flight.saved_route = (
@@ -383,6 +423,14 @@ class LowaltTasks(ContextEngine):
                 flight.paused_route = None
                 flight.saved_goal = flight.goal
             target = vec(payload["target"])
+            if action == "altitude":
+                # Keep the assigned separation layer on subsequent transit
+                # legs, rather than immediately route back into the conflict.
+                flight.cruise_altitude_m = (
+                    max(target[2], flight.cruise_altitude_m)
+                    if flight.cruise_altitude_m is not None
+                    else target[2]
+                )
             flight.route = ()
             # Returning to charge pauses the real task; it is resumed afterwards.
             flight.goal = target
@@ -412,6 +460,7 @@ class LowaltTasks(ContextEngine):
         self._submit(ctx, flight, None)
 
     def on_inputs(self, ctx: EngineContext) -> None:
+        self.snapshot_ctx, self.snapshot_state = None, None
         for dirty in ctx.dirty:
             if dirty.kind != "receipt":
                 continue
@@ -689,7 +738,11 @@ class LowaltTasks(ContextEngine):
 
     def _poll(self, ctx: EngineContext) -> None:
         for job in self.jobs.values():
-            if job.phase == "unreleased" and ctx.now.ns >= job.release_ns:
+            if (
+                job.phase == "unreleased"
+                and job.release_ns is not None
+                and ctx.now.ns >= job.release_ns
+            ):
                 job.created_ns = job.release_ns
                 ctx.set(job.ref, "lowalt.task_created_ns", job.created_ns)
                 self._state(ctx, job, "queued")
@@ -735,11 +788,25 @@ class LowaltTasks(ContextEngine):
                         < self.cfg["charging_resume_soc"]
                     ):
                         continue
-                    flight.purpose = "task"
-                    flight.transit_resume = bool(flight.saved_route)
-                    flight.goal, flight.route = flight.saved_goal, flight.saved_route
-                    flight.saved_goal, flight.saved_route = None, ()
-                    flight.replan = not bool(flight.route)
+                    if (
+                        flight.purpose == "avoidance"
+                        and flight.avoidance_resume_purpose == "charge"
+                    ):
+                        flight.purpose = "charge"
+                        flight.goal = flight.avoidance_resume_goal
+                        flight.route = ()
+                        flight.avoidance_resume_goal = None
+                        flight.avoidance_resume_purpose = "task"
+                        flight.replan = True
+                    else:
+                        flight.purpose = "task"
+                        flight.transit_resume = bool(flight.saved_route)
+                        flight.goal, flight.route = (
+                            flight.saved_goal,
+                            flight.saved_route,
+                        )
+                        flight.saved_goal, flight.saved_route = None, ()
+                        flight.replan = not bool(flight.route)
             if flight.job is None and flight.purpose == "task":
                 continue
             if flight.paused_route is not None:
@@ -844,7 +911,7 @@ class LowaltTasks(ContextEngine):
                 goal = flight.route[0]
                 from aeroagentsim.packs.geometry import segment_hits_box
 
-                state = snapshot(ctx, self.build)
+                state = self._snapshot(ctx)
                 start = vec(read(ctx, flight.vehicle, "lowalt.position"))
                 if any(
                     z.active
@@ -910,7 +977,7 @@ class LowaltTasks(ContextEngine):
                         continue
                 flight.route = flight.route[1:]
                 self._submit(ctx, flight, goal)
-        state = snapshot(ctx, self.build)
+        state = self._snapshot(ctx)
         # Facts proposed above become visible at the next cut; filter against
         # retained state too so a completed task cannot be allocated twice.
         state = replace(
@@ -927,6 +994,7 @@ class LowaltTasks(ContextEngine):
                     if "vehicle_kinds" in self.cfg
                     else (),
                     available=v.available
+                    and not read(ctx, self.by_id[v.id], "lowalt.returning_to_charge")
                     and self.flights[v.id].job is None
                     and self.flights[v.id].purpose == "task"
                     and not self.flights[v.id].pending
@@ -938,6 +1006,7 @@ class LowaltTasks(ContextEngine):
         )
         from aeroagentsim.algorithms.builtins import eligible
 
+        state = self._with_vehicle_model(ctx, state)
         if any(eligible(t, v) for t in state.tasks for v in state.vehicles):
             if self.algorithms["allocation"] == "llm":
                 if not self.llm_pending:
@@ -955,8 +1024,40 @@ class LowaltTasks(ContextEngine):
                     )
                     self.llm_pending = True
                     self.llm_tasks = tuple(t.id for t in state.tasks)
-            else:
+            elif self._batch_due(ctx):
                 self._assign(ctx, self.allocator.allocate(state))
+
+    def _batch_due(self, ctx: EngineContext) -> bool:
+        """True at the first poll of each batch window (always without a window)."""
+        if self.batch_ns <= 0:
+            return True
+        slot = ctx.now.ns // self.batch_ns
+        if slot <= self.last_batch_slot:
+            return False
+        self.last_batch_slot = slot
+        return True
+
+    def _with_vehicle_model(self, ctx: EngineContext, state: Snapshot) -> Snapshot:
+        """Attach speed, energy rate and battery capacity for cost estimates."""
+        model = self.vehicle_model
+        return replace(
+            state,
+            vehicles=tuple(
+                replace(
+                    v,
+                    speed_m_s=finite(
+                        model.get("speed_m_s", v.speed_m_s), "speed", 1e-9
+                    ),
+                    energy_per_m_j=finite(
+                        model.get("energy_per_m_j", v.energy_per_m_j), "energy rate", 0
+                    ),
+                    capacity_j=finite(
+                        read(ctx, self.by_id[v.id], "lowalt.capacity_j"), "capacity", 0
+                    ),
+                )
+                for v in state.vehicles
+            ),
+        )
 
 
 def build(context: EngineBuild) -> LowaltTasks:

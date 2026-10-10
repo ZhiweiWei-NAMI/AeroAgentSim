@@ -97,7 +97,35 @@ function merge(parts: T.BufferGeometry[]): T.BufferGeometry {
   return merged;
 }
 
-export async function loadTrafficCity(url: string, assets: Assets, signal: AbortSignal): Promise<T.Group> {
+const cityCache = new Map<string, Promise<T.Group>>();
+export function clearTrafficCityCache() { cityCache.clear(); }
+function markShared(root: T.Object3D) {
+  root.traverse(node => {
+    if (!(node instanceof T.Mesh || node instanceof T.Line)) return;
+    node.geometry.userData.sharedAsset = true;
+    for (const material of Array.isArray(node.material) ? node.material : [node.material]) material.userData.sharedAsset = true;
+  });
+}
+
+/**
+ * Page-session cached: the city is downloaded and built once per URL, every caller gets a
+ * clone sharing geometry/materials (never disposed per view). The shared build is not tied
+ * to one caller's signal; an aborted caller simply drops its clone.
+ */
+export function loadTrafficCity(url: string, assets: Assets, signal: AbortSignal): Promise<T.Group> {
+  let task = cityCache.get(url);
+  if (!task) {
+    task = buildTrafficCity(url, assets, new AbortController().signal).then(group => { markShared(group); return group; });
+    cityCache.set(url, task);
+    task.catch(() => { if (cityCache.get(url) === task) cityCache.delete(url); });
+  }
+  return task.then(group => {
+    if (signal.aborted) throw Error('Traffic city loading aborted');
+    return group.clone(true);
+  });
+}
+
+async function buildTrafficCity(url: string, assets: Assets, signal: AbortSignal): Promise<T.Group> {
   const response = await fetch(url, { signal });
   if (!response.ok) throw Error(`Traffic scene HTTP ${response.status}: ${url}`);
   const scene = await response.json() as TrafficScene;

@@ -56,6 +56,28 @@ TASK_KIND_CATEGORY = {
     "incident_response": "emergency",
 }
 
+# Plain nouns and completion phrases per task kind, used by task narratives.
+TASK_NOUN = {
+    "parcel": "parcel order",
+    "medical": "urgent medical order",
+    "inspection": "inspection job",
+    "survey": "survey job",
+    "spraying": "spraying job",
+    "passenger": "passenger trip",
+    "patrol": "patrol round",
+    "incident_response": "incident response",
+}
+TASK_DONE = {
+    "parcel": "delivered the parcel to",
+    "medical": "delivered urgent supplies to",
+    "inspection": "finished inspecting",
+    "survey": "finished surveying",
+    "spraying": "finished spraying",
+    "passenger": "dropped off the passenger at",
+    "patrol": "finished patrolling",
+    "incident_response": "responded at",
+}
+
 LOWALT_DEFAULTS: dict[str, dict[str, Any]] = {
     "lowalt.task.created": {
         "template": "{task} task created",
@@ -190,7 +212,14 @@ def validate_declarations(data: dict[str, Any]) -> None:
             raise ValueError("event_narratives: schema id must be a nonempty string")
         if not isinstance(declaration, dict):
             raise ValueError(f"event_narratives.{schema_id}: mapping required")
-        allowed = {"template", "category", "severity", "entities", "position"}
+        allowed = {
+            "template",
+            "category",
+            "severity",
+            "entities",
+            "position",
+            "hidden",
+        }
         if extra := set(declaration) - allowed:
             raise ValueError(
                 f"event_narratives.{schema_id}: unknown keys {sorted(extra)}"
@@ -254,8 +283,11 @@ class NarrativeProjector:
         self,
         declarations: dict[str, dict[str, Any]],
         position_fields: set[str] | None = None,
+        labels: dict[str, str] | None = None,
     ) -> None:
         self._declarations = declarations
+        self._labels = labels or {}
+        self._task_info: dict[str, dict[str, str]] = {}
         self._seen: set[str] = set()
         self._position_fields = position_fields or set()
         self._task_kinds: dict[str, str] = {}
@@ -343,13 +375,22 @@ class NarrativeProjector:
             validate_declarations(overrides)
             for key, value in overrides.items():
                 declarations[key] = dict(value)
-        return cls(declarations, position_fields)
+        labels = {
+            e["id"]: e["label"]
+            for e in scenario.get("entities", [])
+            if isinstance(e, dict)
+            and type(e.get("id")) is str
+            and type(e.get("label")) is str
+            and e["label"]
+        }
+        return cls(declarations, position_fields, labels)
 
     def cursor(self) -> dict[str, Any]:
         """Dedup/position state needed to restore this projector later."""
         return {
             "seen": sorted(self._seen),
             "task_kinds": dict(self._task_kinds),
+            "task_info": {k: dict(v) for k, v in self._task_info.items()},
             "positions": [
                 [*key, list(value)] for key, value in self._positions.items()
             ],
@@ -361,6 +402,10 @@ class NarrativeProjector:
             raise ValueError("narrative cursor: mapping required")
         self._task_kinds = {
             str(task): str(kind) for task, kind in cursor["task_kinds"].items()
+        }
+        self._task_info = {
+            str(task): {str(k): str(v) for k, v in info.items()}
+            for task, info in cursor.get("task_info", {}).items()
         }
         self._seen.clear()
         self._positions.clear()
@@ -467,6 +512,8 @@ class NarrativeProjector:
         declaration = self._declarations.get(message.schema_id)
         if declaration is None:
             return None  # Undeclared kernel events are ignored intentionally.
+        if declaration.get("hidden"):
+            return None  # Engine bookkeeping stays in the journal only.
         payload = thaw(message.payload)
         if not isinstance(payload, dict):
             raise ValueError(
@@ -487,9 +534,10 @@ class NarrativeProjector:
                 category = TASK_KIND_CATEGORY[self._task_kinds[task]]
 
         values: dict[str, str] = {}
+        if message.schema_id.startswith("lowalt.task."):
+            values.update(self._task_values(message.schema_id, payload))
         for name, value in payload.items():
-            rendered = _entity_id(value)
-            values[name] = rendered if rendered is not None else _plain(value)
+            values[name] = self._render(value)
         for name in _fields(declaration["template"]):
             if name not in values:
                 raise ValueError(
@@ -515,6 +563,50 @@ class NarrativeProjector:
         if position is not None:
             event["position"] = list(position)
         return event
+
+    def label(self, identity: str) -> str:
+        """Friendly name of an entity: its authored label, else the id."""
+        return self._labels.get(identity, identity)
+
+    def _render(self, value: Any) -> str:
+        """Plain text for a payload member; never a raw structure or ref."""
+        if type(value) is str:
+            return self.label(value) if value in self._labels else value
+        identity = _entity_id(value)
+        if identity is not None:
+            return self.label(identity)
+        if isinstance(value, (list, tuple)):
+            parts = [self._render(item) for item in value]
+            if len(parts) > 3:
+                return ", ".join(parts[:3]) + f" and {len(parts) - 3} more"
+            return ", ".join(parts) if parts else "none"
+        if isinstance(value, dict):
+            return "details"
+        if value is None:
+            return "unknown"
+        return _plain(value)
+
+    def _task_values(self, schema: str, payload: dict[str, Any]) -> dict[str, str]:
+        """Derived placeholders {noun}, {done}, {origin}, {destination} per task."""
+        task = _entity_id(payload.get("task"))
+        if schema == "lowalt.task.created" and task is not None:
+            self._task_info[task] = {
+                "kind": str(payload.get("kind", "")),
+                "origin": _entity_id(payload.get("origin")) or "",
+                "destination": _entity_id(payload.get("destination")) or "",
+            }
+        info = self._task_info.get(task or "", {})
+        kind = info.get("kind", "")
+        return {
+            "noun": TASK_NOUN.get(kind, "task"),
+            "done": TASK_DONE.get(kind, "completed the task at"),
+            "origin": self.label(info["origin"])
+            if info.get("origin")
+            else "its pickup",
+            "destination": self.label(info["destination"])
+            if info.get("destination")
+            else "its destination",
+        }
 
     def _position(
         self,
@@ -543,8 +635,9 @@ def _fields(template: str) -> list[str]:
 def _plain(value: Any) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
-    if isinstance(value, float) and value.is_integer():
-        return str(int(value))
+    if isinstance(value, float):
+        rounded = round(value, 1)
+        return str(int(rounded)) if rounded.is_integer() else str(rounded)
     return str(value)
 
 

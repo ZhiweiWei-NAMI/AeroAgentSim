@@ -14,9 +14,11 @@ export interface AssetOptions { dracoPath?: string; ktx2Path?: string }
 export function disposeObject(root: T.Object3D) {
   root.traverse(node => {
     if (!(node instanceof T.Mesh || node instanceof T.Line)) return;
-    node.geometry.dispose();
     if (node instanceof T.InstancedMesh) node.dispose();
+    // Session-cached model resources are shared between views; never dispose them per view.
+    if (!node.geometry.userData.sharedAsset) node.geometry.dispose();
     for (const material of Array.isArray(node.material) ? node.material : [node.material]) {
+      if (material.userData.sharedAsset) continue;
       for (const value of Object.values(material)) if (value instanceof T.Texture) value.dispose();
       material.dispose();
     }
@@ -24,19 +26,29 @@ export function disposeObject(root: T.Object3D) {
   root.removeFromParent();
 }
 
+/** Page-session cache of parsed GLB scenes, keyed by URL. Views receive clones sharing geometry/materials. */
+const sharedModels = new Map<string, Promise<T.Object3D>>();
+export function clearSharedModels() { sharedModels.clear(); }
+function markShared(root: T.Object3D) {
+  root.traverse(node => {
+    if (!(node instanceof T.Mesh)) return;
+    node.geometry.userData.sharedAsset = true;
+    for (const material of Array.isArray(node.material) ? node.material : [node.material]) material.userData.sharedAsset = true;
+  });
+}
+
 export class Assets {
   private draco = new DRACOLoader();
   private ktx: KTX2Loader;
   private loader: GLTFLoader;
-  private models = new Map<string, Promise<T.Object3D>>();
-  private disposed = false;
+  private pending = new Set<Promise<unknown>>();
   constructor(renderer: T.WebGLRenderer, options: AssetOptions = {}) {
     this.draco.setDecoderPath(options.dracoPath ?? '/decoders/draco/');
     this.ktx = new KTX2Loader().setTranscoderPath(options.ktx2Path ?? '/decoders/basis/').detectSupport(renderer);
     this.loader = new GLTFLoader().setDRACOLoader(this.draco).setKTX2Loader(this.ktx).setMeshoptDecoder(MeshoptDecoder);
   }
   model(url: string): Promise<T.Object3D> {
-    let task = this.models.get(url);
+    let task = sharedModels.get(url);
     if (!task) {
       task = this.loader.loadAsync(url).then(gltf => {
         gltf.scene.userData.bodyToAssetQuaternion = gltf.parser.json.asset?.extras?.bodyToAssetQuaternion;
@@ -46,12 +58,14 @@ export class Assets {
           if (node instanceof T.Mesh) { node.castShadow = true; node.receiveShadow = true; }
         });
         for (const light of lights) light.removeFromParent();
-        if (this.disposed) disposeObject(gltf.scene);
+        markShared(gltf.scene);
         return gltf.scene;
       });
-      this.models.set(url, task);
+      sharedModels.set(url, task);
+      const own = task.then(() => {}, () => { if (sharedModels.get(url) === task) sharedModels.delete(url); });
+      this.pending.add(own); void own.finally(() => this.pending.delete(own));
     }
-    return task;
+    return task.then(scene => scene.clone(true));
   }
   async hdri(url: string, renderer: T.WebGLRenderer) {
     const hdr = await new RGBELoader().loadAsync(url);
@@ -61,9 +75,8 @@ export class Assets {
     return environment;
   }
   dispose() {
-    this.disposed = true;
-    for (const task of this.models.values()) void task.then(disposeObject, () => {});
-    this.models.clear(); this.draco.dispose(); this.ktx.dispose();
+    // Loaders may still be serving a cache entry other views wait on; release them afterwards.
+    void Promise.allSettled([...this.pending]).then(() => { this.draco.dispose(); this.ktx.dispose(); });
   }
 }
 

@@ -8,7 +8,7 @@ from typing import Any
 from aeroagentsim.packs.common import finite, ns, vec
 
 from .overlay import overlay
-from .rules import apply_rules
+from .rules import apply_rules, configure_detection
 
 SECOND = 1_000_000_000
 SLOTS = ("allocation", "path_planning", "conflict_resolution", "charging")
@@ -27,6 +27,7 @@ def expand(document: dict[str, Any]) -> None:
     marked by their authored prefix and recreated on load, including replay of
     a pinned scenario. No hidden defaults or external geometry is consulted.
     """
+    configure_detection(document)
     if "algorithms" in document:
         algorithms = document["algorithms"]
         if not isinstance(algorithms, dict) or set(algorithms) - set(SLOTS):
@@ -138,7 +139,7 @@ def expand(document: dict[str, Any]) -> None:
 
 
 def parcel_document(
-    fleet_size: int = 6,
+    fleet_size: int = 8,
     order_rate: float = 0.08,
     allocator: str = "nearest",
     path_planner: str = "corridor_astar",
@@ -392,6 +393,7 @@ def parcel_document(
                                 "mode": "poisson",
                                 "rate_per_s": order_rate,
                                 "start_ns": 0,
+                                "end_ns": 180 * SECOND,
                             },
                         }
                     ],

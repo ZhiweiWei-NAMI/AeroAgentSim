@@ -2,6 +2,7 @@ import {displayTime} from '../pages/display-time';
 import { useMemo, useState } from 'react';
 import { CATEGORY_STYLE, CategoryIcon } from './categories';
 import type { BusinessEvent, Category, Severity } from './api';
+import { openCauseTrace } from '../trace/bus';
 import './results.css';
 
 export interface EventFeedProps {
@@ -69,8 +70,9 @@ export function EventFeed({ events, onSelect, selectedEntities,available=true,on
           {visible.map((event, index) => {
             const style = CATEGORY_STYLE[event.category];
             const highlighted = event.entities.some(entity => selected.has(entity));
+            const text = event.entities.reduce((text,id)=>text.replace(new RegExp(`(?<![\\w-])${id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(?![\\w-])`,'g'),entityNames?.get(id)??id),event.text);
             return (
-              <li key={`${event.at_ns}-${index}`}>
+              <li key={`${event.at_ns}-${index}`} className="newc-event-item">
                 <button type="button"
                   className={`newc-event${highlighted ? ' is-selected' : ''}`}
                   style={{ borderLeftColor: style.color }}
@@ -85,8 +87,14 @@ export function EventFeed({ events, onSelect, selectedEntities,available=true,on
                       <span>{style.label}</span>
                       <span className={severityClass(event.severity)}>{event.severity}</span>
                     </span>
-                    <span className="newc-event-text">{event.entities.reduce((text,id)=>text.replace(new RegExp(`(?<![\\w-])${id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(?![\\w-])`,'g'),entityNames?.get(id)??id),event.text)}</span>
+                    <span className="newc-event-text">{text}</span>
                   </span>
+                </button>
+                {/* Opens the cause → effect story (Expert view) for this moment. */}
+                <button type="button" className="newc-event-why" title="Why did this happen?"
+                  aria-label="Why did this happen?"
+                  onClick={() => openCauseTrace({ kind: 'event', atNs: event.at_ns, text: event.text, entities: event.entities })}>
+                  Why?
                 </button>
               </li>
             );

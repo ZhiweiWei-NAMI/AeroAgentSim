@@ -276,6 +276,7 @@ def place_document(document: dict[str, Any], layout: dict[str, Any]) -> dict[str
         "clinic": layout["clinic"],
         "customer": layout["customer"],
         "customer-east": layout["customer"],
+        "depot-east": layout["east"],
         "east-port": layout["east"],
         "east-pad": layout["east"],
         "north-port": layout["north"],
@@ -375,7 +376,32 @@ def place_document(document: dict[str, Any], layout: dict[str, Any]) -> dict[str
                 ]
     fleet = doc["generators"]["fleet"]
     fleet["starts"] = [locations.get("home", layout["plaza"])]
+    if identity in {"parcel-delivery", "medical-delivery"}:
+        # Drones start at both vertiports so allocators see different distances.
+        fleet["starts"] = [layout["plaza"], layout["east"]]
     fleet["spacing_m"] = 1.0
+    if identity == "parcel-delivery":
+        # Two minutes to clear the final burst: demand remains seeded and
+        # rate-dependent; unused authored task slots are never created orders.
+        for group in cfg["generators"]:
+            group["arrivals"]["end_ns"] = 180_000_000_000
+        # Delivery sites are multi-bay aprons; parcel pickup never uses the
+        # passenger landing reservation queue (capacity was not its bottleneck).
+        for entity in doc["entities"]:
+            if entity["type"] in {"lowalt:Vertiport", "lowalt:ChargingPad"}:
+                entity["facts"]["lowalt.site_capacity"] = 4
+    if identity == "medical-delivery":
+        # Keep preemption early; routine demand has the same measured cutoff.
+        for group in cfg["generators"]:
+            if group["arrivals"]["mode"] == "poisson":
+                group["arrivals"].pop("times_ns", None)
+                group["arrivals"]["end_ns"] = 180_000_000_000
+            else:
+                group["arrivals"]["times_ns"] = [
+                    8_000_000_000,
+                    90_000_000_000,
+                    150_000_000_000,
+                ]
     if identity == "city-day":
         # A second rooftop pickup keeps a parcel departure independent of the
         # congested plaza. Medical preemption chooses the closest parcel drone.
@@ -445,6 +471,7 @@ def place_document(document: dict[str, Any], layout: dict[str, Any]) -> dict[str
         "home-pad": "West Plaza charging pad",
         "hospital": "Hospital rooftop pad",
         "clinic": "Clinic rooftop",
+        "depot-east": "Vertiport East Roof",
         "east-port": "Vertiport East Roof",
         "north-port": "Vertiport North Roof",
         "vertiport-1": "Vertiport West Plaza",

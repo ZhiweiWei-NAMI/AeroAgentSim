@@ -6,8 +6,10 @@ import { Details } from '../console/Details';
 import { PageState } from '../console/PageState';
 import { entityLabel, readableLabel, stateValue, displayLabel, displayUnit } from './inspection-format';
 import { ConceptHelp } from '../console/ConceptHelp';
+import { MomentsList, ChangeList } from '../trace/EntityStory';
+import type { CauseRef } from '../trace/cause-trace';
 
-export function InspectionPanel({ store, selected, onSeek }: { store: TemporalFeedStore; selected?: EntityKey; onSeek: (cut: number) => void }) {
+export function InspectionPanel({ store, selected, onSeek, onOpenTrace }: { store: TemporalFeedStore; selected?: EntityKey; onSeek: (cut: number) => void; onOpenTrace?: (ref: CauseRef, cut?: number) => void }) {
   const entity = selected && store.entities.get(entityId(selected));
   if (!entity) return <PageState kind="empty" title={selected ? 'Entity absent at this moment' : 'Select an entity'} description="Select a node in the graph or an actor in the city view to explore its recorded state." />;
   const includes = (roles: Record<string, EntityKey>) => Object.values(roles).some(key => entityId(key) === entityId(entity.key));
@@ -24,10 +26,14 @@ export function InspectionPanel({ store, selected, onSeek }: { store: TemporalFe
         return <div key={id}><dt>{displayLabel(field?.displayName,id)}{unit && <small>{unit}</small>}</dt><dd>{value === undefined ? <Details title={displayLabel(field?.displayName,id)} buttonLabel="View value"><pre>{exactValue(fact.value)}</pre></Details> : <span>{value}</span>}</dd></div>;
       })}</dl> : <p className="inspection-empty">No fields recorded at this moment.</p>}
     </section>
+    {onOpenTrace && <section aria-label="Why did things happen to this entity"><h3>Why did it happen?<ConceptHelp topic="Cause and effect" description="Pick a moment to see what set it off, which event-chain step ran, which shared-state fields it changed and what it caused next." guide="behaviours.md"/></h3>
+      <MomentsList store={store} entity={entity.key} onOpen={onOpenTrace} /></section>}
+    {onOpenTrace && <section aria-label="What changed for this entity"><h3>What changed<ConceptHelp topic="What changed" description="Every recorded change to this entity's state, with who wrote it. Click one to jump to that moment and see its cause." guide="observations.md"/></h3>
+      <ChangeList store={store} entity={entity.key} onOpen={onOpenTrace} /></section>}
     <section aria-label="Selected entity chains"><h3>Event chains<ConceptHelp topic="Event chains" description="Chain instances record which workflow state is active for this entity at the selected moment." guide="behaviours.md"/><span>{chains.length}</span></h3>
       {!store.hasChainRecords ? <p className="inspection-empty">This journal has no chain records.</p> : !chains.length ? <p className="inspection-empty">No chains involve this entity at this moment.</p> : chains.map(row => <article className="inspection-chain" key={row.instanceId}><strong>{readableLabel(row.templateId)}</strong><span className={`inspection-badge state-${row.lifecycle}`}>{readableLabel(row.state)}</span><small>{readableLabel(row.lifecycle)}</small><Details title="Chain record" buttonLabel="Chain details"><pre>{exactValue(row)}</pre>{store.chainRecords(row.instanceId).filter(item => item.value.op !== 'close' && item.commit.commitIndex <= (store.viewCursor?.knownAt ?? -1)).map((item, ordinal) => <p key={`${item.commit.commitIndex}/${ordinal}`}><button className="console-btn" onClick={() => onSeek(item.commit.commitIndex)}>Seek {readableLabel(item.value.state)}</button></p>)}</Details></article>)}
     </section>
-    <section aria-label="Selected entity predicates"><h3>Predicates<ConceptHelp topic="Predicate truth" description="Predicates show the recorded condition and whether its inputs were available at this moment." guide="predicates.md"/><span>{predicates.length}</span></h3>
+    <section aria-label="Selected entity predicates"><h3>Conditions (predicates)<ConceptHelp topic="Predicate truth" description="Predicates show the recorded condition and whether its inputs were available at this moment." guide="predicates.md"/><span>{predicates.length}</span></h3>
       {!store.hasPredicateRecords ? <p className="inspection-empty">This journal has no predicate evaluations.</p> : !predicates.length ? <p className="inspection-empty">No evaluations involve this entity at this moment.</p> : predicates.map(row => <article className="inspection-predicate" key={row.contextId}><strong>{readableLabel(row.predicateId)}</strong><span className={`inspection-badge truth-${row.value === null ? 'unknown' : row.value}`}>{row.status === 'known' ? (row.value ? 'True' : 'False') : row.status === 'required_input' ? 'Missing input' : 'Invalid input'}</span><Details title="Predicate evaluation" buttonLabel="Evaluation details"><pre>{exactValue(row)}</pre><button className="console-btn" onClick={() => onSeek(row.readCut.index)}>Seek evaluation cut</button></Details></article>)}
     </section>
     <Details title="Entity identity and recorded facts" buttonLabel="Technical details"><pre>{exactValue({key:entity.key,type:entity.typeId,fields:[...entity.fields.values()],cursor:store.viewCursor})}</pre></Details>

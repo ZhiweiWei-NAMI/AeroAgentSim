@@ -1495,6 +1495,22 @@ registry:
       role: observation
       unit: '1'
       time_semantics: canonical computation; half-open validity
+  - id: lowalt.returning_to_charge
+    type: lowalt:UAV
+    schema:
+      type: boolean
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: canonical computation; half-open validity
+  - id: lowalt.zone_id
+    type: lowalt:AirspaceZone
+    schema:
+      type: string
+    metadata:
+      role: observation
+      unit: '1'
+      time_semantics: canonical computation; half-open validity
   messages:
   - id: lowalt.task.created
     kind: event
@@ -3313,6 +3329,7 @@ entities:
     lowalt.distance_m: 0.0
     lowalt.position: *id025
     lowalt.wind_limit_mps: 15.0
+    lowalt.returning_to_charge: false
   label: Air taxi 1
   vehicle_class: passenger
   business: mobility
@@ -3340,6 +3357,7 @@ entities:
     - -100.037
     - 0.0
     lowalt.wind_limit_mps: 6.0
+    lowalt.returning_to_charge: false
   label: Power-line survey drone
   vehicle_class: inspection
   business: inspection
@@ -3367,6 +3385,7 @@ entities:
     - -95.037
     - 5.0
     lowalt.wind_limit_mps: 5.0
+    lowalt.returning_to_charge: false
   label: Field sprayer
   vehicle_class: spraying
   business: agriculture
@@ -30800,6 +30819,7 @@ bindings:
     type: lowalt:AirspaceZone
     fields:
     - lowalt.zone_active
+    - lowalt.zone_id
   - writer: environment
     type: lowalt:Environment
     fields:
@@ -30928,11 +30948,13 @@ bindings:
     fields:
     - lowalt.zone_lower
     - lowalt.zone_upper
+    - lowalt.zone_id
   - writer: behaviour
     type: lowalt:UAV
     fields:
     - lowalt.weather_held
     - lowalt.wind_limit_mps
+    - lowalt.returning_to_charge
   lifecycle:
   - controller: tasks
     type: lowalt:UAV
@@ -31055,6 +31077,7 @@ generators:
       lowalt.energy_used_j: 0.0
       lowalt.distance_m: 0.0
       lowalt.wind_limit_mps: 12.0
+      lowalt.returning_to_charge: false
     label: Drone P{index}
     business: logistics
     vehicle_class: parcel
@@ -31229,7 +31252,7 @@ engines:
         charging:
           threshold: 1.0
       arrival_radius_m: 0.5
-      dispatch_min_soc: 0.05
+      dispatch_min_soc: 0.2
       charging_resume_soc: 0.9
       generators:
       - kind: parcel
@@ -32773,7 +32796,7 @@ ingress_streams:
 behaviours:
 - format: aeroagentsim.behaviour-package/v1
   id: lowalt.rules
-  revision: 1
+  revision: 5
   registry:
     snapshot: registry.snapshot.json
   evaluator:
@@ -32805,39 +32828,166 @@ behaviours:
       profile: committed_reactive/v1
       roles:
         uav: lowalt:UAV
+        zone: lowalt:AirspaceZone
       expression:
-        op: gt
+        op: contains
         args:
-        - op: len
-          args:
-          - field: lowalt.breached_zones
-            role: uav
-            path: []
-        - literal: 0
+        - field: lowalt.breached_zones
+          role: uav
+          path: []
+        - field: lowalt.zone_id
+          role: zone
+          path: []
     closer_than_safety_distance:
       profile: committed_reactive/v1
       roles:
         uav: lowalt:UAV
+      parameters:
+        horizontal_m: 20.0
       expression:
-        op: ne
+        op: and
         args:
-        - field: lowalt.conflict_partner
-          role: uav
-          path: []
-        - literal: ''
+        - op: ne
+          args:
+          - field: lowalt.conflict_partner
+            role: uav
+            path: []
+          - literal: ''
+        - op: lt
+          args:
+          - field: lowalt.conflict_gap_m
+            role: uav
+            path:
+            - 0
+          - parameter: horizontal_m
     wind_above_limit:
       profile: committed_reactive/v1
       roles:
         uav: lowalt:UAV
+      parameters:
+        parcel_limit_mps: 12.0
+        medical_limit_mps: 12.0
+        inspection_limit_mps: 6.0
+        survey_limit_mps: 6.0
+        spraying_limit_mps: 5.0
+        passenger_limit_mps: 15.0
+        patrol_limit_mps: 12.0
+        incident_response_limit_mps: 14.0
       expression:
-        op: gt
+        op: or
         args:
-        - field: lowalt.wind_mps
-          role: uav
-          path: []
-        - field: lowalt.wind_limit_mps
-          role: uav
-          path: []
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: parcel
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: parcel_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: medical
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: medical_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: inspection
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: inspection_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: survey
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: survey_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: spraying
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: spraying_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: passenger
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: passenger_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: patrol
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: patrol_limit_mps
+        - op: and
+          args:
+          - op: eq
+            args:
+            - field: lowalt.vehicle_class
+              role: uav
+              path: []
+            - literal: incident_response
+          - op: gt
+            args:
+            - field: lowalt.wind_mps
+              role: uav
+              path: []
+            - parameter: incident_response_limit_mps
   chains:
     battery_reserve:
       roles:
@@ -32867,6 +33017,12 @@ behaviours:
         to: returning
         priority: 0
         actions:
+        - id: recalling
+          kind: set
+          entity:
+            $role: uav
+          field: lowalt.returning_to_charge
+          value: true
         - id: battery-low
           kind: emit
           schema: lowalt.energy.low
@@ -32892,7 +33048,13 @@ behaviours:
           status: succeeded
         to: monitoring
         priority: 0
-        actions: []
+        actions:
+        - id: ready
+          kind: set
+          entity:
+            $role: uav
+          field: lowalt.returning_to_charge
+          value: false
       - id: recall-failed
         from: returning
         'on':
@@ -32903,7 +33065,13 @@ behaviours:
           - canceled
         to: waiting
         priority: 0
-        actions: []
+        actions:
+        - id: recall-rejected
+          kind: set
+          entity:
+            $role: uav
+          field: lowalt.returning_to_charge
+          value: false
       - id: recharged
         from: waiting
         'on':
@@ -32915,6 +33083,7 @@ behaviours:
     no_fly_zone:
       roles:
         uav: lowalt:UAV
+        zone: lowalt:AirspaceZone
       trigger:
         instance: activated
       preconditions: []
@@ -32947,10 +33116,7 @@ behaviours:
             vehicle:
               $id: uav
             zone:
-              field: lowalt.breached_zones
-              role: uav
-              path:
-              - 0
+              $id: zone
         - id: reroute
           kind: command
           capability: lowalt.airspace.flight_control
@@ -33075,7 +33241,7 @@ behaviours:
         from: flying
         'on':
           predicate: wind_above_limit
-          edge: entered
+          edge: while
         to: held
         priority: 0
         actions:
@@ -33153,6 +33319,12 @@ behaviours:
     match:
       uav:
         is_a: lowalt:UAV
+      zone:
+        is_a: lowalt:AirspaceZone
+        field: lowalt.zone_kind
+        in:
+        - no_fly
+        - restricted
     variables: {}
     multiplicity: once_per_entity
     on_unbind: retain_until_terminal

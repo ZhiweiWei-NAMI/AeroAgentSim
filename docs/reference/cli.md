@@ -97,6 +97,10 @@ aeroagentsim serve --out runs --frontend frontend/dist
 | `--scenario-root` | current directory | Root that `scenario_path` submissions are resolved against. |
 | `--host` / `--port` | `127.0.0.1` / `8002` | Bind address. |
 | `--frontend` | — | Built console directory (`frontend/dist`); enables SPA pages. |
+| `--studio-root` | `<out>/.workspaces` | Studio workspace storage (`AEROAGENTSIM_STUDIO_ROOT` also works). |
+
+The console URL used for city assets and the in-simulation camera defaults to
+`http://<host>:<port>`; set `AEROAGENTSIM_CONSOLE_URL` when serving behind a proxy.
 
 Requires the `server` extra. On restart, non-terminal runs are marked
 `interrupted`: the journal remains replayable, but execution is not resumed.

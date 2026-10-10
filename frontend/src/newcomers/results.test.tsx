@@ -182,3 +182,17 @@ describe('CompareRuns', () => {
     expect(screen.getAllByText('Tasks failed').length).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe('EventFeed cause trace', () => {
+  it('opens the cause → effect story for an event', async () => {
+    const { CAUSE_TRACE_EVENT } = await import('../trace/bus');
+    const seen: unknown[] = [];
+    const listener = (event: Event) => seen.push((event as CustomEvent).detail);
+    window.addEventListener(CAUSE_TRACE_EVENT, listener);
+    const events = [{ at_ns: '5000000000', category: 'logistics' as const, severity: 'info' as const, text: 'drone-1 picked up task-1', entities: ['drone-1', 'task-1'] }];
+    render(<EventFeed events={events} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Why did this happen?' }));
+    window.removeEventListener(CAUSE_TRACE_EVENT, listener);
+    expect(seen).toEqual([{ kind: 'event', atNs: '5000000000', text: 'drone-1 picked up task-1', entities: ['drone-1', 'task-1'] }]);
+  });
+});

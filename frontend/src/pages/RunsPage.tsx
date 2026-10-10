@@ -12,6 +12,9 @@ import { RunOperations } from '../behaviours/RunOperations';
 import { ArtifactsPanel } from '../observations/ArtifactsPanel';
 import { CaptureConsole } from '../observations/CaptureConsole';
 import { InspectionPanel } from './InspectionPanel';
+import { CauseTracePanel } from '../trace/CauseTracePanel';
+import { explain, type CauseRef } from '../trace/cause-trace';
+import { subscribeCauseTrace } from '../trace/bus';
 import { RunTimeline } from './RunTimeline';
 import { readableLabel, entityLabel } from './inspection-format';
 import { WaitingBanner } from './WaitingBanner';
@@ -108,6 +111,14 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
       if (entity) { setSelected(entity.key); if (session.store.header.epoch !== undefined) session.store.select(entity.key); }
     }
   });
+  // Cause-to-effect walk: a stack of references so the user can step back.
+  const [traceStack, setTraceStack] = useState<CauseRef[]>([]);
+  const traceRef = traceStack[traceStack.length - 1];
+  const traceCount = session?.store.commits.length ?? 0;
+  const traceModel = useMemo(() => session && traceRef ? explain(session.store, traceRef) : undefined, [session, traceRef, traceCount]);
+  useEffect(() => { setTraceStack([]); }, [runId]);
+  const openTraceRef = useRef<(ref: CauseRef, reset?: boolean) => void>(() => {});
+  useEffect(() => subscribeCauseTrace(ref => openTraceRef.current(ref, true)), []);
   if (query.has('capture')) return <CaptureConsole apiBase={apiBase} assetManifestUrl={query.get('capture_assets')} />;
   if (!runId) return <RunsLibrary runs={runs} loaded={listLoaded} error={error} base={apiBase} inspect={inspectList} onRefresh={refresh} compare={query.has('compare')?query.get('compare')!.split(','):undefined}/>;
   const store = session?.store, clock = session?.clock;
@@ -116,6 +127,27 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
     follow.current = false; store.liveFollow = false; clock.pause(); clock.seek(store.commits[index].at.ns);cutRef.current=store.commits[index].commitIndex; setCut(store.commits[index].commitIndex);
     store.seek(clock.ns, store.commits[index].commitIndex); tick();
   };
+  const openTrace = (ref: CauseRef, reset = false) => {
+    if (!store) return;
+    const model = explain(store, ref);
+    setExpert(true);
+    setTraceStack(previous => reset ? [ref] : [...previous, ref]);
+    if (model) {
+      seekJournal(model.cut);
+      const wanted = model.eventEntities ?? (ref.kind === 'event' ? ref.entities : undefined);
+      const named = wanted?.length ? model.involved.find(key => key.id === wanted[0]) : undefined;
+      const current = selected && model.involved.some(key => entityId(key) === entityId(selected));
+      const focus = named ?? (current ? undefined : model.involved[0]);
+      if (focus && reset) select(focus);
+    }
+  };
+  openTraceRef.current = openTrace;
+  const traceBack = () => {
+    const previous = traceStack[traceStack.length - 2];
+    setTraceStack(stack => stack.slice(0, -1));
+    const model = store && previous ? explain(store, previous) : undefined;
+    if (model) seekJournal(model.cut);
+  };
   const select = (key: EntityKey) => { setSelected(key); if (store?.header.epoch !== undefined) store.select(key); };
   const seekJournal = (index: number) => { const offset = store?.commits.findIndex(commit => commit.commitIndex === index); if (offset === undefined || offset < 0) { setError(`Journal cut ${index} is not loaded`); return; } seek(offset); };
   const play=()=>{if(!session)return;setCut(undefined);cutRef.current=undefined;follow.current=false;session.store.liveFollow=false;session.clock.playing?session.clock.pause():session.clock.play();tick();};
@@ -123,7 +155,7 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
   const inject=()=>setOperationsOpen(true);
   const selectEvent=(event:RecordedBusinessEvent)=>{seek(event.offset);const entities=event.entities.flatMap(id=>[...store!.entities.values()].filter(row=>row.key.id===id));const entity=entities.find(row=>resolveBinding(store!.header,row.typeId))??entities[0];if(entity){select(entity.key);setCamera(resolveBinding(store!.header,entity.typeId)?'follow':'orbit');}if(event.position&&(!entity||!resolveBinding(store!.header,entity.typeId))){setCamera('orbit');setFocus(previous=>({position:event.position!,revision:(previous?.revision??0)+1}));}};
   const control=async(action:'pause'|'resume'|'stop')=>{try{await api.control(runId,action);notify({kind:'success',message:action==='stop'?'Stopping the run.':action==='pause'?'Pause requested.':'Resume requested.'});}catch(problem){setError(String(problem));notify({kind:'error',message:String(problem)});}};
-  return <div className={`viewer-demo inspection-page${expert?'':' simple-view-page'}`}>
+  return <div className={`viewer-demo inspection-page${expert?'':' simple-view-page'}${expert&&traceRef?' has-trace':''}`}>
 
     <header className="viewer-header"><div><h1>{runs.find(run=>run.id===runId)?.template_title??(location.pathname.startsWith('/inspect')?'Explore your run':'Watch your scenario')}</h1><span>{expert?'Graph, city and recorded state':'See what happens, then explore the results'}</span><ConceptHelp topic="Synchronized views" description="Graph and 3D views share entity identities, selection and the same recorded timeline moment." guide="console.md"/></div>
       <Space><Tag>{status==='waiting_for_input'?'Waiting for your event':readableLabel(status)}</Tag><Button data-testid="expert-toggle" aria-pressed={expert} onClick={()=>setExpert(value=>!value)}>{expert?'Simple view':'Expert view'}</Button><Select aria-label="Feed mode" value={mode} options={[{ value: 'live', label: 'Live' }, { value: 'replay', label: 'Replay' }]} onChange={value => navigate(`/${location.pathname.startsWith('/inspect')?'inspect':'runs'}/${encodeURIComponent(runId)}?api=${encodeURIComponent(apiBase)}&mode=${value}&view=${expert?'expert':'simple'}${query.get('template')?`&template=${encodeURIComponent(query.get('template')!)}`:''}`)} />
@@ -136,10 +168,11 @@ export default function RunsPage({route,interactive=true,inspectList=false}:{rou
     {session && expert&& <><main className="viewer-main" data-testid="inspect-views" data-city-binding={session.store.header.scene?.city?.kind ?? 'absent'}><section className="viewer-stage">
       <nav aria-label="Demo camera presets"><span>Camera</span><ConceptHelp topic="Camera presets" description="A preset selects the named actor and follows its recorded pose; the graph selection changes with it." guide="console.md"/>{[{label:'Reporter',id:'vehicle.reporter'}, {label:'Edge overview',id:'edge.coordinator'}, {label:'Alpha',id:'uav.alpha'}, {label:'Bravo',id:'uav.bravo'}].filter(preset=>[...session.store.entities.values()].some(row=>row.key.id===preset.id)).map(preset=><button key={preset.label} onClick={()=>{const actor=[...session.store.entities.values()].find(row=>row.key.id===preset.id);if(!actor){setError(`Preset actor ${preset.id} is absent at this cut`);return;}select(actor.key);setCamera(preset.label==='Edge overview'?'orbit':'follow');}}>{preset.label}</button>)}</nav>
       <DualRunViews store={session.store} clock={session.clock} selected={selected} mode={camera} quality="med" trails={true} commitCut={cut}
-        onSelect={select} onSeek={seekJournal} onTick={tick} onError={error => setError(String(error))} onQuality={() => {}} />
+        onSelect={select} onSeek={seekJournal} onTick={tick} onError={error => setError(String(error))} onQuality={() => {}} highlights={traceModel?.involved} />
       </section>
       <aside className="viewer-sidebar inspection-sidebar"><Select aria-label="Entity" showSearch optionFilterProp="label" className="inspection-entity-select" value={selected && entityId(selected)} options={[...session.store.entities].map(([id, entity]) => ({ value: id, label: entityLabel(entity) }))} onChange={id => { const key = session.store.entities.get(id)?.key; if (key) select(key); }} />
-        <InspectionPanel store={session.store} selected={selected} onSeek={seekJournal} /></aside></main>
+        <InspectionPanel store={session.store} selected={selected} onSeek={seekJournal} onOpenTrace={(ref, cut) => { void cut; openTrace(ref, true); }} /></aside></main>
+      {traceRef && <CauseTracePanel store={session.store} model={traceModel} canGoBack={traceStack.length > 1} onOpen={ref => openTrace(ref)} onBack={traceBack} onClose={() => setTraceStack([])} onSelectEntity={select} onSeek={seekJournal} />}
       <RunTimeline store={session.store} clock={session.clock} cut={cut} mode={mode} onSeek={seek}
         onPlay={() => { setCut(undefined);cutRef.current=undefined;follow.current=false;session.store.liveFollow=false;session.clock.playing?session.clock.pause():session.clock.play();tick(); }}
         onLive={() => {follow.current=true;session.store.liveFollow=true;setCut(undefined);cutRef.current=undefined;session.clock.seek(session.clock.end);session.store.seek(session.clock.ns);tick();}} onTick={tick} />

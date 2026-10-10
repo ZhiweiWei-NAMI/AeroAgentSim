@@ -6,7 +6,7 @@ first. One shared simulated world, one clock, 300 simulated seconds.
 
 ## What happens
 
-- Routine parcel tasks are released from the home vertiport over the run.
+- Routine parcel orders arrive in small bursts at two vertiports; allocation runs every 10 s over all pending orders, so `nearest`, `auction` and `hungarian` choose differently.
 - Urgent medical tasks (priority 100) are released at 8 s, 110 s and 200 s.
 - With `medical_preemption` on, an eligible parcel flight is suspended, the
   drone flies the medical leg, then the parcel resumes.
@@ -17,7 +17,8 @@ first. One shared simulated world, one clock, 300 simulated seconds.
 
 | Knob | Meaning | Default |
 | --- | --- | --- |
-| `fleet_size` | Number of aircraft (1–12) | 2 |
+| `fleet_size` | Number of aircraft (1–12) | 4 |
+| `order_rate` | Routine parcel orders per second | 0.06 |
 | `wind_speed` | Base wind speed in m/s (0–15) | 2.0 |
 | `allocator` | Task allocation: `nearest`, `auction`, `hungarian`, `llm` | nearest |
 
@@ -49,3 +50,11 @@ heights and roads by `tools/templates/place.py`. Roof pads use their actual roof
 height; inter-site flights depart/arrive vertically and cruise above the 105 m
 roof ceiling. Names and business metadata are pinned with each run. See
 [the shared placement guide](../../../docs/examples/city-day.md#huangpu-placements-la3).
+
+Routine arrivals stop at 180 s. Urgent supplies arrive at 8, 90 and 150 s;
+late routine deliveries have time to resume after preemption. Edit battery,
+separation and wind policy in [the shared rules](../../../docs/guides/lowalt-rules.md).
+
+The measured default completes 11 of 18 created orders by 300 s. Priority
+preemption works, but route and separation interruptions leave a backlog;
+uncompleted orders are not reported task failures.

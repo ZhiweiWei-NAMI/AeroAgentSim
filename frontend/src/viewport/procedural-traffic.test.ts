@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as T from 'three';
 import { disposeObject } from './assets';
 import { buildLiteCity, isLiteCityScene, proceduralCar, proceduralModel, proceduralUav, PROCEDURAL_ASSET_SCHEME } from './procedural-traffic';
-import { loadTrafficCity } from '../scene/traffic-city';
+import { loadTrafficCity, clearTrafficCityCache } from '../scene/traffic-city';
+import { beforeEach as __be } from 'vitest';
+__be(() => clearTrafficCityCache());
 
 afterEach(() => { vi.unstubAllGlobals(); });
 
@@ -117,7 +119,7 @@ describe('loadTrafficCity lite fallback', () => {
     const assets = { model: vi.fn(async () => model) } as unknown as Parameters<typeof loadTrafficCity>[1];
     const group = await loadTrafficCity('https://console.example/v1/studio/demo-assets/scene.json', assets, new AbortController().signal);
     expect(assets.model).toHaveBeenCalledOnce();
-    expect(group.children[0]).toBe(model);
+    expect(group.children[0]).toMatchObject({ type: model.type }); expect(group.children[0].position.toArray()).toEqual(model.position.toArray());
     disposeObject(group);
   });
 });

@@ -39,7 +39,11 @@ CAPABILITIES = {
     },
 }
 # Fields the rules package owns (one writer per field).
-OWNED_BY_RULES = ("lowalt.weather_held", "lowalt.wind_limit_mps")
+OWNED_BY_RULES = (
+    "lowalt.weather_held",
+    "lowalt.wind_limit_mps",
+    "lowalt.returning_to_charge",
+)
 # Detections the airspace engine now publishes instead of emitting events.
 DETECTIONS = (
     "lowalt.wind_mps",
@@ -48,6 +52,16 @@ DETECTIONS = (
     "lowalt.conflict_gap_m",
 )
 FAILED = ["failed", "rejected", "canceled"]
+WIND_LIMITS = {
+    "parcel": 12.0,
+    "medical": 12.0,
+    "inspection": 6.0,
+    "survey": 6.0,
+    "spraying": 5.0,
+    "passenger": 15.0,
+    "patrol": 12.0,
+    "incident_response": 14.0,
+}
 
 
 def _field(name: str, *path: Any) -> dict[str, Any]:
@@ -94,9 +108,14 @@ def _transition(
     }
 
 
-def _chain(states: list[str], transitions: list[dict[str, Any]]) -> dict[str, Any]:
+def _chain(
+    states: list[str],
+    transitions: list[dict[str, Any]],
+    *,
+    roles: dict[str, str] | None = None,
+) -> dict[str, Any]:
     return {
-        "roles": {"uav": UAV},
+        "roles": roles if roles is not None else {"uav": UAV},
         "trigger": {"instance": "activated"},
         "preconditions": [],
         "states": states,
@@ -110,7 +129,9 @@ def _chain(states: list[str], transitions: list[dict[str, Any]]) -> dict[str, An
     }
 
 
-def rules_package(reserve_percent: float = 20.0) -> dict[str, Any]:
+def rules_package(
+    reserve_percent: float = 20.0, safety_distance: float = 20.0
+) -> dict[str, Any]:
     """The package document, with the battery reserve as a predicate parameter."""
     predicates = {
         "battery_below_reserve": {
@@ -127,29 +148,66 @@ def rules_package(reserve_percent: float = 20.0) -> dict[str, Any]:
         },
         "inside_no_fly_zone": {
             "profile": "committed_reactive/v1",
-            "roles": {"uav": UAV},
+            "roles": {"uav": UAV, "zone": "lowalt:AirspaceZone"},
             "expression": {
-                "op": "gt",
+                "op": "contains",
                 "args": [
-                    {"op": "len", "args": [_field("lowalt.breached_zones")]},
-                    {"literal": 0},
+                    _field("lowalt.breached_zones"),
+                    {"field": "lowalt.zone_id", "role": "zone", "path": []},
                 ],
             },
         },
         "closer_than_safety_distance": {
             "profile": "committed_reactive/v1",
             "roles": {"uav": UAV},
+            "parameters": {"horizontal_m": float(safety_distance)},
             "expression": {
-                "op": "ne",
-                "args": [_field("lowalt.conflict_partner"), {"literal": ""}],
+                "op": "and",
+                "args": [
+                    {
+                        "op": "ne",
+                        "args": [_field("lowalt.conflict_partner"), {"literal": ""}],
+                    },
+                    {
+                        "op": "lt",
+                        "args": [
+                            _field("lowalt.conflict_gap_m", 0),
+                            {"parameter": "horizontal_m"},
+                        ],
+                    },
+                ],
             },
         },
         "wind_above_limit": {
             "profile": "committed_reactive/v1",
             "roles": {"uav": UAV},
+            "parameters": {
+                f"{kind}_limit_mps": limit for kind, limit in WIND_LIMITS.items()
+            },
             "expression": {
-                "op": "gt",
-                "args": [_field("lowalt.wind_mps"), _field("lowalt.wind_limit_mps")],
+                "op": "or",
+                "args": [
+                    {
+                        "op": "and",
+                        "args": [
+                            {
+                                "op": "eq",
+                                "args": [
+                                    _field("lowalt.vehicle_class"),
+                                    {"literal": kind},
+                                ],
+                            },
+                            {
+                                "op": "gt",
+                                "args": [
+                                    _field("lowalt.wind_mps"),
+                                    {"parameter": f"{kind}_limit_mps"},
+                                ],
+                            },
+                        ],
+                    }
+                    for kind in WIND_LIMITS
+                ],
             },
         },
     }
@@ -163,6 +221,13 @@ def rules_package(reserve_percent: float = 20.0) -> dict[str, Any]:
                     "returning",
                     {"predicate": "battery_below_reserve", "edge": "while"},
                     [
+                        {
+                            "id": "recalling",
+                            "kind": "set",
+                            "entity": {"$role": "uav"},
+                            "field": "lowalt.returning_to_charge",
+                            "value": True,
+                        },
                         _emit(
                             "battery-low",
                             "lowalt.energy.low",
@@ -182,12 +247,30 @@ def rules_package(reserve_percent: float = 20.0) -> dict[str, Any]:
                     "returning",
                     "monitoring",
                     {"receipt": "recall", "status": "succeeded"},
+                    [
+                        {
+                            "id": "ready",
+                            "kind": "set",
+                            "entity": {"$role": "uav"},
+                            "field": "lowalt.returning_to_charge",
+                            "value": False,
+                        }
+                    ],
                 ),
                 _transition(
                     "recall-failed",
                     "returning",
                     "waiting",
                     {"receipt": "recall", "status": FAILED},
+                    [
+                        {
+                            "id": "recall-rejected",
+                            "kind": "set",
+                            "entity": {"$role": "uav"},
+                            "field": "lowalt.returning_to_charge",
+                            "value": False,
+                        }
+                    ],
                 ),
                 _transition(
                     "recharged",
@@ -210,7 +293,7 @@ def rules_package(reserve_percent: float = 20.0) -> dict[str, Any]:
                             "geofence",
                             "lowalt.airspace.geofence_entered",
                             vehicle=_vehicle(),
-                            zone=_field("lowalt.breached_zones", 0),
+                            zone={"$id": "zone"},
                         ),
                         _command(
                             "reroute",
@@ -228,6 +311,7 @@ def rules_package(reserve_percent: float = 20.0) -> dict[str, Any]:
                     {"predicate": "inside_no_fly_zone", "edge": "exited"},
                 ),
             ],
+            roles={"uav": UAV, "zone": "lowalt:AirspaceZone"},
         ),
         "separation": _chain(
             ["monitoring", "resolving"],
@@ -284,7 +368,7 @@ def rules_package(reserve_percent: float = 20.0) -> dict[str, Any]:
                     "too-windy",
                     "flying",
                     "held",
-                    {"predicate": "wind_above_limit", "edge": "entered"},
+                    {"predicate": "wind_above_limit", "edge": "while"},
                     [
                         {
                             "id": "grounded",
@@ -344,7 +428,7 @@ def rules_package(reserve_percent: float = 20.0) -> dict[str, Any]:
     return {
         "format": "aeroagentsim.behaviour-package/v1",
         "id": PACKAGE_ID,
-        "revision": 1,
+        "revision": 5,
         "registry": {"snapshot": "registry.snapshot.json"},
         "evaluator": {"version": "aerograph-predicate/1", "dialect": "original"},
         "budgets": {
@@ -359,7 +443,18 @@ def rules_package(reserve_percent: float = 20.0) -> dict[str, Any]:
             {
                 "id": name.replace("_", "-"),
                 "chain": name,
-                "match": {"uav": {"is_a": UAV}},
+                "match": {
+                    role: (
+                        {
+                            "is_a": type_id,
+                            "field": "lowalt.zone_kind",
+                            "in": ["no_fly", "restricted"],
+                        }
+                        if role == "zone"
+                        else {"is_a": type_id}
+                    )
+                    for role, type_id in chains[name]["roles"].items()
+                },
                 "variables": {},
                 "multiplicity": "once_per_entity",
                 "on_unbind": "retain_until_terminal",
@@ -414,6 +509,16 @@ def apply_rules(document: dict[str, Any]) -> dict[str, Any]:
                 "reserve_percent"
             ]
         )
+    if existing is not None and existing["revision"] < 5:
+        replacement = rules_package(reserve, air["separation_horizontal_m"])
+        for name, predicate in replacement["predicates"].items():
+            parameters = predicate.get("parameters", {})
+            previous = existing["predicates"].get(name, {}).get("parameters", {})
+            parameters.update(
+                {key: previous[key] for key in parameters if key in previous}
+            )
+        existing.clear()
+        existing.update(replacement)
     if limits is not None:
         facts = [e["facts"] for e in document["entities"] if e["type"] == UAV]
         facts.append(document["generators"]["fleet"]["facts"])
@@ -427,19 +532,31 @@ def apply_rules(document: dict[str, Any]) -> dict[str, Any]:
             # The reserve predicate decides *when* to recall an aircraft; the
             # charging algorithm is asked only *where* to send it.
             charging["threshold"] = 1.0
-    engines["tasks"]["config"]["dispatch_min_soc"] = 0.05
+    # Dispatch must not race the reactive recall flag's following microstep.
+    # Eligibility uses the same authored reserve; only the chain recalls/emits.
+    engines["tasks"]["config"]["dispatch_min_soc"] = reserve / 100.0
     rules = document["bindings"]["rules"]
     for rule in rules:
         if rule["writer"] == "airspace" and rule["type"] == UAV:
             rule["fields"] = [
                 f for f in rule["fields"] if f != "lowalt.weather_held"
             ] + [f for f in DETECTIONS if f not in rule["fields"]]
+    for rule in rules:
+        if rule["writer"] == "airspace" and rule["type"] == "lowalt:AirspaceZone":
+            rule["fields"] = list(dict.fromkeys([*rule["fields"], "lowalt.zone_id"]))
     if not any(r["writer"] == "behaviour" and r["type"] == UAV for r in rules):
         rules.append(
             {"writer": "behaviour", "type": UAV, "fields": list(OWNED_BY_RULES)}
         )
+    for rule in rules:
+        if rule["writer"] == "behaviour" and rule["type"] == UAV:
+            rule["fields"] = list(dict.fromkeys([*rule["fields"], *OWNED_BY_RULES]))
+    facts = [e["facts"] for e in document["entities"] if e["type"] == UAV]
+    facts.append(document["generators"]["fleet"]["facts"])
+    for fact in facts:
+        fact.setdefault("lowalt.returning_to_charge", False)
     if existing is None:
-        specs.insert(0, rules_package(reserve))
+        specs.insert(0, rules_package(reserve, air["separation_horizontal_m"]))
     return document
 
 
@@ -462,3 +579,53 @@ def set_reserve(document: dict[str, Any], percent: float) -> None:
     package["predicates"]["battery_below_reserve"]["parameters"]["reserve_percent"] = (
         float(percent)
     )
+
+
+def configure_detection(document: dict[str, Any]) -> None:
+    """Use the authored predicate radius for the spatial hash candidate search.
+
+    The hash is cheap detection, not a second policy: the predicate still reads
+    committed pair distances and makes the decision. Pinned documents retain
+    the derived engine radius so journal replay needs no configuration code.
+    """
+    package = _package(document.get("behaviours", []))
+    if package is not None:
+        from aeroagentsim.packs.common import finite
+
+        reserve = package["predicates"]["battery_below_reserve"]["parameters"][
+            "reserve_percent"
+        ]
+        document["engines"]["tasks"]["config"]["dispatch_min_soc"] = (
+            finite(reserve, "battery reserve", 0) / 100.0
+        )
+        # Three per-UAV policies plus one no-fly instance per protected zone.
+        fleet = document["generators"]["fleet"]
+        fleet_size = fleet["count"] + sum(
+            entity["type"] == UAV and not entity["id"].startswith(fleet["prefix"])
+            for entity in document["entities"]
+        )
+        zones = sum(
+            entity["type"] == "lowalt:AirspaceZone"
+            and entity["facts"]["lowalt.zone_kind"] in {"no_fly", "restricted"}
+            for entity in document["entities"]
+        )
+        package["budgets"]["max_instances"] = max(
+            package["budgets"]["max_instances"], fleet_size * (3 + zones)
+        )
+        radius = package["predicates"]["closer_than_safety_distance"]["parameters"][
+            "horizontal_m"
+        ]
+        document["engines"]["airspace"]["config"]["separation_horizontal_m"] = finite(
+            radius, "safety distance", 1e-9
+        )
+        limits = package["predicates"]["wind_above_limit"]["parameters"]
+        for name, limit in limits.items():
+            finite(limit, name, 0)
+        # Expose the actual authored class limit as committed configuration,
+        # rather than leave the obsolete WIP fact inconsistent with the knob.
+        facts = [e["facts"] for e in document["entities"] if e["type"] == UAV]
+        facts.append(document["generators"]["fleet"]["facts"])
+        for fact in facts:
+            fact["lowalt.wind_limit_mps"] = limits[
+                f"{fact['lowalt.vehicle_class']}_limit_mps"
+            ]

@@ -42,14 +42,14 @@ knobs:
   default: 20
   min: 5
   max: 60
-  pointer: /engines/airspace/config/separation_horizontal_m
+  pointer: /behaviours/0/predicates/closer_than_safety_distance/parameters/horizontal_m
 - id: wind_limit
   label: Wind limit (m/s)
   type: number
   default: 6
   min: 2
   max: 20
-  pointer: /generators/fleet/facts/lowalt.wind_limit_mps
+  pointer: /behaviours/0/predicates/wind_above_limit/parameters/inspection_limit_mps
 kpis:
 - tasks_completed
 - mean_task_latency_s

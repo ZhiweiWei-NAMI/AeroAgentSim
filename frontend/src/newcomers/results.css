@@ -307,3 +307,20 @@
 }
 
 .newc-feed-empty .console-btn{margin-top:14px}
+
+.newc-event-item { position: relative; }
+.newc-event-why {
+  position: absolute;
+  top: var(--csl-sp-2);
+  right: var(--csl-sp-2);
+  padding: 2px 8px;
+  font: 600 12px var(--csl-font);
+  color: var(--csl-teal-700, #0f766e);
+  background: var(--csl-surface, #fff);
+  border: 1px solid var(--csl-teal-500);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.newc-event-why:hover { background: var(--csl-teal-050); }
+.newc-event-why:focus-visible { outline: 2px solid var(--csl-teal-500); outline-offset: 1px; }
+.newc-event-item .newc-event { padding-right: 64px; }

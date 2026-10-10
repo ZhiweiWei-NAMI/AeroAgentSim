@@ -16,7 +16,7 @@ from aeroagentsim.engines.common import bootstrap_owned, policies
 from aeroagentsim.packs.common import distance, finite, ns, read, vec
 from aeroagentsim.platform.plugins import EngineBuild
 
-from .core import SNAPSHOT_FIELDS, refs, snapshot
+from .core import SNAPSHOT_FIELDS, SnapshotIndex, refs, snapshot
 
 PRODUCES = (
     "lowalt.soc",
@@ -38,6 +38,7 @@ EVENTS = (
 class LowaltEnergy(ContextEngine):
     def __init__(self, build: EngineBuild) -> None:
         self.build, self.cfg = build, build.config
+        self.snapshot_index = SnapshotIndex(build)
         self.tick = ns(self.cfg["tick_ns"], "energy tick", 1)
         self.coefficients = {
             k: finite(self.cfg[k], k, 0)
@@ -113,7 +114,7 @@ class LowaltEnergy(ContextEngine):
         if elapsed <= 0:
             raise ValueError("energy samples must advance simulated time")
         self.previous_ns = ctx.now.ns
-        state = snapshot(ctx, self.build)
+        state = snapshot(ctx, self.build, index=self.snapshot_index)
         pads = {p.id: p for p in state.pads}
         for ref in self.fleet:
             position = vec(read(ctx, ref, "lowalt.position"))
@@ -235,7 +236,7 @@ class LowaltEnergy(ContextEngine):
                 command, {"vehicle": identity, "reason": "no free aircraft to recall"}
             )
             return
-        state = snapshot(ctx, self.build)
+        state = snapshot(ctx, self.build, index=self.snapshot_index)
         flagged = replace(
             state, vehicles=tuple(v for v in state.vehicles if v.id == identity)
         )
@@ -268,9 +269,7 @@ class LowaltEnergy(ContextEngine):
             if delivery.message.kind == "command":
                 self._return_to_pad(
                     ctx,
-                    ctx.remember(
-                        delivery, lambda value: cast(dict[str, Any], value)
-                    ),
+                    ctx.remember(delivery, lambda value: cast(dict[str, Any], value)),
                 )
         if any(
             d.kind == "timer" and thaw(d.payload) == {"lowalt_energy": "tick"}

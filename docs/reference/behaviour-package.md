@@ -93,6 +93,10 @@ Action kinds: `set`, `emit`, `command`, `cancel_command`, `delay`,
 (`aas.behaviour.*`) may not be emitted by authored actions — the executor
 records them.
 
+Payload expressions can use `{$id: role}` for the bound entity identifier as
+a string, or `{$role: role}` for a typed reference. Field reads inside action
+payloads are declared dependencies and read the same committed invocation cut.
+
 ### Bindings
 
 Each binding is `{id, chain, match, multiplicity, on_unbind}` + optional
