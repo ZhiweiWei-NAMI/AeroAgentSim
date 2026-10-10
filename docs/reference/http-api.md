@@ -6,8 +6,9 @@ with artifacts in
 [`services/artifacts.py`](../../src/aeroagentsim/services/artifacts.py) and the
 optional Studio hook in
 [`src/aeroagentsim/authoring/api.py`](../../src/aeroagentsim/authoring/api.py).
-Start it with `aeroagentsim serve` (requires `aeroagentsim[server]`). All run
-execution goes through `/v1/runs`; the Studio endpoints only author drafts.
+Start it with `aeroagentsim serve` (requires `aeroagentsim[server]`). Run
+execution uses the same worker service for scenario and template launches;
+the Studio endpoints only author drafts.
 
 ## Request boundary
 
@@ -49,11 +50,42 @@ Terminal statuses are `completed`, `stopped`, `faulted`, `interrupted`,
 | Endpoint | Method | Semantics |
 | --- | --- | --- |
 | `/v1/runs` | POST (201) | Start a run. Body is either `{"scenario_path": "..."}` (resolved under the configured scenario root) or `{"scenario": {...}}` / inline scenario mapping, optionally with `studio_workspace` to base a console draft. The loader runs and engine declarations/bindings are validated by constructing a throwaway `Simulation` before 201 is returned; invalid input yields 422. Returns the run metadata. |
-| `/v1/runs` | GET | List all runs with manifests (id, scenario, status, `until_ns`, optional `error` and `waiting`). |
+| `/v1/runs` | GET | List all runs with manifests (id, scenario, status, `until_ns`, optional `error` and `waiting`), additive `kpis` summaries, `knobs`, `algorithms`, `title`, and pinned `template` settings (`template_id`/`template_title` aliases) when launched from a template. |
 | `/v1/runs/{id}/header` | GET | Pinned viewer-feed header (see [viewer feed](viewer-feed.md)). Adds `catalogNotice` when no AeroGraph root is configured, plus Studio scene links when applicable. |
 | `/v1/runs/{id}/commits?from=N&limit=M` | GET | Page projected commits (`limit` 1–4096). Response: `{commits, next, status, waiting?, finalCursor?}`. Empty runs page from index 1. |
 | `/v1/runs/{id}/stream?from=N` | GET (SSE) | Live tail. Events: `commit` (id = journal index; supports `Last-Event-ID` reconnect), `status` (on change, includes `waiting`), `end` (terminal, includes `finalCursor`). Keep-alive comments while idle. |
 | `/v1/runs/{id}/{pause\|resume\|stop}` | POST | Control a live worker. 409 when there is no active worker or the run is terminal. Pause freezes simulation advancement; resume continues it; stop requests a graceful halt at a sealed boundary. Returns `{id, requested, status}`. |
+
+### Templates and comparisons
+
+| Endpoint | Method | Semantics |
+| --- | --- | --- |
+| `/v1/templates` | GET | List template metadata: id, title, summary, category, difficulty, duration, scenario, optional thumbnail, observe/try bullets, knobs and selected KPIs. |
+| `/v1/templates/{id}` | GET | Fetch one template; 404 for an unknown id. |
+| `/v1/templates/{id}/runs` | POST (201) | Body `{"knobs": {...}, "workspace": true?}`. Apply declared defaults and overrides, validate, and launch. Returns `{run_id, workspace_id?}`. Omit `workspace` to launch directly. |
+| `/v1/templates/{id}/workspace` | POST (201) | Body `{"knobs": {...}}`. Create an editable Studio draft with copied template inputs. Returns `{workspace_id}`; fetch it through `/v1/studio/workspaces/{workspace_id}`. |
+| `/v1/runs/{id}/kpis` | GET | `{contract: "aeroagentsim.kpi/v1", final, series}` computed from the committed journal prefix, including partial live runs. Each metric is `{value, unit, label}`. The response also carries `run_id`. |
+| `/v1/runs/compare?ids=a,b,c` | GET | Align 2–20 distinct runs. Returns `{contract: "aeroagentsim.run-comparison/v1", runs, kpis, differences}`. `kpis` rows carry `{name, unit, label, values: {run_id: value}}`; `differences.knobs` and `.algorithms` carry `{name, values, present}`. |
+
+These POSTs use the same JSON, Host/Origin and optional bearer-token boundary
+as scenario submissions. Unknown knobs, wrong types (including boolean for an
+integer), bounds violations and invalid choices return readable 422 errors.
+Template roots and named hooks are configured by the operator, never by an
+HTTP request. Workspace creation also makes the Studio routes available when
+the service was started without a Studio root.
+
+```sh
+curl -H 'Content-Type: application/json' \
+  -d '{"knobs":{"accident_time_s":5,"physics_hz":2},"workspace":true}' \
+  http://127.0.0.1:8002/v1/templates/traffic-accident/runs
+curl http://127.0.0.1:8002/v1/runs/RUN_ID/kpis
+```
+
+The run manifest pins applied knobs. Comparison reads those settings and the
+run's saved scenario algorithms, not current template defaults. Missing
+measurements remain `null`; count metrics record zero when the committed
+prefix has no corresponding events. KPI details and business-event narratives
+are described in [the viewer feed](viewer-feed.md).
 
 ### Status vs. receipts
 

@@ -23,6 +23,33 @@ Prints a JSON summary: `run`, `elapsed_wall_s`, `simulated_s`, `rtf`,
 `peak_rss_kib`. These are the timings of your own run — do not compare them
 against timings taken from other profiles or hardware.
 
+## aeroagentsim templates and run-template
+
+```console
+aeroagentsim templates
+aeroagentsim run-template traffic-accident --set accident_time_s=5 --set physics_hz=2 --headless
+```
+
+`templates` lists the shipped registry. Both commands accept
+`--templates-root DIR` for an operator registry. `run-template` accepts
+`--out` (default `runs/templates`) and `--port` (default `0`, a free port).
+Without `--headless`, it opens an editable Studio workspace and requires
+a built `frontend/dist`. Headless output includes the run id, directory,
+status and measured KPI values. Applied knobs are pinned in the run manifest.
+ `run-template` applies typed defaults
+and repeated `--set knob=value` overrides before validating and running the
+scenario. Choices use their declared names, integers/numbers use numeric
+values, and booleans use `true` or `false`. Unknown knobs, type errors and
+out-of-range values fail with a readable message. See
+[create a template](../guides/templates.md) for the manifest format.
+
+`--headless` runs to completion without opening a console. Traffic capture
+still uses the actual city camera and requires Node/Playwright and Chromium;
+`AEROAGENTSIM_CHROMIUM` can select an installed browser. The scripted decision
+mode uses the shipped declared decision fixture; live mode requires a named
+operator provider profile and the agents extra. `aeroagentsim demo
+traffic-accident` remains supported with its existing profile flags.
+
 ## aeroagentsim replay
 
 ```console

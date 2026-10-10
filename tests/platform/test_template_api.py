@@ -1,0 +1,213 @@
+"""Template HTTP execution, editable workspaces and measured run comparisons."""
+
+from __future__ import annotations
+
+import shutil
+import time
+from pathlib import Path
+from typing import Any
+
+import pytest
+import yaml
+from fastapi.testclient import TestClient
+
+from aeroagentsim.authoring.templates import demo_source
+from aeroagentsim.services.app import create_app
+
+
+@pytest.fixture
+def template_root(tmp_path: Path) -> Path:
+    root = tmp_path / "templates"
+    source = root / "experiment"
+    source.mkdir(parents=True)
+    shutil.copyfile(
+        demo_source("traffic-accident") / "registry.snapshot.json",
+        source / "registry.snapshot.json",
+    )
+    document = {
+        "format": "aeroagentsim.scenario/v1",
+        "id": "experiment",
+        "registry": {"snapshot": "registry.snapshot.json"},
+        "entities": [],
+        "bindings": {"exact": [], "lifecycle": []},
+        "engines": {},
+        "algorithms": {"allocation": "nearest"},
+        "run": {
+            "pacing": "fast",
+            "seed": 1,
+            "until_ns": 1_000_000_000,
+            "advance_ns": 1_000_000_000,
+        },
+        "outputs": {"durability": "flush"},
+    }
+    (source / "scenario.yaml").write_text(yaml.safe_dump(document))
+    metadata = {
+        "format": "aeroagentsim.template/v1",
+        "id": "experiment",
+        "title": "Experiment",
+        "summary": "Compare pinned allocation settings.",
+        "category": "logistics",
+        "difficulty": "beginner",
+        "duration_s": 1,
+        "scenario": "scenario.yaml",
+        "observe": ["Inspect committed task counts.", "Compare run settings."],
+        "try": ["Change the random seed.", "Switch the allocation algorithm."],
+        "knobs": [
+            {
+                "id": "seed",
+                "label": "Seed",
+                "type": "integer",
+                "default": 1,
+                "min": 0,
+                "max": 10,
+                "pointer": "/run/seed",
+            },
+            {
+                "id": "allocator",
+                "label": "Allocation",
+                "type": "choice",
+                "default": "nearest",
+                "options": ["nearest", "auction"],
+                "pointer": "/algorithms/allocation",
+            },
+        ],
+        "kpis": ["tasks_created", "tasks_completed"],
+    }
+    (source / "template.yaml").write_text(yaml.safe_dump(metadata))
+    return root
+
+
+def completed(client: TestClient, run_id: str) -> dict[str, Any]:
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        row = next(run for run in client.get("/v1/runs").json() if run["id"] == run_id)
+        if row["status"] == "completed":
+            return dict(row)
+        assert row["status"] not in {"faulted", "interrupted", "input_timeout"}, row
+        time.sleep(0.02)
+    raise AssertionError(f"Template run {run_id} did not complete: {row}")
+
+
+def test_template_endpoints_workspace_kpis_comparison(
+    template_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AEROAGENTSIM_AEROGRAPH_ROOT", raising=False)
+    with TestClient(
+        create_app(tmp_path / "runs", templates_root=template_root),
+        base_url="http://localhost",
+    ) as client:
+        assert [row["id"] for row in client.get("/v1/templates").json()] == [
+            "experiment"
+        ]
+        assert client.get("/v1/templates/experiment").json()["knobs"][0]["id"] == "seed"
+        assert client.get("/v1/templates/missing").status_code == 404
+        response = client.post(
+            "/v1/templates/experiment/workspace", json={"knobs": {"seed": 2}}
+        )
+        assert response.status_code == 201, response.text
+        workspace_id = response.json()["workspace_id"]
+        draft = client.get(f"/v1/studio/workspaces/{workspace_id}").json()
+        assert draft["scenario"]["run"]["seed"] == 2
+        first = client.post(
+            "/v1/templates/experiment/runs",
+            json={"knobs": {"seed": 2}, "workspace": True},
+        )
+        assert first.status_code == 201, first.text
+        a = first.json()["run_id"]
+        assert first.json()["workspace_id"] != workspace_id
+        second = client.post(
+            "/v1/templates/experiment/runs", json={"knobs": {"allocator": "auction"}}
+        )
+        assert second.status_code == 201, second.text
+        b = second.json()["run_id"]
+        row = completed(client, a)
+        completed(client, b)
+        measured = client.get(f"/v1/runs/{a}/kpis").json()
+        assert measured["contract"] == "aeroagentsim.kpi/v1"
+        assert measured["final"] == row["kpis"]
+        assert measured["final"]["tasks_completed"]["value"] == 0
+        cuts = client.get(f"/v1/runs/{a}/commits").json()["commits"]
+        assert cuts[-1]["kpis"] == measured["final"]
+        assert "events" in cuts[-1]
+        compared = client.get("/v1/runs/compare", params={"ids": f"{a},{b}"})
+        assert compared.status_code == 200, compared.text
+        result = compared.json()
+        assert result["differences"]["algorithms"][0]["values"] == {
+            a: "nearest",
+            b: "auction",
+        }
+        assert {item["name"] for item in result["differences"]["knobs"]} == {
+            "seed",
+            "allocator",
+        }
+        assert (
+            client.get("/v1/runs/compare", params={"ids": f"{a},{a}"}).status_code
+            == 422
+        )
+        assert (
+            client.get("/v1/runs/compare", params={"ids": f"{a},missing"}).status_code
+            == 404
+        )
+        assert client.get("/v1/runs/missing/kpis").status_code == 404
+
+
+def test_template_invalid_knobs_and_security(
+    template_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AEROAGENTSIM_API_TOKEN", "template-test-token")
+    with TestClient(
+        create_app(tmp_path / "runs", templates_root=template_root),
+        base_url="http://localhost",
+    ) as client:
+        assert client.get("/v1/templates").status_code == 401
+        client.headers["Authorization"] = "Bearer template-test-token"
+        assert client.get("/v1/templates").status_code == 200
+        endpoint = "/v1/templates/experiment/runs"
+        assert client.post(endpoint, content="{}").status_code == 415
+        assert (
+            client.post(
+                endpoint, json={}, headers={"Origin": "https://untrusted.example"}
+            ).status_code
+            == 403
+        )
+        assert client.post(endpoint, json={"knobs": {"seed": True}}).status_code == 422
+        assert client.post(endpoint, json={"knobs": {"seed": 11}}).status_code == 422
+        assert (
+            client.post(endpoint, json={"knobs": {"allocator": "missing"}}).status_code
+            == 422
+        )
+        assert client.post(endpoint, json={"knobs": {"unknown": 1}}).status_code == 422
+        assert client.post(endpoint, json={"knobs": None}).status_code == 422
+        assert client.post(endpoint, json={"workspace": "true"}).status_code == 422
+        assert client.post("/v1/templates/missing/runs", json={}).status_code == 404
+
+
+def test_traffic_template_api_completes_without_aerograph(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AEROAGENTSIM_AEROGRAPH_ROOT", raising=False)
+    with TestClient(
+        create_app(tmp_path / "runs"), base_url="http://localhost"
+    ) as client:
+        response = client.post("/v1/templates/traffic-accident/runs", json={})
+        assert response.status_code == 201, response.text
+        run_id = response.json()["run_id"]
+        completed(client, run_id)
+        final = client.get(f"/v1/runs/{run_id}/kpis").json()["final"]
+        assert final["tasks_created"]["value"] == 1
+        assert final["tasks_completed"]["value"] == 1
+        assert final["mean_task_latency_s"]["value"] > 0
+        events = []
+        cursor = 1
+        while True:
+            page = client.get(
+                f"/v1/runs/{run_id}/commits", params={"from": cursor, "limit": 4096}
+            ).json()
+            if not page["commits"]:
+                break
+            events.extend(event for cut in page["commits"] for event in cut["events"])
+            cursor = page["next"]
+        assert any(
+            "upload" in event["text"].lower() or "accepted" in event["text"].lower()
+            for event in events
+        )

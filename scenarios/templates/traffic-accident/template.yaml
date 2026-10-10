@@ -1,0 +1,38 @@
+format: aeroagentsim.template/v1
+id: traffic-accident
+title: Traffic accident response
+summary: Nearby drones assess an accident, choose a responder and upload a city-camera image.
+category: emergency
+difficulty: beginner
+duration_s: 90
+scenario: ../../demos/traffic-accident/scenario.yaml
+observe:
+  - Watch the accident report trigger bids from nearby drones.
+  - See the selected drone reach the incident and upload its camera image.
+  - Compare response time and energy after changing the settings.
+try:
+  - Move the accident earlier or later in the run.
+  - Increase the physics update rate.
+  - Use a configured live model for the response decisions.
+knobs:
+  - id: accident_time_s
+    label: Accident time (seconds)
+    type: number
+    default: 8
+    min: 0.1
+    max: 30
+    apply: traffic.accident_time
+  - id: decision_mode
+    label: Response decisions
+    type: choice
+    default: scripted
+    options: [scripted, live]
+    apply: traffic.decision_mode
+  - id: physics_hz
+    label: Physics updates per second
+    type: number
+    default: 1
+    min: 0.5
+    max: 20
+    apply: traffic.physics_hz
+kpis: [tasks_completed, mean_task_latency_s, energy_used_kj, distance_flown_km, accident_reported, captures_stored, uploads_accepted]

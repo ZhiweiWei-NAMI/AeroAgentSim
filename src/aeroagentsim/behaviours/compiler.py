@@ -644,12 +644,17 @@ def compile_package(
             "feedback",
             "sampled_contexts",
             "requires_compiler_features",
+            "event_narratives",
         },
     )
     if p["format"] != FORMAT:
         c.fail("$.format", f"expected {FORMAT}")
     c.text(p["id"], "$.id")
     c.integer(p["revision"], "$.revision")
+    if "event_narratives" in p:
+        from aeroagentsim.services.narratives import validate_declarations
+
+        c.checked("$.event_narratives", validate_declarations, p["event_narratives"])
     registry_requirements = c.shape(
         p.get("registry", {}), "$.registry", set(), {"snapshot", "digest_ref"}
     )
