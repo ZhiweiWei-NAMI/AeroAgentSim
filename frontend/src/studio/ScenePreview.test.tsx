@@ -1,0 +1,68 @@
+import { cleanup, render } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as THREE from 'three';
+
+const mocks = vi.hoisted(() => ({ renderers: 0, city: vi.fn(), osm: vi.fn() }));
+vi.mock('three', async importOriginal => {
+  const actual = await importOriginal<typeof import('three')>();
+  class FakeRenderer {
+    domElement = document.createElement('canvas');
+    constructor() { mocks.renderers++; }
+    setPixelRatio() {} setSize() {} render() {} dispose() {}
+  }
+  return { ...actual, WebGLRenderer: FakeRenderer };
+});
+vi.mock('three/addons/controls/OrbitControls.js', () => ({ OrbitControls: class { target = { set() {} }; update() {} dispose() {} } }));
+vi.mock('../viewport/assets', async importOriginal => ({ ...await importOriginal<object>(), Assets: class { dispose() {} } }));
+vi.mock('../scene/traffic-city', () => ({ loadTrafficCity: mocks.city }));
+vi.mock('../scene/source-geometry', () => ({ loadOsmBuildings: mocks.osm }));
+import { ScenePreview } from './ScenePreview';
+
+const workspace: any = {
+  id: 'w1', demo_console: { scene: { city: { kind: 'traffic-city', url: '/city/scene.json' } } },
+  scene: { ground: { width_m: 300, depth_m: 300 }, origin: { lat: 1, lon: 2, alt: 0 }, roads: [{ points: [[0, 0, 0], [10, 10, 0]] }] },
+  scenario: { presentation: [{ typeId: 't', positionField: 'pos' }], entities: [
+    { type: 't', facts: { pos: [1, 2, 3], 'aas.studio.airspace': { floor_m: 0, ceiling_m: 50, polygon: [[0, 0], [5, 0], [5, 5]] } } }] },
+};
+const ALL = ['ground', 'buildings', 'roads', 'entities', 'airspace'];
+
+beforeEach(() => {
+  mocks.renderers = 0;
+  mocks.city.mockReset().mockImplementation(async () => new THREE.Group());
+  mocks.osm.mockReset().mockImplementation(async () => new THREE.Group());
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+});
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+describe('ScenePreview layer toggles', () => {
+  it('keeps renderer, canvas and loaded city across layer toggles and follows the checkboxes', async () => {
+    const view = render(<ScenePreview workspace={workspace} api="/api" layers={ALL} />);
+    await vi.waitFor(() => expect(mocks.city).toHaveBeenCalledTimes(1));
+    const canvas = view.container.querySelector('canvas');
+    for (const layers of [ALL.filter(l => l !== 'airspace'), ALL.filter(l => l !== 'roads'), ['ground'], ALL, ALL.filter(l => l !== 'entities')]) {
+      view.rerender(<ScenePreview workspace={{ ...workspace }} api="/api" layers={layers} />);
+    }
+    expect(mocks.renderers).toBe(1);
+    expect(mocks.city).toHaveBeenCalledTimes(1);
+    expect(mocks.osm).toHaveBeenCalledTimes(1);
+    expect(view.container.querySelector('canvas')).toBe(canvas);
+  });
+
+  it('does not load buildings while hidden, and loads them once when first shown', async () => {
+    const view = render(<ScenePreview workspace={workspace} api="/api" layers={['ground']} />);
+    expect(mocks.city).not.toHaveBeenCalled();
+    view.rerender(<ScenePreview workspace={workspace} api="/api" layers={['ground', 'buildings']} />);
+    view.rerender(<ScenePreview workspace={workspace} api="/api" layers={['ground']} />);
+    view.rerender(<ScenePreview workspace={workspace} api="/api" layers={['ground', 'buildings']} />);
+    await vi.waitFor(() => expect(mocks.city).toHaveBeenCalledTimes(1));
+    expect(mocks.renderers).toBe(1);
+  });
+
+  it('rebuilds only for a genuinely different scene', async () => {
+    const view = render(<ScenePreview workspace={workspace} api="/api" layers={ALL} />);
+    await vi.waitFor(() => expect(mocks.city).toHaveBeenCalledTimes(1));
+    view.rerender(<ScenePreview workspace={{ ...workspace, id: 'w2' }} api="/api" layers={ALL} />);
+    await vi.waitFor(() => expect(mocks.city).toHaveBeenCalledTimes(2));
+    expect(mocks.renderers).toBe(2);
+  });
+});
