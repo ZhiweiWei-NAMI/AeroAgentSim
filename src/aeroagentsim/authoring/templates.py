@@ -383,7 +383,7 @@ class TemplateRegistry:
         if (
             not isinstance(data, dict)
             or required - data.keys()
-            or data.keys() - required - {"thumbnail"}
+            or data.keys() - required - {"thumbnail", "city"}
         ):
             raise ValueError(
                 f"template {identifier}: required manifest fields or unsupported keys"
@@ -394,6 +394,8 @@ class TemplateRegistry:
             or not re.fullmatch(r"[a-z0-9][a-z0-9-]*", identifier)
         ):
             raise ValueError(f"template {identifier}: invalid format/id")
+        if "city" in data and data["city"] != "huangpu":
+            raise ValueError(f"template {identifier}.city: expected huangpu")
         for key in ("title", "summary", "scenario", "thumbnail"):
             if key in data and (
                 not isinstance(data[key], str) or not data[key].strip()
@@ -525,6 +527,13 @@ class TemplateRegistry:
         document = yaml.load(source.read_bytes(), Loader=UniqueLoader)
         if not isinstance(document, dict):
             raise ValueError("template scenario must be a mapping")
+        if "city" in metadata:
+            document["city"] = metadata["city"]
+        elif identifier in {
+            "traffic-accident", "parcel-delivery", "medical-delivery",
+            "powerline-inspection", "crop-spraying", "air-taxi", "security-patrol", "city-day",
+        }:
+            document["city"] = "huangpu"
         values = {
             name: copy.deepcopy(
                 overrides[name] if name in overrides else knob["default"]
@@ -533,6 +542,10 @@ class TemplateRegistry:
         }
         for name, knob in declared.items():
             _knob_value(knob, values[name])
+            # JSON/YAML may spell a number knob as an integer. Preserve its
+            # declared number type when binding it to strict kernel fields.
+            if knob["type"] == "number":
+                values[name] = float(values[name])
             if "pointer" in knob:
                 _pointer(document, knob["pointer"], values[name])
             else:

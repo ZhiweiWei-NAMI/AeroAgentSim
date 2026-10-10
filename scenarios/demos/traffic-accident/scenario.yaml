@@ -1,4 +1,5 @@
 format: aeroagentsim.scenario/v1
+city: huangpu
 id: traffic-accident
 provenance: lean
 registry:

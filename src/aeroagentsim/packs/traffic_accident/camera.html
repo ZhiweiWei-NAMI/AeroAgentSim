@@ -1,6 +1,9 @@
 <!doctype html><meta charset="utf-8"><title>Recorded traffic simulation camera</title>
+<script type="importmap">{"imports":{"three":"/three.js"}}</script>
 <script type="module">
 import * as THREE from '/three.js';
+import { GLTFLoader } from '/addons/loaders/GLTFLoader.js';
+const models = new GLTFLoader();
 const renderer = new THREE.WebGLRenderer({antialias: false, preserveDrawingBuffer: true});
 renderer.setPixelRatio(1);
 renderer.setClearColor(0x273743);
@@ -11,7 +14,26 @@ function box(scene, dimensions, position, color) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...dimensions), new THREE.MeshStandardMaterial({color, roughness: .8}));
   mesh.position.set(...position); mesh.castShadow = true; scene.add(mesh); return mesh;
 }
-function buildCity(scene) {
+async function buildCity(scene) {
+  if (city && city.format !== 'traffic-city-lite/v1') {
+    for (const [layer, y, color] of [['asphalt', .01, 0x34383d], ['sidewalk', .045, 0x92938f], ['concrete', .025, 0xb4b2aa], ['medians', .065, 0x6f8060]]) {
+      for (const part of city.roads[layer] ?? []) {
+        const shape = new THREE.Shape(part.outline.map(([x,z]) => new THREE.Vector2(x,z)));
+        for (const ring of part.holes ?? []) shape.holes.push(new THREE.Path(ring.map(([x,z]) => new THREE.Vector2(x,z))));
+        const geometry = new THREE.ShapeGeometry(shape); geometry.rotateX(Math.PI/2);
+        const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({color, side:THREE.DoubleSide}));
+        mesh.position.y = y; scene.add(mesh);
+      }
+    }
+    let index = 0;
+    await Promise.all(Array.from({length:8}, async () => {
+      while (index < city.buildings.length) {
+        const b = city.buildings[index++]; const gltf = await models.loadAsync(b.url);
+        gltf.scene.position.set(b.x,b.y,b.z); scene.add(gltf.scene);
+      }
+    }));
+    return;
+  }
   if (!city) return;
   for (const b of city.buildings) {
     const shape = new THREE.Shape(b.footprint.map(([e,n]) => new THREE.Vector2(e,n)));
@@ -38,7 +60,7 @@ window.aeroCapture = {async render({request}) {
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight(0xffffff,0x40504c,2));
   const sun = new THREE.DirectionalLight(0xffffff,2); sun.position.set(200,500,300); scene.add(sun);
-  buildCity(scene);
+  await buildCity(scene);
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(city ? 2400 : 240, city ? 2400 : 240), new THREE.MeshBasicMaterial({color: 0x40564a}));
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(actor.position[0], -0.1, -actor.position[1]);
@@ -46,10 +68,12 @@ window.aeroCapture = {async render({request}) {
   for (const entity of snapshot.entities) {
     if (entity.id === actor.id && entity.generation === actor.generation) continue;
     const air = entity.position[2] > 10;
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(air ? 2 : 2.2, air ? 0.5 : 1.4, air ? 2 : 4), new THREE.MeshBasicMaterial({color: air ? 0x50c9ff : 0xe8a444}));
+    const mesh = city?.models
+      ? (await models.loadAsync(city.models[air ? 'uav' : 'car'])).scene
+      : new THREE.Mesh(new THREE.BoxGeometry(air ? 2 : 2.2, air ? 0.5 : 1.4, air ? 2 : 4), new THREE.MeshBasicMaterial({color: air ? 0x50c9ff : 0xe8a444}));
     mesh.position.set(entity.position[0], entity.position[2], -entity.position[1]);
     scene.add(mesh);
-    if (air && city) {
+    if (air && city && !city.models) {
       box(scene,[4,.16,.2],[entity.position[0],entity.position[2],-entity.position[1]],0x37434a);
       box(scene,[.2,.16,4],[entity.position[0],entity.position[2],-entity.position[1]],0x37434a);
     }

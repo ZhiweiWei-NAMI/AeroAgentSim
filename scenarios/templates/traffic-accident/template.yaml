@@ -1,4 +1,5 @@
 format: aeroagentsim.template/v1
+city: huangpu
 id: traffic-accident
 title: Traffic accident response
 summary: Nearby drones assess an accident, choose a responder and upload a city-camera image.

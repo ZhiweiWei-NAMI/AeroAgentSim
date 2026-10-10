@@ -30,8 +30,11 @@ def execution_document(
             modules = node_modules_root()
             renderer["node_modules"] = str(modules)
             renderer["browser_executable"] = browser_path(modules)
-            renderer["asset_digest"] = "traffic-lite-city/v1"
+            from aeroagentsim.authoring.demo import CITY_ASSET_ID, detailed_city
+
+            city_id = CITY_ASSET_ID if detailed_city() else "traffic-lite-city/v1"
+            renderer["asset_digest"] = city_id
             result["engines"]["capture_bridge"]["config"]["asset_digest"] = (
-                "traffic-lite-city/v1"
+                city_id
             )
     return result

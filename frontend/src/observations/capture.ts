@@ -61,7 +61,9 @@ export async function loadAssets(assetId: string, url: string, header: RunHeader
     const blob=URL.createObjectURL(new Blob([JSON.stringify(city)],{type:'application/json'}));blobs.push(blob);pinned.set(address,blob);
   }
   const pin = (address: string) => pinned.get(new URL(address, location.href).href)!;
-  return { ...header, presentation: header.presentation.map(binding => binding.visual.asset && !binding.visual.asset.startsWith('procedural:') ? { ...binding, visual: { ...binding.visual, asset: pin(binding.visual.asset) } } : binding),
+  // Actor GLBs may reference adjacent textures. Keep their service URL as the
+  // loader base; a blob URL loses that directory. Buildings embed their images.
+  return { ...header, presentation: header.presentation.map(binding => binding.visual.asset && !binding.visual.asset.startsWith('procedural:') ? { ...binding, visual: { ...binding.visual, asset: new URL(binding.visual.asset, location.href).href } } : binding),
     scene: header.scene && { ...header.scene, city: header.scene.city && { ...header.scene.city, url: pin(header.scene.city.url), assetsBase: header.scene.city.assetsBase ?? new URL('.', new URL(header.scene.city.url, location.href)).href }, roads: header.scene.roads && { ...header.scene.roads, url: pin(header.scene.roads.url) }, hdri: header.scene.hdri && pin(header.scene.hdri) } }; 
 }
 

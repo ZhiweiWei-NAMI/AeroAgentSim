@@ -427,6 +427,22 @@ def header(directory: Path) -> dict[str, Any]:
                 ],
             }
         )
+    if scenario.get("city") == "huangpu":
+        from aeroagentsim.assets import installed
+        from aeroagentsim.authoring.demo import city_presentation, detailed_city
+
+        result["city"] = "huangpu"
+        result["cityDetail"] = "detailed" if detailed_city() else "lite"
+        result["assetPacks"] = [{"id": p["id"], "version": p["version"], "title": p["title"]} for p in installed()]
+        result["scene"] = city_presentation()
+        result["presentation"] = [dict(binding) for binding in result["presentation"]]
+        for binding in result["presentation"]:
+            model = {"aas:TrafficRoadVehicle": "car", "aas:TrafficUAV": "uav"}.get(binding["typeId"])
+            if model is not None:
+                binding["visual"] = {
+                    "kind": "model", "scale": 1.0,
+                    "asset": "/v1/studio/demo-assets/models/" + model + ".glb" if detailed_city() else "procedural:" + model,
+                }
     subject_spec = scenario["registry"]
     declared = dict(subject_spec.get("message_subjects", {}))
     declared.update(

@@ -97,9 +97,12 @@ def demo_document(
     if standalone:
         # Standalone capture uses shipped OSM footprints, without a console server.
         capture = document["engines"]["capture"]["config"]
-        capture["renderer"]["asset_digest"] = "traffic-lite-city/v1"
+        from aeroagentsim.authoring.demo import CITY_ASSET_ID, detailed_city
+
+        city_id = CITY_ASSET_ID if detailed_city() else "traffic-lite-city/v1"
+        capture["renderer"]["asset_digest"] = city_id
         document["engines"]["capture_bridge"]["config"]["asset_digest"] = (
-            "traffic-lite-city/v1"
+            city_id
         )
     renderer = document["engines"]["capture"]["config"]["renderer"]
     renderer["browser_executable"] = browser_path(Path(renderer["node_modules"]))

@@ -345,6 +345,14 @@ def create_app(
             from aeroagentsim.authoring.replay import scene_header
 
             result.update(scene_header(path, str(request.base_url)))
+        if result.get("city") == "huangpu":
+            from aeroagentsim.authoring.demo import city_presentation
+
+            result["scene"] = city_presentation(str(request.base_url))
+            for binding in result["presentation"]:
+                visual = binding.get("visual", {})
+                if str(visual.get("asset", "")).startswith("/v1/studio/demo-assets/"):
+                    visual["asset"] = str(request.base_url).rstrip("/") + visual["asset"]
         return result
 
     @app.get("/v1/runs/{run_id}/commits")

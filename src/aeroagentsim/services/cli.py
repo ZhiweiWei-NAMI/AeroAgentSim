@@ -203,8 +203,36 @@ def main() -> None:
         "--port", type=int, default=0, help="Interactive API port (0 picks a free port)"
     )
     run_template.add_argument("--templates-root", type=Path)
+    asset = sub.add_parser("assets", help="Manage optional detailed city packs")
+    asset_sub = asset.add_subparsers(dest="asset_command", required=True)
+    asset_sub.add_parser("list")
+    asset_fetch = asset_sub.add_parser("fetch")
+    asset_fetch.add_argument("--url", help="Download URL (or AEROAGENTSIM_ASSET_PACK_URL)")
+    asset_install = asset_sub.add_parser("install")
+    asset_install.add_argument("source", type=Path, metavar="ZIP-OR-DIR")
+    asset_remove = asset_sub.add_parser("remove")
+    asset_remove.add_argument("id", nargs="?", default="huangpu-city")
+    asset_remove.add_argument("--version")
     args = parser.parse_args()
-    if args.command == "templates":
+    if args.command == "assets":
+        from aeroagentsim import assets
+
+        def summary(pack: dict[str, Any]) -> dict[str, Any]:
+            return {name: pack[name] for name in ("id", "version", "title", "directory")}
+
+        try:
+            if args.asset_command == "list":
+                result: Any = [summary(pack) for pack in assets.installed()]
+            elif args.asset_command == "fetch":
+                result = summary(assets.fetch(args.url))
+            elif args.asset_command == "install":
+                result = summary(assets.install(args.source))
+            else:
+                result = {"removed": assets.remove(args.id, args.version)}
+            print(json.dumps(result, indent=2))
+        except (ValueError, OSError, RuntimeError) as exc:
+            parser.error(str(exc))
+    elif args.command == "templates":
         try:
             print(json.dumps(template_list(args.templates_root), indent=2))
         except (ValueError, FileNotFoundError, OSError) as exc:

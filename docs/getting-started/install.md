@@ -50,6 +50,35 @@ For live agents, install `python -m pip install -e '.[server,agents]'` and follo
 
 The committed registry snapshot provides the demo's types, ancestry, fields and relations. No AeroGraph checkout is needed. With access to a full checkout, set `AEROAGENTSIM_AEROGRAPH_ROOT=/path/to/AeroGraph` to enable its broader catalog; see [AeroGraph](../concepts/aerograph.md).
 
-The demo includes OSM-derived roads and building footprints rendered as procedural geometry, with [attribution](../../scenarios/demos/traffic-accident/inputs/lite-city/ATTRIBUTION.txt). `AEROAGENTSIM_TRAFFIC_ASSET_ROOT` optionally selects a separately supplied high-detail pack. It is not distributed here. See [Asset notes](../../ASSETS.md).
+The demo includes OSM-derived roads and building footprints rendered as procedural geometry, with [attribution](../../scenarios/demos/traffic-accident/inputs/lite-city/ATTRIBUTION.txt). `AEROAGENTSIM_TRAFFIC_ASSET_ROOT` optionally selects a separately supplied high-detail pack. It is available as a separate download; see the optional detailed city instructions below and [Asset notes](../../ASSETS.md).
 
 Continue with the [quickstart](quickstart.md).
+
+## Optional detailed Huangpu city
+
+The lightweight city works offline from a public clone. For the detailed buildings,
+textures, car and X500 model, download the separate pack (about 103 MB):
+
+```bash
+aeroagentsim assets fetch
+aeroagentsim assets list
+```
+
+The console and simulation camera automatically use the installed city on their
+next load. The ZIP is kept outside the repository. Offline installation is supported:
+
+```bash
+aeroagentsim assets install /path/to/huangpu-city-v1.zip
+aeroagentsim assets remove huangpu-city
+```
+
+Packs live in `$XDG_DATA_HOME/aeroagentsim/assets` (by default
+`~/.local/share/aeroagentsim/assets`). Set `AEROAGENTSIM_ASSETS_DIR` to select another
+location. `assets fetch --url URL` or `AEROAGENTSIM_ASSET_PACK_URL` selects a mirror;
+interrupted downloads resume when the server supports HTTP Range. If the release
+asset has not been uploaded, install a local ZIP instead.
+
+`AEROAGENTSIM_TRAFFIC_ASSET_ROOT` still overrides discovery with an unpacked assets
+folder containing `scene.json`. Clear it to return to automatic pack selection.
+The pack includes an owner-supplied NOTICE with OpenStreetMap attribution; the
+building-mesh and texture licence must be stated by the project owner.
