@@ -159,7 +159,7 @@ export function displayName(entity: EntityState, header: RunHeader): string {
 export function humanizeId(id: string, typeName: string): string {
   const words = id.split(/[^a-zA-Z0-9]+/).filter(Boolean);
   const readable = words.length > 1 && words.every(word => /^[a-zA-Z0-9]+$/.test(word));
-  if (readable) return words.map(word => (/^\d+$/.test(word) ? word : word[0].toUpperCase() + word.slice(1))).join(' ');
+  if (readable) return words.map(word => (/^\d+$/.test(word) ? word : /^uav$/i.test(word)?'UAV':word[0].toUpperCase() + word.slice(1))).join(' ');
   const short = id.length > 14 ? `${id.slice(0, 12)}…` : id;
   return `${typeName.split(':').pop() ?? typeName} ${short}`;
 }
@@ -255,8 +255,12 @@ export function recentlyInvolved(messages: FeedCommit['messages'], lookback: num
 }
 
 /** Who should show a label in the SIMPLE default (not show-all) mode. */
-export function labelInterest(entity: EntityState, selected?: EntityKey, involved?: Set<string>, hasActiveTask?: boolean): boolean {
+export function labelInterest(entity: EntityState, selected?: EntityKey, involved?: Set<string>, hasActiveTask?: boolean, alerts?:Set<string>): boolean {
   if (selected && selected.id === entity.key.id && String(selected.generation) === String(entity.key.generation)) return true;
+  if(hasActiveTask)return true;
+  // Authored background traffic emits routine motion/occupancy updates every
+  // tick. Keep it on hover unless it participates in an actual alert.
+  if(entity.fields.get('traffic.actor.role')?.value==='background')return alerts?.has(`${entity.key.id}:${entity.key.generation}`)===true;
   if (involved?.has(`${entity.key.id}:${entity.key.generation}`)) return true;
   return !!hasActiveTask;
 }

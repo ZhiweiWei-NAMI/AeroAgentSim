@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import {Details} from '../console/Details';
 import { PageState } from '../console/PageState';
 import type { KpiSample, KpiValues } from './api';
+import { metricHelp } from './metric-help';
 import './results.css';
 
 export interface KpiPanelProps {
@@ -12,9 +14,10 @@ export interface KpiPanelProps {
   onRetry?: () => void;
 }
 
-/** Reads a KPI value in a friendly fixed precision, unit included, never faking null as 0. */
+/** Reads a KPI value in a friendly fixed precision, unit included, never faking null as 0. The meaningless "count" unit is dropped. */
 function formatKpi(value: number | null, unit: string): string {
   if (value === null || !Number.isFinite(value)) return '—';
+  if (unit === 'count') unit = '';
   const abs = Math.abs(value);
   const digits = Number.isInteger(value) ? 0 : abs >= 1000 ? 0 : abs >= 10 ? 1 : 2;
   return `${value.toFixed(digits)}${unit ? ` ${unit}` : ''}`;
@@ -49,10 +52,39 @@ function Sparkline({ series, kpiId }: { series: KpiSample[]; kpiId: string }) {
   );
 }
 
+function KpiCard({ id, kpi, series }: { id: string; kpi: KpiValues[string]; series: KpiSample[] }) {
+  const [showHelp, setShowHelp] = useState(false);
+  const help = metricHelp(id);
+  return (
+    <div className="newc-kpi-card">
+      <span className="newc-kpi-label">
+        <span>{kpi.label}</span>
+        {help !== undefined && (
+          <button
+            type="button"
+            className="newc-kpi-help"
+            aria-label={`About ${kpi.label}`}
+            aria-expanded={showHelp}
+            title="What does this mean?"
+            onClick={() => setShowHelp(open => !open)}
+          >?</button>
+        )}
+      </span>
+      {showHelp && help !== undefined && <p className="newc-kpi-help-text">{help}</p>}
+      <span className={`newc-kpi-value${kpi.value === null ? ' is-null' : ''}`}>
+        {formatKpi(kpi.value, kpi.unit)}
+      </span>
+      <Sparkline series={series} kpiId={id} />
+    </div>
+  );
+}
+
 /**
  * Read-only result cards: the actual values produced by the run, each with its
  * unit and a mini trend line. While the first result has not landed yet the
- * panel says so instead of showing zeros.
+ * panel says so instead of showing zeros. Metrics declared by the template
+ * (`ids`) come first; any other metric present in the feed stays available
+ * under "More metrics" instead of silently disappearing.
  */
 export function KpiPanel({ids, values, series, loading, error, onRetry }: KpiPanelProps) {
   if (error) {
@@ -65,8 +97,9 @@ export function KpiPanel({ids, values, series, loading, error, onRetry }: KpiPan
   if (loading && Object.keys(values).length === 0) {
     return <PageState kind="loading" title="Waiting for the first results" description="Metrics appear here as soon as the simulation produces them." />;
   }
-  const entries = ids?ids.flatMap(id=>values[id]?[[id,values[id]] as const]:[]):Object.entries(values);
-  if (entries.length === 0) {
+  const declared = ids ? ids.filter(id => values[id]) : Object.keys(values).filter(id=>values[id].value!==0);
+  const rest = Object.keys(values).filter(id => !declared.includes(id));
+  if (declared.length === 0 && rest.length === 0) {
     return (
       <PageState kind="empty" title="No results yet"
         description="This run has not published results for this moment. Follow live or move along the timeline." />
@@ -74,17 +107,19 @@ export function KpiPanel({ids, values, series, loading, error, onRetry }: KpiPan
   }
   return (
     <div className="newc-kpis" aria-busy={loading || undefined}>
-      <div className="newc-kpi-grid">
-        {entries.map(([id, kpi]) => (
-          <div key={id} className="newc-kpi-card">
-            <span className="newc-kpi-label">{kpi.label}</span>
-            <span className={`newc-kpi-value${kpi.value === null ? ' is-null' : ''}`}>
-              {formatKpi(kpi.value, kpi.unit)}
-            </span>
-            <Sparkline series={series} kpiId={id} />
+      {declared.length > 0 && (
+        <div className="newc-kpi-grid">
+          {declared.map(id => <KpiCard key={id} id={id} kpi={values[id]} series={series} />)}
+        </div>
+      )}
+      {rest.length > 0 && (
+        <details className="newc-kpi-more">
+          <summary>More metrics ({rest.length})</summary>
+          <div className="newc-kpi-grid">
+            {rest.map(id => <KpiCard key={id} id={id} kpi={values[id]} series={series} />)}
           </div>
-        ))}
-      </div>
+        </details>
+      )}
     </div>
   );
 }

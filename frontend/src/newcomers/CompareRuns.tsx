@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageState } from '../console/PageState';
-import { TemplateApi, type ComparisonRun, type KnobValue } from './api';
+import { TemplateApi, type ComparisonRun, type KnobValue, type ScenarioTemplate } from './api';
+import { metricHelp } from './metric-help';
 import './results.css';
 
 export interface CompareRunsProps {
@@ -29,6 +30,7 @@ function display(value: KnobValue | undefined): string {
 
 function formatKpi(value: number | null, unit: string): string {
   if (value === null || !Number.isFinite(value)) return '—';
+  if (unit === 'count') unit = '';
   const abs = Math.abs(value);
   const digits = Number.isInteger(value) ? 0 : abs >= 1000 ? 0 : abs >= 10 ? 1 : 2;
   return `${value.toFixed(digits)}${unit ? ` ${unit}` : ''}`;
@@ -44,8 +46,9 @@ interface KpiRow {
 }
 
 /** Rows sorted best-first; best values are highlighted per direction, never by raw max alone. */
-function kpiRows(runs: ComparisonRun[]): KpiRow[] {
+function kpiRows(runs: ComparisonRun[], order: string[] = []): KpiRow[] {
   const ids: string[] = [];
+  order.forEach(id => { if (!ids.includes(id)) ids.push(id); });
   runs.forEach(run => Object.keys(run.kpis ?? {}).forEach(id => { if (!ids.includes(id)) ids.push(id); }));
   const rows = ids.map(id => {
     const values = runs.map(run => run.kpis[id]?.value ?? null);
@@ -57,23 +60,51 @@ function kpiRows(runs: ComparisonRun[]): KpiRow[] {
     return { id, label: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.label ?? humanize(id),
       unit: runs.flatMap(run => (run.kpis[id] ? [run.kpis[id]] : []))[0]?.unit ?? '', direction, values, best };
   });
-  return rows.sort((a, b) => a.direction.localeCompare(b.direction) || a.label.localeCompare(b.label));
+  const rank = (id: string) => {
+    const index = order.indexOf(id);
+    return index === -1 ? order.length + 1 : index;
+  };
+  return rows.sort((a, b) => rank(a.id) - rank(b.id) || a.direction.localeCompare(b.direction) || a.label.localeCompare(b.label));
 }
 
 /** Knob / algorithm columns where the compared runs actually differ. */
-function differences(runs: ComparisonRun[]): { label: string; values: string[] }[] {
+function differences(runs: ComparisonRun[], templates: Map<string, ScenarioTemplate>): { label: string; values: string[] }[] {
   const keys: string[] = [];
   runs.forEach(run => Object.keys(run.knobs ?? {}).forEach(key => { if (!keys.includes(key)) keys.push(key); }));
+  const knobLabel = (key: string): string => {
+    for (const template of [...templates.values()].filter(template=>runs.some(run=>run.template_id===template.id))) {
+      const knob = template.knobs.find(candidate => candidate.id === key);
+      if (knob) return knob.label;
+    }
+    return humanize(key);
+  };
+  // Knobs that point at an algorithm slot (pointer: /algorithms/<slot>) and that
+  // slot's direct algorithm choice describe the same thing — keep one row.
+  const pointerSlot = new Map<string, string>();
+  for (const template of [...templates.values()].filter(template=>runs.some(run=>run.template_id===template.id))) {
+    for (const knob of template.knobs) {
+      const slot = knob.pointer?.match(/^\/algorithms\/([^/]+)$/)?.[1];
+      if (slot) pointerSlot.set(knob.id, slot);
+    }
+  }
   const algorithmSlots = ['allocation', 'path_planning', 'conflict_resolution', 'charging'] as const;
-  return [
-    ...keys.map(key => ({ label: humanize(key), values: runs.map(run => display(run.knobs?.[key])) })),
-    ...algorithmSlots
-      .filter(slot => runs.some(run => run.algorithms?.[slot]))
-      .map(slot => ({ label: humanize(slot), values: runs.map(run => display(run.algorithms?.[slot])) })),
-  ].filter(column => new Set(column.values).size > 1);
+  const usedSlots = new Set<string>();
+  const knobColumns = keys.map(key => {
+    const slot = pointerSlot.get(key);
+    if (slot && algorithmSlots.some(candidate=>candidate===slot)) {
+      const typedSlot=slot as typeof algorithmSlots[number];
+      const agrees=runs.every(run=>run.knobs[key]===undefined||run.algorithms[typedSlot]===undefined||run.knobs[key]===run.algorithms[typedSlot]);
+      if(agrees){usedSlots.add(slot);return {label:knobLabel(key),values:runs.map(run=>display(run.knobs[key]??run.algorithms[typedSlot]))};}
+    }
+    return { label: knobLabel(key), values: runs.map(run => display(run.knobs?.[key])) };
+  });
+  const algorithmColumns = algorithmSlots
+    .filter(slot => runs.some(run => run.algorithms?.[slot]) && !usedSlots.has(slot))
+    .map(slot => ({ label: humanize(slot), values: runs.map(run => display(run.algorithms?.[slot])) }));
+  return [...knobColumns, ...algorithmColumns].filter(column => new Set(column.values).size > 1);
 }
 
-function Column({ run, rows,index }: { run: ComparisonRun; rows: KpiRow[];index:number }) {
+function Column({ run, rows, index, more }: { run: ComparisonRun; rows: KpiRow[]; index: number; more: KpiRow[] }) {
   return (
     <section className="newc-compare-col">
       <h3>Run {index+1} · {run.title || humanize(run.id)}</h3>
@@ -86,7 +117,12 @@ function Column({ run, rows,index }: { run: ComparisonRun; rows: KpiRow[];index:
             const isBest = row.best !== undefined && value !== null && value === row.best;
             return (
               <tr key={row.id} className={isBest ? 'is-best' : undefined}>
-                <th scope="row">{row.label}</th>
+                <th scope="row">
+                  {row.label}
+                  {metricHelp(row.id) !== undefined && (
+                    <span className="newc-compare-help" title={metricHelp(row.id)} aria-label={`About ${row.label}`}>?</span>
+                  )}
+                </th>
                 <td className={`newc-kpi-cell${isBest ? ' is-best' : ''}`}>
                   {formatKpi(value, row.unit)}
                   <Bar value={value} row={row} />
@@ -96,6 +132,25 @@ function Column({ run, rows,index }: { run: ComparisonRun; rows: KpiRow[];index:
           })}
         </tbody>
       </table>
+      {more.length > 0 && (
+        <details className="newc-kpi-more">
+          <summary>More metrics ({more.length})</summary>
+          <table className="newc-compare-table">
+            <tbody>
+              {more.map(row => {
+                const value = row.values.length ? row.values[index] : null;
+                const isBest = row.best !== undefined && value !== null && value === row.best;
+                return (
+                  <tr key={row.id} className={isBest ? 'is-best' : undefined}>
+                    <th scope="row">{row.label}{metricHelp(row.id)&&<span className="newc-compare-help" title={metricHelp(row.id)} aria-label={`About ${row.label}`} tabIndex={0}>?</span>}</th>
+                    <td className={`newc-kpi-cell${isBest ? ' is-best' : ''}`}>{formatKpi(value, row.unit)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </details>
+      )}
     </section>
   );
 }
@@ -117,10 +172,14 @@ function Bar({ value, row }: { value: number | null; row: KpiRow }) {
  * Side-by-side comparison fetched live from the API (no silent mocks).
  * Each run gets a column; the KPI table highlights the best value per metric
  * respecting its known direction, and differing knobs/algorithm choices get
- * their own rows.
+ * their own rows. Template catalog metadata (knob labels, declared KPI order)
+ * is fetched separately and best-effort: if the catalog is unavailable the
+ * comparison still renders with machine ids and generic ordering.
  */
 export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
   const [runs, setRuns] = useState<ComparisonRun[]>();
+  const [templates, setTemplates] = useState<Map<string, ScenarioTemplate>>(() => new Map());
+  const [catalogNote, setCatalogNote] = useState<string>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
@@ -138,9 +197,40 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
     return () => control.abort();
   }, [api, ids.join(','), attempt]);
 
+  // Best-effort catalog metadata: knob labels / pointers and template-declared
+  // KPI ordering. Failures are surfaced as a small note, never as a dead end —
+  // the comparison itself stays available.
+  useEffect(() => {
+    if (ids.length < 2 || ids.length > 4) return;
+    const control = new AbortController();
+    api.templates(control.signal)
+      .then(catalog => {
+        if (control.signal.aborted) return;
+        const map = new Map<string, ScenarioTemplate>();
+        for (const template of catalog) map.set(template.id, template);
+        setTemplates(map); setCatalogNote(undefined);
+      })
+      .catch(problem => {
+        if (control.signal.aborted) return;
+        setTemplates(new Map());
+        setCatalogNote(`Metric names and settings come from machine ids — template details are unavailable (${String(problem)}).`);
+      });
+    return () => control.abort();
+  }, [api, ids.join(','), attempt]);
+
   const retry = useCallback(() => setAttempt(attempt => attempt + 1), []);
-  const rows = useMemo(() => (runs ? kpiRows(runs) : []), [runs]);
-  const columns = useMemo(() => (runs ? differences(runs) : []), [runs]);
+  const declaredOrder = useMemo(() => {
+    const order: string[] = [];
+    runs?.forEach(run => {
+      const template = run.template_id ? templates.get(run.template_id) : undefined;
+      template?.kpis.forEach(id => { if (!order.includes(id)) order.push(id); });
+    });
+    return order;
+  }, [runs, templates]);
+  const rows = useMemo(() => (runs ? kpiRows(runs, declaredOrder) : []), [runs, declaredOrder]);
+  const primary = useMemo(() => rows.filter(row => declaredOrder.length?declaredOrder.includes(row.id):row.values.some(value=>value!==null&&value!==0)), [rows, declaredOrder]);
+  const more = useMemo(() => rows.filter(row=>!primary.includes(row)), [rows, primary]);
+  const columns = useMemo(() => (runs ? differences(runs, templates) : []), [runs, templates]);
 
   if (loading && !runs) {
     return <PageState kind="loading" title="Loading the comparison" description="Fetching the results of the runs you selected." />;
@@ -163,6 +253,7 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
         <h2 className="newc-compare-title">Comparing {runs.length} runs</h2>
         {onBack && <button type="button" className="newc-button" onClick={onBack}>Go back</button>}
       </header>
+      {catalogNote && <p className="newc-catalog-note" role="note">{catalogNote}</p>}
       {columns.length > 0 && (
         <section className="newc-compare-section">
           <h4>Settings that differ</h4>
@@ -178,7 +269,7 @@ export function CompareRuns({ api, ids, onBack }: CompareRunsProps) {
       )}
       <div className={`newc-compare-grid n-${runs.length}`}>
         {runs.map((run, index) => (
-          <Column key={run.id} run={run} rows={rows} index={index} />
+          <Column key={run.id} run={run} rows={primary} more={more} index={index} />
         ))}
       </div>
     </div>

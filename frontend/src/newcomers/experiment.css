@@ -108,3 +108,8 @@
 .exp-run-status.is-completed { color: #086b60; border-color: #0d7f74; background: #e4f3f0; }
 .exp-run-status.is-faulted, .exp-run-status.is-failed { color: #8f2a2a; border-color: #c25656; background: #fbecec; }
 .exp-run-error { color: #8f2a2a; }
+
+.exp-plan>summary,.exp-more>summary{cursor:pointer;color:var(--csl-text-muted);font-size:13px;font-weight:600;padding:8px 0}
+.exp-plan[open]{display:flex;flex-direction:column;gap:16px}
+.exp-table-scroll{overflow-x:auto;margin:8px 0}
+.exp-results{min-width:0}.exp-more{margin-top:10px}.exp-table td{white-space:nowrap}

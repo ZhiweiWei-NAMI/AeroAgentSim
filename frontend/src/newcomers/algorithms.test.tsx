@@ -20,9 +20,11 @@ const catalog: AlgorithmDescriptor[] = [
   { id: 'straight', slot: 'path_planning', label: 'Straight line', description: 'Flies directly between the two points.' },
 ];
 
-function Harness({ initial, changed }: { initial?: Partial<Record<AlgorithmSlot, string>>; changed: (next: Partial<Record<AlgorithmSlot, string>>) => void }) {
-  return <AlgorithmsPanel base="http://studio.test" algorithms={initial ?? {}} onChange={changed} />;
+function Harness({ initial, changed, applicable }: { initial?: Partial<Record<AlgorithmSlot, string>>; changed: (next: Partial<Record<AlgorithmSlot, string>>) => void; applicable?: boolean }) {
+  return <AlgorithmsPanel base="http://studio.test" algorithms={initial ?? {}} onChange={changed} applicable={applicable} />;
 }
+
+const fullCatalog = () => Object.fromEntries(['allocation','path_planning','conflict_resolution','charging'].map(slot=>[slot,catalog.filter(row=>row.slot===slot)]));
 
 describe('AlgorithmsPanel', () => {
   it('lists only server-advertised algorithms per slot and reports one-line descriptions', async () => {
@@ -63,5 +65,33 @@ describe('AlgorithmsPanel', () => {
     fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Allocation' }));
     fireEvent.click(screen.getByTitle('Assigns each task to the closest idle drone.'));
     expect(changed).toHaveBeenLastCalledWith({ allocation: 'nearest', path_planning: 'corridor_astar' });
+  });
+
+  it('says "Not used by this scenario" without dropdowns or a fetch when the scenario lacks the lowalt task pack', async () => {
+    render(<Harness applicable={false} changed={() => {}} />);
+    expect(await screen.findByTestId('studio-algorithms-not-applicable')).toHaveTextContent('not used by this scenario');
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('shows the documented default with a "(default)" marker, lets you pick an alternative, and resetting clears the override instead of writing the default id', async () => {
+    vi.stubGlobal('fetch', fetchMock.mockResolvedValue(jsonResponse(200, fullCatalog())));
+    const changed = vi.fn();
+    const { rerender } = render(<Harness initial={{ allocation: 'auction' }} changed={changed} />);
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Allocation' })).toBeEnabled());
+    // Authored override shows its catalog label without the default marker.
+    expect(screen.getByText('Auction')).toBeInTheDocument();
+    expect(screen.getByTestId('algorithm-allocation')).not.toHaveTextContent('(default)');
+    // Reset removes the override (undefined, not the default id written back).
+    fireEvent.click(screen.getByTestId('algorithm-reset-allocation'));
+    expect(changed).toHaveBeenLastCalledWith({});
+    // With no override the effective value is the documented lowalt default.
+    rerender(<Harness initial={{}} changed={changed} />);
+    expect(screen.getByText('Nearest free vehicle (default)')).toBeInTheDocument();
+    expect(screen.getAllByText('(default)').length).toBeGreaterThanOrEqual(4);
+    // Choosing an option stores it; the other untouched slot still shows its default.
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Allocation' }));
+    fireEvent.click(screen.getByTitle('Vehicles bid on tasks; lowest cost wins.'));
+    expect(changed).toHaveBeenLastCalledWith({ allocation: 'auction' });
   });
 });

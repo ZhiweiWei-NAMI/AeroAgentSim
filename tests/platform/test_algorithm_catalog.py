@@ -11,6 +11,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from aeroagentsim.algorithms import BUILTINS
 from aeroagentsim.services.algorithm_catalog import mount_algorithm_catalog
 
 
@@ -66,6 +67,8 @@ def test_catalog_lists_builtin_and_installed_entries(
     allocation_ids = [a["id"] for a in slots["allocation"]]
     # All builtin names from the real registry, plus the mock installed plugin.
     assert set(allocation_ids) == {"nearest", "auction", "hungarian", "llm", "greedy"}
+    for slot, registered in BUILTINS.items():
+        assert set(registered).issubset({row["id"] for row in slots[slot]})
 
     greedy = next(a for a in slots["allocation"] if a["id"] == "greedy")
     assert greedy["label"] == "Greedy"

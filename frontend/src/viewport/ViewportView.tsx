@@ -6,6 +6,7 @@ import { Viewport, type CameraMode } from './viewport';
 import { LiveFollowClock } from './live-interpolation';
 import type { Quality } from './pipeline';
 import { MissionTimeline } from './MissionTimeline';
+import { initialActionFraming } from './action-framing';
 import '../scene/presentation';
 interface Props {
   store: FeedStore & { liveFollow?: boolean }; clock: PlaybackClock; selected?: EntityKey; mode: CameraMode; quality: Quality; trails: boolean;
@@ -32,6 +33,9 @@ export function ViewportView(props: Props) {
   const catalogNotice=(props.store.header as typeof props.store.header & {catalogNotice?:string}).catalogNotice;
   useEffect(()=>{
     let frame=0,last=performance.now(),notify=last,lastSeek='',lastNotified='';
+    let actionFramed=false,interacted=false;
+    const preserveCamera=()=>{interacted=true;};
+    root.current?.addEventListener('pointerdown',preserveCamera);
     const liveClock=new LiveFollowClock();
     try{
       viewport.current=new Viewport(root.current!,props.store.header,{
@@ -47,6 +51,20 @@ export function ViewportView(props: Props) {
           p.clock.update(now/1000);const cut=p.clock.playing?undefined:p.commitCut;
           const seekKey=`${p.clock.ns}/${cut}/${p.store.commits.length}`;
           if(seekKey!==lastSeek){p.store.seek(p.clock.ns,cut);lastSeek=seekKey;}
+          if(p.simple&&(mode??p.mode)==='orbit'&&!actionFramed&&!interacted&&!p.focus){
+            const framing=initialActionFraming(p.store.header,p.store.entities.values());
+            if(framing){
+              const view=viewport.current!;
+              view.focusPosition(framing.center);
+              // Fit the actor bounding sphere using the smaller camera field of view.
+              const halfVertical=view.camera.fov*Math.PI/360;
+              const halfHorizontal=Math.atan(Math.tan(halfVertical)*view.camera.aspect);
+              const distance=framing.radius/Math.sin(Math.min(halfVertical,halfHorizontal))*1.12;
+              const scale=distance/Math.hypot(65,50,65);
+              view.camera.position.x+=65*(scale-1);view.camera.position.y+=50*(scale-1);view.camera.position.z+=65*(scale-1);
+              actionFramed=true;if(root.current)root.current.dataset.framing='main-actors';
+            }
+          }
           // Display-only live-follow: render one pose sample behind the head on
           // the wall clock; the exact store cursor above stays at the live head.
           const liveActive=p.store.liveFollow===true&&cut===undefined;
@@ -58,7 +76,7 @@ export function ViewportView(props: Props) {
         }catch(error){current.current.onError(error);}
       };frame=requestAnimationFrame(animate);
     }catch(error){props.onError(error);}
-    return()=>{cancelAnimationFrame(frame);viewport.current?.dispose();viewport.current=undefined;root.current?.closest('.viewer-main')?.removeAttribute('data-inspector-collapsed');};
+    return()=>{root.current?.removeEventListener('pointerdown',preserveCamera);cancelAnimationFrame(frame);viewport.current?.dispose();viewport.current=undefined;root.current?.closest('.viewer-main')?.removeAttribute('data-inspector-collapsed');};
   },[props.store,props.clock]);
   useEffect(()=>{viewport.current?.setSelection(props.selected);},[props.selected]);
   useEffect(()=>{viewport.current?.setSemantic({showAllLabels});},[showAllLabels]);

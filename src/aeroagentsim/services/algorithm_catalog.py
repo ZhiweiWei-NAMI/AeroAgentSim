@@ -34,6 +34,9 @@ BUILTIN_COPY: dict[str, tuple[str, str]] = {
         "Safe corridor route",
         "Find a route around active no-fly areas.",
     ),
+    "coverage": ("Area sweep", "Cover the declared area in parallel rows."),
+    "survey": ("Inspection waypoints", "Visit the declared inspection waypoints."),
+    "patrol": ("Patrol loop", "Follow the declared patrol loop."),
     "altitude_layers": (
         "Separate flying heights",
         "Give conflicting drones different flying heights.",

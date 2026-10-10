@@ -126,26 +126,70 @@
 
 .newc-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--csl-sp-3);
+  /* Two compact columns so five default metrics fit a 1280×800 side panel. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--csl-sp-2);
 }
 
 .newc-kpi-card {
   display: flex;
   flex-direction: column;
-  gap: var(--csl-sp-1);
-  padding: var(--csl-sp-3) var(--csl-sp-4);
+  gap: 2px;
+  padding: var(--csl-sp-2);
+  min-width: 0;
   background: var(--csl-surface);
   border: 1px solid var(--csl-border);
-  border-radius: var(--csl-radius);
+  border-radius: var(--csl-radius-sm);
   box-shadow: var(--csl-shadow);
 }
 
-.newc-kpi-label { font-size: var(--csl-fs-xs); color: var(--csl-text-muted); }
-.newc-kpi-value { font-size: var(--csl-fs-xl); font-weight: 600; color: var(--csl-text); }
-.newc-kpi-value .newc-kpi-unit { font-size: var(--csl-fs-sm); font-weight: 400; color: var(--csl-text-faint); margin-left: 2px; }
+.newc-kpi-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--csl-sp-1);
+  font-size: var(--csl-fs-xs);
+  color: var(--csl-text-muted);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Small inline help affordance for known metrics; unknown metrics get none. */
+.newc-kpi-help {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  line-height: 13px;
+  font-size: 10px;
+  font-family: var(--csl-font);
+  color: var(--csl-text-muted);
+  background: var(--csl-surface-alt);
+  border: 1px solid var(--csl-border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.newc-kpi-help:hover,
+.newc-kpi-help[aria-expanded='true'] { color: var(--csl-teal-600); border-color: var(--csl-teal-500); }
+.newc-kpi-help-text {
+  margin: 0;
+  font-size: var(--csl-fs-xs);
+  color: var(--csl-text-muted);
+}
+
+.newc-kpi-value { font-size: var(--csl-fs-lg); font-weight: 600; color: var(--csl-text); font-variant-numeric: tabular-nums; }
+.newc-kpi-value .newc-kpi-unit { font-size: var(--csl-fs-xs); font-weight: 400; color: var(--csl-text-faint); margin-left: 2px; }
 .newc-kpi-value.is-null { color: var(--csl-text-faint); font-weight: 400; }
-.newc-kpi-spark { width: 100%; height: 28px; color: var(--csl-teal-500); }
+.newc-kpi-spark { width: 100%; height: 22px; color: var(--csl-teal-500); }
+
+/* Collapsible group for metrics the template did not declare. */
+.newc-kpi-more > summary {
+  cursor: pointer;
+  font-size: var(--csl-fs-xs);
+  color: var(--csl-text-muted);
+  padding: var(--csl-sp-1) 0;
+}
+.newc-kpi-more > summary:hover { color: var(--csl-teal-600); }
+.newc-kpi-more[open] > summary { margin-bottom: var(--csl-sp-2); }
 
 /* ---------------- run comparison ---------------- */
 
@@ -233,5 +277,33 @@
 .newc-diff-list { margin: 0; padding: 0; list-style: none; font-size: var(--csl-fs-xs); color: var(--csl-text-muted); }
 .newc-diff-list li { display: flex; justify-content: space-between; gap: var(--csl-sp-2); padding: 2px 0; }
 .newc-diff-list .newc-diff-value { font-family: var(--csl-mono); color: var(--csl-text); }
+
+/* Honest note when the template catalog (labels, ordering) is unavailable. */
+.newc-catalog-note {
+  margin: 0;
+  padding: var(--csl-sp-2) var(--csl-sp-3);
+  font-size: var(--csl-fs-xs);
+  color: var(--csl-text-muted);
+  background: var(--csl-surface-alt);
+  border: 1px solid var(--csl-border-strong);
+  border-radius: var(--csl-radius-sm);
+  overflow-wrap: anywhere;
+}
+
+/* Inline metric hint in comparison tables (known metrics only). */
+.newc-compare-help {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  font-size: 10px;
+  font-family: var(--csl-font);
+  color: var(--csl-text-muted);
+  background: var(--csl-surface-alt);
+  border: 1px solid var(--csl-border-strong);
+  border-radius: 999px;
+  cursor: help;
+}
 
 .newc-feed-empty .console-btn{margin-top:14px}

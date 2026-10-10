@@ -26,6 +26,15 @@ function store(entities: EntityState[]) {
 }
 
 describe('active airspace zones from committed facts', () => {
+  it('keeps routine background updates on hover, while selected, active and alerted actors remain labelled', () => {
+    const background=entity('vehicle.005',0,'aas:TrafficRoadVehicle',{'traffic.actor.role':'background'});
+    const involved=new Set(['vehicle.005:0']);
+    expect(labelInterest(background,undefined,involved)).toBe(false);
+    expect(labelInterest(background,background.key,involved)).toBe(true);
+    expect(labelInterest(background,undefined,involved,true)).toBe(true);
+    expect(labelInterest(background,undefined,involved,false,involved)).toBe(true);
+    expect(humanizeId('uav.bravo','UAV')).toBe('UAV Bravo');
+  });
   it('returns only active zones with real bounds and validates against the registry enum', () => {
     const zones = activeZones(header, store([
       entity('central-no-fly', 0, 'lowalt:AirspaceZone', {
