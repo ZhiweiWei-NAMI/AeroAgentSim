@@ -1,4 +1,5 @@
 format: aeroagentsim.template/v1
+city: huangpu
 id: security-patrol
 title: Security patrol
 summary: A drone patrols a district and responds when an operator reports an incident.

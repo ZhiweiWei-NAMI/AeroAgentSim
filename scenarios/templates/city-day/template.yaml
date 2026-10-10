@@ -1,4 +1,5 @@
 format: aeroagentsim.template/v1
+city: huangpu
 id: city-day
 title: One day in a shared city
 summary: Deliveries, inspections, passenger flights and road incident responders share

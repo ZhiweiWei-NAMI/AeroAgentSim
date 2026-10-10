@@ -1,4 +1,5 @@
 format: aeroagentsim.template/v1
+city: huangpu
 id: powerline-inspection
 title: Power line inspection
 summary: A drone follows a power line and records survey observations while waiting

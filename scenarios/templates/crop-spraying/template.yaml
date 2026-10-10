@@ -1,4 +1,5 @@
 format: aeroagentsim.template/v1
+city: huangpu
 id: crop-spraying
 title: Crop spraying
 summary: A drone treats a field in rows, swaps batteries at the edge and pauses when

@@ -1,4 +1,5 @@
 format: aeroagentsim.template/v1
+city: huangpu
 id: medical-delivery
 title: Urgent medical delivery
 summary: Drones pause routine deliveries to carry urgent supplies from a hospital

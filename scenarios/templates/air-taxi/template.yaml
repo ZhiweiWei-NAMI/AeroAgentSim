@@ -1,4 +1,5 @@
 format: aeroagentsim.template/v1
+city: huangpu
 id: air-taxi
 title: Air taxi service
 summary: Small passenger aircraft travel between three vertiports and share limited
