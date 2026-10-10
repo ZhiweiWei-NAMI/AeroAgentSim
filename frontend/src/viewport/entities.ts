@@ -10,6 +10,7 @@ import { worldOrientation, worldPosition } from './coordinates';
 import type { EntityState } from './feed-store';
 import { selectCatalogModel, fitModel, yawFromVelocity, type CatalogModel, type EntityClassInfo, type ModelCatalog } from './model-catalog';
 import { semanticVehicle, businessStyle, semanticLabel, labelInterest, recentlyInvolved, taskByVehicle, activeZones } from './semantic';
+import {PayloadLayer} from './operational-loads';
 
 /** A task counts as active unless its committed state says it is finished. */
 function isFinishedTask(task: { fields: Map<string, { value: unknown }> }): boolean {
@@ -34,6 +35,8 @@ export class EntityLayer {
   readonly positions = new Map<string, T.Vector3>();
   readonly orientations = new Map<string, T.Quaternion>();
   readonly ring: T.Mesh;
+  private loads=new PayloadLayer();
+  get payloadCount(){return this.semantic?this.loads.markers.size:0;}
   labelsMs = 0;
   transformsChanged = false;
   readonly selection: T.Object3D[]=[];
@@ -80,7 +83,7 @@ export class EntityLayer {
     this.ring = new T.Mesh(new T.TorusGeometry(0.8, 0.025, 8, 48), new T.MeshBasicMaterial({ color: '#9ce9ff', depthTest: false, transparent: true, opacity: 0.9 }));
     this.ring.rotation.x = -Math.PI / 2; this.ring.visible = false; this.ring.renderOrder=5; this.root.add(this.ring);
     this.trail = new T.Line(new T.BufferGeometry(), new T.LineBasicMaterial({ color: '#30bdf0', transparent: true, opacity: 0.85 }));
-    this.trail.frustumCulled=false; this.root.add(this.trail);
+    this.trail.frustumCulled=false; this.root.add(this.trail,this.loads.root);
   }
   private createBatch(binding: PresentationBinding, capacity: number) {
     const glyph=this.glyphs.get(binding);
@@ -316,6 +319,7 @@ export class EntityLayer {
       const isSelected=!!selected && entityId(selected)===id;
       candidates.push({id,key:entity.key,position,selected:isSelected,forced:binding.visual.kind==='label'||this.highlighted.has(id)});
     }
+    this.loads.root.visible=this.semantic;if(this.semantic)this.loads.update(store,this.positions);
     // Semantic label policy (newcomer mode): selected / task-active /
     // recently event-involved entities always label; others only on real
     // raycast hover or when show-all is on. Expert mode keeps forced labels.
@@ -412,5 +416,5 @@ export class EntityLayer {
     for(const hit of raycaster.intersectObject(this.root,true))for(const batch of this.batches.values()){if(batch.meshes.includes(hit.object as T.InstancedMesh)&&hit.instanceId!==undefined)return batch.keys[hit.instanceId];if(hit.object===batch.far?.mesh&&hit.instanceId!==undefined)return batch.far.keys[hit.instanceId];}
     return undefined;
   }
-  dispose(){this.disposed=true;for(const label of this.labels.values())label.remove();for(const material of this.tinted.values())material.dispose();this.tinted.clear();}
+  dispose(){this.disposed=true;this.loads.dispose();for(const label of this.labels.values())label.remove();for(const material of this.tinted.values())material.dispose();this.tinted.clear();}
 }

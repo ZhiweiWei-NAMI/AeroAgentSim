@@ -4,6 +4,7 @@ import type { FeedStore } from './feed-store';
 import { worldPosition } from './coordinates';
 import { activeZones, humanizeId, semanticSites, type SemanticZone } from './semantic';
 import { translate } from '../i18n/translate';
+import {chargingPadAssignments} from './operational-loads';
 
 /**
  * Newcomer semantic overlay: active airspace zones and site markers rendered
@@ -35,6 +36,8 @@ export class SemanticLayer {
   private zoneBoxes: T.Mesh[] = [];
   private zoneLines: T.LineSegments[] = [];
   private markerGlyphs = new Map<string, T.Mesh>();
+  private padGlows:T.Mesh[]=[];
+  get chargingPadCount(){return this.padGlows.length;}
   private origin = new T.Vector3();
   private disposed = false;
   private lastStamp = '';
@@ -95,15 +98,20 @@ export class SemanticLayer {
 
   private rebuildMarkers(store: FeedStore, renderOrigin: T.Vector3) {
     for (const mesh of this.markerGlyphs.values()) { mesh.removeFromParent(); mesh.geometry.dispose(); (mesh.material as T.Material).dispose(); }
+    for(const glow of this.padGlows){glow.removeFromParent();glow.geometry.dispose();(glow.material as T.Material).dispose();}this.padGlows=[];
     this.markerGlyphs.clear(); this.markerPositions.clear(); this.markerKeys.clear(); this.pickables.length = 0;
+    const chargingPads=new Set(chargingPadAssignments(store).values());
     for (const site of semanticSites(this.header, store)) {
       if (!site.isVertiport && !site.isPad) continue;
       const world = worldPosition(site.position, 'enu', this.header.origin).sub(renderOrigin);
-      const color = site.isVertiport ? 0x009e73 : 0xe69f00;
+      const charging=site.isPad&&chargingPads.has(site.id);
+      const color = site.isVertiport ? 0x009e73 : charging?0x35ffd1:0xe69f00;
+      if(charging){const glow=new T.Mesh(new T.RingGeometry(3.2,7,40),new T.MeshBasicMaterial({color:0x35ffd1,transparent:true,opacity:.65,side:T.DoubleSide,depthWrite:false,blending:T.AdditiveBlending}));glow.rotation.x=-Math.PI/2;glow.position.copy(world).add(new T.Vector3(0,.15,0));glow.userData.chargingPad=site.id;this.markers.add(glow);this.padGlows.push(glow);}
       const geometry = site.isVertiport ? new T.CylinderGeometry(6, 6, 1.2, 24) : new T.CylinderGeometry(3, 3, 1, 16);
       const mesh = new T.Mesh(geometry, new T.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 }));
       mesh.position.copy(world).add(new T.Vector3(0, 0.6, 0));
       mesh.userData.semanticEntityId = `${site.key.id}:${site.key.generation}`;
+      mesh.userData.charging=charging;
       mesh.userData.semanticLabel = site.isVertiport ? humanSiteName(site.id, 'Vertiport', this.options.locale) : humanSiteName(site.id, 'Charging pad', this.options.locale);
       this.markers.add(mesh);
       this.markerGlyphs.set(mesh.userData.semanticEntityId, mesh);
@@ -142,6 +150,7 @@ export class SemanticLayer {
     for (const mesh of this.zoneBoxes) { mesh.geometry.dispose(); (mesh.material as T.Material).dispose(); }
     for (const line of this.zoneLines) { line.geometry.dispose(); (line.material as T.Material).dispose(); }
     for (const mesh of this.markerGlyphs.values()) { mesh.geometry.dispose(); (mesh.material as T.Material).dispose(); }
+    for(const glow of this.padGlows){glow.geometry.dispose();(glow.material as T.Material).dispose();}this.padGlows=[];
     this.zoneBoxes = []; this.zoneLines = []; this.markerGlyphs.clear();
   }
 }

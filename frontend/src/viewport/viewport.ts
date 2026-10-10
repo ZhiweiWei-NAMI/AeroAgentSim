@@ -17,6 +17,7 @@ import { scenePresentation, type ScenePresentation } from '../scene/presentation
 import { loadSceneLayer } from '../scene/city-layer';
 import { CameraDirector, type CameraMode } from '../scene/camera-director';
 import { translate } from '../i18n/translate';
+import type {DirectorTarget} from './business-director';
 export type { CameraMode } from '../scene/camera-director';
 export interface ViewportOptions extends AssetOptions {
   quality?: Quality;
@@ -27,6 +28,7 @@ export interface ViewportOptions extends AssetOptions {
   onError?: (error: unknown) => void;
   onQuality?: (quality: Quality, fps?: number) => void;
   onStatus?: (status: string) => void;
+  onCameraInteraction?: () => void;
   /** Newcomer semantic overlay: friendly labels, zones and site markers. */
   semantic?: boolean;
   showAllLabels?: boolean;
@@ -58,6 +60,7 @@ export class Viewport {
   private origin = new T.Vector3();
   private framed = false;
   private director = new CameraDirector();
+  private businessShot?: DirectorTarget;
   private authoredCamera = false;
   private manualQuality = false;
   private dusk = false;
@@ -102,6 +105,10 @@ export class Viewport {
     if(options.semantic){this.semanticLayer=new SemanticLayer(header,{locale:options.locale,onSelect:key=>options.onSelect?.(key)});this.scene.add(this.semanticLayer.root);}
     this.quality = options.quality ?? 'med'; this.composer = pipeline(this.renderer, this.scene, this.camera, this.quality); this.applyPreset();
     this.observer = new ResizeObserver(this.resize); this.observer.observe(container);
+    // Capture before OrbitControls receives the gesture, so a drag can take
+    // over an automatic shot immediately (not one React/render frame later).
+    canvas.addEventListener('pointerdown', this.cameraInteraction, true);
+    canvas.addEventListener('wheel', this.cameraInteraction, {capture:true,passive:true});
     canvas.addEventListener('pointerdown', this.pointerDown); canvas.addEventListener('pointerup', this.pointerUp);
     canvas.addEventListener('pointermove', this.pointerMove); this.resize();
     const presentation: ScenePresentation | undefined = options.city || options.hdri ? { city: options.city, hdri: options.hdri } : scenePresentation(header);
@@ -184,6 +191,16 @@ export class Viewport {
   setCameraMode(mode: CameraMode) {
     this.revision++; this.mode = mode; this.controls.enabled = mode === 'orbit'; this.container.dataset.camera=mode;
   }
+  setDirectorTarget(target?:DirectorTarget) {
+    if(this.businessShot===target)return;
+    this.businessShot=target;this.revision++;
+    this.container.dataset.directorEntity=target?.entity?.id??'';
+    this.container.dataset.directorEvent=target?.eventKey??'';
+  }
+  private cameraInteraction=()=>{
+    this.setDirectorTarget(undefined);this.setCameraMode('orbit');
+    this.options.onCameraInteraction?.();
+  };
   /** Event coordinates are ENU; camera positions are local east/up/south. */
   focusPosition(position: [number,number,number]) {
     const target=new T.Vector3(position[0],position[2],-position[1]).sub(this.origin);
@@ -210,7 +227,7 @@ export class Viewport {
     if(this.mode!=='cinematic'&&frameKey===this.lastFrame){this.container.dataset.idle='true';return;}
     this.lastFrame=frameKey;this.container.dataset.idle='false';
     this.district?.update(store,this.origin);
-    const chosen = this.mode === 'cinematic' ? this.director.choose(store,ns,deltaSeconds,this.selected) : this.selected;
+    const chosen = this.mode === 'cinematic' ? (this.businessShot ? this.businessShot.entity : (this.options.semantic ? this.selected : this.director.choose(store,ns,deltaSeconds,this.selected))) : this.selected;
     this.staticRoot.updateMatrixWorld(); this.layer.update(store, ns, this.camera, chosen, trails, this.origin, this.occlusion);
     if(this.semanticLayer&&this.layer.semantic){
       this.semanticLayer.update(store,ns,this.origin);
@@ -218,19 +235,24 @@ export class Viewport {
       if(this.hoverMarkerId)this.container.dataset.semanticHover=this.semanticLayer.labelFor(this.hoverMarkerId)??'';
       if(this.options.onLegend)this.emitLegend(store);
     }else if(this.semanticLayer)this.semanticLayer.root.visible=false;
+    this.container.dataset.payloadCount=String(this.layer.payloadCount);
+    this.container.dataset.chargingPadCount=String(this.semanticLayer?.chargingPadCount??0);
     const entitiesFinished = performance.now();
     if(!this.framed && this.layer.positions.size){
       const bounds=this.district?.bounds?.clone().translate(this.origin.clone().negate())??new T.Box3().setFromPoints([...this.layer.positions.values()]),center=bounds.getCenter(new T.Vector3());
       if(!this.authoredCamera){const span=Math.max(100,bounds.getSize(new T.Vector3()).length());this.controls.target.copy(center);this.camera.position.copy(center).add(new T.Vector3(0.7,0.55,0.9).multiplyScalar(span));}
       this.framed=true;
     }
-    const focus=chosen?this.layer.positions.get(entityId(chosen)):undefined;
+    const eventPosition=this.businessShot?.position;
+    const focus=(chosen?this.layer.positions.get(entityId(chosen)):undefined)??(eventPosition?new T.Vector3(eventPosition[0],eventPosition[2],-eventPosition[1]).sub(this.origin):undefined);
     if(focus&&this.mode!=='orbit'){
       let offset=this.followOffset;
       if(this.mode==='chase'){
         const orientation=this.layer.orientations.get(entityId(chosen!));offset=new T.Vector3(-4,2.4,5.5);if(orientation)offset.applyQuaternion(orientation);
-      }else if(this.mode==='cinematic')offset=this.director.offset();
-      this.camera.position.lerp(focus.clone().add(offset),1-Math.exp(-5*deltaSeconds));this.controls.target.copy(focus);this.camera.lookAt(focus);
+      }else if(this.mode==='cinematic'&&!this.options.semantic)offset=this.director.offset();
+      const delta=Math.min(0.1,Math.max(0,deltaSeconds));
+      this.camera.position.lerp(focus.clone().add(offset),1-Math.exp(-(this.mode==='cinematic'?1.8:5)*delta));
+      this.controls.target.lerp(focus,1-Math.exp(-(this.mode==='cinematic'?2.4:8)*delta));this.camera.lookAt(this.controls.target);
     }
     // Rebase all display coordinates together once the camera leaves a 2 km cell.
     if(Math.hypot(this.controls.target.x,this.controls.target.z)>2000){
@@ -331,6 +353,7 @@ export class Viewport {
   };
   dispose(){
     this.disposed=true;this.abort.abort();this.observer.disconnect();
+    this.renderer.domElement.removeEventListener('pointerdown',this.cameraInteraction,true);this.renderer.domElement.removeEventListener('wheel',this.cameraInteraction,true);
     this.renderer.domElement.removeEventListener('pointerdown',this.pointerDown);this.renderer.domElement.removeEventListener('pointerup',this.pointerUp);
     this.renderer.domElement.removeEventListener('pointermove',this.pointerMove);
     this.controls.dispose();this.occlusion.dispose();this.layer.dispose();this.assets.dispose();disposeObject(this.scene);this.lighting.dispose();this.environment?.dispose();

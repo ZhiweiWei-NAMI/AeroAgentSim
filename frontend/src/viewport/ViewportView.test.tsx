@@ -15,7 +15,7 @@ vi.mock('./viewport', async () => {
     camera = { fov: 48, aspect: 1, position: { x: 0, y: 0, z: 0 } };
     setCameraMode = mock.fn(); setDusk = mock.fn(); setSelection = mock.fn(); setHighlights = mock.fn();
     setSemantic = mock.fn(); setLocale = mock.fn(); setQuality = mock.fn(); focusPosition = mock.fn();
-    render = mock.fn(); dispose = mock.fn();
+    render = mock.fn(); dispose = mock.fn(); setDirectorTarget = mock.fn();
     constructor(public container: HTMLElement, _header: unknown, public options: any) {
       renderer.instances.push(this);
       options.onStatus('Models loaded · x500');
@@ -53,6 +53,18 @@ function View({ props }: { props: ComponentProps<typeof ViewportView> }) {
 }
 
 describe('viewport bilingual controls', () => {
+  it('routes notable cues to smooth Director targets and hands control to camera interaction until resumed',()=>{
+    const {store,clock}=session();
+    const cue={key:'2/0',cut:2,offset:1,at_ns:'1000000000',category:'energy' as const,severity:'notice' as const,text:'Low battery',entities:[],position:[1,2,3] as [number,number,number]};
+    clock.seek('1000000000');
+    const config={enabled:true,active:true,paused:false,events:[cue]};
+    const props={store,clock,...handlers(),simple:true,mode:'orbit' as const,quality:'med' as const,trails:true,director:config,onDirectorPause:vi.fn()};
+    const view=renderComponent(<View props={props}/>),instance=renderer.instances[0],now=performance.now()+200;
+    act(()=>nextFrame(now));expect(instance.setDirectorTarget).toHaveBeenLastCalledWith({eventKey:cue.key,entity:undefined,position:[1,2,3]});expect(instance.setCameraMode).toHaveBeenLastCalledWith('cinematic');
+    act(()=>instance.options.onCameraInteraction());expect(props.onDirectorPause).toHaveBeenCalledOnce();act(()=>nextFrame(now+100));expect(instance.setDirectorTarget).toHaveBeenLastCalledWith(undefined);expect(instance.setCameraMode).toHaveBeenLastCalledWith('orbit');
+    view.rerender(<View props={{...props,director:{...config,paused:true}}}/>);act(()=>nextFrame(now+200));
+    view.rerender(<View props={props}/>);act(()=>nextFrame(now+4000));expect(instance.setDirectorTarget).toHaveBeenLastCalledWith(expect.objectContaining({eventKey:cue.key}));expect(instance.setCameraMode).toHaveBeenLastCalledWith('cinematic');expect(props.onError).not.toHaveBeenCalled();
+  });
   it('localizes camera, quality, lighting and aria labels reactively without recreating the renderer', () => {
     const props = { ...session(), ...handlers(), mode: 'orbit' as const, quality: 'med' as const, trails: true };
     const view = renderComponent(<View props={props} />), instance = renderer.instances[0];

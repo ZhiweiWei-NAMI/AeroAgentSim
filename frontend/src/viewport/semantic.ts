@@ -200,12 +200,13 @@ export function taskByVehicle(store: { entities: Map<string, EntityState>; edges
   const map = new Map<string, EntityState>();
   for (const task of store.entities.values()) {
     if (task.typeId !== 'lowalt:Task') continue;
-    if(['completed','failed','canceled','unreleased'].includes(String(task.fields.get('lowalt.task_state')?.value)))continue;
+    if(['completed','failed','canceled','unreleased','queued'].includes(String(task.fields.get('lowalt.task_state')?.value)))continue;
     const vehicle = scalar(task.fields.get('lowalt.task_vehicle')?.value);
     if (typeof vehicle !== 'string' || !vehicle) continue;
     const entity = store.entities.get(`${vehicle}:0`);
-    if (entity) map.set(`${vehicle}:0`, task);
-    else for (const [id, candidate] of store.entities) if (candidate.key.id === vehicle) map.set(id, task);
+    const assign=(id:string)=>{const previous=map.get(id);if(!previous||previous.fields.get('lowalt.task_state')?.value==='paused'||task.fields.get('lowalt.task_state')?.value!=='paused')map.set(id,task);};
+    if (entity) assign(`${vehicle}:0`);
+    else for (const [id, candidate] of store.entities) if (candidate.key.id === vehicle) assign(id);
   }
   for (const edge of store.edges.values()) {
     if (edge.op !== 'assert') continue;

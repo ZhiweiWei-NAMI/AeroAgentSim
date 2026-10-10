@@ -10,12 +10,18 @@ import { initialActionFraming } from './action-framing';
 import { entityId } from './bindings';
 import { useI18n } from '../i18n/I18nProvider';
 import '../scene/presentation';
+import {BusinessDirector,directorTarget,type DirectorTarget} from './business-director';
+import type {RecordedBusinessEvent} from '../newcomers/projection';
 interface Props {
   store: FeedStore & { liveFollow?: boolean }; clock: PlaybackClock; selected?: EntityKey; mode: CameraMode; quality: Quality; trails: boolean;
   commitCut?: number;
   /** Entities emphasised together with the selection (cause trace). */
   highlights?: EntityKey[];
   simple?: boolean; focus?: {position:[number,number,number];revision:number};
+  cameraRevision?:number;
+  director?:{enabled:boolean;active:boolean;paused:boolean;events:RecordedBusinessEvent[]};
+  onDirectorPause?:()=>void;
+  onDirectorSubject?:(key:EntityKey)=>void;
   onSelect: (key: EntityKey) => void; onTick: () => void; onError: (error: unknown) => void;
   /** Keep the owner's exact-cut controls in sync with a recorded event marker. */
   onSeekCommit?: (ns: string, commitIndex: number) => void;
@@ -45,6 +51,7 @@ export function ViewportView(props: Props) {
   useEffect(()=>{
     let frame=0,last=performance.now(),notify=last,lastSeek='',lastNotified='';
     let actionFramed=false,interacted=false;
+    const director=new BusinessDirector();let shot:DirectorTarget|undefined,autoActive=false,wasPaused=false;
     const preserveCamera=()=>{interacted=true;};
     const container=root.current;
     container?.addEventListener('pointerdown',preserveCamera);
@@ -53,6 +60,10 @@ export function ViewportView(props: Props) {
       viewport.current=new Viewport(root.current!,props.store.header,{
         quality:props.quality,locale,onSelect:key=>current.current.onSelect(key),onError:error=>current.current.onError(error),onStatus:setStatus,
         onQuality:(quality,fps)=>{setQuality(quality);setFps(fps);current.current.onQuality(quality,fps);},
+        onCameraInteraction:()=>{
+          interacted=true;director.pauseOnInteraction();autoActive=false;
+          setMode('orbit');activeMode.current='orbit';current.current.onDirectorPause?.();
+        },
         semantic:props.simple===true,showAllLabels:showAllLabels,
         onLegend:(entries,zones)=>{setLegend(entries);setZoneCount(zones);},
       });
@@ -86,6 +97,19 @@ export function ViewportView(props: Props) {
           liveClock.observe(p.store,liveActive);
           const liveNs=liveActive?liveClock.renderNs(p.clock.ns):undefined;
           if(root.current) {root.current.dataset.displayNs=liveNs??p.clock.ns;root.current.dataset.committedNs=p.clock.ns;}
+          const config=p.director;
+          if(config){
+            if(config.paused)director.pauseOnInteraction();
+            else if(wasPaused)director.resume();
+            wasPaused=config.paused;
+            const enabled=config.enabled&&config.active&&!director.interactionPaused;
+            const known=(p.store as FeedStore & {viewCursor?:{knownAt:number}}).viewCursor?.knownAt??p.store.commits.at(-1)?.commitIndex??-1;
+            const cue=director.tick(config.events,now,enabled,p.clock.ns,known);
+            if(!director.current)shot=undefined;
+            if(cue){shot=directorTarget(p.store,cue);if(shot?.entity)p.onDirectorSubject?.(shot.entity);}
+            viewport.current!.setDirectorTarget(enabled?shot:undefined);
+            if(enabled!==autoActive){viewport.current!.setCameraMode(enabled?'cinematic':config.enabled?'orbit':activeMode.current);autoActive=enabled;}
+          }
           viewport.current!.render(p.store,liveNs??p.clock.ns,delta,p.trails);
           if(now-notify>100&&seekKey!==lastNotified){p.onTick();notify=now;lastNotified=seekKey;}frame=requestAnimationFrame(animate);
         }catch(error){current.current.onError(error);}
@@ -102,6 +126,7 @@ export function ViewportView(props: Props) {
     if(previousMode.current!==props.mode){previousMode.current=props.mode;setMode(undefined);activeMode.current=props.mode;viewport.current?.setCameraMode(props.mode);}
     else viewport.current?.setCameraMode(mode ?? props.mode);
   },[props.mode,mode]);
+  useEffect(()=>{if(props.cameraRevision!==undefined){setMode(undefined);activeMode.current=props.mode;viewport.current?.setCameraMode(props.mode);}},[props.cameraRevision]);
   useEffect(()=>{setQuality(props.quality);viewport.current?.setQuality(props.quality);},[props.quality]);
   useEffect(()=>{if(props.focus){setMode('orbit');activeMode.current='orbit';viewport.current?.focusPosition(props.focus.position);}},[props.focus]);
   const events=useMemo(()=>props.store.commits.flatMap(commit=>commit.messages.filter(message=>message.kind==='event'&&(!props.selected||message.subjects?.some(key=>entityId(key)===entityId(props.selected!)))).map(message=>({...message,commitIndex:commit.commitIndex}))),[props.store,props.store.commits.length,props.selected]);
