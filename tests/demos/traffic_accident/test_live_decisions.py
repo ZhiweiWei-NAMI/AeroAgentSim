@@ -47,6 +47,8 @@ def test_shipped_live_demo_budget_is_per_decision(
 ) -> None:
     from aeroagentsim.services.demo import demo_document
 
+    # Completion is mocked below; configure its provider explicitly.
+    monkeypatch.setenv("AAS_LLM_MODEL", "test-model")
     document, base = demo_document()
     live_decisions(document, {"profile": "default"})
     budget = document["engines"]["decisions"]["config"]["budget"]

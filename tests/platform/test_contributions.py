@@ -29,14 +29,11 @@ SECOND = 1_000_000_000
 
 @pytest.fixture(scope="module")
 def wind_base(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
-    """Reuse the committed UAV/wind descriptors and authored example contracts."""
+    """Reuse the complete motion/weather snapshot and original scenario overlays."""
     d: dict[str, Any] = yaml.safe_load(Path("scenarios/p1-slice.yaml").read_text())
     d["registry"]["snapshot"] = str(
-        Path("scenarios/demos/traffic-accident/registry.snapshot.json").resolve()
+        Path("scenarios/registry/motion-weather.snapshot.json").resolve()
     )
-    pack = json.loads(Path("scenarios/packs/aerograph.snapshot.json").read_text())
-    order = next(t for t in pack["registry"]["types"] if t["id"] == "oo:Order")
-    d["registry"]["types"].append(order)
     mover = d["entities"][0]
     mover["facts"].update(
         {POS: [0.0, 0.0, 0.0], VEL: [0.0, 0.0, 0.0], ENERGY: 100000.0}

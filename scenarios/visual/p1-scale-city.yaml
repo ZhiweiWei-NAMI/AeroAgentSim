@@ -117,7 +117,7 @@ registry:
     he.aircraft.position_enu_m:
       frame: enu
       transform_revision: p1-local-1
-  snapshot: ../packs/aerograph.snapshot.json
+  snapshot: ../registry/scale.snapshot.json
 entities:
 - id: mover-0000
   type: oo:UAV

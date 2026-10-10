@@ -78,11 +78,12 @@ def test_duplicate_yaml_and_escape_preserve_previous_draft(
 
 
 def test_real_console_demo_compiles_and_reports_an_authored_error(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from aeroagentsim.authoring.inputs import configured_ontology
-
-    store = WorkspaceStore(tmp_path / "drafts", configured_ontology())
+    # Compile the live provider configuration without calling a model.
+    monkeypatch.setenv("AAS_LLM_MODEL", "test-model")
+    # The public console demo uses its committed registry snapshot.
+    store = WorkspaceStore(tmp_path / "drafts", None)
     identifier = store.create("Traffic accident (demo)")["id"]
     draft = store.import_demo(
         identifier, "traffic-accident", console=True, primitive=True

@@ -1,62 +1,12 @@
 format: aeroagentsim.scenario/v1
 id: p1-spectrum
-# Public profile: committed snapshot plus explicitly authored scenario contracts.
-# These overlays do not claim to reproduce the full AeroGraph catalog.
 registry:
   types:
-  - id: oo:RadioSignalObservation
-    parents:
-    - oo:ObservationRecord
-    abstract: false
-  - id: oo:Regulation
-    parents:
-    - oo:ModelObject
-    abstract: false
   - id: review:SpectrumSample
     parents:
     - oo:MetricObservation
     abstract: false
   fields:
-  - id: oo:shared.observationRecord.acquisitionTime
-    type: oo:ObservationRecord
-    schema: &id001
-      type: record
-      members:
-        clockRef:
-          type: string
-        value:
-          type: number
-      required:
-      - clockRef
-      - value
-      extra: false
-    metadata:
-      role: observation
-      clock: canonical
-      unit: s
-  - id: oo:shared.observationRecord.availableTime
-    type: oo:ObservationRecord
-    schema: *id001
-    metadata:
-      role: observation
-      clock: canonical
-      unit: s
-  - id: oo:shared.observationRecord.observedSubjectRef
-    type: oo:ObservationRecord
-    schema:
-      type: ref
-      target_type: oo:ModelObject
-    metadata:
-      role: observation
-      clock: canonical
-  - id: he.radio.branch_a_power_dbm
-    type: oo:RadioSignalObservation
-    schema:
-      type: number
-    metadata:
-      role: observation
-      clock: canonical
-      unit: dBm
   - id: review.scan_phase
     type: oo:RadioSignalObservation
     schema:
@@ -106,7 +56,7 @@ registry:
       maximum: null
     identity_policy: edge_id
     metadata: {}
-  snapshot: realtime-registry.snapshot.json
+  snapshot: registry/spectrum.snapshot.json
 entities:
 - id: receiver
   type: oo:RadioSignalObservation

@@ -19,9 +19,14 @@ from aeroagentsim.services.projector import project
 
 
 @pytest.fixture
-def document() -> dict[str, Any]:
+def document(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    # These tests mock completion; still configure its model explicitly.
+    monkeypatch.setenv("AAS_LLM_MODEL", "test-model")
     scenario = load_scenario("scenarios/agents/llm-dispatch.yaml")
     data = deepcopy(scenario.document)
+    data["registry"]["snapshot"] = str(
+        (scenario.base / data["registry"]["snapshot"]).resolve()
+    )
     data["engines"]["zz_decision"]["config"]["points"] = [{"timer_ns": 1}]
     return data
 
