@@ -87,11 +87,32 @@ header/commit fields and are absent in older runs.
 
 - 3D presentation is display art direction (sky, lighting, interpolation);
   it does not add physics steps or invent state.
-- The demo's camera captures render committed poses with the committed lite-city footprints and procedural geometry
+- The demo's camera captures render committed poses with the selected city geometry
   in headless Chromium — simulation-camera output, not licensed city imagery.
-- The optional high-detail city pack is not shipped.
+- The optional high-detail city pack is a separate download, keeping clones small.
 - Feed requests use `AbortController`; transport failures stay visible and
   never become empty successful data.
 
 See also: [HTTP API reference](../reference/http-api.md),
 [viewer feed reference](../reference/viewer-feed.md).
+
+## Shared Huangpu city
+
+Shipped templates declare `city: huangpu` in their manifest or scenario. Display
+coordinates share the traffic demo's local ENU metres: east is scene X, north is
+negative scene Z, and up is scene Y. The city reference selects display geometry;
+it does not move entities, change flight paths or add obstacle physics.
+
+Without an installed pack, the viewer and photo camera render the committed lite
+city. `aeroagentsim assets fetch` adds the detailed city for every Huangpu template.
+Reload the viewer after installation or removal. The viewer header advertises
+`cityDetail` (`lite` or `detailed`) and `assetPacks`; the lightweight view shows a
+small download hint. An explicitly configured asset root has priority.
+
+The lite bundle covers a smaller central excerpt, while the detailed scene spans
+approximately ±540 m. Template site placement must be checked against actual
+footprints and rooftop heights; selecting a city does not certify a landing site.
+
+For parcel-delivery's current placement and a proposed translation for template
+authors, see [parcel city placement](parcel-city-placement.md). The template
+coordinates remain unchanged.

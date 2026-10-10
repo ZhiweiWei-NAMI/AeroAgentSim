@@ -52,7 +52,8 @@ def test_city_assets_allow_edits_and_keep_source_validation(
             "capture_bridge": {"config": {}},
         },
     }
-    demo.configure_console(document, source)
+    metadata = demo.configure_console(document, source)
+    assert metadata["city_detail"] == "detailed"
     assert (
         document["engines"]["capture_bridge"]["config"]["asset_digest"]
         == demo.CITY_ASSET_ID

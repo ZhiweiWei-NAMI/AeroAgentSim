@@ -56,3 +56,13 @@ it('loads public OSM footprints and keeps the console procedural actors for city
  expect(result.presentation[0].visual.asset).toBe('procedural:uav');
  expect(fetch).toHaveBeenCalledTimes(2);
 });
+
+it('keeps detailed actor model URLs so GLTF relative textures resolve at the service', async () => {
+ const city=header().scene!.city!.url;
+ const model='https://studio.example/v1/studio/demo-assets/models/uav.glb';
+ const input=header(); input.presentation=[{typeId:'aas:TrafficUAV',positionField:'position',frame:'enu',visual:{kind:'model',asset:model}}];
+ const encode=(value:unknown)=>new TextEncoder().encode(JSON.stringify(value)).slice().buffer as ArrayBuffer;
+ vi.stubGlobal('fetch',async(address:string)=>({ok:true,arrayBuffer:async()=>encode(address===city?{buildings:[]} : address.includes('manifest')?manifest([{url:city},{url:model}]):'model bytes')}));
+ const result=await loadAssets(ASSET_ID,'https://studio.example/manifest',input,new AbortController().signal,[]);
+ expect(result.presentation[0].visual.asset).toBe(model);
+});

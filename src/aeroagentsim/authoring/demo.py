@@ -17,14 +17,22 @@ CITY_ASSET_ID = "traffic-city-assets/v1"
 
 
 def city_assets() -> tuple[Path, dict[str, dict[str, Any]]]:
-    setting = os.environ.get("AEROAGENTSIM_TRAFFIC_ASSET_ROOT")
-    if not setting:
+    from aeroagentsim.assets import selected, traffic_root
+
+    root = traffic_root()
+    if root is None:
         root = demo_source("traffic-accident") / "inputs/lite-city"
         return root, {
             name: {"asset_id": "traffic-lite-city/v1"}
             for name in ("scene.json", "ATTRIBUTION.txt")
         }
-    root = Path(setting).resolve()
+    if not os.environ.get("AEROAGENTSIM_TRAFFIC_ASSET_ROOT"):
+        pack = selected()
+        assert pack is not None
+        return root, {
+            row["path"].removeprefix("assets/"): {"asset_id": pack["id"] + "/" + row["path"]}
+            for row in pack["files"] if row["path"].startswith("assets/")
+        }
     inventory = json.loads(
         (demo_source("traffic-accident") / "inputs/city-manifest.json").read_bytes()
     )
@@ -58,6 +66,8 @@ def capture_manifest() -> bytes:
             for row in scene["buildings"]
             if "url" in row
         ),
+        *(url.removeprefix("/assets/") for url in scene.get("models", {}).values()),
+        *(name for name in files if name.startswith("models/textures/")),
     }
     for name in sorted(required):
         city_file(name)
@@ -65,7 +75,7 @@ def capture_manifest() -> bytes:
         {
             "format": "aeroagentsim.capture-assets/v1",
             "asset_id": CITY_ASSET_ID
-            if os.environ.get("AEROAGENTSIM_TRAFFIC_ASSET_ROOT")
+            if detailed_city()
             else "traffic-lite-city/v1",
             "environment": "viewer-default/v1",
             "files": [
@@ -96,7 +106,7 @@ def configure_console(
         "AEROAGENTSIM_CONSOLE_URL", "http://127.0.0.1:8002"
     ).rstrip("/")
     capture = document["engines"]["capture"]["config"]
-    lite = not os.environ.get("AEROAGENTSIM_TRAFFIC_ASSET_ROOT")
+    lite = not detailed_city()
     capture["renderer"] = {
         "mode": "browser",
         "viewer_url": console
@@ -127,7 +137,7 @@ def configure_console(
         "far": 16000.0,
         "provenance": "committed actor pose; console city viewer",
     }
-    if lite:
+    if "presentation" in document:
         for binding in document["presentation"]:
             model = (
                 "car"
@@ -139,36 +149,15 @@ def configure_console(
             if model is not None:
                 binding["visual"] = {
                     "kind": "model",
-                    "asset": "procedural:" + model,
+                    "asset": "procedural:" + model if lite else "/v1/studio/demo-assets/models/" + model + ".glb",
                     "scale": 1.0,
                 }
-        return {
-            "capture_mode": "city",
-            "city_available": True,
-            "city_detail": "lite",
-            "catalog_notice": "Type catalog limited to this scenario's snapshot",
-            "scene": {
-                "id": "Traffic accident · lite city",
-                "city": {
-                    "kind": "traffic-city",
-                    "url": console + "/v1/studio/demo-assets/scene.json",
-                },
-                "camera": {"position": [280, 220, 300], "target": [91.95, 0, 93.04]},
-                "attribution": "© OpenStreetMap contributors, ODbL 1.0 · procedural buildings and vehicles",
-            },
-        }
     return {
         "capture_mode": "city",
         "city_available": True,
-        "scene": {
-            "id": "Traffic accident · original city",
-            "city": {
-                "kind": "traffic-city",
-                "url": console + "/v1/studio/demo-assets/scene.json",
-            },
-            "camera": {"position": [280, 220, 300], "target": [91.95, 0, 93.04]},
-            "attribution": "Original demo city geometry; see city-manifest.json for attribution",
-        },
+        "city_detail": "lite" if lite else "detailed",
+        "catalog_notice": "Type catalog limited to this scenario's snapshot",
+        "scene": city_presentation(console),
     }
 
 
@@ -245,3 +234,21 @@ def live_decisions(document: dict[str, Any], provider: dict[str, Any]) -> None:
     messages = document["registry"]["messages"]
     if not any(row["id"] == "aas.langgraph.record" for row in messages):
         messages.append(record_descriptor())
+
+
+def detailed_city() -> bool:
+    from aeroagentsim.assets import traffic_root
+
+    return traffic_root() is not None
+
+
+def city_presentation(base_url: str = "") -> dict[str, Any]:
+    """Shared city in the authored ENU frame; quality depends on local packs."""
+    detailed = detailed_city()
+    return {
+        "id": "Huangpu · detailed city" if detailed else "Huangpu · lite city",
+        "city": {"kind": "traffic-city", "url": base_url.rstrip("/") + "/v1/studio/demo-assets/scene.json"},
+        "camera": {"position": [280, 220, 300], "target": [91.95, 0, 93.04]},
+        "attribution": "© OpenStreetMap contributors, ODbL 1.0 · see city pack NOTICE.txt",
+        **({"hint": "Detailed 3D city available: run `aeroagentsim assets fetch`"} if not detailed else {}),
+    }

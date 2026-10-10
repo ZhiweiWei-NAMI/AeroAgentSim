@@ -207,3 +207,5 @@ Issues and pull requests are welcome — new domain plugins, scenarios, predicat
 ## License and acknowledgements
 
 AeroAgentSim is released under the [Apache License 2.0](LICENSE). The demo city is derived from © OpenStreetMap contributors (ODbL 1.0). AeroAgentSim integrates with PX4, Gazebo, SUMO, ns-3, LangGraph and Three.js; each remains under its own license.
+
+Optional detailed Huangpu city (separate download; automatically used by viewer and camera): `aeroagentsim assets fetch`.

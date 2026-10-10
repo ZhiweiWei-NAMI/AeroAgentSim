@@ -142,3 +142,7 @@ engines:
       produces: [example.task.phase]
       capabilities: {}
 ```
+
+Optional `city: huangpu` selects the shared city display in local ENU metres.
+It does not change entity positions, field ownership or simulation physics.
+See [visualization](../guides/visualization.md#shared-huangpu-city).

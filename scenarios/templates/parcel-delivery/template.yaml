@@ -1,4 +1,5 @@
 format: aeroagentsim.template/v1
+city: huangpu
 id: parcel-delivery
 title: Urban parcel delivery
 summary: Drones carry parcels from two vertiports to customers across a small district.

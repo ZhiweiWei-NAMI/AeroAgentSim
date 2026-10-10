@@ -24,7 +24,7 @@ export async function loadSceneLayer(presentation: ScenePresentation, header: Ru
       if (!header.origin) throw Error('GeoJSON city requires RunHeader.origin');
       object = await loadOsmBuildings(city.url, header.origin, signal);
     } else object = (await assets.model(city.url)).clone(true);
-    object.name = 'city'; add(object, city.offset); status(`${presentation.id ?? 'City'} · geometry loaded`);
+    object.name = 'city'; add(object, city.offset); status(`${presentation.id ?? 'City'} · geometry loaded${presentation.hint ? ' · ' + presentation.hint : ''}`);
   })().catch(error => { if (!signal.aborted) status(`City unavailable: ${String(error)} · base scene active`); }));
   if (presentation.roads) jobs.push((async () => {
     const object = await loadSumoRoads(presentation.roads!.url, signal); add(object, presentation.roads!.offset);

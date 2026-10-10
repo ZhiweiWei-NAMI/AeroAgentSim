@@ -49,24 +49,37 @@ class TrafficCameraCapture(Capture):
         html = Path(__file__).with_name("camera.html").read_bytes()
         three = (modules / "three/build/three.module.js").read_bytes()
         assets = {"/": (html, "text/html"), "/three.js": (three, "text/javascript")}
-        from aeroagentsim.authoring.templates import demo_source
+        from aeroagentsim.authoring.demo import city_assets, city_file
 
-        lite = demo_source("traffic-accident") / "inputs/lite-city/scene.json"
-        if lite.is_file():
-            assets["/city.json"] = (lite.read_bytes(), "application/json")
+        city_root, city_inventory = city_assets()
+        assets["/city.json"] = (city_file("scene.json").read_bytes(), "application/json")
         assets["/camera-config.json"] = (
-            json.dumps(
-                {"city": config["asset_digest"] == "traffic-lite-city/v1"}
-            ).encode(),
-            "application/json",
+            json.dumps({"city": True}).encode(), "application/json",
         )
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
-                if self.path not in assets:
-                    self.send_error(404)
-                    return
-                data, mime = assets[self.path]
+                import mimetypes
+                from urllib.parse import unquote, urlsplit
+
+                name = unquote(urlsplit(self.path).path)
+                if name in assets:
+                    data, mime = assets[name]
+                else:
+                    path: Path | None = None
+                    if name.startswith("/assets/") and name[8:] in city_inventory:
+                        candidate = (city_root / name[8:]).resolve()
+                        if candidate.is_relative_to(city_root):
+                            path = candidate
+                    elif name.startswith("/addons/"):
+                        addon_root = (modules / "three/examples/jsm").resolve()
+                        candidate = (addon_root / name[8:]).resolve()
+                        if candidate.is_relative_to(addon_root):
+                            path = candidate
+                    if path is None or not path.is_file():
+                        self.send_error(404)
+                        return
+                    data, mime = path.read_bytes(), mimetypes.guess_type(path.name)[0] or "application/octet-stream"
                 self.send_response(200)
                 self.send_header("Content-Type", mime)
                 self.send_header("Content-Length", str(len(data)))

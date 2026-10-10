@@ -277,9 +277,12 @@ def _compile(document: dict[str, Any], source: str, base: Path) -> Scenario:
         "algorithms",
         "generators",
         "event_narratives",
+        "city",
     }
     if extra := set(document) - allowed:
         raise ScenarioError(f"scenario: unknown keys {sorted(extra)}")
+    if "city" in document and document["city"] != "huangpu":
+        raise ScenarioError("city: expected huangpu")
     if document.get("format") != FORMAT:
         raise ScenarioError(f"format: expected {FORMAT}")
     if "algorithms" in document:
