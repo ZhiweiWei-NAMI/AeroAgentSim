@@ -2,7 +2,7 @@
 
 AeroAgentSim is a general-purpose simulation platform for experiments involving physical systems, networks, environmental conditions and decision-making agents. AeroGraph types describe the world; replaceable domain plugins evolve it through one shared discrete-event runtime. The console configures experiments and shows their graph and 3D views on the same timeline.
 
-Start with the traffic-accident experiment. Its committed registry snapshot and procedural city work without the AeroGraph repository or a separate mesh pack.
+Start with **Home → Choose your scenario**: run or customize parcel / medical delivery, inspection, spraying, air taxi, patrol or the mixed city day. For a complete agent-and-camera workflow, choose the traffic-accident experiment. The committed registry snapshots and procedural city work without the AeroGraph repository or a separate mesh pack.
 
 ## Get started
 
@@ -32,6 +32,9 @@ Start with the traffic-accident experiment. Its committed registry snapshot and 
 | Configure environmental forcing | [Weather](guides/weather.md) |
 | Define a condition | [Write a predicate](guides/predicates.md) |
 | Define a workflow | [Author an event chain](guides/behaviours.md) |
+| Change battery, airspace or wind policy | [Edit the low-altitude rules](guides/lowalt-rules.md) |
+| Compare allocation algorithms | [Matched-seed experiments](guides/experiments.md) |
+| Publish a reusable scenario | [Make a template](guides/templates.md) |
 | Provide external input | [Inject external events](guides/external-events.md) |
 | Use a model-backed agent | [Deploy an agent](guides/agents.md) |
 | Inspect a result | [Visualization and inspection](guides/visualization.md) |

@@ -14,6 +14,19 @@ aeroagentsim demo traffic-accident
 
 浏览器依赖和系统环境见英文安装指南。
 
+## 日常低空实验（2.1）
+
+在 **Home → Choose your scenario** 选择快递配送、医疗配送、电力巡检、农田喷洒、空中出租车、安防巡逻或混合城市日。**Run now** 运行默认配置，**Customize** 调节无人机数量、任务分配算法等参数，**Open in Studio** 编辑真实场景。
+
+简单视图优先显示城市、可读事件和实际 KPI；专家视图补充同步关系图与状态。七个日常模板共用电量储备、禁飞区、间隔和风速规则。在 Studio 修改谓词参数，再在 Inspect 点击事件旁的 **Why?**，查看“读取的状态 → 谓词 → 事件链 → 共享状态变化 → 命令回执”。
+
+```bash
+aeroagentsim run-template parcel-delivery --set allocator=auction --headless
+aeroagentsim experiment parcel-delivery --vary allocator=nearest,auction,hungarian --seeds 3 --jobs 2
+```
+
+也可在场景库点击 **Compare changes · Experiment** 发起匹配随机种子的对比实验。[规则编辑](docs/guides/lowalt-rules.md) · [算法实验](docs/guides/experiments.md)
+
 - [英文文档首页](docs/README.md)
 - [安装](docs/getting-started/install.md)与[快速入门](docs/getting-started/quickstart.md)
 - [交通事故实验](docs/examples/traffic-accident.md)

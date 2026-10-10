@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.0 — everyday low-altitude experiments
+
+- Seven everyday low-altitude templates plus the traffic-accident showcase: parcel and medical delivery, powerline inspection, crop spraying, air taxi, security patrol and a mixed city day.
+- A newcomer scenario gallery, typed controls, Simple / Expert views, readable event feed, run KPIs and matched-seed algorithm experiments.
+- Shared `lowalt.rules` predicates and event chains for battery reserve, no-fly zones, separation and wind limits; threshold controls author the real predicates.
+- Cause → effect explanations connect recorded values, predicate evaluations, chain actions, shared-state changes and execution receipts.
+- Template workspaces carry the shared city; layer toggles retain loaded geometry; background traffic labels are decluttered. Optional city-pack models use class-aware selection, LOD and procedural fallbacks.
+- Deterministic replay and single-writer ownership remain the execution contract. Native simulators, detailed asset packs and live model providers remain optional and separately configured.
+
 ## 2.0.0 — first public release of the consolidated platform
 
 - One shared discrete-event runtime for time coordination, external input, committed state and event-chain execution.

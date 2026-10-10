@@ -11,7 +11,7 @@ public clone’s lite OSM bundle and packaged registry snapshot.
 | --- | --- |
 | [00-overview.gif](00-overview.gif) | Home → Studio → Run → synchronized Inspect |
 | [01-configure-plugins.gif](01-configure-plugins.gif) | PX4, kinematic, SUMO, wind and field ownership |
-| [02-predicates.gif](02-predicates.gif) | AeroGraph field picker, threshold edit and compiler validation |
+| [02-predicates.gif](02-predicates.gif) | Shared low-altitude predicates, battery-reserve edit, validation and a real predicate → chain → state explanation |
 | [03-rules-events.gif](03-rules-events.gif) | Predicate rule, type bindings, chains and injection points |
 | [04-aerograph.gif](04-aerograph.gif) | Type ancestry, field writers and a workspace entity |
 | [05-agents.gif](05-agents.gif) | LangGraph configuration, grants and recorded decisions |

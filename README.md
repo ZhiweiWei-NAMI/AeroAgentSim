@@ -62,6 +62,32 @@ aeroagentsim demo traffic-accident                       # opens the console wit
 
 Prefer the terminal? `aeroagentsim demo traffic-accident --headless` runs the same experiment and prints the accident, award, capture and upload times plus the journal path; `aeroagentsim replay <run-dir>` replays it without calling any physics engine, camera or model.
 
+## Everyday low-altitude experiments
+
+Start on **Home → Choose your scenario**. Choose **Run now** for the defaults, **Customize** to change a few controls, or **Open in Studio** to edit the actual world, predicates and event chains. Simple view puts the city, readable events and measured results first; Expert view adds the synchronized entity graph and recorded state.
+
+| Template | What to investigate |
+|---|---|
+| Urban parcel delivery | Fleet size, order rate and nearest / auction / Hungarian allocation |
+| Medical delivery | Urgent requests sharing aircraft with routine deliveries |
+| Powerline inspection | Inspection routes, observations and weather interruptions |
+| Crop spraying | Coverage routes and battery / wind limits |
+| Air taxi | Passenger requests, pad capacity and waiting |
+| Security patrol | Patrol waypoints and incident response |
+| City day | Deliveries, inspections, traffic and an accident interacting in one shared world |
+| Traffic accident | Report → agent bids → award → camera capture → upload |
+
+```bash
+aeroagentsim templates
+aeroagentsim run-template parcel-delivery --set allocator=auction --headless
+aeroagentsim experiment parcel-delivery \
+  --vary allocator=nearest,auction,hungarian --seeds 3 --jobs 2 --out runs
+```
+
+Use **Compare changes · Experiment** in the gallery for the same matched-seed experiment without the terminal. Completion, latency, battery use, distance and safety events come from committed records, not a simulated leaderboard.
+
+The seven everyday templates share four editable policies: **battery reserve, no-fly zones, separation and wind limits**. In Studio, change a predicate parameter; in Inspect, click an event's **Why?** to follow **the values read → predicate → event chain → shared-state change → command receipt**. One field still has one writer. [Edit the rules](docs/guides/lowalt-rules.md) · [Compare algorithms](docs/guides/experiments.md) · [Make a template](docs/guides/templates.md)
+
 ➡️ Full instructions: [Install](docs/getting-started/install.md) · [Quickstart](docs/getting-started/quickstart.md) · [Your first scenario](docs/getting-started/first-scenario.md)
 
 ## A tour of the console
@@ -86,9 +112,9 @@ Studio walks through seven steps: **Scene → Entities → Domain plugins → Pr
 
 ### 3. Define predicates
 
-Predicates are typed conditions over AeroGraph state — distances, speeds, relations, dwell times. Pick fields with an AeroGraph-aware picker, set thresholds and let the compiler check them against the registry.
+Predicates are typed conditions over AeroGraph state — distances, speeds, relations, dwell times. Pick fields with an AeroGraph-aware picker, set thresholds and let the compiler check them against the registry. The recording edits the parcel template's battery reserve and follows the resulting real event back to its predicate, chain and committed recall state.
 
-<p align="center"><img src="docs/media/02-predicates.gif" alt="Editing a predicate threshold with the AeroGraph field picker and validating" width="860"></p>
+<p align="center"><img src="docs/media/02-predicates.gif" alt="Editing the battery reserve, validating, and explaining a real predicate-to-chain-to-state change in replay" width="860"></p>
 
 📖 [Predicates](docs/concepts/predicates.md) · [Write a predicate](docs/guides/predicates.md) · [Predicate dialect](docs/reference/predicate-dialect.md)
 
@@ -192,7 +218,7 @@ docs/                getting started, concepts, guides, reference
 
 ## Status
 
-AeroAgentSim 2.0 is the first public release of the consolidated platform. Things to know:
+AeroAgentSim 2.1 adds everyday low-altitude templates, newcomer views, matched-seed experiments and explainable operational rules to the consolidated platform. Things to know:
 
 - The shipped demo runs on the kinematic and scripted-decision profiles out of the box. PX4/Gazebo, SUMO and ns-3 run as separate container services — see [Containers](docs/guides/containers.md).
 - Pure-Python kernel performance: real time at 1 Hz for the full demo; high-rate (15 Hz) physics currently runs at about 0.25× real time.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aeroagentsim"
-version = "2.0.0"
+version = "2.1.0"
 description = "General-purpose ontology-driven multi-engine simulation platform"
 readme = "README.md"
 authors = [

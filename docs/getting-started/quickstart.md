@@ -12,7 +12,7 @@ See [Install](install.md) for Python setup and Chromium system dependencies. The
 
 ## Tour the console
 
-1. **Home** provides demos and recent work.
+1. **Home → Choose your scenario** provides everyday low-altitude templates and the traffic-accident demo. **Run now** uses the defaults, **Customize** changes named controls, and **Open in Studio** imports an editable city workspace.
 2. **Studio** guides you through **Scene → Entities → Domain plugins → Predicates → Event chains & rules → Agents → Validate & run**. Review the imported traffic workspace, validate it and start a run.
 3. **AeroGraph** browses types, fields and relations. Without an AeroGraph checkout, the catalog is limited to the scenario snapshot; the console identifies that scope.
 4. **Runs** shows status and controls. Simulation pause stops time advancement; playback pause only stops the viewer. `waiting_for_input` means a declared stream has not yet permitted the next simulation time.
